@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== ELEMENTS ====================
     GSP.tablesBody = document.getElementById('tablesBody');
     GSP.addBtn = document.getElementById('addBtn');
+    GSP.downloadFieldsBtn = document.getElementById('downloadFieldsBtn');
     GSP.editBtn = document.getElementById('editBtn');
     GSP.viewBtn = document.getElementById('viewBtn');
     GSP.deleteBtn = document.getElementById('deleteBtn');
@@ -210,6 +211,58 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Download error:', error);
             showToast('Error downloading template', 'error');
+        }
+    };
+
+    GSP.downloadTableFieldsTxt = async function(tableId) {
+        if (!tableId) {
+            showToast('Please select a table first.', 'warning');
+            return;
+        }
+
+        try {
+            const data = await ApiClient.get(`/api/table/${tableId}/`);
+
+            if (!data.success) {
+                showToast(data.message || 'Error fetching table data', 'error');
+                return;
+            }
+
+            const table = data.table || {};
+            const rawFields = Array.isArray(table.fields) ? table.fields : [];
+            const headings = rawFields
+                .map(function(field) {
+                    if (field && typeof field === 'object') return String(field.name || '').trim();
+                    return String(field || '').trim();
+                })
+                .filter(Boolean);
+
+            if (!headings.length) {
+                showToast('No fields available to download.', 'warning');
+                return;
+            }
+
+            const textContent = headings.join('\r\n');
+            const safeTableName = String(table.name || 'table')
+                .replace(/[^a-z0-9]/gi, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '') || 'table';
+            const filename = `${safeTableName}_fields.txt`;
+
+            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = filename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+
+            showToast('Field headings TXT downloaded successfully!', 'success');
+        } catch (error) {
+            console.error('Download fields TXT error:', error);
+            showToast('Error downloading fields TXT', 'error');
         }
     };
 

@@ -314,14 +314,10 @@ def login_as_user_page(request):
 # ── Pro User Deep History (Pro User only) ─────────────────────────────
 @login_required
 def pro_user_activity_logs_page(request):
-    """Dedicated page for Pro User deep user-history audit."""
+    """Backward-compatible URL for the merged Pro User User Options page."""
     if request.user.role != 'pro_user':
         return redirect('dashboard')
-    context = {
-        'active_page': 'pro_user_activity_logs',
-        'user_role': get_user_role(request.user),
-    }
-    return render(request, 'pro_user/user-deep-history.html', context)
+    return redirect('login_as_user')
 
 
 @login_required

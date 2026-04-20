@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     GSP.updateActionButtons = function() {
         const hasSelection = GSP.selectedRow !== null;
+        if (GSP.downloadFieldsBtn) GSP.downloadFieldsBtn.disabled = !hasSelection;
         if (GSP.editBtn) GSP.editBtn.disabled = !hasSelection;
         if (GSP.viewBtn) GSP.viewBtn.disabled = !hasSelection;
         if (GSP.deleteBtn) GSP.deleteBtn.disabled = !hasSelection;

@@ -291,7 +291,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="guard-page pro-feature-page pro-feature-fullwidth-tabs" id="logClearGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
+<div class="guard-page pro-feature-page" id="logClearGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
   {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_log_deletion_guard' %}
 
   <div class="action-bar">

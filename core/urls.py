@@ -78,10 +78,10 @@ urlpatterns = [
     # ==================== SERVICES ==
     path('services/adarsh-cropper/', views.adarsh_cropper, name='adarsh_cropper'),
 
-    # Login As User (Pro User only)
+    # User Options (Pro User only)
     path('login-as-user/', views.login_as_user_page, name='login_as_user'),
 
-    # Deep User History (Pro User only)
+    # Backward-compatible deep-history list URL (redirects to User Options)
     path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
     path('pro-user/log-deletion-guard/', views.pro_user_log_deletion_guard_page, name='pro_user_log_deletion_guard'),
     path('pro-user/data-deletion-guard/', views.pro_user_data_deletion_guard_page, name='pro_user_data_deletion_guard'),

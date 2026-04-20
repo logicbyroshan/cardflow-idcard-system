@@ -1,9 +1,6 @@
 <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
-  <a href="{% url 'login_as_user' %}" class="pro-feature-tab{% if pro_tab == 'login_as_user' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'login_as_user' %}true{% else %}false{% endif %}">
-    <i class="fa-solid fa-user-secret"></i> Login As User
-  </a>
-  <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_activity_logs' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_activity_logs' %}true{% else %}false{% endif %}">
-    <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
+  <a href="{% url 'login_as_user' %}" class="pro-feature-tab{% if pro_tab == 'user_options' or pro_tab == 'login_as_user' or pro_tab == 'pro_user_activity_logs' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'user_options' or pro_tab == 'login_as_user' or pro_tab == 'pro_user_activity_logs' %}true{% else %}false{% endif %}">
+    <i class="fa-solid fa-user-gear"></i> User Options
   </a>
   <a href="{% url 'pro_user_super_mode' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_super_mode' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_super_mode' %}true{% else %}false{% endif %}">
     <i class="fa-solid fa-gauge-high"></i> Super Mode

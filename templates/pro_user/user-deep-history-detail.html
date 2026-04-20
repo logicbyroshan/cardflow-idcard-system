@@ -198,7 +198,7 @@
 {% block breadcrumb %}
 <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
 <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-<a href="{% url 'pro_user_activity_logs' %}" class="breadcrumb-item">User Deep History</a>
+<a href="{% url 'login_as_user' %}" class="breadcrumb-item">User Options</a>
 <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
 <span class="breadcrumb-item active">{{ audit_target.name }}</span>
 {% endblock %}
@@ -216,11 +216,11 @@
      data-user-role="{{ audit_target.role_display }}"
      data-user-contact="{{ audit_target.email_or_username }}">
 
-  {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_activity_logs' %}
+  {% include 'partials/pro-feature-tabs.html' with pro_tab='user_options' %}
 
   <div class="action-bar">
     <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
-      <a href="{% url 'pro_user_activity_logs' %}" class="btn btn-sm btn-outline-secondary">
+      <a href="{% url 'login_as_user' %}" class="btn btn-sm btn-outline-secondary">
         <i class="fa-solid fa-arrow-left"></i> Back To Users
       </a>
       <div style="font-size: var(--ui-font-size-base, 14px);font-weight:700;color:var(--text-primary,var(--color-gray-800));">{{ audit_target.name }} - Deep History</div>

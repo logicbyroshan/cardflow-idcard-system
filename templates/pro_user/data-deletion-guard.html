@@ -352,7 +352,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="data-guard-page pro-feature-page pro-feature-fullwidth-tabs" id="proDataGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
+<div class="data-guard-page pro-feature-page" id="proDataGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
   {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_data_deletion_guard' %}
 
   <div class="guard-action-bar">

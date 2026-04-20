@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Login As User  -  Adarsh ID Cards{% endblock %}
+{% block title %}User Options  -  Adarsh ID Cards{% endblock %}
 {% block main_class %}main-scrollable-page{% endblock %}
 
 {% block extra_css %}
@@ -278,9 +278,17 @@
   }
 
   .imp-role-tag.r-super_admin  { background: var(--color-violet-100); color: #6d28d9; }
+  .imp-role-tag.r-pro_user     { background: var(--color-rose-100); color: #be123c; }
   .imp-role-tag.r-admin_staff  { background: var(--color-amber-100); color: var(--color-warning-dark); }
   .imp-role-tag.r-client       { background: var(--color-emerald-100); color: var(--color-emerald-800); }
   .imp-role-tag.r-client_staff { background: var(--color-blue-100); color: #1e40af; }
+
+  .imp-action-stack {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
 
   .imp-status-pill {
     display: inline-flex;
@@ -331,6 +339,28 @@
     cursor: not-allowed;
     opacity: 0.5;
     filter: grayscale(0.15);
+  }
+
+  .imp-history-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--color-slate-300);
+    background: var(--color-white);
+    color: var(--color-slate-700);
+    font-size: var(--ui-font-size-xs, 11px);
+    font-weight: 600;
+    border-radius: 4px;
+    height: 28px;
+    padding: 0 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .imp-history-btn:hover {
+    background: var(--color-slate-50);
+    border-color: var(--color-slate-400);
   }
 
   .imp-empty {
@@ -393,7 +423,7 @@
 {% block breadcrumb %}
 <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
 <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-<span class="breadcrumb-item active">Login As User</span>
+<span class="breadcrumb-item active">User Options</span>
 {% endblock %}
 
 {% block topbar_right %}
@@ -406,18 +436,19 @@
 <div class="imp-page pro-feature-page">
 
   <div class="imp-sticky-stack">
-    {% include 'partials/pro-feature-tabs.html' with pro_tab='login_as_user' %}
+    {% include 'partials/pro-feature-tabs.html' with pro_tab='user_options' %}
 
     <!-- Action Bar -->
     <div class="action-bar">
       <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
         <div class="search-box" style="max-width:320px;">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" id="impSearch" class="search-input" placeholder="Search by name, email, or role..." oninput="__impFilter()" autocomplete="off">
+          <input type="text" id="impSearch" class="search-input" placeholder="Search by name, email, username, or role..." oninput="__impFilter()" autocomplete="off">
           <button class="search-clear-btn" id="impSearchClear" type="button" title="Clear search" aria-label="Clear search" onclick="document.getElementById('impSearch').value='';__impFilter()" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="imp-pills" id="impPills">
           <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="pro_user" onclick="__impSetRole('pro_user',this)">Pro User <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistant <span class="imp-pill-count">0</span></button>
@@ -434,14 +465,14 @@
   <div class="imp-grid-wrap">
     <div class="imp-table-shell">
       <div class="imp-table-wrap">
-        <table class="imp-table" aria-label="Users available for login as">
+        <table class="imp-table" aria-label="User options table">
           <thead>
             <tr>
               <th style="width:6%;text-align:center;">Sr no.</th>
               <th style="width:44%;">User</th>
               <th style="width:18%;">Role</th>
               <th style="width:14%;">Status</th>
-              <th style="width:18%;">Action</th>
+              <th style="width:18%;">Options</th>
             </tr>
           </thead>
           <tbody id="impTableBody">
@@ -475,7 +506,7 @@
   var _page = 1;
   var _perPage = 25;
   var _pagerBound = false;
-  var COLORS = { super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
+  var COLORS = { pro_user:'#e11d48', super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
   var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant' };
 
   function _displayRole(role, fallback) {
@@ -489,9 +520,8 @@
   }
 
   function _updateRolePillCounts() {
-    var counts = { all: 0, super_admin: 0, admin_staff: 0, client: 0, client_staff: 0 };
+    var counts = { all: 0, pro_user: 0, super_admin: 0, admin_staff: 0, client: 0, client_staff: 0 };
     _users.forEach(function(u) {
-      if (u.is_active === false) return;
       counts.all += 1;
       if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
         counts[u.role] += 1;
@@ -646,14 +676,14 @@
 
   function _render() {
     _filteredUsers = _users.filter(function(u) {
-      if (u.is_active === false) return false;
       if (_role !== 'all' && u.role !== _role) return false;
       if (_text) {
         var q = _text.toLowerCase();
         var nameText = String(u.name || '').toLowerCase();
         var emailText = String(u.email || '').toLowerCase();
+        var usernameText = String(u.username || '').toLowerCase();
         var roleText = _displayRole(u.role, u.role_display).toLowerCase();
-        return nameText.indexOf(q) !== -1 || emailText.indexOf(q) !== -1 || roleText.indexOf(q) !== -1;
+        return nameText.indexOf(q) !== -1 || emailText.indexOf(q) !== -1 || usernameText.indexOf(q) !== -1 || roleText.indexOf(q) !== -1;
       }
       return true;
     });
@@ -682,7 +712,7 @@
       var showClientMeta = u.role === 'client_staff';
       var clientMeta = (showClientMeta && u.client_name) ? '<div class="imp-client-meta">Client: ' + _esc(u.client_name) + '</div>' : '';
       var rowIndex = startIndex + i + 1;
-      h += '<tr class="' + (canImpersonate ? 'is-clickable' : '') + '"' + (canImpersonate ? ' ondblclick="__impStart(' + u.id + ')" title="Double-click to login as this user"' : '') + '>'
+      h += '<tr class="is-clickable" ondblclick="__impOpenHistory(' + u.id + ')" title="Double-click to open history">'
         + '<td class="imp-col-index">' + rowIndex + '</td>'
         + '<td>'
           + '<div class="imp-user-cell">'
@@ -697,9 +727,14 @@
         + '<td><span class="imp-role-tag r-' + _esc(u.role) + '">' + _esc(roleDisplay) + '</span></td>'
         + '<td><span class="imp-status-pill ' + statusClass + '">' + statusText + '</span></td>'
         + '<td>'
-          + '<button type="button" class="imp-action-btn"' + (canImpersonate ? ' onclick="event.stopPropagation();__impStart(' + u.id + ')"' : ' disabled') + '>'
-            + '<i class="fa-solid fa-right-to-bracket"></i> Login'
-          + '</button>'
+          + '<div class="imp-action-stack">'
+            + '<button type="button" class="imp-action-btn"' + (canImpersonate ? ' onclick="event.stopPropagation();__impStart(' + u.id + ')"' : ' disabled') + '>'
+              + '<i class="fa-solid fa-right-to-bracket"></i> Login As'
+            + '</button>'
+            + '<button type="button" class="imp-history-btn" onclick="event.stopPropagation();__impOpenHistory(' + u.id + ')">'
+              + '<i class="fa-solid fa-clock-rotate-left"></i> Open History'
+            + '</button>'
+          + '</div>'
         + '</td>'
       + '</tr>';
     });
@@ -744,6 +779,10 @@
     if (_page > totalPages) _page = totalPages;
     if (_page < 1) _page = 1;
     _render();
+  };
+
+  window.__impOpenHistory = function(uid) {
+    window.location.href = '/panel/pro-user/activity-logs/' + encodeURIComponent(String(uid)) + '/';
   };
 
   window.__impStart = function(uid) {

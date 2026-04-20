@@ -54,6 +54,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (GSP.addBtn) GSP.addBtn.addEventListener('click', () => GSP.openDrawer('add'));
 
+    if (GSP.downloadFieldsBtn) {
+        GSP.downloadFieldsBtn.addEventListener('click', () => {
+            if (!GSP.selectedTableId) {
+                showToast('Please select a table first.', 'warning');
+                return;
+            }
+            GSP.downloadTableFieldsTxt(GSP.selectedTableId);
+        });
+    }
+
     if (GSP.editBtn) {
         GSP.editBtn.addEventListener('click', async () => {
             if (GSP.selectedTableId) {
