@@ -7,6 +7,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="theme-color" content="#3498db">
+  <link rel="manifest" href="/manifest.json?v={{ APP_VERSION|urlencode }}">
   <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'assets/icons/apple-touch-icon.png' %}">
@@ -154,11 +155,11 @@
   <!-- HTMX Configuration -->
   {% include 'partials/htmx-config.html' %}
 
-  <!-- Unregister any leftover service workers from previous PWA setup -->
+    <!-- Register panel service worker for standalone install UX. -->
   <script>
   if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) { r.unregister(); });
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js?v={{ APP_VERSION|urlencode }}', { scope: '/' }).catch(function () {});
       });
   }
   </script>

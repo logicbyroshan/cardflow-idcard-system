@@ -26,6 +26,7 @@ from django.http import HttpResponse, FileResponse, Http404
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 from core.views.health import health_check
+from website import views as website_views
 
 
 @require_GET
@@ -140,6 +141,10 @@ def _protected_media_serve(request, path, document_root=None):
 urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
+
+    # Panel PWA endpoints (same payload logic, host-aware inside the view).
+    path('manifest.json', website_views.pwa_manifest, name='panel_pwa_manifest'),
+    path('sw.js', website_views.pwa_service_worker, name='panel_pwa_service_worker'),
 
     path('robots.txt', panel_robots_txt, name='panel_robots_txt'),
 

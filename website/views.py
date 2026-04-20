@@ -293,31 +293,65 @@ def _normalize_panel_next_target(raw_next, fallback_target):
 @require_GET
 def pwa_manifest(request):
     """Public website PWA manifest for desktop/mobile browser install."""
-    manifest = {
-        'name': 'Adarsh ID Cards Website',
-        'short_name': 'Adarsh',
-        'id': '/',
-        'start_url': '/',
-        'scope': '/',
-        'display': 'standalone',
-        'background_color': '#ffffff',
-        'theme_color': '#3498db',
-        'description': 'Professional ID card solutions and public company website.',
-        'icons': [
-            {
-                'src': '/static/mobile/images/icon-192.png',
-                'sizes': '192x192',
-                'type': 'image/png',
-                'purpose': 'any maskable',
-            },
-            {
-                'src': '/static/mobile/images/icon-512.png',
-                'sizes': '512x512',
-                'type': 'image/png',
-                'purpose': 'any maskable',
-            },
-        ],
-    }
+    host = request.get_host().split(':')[0].lower()
+    panel_domain = str(getattr(_s, 'PANEL_DOMAIN', '') or '').strip().lower()
+    is_panel_host = bool(getattr(request, '_is_panel_subdomain', False)) or (panel_domain and host == panel_domain)
+
+    if is_panel_host:
+        manifest = {
+            'name': 'Adarsh ID Cards Panel',
+            'short_name': 'Adarsh Panel',
+            'id': '/',
+            'start_url': '/',
+            'scope': '/',
+            'display': 'standalone',
+            'display_override': ['standalone', 'minimal-ui', 'browser'],
+            'background_color': '#f4f8ff',
+            'theme_color': '#3498db',
+            'description': 'Admin panel workspace for Adarsh ID Cards.',
+            'icons': [
+                {
+                    'src': '/static/mobile/images/icon-192.png',
+                    'sizes': '192x192',
+                    'type': 'image/png',
+                    'purpose': 'any maskable',
+                },
+                {
+                    'src': '/static/mobile/images/icon-512.png',
+                    'sizes': '512x512',
+                    'type': 'image/png',
+                    'purpose': 'any maskable',
+                },
+            ],
+        }
+    else:
+        manifest = {
+            'name': 'Adarsh ID Cards Website',
+            'short_name': 'Adarsh',
+            'id': '/',
+            # Open panel directly from installed website PWA to avoid homepage-first flow.
+            'start_url': '/panel-entry/?next=/auth/login/&src=pwa-launch',
+            'scope': '/',
+            'display': 'standalone',
+            'display_override': ['standalone', 'minimal-ui', 'browser'],
+            'background_color': '#ffffff',
+            'theme_color': '#3498db',
+            'description': 'Professional ID card solutions and public company website.',
+            'icons': [
+                {
+                    'src': '/static/mobile/images/icon-192.png',
+                    'sizes': '192x192',
+                    'type': 'image/png',
+                    'purpose': 'any maskable',
+                },
+                {
+                    'src': '/static/mobile/images/icon-512.png',
+                    'sizes': '512x512',
+                    'type': 'image/png',
+                    'purpose': 'any maskable',
+                },
+            ],
+        }
     response = JsonResponse(manifest)
     response['Content-Type'] = 'application/manifest+json'
     response['Cache-Control'] = 'public, max-age=3600'

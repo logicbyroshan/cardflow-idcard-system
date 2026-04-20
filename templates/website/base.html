@@ -268,6 +268,18 @@
     // Panel URL for cross-subdomain redirects
     window.__panelUrl = '{{ PANEL_URL }}' || '';
 
+    // Existing installed website PWAs often launch on `/`; redirect once to panel entry.
+    (function () {
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (!isStandalone) {
+            return;
+        }
+        var path = String(window.location.pathname || '');
+        if (path === '/' || path === '/index.html') {
+            window.location.replace('/panel-entry/?next=/auth/login/&src=pwa-launch');
+        }
+    })();
+
     // Register website service worker for installability.
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {

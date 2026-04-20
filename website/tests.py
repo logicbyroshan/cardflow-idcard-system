@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 from urllib.parse import parse_qs, urlsplit
 from unittest import mock
@@ -6,12 +7,13 @@ from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
 from website.models import ContactSubmission, PortfolioCategory, PortfolioItem, Testimonial
 from website.services import PortfolioItemService, TestimonialService
+from website.views import pwa_manifest
 
 
 User = get_user_model()
@@ -352,10 +354,23 @@ class WebsitePwaInstallabilityTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response['Content-Type'], 'application/manifest+json')
 		payload = response.json()
-		self.assertEqual(payload.get('start_url'), '/')
+		self.assertEqual(payload.get('start_url'), '/panel-entry/?next=/auth/login/&src=pwa-launch')
 		self.assertEqual(payload.get('scope'), '/')
 		self.assertEqual(payload.get('display'), 'standalone')
 		self.assertGreaterEqual(len(payload.get('icons', [])), 1)
+
+	@override_settings(PANEL_DOMAIN='panel.example.test', ALLOWED_HOSTS=['testserver', 'panel.example.test'])
+	def test_manifest_returns_panel_payload_for_panel_host(self):
+		factory = RequestFactory()
+		request = factory.get('/manifest.json', HTTP_HOST='panel.example.test')
+
+		response = pwa_manifest(request)
+
+		self.assertEqual(response.status_code, 200)
+		payload = json.loads(response.content.decode('utf-8'))
+		self.assertEqual(payload.get('name'), 'Adarsh ID Cards Panel')
+		self.assertEqual(payload.get('start_url'), '/')
+		self.assertEqual(payload.get('scope'), '/')
 
 	def test_service_worker_endpoint_returns_required_headers(self):
 		response = self.client.get(reverse('website:pwa_service_worker'))
