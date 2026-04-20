@@ -19,6 +19,7 @@ import logging
 import re
 import time
 import zipfile
+import unicodedata
 
 from django.conf import settings
 
@@ -33,9 +34,58 @@ REUPLOAD_ALLOW_LEGACY_FALLBACK = True
 
 def _extract_stem_exact(value):
     """Extract filename stem without fuzzy normalization."""
-    base_name = os.path.basename(str(value or '').strip())
+    raw_value = str(value or '').strip()
+    if not raw_value:
+        return ''
+    base_name = re.split(r'[\\/]+', raw_value)[-1]
     stem, _ = os.path.splitext(base_name)
     return stem.strip()
+
+
+def _normalize_reupload_path_key(value):
+    """Normalize a path-like identifier for robust ZIP/PENDING matching."""
+    raw_value = str(value or '').strip()
+    if not raw_value:
+        return ''
+
+    if raw_value.startswith('PENDING:'):
+        raw_value = raw_value[8:]
+
+    raw_value = unicodedata.normalize('NFKC', raw_value)
+    raw_value = raw_value.replace('\\', '/')
+    raw_value = raw_value.split('?', 1)[0].split('#', 1)[0]
+    raw_value = raw_value.strip().strip('"\'')
+
+    parts = [segment.strip() for segment in raw_value.split('/') if segment and segment.strip() not in ('.',)]
+    if not parts:
+        return ''
+
+    stem = _extract_stem_exact(parts[-1])
+    if not stem:
+        return ''
+
+    parts[-1] = stem
+    normalized_path = '/'.join(parts).strip('/').strip()
+    return normalized_path.casefold()
+
+
+def _build_reupload_path_candidates(value):
+    """Build full-path and suffix path candidates for PENDING/path matching."""
+    normalized_path = _normalize_reupload_path_key(value)
+    if not normalized_path:
+        return []
+
+    segments = [segment for segment in normalized_path.split('/') if segment]
+    if not segments:
+        return []
+
+    # Prefer longest/specific path first, then suffixes.
+    candidates = []
+    for idx in range(len(segments)):
+        candidate = '/'.join(segments[idx:])
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+    return candidates
 
 
 def _is_strict_reupload_stem(stem):
@@ -55,8 +105,14 @@ def _is_supported_reupload_stem(stem):
     return bool(REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_fallback_reupload_stem(stem))
 
 
-def _resolve_reupload_zip_entry(stem, zip_index):
-    """Resolve match with strict-first behavior and open fallback."""
+def _resolve_reupload_zip_entry(stem, zip_index, path_candidates=None, path_index=None):
+    """Resolve match with path-aware fallback and strict-first stem behavior."""
+    if path_index and path_candidates:
+        for candidate in path_candidates:
+            matched_entry = path_index.get(candidate)
+            if matched_entry:
+                return matched_entry
+
     if not stem:
         return None
     if _is_strict_reupload_stem(stem) and stem in zip_index:
@@ -223,17 +279,24 @@ def process_reupload_images(task):
         # First, build index of available images in ZIP (just names, not content)
         # This is memory efficient - only stores filenames
         try:
-            zip_image_index, _, zip_stats = _build_zip_image_index(zip_path)
-            logger.info("ZIP index built: %d images found", len(zip_image_index))
+            zip_image_index, zip_path_index, zip_stats = _build_zip_image_index(zip_path)
+            zip_image_total = zip_stats.get('indexed_path_count', len(zip_image_index))
+            logger.info("ZIP index built: %d images found", zip_image_total)
         except Exception as e:
             logger.exception("Failed to read ZIP for reupload task_id=%s", task.id)
             task.mark_failed("Failed to read ZIP file. Please verify the ZIP and try again.")
             return
 
         if zip_stats.get('duplicate_name_keys', 0) > 0:
+            logger.warning(
+                "Reupload ZIP has %d duplicate stem keys; falling back to path-aware matching where possible.",
+                zip_stats.get('duplicate_name_keys', 0),
+            )
+
+        if zip_stats.get('duplicate_path_keys', 0) > 0:
             task.mark_failed(
-                "ZIP contains duplicate image names for exact matching. "
-                "Please keep one file per image name and retry."
+                "ZIP contains duplicate image paths after normalization. "
+                "Please remove duplicate files and retry."
             )
             return
 
@@ -241,13 +304,14 @@ def process_reupload_images(task):
             cards_qs=cards_qs,
             image_field_names=target_image_fields,
             zip_image_index=zip_image_index,
+            zip_path_index=zip_path_index,
         )
 
         metadata['preflight'] = preflight
         task.metadata = metadata
         _db_retry(lambda: task.save(update_fields=['metadata']))
 
-        if not zip_image_index:
+        if not zip_image_index and not zip_path_index:
             task.mark_failed("No valid images found in ZIP file")
             return
 
@@ -297,7 +361,14 @@ def process_reupload_images(task):
                     if not match_key:
                         continue
 
-                    zip_entry = _resolve_reupload_zip_entry(match_key, zip_image_index)
+                    path_candidates = _build_reupload_path_candidates(current_value)
+
+                    zip_entry = _resolve_reupload_zip_entry(
+                        match_key,
+                        zip_image_index,
+                        path_candidates=path_candidates,
+                        path_index=zip_path_index,
+                    )
                     if not zip_entry:
                         continue
                     matched_count += 1
@@ -407,7 +478,7 @@ def process_reupload_images(task):
             'updated_count': updated_count,
             'matched_count': matched_count,
             'unchanged_count': unchanged_count,
-            'zip_images_count': len(zip_image_index),
+            'zip_images_count': zip_image_total,
             'preflight': preflight,
             'error_count': len(errors),
             'errors': errors[:10] if errors else []
@@ -418,7 +489,7 @@ def process_reupload_images(task):
         _db_retry(lambda: task.mark_completed())
         logger.info(
             "REUPLOAD_DONE task_id=%d matched=%d updated=%d unchanged=%d zip_images=%d errors=%d",
-            task.id, matched_count, updated_count, unchanged_count, len(zip_image_index), len(errors),
+            task.id, matched_count, updated_count, unchanged_count, zip_image_total, len(errors),
         )
 
     except Exception as e:
@@ -522,8 +593,14 @@ def _build_zip_image_index(zip_path):
                     - dict: zip_stats
     """
     index = {}
+    path_index = {}
+    path_suffix_index = {}
     duplicate_name_keys = 0
+    duplicate_path_keys = 0
+    duplicate_path_suffix_keys = 0
     duplicate_stems = set()
+    duplicate_paths = set()
+    duplicate_suffixes = set()
     
     with zipfile.ZipFile(zip_path, 'r') as zf:
         for zip_info in zf.infolist():
@@ -542,7 +619,12 @@ def _build_zip_image_index(zip_path):
                 continue
             
             exact_key = _extract_stem_exact(name_without_ext)
+            normalized_path_key = _normalize_reupload_path_key(zip_info.filename)
+
             if not exact_key or not _is_supported_reupload_stem(exact_key):
+                continue
+
+            if not normalized_path_key:
                 continue
 
             existing = index.get(exact_key)
@@ -556,20 +638,59 @@ def _build_zip_image_index(zip_path):
                 duplicate_name_keys += 1
                 duplicate_stems.add(exact_key)
 
+            entry = {
+                'zip_path': zip_info.filename,
+                'ext': ext,
+                'original_name': base_name
+            }
+
+            existing_path = path_index.get(normalized_path_key)
+            if existing_path is None:
+                path_index[normalized_path_key] = entry
+            else:
+                duplicate_path_keys += 1
+                duplicate_paths.add(normalized_path_key)
+
+            path_segments = [segment for segment in normalized_path_key.split('/') if segment]
+            for idx in range(len(path_segments)):
+                suffix_key = '/'.join(path_segments[idx:])
+                existing_suffix = path_suffix_index.get(suffix_key)
+                if existing_suffix is None:
+                    path_suffix_index[suffix_key] = entry
+                elif existing_suffix.get('zip_path') != entry.get('zip_path'):
+                    duplicate_path_suffix_keys += 1
+                    duplicate_suffixes.add(suffix_key)
+
     for key in duplicate_stems:
         index.pop(key, None)
 
+    for key in duplicate_paths:
+        path_index.pop(key, None)
+
+    for key in duplicate_suffixes:
+        path_suffix_index.pop(key, None)
+
+    path_lookup_index = dict(path_index)
+    for suffix_key, entry in path_suffix_index.items():
+        if suffix_key not in path_lookup_index:
+            path_lookup_index[suffix_key] = entry
+
     zip_stats = {
         'duplicate_name_keys': duplicate_name_keys,
+        'duplicate_path_keys': duplicate_path_keys,
+        'duplicate_path_suffix_keys': duplicate_path_suffix_keys,
+        'indexed_stem_count': len(index),
+        'indexed_path_count': len(path_index),
     }
 
-    return index, {}, zip_stats
+    return index, path_lookup_index, zip_stats
 
 
 def _run_reupload_preflight(
     cards_qs,
     image_field_names,
     zip_image_index,
+    zip_path_index=None,
 ):
     """Compute match diagnostics before any writes occur."""
     expected_targets = 0
@@ -591,7 +712,15 @@ def _run_reupload_preflight(
                 continue
 
             expected_targets += 1
-            has_fallback_hit = bool(_resolve_reupload_zip_entry(match_key, zip_image_index))
+            path_candidates = _build_reupload_path_candidates(current_value)
+            has_fallback_hit = bool(
+                _resolve_reupload_zip_entry(
+                    match_key,
+                    zip_image_index,
+                    path_candidates=path_candidates,
+                    path_index=zip_path_index,
+                )
+            )
 
             if has_fallback_hit:
                 matched_targets += 1

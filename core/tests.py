@@ -3221,6 +3221,65 @@ class ReuploadDirectTaskFlowTests(TestCase):
             ['20240101121212', '20240202131313'],
         )
 
+    def test_async_reupload_matches_pending_paths_when_stems_duplicate(self):
+        from core.models import BackgroundTask
+        from core.services.reupload_processor import process_reupload_images
+
+        _group, table = _create_table(self.client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'photo', 'order': 2},
+            {'name': 'MOTHER', 'type': 'photo', 'order': 3},
+            {'name': 'FATHER', 'type': 'photo', 'order': 4},
+        ])
+
+        card = _create_card(
+            table,
+            field_data={
+                'NAME': 'PATH USER',
+                'PHOTO': 'PENDING:PHOTO/001.jpg',
+                'MOTHER': 'PENDING:MOTHER/001.jpg',
+                'FATHER': 'PENDING:FATHER/001.jpg',
+            },
+            status='pending',
+        )
+
+        temp_dir = os.path.join(self._tmp_media.name, 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        zip_abs_path = os.path.join(temp_dir, 'async-reupload-path-match.zip')
+        with zipfile.ZipFile(zip_abs_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('nested/PHOTO/001.jpg', b'photo-bytes')
+            zf.writestr('nested/MOTHER/001.jpg', b'mother-bytes')
+            zf.writestr('nested/FATHER/001.jpg', b'father-bytes')
+
+        task = BackgroundTask.objects.create(
+            user=self.admin,
+            task_type='reupload_images',
+            file_path=os.path.relpath(zip_abs_path, self._tmp_media.name),
+            metadata={
+                'table_id': table.id,
+                'card_ids': [card.id],
+            },
+        )
+
+        fake_results = [
+            type('Result', (), {'success': True, 'data': {'final_value': 'adarshimg/photo_new.jpg'}, 'message': ''})(),
+            type('Result', (), {'success': True, 'data': {'final_value': 'adarshimg/mother_new.jpg'}, 'message': ''})(),
+            type('Result', (), {'success': True, 'data': {'final_value': 'adarshimg/father_new.jpg'}, 'message': ''})(),
+        ]
+
+        with patch('core.utils.field_utils.validate_image_bytes', return_value=(True, None)), \
+             patch('mediafiles.services.ImageService.save_new_image', side_effect=fake_results):
+            process_reupload_images(task)
+
+        task.refresh_from_db()
+        self.assertEqual(task.status, 'completed')
+        self.assertEqual(task.metadata.get('result', {}).get('matched_count'), 3)
+
+        card.refresh_from_db()
+        self.assertEqual(card.field_data.get('PHOTO'), 'adarshimg/photo_new.jpg')
+        self.assertEqual(card.field_data.get('MOTHER'), 'adarshimg/mother_new.jpg')
+        self.assertEqual(card.field_data.get('FATHER'), 'adarshimg/father_new.jpg')
+
     def test_bulk_upload_task_cleans_temp_files_when_zip_validation_fails(self):
         self.client.login(username='reupload-admin@test.com', password='adminpass1')
 
