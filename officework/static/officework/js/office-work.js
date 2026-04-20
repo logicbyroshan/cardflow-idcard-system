@@ -52,6 +52,7 @@
     members: [],
     taskItems: [],
     taskDragId: 0,
+    taskInlineCreateStatus: '',
     taskModalOpen: false,
     taskCurrentItem: null,
     taskCommentsByTaskId: {},
@@ -152,6 +153,22 @@
       return raw;
     }
     return dt.toLocaleString();
+  }
+
+  function formatChatTime(raw) {
+    if (!raw) {
+      return '';
+    }
+    var dt = new Date(raw);
+    if (Number.isNaN(dt.getTime())) {
+      return '';
+    }
+    var now = new Date();
+    var isToday = dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth() && dt.getDate() === now.getDate();
+    if (isToday) {
+      return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
 
   function formatBytes(bytes) {
@@ -263,31 +280,58 @@
   }
 
   function groupSubtitle(group) {
-    var members = memberListForGroup(group);
-    if (!members.length) {
-      return 'No members added yet';
+    var preview = String(
+      group && (
+        group.last_message_text ||
+        group.last_message_preview ||
+        group.last_message ||
+        ''
+      ) || ''
+    ).trim();
+    if (preview) {
+      return preview;
     }
-    var names = members.slice(0, 3).map(function (member) {
-      return member && member.name ? String(member.name) : 'Member';
-    });
-    if (members.length > 3) {
-      names.push('+' + String(members.length - 3) + ' more');
+    return 'Tap to start chat';
+  }
+
+  function groupUpdatedAt(group) {
+    return (
+      group && (
+        group.last_message_at ||
+        group.updated_at ||
+        group.modified_at ||
+        group.created_at
+      )
+    ) || '';
+  }
+
+  function touchGroupWithMessage(groupId, item) {
+    var targetId = Number(groupId || 0);
+    if (targetId <= 0 || !item) {
+      return;
     }
-    return names.join(', ');
+    for (var i = 0; i < state.groups.length; i += 1) {
+      if (Number(state.groups[i].id || 0) !== targetId) {
+        continue;
+      }
+      state.groups[i].last_message_text = String(item.message || (item.attachment && item.attachment.name) || 'Attachment');
+      state.groups[i].last_message_at = item.created_at || new Date().toISOString();
+      break;
+    }
   }
 
   function updateActiveGroupHeader() {
     var group = activeGroupItem();
 
     if (ui.chatActiveGroupName) {
-      ui.chatActiveGroupName.textContent = group ? String(group.name || 'Team Message') : 'No Group Selected';
+      ui.chatActiveGroupName.textContent = group ? String(group.name || 'Team Chat') : 'No Chat Selected';
     }
 
     if (ui.chatActiveGroupMeta) {
       if (!group) {
-        ui.chatActiveGroupMeta.textContent = 'Select a group to start messaging.';
+        ui.chatActiveGroupMeta.textContent = 'Select a chat to start messaging.';
       } else {
-        ui.chatActiveGroupMeta.textContent = String(groupMemberCount(group)) + ' members';
+        ui.chatActiveGroupMeta.textContent = 'Live team chat';
       }
     }
 
@@ -328,15 +372,11 @@
         return true;
       }
 
-      return memberListForGroup(group).some(function (member) {
-        var name = String(member && member.name || '').toLowerCase();
-        var role = String(member && member.role_display || member && member.role || '').toLowerCase();
-        return name.indexOf(query) >= 0 || role.indexOf(query) >= 0;
-      });
+      return groupSubtitle(group).toLowerCase().indexOf(query) >= 0;
     });
 
     if (!visibleGroups.length) {
-      ui.chatGroupsList.innerHTML = '<div class="client-message-thread-state">No groups found. Create one to start.</div>';
+      ui.chatGroupsList.innerHTML = '<div class="client-message-thread-state">No chats found. Create one to start.</div>';
       return;
     }
 
@@ -344,13 +384,21 @@
       var groupId = Number(group.id || 0);
       var isActive = groupId === Number(state.activeGroupId || 0);
       var rowClass = isActive ? 'office-chat-group-row is-active' : 'office-chat-group-row';
+      var avatar = String(group && group.name || 'C').trim().charAt(0).toUpperCase() || 'C';
+      var preview = groupSubtitle(group);
+      var timeText = formatChatTime(groupUpdatedAt(group));
+      var unreadCount = Number(group && group.unread_count || 0);
       return '' +
         '<div class="' + rowClass + '" data-group-id="' + escapeHtml(groupId) + '">' +
-        '  <div class="office-chat-group-row-head">' +
-        '    <span class="office-chat-group-row-title">' + escapeHtml(group.name || 'Unnamed Group') + '</span>' +
-        '    <span class="office-chat-group-row-count">' + escapeHtml(groupMemberCount(group)) + '</span>' +
+        '  <div class="office-chat-group-avatar" aria-hidden="true">' + escapeHtml(avatar) + '</div>' +
+        '  <div class="office-chat-group-main">' +
+        '    <div class="office-chat-group-row-head">' +
+        '      <span class="office-chat-group-row-title">' + escapeHtml(group.name || 'Unnamed Chat') + '</span>' +
+        (timeText ? '      <span class="office-chat-group-row-time">' + escapeHtml(timeText) + '</span>' : '') +
+        '    </div>' +
+        '    <div class="office-chat-group-row-sub">' + escapeHtml(preview) + '</div>' +
         '  </div>' +
-        '  <div class="office-chat-group-row-sub">' + escapeHtml(groupSubtitle(group)) + '</div>' +
+        (unreadCount > 0 ? '  <span class="office-chat-group-row-unread">' + escapeHtml(unreadCount > 99 ? '99+' : unreadCount) + '</span>' : '') +
         '</div>';
     }).join('');
   }
@@ -446,6 +494,16 @@
       '';
     ui.chatList.appendChild(row);
     state.chatCount += 1;
+    touchGroupWithMessage(item && item.group_id, item || {});
+    state.groups.sort(function (left, right) {
+      var leftTs = new Date(groupUpdatedAt(left) || 0).getTime();
+      var rightTs = new Date(groupUpdatedAt(right) || 0).getTime();
+      if (rightTs !== leftTs) {
+        return rightTs - leftTs;
+      }
+      return Number(right.id || 0) - Number(left.id || 0);
+    });
+    renderGroupList();
     if (itemId > state.chatLastId) {
       state.chatLastId = itemId;
     }
@@ -467,7 +525,7 @@
     updateChatCountPill();
     var empty = document.createElement('div');
     empty.className = 'client-message-thread-state';
-    empty.textContent = state.groups.length ? 'No chat yet. Start the conversation.' : 'No groups yet. Create your first group to start messaging.';
+    empty.textContent = state.groups.length ? 'No chat yet. Start the conversation.' : 'No chats yet. Create your first chat to start messaging.';
     ui.chatList.appendChild(empty);
   }
 
@@ -540,7 +598,7 @@
   function renderGroupOptions() {
     if (!state.groups.length) {
       if (ui.chatGroupSelect) {
-        ui.chatGroupSelect.innerHTML = '<option value="">No groups</option>';
+        ui.chatGroupSelect.innerHTML = '<option value="">No chats</option>';
         ui.chatGroupSelect.disabled = true;
       }
       state.activeGroupId = 0;
@@ -590,6 +648,14 @@
       }
 
       state.groups = Array.isArray(data.groups) ? data.groups : [];
+      state.groups.sort(function (left, right) {
+        var leftTs = new Date(groupUpdatedAt(left) || 0).getTime();
+        var rightTs = new Date(groupUpdatedAt(right) || 0).getTime();
+        if (rightTs !== leftTs) {
+          return rightTs - leftTs;
+        }
+        return Number(right.id || 0) - Number(left.id || 0);
+      });
       state.availableMembers = Array.isArray(data.available_members) ? data.available_members : [];
       state.canManageGroups = !!data.can_manage_groups;
 
@@ -663,7 +729,7 @@
     }).join('\n');
 
     var raw = window.prompt(
-      'Enter member IDs separated by commas.\\n\\nAvailable members:\\n' + helperRows,
+      'Enter participant IDs separated by commas.\\n\\nAvailable members:\\n' + helperRows,
       ''
     );
     if (raw === null) {
@@ -682,17 +748,17 @@
 
   async function createGroupFlow() {
     if (!state.canManageGroups) {
-      notify('Only admins can create groups.', 'error');
+      notify('Only admins can create chats.', 'error');
       return;
     }
 
-    var name = window.prompt('Enter group name:', 'New Group');
+    var name = window.prompt('Enter chat name:', 'New Chat');
     if (name === null) {
       return;
     }
     name = String(name || '').trim();
     if (!name) {
-      notify('Group name is required.', 'error');
+      notify('Chat name is required.', 'error');
       return;
     }
 
@@ -707,7 +773,7 @@
         member_ids: memberIds,
       });
       if (!data || !data.success) {
-        notify((data && data.message) || 'Failed to create group.', 'error');
+        notify((data && data.message) || 'Failed to create chat.', 'error');
         return;
       }
 
@@ -719,9 +785,9 @@
       }
       resetChatState();
       await loadChat({ forceInitial: true });
-      notify('Group created.', 'success');
+      notify('Chat created.', 'success');
     } catch (error) {
-      notify((error && error.message) || 'Failed to create group.', 'error');
+      notify((error && error.message) || 'Failed to create chat.', 'error');
     }
   }
 
@@ -1056,6 +1122,10 @@
     if (ui.taskEditId) {
       ui.taskEditId.value = '';
     }
+    if (ui.taskTitle) {
+      ui.taskTitle.readOnly = false;
+      ui.taskTitle.classList.remove('is-locked');
+    }
     if (ui.taskAssignee) {
       ui.taskAssignee.innerHTML = getMemberOptionsHtml(0);
     }
@@ -1118,6 +1188,8 @@
     }
     if (ui.taskTitle) {
       ui.taskTitle.value = String(item.title || '');
+      ui.taskTitle.readOnly = true;
+      ui.taskTitle.classList.add('is-locked');
     }
     if (ui.taskDescription) {
       ui.taskDescription.value = String(item.description || '');
@@ -1157,7 +1229,7 @@
       ui.taskCreatedBy.textContent = String(item.created_by_name || '-');
     }
     if (ui.taskFormHeading) {
-      ui.taskFormHeading.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit Card #' + escapeHtml(item.id) + '';
+      ui.taskFormHeading.innerHTML = '<i class="fa-solid fa-clipboard-list"></i> Card Details #' + escapeHtml(item.id) + '';
     }
     if (ui.taskSubmitBtn) {
       ui.taskSubmitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Changes';
@@ -1222,9 +1294,93 @@
       '  <div class="office-task-card-footer">' +
       '    <span class="office-task-chip">' + escapeHtml(statusMeta.label) + '</span>' +
       (approvalLabel || '') +
-      '    <button type="button" class="btn btn-sm btn-neutral" data-action="edit-task">Open</button>' +
+        '    <span class="office-task-card-open-hint">Double-click to edit</span>' +
       '  </div>' +
       '</article>';
+  }
+
+  function closeInlineTaskCreator() {
+    state.taskInlineCreateStatus = '';
+    if (!ui.taskBoard) {
+      return;
+    }
+    var wraps = ui.taskBoard.querySelectorAll('.office-kanban-add-wrap');
+    wraps.forEach(function (wrap) {
+      var defaultBtn = wrap.querySelector('.office-kanban-add-btn[data-add-task-status]');
+      var inline = wrap.querySelector('.office-kanban-inline-create');
+      if (inline) {
+        inline.remove();
+      }
+      if (defaultBtn) {
+        defaultBtn.hidden = false;
+      }
+    });
+  }
+
+  function openInlineTaskCreator(status) {
+    var nextStatus = String(status || 'todo').trim();
+    if (!nextStatus || !ui.taskBoard) {
+      return;
+    }
+    closeInlineTaskCreator();
+    state.taskInlineCreateStatus = nextStatus;
+    var wrap = ui.taskBoard.querySelector('.office-kanban-column[data-status="' + nextStatus + '"] .office-kanban-add-wrap');
+    if (!wrap) {
+      return;
+    }
+    var defaultBtn = wrap.querySelector('.office-kanban-add-btn[data-add-task-status]');
+    if (defaultBtn) {
+      defaultBtn.hidden = true;
+    }
+
+    var inline = document.createElement('div');
+    inline.className = 'office-kanban-inline-create';
+    inline.innerHTML = '' +
+      '<input type="text" class="office-input office-kanban-inline-input" maxlength="180" placeholder="Card title..." data-inline-title-input="' + escapeHtml(nextStatus) + '">' +
+      '<div class="office-kanban-inline-actions">' +
+      '  <button type="button" class="btn btn-sm btn-primary" data-action="save-inline-task" data-inline-status="' + escapeHtml(nextStatus) + '">Add</button>' +
+      '  <button type="button" class="btn btn-sm btn-neutral" data-action="cancel-inline-task">Cancel</button>' +
+      '</div>';
+    wrap.appendChild(inline);
+
+    var input = inline.querySelector('[data-inline-title-input]');
+    if (input && typeof input.focus === 'function') {
+      input.focus();
+    }
+  }
+
+  async function createTaskInline(status, title) {
+    var normalizedStatus = String(status || 'todo').trim();
+    var normalizedTitle = String(title || '').trim();
+    if (!normalizedTitle) {
+      notify('Card title is required.', 'error');
+      return;
+    }
+
+    var payload = {
+      title: normalizedTitle,
+      description: '',
+      status: normalizedStatus,
+      priority: 'normal',
+      assigned_to_id: '',
+      collaborator_ids: [],
+      checklist_items: [],
+      due_date: '',
+    };
+
+    try {
+      var createData = await ApiClient.post(endpoints.taskCreate, payload);
+      if (!createData || !createData.success || !createData.task) {
+        notify((createData && createData.message) || 'Failed to create card.', 'error');
+        return;
+      }
+      upsertTaskItem(createData.task);
+      renderTaskBoard();
+      closeInlineTaskCreator();
+      notify('Card created.', 'success');
+    } catch (error) {
+      notify((error && error.message) || 'Failed to create card.', 'error');
+    }
   }
 
   function renderTaskBoard() {
@@ -1619,6 +1775,19 @@
         notify((error && error.message) || 'Failed to send message.', 'error');
       }
     });
+
+    if (ui.chatInput) {
+      ui.chatInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          if (typeof ui.chatForm.requestSubmit === 'function') {
+            ui.chatForm.requestSubmit();
+          } else {
+            ui.chatForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          }
+        }
+      });
+    }
   }
 
   async function persistTaskStatus(taskId, nextStatus) {
@@ -1695,13 +1864,20 @@
 
   function closeTaskModal() {
     setTaskModalOpen(false);
+    if (ui.taskModal) {
+      ui.taskModal.classList.remove('is-edit-mode');
+    }
     resetTaskEditor();
   }
 
   function openTaskCreateModal(status) {
+    closeInlineTaskCreator();
     resetTaskEditor();
+    if (ui.taskModal) {
+      ui.taskModal.classList.remove('is-edit-mode');
+    }
     if (ui.taskStatus) {
-      ui.taskStatus.value = 'todo';
+      ui.taskStatus.value = String(status || 'todo');
       ui.taskStatus.disabled = true;
     }
     setTaskModalOpen(true);
@@ -1711,7 +1887,11 @@
   }
 
   function openTaskEditModal(item) {
+    closeInlineTaskCreator();
     resetTaskEditor();
+    if (ui.taskModal) {
+      ui.taskModal.classList.add('is-edit-mode');
+    }
     setTaskEditor(item);
     setTaskModalOpen(true);
   }
@@ -1899,6 +2079,25 @@
       }
     });
 
+    ui.taskForm.addEventListener('click', function (event) {
+      var quickBtn = event.target.closest('[data-task-focus]');
+      if (!quickBtn) {
+        return;
+      }
+      var targetId = quickBtn.getAttribute('data-task-focus') || '';
+      if (!targetId) {
+        return;
+      }
+      var target = document.getElementById(targetId);
+      if (!target || typeof target.focus !== 'function') {
+        return;
+      }
+      target.focus();
+      if (typeof target.select === 'function' && target.tagName === 'INPUT') {
+        target.select();
+      }
+    });
+
     if (ui.taskCancelBtn) {
       ui.taskCancelBtn.addEventListener('click', function () {
         closeTaskModal();
@@ -2060,10 +2259,31 @@
       ui.taskBoard.addEventListener('click', function (event) {
         var addBtn = event.target.closest('[data-add-task-status]');
         if (addBtn) {
-          openTaskCreateModal('todo');
+          openInlineTaskCreator(addBtn.getAttribute('data-add-task-status') || 'todo');
           return;
         }
 
+        var saveInlineBtn = event.target.closest('[data-action="save-inline-task"]');
+        if (saveInlineBtn) {
+          var status = saveInlineBtn.getAttribute('data-inline-status') || 'todo';
+          var wrap = saveInlineBtn.closest('.office-kanban-inline-create');
+          var input = wrap && wrap.querySelector('[data-inline-title-input]');
+          createTaskInline(status, input && input.value);
+          return;
+        }
+
+        var cancelInlineBtn = event.target.closest('[data-action="cancel-inline-task"]');
+        if (cancelInlineBtn) {
+          closeInlineTaskCreator();
+          return;
+        }
+
+        if (event.target.closest('.office-task-card[data-task-id]')) {
+          return;
+        }
+      });
+
+      ui.taskBoard.addEventListener('dblclick', function (event) {
         var cardNode = event.target.closest('.office-task-card[data-task-id]');
         if (!cardNode) {
           return;
@@ -2075,6 +2295,20 @@
         var item = taskById(taskId);
         if (item) {
           openTaskEditModal(item);
+        }
+      });
+
+      ui.taskBoard.addEventListener('keydown', function (event) {
+        var input = event.target.closest('[data-inline-title-input]');
+        if (!input) {
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          createTaskInline(input.getAttribute('data-inline-title-input') || 'todo', input.value);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          closeInlineTaskCreator();
         }
       });
 
