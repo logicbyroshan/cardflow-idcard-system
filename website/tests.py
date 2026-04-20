@@ -11,7 +11,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
-from website.models import ContactSubmission, PortfolioCategory, PortfolioItem, Testimonial
+from website.models import ContactSubmission, PortfolioCategory, PortfolioItem, Testimonial as WebsiteTestimonial
 from website.services import PortfolioItemService, TestimonialService
 from website.views import pwa_manifest
 
@@ -214,7 +214,7 @@ class TestimonialSubmissionTests(TestCase):
 			password='testpass123',
 			role='client',
 		)
-		Testimonial.objects.create(
+		WebsiteTestimonial.objects.create(
 			reviewer_name='Viewer',
 			reviewer_email='viewer@example.com',
 			reviewer_school='Demo School',
@@ -265,7 +265,7 @@ class TestimonialSubmissionTests(TestCase):
 			role='client',
 		)
 
-		Testimonial.objects.create(
+		WebsiteTestimonial.objects.create(
 			reviewer_name='Other User',
 			reviewer_email='other-user@example.com',
 			reviewer_ip='5.5.5.5',
@@ -296,7 +296,7 @@ class TestimonialSubmissionTests(TestCase):
 		)
 
 		self.assertEqual(response.status_code, 200)
-		created = Testimonial.objects.get(reviewer_email='attachment-user@example.com')
+		created = WebsiteTestimonial.objects.get(reviewer_email='attachment-user@example.com')
 		self.assertTrue(bool(created.attachment_image))
 
 

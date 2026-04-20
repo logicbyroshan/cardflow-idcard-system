@@ -13,7 +13,6 @@ from core.models import User, EmailLog
 from client.models import Client
 from staff.models import Staff
 from core.utils import send_welcome_email
-from core.utils.email_utils import generate_secure_password
 from core.services.base import BaseService, ServiceResult
 from core.services.cache_version_service import CacheVersionService
 
@@ -182,25 +181,14 @@ class ClientService(BaseService):
             # - otherwise phone number is required and used as password
             phone = data.get('phone', '').strip()
             password = data.get('password', '').strip()
-            used_phone_as_password = False
             if not password:
                 if phone:
                     password = phone
-                    used_phone_as_password = True
                 else:
                     return ServiceResult(
                         success=False,
                         message='Phone number is required when custom password is not provided'
                     )
-            
-            # Skip Django password validators when using phone as password
-            # (NumericPasswordValidator would reject a pure-digit mobile number)
-            if not used_phone_as_password:
-                from django.contrib.auth.password_validation import validate_password
-                try:
-                    validate_password(password)
-                except Exception as pw_err:
-                    return ServiceResult(success=False, message=str(pw_err))
             
             # Check if admin explicitly requested active status at creation time
             create_as_active = cls.parse_bool(data.get('is_active', False))
@@ -512,17 +500,29 @@ class ClientService(BaseService):
 
                     if is_activating and real_email_available:
                         phone_value = (user.phone or '').strip()
-                        can_reuse_phone_password = bool(phone_value) and user.check_password(phone_value)
+                        has_usable_password = bool(user.has_usable_password())
+                        can_reuse_phone_password = has_usable_password and bool(phone_value) and user.check_password(phone_value)
                         email_variant = 'welcome'
-                        credential_password = phone_value
+                        credential_password = ''
 
-                        if not can_reuse_phone_password:
-                            credential_password = generate_secure_password()
-                            user.set_password(credential_password)
-                            email_variant = 'temp_password'
+                        if can_reuse_phone_password:
+                            credential_password = phone_value
+                            user.save(update_fields=['is_active'])
+                        elif has_usable_password:
+                            # Preserve any existing custom password configured during client creation.
+                            # Do not rotate to a temp password during activation.
+                            credential_password = 'Use the password configured by your administrator.'
+                            user.save(update_fields=['is_active'])
+                        elif phone_value:
+                            # Legacy recovery: if password became unusable, recover from phone.
+                            user.set_password(phone_value)
+                            credential_password = phone_value
                             user.save(update_fields=['is_active', 'password'])
                         else:
-                            user.save(update_fields=['is_active'])
+                            return ServiceResult(
+                                success=False,
+                                message='Cannot activate client without a configured password. Set a password first.'
+                            )
 
                         subject = (
                             'Your Temporary Password — Adarsh Admin'

@@ -1937,7 +1937,23 @@ class ClientApiIntegrationTests(TestCase):
 
 
 class ClientActivationPasswordFlowTests(TestCase):
-    def test_first_activation_sends_credentials_and_rotates_unknown_password(self):
+    def test_create_allows_weak_custom_password_without_strict_validation(self):
+        from core.services import ClientService
+
+        weak_password = '123'
+        result = ClientService.create({
+            'name': 'Weak Password Client',
+            'email': 'client-weak-password@test.com',
+            'phone': '',
+            'password': weak_password,
+            'is_active': False,
+        })
+
+        self.assertTrue(result.success, msg=result.message)
+        created_user = User.objects.get(email='client-weak-password@test.com')
+        self.assertTrue(created_user.check_password(weak_password))
+
+    def test_first_activation_preserves_custom_password_for_login(self):
         from core.services import ClientService
         from core.models import EmailLog
 
@@ -1967,7 +1983,8 @@ class ClientActivationPasswordFlowTests(TestCase):
         self.assertTrue(toggle_result.success, msg=toggle_result.message)
         created_user.refresh_from_db()
         self.assertTrue(created_user.is_active)
-        self.assertFalse(created_user.check_password(custom_password))
+        self.assertTrue(created_user.check_password(custom_password))
+        self.assertTrue(self.client.login(username=created_user.username, password=custom_password))
         self.assertTrue(created_user.welcome_email_sent)
         send_welcome_mock.assert_called_once()
         self.assertTrue(
@@ -1976,6 +1993,70 @@ class ClientActivationPasswordFlowTests(TestCase):
                 status=EmailLog.STATUS_SENT,
             ).exists()
         )
+
+    def test_first_activation_keeps_phone_password_login_working(self):
+        from core.services import ClientService
+
+        phone_password = '9876543210'
+        result = ClientService.create({
+            'name': 'Phone Password Client',
+            'email': 'client-phone-activation@test.com',
+            'phone': phone_password,
+            'password': '',
+            'is_active': False,
+        })
+        self.assertTrue(result.success, msg=result.message)
+
+        client_id = result.data['client']['id']
+        created_user = User.objects.get(email='client-phone-activation@test.com')
+        self.assertTrue(created_user.check_password(phone_password))
+
+        def _fake_send_welcome(*args, **kwargs):
+            on_success = kwargs.get('on_success')
+            if on_success:
+                on_success()
+            return True, 'Welcome email queued for delivery.'
+
+        with mock.patch('client.services_client_core.send_welcome_email', side_effect=_fake_send_welcome):
+            toggle_result = ClientService.toggle_status(client_id)
+
+        self.assertTrue(toggle_result.success, msg=toggle_result.message)
+        created_user.refresh_from_db()
+        self.assertTrue(created_user.is_active)
+        self.assertTrue(created_user.check_password(phone_password))
+        self.assertTrue(self.client.login(username=created_user.username, password=phone_password))
+
+    def test_first_activation_recovers_unusable_password_from_phone_without_random(self):
+        from core.services import ClientService
+
+        phone_password = '9123450000'
+        result = ClientService.create({
+            'name': 'Phone Recovery Client',
+            'email': 'client-phone-recovery@test.com',
+            'phone': phone_password,
+            'password': 'Custom@WillBeUnusable',
+            'is_active': False,
+        })
+        self.assertTrue(result.success, msg=result.message)
+
+        client_id = result.data['client']['id']
+        created_user = User.objects.get(email='client-phone-recovery@test.com')
+        created_user.set_unusable_password()
+        created_user.save(update_fields=['password'])
+
+        def _fake_send_welcome(*args, **kwargs):
+            on_success = kwargs.get('on_success')
+            if on_success:
+                on_success()
+            return True, 'Welcome email queued for delivery.'
+
+        with mock.patch('client.services_client_core.send_welcome_email', side_effect=_fake_send_welcome):
+            toggle_result = ClientService.toggle_status(client_id)
+
+        self.assertTrue(toggle_result.success, msg=toggle_result.message)
+        created_user.refresh_from_db()
+        self.assertTrue(created_user.check_password(phone_password))
+        self.assertTrue(self.client.login(username=created_user.username, password=phone_password))
 
     def test_reactivation_also_sends_activation_email(self):
         from core.services import ClientService
