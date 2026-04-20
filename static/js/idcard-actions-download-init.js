@@ -103,6 +103,10 @@ let reuploadActionsModal = null;
 let reuploadActionsFileInput = null;
 let reuploadActionsDropZone = null;
 let reuploadActionsFileName = null;
+let reuploadActionsFolderInput = null;
+let reuploadActionsFolderBrowse = null;
+let reuploadActionsFolderName = null;
+let reuploadActionsFolderPath = null;
 let reuploadActionsConfirmBtn = null;
 let reuploadActionsCancelBtn = null;
 let reuploadActionsListName = null;
@@ -115,6 +119,21 @@ let reuploadPollTimer = null;
 let reuploadInProgress = false;
 let reuploadCancelRequested = false;
 let reuploadPollErrorCount = 0;
+
+function _updateReuploadActionsConfirmState() {
+    const hasZip = !!(reuploadActionsFileInput && reuploadActionsFileInput.files && reuploadActionsFileInput.files.length);
+    const hasFolderFiles = !!(
+        reuploadActionsFolderInput &&
+        reuploadActionsFolderInput.files &&
+        Array.from(reuploadActionsFolderInput.files).some(function(f) {
+            return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+        })
+    );
+    const hasFolderPath = !!(reuploadActionsFolderPath && reuploadActionsFolderPath.value && reuploadActionsFolderPath.value.trim());
+    if (reuploadActionsConfirmBtn) {
+        reuploadActionsConfirmBtn.disabled = !(hasZip || hasFolderFiles || hasFolderPath);
+    }
+}
 
 const STATUS_LABELS = {
     pending: 'Pending',
@@ -144,6 +163,9 @@ function openReuploadActionsModal() {
     if (reuploadActionsCardCount) reuploadActionsCardCount.textContent = pendingReuploadCardIds.length;
     if (reuploadActionsFileInput) reuploadActionsFileInput.value = '';
     if (reuploadActionsFileName) reuploadActionsFileName.textContent = 'Click or drag & drop a ZIP file';
+    if (reuploadActionsFolderInput) reuploadActionsFolderInput.value = '';
+    if (reuploadActionsFolderName) reuploadActionsFolderName.textContent = 'No folder selected';
+    if (reuploadActionsFolderPath) reuploadActionsFolderPath.value = '';
     if (reuploadActionsConfirmBtn) {
         reuploadActionsConfirmBtn.disabled = true;
         reuploadActionsConfirmBtn.textContent = 'Start Reupload';
@@ -160,6 +182,7 @@ function closeReuploadActionsModal() {
     if (!reuploadActionsModal) return;
     reuploadActionsModal.style.display = 'none';
     if (reuploadActionsFileInput) reuploadActionsFileInput.value = '';
+    if (reuploadActionsFolderInput) reuploadActionsFolderInput.value = '';
     pendingReuploadCardIds = [];
 }
 
@@ -169,6 +192,10 @@ function initReuploadHandlers() {
     reuploadActionsFileInput = document.getElementById('reuploadActionsFileInput');
     reuploadActionsDropZone = document.getElementById('reuploadActionsDropZone');
     reuploadActionsFileName = document.getElementById('reuploadActionsFileName');
+    reuploadActionsFolderInput = document.getElementById('reuploadActionsFolderInput');
+    reuploadActionsFolderBrowse = document.getElementById('reuploadActionsFolderBrowse');
+    reuploadActionsFolderName = document.getElementById('reuploadActionsFolderName');
+    reuploadActionsFolderPath = document.getElementById('reuploadActionsFolderPath');
     reuploadActionsConfirmBtn = document.getElementById('reuploadActionsConfirm');
     reuploadActionsCancelBtn = document.getElementById('reuploadActionsCancel');
     reuploadActionsListName = document.getElementById('reuploadActionsListName');
@@ -254,9 +281,7 @@ function initReuploadHandlers() {
                     if (typeof showToast === 'function') showToast('Only ZIP files are allowed', 'warning');
                     this.value = '';
                     if (reuploadActionsFileName) reuploadActionsFileName.textContent = 'Click or drag & drop a ZIP file';
-                    if (reuploadActionsConfirmBtn) {
-                        reuploadActionsConfirmBtn.disabled = true;
-                    }
+                    _updateReuploadActionsConfirmState();
                     return;
                 }
                 var _maxZip = 950 * 1024 * 1024;
@@ -265,18 +290,38 @@ function initReuploadHandlers() {
                     if (typeof showToast === 'function') showToast('ZIP is ' + _sizeMB + ' MB  maximum allowed is 950 MB. Please split into smaller ZIPs.', 'error');
                     this.value = '';
                     if (reuploadActionsFileName) reuploadActionsFileName.textContent = 'Click or drag & drop a ZIP file';
-                    if (reuploadActionsConfirmBtn) {
-                        reuploadActionsConfirmBtn.disabled = true;
-                    }
+                    _updateReuploadActionsConfirmState();
                     return;
                 }
                 if (reuploadActionsFileName) reuploadActionsFileName.textContent = file.name;
                 if (reuploadActionsConfirmBtn) {
-                    reuploadActionsConfirmBtn.disabled = false;
                     reuploadActionsConfirmBtn.textContent = 'Start Reupload';
                 }
+                _updateReuploadActionsConfirmState();
             }
         });
+    }
+
+    if (reuploadActionsFolderBrowse && reuploadActionsFolderInput) {
+        reuploadActionsFolderBrowse.addEventListener('click', function() {
+            reuploadActionsFolderInput.click();
+        });
+    }
+
+    if (reuploadActionsFolderInput) {
+        reuploadActionsFolderInput.addEventListener('change', function() {
+            const files = Array.from(this.files || []).filter(function(f) {
+                return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+            });
+            if (reuploadActionsFolderName) {
+                reuploadActionsFolderName.textContent = files.length ? (files.length + ' image file(s) selected from folder') : 'No valid image files found in selected folder';
+            }
+            _updateReuploadActionsConfirmState();
+        });
+    }
+
+    if (reuploadActionsFolderPath) {
+        reuploadActionsFolderPath.addEventListener('input', _updateReuploadActionsConfirmState);
     }
 
     // Cancel & close button handlers (no backdrop close)
@@ -386,7 +431,16 @@ function initReuploadHandlers() {
     }
 
     function _startReuploadTask(tableId) {
-        if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
+        const hasZip = !!(reuploadActionsFileInput && reuploadActionsFileInput.files && reuploadActionsFileInput.files.length);
+        const hasFolderFiles = !!(
+            reuploadActionsFolderInput &&
+            reuploadActionsFolderInput.files &&
+            Array.from(reuploadActionsFolderInput.files).some(function(f) {
+                return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+            })
+        );
+        const hasFolderPath = !!(reuploadActionsFolderPath && reuploadActionsFolderPath.value && reuploadActionsFolderPath.value.trim());
+        if (!(hasZip || hasFolderFiles || hasFolderPath)) return;
         if (reuploadInProgress) {
             if (typeof showToast === 'function') showToast('Reupload already in progress.', 'warning');
             return;
@@ -406,7 +460,19 @@ function initReuploadHandlers() {
         if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Uploading ZIP...';
 
         const formData = new FormData();
-        formData.append('photos_zip', reuploadActionsFileInput.files[0]);
+        if (hasZip) {
+            formData.append('photos_zip', reuploadActionsFileInput.files[0]);
+        }
+        if (hasFolderFiles) {
+            Array.from(reuploadActionsFolderInput.files).filter(function(f) {
+                return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+            }).forEach(function(f) {
+                formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
+            });
+        }
+        if (hasFolderPath) {
+            formData.append('photos_folder_path', reuploadActionsFolderPath.value.trim());
+        }
         formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
         formData.append('status', _getCurrentStatus());
 
@@ -471,8 +537,6 @@ function initReuploadHandlers() {
 
     if (reuploadActionsConfirmBtn) {
         reuploadActionsConfirmBtn.addEventListener('click', function() {
-            if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
-
             const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
             if (!tableId) {
                 if (typeof showToast === 'function') showToast('Error: Table ID not found', false);

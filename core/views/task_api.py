@@ -44,6 +44,10 @@ from core.services.background_worker import (
     save_uploaded_file_to_disk,
     cleanup_temp_file,
 )
+from core.utils.folder_image_ingest import (
+    build_zip_from_uploaded_folder_files,
+    build_zip_from_folder_path,
+)
 from accounts.rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
@@ -629,6 +633,8 @@ def api_create_bulk_upload_task(request, table_id):
         - unified_zip_<N>: Unified ZIP files for all image fields (optional)
         - unified_zip_count: Number of unified ZIPs (optional)
         - zip_field_names: JSON array of field names with ZIP uploads (optional)
+        - photos_folder_files: Folder-selected image files (optional)
+        - photos_folder_path: Server folder path containing images (optional)
     
     Returns:
         {
@@ -744,6 +750,24 @@ def api_create_bulk_upload_task(request, table_id):
                     cleanup_temp_file(zip_path)
                     return JsonResponse({'success': False, 'message': zerr}, status=400)
                 unified_zip_paths.append(zip_path)
+
+        # Optional: folder-selected image files (browser folder upload)
+        folder_upload_files = request.FILES.getlist('photos_folder_files')
+        if folder_upload_files:
+            folder_zip_path, _folder_image_count, folder_err = build_zip_from_uploaded_folder_files(folder_upload_files)
+            if folder_err:
+                return JsonResponse({'success': False, 'message': folder_err}, status=400)
+            if folder_zip_path:
+                unified_zip_paths.append(folder_zip_path)
+
+        # Optional: pasted server-side folder path
+        folder_path = str(request.POST.get('photos_folder_path', '') or '').strip()
+        if folder_path:
+            folder_zip_path, _folder_image_count, folder_err = build_zip_from_folder_path(folder_path)
+            if folder_err:
+                return JsonResponse({'success': False, 'message': folder_err}, status=400)
+            if folder_zip_path:
+                unified_zip_paths.append(folder_zip_path)
         
         # Create BackgroundTask atomically (prevents race conditions)
         super_mode_metadata = SuperModeService.build_task_metadata(request.user)
@@ -807,7 +831,9 @@ def api_create_reupload_task(request, table_id):
     Endpoint: POST /api/table/<table_id>/reupload-task/
     
     Request:
-        - photos_zip: ZIP file with images (required)
+        - photos_zip: ZIP file with images (optional)
+        - photos_folder_files: Folder-selected image files (optional)
+        - photos_folder_path: Server folder path containing images (optional)
         - target_field: Target image field name (optional; if omitted, all image fields are processed)
         - card_ids: JSON array of card IDs to limit scope (optional)
         - status: Status filter (optional)
@@ -849,27 +875,42 @@ def api_create_reupload_task(request, table_id):
 
         upload_chunk_size = SuperModeService.upload_chunk_size_bytes(request.user)
 
-        # Check for required ZIP file
-        if 'photos_zip' not in request.FILES:
+        zip_path = None
+
+        # Source 1: Uploaded ZIP (existing behavior)
+        if 'photos_zip' in request.FILES:
+            reup_zip = request.FILES['photos_zip']
+            ok, err_msg = _validate_uploaded_file(reup_zip, ALLOWED_ZIP_EXTENSIONS, MAX_ZIP_SIZE, 'ZIP')
+            if not ok:
+                return JsonResponse({'success': False, 'message': err_msg}, status=400)
+
+            zip_path = save_uploaded_file_to_disk(reup_zip, chunk_size_bytes=upload_chunk_size)
+
+            zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
+            if not zok:
+                cleanup_temp_file(zip_path)
+                return JsonResponse({'success': False, 'message': zerr}, status=400)
+        else:
+            # Source 2: Browser folder upload (files)
+            folder_upload_files = request.FILES.getlist('photos_folder_files')
+            if folder_upload_files:
+                zip_path, _folder_image_count, folder_err = build_zip_from_uploaded_folder_files(folder_upload_files)
+                if folder_err:
+                    return JsonResponse({'success': False, 'message': folder_err}, status=400)
+
+            # Source 3: Server folder path
+            if not zip_path:
+                folder_path = str(request.POST.get('photos_folder_path', '') or '').strip()
+                if folder_path:
+                    zip_path, _folder_image_count, folder_err = build_zip_from_folder_path(folder_path)
+                    if folder_err:
+                        return JsonResponse({'success': False, 'message': folder_err}, status=400)
+
+        if not zip_path:
             return JsonResponse({
                 'success': False,
-                'message': 'No ZIP file uploaded'
+                'message': 'Provide a ZIP, select a folder, or paste a folder path.'
             }, status=400)
-
-        # Validate ZIP file
-        reup_zip = request.FILES['photos_zip']
-        ok, err_msg = _validate_uploaded_file(reup_zip, ALLOWED_ZIP_EXTENSIONS, MAX_ZIP_SIZE, 'ZIP')
-        if not ok:
-            return JsonResponse({'success': False, 'message': err_msg}, status=400)
-
-        # Save ZIP to disk
-        zip_path = save_uploaded_file_to_disk(reup_zip, chunk_size_bytes=upload_chunk_size)
-
-        # ZIP bomb/safety check
-        zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
-        if not zok:
-            cleanup_temp_file(zip_path)
-            return JsonResponse({'success': False, 'message': zerr}, status=400)
 
         # Parse optional scope parameters
         scope_payload = _parse_reupload_scope_payload(request)

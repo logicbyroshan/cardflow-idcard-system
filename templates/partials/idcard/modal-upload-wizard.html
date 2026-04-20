@@ -91,7 +91,7 @@
             <i class="fa-solid fa-images"></i>
             <span>Upload Photos (Optional)</span>
           </div>
-          <p class="zip-upload-hint">Add ZIP file(s) with images to auto-match them to image columns by filename.</p>
+          <p class="zip-upload-hint">Add ZIP file(s), select image folder, or paste server folder path to auto-match images by filename.</p>
 
           <!-- Single unified ZIP input -->
           <div class="unified-zip-input">
@@ -102,6 +102,18 @@
             <div class="selected-zips-list" id="selectedZipsList" style="display: none;">
               <!-- Selected ZIPs will be listed here -->
             </div>
+          </div>
+
+          <div class="unified-zip-input" style="margin-top:8px;">
+            <input type="file" id="unifiedFolderInput" multiple webkitdirectory directory style="display: none;">
+            <button class="btn btn-upload-zip" id="selectFolderFilesBtn" type="button">
+              <i class="fa-solid fa-folder-tree"></i> Select Folder
+            </button>
+            <div class="selected-zips-list" id="selectedFolderSummary" style="display: none;"></div>
+          </div>
+
+          <div class="unified-zip-input" style="margin-top:8px;">
+            <input type="text" id="unifiedFolderPathInput" class="form-input" placeholder="Optional server folder path (e.g. C:/Images/School A)">
           </div>
 
           <!-- Image columns info -->

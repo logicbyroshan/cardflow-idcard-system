@@ -151,6 +151,10 @@ function initCreateWithXlsx(opts) {
   var zipBrowse   = getByIdLatest('cxZipBrowse');
   var zipInput    = getByIdLatest('cxZipInput');
   var zipList     = getByIdLatest('cxZipList');
+  var folderBrowse = getByIdLatest('cxFolderBrowse');
+  var folderInput = getByIdLatest('cxFolderInput');
+  var folderSummary = getByIdLatest('cxFolderSummary');
+  var folderPathInput = getByIdLatest('cxFolderPathInput');
   var backBtn     = getByIdLatest('cxBackBtn');
   var skipBtn     = getByIdLatest('cxSkipBtn');
   var uploadBtn   = getByIdLatest('cxUploadBtn');
@@ -194,6 +198,7 @@ function initCreateWithXlsx(opts) {
 
   var selectedFile = null;
   var zipFiles = [];
+  var folderFiles = [];
   var detectedFields = [];
   var parsedDataRowCount = 0;
   var activeXhr = null;
@@ -260,6 +265,7 @@ function initCreateWithXlsx(opts) {
     abortCurrentUpload({ silent: true });
     selectedFile = null;
     zipFiles = [];
+    folderFiles = [];
     detectedFields = [];
     parsedDataRowCount = 0;
     fileInfo.style.display = 'none';
@@ -268,6 +274,9 @@ function initCreateWithXlsx(opts) {
     fileInput.value = '';
     zipInput.value = '';
     zipList.innerHTML = '';
+    if (folderInput) folderInput.value = '';
+    if (folderSummary) folderSummary.textContent = 'No folder selected';
+    if (folderPathInput) folderPathInput.value = '';
     fieldsBody.innerHTML = '';
     if (tableNameInput) tableNameInput.value = '';
     showStep(1);
@@ -508,6 +517,15 @@ function initCreateWithXlsx(opts) {
       formData.append('unified_zip_count', zipFiles.length);
     }
 
+    folderFiles.forEach(function(f) {
+      formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
+    });
+
+    var folderPathValue = folderPathInput ? folderPathInput.value.trim() : '';
+    if (folderPathValue) {
+      formData.append('photos_folder_path', folderPathValue);
+    }
+
     var _createRetryCount = 0;
     var MAX_RETRIES = 2;
 
@@ -688,8 +706,33 @@ function initCreateWithXlsx(opts) {
     zipInput.value = '';
     renderZipList();
   });
+  if (folderBrowse && folderInput) {
+    folderBrowse.addEventListener('click', function() { folderInput.click(); });
+  }
+  if (folderInput) {
+    folderInput.addEventListener('change', function() {
+      var files = Array.from(folderInput.files || []);
+      folderFiles = files.filter(function(f) {
+        return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+      });
+      if (folderSummary) {
+        if (folderFiles.length) {
+          folderSummary.textContent = folderFiles.length + ' image file(s) selected from folder';
+        } else {
+          folderSummary.textContent = 'No valid image files found in selected folder';
+        }
+      }
+    });
+  }
   backBtn.addEventListener('click', function() { showStep(2); });
-  skipBtn.addEventListener('click', function() { zipFiles = []; doUpload(); });
+  skipBtn.addEventListener('click', function() {
+    zipFiles = [];
+    folderFiles = [];
+    if (folderInput) folderInput.value = '';
+    if (folderSummary) folderSummary.textContent = 'No folder selected';
+    if (folderPathInput) folderPathInput.value = '';
+    doUpload();
+  });
   uploadBtn.addEventListener('click', function() { doUpload(); });
   if (progressCancelBtn) {
     progressCancelBtn.addEventListener('click', function() {

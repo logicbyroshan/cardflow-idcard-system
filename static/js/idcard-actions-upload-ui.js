@@ -436,9 +436,16 @@ function resetUploadModal() {
 
     // Reset ZIP inputs
     _us.unifiedZipFiles = [];
+    _us.unifiedFolderFiles = [];
     // Clear ZIP list display (inline to avoid circular dep with logic sub-module)
     var selectedZipsList = document.getElementById('selectedZipsList');
     if (selectedZipsList) { selectedZipsList.style.display = 'none'; selectedZipsList.innerHTML = ''; }
+    var selectedFolderSummary = document.getElementById('selectedFolderSummary');
+    if (selectedFolderSummary) { selectedFolderSummary.style.display = 'none'; selectedFolderSummary.innerHTML = ''; }
+    var unifiedFolderInput = document.getElementById('unifiedFolderInput');
+    if (unifiedFolderInput) unifiedFolderInput.value = '';
+    var unifiedFolderPathInput = document.getElementById('unifiedFolderPathInput');
+    if (unifiedFolderPathInput) unifiedFolderPathInput.value = '';
 
     document.querySelectorAll('.zip-file-name').forEach(function(el) {
         el.textContent = 'No file selected';

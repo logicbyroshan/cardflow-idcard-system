@@ -133,7 +133,7 @@ and the JS block at the bottom which wires up the logic.
     <div id="cxStep3" style="display:none;">
       <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-images" style="font-size: var(--ui-font-size-5xl, 28px);color:var(--color-success,var(--color-success));"></i></div>
       <h4 class="center-modal-title" style="text-align:center;">Add Photo ZIPs <span class="form-label-hint" style="font-size: var(--ui-font-size-sm, 12px);">(optional)</span></h4>
-      <p class="center-modal-subtitle" style="text-align:center;font-size: var(--ui-font-size-md, 13px);">Upload ZIP files containing images to match with cards. Skip this step if no photos.</p>
+      <p class="center-modal-subtitle" style="text-align:center;font-size: var(--ui-font-size-md, 13px);">Use ZIP, select image folder, or paste server folder path. Skip this step if no photos.</p>
 
       <div class="center-modal-dropzone" id="cxZipDropzone" style="border-radius:6px;margin-top:10px;">
         <div style="text-align:center;">
@@ -144,6 +144,22 @@ and the JS block at the bottom which wires up the logic.
       </div>
       <input type="file" id="cxZipInput" accept=".zip" multiple style="display:none;">
       <div id="cxZipList" style="margin-top:8px;"></div>
+
+      <div style="margin-top:10px;padding:8px 10px;border:1px solid var(--color-gray-200,var(--color-gray-200));border-radius:6px;background:var(--color-gray-50,var(--color-gray-50));">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size: var(--ui-font-size-sm, 12px);color:var(--text-primary,var(--color-slate-800));font-weight:600;">Folder Upload</span>
+          <button type="button" id="cxFolderBrowse" class="center-modal-btn center-modal-btn-confirm" style="padding:6px 10px;font-size: var(--ui-font-size-xs, 11px);">
+            <i class="fa-solid fa-folder-open" style="margin-right:4px;"></i>Select Folder
+          </button>
+        </div>
+        <input type="file" id="cxFolderInput" multiple webkitdirectory directory style="display:none;">
+        <div id="cxFolderSummary" style="margin-top:6px;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-500,var(--color-gray-500));">No folder selected</div>
+      </div>
+
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">Server Folder Path <span class="form-label-hint">(optional)</span></label>
+        <input type="text" id="cxFolderPathInput" class="form-input" placeholder="e.g. C:/Images/School A or /srv/images/school-a">
+      </div>
 
       <div class="center-modal-actions">
         <button type="button" class="center-modal-btn center-modal-btn-cancel" id="cxBackBtn">

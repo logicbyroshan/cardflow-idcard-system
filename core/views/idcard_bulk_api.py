@@ -31,6 +31,10 @@ from ..services.permission_service import (
     api_require_permission,
 )
 from ..utils.upload_security import validate_zip_safety
+from core.utils.folder_image_ingest import (
+    build_zip_from_uploaded_folder_files,
+    build_zip_from_folder_path,
+)
 
 from .idcard_helpers import (
     _safe_error,
@@ -119,6 +123,8 @@ def api_idcard_bulk_upload(request, table_id):
     _all_stores = []
     super_mode_sync_ram_only = False
     effective_super_ram_mb = 0
+    generated_folder_zip_paths = []
+
     try:
         super_mode_sync_ram_only = bool(SuperModeService.is_effective_enabled(request.user))
         if super_mode_sync_ram_only:
@@ -271,6 +277,42 @@ def api_idcard_bulk_upload(request, table_id):
                             'Reduce ZIP size/count (or disable Super Mode to allow disk-assisted upload).'
                         ),
                     }, status=413)
+
+        # Optional: folder-selected image files (browser folder upload)
+        folder_upload_files = request.FILES.getlist('photos_folder_files')
+        if folder_upload_files:
+            folder_zip_path, _folder_image_count, folder_err = build_zip_from_uploaded_folder_files(folder_upload_files)
+            if folder_err:
+                return JsonResponse({'success': False, 'message': folder_err}, status=400)
+            generated_folder_zip_paths.append(folder_zip_path)
+            try:
+                extract_zip_to_store(os.path.join(settings.MEDIA_ROOT, folder_zip_path), unified_zip_photos)
+            except MemoryError:
+                return JsonResponse({
+                    'success': False,
+                    'message': (
+                        'Super Mode RAM-only upload limit reached. '
+                        'Reduce folder image size/count (or disable Super Mode to allow disk-assisted upload).'
+                    ),
+                }, status=413)
+
+        # Optional: pasted server-side folder path
+        folder_path = str(request.POST.get('photos_folder_path', '') or '').strip()
+        if folder_path:
+            folder_zip_path, _folder_image_count, folder_err = build_zip_from_folder_path(folder_path)
+            if folder_err:
+                return JsonResponse({'success': False, 'message': folder_err}, status=400)
+            generated_folder_zip_paths.append(folder_zip_path)
+            try:
+                extract_zip_to_store(os.path.join(settings.MEDIA_ROOT, folder_zip_path), unified_zip_photos)
+            except MemoryError:
+                return JsonResponse({
+                    'success': False,
+                    'message': (
+                        'Super Mode RAM-only upload limit reached. '
+                        'Reduce folder image size/count (or disable Super Mode to allow disk-assisted upload).'
+                    ),
+                }, status=413)
         
         logger.debug("unified_zip_photos count = %d", len(unified_zip_photos))
         
@@ -388,6 +430,9 @@ def api_idcard_bulk_upload(request, table_id):
                 store.cleanup()
             except Exception:
                 pass
+        from core.services.background_worker import cleanup_temp_file
+        for _zip_path in generated_folder_zip_paths:
+            cleanup_temp_file(_zip_path)
         django_cache.delete(lock_key)
 
 
@@ -610,6 +655,7 @@ def api_idcard_reupload_images(request, table_id):
     if not django_cache.add(lock_key, 1, 300):
         return JsonResponse({'success': False, 'message': 'Reupload already in progress. Please wait.'}, status=429)
     zip_photos_store = None
+    generated_reupload_zip_path = None
     try:
         import zipfile
         from django.db import transaction
@@ -618,8 +664,28 @@ def api_idcard_reupload_images(request, table_id):
         table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
         client = table.group.client
         
-        if 'photos_zip' not in request.FILES:
-            return JsonResponse({'success': False, 'message': 'No ZIP file uploaded!'}, status=400)
+        reupload_zip_source = None
+
+        if 'photos_zip' in request.FILES:
+            reupload_zip_source = request.FILES['photos_zip']
+        else:
+            folder_upload_files = request.FILES.getlist('photos_folder_files')
+            if folder_upload_files:
+                generated_reupload_zip_path, _folder_image_count, folder_err = build_zip_from_uploaded_folder_files(folder_upload_files)
+                if folder_err:
+                    return JsonResponse({'success': False, 'message': folder_err}, status=400)
+                reupload_zip_source = os.path.join(settings.MEDIA_ROOT, generated_reupload_zip_path)
+
+            if not reupload_zip_source:
+                folder_path = str(request.POST.get('photos_folder_path', '') or '').strip()
+                if folder_path:
+                    generated_reupload_zip_path, _folder_image_count, folder_err = build_zip_from_folder_path(folder_path)
+                    if folder_err:
+                        return JsonResponse({'success': False, 'message': folder_err}, status=400)
+                    reupload_zip_source = os.path.join(settings.MEDIA_ROOT, generated_reupload_zip_path)
+
+        if not reupload_zip_source:
+            return JsonResponse({'success': False, 'message': 'Provide a ZIP, select a folder, or paste a folder path.'}, status=400)
         
         # Get image field names from table
         image_field_names = BaseService.get_image_field_names(table.fields)
@@ -640,7 +706,7 @@ def api_idcard_reupload_images(request, table_id):
         seen_stems = set()
         
         try:
-            zip_file = request.FILES['photos_zip']
+            zip_file = reupload_zip_source
 
             # ZIP size guard
             if hasattr(zip_file, 'size') and zip_file.size > 600 * 1024 * 1024:
@@ -652,7 +718,9 @@ def api_idcard_reupload_images(request, table_id):
                 return JsonResponse({'success': False, 'message': zerr}, status=400)
 
             # Open ZIP directly from file handle (Django spills >10MB to /tmp)
-            if hasattr(zip_file, 'temporary_file_path'):
+            if isinstance(zip_file, str):
+                zf = zipfile.ZipFile(zip_file, 'r')
+            elif hasattr(zip_file, 'temporary_file_path'):
                 zf = zipfile.ZipFile(zip_file.temporary_file_path(), 'r')
             else:
                 zip_file.seek(0)
@@ -860,6 +928,9 @@ def api_idcard_reupload_images(request, table_id):
                 zip_photos_store.cleanup()
         except Exception:
             pass
+        if generated_reupload_zip_path:
+            from core.services.background_worker import cleanup_temp_file
+            cleanup_temp_file(generated_reupload_zip_path)
         django_cache.delete(lock_key)
 
 

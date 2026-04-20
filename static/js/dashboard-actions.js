@@ -1222,6 +1222,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashReuploadFileInput = document.getElementById('dashReuploadFileInput');
     const dashReuploadDropZone = document.getElementById('dashReuploadDropZone');
     const dashReuploadFileName = document.getElementById('dashReuploadFileName');
+    const dashReuploadFolderInput = document.getElementById('dashReuploadFolderInput');
+    const dashReuploadFolderBrowse = document.getElementById('dashReuploadFolderBrowse');
+    const dashReuploadFolderName = document.getElementById('dashReuploadFolderName');
+    const dashReuploadFolderPath = document.getElementById('dashReuploadFolderPath');
     const dashReuploadConfirmBtn = document.getElementById('dashReuploadConfirm');
     const dashReuploadCancelBtn = document.getElementById('dashReuploadCancel');
     const dashReuploadProgress = document.getElementById('dashReuploadProgress');
@@ -1232,6 +1236,9 @@ document.addEventListener('DOMContentLoaded', function() {
         dashReuploadTableId = tableId;
         if (dashReuploadFileInput) dashReuploadFileInput.value = '';
         if (dashReuploadFileName) dashReuploadFileName.textContent = 'Click or drag & drop a ZIP file';
+        if (dashReuploadFolderInput) dashReuploadFolderInput.value = '';
+        if (dashReuploadFolderName) dashReuploadFolderName.textContent = 'No folder selected';
+        if (dashReuploadFolderPath) dashReuploadFolderPath.value = '';
         if (dashReuploadConfirmBtn) { dashReuploadConfirmBtn.disabled = true; dashReuploadConfirmBtn.style.opacity = '0.5'; dashReuploadConfirmBtn.textContent = 'Upload & Match'; }
         if (dashReuploadProgress) dashReuploadProgress.style.display = 'none';
         if (dashReuploadBar) dashReuploadBar.style.width = '0%';
@@ -1242,6 +1249,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.alpineCloseModal) window.alpineCloseModal();
         dashReuploadTableId = null;
         if (dashReuploadFileInput) dashReuploadFileInput.value = '';
+        if (dashReuploadFolderInput) dashReuploadFolderInput.value = '';
+    }
+
+    function _dashUpdateReuploadConfirmState() {
+        const hasZip = !!(dashReuploadFileInput && dashReuploadFileInput.files && dashReuploadFileInput.files.length);
+        const hasFolderFiles = !!(
+            dashReuploadFolderInput &&
+            dashReuploadFolderInput.files &&
+            Array.from(dashReuploadFolderInput.files).some(function(f) {
+                return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+            })
+        );
+        const hasFolderPath = !!(dashReuploadFolderPath && dashReuploadFolderPath.value && dashReuploadFolderPath.value.trim());
+        if (dashReuploadConfirmBtn) {
+            dashReuploadConfirmBtn.disabled = !(hasZip || hasFolderFiles || hasFolderPath);
+            dashReuploadConfirmBtn.style.opacity = dashReuploadConfirmBtn.disabled ? '0.5' : '1';
+        }
     }
 
     if (dashReuploadDropZone) {
@@ -1272,9 +1296,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 if (dashReuploadFileName) dashReuploadFileName.textContent = _file.name;
-                if (dashReuploadConfirmBtn) { dashReuploadConfirmBtn.disabled = false; dashReuploadConfirmBtn.style.opacity = '1'; }
+                _dashUpdateReuploadConfirmState();
             }
         });
+    }
+
+    if (dashReuploadFolderBrowse && dashReuploadFolderInput) {
+        dashReuploadFolderBrowse.addEventListener('click', function() { dashReuploadFolderInput.click(); });
+    }
+
+    if (dashReuploadFolderInput) {
+        dashReuploadFolderInput.addEventListener('change', function() {
+            const files = Array.from(this.files || []).filter(function(f) {
+                return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+            });
+            if (dashReuploadFolderName) {
+                dashReuploadFolderName.textContent = files.length ? (files.length + ' image file(s) selected from folder') : 'No valid image files found in selected folder';
+            }
+            _dashUpdateReuploadConfirmState();
+        });
+    }
+
+    if (dashReuploadFolderPath) {
+        dashReuploadFolderPath.addEventListener('input', _dashUpdateReuploadConfirmState);
     }
 
     if (dashReuploadCancelBtn) dashReuploadCancelBtn.addEventListener('click', dashCloseReuploadModal);
@@ -1282,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (dashReuploadConfirmBtn) {
         dashReuploadConfirmBtn.addEventListener('click', function() {
-            if (!dashReuploadTableId || !dashReuploadFileInput || !dashReuploadFileInput.files.length) return;
+            if (!dashReuploadTableId) return;
             dashReuploadConfirmBtn.disabled = true;
             dashReuploadConfirmBtn.textContent = 'Uploading...';
             if (dashReuploadProgress) dashReuploadProgress.style.display = 'block';
@@ -1291,7 +1335,19 @@ document.addEventListener('DOMContentLoaded', function() {
             let _dashPollInterval = null;
 
             const formData = new FormData();
-            formData.append('photos_zip', dashReuploadFileInput.files[0]);
+            if (dashReuploadFileInput && dashReuploadFileInput.files && dashReuploadFileInput.files.length) {
+                formData.append('photos_zip', dashReuploadFileInput.files[0]);
+            }
+            if (dashReuploadFolderInput && dashReuploadFolderInput.files && dashReuploadFolderInput.files.length) {
+                Array.from(dashReuploadFolderInput.files).filter(function(f) {
+                    return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+                }).forEach(function(f) {
+                    formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
+                });
+            }
+            if (dashReuploadFolderPath && dashReuploadFolderPath.value && dashReuploadFolderPath.value.trim()) {
+                formData.append('photos_folder_path', dashReuploadFolderPath.value.trim());
+            }
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', `/api/table/${dashReuploadTableId}/reupload-task/`);

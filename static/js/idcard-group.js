@@ -409,6 +409,10 @@ function initIdcardGroup(config) {
   var reuploadFileInput = document.getElementById('reuploadFileInput');
   var reuploadDropZone = document.getElementById('reuploadDropZone');
   var reuploadFileName = document.getElementById('reuploadFileName');
+  var reuploadFolderInput = document.getElementById('reuploadFolderInput');
+  var reuploadFolderBrowse = document.getElementById('reuploadFolderBrowse');
+  var reuploadFolderName = document.getElementById('reuploadFolderName');
+  var reuploadFolderPath = document.getElementById('reuploadFolderPath');
   var reuploadConfirmBtn = document.getElementById('reuploadConfirm');
   var reuploadCancelBtn = document.getElementById('reuploadCancel');
   var reuploadTableNameEl = document.getElementById('reuploadTableName');
@@ -424,6 +428,9 @@ function initIdcardGroup(config) {
     reuploadTableNameEl.textContent = tableName;
     reuploadFileInput.value = '';
     reuploadFileName.textContent = 'Click or drag & drop a ZIP file';
+    if (reuploadFolderInput) reuploadFolderInput.value = '';
+    if (reuploadFolderName) reuploadFolderName.textContent = 'No folder selected';
+    if (reuploadFolderPath) reuploadFolderPath.value = '';
     reuploadConfirmBtn.disabled = true;
     reuploadProgress.style.display = 'none';
     reuploadBar.style.width = '0%';
@@ -435,6 +442,20 @@ function initIdcardGroup(config) {
     if (window.alpineCloseModal) window.alpineCloseModal();
     reuploadTableId = null;
     reuploadFileInput.value = '';
+    if (reuploadFolderInput) reuploadFolderInput.value = '';
+  }
+
+  function _updateGroupReuploadConfirmState() {
+    var hasZip = !!(reuploadFileInput && reuploadFileInput.files && reuploadFileInput.files.length);
+    var hasFolderFiles = !!(
+      reuploadFolderInput &&
+      reuploadFolderInput.files &&
+      Array.from(reuploadFolderInput.files).some(function(f) {
+        return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+      })
+    );
+    var hasFolderPath = !!(reuploadFolderPath && reuploadFolderPath.value && reuploadFolderPath.value.trim());
+    reuploadConfirmBtn.disabled = !(hasZip || hasFolderFiles || hasFolderPath);
   }
 
   if (reuploadDropZone) {
@@ -473,16 +494,36 @@ function initIdcardGroup(config) {
           return;
         }
         reuploadFileName.textContent = file.name;
-        reuploadConfirmBtn.disabled = false;
+        _updateGroupReuploadConfirmState();
       }
     });
+  }
+
+  if (reuploadFolderBrowse && reuploadFolderInput) {
+    reuploadFolderBrowse.addEventListener('click', function() { reuploadFolderInput.click(); });
+  }
+
+  if (reuploadFolderInput) {
+    reuploadFolderInput.addEventListener('change', function() {
+      var files = Array.from(this.files || []).filter(function(f) {
+        return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+      });
+      if (reuploadFolderName) {
+        reuploadFolderName.textContent = files.length ? (files.length + ' image file(s) selected from folder') : 'No valid image files found in selected folder';
+      }
+      _updateGroupReuploadConfirmState();
+    });
+  }
+
+  if (reuploadFolderPath) {
+    reuploadFolderPath.addEventListener('input', _updateGroupReuploadConfirmState);
   }
 
   if (reuploadCancelBtn) reuploadCancelBtn.addEventListener('click', closeReuploadModal);
 
   if (reuploadConfirmBtn) {
     reuploadConfirmBtn.addEventListener('click', function() {
-      if (!reuploadTableId || !reuploadFileInput.files.length) return;
+      if (!reuploadTableId) return;
       reuploadConfirmBtn.disabled = true;
       reuploadConfirmBtn.textContent = 'Uploading...';
       reuploadProgress.style.display = 'block';
@@ -517,7 +558,19 @@ function initIdcardGroup(config) {
       }
 
       var formData = new FormData();
-      formData.append('photos_zip', reuploadFileInput.files[0]);
+      if (reuploadFileInput && reuploadFileInput.files && reuploadFileInput.files.length) {
+        formData.append('photos_zip', reuploadFileInput.files[0]);
+      }
+      if (reuploadFolderInput && reuploadFolderInput.files && reuploadFolderInput.files.length) {
+        Array.from(reuploadFolderInput.files).filter(function(f) {
+          return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+        }).forEach(function(f) {
+          formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
+        });
+      }
+      if (reuploadFolderPath && reuploadFolderPath.value && reuploadFolderPath.value.trim()) {
+        formData.append('photos_folder_path', reuploadFolderPath.value.trim());
+      }
 
       var uploadUrl = panelUrl('/api/table/' + reuploadTableId + '/reupload-task/');
       var xhr = new XMLHttpRequest();

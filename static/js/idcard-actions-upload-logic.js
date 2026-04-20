@@ -10,6 +10,7 @@
 // ==========================================
 
 var _us = window.IDCardApp._uploadState;
+_us.unifiedFolderFiles = _us.unifiedFolderFiles || [];
 var isImageField = window.IDCardApp._uploadFns.isImageField;
 var normalizeImageIdentifier = window.IDCardApp._uploadFns.normalizeImageIdentifier;
 var findBestMatch = window.IDCardApp._uploadFns.findBestMatch;
@@ -366,6 +367,17 @@ function initXlsxUpload() {
                 formData.append('unified_zip_count', unifiedZips.length.toString());
             }
 
+            if (_us.unifiedFolderFiles && _us.unifiedFolderFiles.length > 0) {
+                _us.unifiedFolderFiles.forEach(function(file) {
+                    formData.append('photos_folder_files', file, file.webkitRelativePath || file.name);
+                });
+            }
+
+            var unifiedFolderPathInput = document.getElementById('unifiedFolderPathInput');
+            if (unifiedFolderPathInput && unifiedFolderPathInput.value && unifiedFolderPathInput.value.trim()) {
+                formData.append('photos_folder_path', unifiedFolderPathInput.value.trim());
+            }
+
             function _buildBulkUploadResultMessage(taskData) {
                 var result = (taskData && taskData.result) ? taskData.result : {};
                 var cards = Number(result.cards_created);
@@ -678,6 +690,9 @@ function initUnifiedZipUpload() {
     var selectBtn = document.getElementById('selectZipFilesBtn');
     var fileInput = document.getElementById('unifiedZipInput');
     var selectedList = document.getElementById('selectedZipsList');
+    var folderSelectBtn = document.getElementById('selectFolderFilesBtn');
+    var folderInput = document.getElementById('unifiedFolderInput');
+    var selectedFolderSummary = document.getElementById('selectedFolderSummary');
 
     if (!selectBtn || !fileInput) return;
 
@@ -720,6 +735,29 @@ function initUnifiedZipUpload() {
             }
         });
     }
+
+    if (folderSelectBtn && folderInput) {
+        folderSelectBtn.addEventListener('click', function() { folderInput.click(); });
+    }
+
+    if (folderInput) {
+        folderInput.addEventListener('change', function() {
+            var files = Array.from(this.files || []).filter(function(f) {
+                return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
+            });
+            _us.unifiedFolderFiles = files;
+            if (selectedFolderSummary) {
+                if (files.length > 0) {
+                    selectedFolderSummary.style.display = 'block';
+                    selectedFolderSummary.innerHTML = '<div class="selected-zip-item"><span class="zip-name"><i class="fa-solid fa-folder-tree"></i> ' + files.length + ' image file(s) selected from folder</span></div>';
+                } else {
+                    selectedFolderSummary.style.display = 'none';
+                    selectedFolderSummary.innerHTML = '';
+                }
+            }
+            this.value = '';
+        });
+    }
 }
 
 function updateSelectedZipsList() {
@@ -747,7 +785,15 @@ function getUnifiedZipFiles() {
 
 function clearUnifiedZipFiles() {
     _us.unifiedZipFiles = [];
+    _us.unifiedFolderFiles = [];
     updateSelectedZipsList();
+    var selectedFolderSummary = document.getElementById('selectedFolderSummary');
+    if (selectedFolderSummary) {
+        selectedFolderSummary.style.display = 'none';
+        selectedFolderSummary.innerHTML = '';
+    }
+    var folderPathInput = document.getElementById('unifiedFolderPathInput');
+    if (folderPathInput) folderPathInput.value = '';
 }
 
 // ==========================================
