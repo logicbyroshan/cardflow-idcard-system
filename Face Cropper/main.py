@@ -304,6 +304,7 @@ class CompressRequest(BaseModel):
 class PagePhotoPickerRequest(BaseModel):
     """Request model for /page-photo-picker-folder endpoint."""
     folder_path: str
+    photos_per_page: int = 3
 
 
 class AdjustImageRequest(BaseModel):
@@ -468,15 +469,22 @@ async def page_photo_picker_folder_endpoint(body: PagePhotoPickerRequest):
     Returns summary JSON compatible with the cropper UI result panel.
     """
     folder = Path(body.folder_path)
+    photos_per_page = int(body.photos_per_page)
 
     if not folder.exists():
         raise HTTPException(status_code=400, detail=f"Path does not exist: {body.folder_path}")
     if not folder.is_dir():
         raise HTTPException(status_code=400, detail=f"Path is not a directory: {body.folder_path}")
+    if photos_per_page < 1 or photos_per_page > 3:
+        raise HTTPException(status_code=400, detail="photos_per_page must be between 1 and 3.")
 
     try:
-        logger.info("Page-photo picker processing folder: %s", body.folder_path)
-        summary = pick_page_photos_in_folder(body.folder_path)
+        logger.info(
+            "Page-photo picker processing folder: %s (photos/page=%s)",
+            body.folder_path,
+            photos_per_page,
+        )
+        summary = pick_page_photos_in_folder(body.folder_path, photos_per_page=photos_per_page)
         return JSONResponse(content=summary)
 
     except ValueError as exc:

@@ -100,6 +100,7 @@ function cropperApp() {
     // -- Pipeline (preset) state --
     pipeline: {
       facePick: false,      // Page photo picker disabled by default
+      photosPerPage: 3,     // Number of photos expected in each scanned page
       faceCrop: false,      // Face crop disabled by default
       compress: false,      // Compress disabled by default
       compressKB: 50,       // Default 50KB target
@@ -564,7 +565,10 @@ function cropperApp() {
                 'Content-Type': 'application/json',
                 'X-ENGINE-KEY': ENGINE_API_KEY,
               },
-              body: JSON.stringify({ folder_path: outputFolder }),
+              body: JSON.stringify({
+                folder_path: outputFolder,
+                photos_per_page: this.pipeline.photosPerPage || 3,
+              }),
             });
 
             if (!pickResp.ok) {
@@ -576,6 +580,7 @@ function cropperApp() {
           } else {
             pickData = await ApiClient.post('/api/engine/page-photo-picker-folder/', {
               folder_path: outputFolder,
+              photos_per_page: this.pipeline.photosPerPage || 3,
             });
           }
 
@@ -583,8 +588,11 @@ function cropperApp() {
 
           if (pickData && pickData.total != null) {
             this._showResult(pickData);
-            if (pickData.success > 0 && pickData.output_folder) {
+            var pickedFilesWritten = Number(pickData.photos_written || 0);
+            if (pickData.output_folder && (pickData.success > 0 || pickedFilesWritten > 0)) {
               outputFolder = pickData.output_folder;
+            } else if (this.pipeline.faceCrop) {
+              throw new Error('Page Photo Picker found no photos to crop. Disable Face Crop or choose a folder with printable photo pages.');
             }
           } else {
             throw new Error((pickData && pickData.message) || 'Page photo picker failed');
@@ -731,18 +739,22 @@ function cropperApp() {
             renameParams.prefix = this.pipeline.renameParam || '';
           } else if (this.pipeline.renameOperation === 'add_suffix') {
             renameParams.suffix = this.pipeline.renameParam || '';
+          } else if (this.pipeline.renameOperation === 'remove_prefix') {
+            renameParams.prefix = this.pipeline.renameParam || '';
+          } else if (this.pipeline.renameOperation === 'remove_suffix') {
+            renameParams.suffix = this.pipeline.renameParam || '';
           } else if (this.pipeline.renameOperation === 'sequential') {
             renameParams.base_name = this.pipeline.renameParam || '';
             renameParams.digits = 3;
             renameParams.start = 1;
           } else if (this.pipeline.renameOperation === 'replace_text') {
             var parts = (this.pipeline.renameParam || '').split('->');
-            renameParams.find = parts[0] || '';
-            renameParams.replace = parts[1] || '';
+            renameParams.old_text = parts[0] || '';
+            renameParams.new_text = parts[1] || '';
           } else if (this.pipeline.renameOperation === 'remove_text') {
             renameParams.text = this.pipeline.renameParam || '';
           } else if (this.pipeline.renameOperation === 'change_extension') {
-            renameParams.extension = this.pipeline.renameParam || '';
+            renameParams.new_extension = this.pipeline.renameParam || '';
           }
 
           var renameData;
@@ -810,6 +822,13 @@ function cropperApp() {
       var total   = data.total   || 0;
       var success = data.success || 0;
       var failed  = data.failed  || 0;
+
+      // Prefer page-level counters for page picker responses to keep accuracy meaningful.
+      if (data.pages_processed != null && data.pages_failed != null) {
+        total = data.pages_processed || 0;
+        failed = data.pages_failed || 0;
+        success = Math.max(0, total - failed);
+      }
 
       this.result.total    = total;
       this.result.success  = success;

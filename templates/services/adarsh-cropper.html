@@ -437,21 +437,29 @@
             <span class="pipeline-title"><i class="fa-solid fa-sliders"></i> Processing Pipeline</span>
           </div>
           <div class="pipeline-steps">
-            {# Step 1: Face Crop (optional) #}
-            <div class="pipeline-step" :class="{ 'enabled': pipeline.faceCrop }">
-              <label class="pipeline-checkbox">
-                <input type="checkbox" x-model="pipeline.faceCrop">
-                <span class="pipeline-step-icon"><i class="fa-solid fa-crop"></i></span>
-                <span class="pipeline-step-label">Face Crop</span>
-              </label>
-            </div>
-
-            {# Step 2: Page Photo Picker (optional) #}
+            {# Step 1: Page Photo Picker (optional) #}
             <div class="pipeline-step" :class="{ 'enabled': pipeline.facePick }">
               <label class="pipeline-checkbox">
                 <input type="checkbox" x-model="pipeline.facePick">
                 <span class="pipeline-step-icon"><i class="fa-solid fa-file-image"></i></span>
                 <span class="pipeline-step-label">Page Photo Picker</span>
+              </label>
+              <div class="pipeline-step-options" x-show="pipeline.facePick">
+                <span class="pipeline-kb-unit">Photos per page</span>
+                <select x-model.number="pipeline.photosPerPage" class="form-select pipeline-select" style="max-width: 120px;">
+                  <option :value="1">1</option>
+                  <option :value="2">2</option>
+                  <option :value="3">3</option>
+                </select>
+              </div>
+            </div>
+
+            {# Step 2: Face Crop (optional) #}
+            <div class="pipeline-step" :class="{ 'enabled': pipeline.faceCrop }">
+              <label class="pipeline-checkbox">
+                <input type="checkbox" x-model="pipeline.faceCrop">
+                <span class="pipeline-step-icon"><i class="fa-solid fa-crop"></i></span>
+                <span class="pipeline-step-label">Face Crop</span>
               </label>
             </div>
 
@@ -480,10 +488,21 @@
                   <option value="remove_camera_prefix">Remove camera prefix</option>
                   <option value="sequential">Sequential (001, 002...)</option>
                   <option value="add_prefix">Add prefix</option>
+                  <option value="add_suffix">Add suffix</option>
+                  <option value="remove_prefix">Remove prefix</option>
+                  <option value="remove_suffix">Remove suffix</option>
+                  <option value="remove_text">Remove specific text</option>
                 </select>
                 <input type="text" x-model="pipeline.renameParam" 
-                       x-show="pipeline.renameOperation === 'add_prefix' || pipeline.renameOperation === 'sequential'"
-                       :placeholder="pipeline.renameOperation === 'add_prefix' ? 'Prefix text' : 'Base name'"
+                       x-show="pipeline.renameOperation === 'add_prefix' || pipeline.renameOperation === 'add_suffix' || pipeline.renameOperation === 'remove_prefix' || pipeline.renameOperation === 'remove_suffix' || pipeline.renameOperation === 'remove_text' || pipeline.renameOperation === 'sequential'"
+                       :placeholder="
+                         pipeline.renameOperation === 'add_prefix' ? 'Prefix text' :
+                         pipeline.renameOperation === 'add_suffix' ? 'Suffix text' :
+                         pipeline.renameOperation === 'remove_prefix' ? 'Prefix to remove' :
+                         pipeline.renameOperation === 'remove_suffix' ? 'Suffix to remove' :
+                         pipeline.renameOperation === 'remove_text' ? 'Text to remove' :
+                         'Base name'
+                       "
                        class="pipeline-text-input">
               </div>
             </div>
@@ -756,6 +775,8 @@
               <select x-model="renameModal.operation" class="form-select rename-select" @change="updateRenameParams()">
                 <option value="add_prefix">Add Prefix</option>
                 <option value="add_suffix">Add Suffix</option>
+                <option value="remove_prefix">Remove Prefix</option>
+                <option value="remove_suffix">Remove Suffix</option>
                 <option value="replace_text">Replace Text</option>
                 <option value="remove_text">Remove Text</option>
                 <option value="remove_camera_prefix">Remove Camera Prefix (DSC_, IMG_, etc.)</option>
@@ -774,6 +795,16 @@
 
             <div class="rename-params-group" x-show="renameModal.operation === 'add_suffix'">
               <label class="rename-label">Suffix text</label>
+              <input type="text" x-model="renameModal.params.suffix" placeholder="e.g., _edited" class="rename-input">
+            </div>
+
+            <div class="rename-params-group" x-show="renameModal.operation === 'remove_prefix'">
+              <label class="rename-label">Prefix to remove</label>
+              <input type="text" x-model="renameModal.params.prefix" placeholder="e.g., vacation_" class="rename-input">
+            </div>
+
+            <div class="rename-params-group" x-show="renameModal.operation === 'remove_suffix'">
+              <label class="rename-label">Suffix to remove</label>
               <input type="text" x-model="renameModal.params.suffix" placeholder="e.g., _edited" class="rename-input">
             </div>
 

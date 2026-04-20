@@ -208,7 +208,11 @@ def api_engine_process_folder(request):
             timeout=ENGINE_TIMEOUT,
         )
         resp.raise_for_status()
-        return JsonResponse({"success": True, **resp.json()})
+        engine_data = resp.json()
+        payload = dict(engine_data)
+        payload["ok"] = True
+        payload["data"] = engine_data
+        return JsonResponse(payload)
 
     except http_client.ConnectionError:
         return JsonResponse({
@@ -250,8 +254,17 @@ def api_engine_page_photo_picker_folder(request):
         return JsonResponse({"success": False, "message": "Invalid JSON body."}, status=400)
 
     folder_path = body.get("folder_path", "").strip()
+    photos_per_page = body.get("photos_per_page", 3)
     if not folder_path:
         return JsonResponse({"success": False, "message": "folder_path is required."}, status=400)
+
+    try:
+        photos_per_page = int(photos_per_page)
+    except (TypeError, ValueError):
+        return JsonResponse({"success": False, "message": "photos_per_page must be an integer between 1 and 3."}, status=400)
+
+    if photos_per_page < 1 or photos_per_page > 3:
+        return JsonResponse({"success": False, "message": "photos_per_page must be between 1 and 3."}, status=400)
 
     folder = Path(folder_path).resolve()
     if not folder.is_absolute():
@@ -265,11 +278,15 @@ def api_engine_page_photo_picker_folder(request):
         resp = http_client.post(
             f"{ENGINE_BASE}/page-photo-picker-folder",
             headers={**_engine_headers(), "Content-Type": "application/json"},
-            json={"folder_path": str(folder)},
+            json={"folder_path": str(folder), "photos_per_page": photos_per_page},
             timeout=ENGINE_TIMEOUT,
         )
         resp.raise_for_status()
-        return JsonResponse({"success": True, **resp.json()})
+        engine_data = resp.json()
+        payload = dict(engine_data)
+        payload["ok"] = True
+        payload["data"] = engine_data
+        return JsonResponse(payload)
 
     except http_client.ConnectionError:
         return JsonResponse({
@@ -334,7 +351,11 @@ def api_engine_compress_folder(request):
             timeout=ENGINE_TIMEOUT,
         )
         resp.raise_for_status()
-        return JsonResponse({"success": True, **resp.json()})
+        engine_data = resp.json()
+        payload = dict(engine_data)
+        payload["ok"] = True
+        payload["data"] = engine_data
+        return JsonResponse(payload)
 
     except http_client.ConnectionError:
         return JsonResponse({

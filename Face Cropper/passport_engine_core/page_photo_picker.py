@@ -30,12 +30,22 @@ import numpy as np
 from PIL import Image
 
 from . import config
-from .processor import _detect_face, _segment_hair_top
+
+try:
+    from .processor import _detect_face as _processor_detect_face, _segment_hair_top as _processor_segment_hair_top
+except Exception:  # pragma: no cover - processor may be packaged separately
+    _processor_detect_face = None
+    _processor_segment_hair_top = None
 
 try:
     import cv2
 except ImportError:  # pragma: no cover - optional runtime dependency guard
     cv2 = None
+
+try:
+    import mediapipe as mp
+except ImportError:  # pragma: no cover - optional runtime dependency guard
+    mp = None
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +53,22 @@ logger = logging.getLogger(__name__)
 _MIN_REGION_AREA_RATIO = 0.012
 _MAX_REGION_AREA_RATIO = 0.80
 _MAX_CANDIDATES_PER_PAGE = 24
-_MAX_PHOTOS_PER_PAGE = 5
+_MAX_PHOTOS_PER_PAGE = 3
+_DEFAULT_PHOTOS_PER_PAGE = 3
 _WHITE_TRIM_THRESHOLD = 245
 _MIN_OUTPUT_SIDE = 120
 _MIN_FACE_COVERAGE_RATIO = 0.022
+_PASSPORT_BOX_WIDTH = 350
+_PASSPORT_BOX_HEIGHT = 450
+_TARGET_PORTRAIT_RATIO = 35.0 / 45.0
+_SEGMENTATION_THRESHOLD = 0.18
+_SEGMENTATION_MIN_AREA_RATIO = 0.09
+_SEGMENTATION_MAX_AREA_RATIO = 0.95
+_SEGMENTATION_BORDER_TOUCH_RATIO = 0.90
+
+_SELFIE_SEGMENTER = None
+_SELFIE_SEGMENTER_READY = False
+_FACE_CASCADE = None
 
 
 def _read_image_bgr(path: Path):
@@ -59,6 +81,111 @@ def _read_image_bgr(path: Path):
         if data.size == 0:
             return None
         return cv2.imdecode(data, cv2.IMREAD_COLOR)
+    except Exception:
+        return None
+
+
+def _get_selfie_segmenter():
+    """Lazily initialize MediaPipe selfie-segmentation when available."""
+    global _SELFIE_SEGMENTER, _SELFIE_SEGMENTER_READY
+    if _SELFIE_SEGMENTER_READY:
+        return _SELFIE_SEGMENTER
+
+    _SELFIE_SEGMENTER_READY = True
+    if mp is None:
+        _SELFIE_SEGMENTER = None
+        return None
+
+    try:
+        _SELFIE_SEGMENTER = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=1)
+    except Exception:
+        _SELFIE_SEGMENTER = None
+
+    return _SELFIE_SEGMENTER
+
+
+def _get_face_cascade():
+    """Load OpenCV Haar cascade once as fallback face detector."""
+    global _FACE_CASCADE
+    if _FACE_CASCADE is not None:
+        return _FACE_CASCADE
+
+    if cv2 is None:
+        return None
+
+    try:
+        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        cascade = cv2.CascadeClassifier(cascade_path)
+        if cascade.empty():
+            _FACE_CASCADE = None
+        else:
+            _FACE_CASCADE = cascade
+    except Exception:
+        _FACE_CASCADE = None
+
+    return _FACE_CASCADE
+
+
+def _detect_face(image: Image.Image):
+    """Detect face using processor helper first, then OpenCV cascade fallback."""
+    if _processor_detect_face is not None:
+        try:
+            face = _processor_detect_face(image)
+            if face:
+                return face
+        except Exception:
+            pass
+
+    if cv2 is None:
+        return None
+
+    try:
+        rgb = np.array(image.convert("RGB"))
+        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+        cascade = _get_face_cascade()
+        if cascade is None:
+            return None
+
+        faces = cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.08,
+            minNeighbors=4,
+            minSize=(24, 24),
+        )
+        if len(faces) == 0:
+            return None
+
+        x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+        return {
+            "face_height": float(h),
+            "face_center_x": float(x + w / 2.0),
+            "chin_y": float(y + h),
+        }
+    except Exception:
+        return None
+
+
+def _segment_hair_top(image: Image.Image):
+    """Return estimated top y of person mask; fallback for missing processor helper."""
+    if _processor_segment_hair_top is not None:
+        try:
+            return _processor_segment_hair_top(image)
+        except Exception:
+            pass
+
+    if cv2 is None:
+        return None
+
+    try:
+        rgb = np.array(image.convert("RGB"))
+        bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        mask = _person_mask_from_segmentation(bgr)
+        if mask is None:
+            return None
+        ys, _ = np.where(mask > 0)
+        if ys.size == 0:
+            return None
+        return int(ys.min())
     except Exception:
         return None
 
@@ -168,6 +295,246 @@ def _trim_blank_bottom_rows(bgr: np.ndarray) -> np.ndarray:
             return trimmed
 
     return bgr
+
+
+def _largest_component_mask(mask: np.ndarray) -> np.ndarray:
+    """Keep only the largest connected component in a binary mask."""
+    if cv2 is None:
+        return mask
+
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if num_labels <= 1:
+        return mask
+
+    largest_label = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    out = np.zeros_like(mask, dtype=np.uint8)
+    out[labels == largest_label] = 255
+    return out
+
+
+def _person_mask_from_segmentation(bgr: np.ndarray):
+    """Return binary person mask via MediaPipe selfie segmentation (when available)."""
+    if cv2 is None:
+        return None
+
+    segmenter = _get_selfie_segmenter()
+    if segmenter is None:
+        return None
+
+    try:
+        h, w = bgr.shape[:2]
+        scale = min(1.0, 960.0 / float(max(h, w)))
+        if scale < 1.0:
+            resized = cv2.resize(
+                bgr,
+                (max(1, int(round(w * scale))), max(1, int(round(h * scale)))),
+                interpolation=cv2.INTER_AREA,
+            )
+        else:
+            resized = bgr
+
+        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        result = segmenter.process(rgb)
+        if result is None or getattr(result, "segmentation_mask", None) is None:
+            return None
+
+        mask = (result.segmentation_mask >= _SEGMENTATION_THRESHOLD).astype(np.uint8) * 255
+        kernel = np.ones((3, 3), np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+        mask = _largest_component_mask(mask)
+
+        if scale < 1.0:
+            mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
+
+        return mask
+    except Exception:
+        return None
+
+
+def _mask_bbox(mask: np.ndarray):
+    ys, xs = np.where(mask > 0)
+    if ys.size == 0 or xs.size == 0:
+        return None
+    return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+
+
+def _fit_portrait_bbox(
+    x0: int,
+    y0: int,
+    x1: int,
+    y1: int,
+    img_w: int,
+    img_h: int,
+    pad: float = 1.08,
+) -> Tuple[int, int, int, int]:
+    """Expand and normalize bbox to portrait aspect while clamping to image bounds."""
+    ex0, ey0, ex1, ey1 = _expand_bbox(x0, y0, x1, y1, img_w, img_h, factor=pad)
+
+    bw = max(1, ex1 - ex0)
+    bh = max(1, ey1 - ey0)
+    cx = (ex0 + ex1) / 2.0
+    cy = (ey0 + ey1) / 2.0
+
+    ratio = bw / float(max(1, bh))
+    if ratio < _TARGET_PORTRAIT_RATIO:
+        bw = int(round(bh * _TARGET_PORTRAIT_RATIO))
+    else:
+        bh = int(round(bw / _TARGET_PORTRAIT_RATIO))
+
+    nx0 = int(round(cx - bw / 2.0))
+    ny0 = int(round(cy - bh / 2.0))
+    nx1 = nx0 + bw
+    ny1 = ny0 + bh
+
+    if nx0 < 0:
+        nx1 -= nx0
+        nx0 = 0
+    if ny0 < 0:
+        ny1 -= ny0
+        ny0 = 0
+    if nx1 > img_w:
+        shift = nx1 - img_w
+        nx0 = max(0, nx0 - shift)
+        nx1 = img_w
+    if ny1 > img_h:
+        shift = ny1 - img_h
+        ny0 = max(0, ny0 - shift)
+        ny1 = img_h
+
+    return nx0, ny0, nx1, ny1
+
+
+def _trim_sparse_edges(bgr: np.ndarray) -> np.ndarray:
+    """Trim sparse empty paper edges left after warping and perspective fixes."""
+    if cv2 is None:
+        return bgr
+
+    h, w = bgr.shape[:2]
+    if h < _MIN_OUTPUT_SIDE or w < _MIN_OUTPUT_SIDE:
+        return bgr
+
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    content = (gray < 242) | (hsv[:, :, 1] > 28)
+
+    row_ratio = content.mean(axis=1)
+    col_ratio = content.mean(axis=0)
+
+    y0 = 0
+    y1 = h
+    x0 = 0
+    x1 = w
+
+    min_row_content = 0.035
+    min_col_content = 0.03
+
+    max_trim_y = min(h // 4, 120)
+    max_trim_x = min(w // 5, 120)
+
+    while y0 < max_trim_y and y0 < (h - _MIN_OUTPUT_SIDE) and row_ratio[y0] < min_row_content:
+        y0 += 1
+    while (h - y1) < max_trim_y and y1 > (_MIN_OUTPUT_SIDE) and row_ratio[y1 - 1] < min_row_content:
+        y1 -= 1
+    while x0 < max_trim_x and x0 < (w - _MIN_OUTPUT_SIDE) and col_ratio[x0] < min_col_content:
+        x0 += 1
+    while (w - x1) < max_trim_x and x1 > (_MIN_OUTPUT_SIDE) and col_ratio[x1 - 1] < min_col_content:
+        x1 -= 1
+
+    if (x1 - x0) >= _MIN_OUTPUT_SIDE and (y1 - y0) >= _MIN_OUTPUT_SIDE:
+        return bgr[y0:y1, x0:x1]
+    return bgr
+
+
+def _crop_to_person_segmentation_box(bgr: np.ndarray):
+    """Crop candidate around segmented person region when segmentation is available."""
+    if cv2 is None:
+        return None
+
+    mask = _person_mask_from_segmentation(bgr)
+    if mask is None:
+        return None
+
+    area_ratio = float(np.mean(mask > 0))
+    if area_ratio < _SEGMENTATION_MIN_AREA_RATIO or area_ratio > _SEGMENTATION_MAX_AREA_RATIO:
+        return None
+
+    bbox = _mask_bbox(mask)
+    if bbox is None:
+        return None
+
+    h, w = bgr.shape[:2]
+    x0, y0, x1, y1 = _fit_portrait_bbox(*bbox, w, h, pad=1.10)
+    if (x1 - x0) < _MIN_OUTPUT_SIDE or (y1 - y0) < _MIN_OUTPUT_SIDE:
+        return None
+
+    return bgr[y0:y1, x0:x1]
+
+
+def _passes_person_quality_gate(bgr: np.ndarray) -> bool:
+    """Validate that the crop is person-focused and not mostly borders/page."""
+    if bgr is None or bgr.size == 0:
+        return False
+
+    h, w = bgr.shape[:2]
+    if h < _MIN_OUTPUT_SIDE or w < _MIN_OUTPUT_SIDE:
+        return False
+
+    mask = _person_mask_from_segmentation(bgr)
+    face_ratio = _face_coverage_ratio(bgr)
+    if face_ratio < _MIN_FACE_COVERAGE_RATIO and mask is None:
+        return False
+    if mask is None:
+        return True
+
+    area_ratio = float(np.mean(mask > 0))
+    if area_ratio < _SEGMENTATION_MIN_AREA_RATIO or area_ratio > _SEGMENTATION_MAX_AREA_RATIO:
+        return False
+
+    # If face detector was weak, accept only when segmentation strongly supports a person crop.
+    if face_ratio < _MIN_FACE_COVERAGE_RATIO:
+        if area_ratio < 0.16 or area_ratio > 0.80:
+            return False
+
+    t = max(2, min(14, min(h, w) // 22))
+    border = np.concatenate(
+        [
+            mask[:t, :].reshape(-1),
+            mask[-t:, :].reshape(-1),
+            mask[:, :t].reshape(-1),
+            mask[:, -t:].reshape(-1),
+        ]
+    )
+    border_touch = float(np.mean(border > 0)) if border.size else 0.0
+    if border_touch > _SEGMENTATION_BORDER_TOUCH_RATIO and area_ratio > 0.60:
+        return False
+
+    return True
+
+
+def _post_pick_cleanup_pipeline(candidate: np.ndarray):
+    """Multi-step cleanup pipeline: trim -> segment -> face tighten -> border cleanup -> validate."""
+    if candidate is None or candidate.size == 0:
+        return None
+
+    cleaned = _trim_white_border(candidate)
+    cleaned = _trim_blank_bottom_rows(cleaned)
+    cleaned = _trim_sparse_edges(cleaned)
+
+    seg_crop = _crop_to_person_segmentation_box(cleaned)
+    if seg_crop is not None:
+        cleaned = seg_crop
+    else:
+        cleaned = _tighten_crop_to_person_photo(cleaned)
+
+    cleaned = _trim_white_border(cleaned)
+    cleaned = _trim_blank_bottom_rows(cleaned)
+    cleaned = _trim_sparse_edges(cleaned)
+    cleaned = _tighten_crop_to_person_photo(cleaned)
+
+    if not _passes_person_quality_gate(cleaned):
+        return None
+    return cleaned
 
 
 def _face_coverage_ratio(bgr: np.ndarray) -> float:
@@ -592,15 +959,13 @@ def _extract_photos_from_page(image_path: Path) -> Tuple[List[np.ndarray], str]:
         if warped.shape[0] < _MIN_OUTPUT_SIDE or warped.shape[1] < _MIN_OUTPUT_SIDE:
             continue
 
-        # Keep only regions with meaningful face occupancy.
-        if _face_coverage_ratio(warped) < _MIN_FACE_COVERAGE_RATIO:
+        # Keep only regions with meaningful face occupancy, unless segmentation strongly confirms a person.
+        if _face_coverage_ratio(warped) < _MIN_FACE_COVERAGE_RATIO and _person_mask_from_segmentation(warped) is None:
             continue
 
-        warped = _tighten_crop_to_person_photo(warped)
-        warped = _trim_white_border(warped)
-        warped = _trim_blank_bottom_rows(warped)
-
-        accepted.append(warped)
+        refined = _post_pick_cleanup_pipeline(warped)
+        if refined is not None:
+            accepted.append(refined)
 
     if accepted:
         return accepted[:_MAX_PHOTOS_PER_PAGE], ""
@@ -611,12 +976,11 @@ def _extract_photos_from_page(image_path: Path) -> Tuple[List[np.ndarray], str]:
         crop = _trim_white_border(crop)
         if crop.shape[0] < _MIN_OUTPUT_SIDE or crop.shape[1] < _MIN_OUTPUT_SIDE:
             continue
-        if _face_coverage_ratio(crop) < _MIN_FACE_COVERAGE_RATIO:
+        if _face_coverage_ratio(crop) < _MIN_FACE_COVERAGE_RATIO and _person_mask_from_segmentation(crop) is None:
             continue
-        crop = _tighten_crop_to_person_photo(crop)
-        crop = _trim_white_border(crop)
-        crop = _trim_blank_bottom_rows(crop)
-        accepted.append(crop)
+        refined = _post_pick_cleanup_pipeline(crop)
+        if refined is not None:
+            accepted.append(refined)
 
     if accepted:
         return accepted[:_MAX_PHOTOS_PER_PAGE], ""
@@ -626,16 +990,15 @@ def _extract_photos_from_page(image_path: Path) -> Tuple[List[np.ndarray], str]:
     if guided is not None and guided.size > 0:
         guided = _trim_white_border(guided)
         if guided.shape[0] >= _MIN_OUTPUT_SIDE and guided.shape[1] >= _MIN_OUTPUT_SIDE:
-            if _face_coverage_ratio(guided) >= _MIN_FACE_COVERAGE_RATIO:
-                guided = _tighten_crop_to_person_photo(guided)
-                guided = _trim_white_border(guided)
-                guided = _trim_blank_bottom_rows(guided)
-                accepted.append(guided)
+            if _face_coverage_ratio(guided) >= _MIN_FACE_COVERAGE_RATIO or _person_mask_from_segmentation(guided) is not None:
+                refined = _post_pick_cleanup_pipeline(guided)
+                if refined is not None:
+                    accepted.append(refined)
 
     if accepted:
         return accepted[:_MAX_PHOTOS_PER_PAGE], ""
 
-    return [], "No valid photo region with detectable face found"
+    return [], "No valid person-only photo region found"
 
 
 def _iter_input_images(folder: Path) -> List[Path]:
@@ -651,7 +1014,37 @@ def _iter_input_images(folder: Path) -> List[Path]:
     return images
 
 
-def pick_page_photos_in_folder(folder_path: str) -> Dict[str, Any]:
+def _sanitize_photos_per_page(value: int | None) -> int:
+    """Clamp requested photos-per-page to supported range."""
+    try:
+        numeric = int(value)
+    except (TypeError, ValueError):
+        numeric = _DEFAULT_PHOTOS_PER_PAGE
+
+    return max(1, min(_MAX_PHOTOS_PER_PAGE, numeric))
+
+
+def _create_blank_passport_patch(reference: np.ndarray | None = None) -> np.ndarray:
+    """Create a plain white portrait patch used when a page has missing detections."""
+    if reference is not None and getattr(reference, "shape", None) is not None:
+        h, w = reference.shape[:2]
+        if h >= _MIN_OUTPUT_SIDE and w >= _MIN_OUTPUT_SIDE:
+            return np.full((h, w, 3), 255, dtype=np.uint8)
+
+    return np.full((_PASSPORT_BOX_HEIGHT, _PASSPORT_BOX_WIDTH, 3), 255, dtype=np.uint8)
+
+
+def _clear_previous_outputs(folder: Path) -> None:
+    """Remove files from a prior run so each run produces a clean result set."""
+    try:
+        for item in folder.iterdir():
+            if item.is_file():
+                item.unlink(missing_ok=True)
+    except Exception:
+        logger.warning("Could not fully clear previous output folder: %s", folder)
+
+
+def pick_page_photos_in_folder(folder_path: str, photos_per_page: int = _DEFAULT_PHOTOS_PER_PAGE) -> Dict[str, Any]:
     """
     Extract person-photo patches from every page image in a folder.
 
@@ -668,10 +1061,14 @@ def pick_page_photos_in_folder(folder_path: str) -> Dict[str, Any]:
     if cv2 is None:
         raise RuntimeError("OpenCV (cv2) is required for page photo picker")
 
+    photos_per_page = _sanitize_photos_per_page(photos_per_page)
+
     picked_dir = folder / "picked"
     failed_dir = folder / "failed"
     picked_dir.mkdir(parents=True, exist_ok=True)
     failed_dir.mkdir(parents=True, exist_ok=True)
+    _clear_previous_outputs(picked_dir)
+    _clear_previous_outputs(failed_dir)
 
     input_images = _iter_input_images(folder)
     if not input_images:
@@ -686,7 +1083,19 @@ def pick_page_photos_in_folder(folder_path: str) -> Dict[str, Any]:
             "errors": [],
             "picked_files": [],
             "pages_processed": 0,
+            "pages_success": 0,
+            "pages_failed": 0,
+            "photos_per_page": photos_per_page,
             "photos_extracted": 0,
+            "photos_written": 0,
+            "placeholders_generated": 0,
+            "pipeline_steps": [
+                "quad_or_fallback_detection",
+                "perspective_or_axis_crop",
+                "selfie_segmentation_person_refine",
+                "face_tighten_fallback",
+                "edge_trim_and_quality_gate",
+            ],
         }
 
     t0 = time.perf_counter()
@@ -696,12 +1105,16 @@ def pick_page_photos_in_folder(folder_path: str) -> Dict[str, Any]:
     pages_processed = 0
     pages_failed = 0
     photos_extracted = 0
+    photos_written = 0
+    placeholders_generated = 0
 
     for src in input_images:
         pages_processed += 1
         patches, reason = _extract_photos_from_page(src)
 
-        if not patches:
+        detected_count = len(patches)
+
+        if detected_count == 0:
             pages_failed += 1
             errors.append(f"{src.name}: {reason}")
             try:
@@ -709,10 +1122,20 @@ def pick_page_photos_in_folder(folder_path: str) -> Dict[str, Any]:
             except Exception:
 
                 pass
+
+        selected_patches = list(patches[:photos_per_page])
+        missing = max(0, photos_per_page - len(selected_patches))
+        if missing > 0:
+            reference_patch = selected_patches[0] if selected_patches else None
+            for _ in range(missing):
+                selected_patches.append(_create_blank_passport_patch(reference_patch))
+            placeholders_generated += missing
+
+        if not selected_patches:
             continue
 
         stem = src.stem
-        for idx, patch in enumerate(patches[:_MAX_PHOTOS_PER_PAGE], start=1):
+        for idx, patch in enumerate(selected_patches, start=1):
             out_name = f"{stem}_{idx}.jpg"
             out_path = picked_dir / out_name
 
@@ -727,15 +1150,18 @@ def pick_page_photos_in_folder(folder_path: str) -> Dict[str, Any]:
             Image.fromarray(rgb).save(out_path, quality=95)
 
             picked_files.append(out_name)
-            photos_extracted += 1
+            photos_written += 1
+
+        photos_extracted += min(detected_count, photos_per_page)
 
     elapsed = round(time.perf_counter() - t0, 2)
-    total = photos_extracted + pages_failed
-    accuracy = round((photos_extracted / total) * 100, 2) if total else 0.0
+    pages_success = max(0, pages_processed - pages_failed)
+    total = pages_processed
+    accuracy = round((pages_success / total) * 100, 2) if total else 0.0
 
     return {
         "total": total,
-        "success": photos_extracted,
+        "success": pages_success,
         "failed": pages_failed,
         "accuracy": accuracy,
         "output_folder": str(picked_dir),
@@ -744,5 +1170,17 @@ def pick_page_photos_in_folder(folder_path: str) -> Dict[str, Any]:
         "errors": errors[:200],
         "picked_files": sorted(picked_files),
         "pages_processed": pages_processed,
+        "pages_success": pages_success,
+        "pages_failed": pages_failed,
+        "photos_per_page": photos_per_page,
         "photos_extracted": photos_extracted,
+        "photos_written": photos_written,
+        "placeholders_generated": placeholders_generated,
+        "pipeline_steps": [
+            "quad_or_fallback_detection",
+            "perspective_or_axis_crop",
+            "selfie_segmentation_person_refine",
+            "face_tighten_fallback",
+            "edge_trim_and_quality_gate",
+        ],
     }
