@@ -49,7 +49,7 @@
       <section class="office-panel is-active" data-panel="chat" role="tabpanel">
         <article class="office-chat-panel">
           <div class="office-chat-layout">
-            <aside class="office-chat-sidebar" aria-label="Groups and contacts">
+            <aside class="office-chat-sidebar" aria-label="Team chats and contacts">
               <div class="office-chat-sidebar-head">
                 <h3><i class="fa-brands fa-whatsapp"></i> Chats</h3>
                 <button
@@ -57,9 +57,9 @@
                   id="officeCreateGroupBtn"
                   class="btn btn-sm btn-neutral"
                   {% if not can_manage_groups %}disabled{% endif %}
-                  title="Create Chat">
+                  title="Create New Group">
                   <i class="fa-solid fa-user-group"></i>
-                  New Chat
+                  Create New Group
                 </button>
               </div>
               <div class="office-chat-search-row">
@@ -74,13 +74,12 @@
                 <div class="office-chat-header-main">
                   <h3>
                     <i class="fa-solid fa-paper-plane"></i>
-                    <span id="officeChatActiveGroupName">Team Message</span>
+                    <span id="officeChatActiveGroupName">Select a chat</span>
                   </h3>
                   <span class="client-message-header-pill office-chat-message-pill" id="officeChatCountPill">0 messages</span>
                 </div>
                 <div class="office-chat-group-tools">
-                  <span id="officeChatActiveGroupMeta" class="office-chat-group-meta">Select a group to start messaging.</span>
-                  <select id="officeChatGroupSelect" class="form-select form-select-sm" aria-label="Select chat group" hidden></select>
+                  <span id="officeChatActiveGroupMeta" class="office-chat-group-meta">Pick a user or group from the right sidebar to start messaging.</span>
                 </div>
               </header>
 

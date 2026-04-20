@@ -39,6 +39,7 @@
   var state = {
     activeTab: 'chat',
     activeGroupId: 0,
+    activeChatMemberId: 0,
     previousGroupId: 0,
     groups: [],
     availableMembers: [],
@@ -76,7 +77,6 @@
     chatGroupSelect: document.getElementById('officeChatGroupSelect'),
     chatGroupSearch: document.getElementById('officeChatGroupSearch'),
     chatGroupsList: document.getElementById('officeChatGroupsList'),
-    chatContactsList: document.getElementById('officeChatContactsList'),
     chatActiveGroupName: document.getElementById('officeChatActiveGroupName'),
     chatActiveGroupMeta: document.getElementById('officeChatActiveGroupMeta'),
     chatMembersStrip: document.getElementById('officeChatMembersStrip'),
@@ -258,6 +258,115 @@
     return group.members;
   }
 
+  function memberById(memberId) {
+    var targetId = Number(memberId || 0);
+    if (targetId <= 0) {
+      return null;
+    }
+    for (var i = 0; i < state.availableMembers.length; i += 1) {
+      if (Number(state.availableMembers[i].id || 0) === targetId) {
+        return state.availableMembers[i];
+      }
+    }
+    return null;
+  }
+
+  function membersForSidebar() {
+    var currentUserId = Number(cfg.currentUserId || 0);
+    var members = state.availableMembers.filter(function (member) {
+      return Number(member && member.id || 0) > 0 && Number(member.id || 0) !== currentUserId;
+    });
+    members.sort(function (left, right) {
+      var leftName = String(left && left.name || '').toLowerCase();
+      var rightName = String(right && right.name || '').toLowerCase();
+      if (leftName < rightName) {
+        return -1;
+      }
+      if (leftName > rightName) {
+        return 1;
+      }
+      return Number(left && left.id || 0) - Number(right && right.id || 0);
+    });
+    return members;
+  }
+
+  function groupHasMember(group, memberId) {
+    var members = memberListForGroup(group);
+    var targetId = Number(memberId || 0);
+    for (var i = 0; i < members.length; i += 1) {
+      if (Number(members[i] && members[i].id || 0) === targetId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function isDirectGroupForMember(group, memberId) {
+    if (!group) {
+      return false;
+    }
+    var currentUserId = Number(cfg.currentUserId || 0);
+    var members = memberListForGroup(group);
+    if (!members.length) {
+      return false;
+    }
+    var hasCurrent = false;
+    var hasTarget = false;
+    for (var i = 0; i < members.length; i += 1) {
+      var id = Number(members[i] && members[i].id || 0);
+      if (id === currentUserId) {
+        hasCurrent = true;
+      }
+      if (id === Number(memberId || 0)) {
+        hasTarget = true;
+      }
+    }
+    return hasCurrent && hasTarget && members.length <= 2;
+  }
+
+  function inferMemberIdForGroup(group) {
+    var members = memberListForGroup(group);
+    var currentUserId = Number(cfg.currentUserId || 0);
+    for (var i = 0; i < members.length; i += 1) {
+      var id = Number(members[i] && members[i].id || 0);
+      if (id > 0 && id !== currentUserId) {
+        return id;
+      }
+    }
+    return 0;
+  }
+
+  function bestGroupForMember(memberId) {
+    var targetId = Number(memberId || 0);
+    if (targetId <= 0) {
+      return null;
+    }
+    var candidates = state.groups.filter(function (group) {
+      return groupHasMember(group, targetId);
+    });
+    if (!candidates.length) {
+      return null;
+    }
+    candidates.sort(function (left, right) {
+      var leftIsDirect = isDirectGroupForMember(left, targetId) ? 1 : 0;
+      var rightIsDirect = isDirectGroupForMember(right, targetId) ? 1 : 0;
+      if (rightIsDirect !== leftIsDirect) {
+        return rightIsDirect - leftIsDirect;
+      }
+      var leftTs = new Date(groupUpdatedAt(left) || 0).getTime();
+      var rightTs = new Date(groupUpdatedAt(right) || 0).getTime();
+      if (rightTs !== leftTs) {
+        return rightTs - leftTs;
+      }
+      return Number(right.id || 0) - Number(left.id || 0);
+    });
+    return candidates[0] || null;
+  }
+
+  function activeMemberItem() {
+    return memberById(state.activeChatMemberId);
+  }
+
   function groupMemberCount(group) {
     if (!group || typeof group !== 'object') {
       return 0;
@@ -322,16 +431,23 @@
 
   function updateActiveGroupHeader() {
     var group = activeGroupItem();
+    var member = activeMemberItem();
 
     if (ui.chatActiveGroupName) {
-      ui.chatActiveGroupName.textContent = group ? String(group.name || 'Team Chat') : 'No Chat Selected';
+      if (member) {
+        ui.chatActiveGroupName.textContent = String(member.name || 'Team Member');
+      } else {
+        ui.chatActiveGroupName.textContent = group ? String(group.name || 'Team Chat') : 'Select a chat';
+      }
     }
 
     if (ui.chatActiveGroupMeta) {
       if (!group) {
-        ui.chatActiveGroupMeta.textContent = 'Select a chat to start messaging.';
+        ui.chatActiveGroupMeta.textContent = 'Pick a user or group from the right sidebar to start messaging.';
+      } else if (member) {
+        ui.chatActiveGroupMeta.textContent = formatRoleLabel(member.role_display || member.role);
       } else {
-        ui.chatActiveGroupMeta.textContent = 'Live team chat';
+        ui.chatActiveGroupMeta.textContent = 'Group conversation';
       }
     }
 
@@ -363,37 +479,39 @@
     }
 
     var query = String(ui.chatGroupSearch && ui.chatGroupSearch.value || '').trim().toLowerCase();
-    var visibleGroups = state.groups.filter(function (group) {
+    var members = membersForSidebar().filter(function (member) {
       if (!query) {
         return true;
       }
 
-      if (String(group.name || '').toLowerCase().indexOf(query) >= 0) {
+      var roleLabel = formatRoleLabel(member && (member.role_display || member.role));
+      if (String(member && member.name || '').toLowerCase().indexOf(query) >= 0) {
         return true;
       }
-
-      return groupSubtitle(group).toLowerCase().indexOf(query) >= 0;
+      return String(roleLabel || '').toLowerCase().indexOf(query) >= 0;
     });
 
-    if (!visibleGroups.length) {
-      ui.chatGroupsList.innerHTML = '<div class="client-message-thread-state">No chats found. Create one to start.</div>';
+    if (!members.length) {
+      ui.chatGroupsList.innerHTML = '<div class="client-message-thread-state">No admins/operators found.</div>';
       return;
     }
 
-    ui.chatGroupsList.innerHTML = visibleGroups.map(function (group) {
-      var groupId = Number(group.id || 0);
-      var isActive = groupId === Number(state.activeGroupId || 0);
+    ui.chatGroupsList.innerHTML = members.map(function (member) {
+      var memberId = Number(member && member.id || 0);
+      var linkedGroup = bestGroupForMember(memberId);
+      var linkedGroupId = Number(linkedGroup && linkedGroup.id || 0);
+      var isActive = memberId === Number(state.activeChatMemberId || 0) || (linkedGroupId > 0 && linkedGroupId === Number(state.activeGroupId || 0));
       var rowClass = isActive ? 'office-chat-group-row is-active' : 'office-chat-group-row';
-      var avatar = String(group && group.name || 'C').trim().charAt(0).toUpperCase() || 'C';
-      var preview = groupSubtitle(group);
-      var timeText = formatChatTime(groupUpdatedAt(group));
-      var unreadCount = Number(group && group.unread_count || 0);
+      var avatar = String(member && member.name || 'U').trim().charAt(0).toUpperCase() || 'U';
+      var preview = linkedGroup ? groupSubtitle(linkedGroup) : 'Click to start chat';
+      var timeText = linkedGroup ? formatChatTime(groupUpdatedAt(linkedGroup)) : '';
+      var unreadCount = Number(linkedGroup && linkedGroup.unread_count || 0);
       return '' +
-        '<div class="' + rowClass + '" data-group-id="' + escapeHtml(groupId) + '">' +
+        '<div class="' + rowClass + '" data-member-id="' + escapeHtml(memberId) + '">' +
         '  <div class="office-chat-group-avatar" aria-hidden="true">' + escapeHtml(avatar) + '</div>' +
         '  <div class="office-chat-group-main">' +
         '    <div class="office-chat-group-row-head">' +
-        '      <span class="office-chat-group-row-title">' + escapeHtml(group.name || 'Unnamed Chat') + '</span>' +
+        '      <span class="office-chat-group-row-title">' + escapeHtml(member && member.name || 'Member') + '</span>' +
         (timeText ? '      <span class="office-chat-group-row-time">' + escapeHtml(timeText) + '</span>' : '') +
         '    </div>' +
         '    <div class="office-chat-group-row-sub">' + escapeHtml(preview) + '</div>' +
@@ -404,33 +522,7 @@
   }
 
   function renderAvailableMembersList() {
-    if (!ui.chatContactsList) {
-      return;
-    }
-
-    var query = String(ui.chatGroupSearch && ui.chatGroupSearch.value || '').trim().toLowerCase();
-    var members = state.availableMembers.filter(function (member) {
-      if (!query) {
-        return true;
-      }
-      var name = String(member && member.name || '').toLowerCase();
-      var role = String(member && (member.role_display || member.role) || '').toLowerCase();
-      return name.indexOf(query) >= 0 || role.indexOf(query) >= 0;
-    });
-
-    if (!members.length) {
-      ui.chatContactsList.innerHTML = '<div class="client-message-thread-state">No members found.</div>';
-      return;
-    }
-
-    ui.chatContactsList.innerHTML = members.map(function (member) {
-      var roleLabel = formatRoleLabel(member && (member.role_display || member.role));
-      return '' +
-        '<div class="office-chat-member-row">' +
-        '  <div class="office-chat-member-row-name">' + escapeHtml(member && member.name ? member.name : 'Member') + '</div>' +
-        '  <div class="office-chat-member-row-role">' + escapeHtml(roleLabel) + '</div>' +
-        '</div>';
-    }).join('');
+    return;
   }
 
   function switchActiveGroup(nextGroupId) {
@@ -441,14 +533,96 @@
 
     state.previousGroupId = Number(state.activeGroupId || 0);
     state.activeGroupId = parsedId;
-    if (ui.chatGroupSelect) {
-      ui.chatGroupSelect.value = String(parsedId);
-    }
+    state.activeChatMemberId = inferMemberIdForGroup(activeGroupItem());
     syncGroupSubscription();
     renderGroupList();
     updateActiveGroupHeader();
     resetChatState();
     loadChat({ forceInitial: true });
+  }
+
+  async function ensureGroupForMember(memberId) {
+    var targetMember = memberById(memberId);
+    if (!targetMember) {
+      return null;
+    }
+
+    var existing = bestGroupForMember(memberId);
+    if (existing) {
+      return existing;
+    }
+
+    if (!state.canManageGroups) {
+      notify('No chat found for this user and you cannot create groups.', 'error');
+      return null;
+    }
+
+    var createData = await ApiClient.post(endpoints.chatGroupCreate, {
+      name: String(targetMember.name || 'Direct Chat').trim() || 'Direct Chat',
+      member_ids: [Number(targetMember.id || 0)],
+    });
+
+    if (!createData || !createData.success) {
+      throw new Error((createData && createData.message) || 'Failed to start chat.');
+    }
+
+    await loadGroups({ keepCurrent: true });
+
+    if (createData.group && createData.group.id) {
+      var createdId = Number(createData.group.id || 0);
+      for (var i = 0; i < state.groups.length; i += 1) {
+        if (Number(state.groups[i].id || 0) === createdId) {
+          return state.groups[i];
+        }
+      }
+    }
+
+    return bestGroupForMember(memberId);
+  }
+
+  async function switchActiveMember(memberId) {
+    var parsedMemberId = Number(memberId || 0);
+    if (parsedMemberId <= 0) {
+      return;
+    }
+
+    state.activeChatMemberId = parsedMemberId;
+    renderGroupList();
+    updateActiveGroupHeader();
+
+    try {
+      var targetGroup = bestGroupForMember(parsedMemberId);
+      if (!targetGroup) {
+        targetGroup = await ensureGroupForMember(parsedMemberId);
+      }
+      if (!targetGroup || !targetGroup.id) {
+        resetChatState();
+        renderChatEmptyState();
+        return;
+      }
+
+      var targetGroupId = Number(targetGroup.id || 0);
+      if (targetGroupId === Number(state.activeGroupId || 0)) {
+        syncGroupSubscription();
+        renderGroupList();
+        updateActiveGroupHeader();
+        if (!state.chatLoaded) {
+          resetChatState();
+          loadChat({ forceInitial: true });
+        }
+        return;
+      }
+
+      state.previousGroupId = Number(state.activeGroupId || 0);
+      state.activeGroupId = targetGroupId;
+      syncGroupSubscription();
+      renderGroupList();
+      updateActiveGroupHeader();
+      resetChatState();
+      loadChat({ forceInitial: true });
+    } catch (error) {
+      notify((error && error.message) || 'Failed to open chat.', 'error');
+    }
   }
 
   function rememberChatId(itemId) {
@@ -525,7 +699,7 @@
     updateChatCountPill();
     var empty = document.createElement('div');
     empty.className = 'client-message-thread-state';
-    empty.textContent = state.groups.length ? 'No chat yet. Start the conversation.' : 'No chats yet. Create your first chat to start messaging.';
+    empty.textContent = state.groups.length ? 'No chat yet. Start the conversation.' : 'No chat group found yet. Pick a user to start a direct chat.';
     ui.chatList.appendChild(empty);
   }
 
@@ -597,27 +771,16 @@
 
   function renderGroupOptions() {
     if (!state.groups.length) {
-      if (ui.chatGroupSelect) {
-        ui.chatGroupSelect.innerHTML = '<option value="">No chats</option>';
-        ui.chatGroupSelect.disabled = true;
-      }
       state.activeGroupId = 0;
       renderGroupList();
-      renderAvailableMembersList();
       updateActiveGroupHeader();
       return;
     }
 
-    if (ui.chatGroupSelect) {
-      ui.chatGroupSelect.disabled = false;
-      ui.chatGroupSelect.innerHTML = state.groups.map(function (group) {
-        var selected = Number(group.id) === Number(state.activeGroupId) ? ' selected' : '';
-        return '<option value="' + escapeHtml(group.id) + '"' + selected + '>' + escapeHtml(group.name) + '</option>';
-      }).join('');
+    if (!memberById(state.activeChatMemberId)) {
+      state.activeChatMemberId = inferMemberIdForGroup(activeGroupItem());
     }
-
     renderGroupList();
-    renderAvailableMembersList();
     updateActiveGroupHeader();
   }
 
@@ -672,6 +835,10 @@
         return Number(group.id) === Number(state.activeGroupId);
       })) {
         state.activeGroupId = Number(state.groups[0] && state.groups[0].id || 0);
+      }
+
+      if (!memberById(state.activeChatMemberId)) {
+        state.activeChatMemberId = inferMemberIdForGroup(activeGroupItem());
       }
 
       renderGroupOptions();
@@ -748,17 +915,17 @@
 
   async function createGroupFlow() {
     if (!state.canManageGroups) {
-      notify('Only admins can create chats.', 'error');
+      notify('Only admins can create groups.', 'error');
       return;
     }
 
-    var name = window.prompt('Enter chat name:', 'New Chat');
+    var name = window.prompt('Enter group name:', 'New Group');
     if (name === null) {
       return;
     }
     name = String(name || '').trim();
     if (!name) {
-      notify('Chat name is required.', 'error');
+      notify('Group name is required.', 'error');
       return;
     }
 
@@ -773,21 +940,22 @@
         member_ids: memberIds,
       });
       if (!data || !data.success) {
-        notify((data && data.message) || 'Failed to create chat.', 'error');
+        notify((data && data.message) || 'Failed to create group.', 'error');
         return;
       }
 
       await loadGroups({ keepCurrent: false });
       if (data.group && data.group.id) {
         state.activeGroupId = Number(data.group.id);
+        state.activeChatMemberId = inferMemberIdForGroup(activeGroupItem());
         renderGroupOptions();
         syncGroupSubscription();
       }
       resetChatState();
       await loadChat({ forceInitial: true });
-      notify('Chat created.', 'success');
+      notify('Group created.', 'success');
     } catch (error) {
-      notify((error && error.message) || 'Failed to create chat.', 'error');
+      notify((error && error.message) || 'Failed to create group.', 'error');
     }
   }
 
@@ -1660,14 +1828,14 @@
   }
 
   function bindGroupTools() {
-    if (ui.chatGroupSelect) {
-      ui.chatGroupSelect.addEventListener('change', function () {
-        switchActiveGroup(ui.chatGroupSelect.value || 0);
-      });
-    }
-
     if (ui.chatGroupsList) {
-      ui.chatGroupsList.addEventListener('click', function (event) {
+      ui.chatGroupsList.addEventListener('click', async function (event) {
+        var memberRow = event.target && event.target.closest('[data-member-id]');
+        if (memberRow) {
+          await switchActiveMember(memberRow.getAttribute('data-member-id') || 0);
+          return;
+        }
+
         var row = event.target && event.target.closest('[data-group-id]');
         if (!row) {
           return;
@@ -1679,7 +1847,6 @@
     if (ui.chatGroupSearch) {
       ui.chatGroupSearch.addEventListener('input', function () {
         renderGroupList();
-        renderAvailableMembersList();
       });
     }
 
@@ -1742,7 +1909,7 @@
       var hasFile = !!state.pendingAttachment;
 
       if (!state.activeGroupId) {
-        notify('Select a group first.', 'error');
+        notify('Select a chat first.', 'error');
         return;
       }
 

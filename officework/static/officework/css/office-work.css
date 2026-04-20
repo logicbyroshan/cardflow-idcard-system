@@ -598,7 +598,7 @@ textarea.office-input {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(4, minmax(220px, 1fr));
-  align-items: start;
+  align-items: stretch;
   gap: 12px;
   padding: 12px;
   overflow: auto;
@@ -610,6 +610,7 @@ textarea.office-input {
   border-radius: 4px;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
   min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -683,8 +684,8 @@ textarea.office-input {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 120px;
-  max-height: clamp(220px, calc(100vh - 330px), 560px);
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
 }
 
@@ -798,7 +799,12 @@ textarea.office-input {
 }
 
 .office-kanban-add-wrap {
+  margin-top: auto;
   padding: 0 10px 10px;
+  background: linear-gradient(180deg, rgba(247, 251, 255, 0) 0%, rgba(247, 251, 255, 0.92) 36%, rgba(247, 251, 255, 1) 100%);
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
 }
 
 .office-kanban-inline-create {
@@ -867,12 +873,15 @@ textarea.office-input {
   right: 0;
   left: auto;
   transform: none;
-  width: min(980px, 100vw);
+  width: min(1120px, 100vw);
   max-height: 100vh;
   height: 100vh;
   border-radius: 0;
   border-right: 0;
-  padding: 14px 16px;
+  border-left: 1px solid #d0d9e6;
+  padding: 0;
+  background: #f1f2f4;
+  box-shadow: -24px 0 55px rgba(15, 23, 42, 0.28);
 }
 
 .office-task-modal-header {
@@ -885,6 +894,21 @@ textarea.office-input {
   margin-bottom: 12px;
 }
 
+.office-task-modal.is-edit-mode .office-task-modal-header {
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid #d6dde8;
+  background: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.office-task-modal.is-edit-mode .office-task-form {
+  padding: 12px 16px 14px;
+  gap: 12px;
+}
+
 .office-task-modal-header h3 {
   margin: 0;
 }
@@ -895,6 +919,11 @@ textarea.office-input {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.office-task-modal.is-edit-mode .office-task-quick-actions {
+  margin: 0;
+  padding: 0 0 4px;
 }
 
 .office-task-quick-btn {
@@ -922,12 +951,33 @@ textarea.office-input {
   gap: 12px;
 }
 
+.office-task-modal.is-edit-mode .office-task-modal-layout {
+  grid-template-columns: minmax(0, 1fr) 338px;
+  gap: 16px;
+  align-items: start;
+}
+
 .office-task-modal-main,
 .office-task-modal-side {
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-height: 0;
+}
+
+.office-task-modal.is-edit-mode .office-task-modal-main {
+  border: 1px solid #d6dde8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.office-task-modal.is-edit-mode .office-task-modal-side {
+  position: sticky;
+  top: 68px;
+  max-height: calc(100vh - 84px);
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .office-task-section-activity h4 {
@@ -952,6 +1002,13 @@ textarea.office-input {
   border-radius: 4px;
   padding: 10px;
   background: #f9fbff;
+}
+
+.office-task-modal.is-edit-mode .office-task-section {
+  border-radius: 8px;
+  border-color: #d8e0ea;
+  background: #ffffff;
+  box-shadow: 0 2px 0 rgba(15, 23, 42, 0.04);
 }
 
 .office-task-section h4 {
@@ -1178,21 +1235,20 @@ textarea.office-input {
 }
 
 .office-task-modal.is-edit-mode .office-task-modal-layout {
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 338px;
+  gap: 16px;
   align-items: start;
 }
 
-.office-task-modal.is-edit-mode .office-task-modal-side {
-  position: sticky;
-  top: 0;
-  max-height: calc(100vh - 132px);
-  overflow: auto;
-  padding-right: 2px;
+.office-task-modal.is-edit-mode .office-task-comments-list {
+  max-height: 390px;
 }
 
-.office-task-modal.is-edit-mode .office-task-comments-list {
-  max-height: 340px;
+.office-task-modal.is-edit-mode .office-task-form-actions {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(241, 242, 244, 0) 0%, rgba(241, 242, 244, 0.96) 36%, rgba(241, 242, 244, 1) 100%);
+  padding-top: 8px;
 }
 
 .office-task-modal-close {
@@ -1287,11 +1343,17 @@ textarea.office-input {
 
   .office-kanban-column {
     flex: 0 0 280px;
+    height: auto;
   }
 
   .office-kanban-list {
     max-height: none;
     min-height: 120px;
+  }
+
+  .office-kanban-add-wrap {
+    position: static;
+    background: transparent;
   }
 
   .office-task-card-open-hint {
