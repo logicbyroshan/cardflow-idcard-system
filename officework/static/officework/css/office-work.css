@@ -906,7 +906,8 @@ textarea.office-input {
 .office-task-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.42);
+  background: rgba(8, 11, 18, 0.78);
+  backdrop-filter: blur(2px);
   z-index: 1190;
 }
 
@@ -927,19 +928,18 @@ textarea.office-input {
 }
 
 .office-task-modal.is-edit-mode {
-  top: 0;
-  right: 0;
-  left: auto;
-  transform: none;
-  width: min(1120px, 100vw);
-  max-height: 100vh;
-  height: 100vh;
-  border-radius: 0;
-  border-right: 0;
-  border-left: 1px solid #d0d9e6;
+  top: 50%;
+  right: auto;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1120px, calc(100vw - 28px));
+  max-height: calc(100vh - 20px);
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid #3a4251;
   padding: 0;
-  background: #f1f2f4;
-  box-shadow: -24px 0 55px rgba(15, 23, 42, 0.28);
+  background: #1e222a;
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.58);
 }
 
 .office-task-modal-header {
@@ -954,17 +954,33 @@ textarea.office-input {
 
 .office-task-modal.is-edit-mode .office-task-modal-header {
   margin: 0;
-  padding: 12px 16px;
-  border-bottom: 1px solid #d6dde8;
-  background: #ffffff;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid #2f3644;
+  background: linear-gradient(180deg, rgba(31, 36, 46, 0.96) 0%, rgba(31, 36, 46, 0.86) 100%);
   position: sticky;
   top: 0;
   z-index: 3;
 }
 
 .office-task-modal.is-edit-mode .office-task-form {
-  padding: 12px 16px 14px;
+  padding: 12px 16px 16px;
   gap: 12px;
+}
+
+.office-task-modal.is-edit-mode .office-task-modal-header h3 {
+  color: #f8fafc;
+  font-size: var(--ui-font-size-lg, 15px);
+  letter-spacing: 0.01em;
+}
+
+.office-task-modal.is-edit-mode .office-task-modal-close {
+  border-color: #3f4757;
+  background: rgba(15, 23, 42, 0.55);
+  color: #e5e7eb;
+}
+
+.office-task-modal.is-edit-mode .office-task-modal-close:hover {
+  background: rgba(15, 23, 42, 0.8);
 }
 
 .office-task-modal-header h3 {
@@ -981,7 +997,7 @@ textarea.office-input {
 
 .office-task-modal.is-edit-mode .office-task-quick-actions {
   margin: 0;
-  padding: 0 0 4px;
+  padding: 0 0 6px;
 }
 
 .office-task-quick-btn {
@@ -1003,6 +1019,20 @@ textarea.office-input {
   border-color: #a8c4e5;
 }
 
+.office-task-modal.is-edit-mode .office-task-quick-btn {
+  border-radius: 6px;
+  border-color: #3d4657;
+  background: #2b3241;
+  color: #dbe7ff;
+  min-height: 30px;
+  padding: 6px 11px;
+}
+
+.office-task-modal.is-edit-mode .office-task-quick-btn:hover {
+  background: #364156;
+  border-color: #55637d;
+}
+
 .office-task-modal-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1010,7 +1040,7 @@ textarea.office-input {
 }
 
 .office-task-modal.is-edit-mode .office-task-modal-layout {
-  grid-template-columns: minmax(0, 1fr) 338px;
+  grid-template-columns: minmax(0, 1fr) 330px;
   gap: 16px;
   align-items: start;
 }
@@ -1024,18 +1054,66 @@ textarea.office-input {
 }
 
 .office-task-modal.is-edit-mode .office-task-modal-main {
-  border: 1px solid #d6dde8;
-  border-radius: 8px;
-  background: #ffffff;
+  border: 1px solid #353d4d;
+  border-radius: 10px;
+  background: #242a35;
   padding: 12px;
 }
 
 .office-task-modal.is-edit-mode .office-task-modal-side {
   position: sticky;
-  top: 68px;
-  max-height: calc(100vh - 84px);
+  top: 64px;
+  max-height: calc(100vh - 94px);
   overflow: auto;
   padding-right: 2px;
+}
+
+.office-task-modal.is-edit-mode .office-task-modal-main > div:first-child label {
+  display: none;
+}
+
+.office-task-modal.is-edit-mode .office-task-form #officeTaskTitle,
+.office-task-modal.is-edit-mode .office-task-form #officeTaskTitle.is-locked {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0 0 6px;
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 700;
+  line-height: 1.18;
+  color: #f8fafc;
+}
+
+.office-task-modal.is-edit-mode .office-task-form #officeTaskTitle::placeholder {
+  color: #cbd5e1;
+}
+
+.office-task-modal.is-edit-mode .office-task-form label {
+  color: #9fb4d6;
+  font-size: var(--ui-font-size-sm, 12px);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.office-task-modal.is-edit-mode .office-input,
+.office-task-modal.is-edit-mode .form-select {
+  border-color: #404a5e;
+  background: #1f2530;
+  color: #e2e8f0;
+}
+
+.office-task-modal.is-edit-mode .office-input::placeholder,
+.office-task-modal.is-edit-mode .form-select::placeholder {
+  color: #9aa7ba;
+}
+
+.office-task-modal.is-edit-mode .office-input:focus,
+.office-task-modal.is-edit-mode .form-select:focus {
+  border-color: #7aa2db;
+  box-shadow: 0 0 0 1px rgba(122, 162, 219, 0.45);
 }
 
 .office-task-section-activity h4 {
@@ -1064,9 +1142,9 @@ textarea.office-input {
 
 .office-task-modal.is-edit-mode .office-task-section {
   border-radius: 8px;
-  border-color: #d8e0ea;
-  background: #ffffff;
-  box-shadow: 0 2px 0 rgba(15, 23, 42, 0.04);
+  border-color: #3b4558;
+  background: #262d39;
+  box-shadow: none;
 }
 
 .office-task-section h4 {
@@ -1079,6 +1157,37 @@ textarea.office-input {
   color: var(--color-slate-800);
 }
 
+.office-task-modal.is-edit-mode .office-task-section h4 {
+  color: #e5edf8;
+}
+
+.office-task-activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.office-task-activity-header h4 {
+  margin: 0;
+}
+
+.office-task-activity-details-btn {
+  border: 1px solid #465069;
+  border-radius: 6px;
+  background: #313949;
+  color: #dce7ff;
+  font-size: var(--ui-font-size-xs, 11px);
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.office-task-activity-details-btn:hover {
+  background: #3b455a;
+}
+
 .office-task-readonly {
   min-height: 34px;
   border: 1px solid var(--color-slate-200);
@@ -1087,6 +1196,12 @@ textarea.office-input {
   padding: 7px 10px;
   color: var(--color-slate-700);
   font-size: var(--ui-font-size-sm, 12px);
+}
+
+.office-task-modal.is-edit-mode .office-task-readonly {
+  border-color: #42506a;
+  background: #1f2632;
+  color: #dbe7f8;
 }
 
 .office-task-followers-strip {
@@ -1100,6 +1215,11 @@ textarea.office-input {
   gap: 6px;
 }
 
+.office-task-modal.is-edit-mode .office-task-followers-strip {
+  border-color: #42506a;
+  background: #1f2632;
+}
+
 .office-task-follower-chip {
   border-radius: 999px;
   background: #eaf1fb;
@@ -1109,10 +1229,19 @@ textarea.office-input {
   padding: 2px 8px;
 }
 
+.office-task-modal.is-edit-mode .office-task-follower-chip {
+  background: #33435e;
+  color: #e4ecfb;
+}
+
 .office-field-help {
   margin-top: 4px;
   font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-500);
+}
+
+.office-task-modal.is-edit-mode .office-field-help {
+  color: #9fb0c8;
 }
 
 .office-task-checklist-list {
@@ -1132,9 +1261,18 @@ textarea.office-input {
   padding: 7px 8px;
 }
 
+.office-task-modal.is-edit-mode .office-task-checklist-row {
+  border-color: #43506a;
+  background: #1f2531;
+}
+
 .office-task-checklist-title {
   color: var(--color-slate-800);
   font-size: var(--ui-font-size-sm, 12px);
+}
+
+.office-task-modal.is-edit-mode .office-task-checklist-title {
+  color: #e6edf8;
 }
 
 .office-task-checklist-title.is-done {
@@ -1147,6 +1285,10 @@ textarea.office-input {
   color: var(--color-slate-500);
 }
 
+.office-task-modal.is-edit-mode .office-task-checklist-assignee {
+  color: #9db0cc;
+}
+
 .office-task-checklist-empty,
 .office-task-comments-empty {
   border: 1px dashed var(--color-slate-300);
@@ -1155,6 +1297,13 @@ textarea.office-input {
   color: var(--color-slate-500);
   font-size: var(--ui-font-size-sm, 12px);
   padding: 8px;
+}
+
+.office-task-modal.is-edit-mode .office-task-checklist-empty,
+.office-task-modal.is-edit-mode .office-task-comments-empty {
+  border-color: #49556d;
+  background: #1e2531;
+  color: #a9bad4;
 }
 
 .office-task-checklist-add-row {
@@ -1171,9 +1320,18 @@ textarea.office-input {
   background: #fff8e7;
 }
 
+.office-task-modal.is-edit-mode .office-task-approval-box {
+  border-color: #8a6b2f;
+  background: #3e3420;
+}
+
 .office-task-approval-text {
   color: #7a5512;
   font-size: var(--ui-font-size-sm, 12px);
+}
+
+.office-task-modal.is-edit-mode .office-task-approval-text {
+  color: #f8d38f;
 }
 
 .office-task-approval-actions {
@@ -1192,6 +1350,10 @@ textarea.office-input {
   padding-right: 2px;
 }
 
+.office-task-modal.is-edit-mode .office-task-comments-list {
+  max-height: 440px;
+}
+
 .office-task-comment-row {
   border: 1px solid var(--color-slate-200);
   border-radius: 4px;
@@ -1199,9 +1361,20 @@ textarea.office-input {
   padding: 8px;
 }
 
+.office-task-modal.is-edit-mode .office-task-comment-row {
+  border-color: #3f4a61;
+  border-radius: 8px;
+  background: #303949;
+}
+
 .office-task-comment-row.is-self {
   border-color: rgba(var(--primary-rgb), 0.3);
   background: rgba(var(--primary-rgb), 0.05);
+}
+
+.office-task-modal.is-edit-mode .office-task-comment-row.is-self {
+  border-color: #4f6284;
+  background: #2a3850;
 }
 
 .office-task-comment-head {
@@ -1217,9 +1390,17 @@ textarea.office-input {
   color: var(--color-slate-800);
 }
 
+.office-task-modal.is-edit-mode .office-task-comment-author {
+  color: #f4f8ff;
+}
+
 .office-task-comment-time {
   font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-500);
+}
+
+.office-task-modal.is-edit-mode .office-task-comment-time {
+  color: #9fb0c8;
 }
 
 .office-task-comment-body {
@@ -1230,6 +1411,10 @@ textarea.office-input {
   font-size: var(--ui-font-size-sm, 12px);
 }
 
+.office-task-modal.is-edit-mode .office-task-comment-body {
+  color: #dfe8f6;
+}
+
 .office-task-comment-composer {
   margin-top: 8px;
   position: relative;
@@ -1238,6 +1423,12 @@ textarea.office-input {
 .office-task-comment-composer textarea {
   min-height: 70px;
   padding: 10px 94px 10px 42px;
+}
+
+.office-task-modal.is-edit-mode .office-task-comment-composer textarea {
+  border-color: #465066;
+  background: #1f2632;
+  color: #e2e8f0;
 }
 
 .office-task-comment-composer-btn {
@@ -1264,10 +1455,27 @@ textarea.office-input {
   color: var(--color-slate-600);
 }
 
+.office-task-modal.is-edit-mode .office-task-comment-composer-btn-attach {
+  background: #313a4a;
+  color: #d6e3fb;
+}
+
 .office-task-comment-composer-btn-send {
   right: 10px;
   background: var(--color-primary);
   color: var(--color-white);
+}
+
+.office-task-modal.is-edit-mode .office-task-comment-composer-btn-send {
+  background: #116149;
+}
+
+.office-task-modal.is-edit-mode .office-task-form-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: 2px;
+  padding: 10px 0 2px;
+  background: linear-gradient(180deg, rgba(30, 34, 42, 0) 0%, rgba(30, 34, 42, 0.97) 38%, rgba(30, 34, 42, 1) 100%);
 }
 
 .office-task-comment-file-input {
@@ -1290,23 +1498,6 @@ textarea.office-input {
   padding: 6px 8px;
   font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-700);
-}
-
-.office-task-modal.is-edit-mode .office-task-modal-layout {
-  grid-template-columns: minmax(0, 1fr) 338px;
-  gap: 16px;
-  align-items: start;
-}
-
-.office-task-modal.is-edit-mode .office-task-comments-list {
-  max-height: 390px;
-}
-
-.office-task-modal.is-edit-mode .office-task-form-actions {
-  position: sticky;
-  bottom: 0;
-  background: linear-gradient(180deg, rgba(241, 242, 244, 0) 0%, rgba(241, 242, 244, 0.96) 36%, rgba(241, 242, 244, 1) 100%);
-  padding-top: 8px;
 }
 
 .office-task-modal-close {
@@ -1512,6 +1703,7 @@ textarea.office-input {
     width: 100vw;
     max-height: 100vh;
     height: 100vh;
-    padding: 10px;
+    padding: 0;
+    border-radius: 0;
   }
 }

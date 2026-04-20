@@ -179,9 +179,9 @@
           <form id="officeTaskForm" class="office-task-form">
             <input id="officeTaskEditId" type="hidden" value="">
             <div class="office-task-quick-actions" role="toolbar" aria-label="Task quick actions">
-              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskDescription"><i class="fa-solid fa-align-left"></i> Description</button>
-              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskPriority"><i class="fa-solid fa-flag"></i> Priority</button>
-              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskDueDate"><i class="fa-regular fa-calendar"></i> Date</button>
+              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskDescription"><i class="fa-solid fa-plus"></i> Add</button>
+              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskPriority"><i class="fa-solid fa-tag"></i> Labels</button>
+              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskDueDate"><i class="fa-regular fa-calendar"></i> Dates</button>
               <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskChecklistInput"><i class="fa-solid fa-list-check"></i> Checklist</button>
               <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskCollaborators"><i class="fa-solid fa-users"></i> Members</button>
             </div>
@@ -265,7 +265,10 @@
 
               <aside class="office-task-modal-side">
                 <section class="office-task-section office-task-section-activity">
-                  <h4><i class="fa-regular fa-comments"></i> Comments and Activity</h4>
+                  <div class="office-task-activity-header">
+                    <h4><i class="fa-regular fa-comments"></i> Comments and activity</h4>
+                    <button type="button" class="office-task-activity-details-btn">Show details</button>
+                  </div>
                   <div id="officeTaskCommentsList" class="office-task-comments-list"></div>
                   <input id="officeTaskCommentFileInput" class="office-task-comment-file-input" type="file">
                   <div id="officeTaskCommentAttachmentPreview" class="office-task-comment-attachment-preview" hidden>

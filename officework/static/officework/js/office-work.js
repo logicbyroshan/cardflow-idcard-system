@@ -1694,7 +1694,7 @@
       ui.taskCreatedBy.textContent = String(item.created_by_name || '-');
     }
     if (ui.taskFormHeading) {
-      ui.taskFormHeading.innerHTML = '<i class="fa-solid fa-clipboard-list"></i> Card Details #' + escapeHtml(item.id) + '';
+      ui.taskFormHeading.innerHTML = '<i class="fa-solid fa-table-cells-large"></i> Task Card';
     }
     if (ui.taskSubmitBtn) {
       ui.taskSubmitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Changes';
