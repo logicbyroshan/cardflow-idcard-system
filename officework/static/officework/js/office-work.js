@@ -47,6 +47,7 @@
     chatLastId: 0,
     chatCount: 0,
     chatMessageIds: {},
+    chatNotifiedMessageIds: {},
     pendingAttachment: null,
     subscribedGroupTopic: '',
     realtimeConnected: false,
@@ -67,6 +68,7 @@
     lastChatSyncAtMs: 0,
     chatPollConnectedMs: 12000,
     chatPollDisconnectedMs: 4000,
+    desktopPermissionBootstrapDone: false,
   };
 
   var ui = {
@@ -208,6 +210,184 @@
       .replace(/'/g, '&#39;');
   }
 
+  function supportsDesktopNotifications() {
+    return typeof window !== 'undefined' && typeof window.Notification === 'function';
+  }
+
+  function parseRouteIntent() {
+    var params = new URLSearchParams(window.location.search || '');
+    var tab = String(params.get('ow_tab') || '').trim();
+    var groupId = Number(params.get('ow_group') || 0);
+    return {
+      tab: tab || '',
+      groupId: Number.isFinite(groupId) && groupId > 0 ? groupId : 0,
+    };
+  }
+
+  function buildOfficeWorkUrl(tabName, groupId) {
+    var url = new URL(window.location.href);
+    var tab = String(tabName || '').trim();
+    var gid = Number(groupId || 0);
+    if (tab) {
+      url.searchParams.set('ow_tab', tab);
+    } else {
+      url.searchParams.delete('ow_tab');
+    }
+    if (gid > 0) {
+      url.searchParams.set('ow_group', String(gid));
+    } else {
+      url.searchParams.delete('ow_group');
+    }
+    return url;
+  }
+
+  function persistRouteState(tabName, groupId) {
+    if (!window.history || typeof window.history.replaceState !== 'function') {
+      return;
+    }
+    var url = buildOfficeWorkUrl(tabName, groupId);
+    var next = url.pathname + url.search + url.hash;
+    var current = window.location.pathname + window.location.search + window.location.hash;
+    if (next !== current) {
+      window.history.replaceState({}, '', next);
+    }
+  }
+
+  function maybeRequestDesktopNotificationPermission() {
+    if (!supportsDesktopNotifications()) {
+      return;
+    }
+    if (window.Notification.permission !== 'default') {
+      return;
+    }
+    try {
+      var maybePromise = window.Notification.requestPermission();
+      if (maybePromise && typeof maybePromise.catch === 'function') {
+        maybePromise.catch(function () {
+          return;
+        });
+      }
+    } catch (error) {
+      return;
+    }
+  }
+
+  function bootstrapDesktopNotificationPermission() {
+    if (state.desktopPermissionBootstrapDone) {
+      return;
+    }
+    state.desktopPermissionBootstrapDone = true;
+    if (!supportsDesktopNotifications()) {
+      return;
+    }
+
+    var onUserAction = function () {
+      maybeRequestDesktopNotificationPermission();
+    };
+    window.addEventListener('click', onUserAction, { once: true, capture: true });
+    window.addEventListener('keydown', onUserAction, { once: true, capture: true });
+  }
+
+  function isWindowFocused() {
+    var visible = document.visibilityState === 'visible';
+    var focused = typeof document.hasFocus === 'function' ? document.hasFocus() : true;
+    return visible && focused;
+  }
+
+  function chatNotificationBody(item) {
+    var text = String(item && item.message || '').trim();
+    if (text) {
+      return text.length > 180 ? text.slice(0, 177) + '...' : text;
+    }
+    if (item && item.attachment) {
+      return 'Attachment: ' + String(item.attachment.name || 'File');
+    }
+    return 'New message';
+  }
+
+  function openChatFromNotification(groupId) {
+    var targetGroupId = Number(groupId || 0);
+    setActiveTab('chat');
+    if (targetGroupId > 0) {
+      if (targetGroupId === Number(state.activeGroupId || 0)) {
+        persistRouteState('chat', targetGroupId);
+        if (!state.chatLoaded) {
+          resetChatState();
+          loadChat({ forceInitial: true });
+        }
+      } else {
+        switchActiveGroup(targetGroupId);
+      }
+      return;
+    }
+    persistRouteState('chat', Number(state.activeGroupId || 0));
+  }
+
+  function shouldShowDesktopChatNotification(item) {
+    var incoming = item || {};
+    var senderId = Number(incoming.sender_id || 0);
+    if (senderId > 0 && senderId === Number(cfg.currentUserId || 0)) {
+      return false;
+    }
+
+    var incomingGroupId = Number(incoming.group_id || 0);
+    var isSameOpenThread = state.activeTab === 'chat' && incomingGroupId > 0 && incomingGroupId === Number(state.activeGroupId || 0);
+    if (isSameOpenThread && isWindowFocused()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function notifyIncomingChatMessage(item) {
+    var message = item || {};
+    var messageId = Number(message.id || 0);
+    if (messageId > 0 && state.chatNotifiedMessageIds[messageId]) {
+      return;
+    }
+    if (!shouldShowDesktopChatNotification(message)) {
+      return;
+    }
+    if (!supportsDesktopNotifications() || window.Notification.permission !== 'granted') {
+      return;
+    }
+
+    var groupId = Number(message.group_id || 0);
+    var title = String(message.sender_name || 'New message');
+    var body = chatNotificationBody(message);
+    var targetUrl = buildOfficeWorkUrl('chat', groupId);
+
+    try {
+      var notification = new window.Notification(title, {
+        body: body,
+        tag: 'officework-chat-' + String(groupId || 'general'),
+        renotify: true,
+        requireInteraction: true,
+        data: {
+          group_id: groupId,
+          href: targetUrl.pathname + targetUrl.search + targetUrl.hash,
+        },
+      });
+
+      notification.onclick = function () {
+        try {
+          window.focus();
+        } catch (error) {
+          // Continue to route even if focus is blocked by the browser.
+        }
+        var targetGroupId = Number(notification.data && notification.data.group_id || 0);
+        openChatFromNotification(targetGroupId);
+        notification.close();
+      };
+
+      if (messageId > 0) {
+        state.chatNotifiedMessageIds[messageId] = true;
+      }
+    } catch (error) {
+      return;
+    }
+  }
+
   function setActiveTab(tabName) {
     state.activeTab = tabName;
     ui.tabButtons.forEach(function (btn) {
@@ -220,6 +400,7 @@
       panel.classList.toggle('is-active', isActive);
       panel.hidden = !isActive;
     });
+    persistRouteState(tabName, Number(state.activeGroupId || 0));
   }
 
   function resetChatState() {
@@ -429,6 +610,17 @@
     }
   }
 
+  function sortGroupsByRecentActivity() {
+    state.groups.sort(function (left, right) {
+      var leftTs = new Date(groupUpdatedAt(left) || 0).getTime();
+      var rightTs = new Date(groupUpdatedAt(right) || 0).getTime();
+      if (rightTs !== leftTs) {
+        return rightTs - leftTs;
+      }
+      return Number(right.id || 0) - Number(left.id || 0);
+    });
+  }
+
   function updateActiveGroupHeader() {
     var group = activeGroupItem();
     var member = activeMemberItem();
@@ -534,6 +726,7 @@
     state.previousGroupId = Number(state.activeGroupId || 0);
     state.activeGroupId = parsedId;
     state.activeChatMemberId = inferMemberIdForGroup(activeGroupItem());
+    persistRouteState('chat', parsedId);
     syncGroupSubscription();
     renderGroupList();
     updateActiveGroupHeader();
@@ -596,6 +789,7 @@
         targetGroup = await ensureGroupForMember(parsedMemberId);
       }
       if (!targetGroup || !targetGroup.id) {
+        persistRouteState('chat', 0);
         resetChatState();
         renderChatEmptyState();
         return;
@@ -615,6 +809,7 @@
 
       state.previousGroupId = Number(state.activeGroupId || 0);
       state.activeGroupId = targetGroupId;
+      persistRouteState('chat', targetGroupId);
       syncGroupSubscription();
       renderGroupList();
       updateActiveGroupHeader();
@@ -637,11 +832,13 @@
     return false;
   }
 
-  function appendChatMessage(item) {
+  function appendChatMessage(item, options) {
     var itemId = Number(item && item.id || 0);
     if (rememberChatId(itemId)) {
       return;
     }
+
+    var shouldNotifyIncoming = !!(options && options.notifyIncoming);
 
     var isSelf = Number(item.sender_id || 0) === Number(cfg.currentUserId || 0);
     var row = document.createElement('article');
@@ -669,19 +866,16 @@
     ui.chatList.appendChild(row);
     state.chatCount += 1;
     touchGroupWithMessage(item && item.group_id, item || {});
-    state.groups.sort(function (left, right) {
-      var leftTs = new Date(groupUpdatedAt(left) || 0).getTime();
-      var rightTs = new Date(groupUpdatedAt(right) || 0).getTime();
-      if (rightTs !== leftTs) {
-        return rightTs - leftTs;
-      }
-      return Number(right.id || 0) - Number(left.id || 0);
-    });
+    sortGroupsByRecentActivity();
     renderGroupList();
     if (itemId > state.chatLastId) {
       state.chatLastId = itemId;
     }
     updateChatCountPill();
+
+    if (shouldNotifyIncoming) {
+      notifyIncomingChatMessage(item || {});
+    }
   }
 
   function clearChatEmptyState() {
@@ -743,7 +937,7 @@
 
       clearChatEmptyState();
       messages.forEach(function (item) {
-        appendChatMessage(item);
+        appendChatMessage(item, { notifyIncoming: !forceInitial });
         var itemId = Number(item.id || 0);
         if (itemId > state.chatLastId) {
           state.chatLastId = itemId;
@@ -811,14 +1005,7 @@
       }
 
       state.groups = Array.isArray(data.groups) ? data.groups : [];
-      state.groups.sort(function (left, right) {
-        var leftTs = new Date(groupUpdatedAt(left) || 0).getTime();
-        var rightTs = new Date(groupUpdatedAt(right) || 0).getTime();
-        if (rightTs !== leftTs) {
-          return rightTs - leftTs;
-        }
-        return Number(right.id || 0) - Number(left.id || 0);
-      });
+      sortGroupsByRecentActivity();
       state.availableMembers = Array.isArray(data.available_members) ? data.available_members : [];
       state.canManageGroups = !!data.can_manage_groups;
 
@@ -1677,7 +1864,7 @@
 
     if (packet.type === 'realtime.ack' && packet.event === 'officework.chat.send' && packet.item) {
       clearChatEmptyState();
-      appendChatMessage(packet.item);
+      appendChatMessage(packet.item, { notifyIncoming: false });
       state.lastChatSyncAtMs = Date.now();
       if (state.activeTab === 'chat') {
         ui.chatList.scrollTop = ui.chatList.scrollHeight;
@@ -1701,11 +1888,17 @@
       if (!item) {
         return;
       }
-      if (Number(item.group_id || 0) > 0 && Number(state.activeGroupId || 0) > 0 && Number(item.group_id) !== Number(state.activeGroupId)) {
+      var incomingGroupId = Number(item.group_id || 0);
+      if (incomingGroupId > 0 && incomingGroupId !== Number(state.activeGroupId || 0)) {
+        touchGroupWithMessage(incomingGroupId, item || {});
+        sortGroupsByRecentActivity();
+        renderGroupList();
+        notifyIncomingChatMessage(item || {});
+        state.lastChatSyncAtMs = Date.now();
         return;
       }
       clearChatEmptyState();
-      appendChatMessage(item);
+      appendChatMessage(item, { notifyIncoming: true });
       state.lastChatSyncAtMs = Date.now();
       if (state.activeTab === 'chat') {
         ui.chatList.scrollTop = ui.chatList.scrollHeight;
@@ -1813,7 +2006,7 @@
     }
 
     clearChatEmptyState();
-    appendChatMessage(data.item);
+    appendChatMessage(data.item, { notifyIncoming: false });
     ui.chatList.scrollTop = ui.chatList.scrollHeight;
     return true;
   }
@@ -2626,6 +2819,9 @@
   }
 
   async function init() {
+    var routeIntent = parseRouteIntent();
+
+    bootstrapDesktopNotificationPermission();
     bindTabs();
     bindGroupTools();
     bindAttachmentTools();
@@ -2633,11 +2829,26 @@
     bindTaskForm();
     bindShareForm();
     resetTaskEditor();
-    setActiveTab('chat');
+    setActiveTab(routeIntent.tab || 'chat');
     updateChatCountPill();
     initRealtime();
 
     await loadGroups({ keepCurrent: true });
+
+    if (Number(routeIntent.groupId || 0) > 0) {
+      var targetGroupId = Number(routeIntent.groupId || 0);
+      var hasTargetGroup = state.groups.some(function (group) {
+        return Number(group.id || 0) === targetGroupId;
+      });
+      if (hasTargetGroup) {
+        state.activeGroupId = targetGroupId;
+        state.activeChatMemberId = inferMemberIdForGroup(activeGroupItem());
+        persistRouteState('chat', targetGroupId);
+        syncGroupSubscription();
+        renderGroupOptions();
+      }
+    }
+
     resetChatState();
 
     await Promise.all([
