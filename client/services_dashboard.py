@@ -216,7 +216,6 @@ class ClientDashboardService(BaseService):
             if table_ids:
                 if PermissionService.is_client_staff(user):
                     staff = getattr(user, 'staff_profile', None)
-                    unrestricted_table_ids = []
                     restricted_tables = []
 
                     if staff is not None:
@@ -224,14 +223,6 @@ class ClientDashboardService(BaseService):
                             allowed_classes, allowed_sections, allowed_branches = ClientCardService._table_scope_filters(staff, table)
                             if allowed_classes or allowed_sections or allowed_branches:
                                 restricted_tables.append(table)
-                            else:
-                                unrestricted_table_ids.append(table.id)
-
-                    if unrestricted_table_ids:
-                        unrestricted_rows = IDCard.objects.filter(
-                            table_id__in=unrestricted_table_ids
-                        ).values('status').annotate(count=Count('id'))
-                        cls._accumulate_status_rows(counts, unrestricted_rows)
 
                     for table in restricted_tables:
                         scoped_qs = ClientCardService._apply_client_staff_row_scope(
@@ -326,7 +317,6 @@ class ClientDashboardService(BaseService):
 
             if PermissionService.is_client_staff(user):
                 staff = getattr(user, 'staff_profile', None)
-                unrestricted_table_ids = []
                 restricted_tables = []
 
                 if staff is not None:
@@ -334,24 +324,6 @@ class ClientDashboardService(BaseService):
                         allowed_classes, allowed_sections, allowed_branches = ClientCardService._table_scope_filters(staff, table)
                         if allowed_classes or allowed_sections or allowed_branches:
                             restricted_tables.append(table)
-                        else:
-                            unrestricted_table_ids.append(table.id)
-
-                if unrestricted_table_ids:
-                    base_table_counts = IDCard.objects.filter(
-                        table_id__in=unrestricted_table_ids
-                    ).values('table_id').annotate(count=Count('id'))
-                    for row in base_table_counts:
-                        table_card_counts[row['table_id']] = int(row.get('count', 0) or 0)
-
-                    base_group_counts = IDCard.objects.filter(
-                        table_id__in=unrestricted_table_ids
-                    ).values('table__group_id', 'status').annotate(count=Count('id'))
-                    for row in base_group_counts:
-                        gid = row['table__group_id']
-                        status = row.get('status')
-                        if status:
-                            group_counts_map[gid][status] = group_counts_map[gid].get(status, 0) + int(row.get('count', 0) or 0)
 
                 for table in restricted_tables:
                     table_cache_key = cls._group_staff_table_counts_cache_key(

@@ -678,6 +678,97 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(group_payload['tables'][0]['id'], table_a.id)
         self.assertEqual(group_payload['tables'][0]['card_count'], 1)
 
+    def test_dashboard_counts_zero_for_client_staff_without_class_section_scope(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='dash-owner-noscope@test.com', email='dash-owner-noscope@test.com',
+            password='pass1234', role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash No Scope Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Group')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Table',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+            ],
+        )
+
+        IDCard.objects.create(table=table, status='pending', field_data={'CLASS': '10', 'SECTION': 'A'})
+        IDCard.objects.create(table=table, status='verified', field_data={'CLASS': '10', 'SECTION': 'A'})
+
+        staff_user = User.objects.create_user(
+            username='dash-noscope-staff@test.com', email='dash-noscope-staff@test.com',
+            password='pass1234', role='client_staff',
+        )
+        staff = Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=client_obj,
+            assigned_table_ids=[table.id],
+            allowed_classes=[],
+            allowed_sections=[],
+            allowed_branches=[],
+        )
+        self.assertIsNotNone(staff.id)
+
+        result = ClientDashboardService.get_dashboard_data(staff_user)
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['counts']['pending'], 0)
+        self.assertEqual(result.data['counts']['verified'], 0)
+        self.assertEqual(result.data['total_cards'], 0)
+
+    def test_groups_counts_zero_for_client_staff_without_class_section_scope(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='dash-owner-noscope-g@test.com', email='dash-owner-noscope-g@test.com',
+            password='pass1234', role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash No Scope Group Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Group')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Table',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+            ],
+        )
+
+        IDCard.objects.create(table=table, status='pending', field_data={'CLASS': '10', 'SECTION': 'A'})
+
+        staff_user = User.objects.create_user(
+            username='dash-noscope-staff-g@test.com', email='dash-noscope-staff-g@test.com',
+            password='pass1234', role='client_staff',
+        )
+        staff = Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=client_obj,
+            assigned_table_ids=[table.id],
+            allowed_classes=[],
+            allowed_sections=[],
+            allowed_branches=[],
+        )
+        self.assertIsNotNone(staff.id)
+
+        result = ClientDashboardService.get_groups_with_counts(staff_user)
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.data['groups']), 1)
+        group_payload = result.data['groups'][0]
+        self.assertEqual(group_payload['card_count'], 0)
+        self.assertEqual(group_payload['pending'], 0)
+        self.assertEqual(group_payload['tables'][0]['card_count'], 0)
+
     def test_reprint_history_includes_requested_for_inactive_table(self):
         from client.services import ClientDashboardService
         from client.models import Client
