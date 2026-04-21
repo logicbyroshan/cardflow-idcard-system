@@ -52,9 +52,19 @@ function _classOptionValue(opt) {
 
 function _classOptionLabel(opt) {
     if (opt && typeof opt === 'object') {
-        return String(opt.display || opt.value || '').trim();
+        return _formatFilterDisplayLabel(opt.display || opt.value || '');
     }
-    return String(opt || '').trim();
+    return _formatFilterDisplayLabel(opt || '');
+}
+
+function _formatFilterDisplayLabel(value) {
+    var raw = String(value == null ? '' : value).trim();
+    if (!raw) return '';
+    if (/[A-Z]/.test(raw)) return raw;
+    return raw.replace(/[A-Za-z]+/g, function(token) {
+        if (token.length <= 3) return token.toUpperCase();
+        return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+    });
 }
 
 function _renderDependentFilterOptions() {
@@ -115,7 +125,8 @@ function _renderDependentFilterOptions() {
         sectionOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Sections</div>' +
             filteredSectionOptions.map(function(v) {
                 var s = String(v);
-                return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>';
+                var label = _formatFilterDisplayLabel(s);
+                return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(label) + '</div>';
             }).join('');
     }
 
