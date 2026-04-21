@@ -149,11 +149,12 @@ and the JS block at the bottom which wires up the logic.
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <span style="font-size: var(--ui-font-size-sm, 12px);color:var(--text-primary,var(--color-slate-800));font-weight:600;">Folder Upload</span>
           <button type="button" id="cxFolderBrowse" class="center-modal-btn center-modal-btn-confirm" style="padding:6px 10px;font-size: var(--ui-font-size-xs, 11px);">
-            <i class="fa-solid fa-folder-open" style="margin-right:4px;"></i>Select Folder
+            <i class="fa-solid fa-folder-open" style="margin-right:4px;"></i>Select Local Folder
           </button>
         </div>
         <input type="file" id="cxFolderInput" multiple webkitdirectory directory style="display:none;">
         <div id="cxFolderSummary" style="margin-top:6px;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-500,var(--color-gray-500));">No folder selected</div>
+        <div style="margin-top:4px;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-400,var(--color-gray-400));">Tip: For very large folders, Server Folder Path is more reliable.</div>
       </div>
 
       <div class="form-group" style="margin-top:10px;">

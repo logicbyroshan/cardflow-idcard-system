@@ -41,6 +41,8 @@ function initCreateWithXlsx(opts) {
   var RELATION_SLOT_RE = /^(?:rel(?:ation)?)\s*(?:1|one|2|two)$/i;
   var RELATION_PHOTO_RE = /^(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$/i;
   var IMAGE_EXT_RE = /\.(?:jpe?g|png|gif|bmp|webp|heic|heif)$/i;
+  var FOLDER_UPLOAD_CONFIRM_THRESHOLD = 1000;
+  var MAX_FOLDER_UPLOAD_FILES = 5000;
 
   var ALL_TYPES = [
     { value: 'text',         label: 'Text' },
@@ -206,6 +208,7 @@ function initCreateWithXlsx(opts) {
   var processingTimer = null;
   var isUploading = false;
   var cancelRequested = false;
+  var confirmedRiskyFolderPath = '';
 
   //  Helpers 
   function showStep(n) {
@@ -466,8 +469,82 @@ function initCreateWithXlsx(opts) {
     });
   }
 
+  function isRootLikePath(folderPath) {
+    var normalized = String(folderPath || '').trim().replace(/\\/g, '/');
+    if (!normalized) return false;
+
+    if (normalized === '/') return true;
+    if (/^[A-Za-z]:\/?$/.test(normalized)) return true;
+    if (/^\/mnt\/?$/i.test(normalized)) return true;
+    if (/^\/media\/?$/i.test(normalized)) return true;
+    if (/^\/Volumes\/?$/i.test(normalized)) return true;
+    return false;
+  }
+
+  function deriveUploadErrorMessage(xhr, parsedResult) {
+    if (parsedResult && typeof parsedResult.message === 'string' && parsedResult.message.trim()) {
+      return parsedResult.message.trim();
+    }
+
+    var responseText = xhr && typeof xhr.responseText === 'string' ? xhr.responseText : '';
+
+    if (xhr && xhr.status === 413) {
+      return 'Upload is too large. Use ZIP files or Server Folder Path.';
+    }
+    if (xhr && xhr.status === 429) {
+      return 'Another upload is already running. Please wait for it to finish.';
+    }
+    if (xhr && xhr.status === 400 && /toomanyfilessent|too many files/i.test(responseText)) {
+      return 'Too many files were selected. Use a smaller folder, ZIP files, or Server Folder Path.';
+    }
+
+    if (responseText) {
+      var compact = responseText
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (compact && compact.length <= 220) {
+        return compact;
+      }
+    }
+
+    if (xhr && xhr.status >= 500) {
+      return 'Server error while processing upload. Please try again.';
+    }
+    if (xhr && xhr.status > 0) {
+      return 'Upload failed (HTTP ' + xhr.status + '). Please try again.';
+    }
+    return 'Network error. Please try again.';
+  }
+
   function doUpload() {
     if (!selectedFile || isUploading) return;
+
+    var folderPathValue = folderPathInput ? folderPathInput.value.trim() : '';
+
+    if (folderPathValue && folderPathValue !== confirmedRiskyFolderPath && isRootLikePath(folderPathValue)) {
+      if (typeof window.showConfirm === 'function') {
+        window.showConfirm({
+          title: 'Use Root Folder Path?',
+          text: 'This path looks like a root folder and may include too many files. Continue only if this is intentional.',
+          icon: 'fa-solid fa-triangle-exclamation',
+          confirmLabel: 'Use This Path',
+          btnClass: 'btn-warning',
+          warnings: [
+            'Root paths can take very long to scan.',
+            'Prefer a specific image subfolder when possible.'
+          ]
+        }).then(function(ok) {
+          if (!ok) return;
+          confirmedRiskyFolderPath = folderPathValue;
+          doUpload();
+        });
+        return;
+      }
+    }
+    confirmedRiskyFolderPath = '';
 
     cancelRequested = false;
     isUploading = true;
@@ -517,11 +594,15 @@ function initCreateWithXlsx(opts) {
       formData.append('unified_zip_count', zipFiles.length);
     }
 
-    folderFiles.forEach(function(f) {
+    var filesToUpload = folderPathValue ? [] : folderFiles;
+
+    filesToUpload.forEach(function(f) {
       formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
     });
 
-    var folderPathValue = folderPathInput ? folderPathInput.value.trim() : '';
+    if (folderPathValue && folderFiles.length && window.showToast) {
+      showToast('Using Server Folder Path. Local folder selection will be skipped.', 'warning');
+    }
     if (folderPathValue) {
       formData.append('photos_folder_path', folderPathValue);
     }
@@ -570,8 +651,13 @@ function initCreateWithXlsx(opts) {
           finishUploadFlow();
           return;
         }
+        var result = null;
         try {
-          var result = JSON.parse(xhr.responseText);
+          result = JSON.parse(xhr.responseText);
+        } catch (_parseErr) {
+          result = null;
+        }
+        try {
           if (xhr.status >= 200 && xhr.status < 300 && result.success) {
             finishUploadFlow();
             waitForProgressSkeleton().then(function() {
@@ -586,13 +672,16 @@ function initCreateWithXlsx(opts) {
           } else if (xhr.status === 429) {
             finishUploadFlow();
             waitForProgressSkeleton().then(function() {
-              if (window.showToast) showToast(result.message || 'Another upload is already running. Please wait for it to finish.', 'warning');
+              var retryMsg = deriveUploadErrorMessage(xhr, result);
+              if (window.showToast) showToast(retryMsg, 'warning');
               showStep(1);
             });
           } else {
             finishUploadFlow();
             waitForProgressSkeleton().then(function() {
-              if (window.showToast) showToast(result.message || 'Failed to create table.', result.level || 'error');
+              var failureMsg = deriveUploadErrorMessage(xhr, result);
+              var level = (result && result.level) ? result.level : 'error';
+              if (window.showToast) showToast(failureMsg, level);
               showStep(1);
             });
           }
@@ -600,7 +689,8 @@ function initCreateWithXlsx(opts) {
           console.error('Create from XLSX parse error:', e);
           finishUploadFlow();
           waitForProgressSkeleton().then(function() {
-            if (window.showToast) showToast('Failed to process server response.', 'error');
+            var parseFailureMsg = deriveUploadErrorMessage(xhr, result);
+            if (window.showToast) showToast(parseFailureMsg, 'error');
             showStep(1);
           });
         }
@@ -707,21 +797,66 @@ function initCreateWithXlsx(opts) {
     renderZipList();
   });
   if (folderBrowse && folderInput) {
-    folderBrowse.addEventListener('click', function() { folderInput.click(); });
+    folderBrowse.addEventListener('click', function() {
+      var proceed = function() { folderInput.click(); };
+      if (typeof window.showConfirm !== 'function') {
+        proceed();
+        return;
+      }
+      window.showConfirm({
+        title: 'Select Local Folder?',
+        text: 'This uploads files from a local folder. For large datasets, Server Folder Path is usually faster and safer.',
+        icon: 'fa-solid fa-folder-open',
+        confirmLabel: 'Choose Folder',
+        btnClass: 'btn-primary',
+        warnings: [
+          'Choosing a root drive may trigger extra browser confirmation.',
+          'Only image files are used; other files are ignored.'
+        ]
+      }).then(function(ok) {
+        if (!ok) return;
+        proceed();
+      });
+    });
   }
   if (folderInput) {
     folderInput.addEventListener('change', function() {
       var files = Array.from(folderInput.files || []);
+      if (files.length > MAX_FOLDER_UPLOAD_FILES) {
+        folderFiles = [];
+        folderInput.value = '';
+        if (folderSummary) {
+          folderSummary.textContent = 'Selection too large. Choose a smaller folder or use Server Folder Path.';
+        }
+        if (window.showToast) {
+          showToast('Selected folder has too many files. Use ZIP files or Server Folder Path.', 'warning');
+        }
+        return;
+      }
       folderFiles = files.filter(function(f) {
         return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
       });
+      if (folderPathInput && folderPathInput.value.trim()) {
+        folderPathInput.value = '';
+      }
       if (folderSummary) {
         if (folderFiles.length) {
           folderSummary.textContent = folderFiles.length + ' image file(s) selected from folder';
+          if (files.length >= FOLDER_UPLOAD_CONFIRM_THRESHOLD && window.showToast) {
+            showToast('Large folder selected. If upload is slow, use ZIP files or Server Folder Path.', 'warning');
+          }
         } else {
           folderSummary.textContent = 'No valid image files found in selected folder';
         }
       }
+    });
+  }
+  if (folderPathInput) {
+    folderPathInput.addEventListener('input', function() {
+      if (!this.value.trim() || !folderFiles.length) return;
+      folderFiles = [];
+      if (folderInput) folderInput.value = '';
+      if (folderSummary) folderSummary.textContent = 'Using Server Folder Path';
     });
   }
   backBtn.addEventListener('click', function() { showStep(2); });
