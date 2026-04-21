@@ -367,12 +367,12 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     if not _table_is_assigned_to_staff(staff, table):
         return qs.none()
 
-    if str(status_filter or '').strip().lower() == 'pool':
-        return qs
-
     allowed_classes, allowed_sections, allowed_branches = _table_scope_filters_for_staff(staff, table)
 
     if not (allowed_classes or allowed_sections or allowed_branches):
+        return qs.none()
+
+    if str(status_filter or '').strip().lower() == 'pool':
         return qs
 
     from django.db.models.fields.json import KeyTextTransform

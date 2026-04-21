@@ -2299,6 +2299,7 @@ class SecurityApiRegressionTests(TestCase):
             client=self.client_a,
             perm_idcard_pending_list=True,
             perm_idcard_updated_at=True,
+            allowed_classes=['10'],
         )
 
         admin_touched_card = self.card_a
@@ -4007,3 +4008,66 @@ class PoolRetrieveClassChangeFlowTests(TestCase):
         self.card.refresh_from_db()
         self.assertEqual(self.card.status, 'pending')
         self.assertEqual((self.card.field_data or {}).get('CLASS'), '1')
+
+
+class ClientStaffEmptyScopeVisibilityTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        _client_user, self.client_obj = _create_client_user(
+            'no-scope-owner@test.com',
+            'clientpass1',
+        )
+        self.client_obj.perm_idcard_pending_list = True
+        self.client_obj.perm_idcard_pool_list = True
+        self.client_obj.save(update_fields=['perm_idcard_pending_list', 'perm_idcard_pool_list'])
+
+        self.group, self.table = _create_table(self.client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+            {'name': 'SECTION', 'type': 'section', 'order': 3},
+        ])
+
+        _create_card(
+            self.table,
+            field_data={'NAME': 'Pending Card', 'CLASS': '5', 'SECTION': 'A'},
+            status='pending',
+        )
+        _create_card(
+            self.table,
+            field_data={'NAME': 'Pool Card', 'CLASS': '6', 'SECTION': 'B'},
+            status='pool',
+        )
+
+        self.staff_user = User.objects.create_user(
+            username='no-scope-assistant@test.com',
+            email='no-scope-assistant@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        self.staff_profile = Staff.objects.create(
+            user=self.staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+            perm_idcard_pending_list=True,
+            perm_idcard_pool_list=True,
+            allowed_classes=[],
+            allowed_sections=[],
+            allowed_branches=[],
+            assigned_table_ids=[self.table.id],
+        )
+        self.staff_profile.assigned_groups.add(self.group)
+
+        self.client.login(username='no-scope-assistant@test.com', password='pass1234')
+
+    def test_no_class_section_branch_scope_returns_no_cards_for_all_statuses(self):
+        pending_response = self.client.get(f'/panel/api/table/{self.table.id}/cards/?status=pending')
+        self.assertEqual(pending_response.status_code, 200)
+        pending_payload = pending_response.json()
+        self.assertEqual(len(pending_payload.get('cards') or []), 0)
+
+        pool_response = self.client.get(f'/panel/api/table/{self.table.id}/cards/?status=pool')
+        self.assertEqual(pool_response.status_code, 200)
+        pool_payload = pool_response.json()
+        self.assertEqual(len(pool_payload.get('cards') or []), 0)
+        self.assertEqual(len(pool_payload.get('cards') or []), 0)
