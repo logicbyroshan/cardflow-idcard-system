@@ -1,7 +1,7 @@
 /* ===== Website UI Consistency Layer ===== */
 
 :root {
-    --wa-font-base: 'Segoe UI', 'Inter', 'Roboto', 'Noto Sans', sans-serif;
+    --wa-font-base: 'Saira Semi Condensed', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     --wa-brand-900: #100f57;
     --wa-brand-700: #1a1980;
     --wa-brand-500: #0a92dd;

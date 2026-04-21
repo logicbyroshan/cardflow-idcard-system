@@ -180,7 +180,7 @@ body.mobile-fast-tap-ready .mobile-tap-active {
     --m-border: #d6e7f8;
     --m-text: #182235;
     --m-muted: #61728c;
-    --m-font-family: "Segoe UI", "Inter", "Roboto", "Noto Sans", sans-serif;
+    --m-font-family: "Saira Semi Condensed", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 
     /* Type hierarchy */
     --m-type-label: 11px;

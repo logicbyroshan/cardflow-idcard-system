@@ -2982,7 +2982,7 @@ function _buildEmailTemplateHtml(payload, asDocument) {
 
   const css = '<style>' +
     '*{box-sizing:border-box}' +
-    'body{margin:0;padding:0;background:#eef2f7;font-family:Segoe UI,Arial,sans-serif;color:#0f172a}' +
+    'body{margin:0;padding:0;background:#eef2f7;font-family:"Saira Semi Condensed","Segoe UI",Arial,sans-serif;color:#0f172a}' +
     '.mail-shell{width:100%;padding:24px 12px;background:#eef2f7}' +
     '.mail-card{width:100%;max-width:1200px;min-width:300px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ef;border-radius:8px;overflow:hidden}' +
     '.mail-header{padding:26px 26px 22px;background:' + cfg.gradient + ';color:#fff}' +

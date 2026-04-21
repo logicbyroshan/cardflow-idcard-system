@@ -41,7 +41,7 @@ html {
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Saira Semi Condensed', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     color: var(--text-color);
     line-height: 1.6;
     overflow-x: hidden;
