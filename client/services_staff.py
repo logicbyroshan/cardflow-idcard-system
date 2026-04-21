@@ -8,14 +8,16 @@ import secrets
 
 from django.db import transaction
 from django.db.models import Prefetch
+from django.utils.timezone import localtime
 
-from core.models import User
+from core.models import User, EmailLog
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
 from core.services.cache_version_service import CacheVersionService
 from core.services.permission_service import PermissionService
+from core.utils import send_welcome_email
 
 from .services_access import ClientAccessService
 
@@ -61,6 +63,12 @@ class ClientStaffService(BaseService):
         """Hide internal placeholder emails from API payloads."""
         value = (email or '').strip()
         return '' if value.endswith('@noemail.local') else value
+
+    @staticmethod
+    def _has_real_email(email: str) -> bool:
+        """Return True when the address is suitable for SMTP delivery."""
+        value = (email or '').strip().lower()
+        return bool(value and '@' in value and not value.endswith('@noemail.local'))
 
     @staticmethod
     def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
@@ -430,6 +438,12 @@ class ClientStaffService(BaseService):
         Create a new client staff member.
         """
         try:
+            send_welcome = False
+            welcome_info = {}
+            welcome_user_id = None
+            welcome_email_log_id = None
+            welcome_email_failed_reason = ''
+
             client = ClientAccessService.get_client_for_user(user)
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
@@ -503,6 +517,7 @@ class ClientStaffService(BaseService):
             
             with transaction.atomic():
                 # Create user
+                is_active = cls.parse_bool(data.get('is_active', True))
                 staff_user = User.objects.create_user(
                     username=username,
                     email=email,
@@ -511,7 +526,7 @@ class ClientStaffService(BaseService):
                     last_name=last_name,
                     phone=phone,
                     role='client_staff',
-                    is_active=cls.parse_bool(data.get('is_active', True)),
+                    is_active=is_active,
                 )
                 
                 # Build staff kwargs
@@ -615,12 +630,86 @@ class ClientStaffService(BaseService):
                     staff.allowed_branches = branches_u
                     staff.save(update_fields=['assignment_scopes', 'allowed_classes', 'allowed_sections', 'allowed_branches'])
 
+                if cls._has_real_email(email):
+                    log = EmailLog.objects.create(
+                        recipient_name=display_name or staff_user.get_full_name() or staff_user.username,
+                        recipient_email=email,
+                        subject='Welcome to Adarsh Admin - Your Account is Ready!',
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    )
+                    welcome_email_log_id = log.pk
+
+                    if is_active:
+                        send_welcome = True
+                        welcome_user_id = staff_user.pk
+                        welcome_info = {
+                            'name': display_name or staff_user.get_full_name() or staff_user.username,
+                            'email': email,
+                            'password': password,
+                            'phone': phone,
+                            'role': 'client_staff',
+                        }
+
                 transaction.on_commit(lambda cid=client.id: cls._bump_dashboard_cache_versions(cid))
+
+            if send_welcome:
+                _user_pk = welcome_user_id
+                _log_id = welcome_email_log_id
+                _email = welcome_info['email']
+
+                def _on_email_success():
+                    try:
+                        User.objects.filter(pk=_user_pk).update(welcome_email_sent=True)
+                        EmailLog.objects.filter(pk=_log_id).update(
+                            status=EmailLog.STATUS_SENT,
+                            sent_at=localtime(),
+                            error_message='',
+                        )
+                    except Exception as cb_err:
+                        logger.warning('Email success callback failed for %s: %s', _email, cb_err)
+
+                def _on_email_failure(err_msg):
+                    try:
+                        EmailLog.objects.filter(pk=_log_id).update(
+                            status=EmailLog.STATUS_FAILED,
+                            error_message=str(err_msg),
+                        )
+                    except Exception as cb_err:
+                        logger.warning('Email failure callback failed for %s: %s', _email, cb_err)
+
+                try:
+                    queued, queue_message = send_welcome_email(
+                        name=welcome_info['name'],
+                        email=welcome_info['email'],
+                        password=welcome_info['password'],
+                        role=welcome_info['role'],
+                        phone=welcome_info['phone'],
+                        request=None,
+                        on_success=_on_email_success,
+                        on_failure=_on_email_failure,
+                    )
+                except Exception as email_err:
+                    queued = False
+                    queue_message = str(email_err)
+
+                if not queued:
+                    welcome_email_failed_reason = queue_message or 'Failed to queue welcome email.'
+                    _on_email_failure(welcome_email_failed_reason)
+
+            email_sent = bool(send_welcome and not welcome_email_failed_reason)
+            message = f'Staff member "{display_name}" created successfully!'
+            if email_sent:
+                message += ' Welcome email queued for delivery.'
+            elif send_welcome and welcome_email_failed_reason:
+                message += f' Welcome email could not be sent right now: {welcome_email_failed_reason}'
+            elif not send_welcome and cls._has_real_email(email):
+                message += ' Account is inactive; welcome email will be sent after activation.'
             
             return ServiceResult(
                 success=True,
-                message=f'Staff member "{display_name}" created successfully!',
-                data={'staff_id': staff.id}
+                message=message,
+                data={'staff_id': staff.id, 'email_sent': email_sent}
             )
             
         except Exception as e:

@@ -1068,6 +1068,64 @@ class ClientStaffServicePermissionTests(TestCase):
         self.assertFalse(result.success)
         self.assertIn('phone number is required', result.message.lower())
 
+    def test_create_staff_active_sends_welcome_email(self):
+        from client.services import ClientStaffService
+        from core.models import EmailLog
+        from staff.models import Staff
+
+        def _fake_send_welcome_email(**kwargs):
+            on_success = kwargs.get('on_success')
+            if callable(on_success):
+                on_success()
+            return True, 'Welcome email queued for delivery.'
+
+        with mock.patch('client.services_staff.send_welcome_email', side_effect=_fake_send_welcome_email) as send_welcome_mock:
+            result = ClientStaffService.create_staff(self.owner, {
+                'email': 'active-client-staff@test.com',
+                'first_name': 'Active',
+                'last_name': 'Staff',
+                'phone': '9345678901',
+                'is_active': True,
+            })
+
+        self.assertTrue(result.success, msg=result.message)
+        self.assertTrue(result.data.get('email_sent'))
+        send_welcome_mock.assert_called_once()
+
+        staff = Staff.objects.select_related('user').get(id=result.data['staff_id'])
+        self.assertTrue(staff.user.welcome_email_sent)
+        self.assertTrue(
+            EmailLog.objects.filter(
+                recipient_email='active-client-staff@test.com',
+                email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                status=EmailLog.STATUS_SENT,
+            ).exists()
+        )
+
+    def test_create_staff_inactive_keeps_welcome_email_on_hold(self):
+        from client.services import ClientStaffService
+        from core.models import EmailLog
+
+        with mock.patch('client.services_staff.send_welcome_email') as send_welcome_mock:
+            result = ClientStaffService.create_staff(self.owner, {
+                'email': 'inactive-client-staff@test.com',
+                'first_name': 'Inactive',
+                'last_name': 'Staff',
+                'phone': '9456789012',
+                'is_active': False,
+            })
+
+        self.assertTrue(result.success, msg=result.message)
+        self.assertFalse(result.data.get('email_sent'))
+        send_welcome_mock.assert_not_called()
+        self.assertTrue(
+            EmailLog.objects.filter(
+                recipient_email='inactive-client-staff@test.com',
+                email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                status=EmailLog.STATUS_ON_HOLD,
+            ).exists()
+        )
+
     def test_resolve_assignment_scope_auto_prefers_groups_for_multi_group_client(self):
         from client.services import ClientStaffService
         from idcards.models import IDCardGroup, IDCardTable

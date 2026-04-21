@@ -418,17 +418,86 @@ class StaffActivationPasswordFlowTests(TestCase):
         staff_user = User.objects.get(email='staff-custom-activation@test.com')
         self.assertTrue(staff_user.check_password(custom_password))
 
-        with mock.patch('staff.services_staff_core.send_welcome_email') as send_welcome_mock:
+        def _fake_send_welcome_email(**kwargs):
+            on_success = kwargs.get('on_success')
+            if callable(on_success):
+                on_success()
+            return True, 'Welcome email queued for delivery.'
+
+        with mock.patch('staff.services_staff_core.send_welcome_email', side_effect=_fake_send_welcome_email) as send_welcome_mock:
             toggle_result = StaffService.toggle_status(staff_id)
 
         self.assertTrue(toggle_result.success, msg=toggle_result.message)
         staff_user.refresh_from_db()
         self.assertTrue(staff_user.is_active)
         self.assertTrue(staff_user.check_password(custom_password))
-        send_welcome_mock.assert_not_called()
+        send_welcome_mock.assert_called_once()
         self.assertFalse(
             EmailLog.objects.filter(
                 recipient_email='staff-custom-activation@test.com',
+                email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                status=EmailLog.STATUS_ON_HOLD,
+            ).exists()
+        )
+
+    def test_create_active_staff_sends_welcome_email(self):
+        from core.services import StaffService
+        from core.models import EmailLog
+
+        def _fake_send_welcome_email(**kwargs):
+            on_success = kwargs.get('on_success')
+            if callable(on_success):
+                on_success()
+            return True, 'Welcome email queued for delivery.'
+
+        with mock.patch('staff.services_staff_core.send_welcome_email', side_effect=_fake_send_welcome_email) as send_welcome_mock:
+            result = StaffService.create(
+                {
+                    'name': 'Active Staff Email',
+                    'email': 'active-staff-email@test.com',
+                    'phone': '9123456789',
+                    'password': '',
+                    'is_active': True,
+                },
+                staff_type='admin_staff',
+            )
+
+        self.assertTrue(result.success, msg=result.message)
+        self.assertTrue(result.data.get('email_sent'))
+        send_welcome_mock.assert_called_once()
+
+        created_user = User.objects.get(email='active-staff-email@test.com')
+        self.assertTrue(created_user.welcome_email_sent)
+        self.assertTrue(
+            EmailLog.objects.filter(
+                recipient_email='active-staff-email@test.com',
+                email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                status=EmailLog.STATUS_SENT,
+            ).exists()
+        )
+
+    def test_create_inactive_staff_keeps_welcome_email_on_hold(self):
+        from core.services import StaffService
+        from core.models import EmailLog
+
+        with mock.patch('staff.services_staff_core.send_welcome_email') as send_welcome_mock:
+            result = StaffService.create(
+                {
+                    'name': 'Inactive Staff Email',
+                    'email': 'inactive-staff-email@test.com',
+                    'phone': '9234567890',
+                    'password': '',
+                    'is_active': False,
+                },
+                staff_type='admin_staff',
+            )
+
+        self.assertTrue(result.success, msg=result.message)
+        self.assertFalse(result.data.get('email_sent'))
+        send_welcome_mock.assert_not_called()
+        self.assertTrue(
+            EmailLog.objects.filter(
+                recipient_email='inactive-staff-email@test.com',
                 email_type=EmailLog.EMAIL_TYPE_WELCOME,
                 status=EmailLog.STATUS_ON_HOLD,
             ).exists()

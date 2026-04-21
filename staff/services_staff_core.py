@@ -99,6 +99,12 @@ class StaffService(BaseService):
         return '' if value.endswith('@noemail.local') else value
 
     @staticmethod
+    def _has_real_email(email: str) -> bool:
+        """Return True when the address can be used for outbound delivery."""
+        value = (email or '').strip().lower()
+        return bool(value and '@' in value and not value.endswith('@noemail.local'))
+
+    @staticmethod
     def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
         logger.exception('StaffService.%s failed: %s', action, exc)
         return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
@@ -126,6 +132,12 @@ class StaffService(BaseService):
             ServiceResult with staff data
         """
         try:
+            send_welcome = False
+            welcome_info = {}
+            welcome_user_id = None
+            welcome_email_log_id = None
+            welcome_email_failed_reason = ''
+
             name = data.get('name', '').strip()
             if not name:
                 return ServiceResult(success=False, message='Name is required')
@@ -247,32 +259,97 @@ class StaffService(BaseService):
                     except (ValueError, TypeError):
                         pass  # Skip invalid IDs
                 
-                # Queue welcome email only when needed:
-                # - active now and a real email exists
-                if is_active and email_was_provided:
-                    EmailLog.objects.create(
+                # Queue welcome email record whenever a real email is available.
+                # Active accounts are sent immediately after commit; inactive
+                # accounts remain on-hold until activation flow sends them.
+                if email_was_provided and cls._has_real_email(email):
+                    log = EmailLog.objects.create(
                         recipient_name=name or user.get_full_name(),
                         recipient_email=email,
                         subject='Welcome to Adarsh Admin - Your Account is Ready!',
                         email_type=EmailLog.EMAIL_TYPE_WELCOME,
                         status=EmailLog.STATUS_ON_HOLD,
                     )
+                    welcome_email_log_id = log.pk
+
+                    if is_active:
+                        send_welcome = True
+                        welcome_user_id = user.pk
+                        welcome_info = {
+                            'name': name or user.get_full_name(),
+                            'email': email,
+                            'password': password,
+                            'phone': user.phone or '',
+                            'role': role,
+                        }
+
+            if send_welcome:
+                _user_pk = welcome_user_id
+                _log_id = welcome_email_log_id
+                _email = welcome_info['email']
+
+                def _on_email_success():
+                    try:
+                        User.objects.filter(pk=_user_pk).update(welcome_email_sent=True)
+                        EmailLog.objects.filter(pk=_log_id).update(
+                            status=EmailLog.STATUS_SENT,
+                            sent_at=localtime(),
+                            error_message='',
+                        )
+                    except Exception as cb_err:
+                        logger.warning('Email success callback failed for %s: %s', _email, cb_err)
+
+                def _on_email_failure(err_msg):
+                    try:
+                        EmailLog.objects.filter(pk=_log_id).update(
+                            status=EmailLog.STATUS_FAILED,
+                            error_message=str(err_msg),
+                        )
+                    except Exception as cb_err:
+                        logger.warning('Email failure callback failed for %s: %s', _email, cb_err)
+
+                try:
+                    queued, queue_message = send_welcome_email(
+                        name=welcome_info['name'],
+                        email=welcome_info['email'],
+                        password=welcome_info['password'],
+                        role=welcome_info['role'],
+                        phone=welcome_info['phone'],
+                        on_success=_on_email_success,
+                        on_failure=_on_email_failure,
+                    )
+                except Exception as email_err:
+                    queued = False
+                    queue_message = str(email_err)
+
+                if not queued:
+                    welcome_email_failed_reason = queue_message or 'Failed to queue welcome email.'
+                    _on_email_failure(welcome_email_failed_reason)
+
+            email_sent = bool(send_welcome and not welcome_email_failed_reason)
             
             message = 'Staff created successfully!'
             if is_active:
-                if email_was_provided:
-                    message += ' Welcome email will be processed according to account status.'
+                if email_sent:
+                    message += ' Welcome email queued for delivery.'
+                elif email_was_provided and cls._has_real_email(email):
+                    message += f' Welcome email could not be sent right now: {welcome_email_failed_reason}'
+                elif email_was_provided:
+                    message += ' Email format is invalid, so welcome email was skipped.'
                 else:
                     message += ' No email provided, so welcome email was skipped.'
             else:
-                message += ' Account is inactive; activate it to allow login with the configured password.'
+                if email_was_provided and cls._has_real_email(email):
+                    message += ' Account is inactive; welcome email is queued and will send when the account is activated.'
+                else:
+                    message += ' Account is inactive; activate it to allow login with the configured password.'
 
             return ServiceResult(
                 success=True,
                 message=message,
                 data={
                     'staff': cls.serialize(staff, include_permissions=False),
-                    'email_sent': False,
+                    'email_sent': email_sent,
                 }
             )
             
@@ -417,28 +494,46 @@ class StaffService(BaseService):
                     email_type=EmailLog.EMAIL_TYPE_WELCOME,
                     status=EmailLog.STATUS_ON_HOLD,
                 ).exists()
-                has_known_phone_password = bool((user.phone or '').strip())
                 is_first_activation = (
                     (not user.is_active)
                     and has_pending_welcome
-                    and not has_known_phone_password
+                    and not bool(user.welcome_email_sent)
                 )
                 user.is_active = not user.is_active
                 status = 'active' if user.is_active else 'inactive'
                 status_display = 'Active' if user.is_active else 'Inactive'
 
                 if user.is_active and is_first_activation:
-                    first_password = generate_secure_password()
-                    user.set_password(first_password)
-                    # Do NOT set welcome_email_sent here — set it only after
-                    # the email is actually delivered so retries are possible.
-                    user.save(update_fields=['is_active', 'password'])
+                    phone_value = (user.phone or '').strip()
+                    has_usable_password = bool(user.has_usable_password())
+                    can_reuse_phone_password = (
+                        has_usable_password and bool(phone_value) and user.check_password(phone_value)
+                    )
+
+                    credential_password = ''
+                    if can_reuse_phone_password:
+                        credential_password = phone_value
+                        user.save(update_fields=['is_active'])
+                    elif has_usable_password:
+                        # Password was already configured by admin; preserve it.
+                        credential_password = 'Use the password configured by your administrator.'
+                        user.save(update_fields=['is_active'])
+                    elif phone_value:
+                        user.set_password(phone_value)
+                        credential_password = phone_value
+                        user.save(update_fields=['is_active', 'password'])
+                    else:
+                        first_password = generate_secure_password()
+                        user.set_password(first_password)
+                        credential_password = first_password
+                        user.save(update_fields=['is_active', 'password'])
+
                     send_welcome = True
                     welcome_user_id = user.pk
                     welcome_info = {
                         'name': user.get_full_name(),
                         'email': user.email,
-                        'password': first_password,
+                        'password': credential_password,
                         'phone': user.phone or '',
                         'role': staff.staff_type,
                     }
