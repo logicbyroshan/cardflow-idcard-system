@@ -5,15 +5,15 @@
   <div class="sidebar-header">
     <div class="sidebar-logo">
       {% if current_client_logo_url %}
-      <div class="profile square" style="overflow:hidden;background:var(--color-white);">
-        <img src="{{ current_client_logo_url }}" alt="{{ client.name|default:'Client Logo' }}" width="26" height="26" style="width:100%;height:100%;object-fit:contain;">
+      <div class="profile square" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;background:var(--color-white);">
+        <img src="{{ current_client_logo_url }}" alt="{{ client.name|default:'Client Logo' }}" width="26" height="26" style="width:26px;height:26px;display:block;object-fit:contain;">
       </div>
       {% else %}
-      <div class="profile square">
-        <img src="{% static 'assets/logo.png' %}" alt="logo" width="26" height="26">
+      <div class="profile square" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+        <img src="{% static 'assets/logo.png' %}" alt="logo" width="26" height="26" style="width:26px;height:26px;display:block;object-fit:contain;">
       </div>
       {% endif %}
-      <h3 class="sidebar-brand-title">{{ client.name|default:current_client.name|default:"Client Portal" }}</h3>
+      <h3 class="sidebar-brand-title" style="margin:0;font-size:13px;font-weight:700;line-height:1.15;letter-spacing:0.01em;white-space:nowrap;">{{ client.name|default:current_client.name|default:"Client Portal" }}</h3>
     </div>
   </div>
   <nav aria-label="Main navigation">
