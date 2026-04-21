@@ -1310,9 +1310,9 @@ def pwa_service_worker(request):
     A service worker is required by Chrome/Android to enable the PWA install prompt.
     """
     from django.http import HttpResponse
-    app_version = str(getattr(settings, 'APP_VERSION', 'v1.0.0') or 'v1.0.0')
-    version_seed = app_version.strip() or 'v1.0.0'
-    normalized_version = re.sub(r'[^a-zA-Z0-9._-]+', '-', version_seed).strip('-').lower() or 'v1.0.0'
+    app_version = str(getattr(settings, 'APP_VERSION', 'v0.00.00') or 'v0.00.00')
+    version_seed = app_version.strip() or 'v0.00.00'
+    normalized_version = re.sub(r'[^a-zA-Z0-9._-]+', '-', version_seed).strip('-').lower() or 'v0.00.00'
 
     try:
         cache_generation = max(1, int(getattr(settings, 'MOBILE_PWA_CACHE_GENERATION', 1) or 1))
@@ -4262,7 +4262,7 @@ def settings_page(request):
         with open(_vpath) as _vf:
             ctx['app_version'] = _vf.read().strip()
     except Exception:
-        ctx['app_version'] = 'v2.19.0'
+        ctx['app_version'] = str(getattr(settings, 'APP_VERSION', 'v0.00.00') or 'v0.00.00')
     ctx['django_version'] = _django.__version__
     ctx['python_version'] = f'{_sys.version_info.major}.{_sys.version_info.minor}.{_sys.version_info.micro}'
     ctx['debug_mode'] = settings.DEBUG

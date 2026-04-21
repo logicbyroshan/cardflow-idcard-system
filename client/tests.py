@@ -985,6 +985,30 @@ class ClientStaffServicePermissionTests(TestCase):
         staff = Staff.objects.get(id=staff_id)
         self.assertTrue(staff.perm_idcard_bulk_download)
 
+    def test_update_staff_retrieve_granted_when_client_has_permission(self):
+        from client.services import ClientStaffService
+        from staff.models import Staff
+
+        self.client_obj.perm_idcard_retrieve = True
+        self.client_obj.save(update_fields=['perm_idcard_retrieve'])
+
+        created = ClientStaffService.create_staff(self.owner, {
+            'email': 'retrieve-allowed@test.com',
+            'first_name': 'Retrieve',
+            'last_name': 'Allowed',
+            'phone': '6565656565',
+        })
+        self.assertTrue(created.success)
+
+        staff_id = created.data['staff_id']
+        updated = ClientStaffService.update_staff(self.owner, staff_id, {
+            'perm_idcard_retrieve': True,
+        })
+        self.assertTrue(updated.success)
+
+        staff = Staff.objects.get(id=staff_id)
+        self.assertTrue(staff.perm_idcard_retrieve)
+
     def test_create_staff_image_mode_perms_not_granted_even_if_client_has_permission(self):
         from client.services import ClientStaffService
         from staff.models import Staff
@@ -1604,6 +1628,50 @@ class ClientApiIntegrationTests(TestCase):
         table_cards = table_resp.json().get('data', {}).get('cards', [])
         self.assertEqual(len(table_cards), 1)
         self.assertEqual(table_cards[0].get('field_data', {}).get('CLASS'), '12')
+
+    def test_client_staff_explicit_empty_scope_filters_return_no_rows(self):
+        from idcards.models import IDCard
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Should Not Be Visible'},
+        )
+
+        self.staff_profile.perm_idcard_pending_list = True
+        self.staff_profile.assigned_table_ids = []
+        self.staff_profile.allowed_classes = []
+        self.staff_profile.allowed_sections = []
+        self.staff_profile.allowed_branches = []
+        self.staff_profile.assignment_scopes = [
+            {
+                'scope_type': 'group',
+                'scope_id': self.group.id,
+                'group_id': self.group.id,
+                'classes': [],
+                'sections': [],
+                'branches': [],
+            }
+        ]
+        self.staff_profile.save(update_fields=[
+            'perm_idcard_pending_list',
+            'assigned_table_ids',
+            'allowed_classes',
+            'allowed_sections',
+            'allowed_branches',
+            'assignment_scopes',
+        ])
+        self.staff_profile.assigned_groups.set([self.group])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/client/api/table/{self.table.id}/cards/',
+            {'status': 'pending'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        cards = response.json().get('data', {}).get('cards', [])
+        self.assertEqual(cards, [])
 
     def test_api_staff_detail_denied_without_manage_client_permission(self):
         self.client_obj.perm_idcard_client_list = False

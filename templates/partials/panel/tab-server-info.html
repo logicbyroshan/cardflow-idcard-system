@@ -62,7 +62,7 @@
         <div class="system-card server-card server-card-app">
           <div class="system-card-header"><i class="fa-solid fa-circle-info"></i> Application</div>
           <div class="system-card-body">
-            <div class="system-row"><span class="system-label">Version</span><span class="system-value system-value-strong">{{ APP_VERSION|default:"v1.3.0" }}</span></div>
+            <div class="system-row"><span class="system-label">Version</span><span class="system-value system-value-strong">{{ APP_VERSION|default:"v0.00.00" }}</span></div>
             <div class="system-row"><span class="system-label">Environment</span><span class="system-value system-pill {% if environment == 'Production' %}system-pill-ok{% else %}system-pill-warn{% endif %}">{{ environment|default:"Production" }}</span></div>
             <div class="system-row"><span class="system-label">Django</span><span class="system-value">{{ django_version|default:"5.x" }}</span></div>
             <div class="system-row"><span class="system-label">Debug Mode</span><span class="system-value system-pill {% if debug_mode %}system-pill-warn{% else %}system-pill-ok{% endif %}">{% if debug_mode %}On{% else %}Off{% endif %}</span></div>

@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'perm-idcard-verify',
             'perm-idcard-reprint-list',
             'perm-idcard-updated-at',
+            'perm-idcard-retrieve',
             'perm-mobile-app'
         ]
     };

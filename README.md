@@ -21,7 +21,6 @@ Live domains:
 Current version source of truth:
 
 - VERSION.txt: v2.18.09
-
 Last deep README refresh: 2026-04-16
 
 ---
@@ -644,10 +643,19 @@ Custom commands under core/management/commands:
 | restore_reprint_rejected_cards | Restore reprint rejected card paths/workflow records |
 | revert_kg_dash_for_client | Revert KG class notation for client-specific data cleanup |
 | sanitize_field_data | Sanitize unsupported characters in field_data |
+| bump_app_version | Auto-bump app version using small/major/feature rules |
 
 Tip:
 
 - run each command with --help before applying on production data.
+- version bump examples:
+
+```bash
+python manage.py bump_app_version --level small
+python manage.py bump_app_version --level major
+python manage.py bump_app_version --level feature
+python manage.py bump_app_version --set 2.19.00
+```
 
 ---
 

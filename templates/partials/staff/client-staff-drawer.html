@@ -265,6 +265,13 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
                             </label>
                             <span class="permission-label">Last Updated &amp; Updated By{% if not perm_idcard_updated_at %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
                         </div>
+                        <div class="permission-row{% if not perm_idcard_retrieve %} perm-locked{% endif %}" {% if not perm_idcard_retrieve %}title="Admin has not granted you this permission"{% endif %}>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="perm_idcard_retrieve" id="perm-idcard-retrieve" {% if not perm_idcard_retrieve %}disabled{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="permission-label">Retrieve from Pool{% if not perm_idcard_retrieve %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
+                        </div>
                     </div>
                 </div>
 

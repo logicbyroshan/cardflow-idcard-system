@@ -736,7 +736,7 @@ def _get_app_version() -> str:
     except Exception:
         pass
 
-    return 'v2.18.09'
+    return 'v0.00.00'
 
 
 APP_VERSION = _get_app_version()

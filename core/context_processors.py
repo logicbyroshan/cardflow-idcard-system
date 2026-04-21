@@ -64,7 +64,7 @@ def permissions(request):
     base_context = {
         'PANEL_URL': getattr(settings, 'PANEL_URL', ''),
         'WEBSITE_URL': getattr(settings, 'WEBSITE_URL', ''),
-        'APP_VERSION': getattr(settings, 'APP_VERSION', 'v1.1.0'),
+        'APP_VERSION': getattr(settings, 'APP_VERSION', 'v0.00.00'),
         'MOBILE_ANDROID_APP_DOWNLOAD_URL': _resolve_mobile_android_download_url(request),
     }
 

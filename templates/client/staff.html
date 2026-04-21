@@ -131,6 +131,29 @@
     align-items: center;
     gap: 6px;
   }
+  .assignment-scope-chip-bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .assignment-scope-chip-bulk-btn {
+    border: 1px solid var(--color-blue-200);
+    background: #eef5ff;
+    color: var(--color-blue-700);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: var(--ui-font-size-xs, 11px);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .assignment-scope-chip-bulk-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .assignment-scope-chip-bulk-btn:not(:disabled):hover {
+    background: var(--color-blue-50);
+    border-color: var(--color-blue-300);
+  }
   .assignment-scope-chip-edit {
     border: 1px solid var(--color-blue-200);
     background: var(--color-blue-50);

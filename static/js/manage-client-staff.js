@@ -35,6 +35,79 @@ document.addEventListener('DOMContentLoaded', function () {
         return pad(d.getDate()) + '-' + pad(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
     }
 
+    function _normalizeStringListForTable(values) {
+        if (!Array.isArray(values)) return [];
+        var seen = new Set();
+        var out = [];
+        values.forEach(function (v) {
+            var text = String(v == null ? '' : v).trim();
+            if (!text) return;
+            var key = text.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            out.push(text);
+        });
+        return out;
+    }
+
+    function buildAssignmentCellHtml(detail) {
+        var classes = _normalizeStringListForTable(detail && detail.allowed_classes);
+        var sections = _normalizeStringListForTable(detail && detail.allowed_sections);
+        var maxVisible = 3;
+        var chips = [];
+
+        if (classes.length && sections.length) {
+            for (var ci = 0; ci < classes.length; ci += 1) {
+                for (var si = 0; si < sections.length; si += 1) {
+                    chips.push(
+                        '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200);border-radius:6px;padding:2px 8px;">' +
+                        _esc(classes[ci]) + ' "' + _esc(sections[si]) + '"</span>'
+                    );
+                    if (chips.length >= maxVisible) break;
+                }
+                if (chips.length >= maxVisible) break;
+            }
+
+            var totalPairs = classes.length * sections.length;
+            if (totalPairs > maxVisible) {
+                chips.push(
+                    '<button type="button" class="staff-assignment-view-more" data-staff-id="' + _esc(String(detail && detail.id || '')) + '" style="display:inline-flex;align-items:center;justify-content:center;min-width:72px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-white);border:1px dashed var(--color-blue-300);border-radius:6px;padding:2px 8px;cursor:pointer;">View More</button>'
+                );
+            }
+        } else if (classes.length) {
+            classes.slice(0, maxVisible).forEach(function (cls) {
+                chips.push(
+                    '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200);border-radius:6px;padding:2px 8px;">' + _esc(cls) + '</span>'
+                );
+            });
+            if (classes.length > maxVisible) {
+                chips.push(
+                    '<button type="button" class="staff-assignment-view-more" data-staff-id="' + _esc(String(detail && detail.id || '')) + '" style="display:inline-flex;align-items:center;justify-content:center;min-width:72px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-white);border:1px dashed var(--color-blue-300);border-radius:6px;padding:2px 8px;cursor:pointer;">View More</button>'
+                );
+            }
+        } else if (sections.length) {
+            sections.slice(0, maxVisible).forEach(function (sec) {
+                chips.push(
+                    '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200);border-radius:6px;padding:2px 8px;">"' + _esc(sec) + '"</span>'
+                );
+            });
+            if (sections.length > maxVisible) {
+                chips.push(
+                    '<button type="button" class="staff-assignment-view-more" data-staff-id="' + _esc(String(detail && detail.id || '')) + '" style="display:inline-flex;align-items:center;justify-content:center;min-width:72px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-white);border:1px dashed var(--color-blue-300);border-radius:6px;padding:2px 8px;cursor:pointer;">View More</button>'
+                );
+            }
+        } else {
+            chips.push(
+                '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:2px 8px;">No Classes Assigned</span>'
+            );
+            chips.push(
+                '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:2px 8px;">No Sections Assigned</span>'
+            );
+        }
+
+        return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;">' + chips.join('') + '</div>';
+    }
+
     function upsertStaffRow(detail, mode) {
         if (!detail || !detail.id) return;
         var tbody = document.getElementById('staff-table-body');
@@ -54,13 +127,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<td class="phone-cell"></td>',
                 '<td class="text-center"></td>',
                 '<td class="text-gray-500"></td>',
-                '<td class="text-gray-500"></td>'
+                '<td class="text-gray-500"></td>',
+                '<td class="text-left" style="min-width: 250px;"></td>'
             ].join('');
             tbody.insertBefore(row, tbody.firstChild);
         }
 
         var isActive = (detail.status === 'active') || detail.is_active === true;
         row.setAttribute('data-staff-status', isActive ? 'active' : 'inactive');
+        row.setAttribute('data-staff-name', String(detail.name || '').trim());
 
         var cells = row.children;
         if (cells[0]) cells[0].textContent = detail.name || '-';
@@ -75,6 +150,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (cells[5]) {
             cells[5].textContent = formatDateTimeDisplay(new Date());
+        }
+        if (cells[6]) {
+            cells[6].innerHTML = buildAssignmentCellHtml(detail);
         }
     }
 
@@ -670,6 +748,44 @@ document.addEventListener('DOMContentLoaded', function () {
             head.appendChild(tools);
             card.appendChild(head);
 
+            if (chip.isEditing && (chip.hasClass || chip.hasSection)) {
+                var bulkActions = document.createElement('div');
+                bulkActions.className = 'assignment-scope-chip-bulk-actions';
+
+                if (chip.hasClass) {
+                    var assignAllClassBtn = document.createElement('button');
+                    assignAllClassBtn.type = 'button';
+                    assignAllClassBtn.className = 'assignment-scope-chip-bulk-btn';
+                    assignAllClassBtn.textContent = 'Assign All Classes';
+                    assignAllClassBtn.disabled = !chip.classOptions.length;
+                    assignAllClassBtn.addEventListener('click', function () {
+                        chip.classes = _normalizeStringList(chip.classOptions || []);
+                        _pruneChipSelection(chip);
+                        renderAssignmentScopeChips();
+                    });
+                    bulkActions.appendChild(assignAllClassBtn);
+                }
+
+                if (chip.hasSection) {
+                    var assignAllSectionBtn = document.createElement('button');
+                    assignAllSectionBtn.type = 'button';
+                    assignAllSectionBtn.className = 'assignment-scope-chip-bulk-btn';
+                    assignAllSectionBtn.textContent = 'Assign All Sections';
+                    var allSectionsForChip = _normalizeStringList(_getChipAvailableSections(chip));
+                    assignAllSectionBtn.disabled = !allSectionsForChip.length;
+                    assignAllSectionBtn.addEventListener('click', function () {
+                        chip.sections = _normalizeStringList(_getChipAvailableSections(chip));
+                        _pruneChipSelection(chip);
+                        renderAssignmentScopeChips();
+                    });
+                    bulkActions.appendChild(assignAllSectionBtn);
+                }
+
+                if (bulkActions.childElementCount > 0) {
+                    card.appendChild(bulkActions);
+                }
+            }
+
             var groups = document.createElement('div');
             groups.className = 'assignment-scope-chip-groups';
 
@@ -1099,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Card Actions
             'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete', 'perm-idcard-info',
             'perm-idcard-verify',
-            'perm-idcard-created-at', 'perm-idcard-updated-at',
+            'perm-idcard-created-at', 'perm-idcard-updated-at', 'perm-idcard-retrieve',
             // App & Access
             'perm-mobile-app'
         ],
@@ -1170,9 +1286,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     scopeType: (draftSource === 'group' || draftSource === 'table')
                         ? draftSource
                         : ((assignmentIdSource === 'table') ? 'table' : 'group'),
-                    classes: fieldCapabilities.hasClass ? _normalizeStringList(allClasses) : [],
-                    sections: fieldCapabilities.hasSection ? _normalizeStringList(allSections) : [],
-                    branches: fieldCapabilities.hasBranch ? _normalizeStringList(allBranches) : [],
+                    classes: [],
+                    sections: [],
+                    branches: [],
                     classOptions: _normalizeStringList(allClasses),
                     sectionOptions: _normalizeStringList(allSections),
                     branchOptions: _normalizeStringList(allBranches),
@@ -1188,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
                 _pruneChipSelection(assignmentScopeChips[key]);
                 if (typeof showToast === 'function') {
-                    showToast('Group assignment chip created', 'success');
+                    showToast('Group assignment chip created. Select classes/sections or use Assign All.', 'success');
                 }
             }
 
@@ -1197,11 +1313,6 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         onBeforeSubmit: function (formData, meta) {
             if (!meta || meta.mode !== 'assign') return;
-
-            // Persist the currently selected group state before final submit.
-            if (currentDraftGroupId) {
-                upsertCurrentDraftAsChip(false);
-            }
 
             var payload = getAssignmentPayloadFromChips();
             formData.assigned_groups = payload.assigned_groups;
@@ -1262,6 +1373,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (mgr && typeof mgr.selectRowById === 'function') {
                 mgr.selectRowById(targetId);
+            }
+
+            if (typeof htmx !== 'undefined' && htmx && typeof htmx.trigger === 'function') {
+                htmx.trigger(document.body, 'refreshTable');
             }
         },
     });

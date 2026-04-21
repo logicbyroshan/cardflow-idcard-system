@@ -46,6 +46,7 @@ class ClientStaffService(BaseService):
         'perm_idcard_info', 'perm_idcard_verify',
         'perm_idcard_reprint_list',
         'perm_idcard_updated_at',
+        'perm_idcard_retrieve',
         # ── App & Access ───────────────────────────────────────────
         'perm_mobile_app',
     ]

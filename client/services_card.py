@@ -98,6 +98,31 @@ class ClientCardService(BaseService):
             out.append(text)
         return out
 
+    @staticmethod
+    def _matched_assignment_scopes_for_table(staff, table) -> List[dict]:
+        scopes = getattr(staff, 'assignment_scopes', None)
+        if not isinstance(scopes, list) or not scopes:
+            return []
+
+        matched = []
+        for scope in scopes:
+            if not isinstance(scope, dict):
+                continue
+
+            stype = str(scope.get('scope_type', '') or '').strip().lower()
+            sid = scope.get('scope_id')
+            try:
+                sid_int = int(str(sid).strip())
+            except (TypeError, ValueError):
+                continue
+
+            if stype == 'table' and sid_int == int(table.id):
+                matched.append(scope)
+            elif stype == 'group' and sid_int == int(table.group_id):
+                matched.append(scope)
+
+        return matched
+
     @classmethod
     def _table_scope_filters(cls, staff, table) -> Tuple[List[str], List[str], List[str]]:
         table_key = (int(table.id), int(table.group_id))
@@ -118,21 +143,7 @@ class ClientCardService(BaseService):
             setattr(staff, '_cached_table_scope_filters', cached_scopes)
             return result
 
-        matched = []
-        for scope in scopes:
-            if not isinstance(scope, dict):
-                continue
-            stype = str(scope.get('scope_type', '') or '').strip().lower()
-            sid = scope.get('scope_id')
-            try:
-                sid_int = int(str(sid).strip())
-            except (TypeError, ValueError):
-                continue
-
-            if stype == 'table' and sid_int == int(table.id):
-                matched.append(scope)
-            elif stype == 'group' and sid_int == int(table.group_id):
-                matched.append(scope)
+        matched = cls._matched_assignment_scopes_for_table(staff, table)
 
         if not matched:
             result = (
@@ -243,6 +254,20 @@ class ClientCardService(BaseService):
         allowed_classes, allowed_sections, allowed_branches = cls._table_scope_filters(staff, table)
 
         class_field, section_field, branch_field = cls._get_class_section_branch_fields(table)
+
+        matched_scopes = cls._matched_assignment_scopes_for_table(staff, table)
+        if matched_scopes and (class_field or section_field or branch_field):
+            has_scope_filters = False
+            for scope in matched_scopes:
+                scope_classes = cls._dedupe_scope_values(scope.get('classes') or [])
+                scope_sections = cls._dedupe_scope_values(scope.get('sections') or [])
+                scope_branches = cls._dedupe_scope_values(scope.get('branches') or [])
+                if scope_classes or scope_sections or scope_branches:
+                    has_scope_filters = True
+                    break
+
+            if not has_scope_filters:
+                return qs.none()
 
         if allowed_classes:
             if not class_field:
