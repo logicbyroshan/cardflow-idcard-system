@@ -1001,6 +1001,22 @@ def engine_download(request):
         base_dir / 'installer',
     ])
 
+    media_root_real = None
+    if media_engine_dir:
+        try:
+            media_root_real = str(media_engine_dir.resolve())
+        except Exception:
+            media_root_real = None
+
+    def _is_media_candidate(path_obj: Path) -> bool:
+        if not media_root_real:
+            return False
+        try:
+            candidate_parent = str(path_obj.resolve().parent)
+            return candidate_parent == media_root_real
+        except Exception:
+            return False
+
     def _sha256_file(path_obj: Path):
         hasher = hashlib.sha256()
         with open(path_obj, 'rb') as fh:
@@ -1034,6 +1050,13 @@ def engine_download(request):
     # canonical files are unavailable in the current deployment snapshot.
     candidates = exact_candidates if exact_candidates else glob_candidates
 
+    # MEDIA_ROOT copy is only a mirror for download hosting. Prefer source
+    # installers from static/build folders over MEDIA_ROOT when both exist,
+    # then sync the chosen source into MEDIA_ROOT below.
+    preferred_candidates = [c for c in candidates if not _is_media_candidate(c)]
+    if preferred_candidates:
+        candidates = preferred_candidates
+
     # Guard: do not serve a mislabeled raw engine EXE as the installer.
     # This happened when AdarshEngine.exe was accidentally copied to
     # AdarshEngineSetup.exe, which skips the setup wizard completely.
@@ -1064,7 +1087,7 @@ def engine_download(request):
         logger.error("AdarshEngineSetup.exe not found in any candidate path.")
         raise Http404("AdarshEngine installer not found.")
 
-    # Serve the newest build to avoid stale installer downloads.
+    # Serve the newest build from the preferred candidate pool.
     exe_path = max(candidates, key=lambda p: p.stat().st_mtime)
 
     if media_engine_dir:
@@ -1097,6 +1120,10 @@ def engine_download(request):
     response.block_size = SuperModeService.download_block_size_bytes(request.user)
     # Suppress browsers/proxies from sniffing the content type
     response['X-Content-Type-Options'] = 'nosniff'
+    # Always force revalidation so browser refresh does not reuse old EXE bytes.
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
     # Tell the browser the exact byte size so it shows a proper progress bar
     response['Content-Length'] = exe_path.stat().st_size
     return response

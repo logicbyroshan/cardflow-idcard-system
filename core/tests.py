@@ -378,6 +378,56 @@ class EngineDownloadInstallerGuardTests(TestCase):
         )
 
 
+class EngineDownloadSelectionTests(TestCase):
+    def setUp(self):
+        self.admin = _create_super_admin('engine-selection-admin@test.com')
+        self.client.force_login(self.admin)
+
+    def test_engine_download_prefers_non_media_installer_and_resyncs_media(self):
+        from core.views.engine_api import engine_download
+        from django.test.utils import override_settings
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_root = Path(tmpdir)
+            media_root = tmp_root / 'media'
+            media_engine = media_root / 'engine'
+            static_root = tmp_root / 'static-src'
+            static_engine = static_root / 'engine'
+
+            media_engine.mkdir(parents=True, exist_ok=True)
+            static_engine.mkdir(parents=True, exist_ok=True)
+
+            media_setup = media_engine / 'AdarshEngineSetup.exe'
+            source_setup = static_engine / 'AdarshEngineSetup.exe'
+
+            media_setup.write_bytes(b'old-2-4-installer')
+            source_setup.write_bytes(b'new-3-18-0-installer')
+
+            now = time.time()
+            os.utime(source_setup, (now - 120, now - 120))
+            os.utime(media_setup, (now, now))
+
+            with override_settings(
+                MEDIA_ROOT=str(media_root),
+                STATICFILES_DIRS=[str(static_root)],
+                STATIC_ROOT=str(tmp_root / 'collected-static'),
+            ):
+                factory = RequestFactory()
+                request = factory.get('/panel/engine/download/')
+                request.user = self.admin
+                response = engine_download(request)
+                try:
+                    served_bytes = b''.join(response.streaming_content)
+                    self.assertEqual(served_bytes, b'new-3-18-0-installer')
+                    self.assertEqual(media_setup.read_bytes(), b'new-3-18-0-installer')
+
+                    cache_header = str(response.get('Cache-Control') or '')
+                    self.assertIn('no-store', cache_header)
+                finally:
+                    response.close()
+
+
 class EmailProductShowcaseSelectionTests(TestCase):
     def _create_item(self, title, category, *, featured=False, order=0):
         from website.models import PortfolioItem
