@@ -44,6 +44,14 @@ function initCreateWithXlsx(opts) {
   var FOLDER_UPLOAD_CONFIRM_THRESHOLD = 1000;
   var MAX_FOLDER_UPLOAD_FILES = 5000;
 
+  function isProUserFolderUploadEnabled() {
+    var role = '';
+    if (document && document.body) {
+      role = String(document.body.getAttribute('data-user-role') || '').toLowerCase();
+    }
+    return role === 'pro_user';
+  }
+
   var ALL_TYPES = [
     { value: 'text',         label: 'Text' },
     { value: 'class',        label: 'Class' },
@@ -523,8 +531,18 @@ function initCreateWithXlsx(opts) {
     if (!selectedFile || isUploading) return;
 
     var folderPathValue = folderPathInput ? folderPathInput.value.trim() : '';
+    var allowFolderUpload = isProUserFolderUploadEnabled();
 
-    if (folderPathValue && folderPathValue !== confirmedRiskyFolderPath && isRootLikePath(folderPathValue)) {
+    if (!allowFolderUpload && (folderPathValue || folderFiles.length)) {
+      folderFiles = [];
+      if (folderInput) folderInput.value = '';
+      if (folderPathInput) folderPathInput.value = '';
+      folderPathValue = '';
+      if (folderSummary) folderSummary.textContent = 'No folder selected';
+      if (window.showToast) showToast('Select Folder is available only for Pro User accounts.', 'warning');
+    }
+
+    if (allowFolderUpload && folderPathValue && folderPathValue !== confirmedRiskyFolderPath && isRootLikePath(folderPathValue)) {
       if (typeof window.showConfirm === 'function') {
         window.showConfirm({
           title: 'Use Root Folder Path?',
@@ -594,16 +612,16 @@ function initCreateWithXlsx(opts) {
       formData.append('unified_zip_count', zipFiles.length);
     }
 
-    var filesToUpload = folderPathValue ? [] : folderFiles;
+    var filesToUpload = (allowFolderUpload && !folderPathValue) ? folderFiles : [];
 
     filesToUpload.forEach(function(f) {
       formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
     });
 
-    if (folderPathValue && folderFiles.length && window.showToast) {
+    if (allowFolderUpload && folderPathValue && folderFiles.length && window.showToast) {
       showToast('Using Server Folder Path. Local folder selection will be skipped.', 'warning');
     }
-    if (folderPathValue) {
+    if (allowFolderUpload && folderPathValue) {
       formData.append('photos_folder_path', folderPathValue);
     }
 
@@ -798,6 +816,10 @@ function initCreateWithXlsx(opts) {
   });
   if (folderBrowse && folderInput) {
     folderBrowse.addEventListener('click', function() {
+      if (!isProUserFolderUploadEnabled()) {
+        if (window.showToast) showToast('Select Folder is available only for Pro User accounts.', 'warning');
+        return;
+      }
       var proceed = function() { folderInput.click(); };
       if (typeof window.showConfirm !== 'function') {
         proceed();
@@ -821,6 +843,13 @@ function initCreateWithXlsx(opts) {
   }
   if (folderInput) {
     folderInput.addEventListener('change', function() {
+      if (!isProUserFolderUploadEnabled()) {
+        folderFiles = [];
+        this.value = '';
+        if (folderSummary) folderSummary.textContent = 'No folder selected';
+        if (window.showToast) showToast('Select Folder is available only for Pro User accounts.', 'warning');
+        return;
+      }
       var files = Array.from(folderInput.files || []);
       if (files.length > MAX_FOLDER_UPLOAD_FILES) {
         folderFiles = [];
@@ -853,6 +882,10 @@ function initCreateWithXlsx(opts) {
   }
   if (folderPathInput) {
     folderPathInput.addEventListener('input', function() {
+      if (!isProUserFolderUploadEnabled()) {
+        this.value = '';
+        return;
+      }
       if (!this.value.trim() || !folderFiles.length) return;
       folderFiles = [];
       if (folderInput) folderInput.value = '';

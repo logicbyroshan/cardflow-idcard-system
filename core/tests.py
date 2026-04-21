@@ -2917,7 +2917,7 @@ class ReuploadDirectTaskFlowTests(TestCase):
         )
 
         self.assertEqual(create_resp.status_code, 400)
-        self.assertIn('no zip file uploaded', create_resp.json().get('message', '').lower())
+        self.assertIn('zip', create_resp.json().get('message', '').lower())
 
     def test_zip_index_accepts_non_numeric_and_short_fallback_stems(self):
         from core.services.reupload_processor import _build_zip_image_index
@@ -3400,6 +3400,47 @@ class ReuploadDirectTaskFlowTests(TestCase):
                 remaining_files.extend(files)
 
         self.assertEqual(remaining_files, [])
+
+    def test_bulk_upload_task_rejects_folder_source_for_non_pro_user(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        response = self.client.post(
+            f'/panel/api/table/{self.table.id}/bulk-upload-task/',
+            data={
+                'photos_folder_path': 'C:/Images/School-A',
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('pro user', response.json().get('message', '').lower())
+
+    def test_sync_reupload_rejects_folder_source_for_non_pro_user(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        response = self.client.post(
+            f'/panel/api/table/{self.table.id}/cards/reupload-images/',
+            data={
+                'photos_folder_path': 'C:/Images/School-A',
+                'card_ids': json.dumps([self.card.id]),
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('pro user', response.json().get('message', '').lower())
+
+    def test_reupload_task_rejects_folder_source_for_non_pro_user(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        response = self.client.post(
+            f'/panel/api/table/{self.table.id}/reupload-task/',
+            data={
+                'photos_folder_path': 'C:/Images/School-A',
+                'card_ids': json.dumps([self.card.id]),
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('pro user', response.json().get('message', '').lower())
 
 
 class ClientMessageApiTests(TestCase):

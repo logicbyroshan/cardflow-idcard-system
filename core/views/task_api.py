@@ -62,6 +62,23 @@ MAX_ZIP_SIZE = 950 * 1024 * 1024          # 950 MB for ZIP archives (buffer belo
 ALLOWED_ZIP_EXTENSIONS = ('.zip',)
 
 
+def _ensure_folder_upload_allowed(request):
+    """Allow folder-based upload sources only for Pro User accounts."""
+    folder_upload_files = request.FILES.getlist('photos_folder_files')
+    folder_path = str(request.POST.get('photos_folder_path', '') or '').strip()
+    if not folder_upload_files and not folder_path:
+        return None
+    if getattr(request.user, 'role', '') == 'pro_user':
+        return None
+    return JsonResponse(
+        {
+            'success': False,
+            'message': 'Select Folder is available only for Pro User accounts. Use ZIP upload instead.',
+        },
+        status=403,
+    )
+
+
 def _normalize_positive_int_ids(raw_ids, *, max_items=None):
     """Normalize arbitrary payload values into unique positive integer IDs."""
     if not isinstance(raw_ids, (list, tuple)):
@@ -649,6 +666,9 @@ def api_create_bulk_upload_task(request, table_id):
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err:
         return err
+    folder_access_err = _ensure_folder_upload_allowed(request)
+    if folder_access_err:
+        return folder_access_err
     
     # Double-click guard
     if not _acquire_task_lock(request.user.id, 'bulk_upload'):
@@ -852,6 +872,9 @@ def api_create_reupload_task(request, table_id):
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err:
         return err
+    folder_access_err = _ensure_folder_upload_allowed(request)
+    if folder_access_err:
+        return folder_access_err
     
     # Client/client_staff cannot reupload for tables with locked cards
     if request.user.role in ('client', 'client_staff'):

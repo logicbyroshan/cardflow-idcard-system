@@ -9,6 +9,7 @@ function initIdcardGroup(config) {
   var clientId = config.clientId;
   var isClientRole = config.isClientRole;
   var panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+  var allowFolderUpload = (document.body && String(document.body.getAttribute('data-user-role') || '').toLowerCase() === 'pro_user');
 
   function panelUrl(path) {
     if (!path) return path;
@@ -448,13 +449,14 @@ function initIdcardGroup(config) {
   function _updateGroupReuploadConfirmState() {
     var hasZip = !!(reuploadFileInput && reuploadFileInput.files && reuploadFileInput.files.length);
     var hasFolderFiles = !!(
+      allowFolderUpload &&
       reuploadFolderInput &&
       reuploadFolderInput.files &&
       Array.from(reuploadFolderInput.files).some(function(f) {
         return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
       })
     );
-    var hasFolderPath = !!(reuploadFolderPath && reuploadFolderPath.value && reuploadFolderPath.value.trim());
+    var hasFolderPath = !!(allowFolderUpload && reuploadFolderPath && reuploadFolderPath.value && reuploadFolderPath.value.trim());
     reuploadConfirmBtn.disabled = !(hasZip || hasFolderFiles || hasFolderPath);
   }
 
@@ -500,11 +502,24 @@ function initIdcardGroup(config) {
   }
 
   if (reuploadFolderBrowse && reuploadFolderInput) {
-    reuploadFolderBrowse.addEventListener('click', function() { reuploadFolderInput.click(); });
+    reuploadFolderBrowse.addEventListener('click', function() {
+      if (!allowFolderUpload) {
+        if (window.showToast) window.showToast('Select Folder is available only for Pro User accounts.', 'warning');
+        return;
+      }
+      reuploadFolderInput.click();
+    });
   }
 
   if (reuploadFolderInput) {
     reuploadFolderInput.addEventListener('change', function() {
+      if (!allowFolderUpload) {
+        this.value = '';
+        if (reuploadFolderName) reuploadFolderName.textContent = 'No folder selected';
+        if (window.showToast) window.showToast('Select Folder is available only for Pro User accounts.', 'warning');
+        _updateGroupReuploadConfirmState();
+        return;
+      }
       var files = Array.from(this.files || []).filter(function(f) {
         return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
       });
@@ -561,14 +576,14 @@ function initIdcardGroup(config) {
       if (reuploadFileInput && reuploadFileInput.files && reuploadFileInput.files.length) {
         formData.append('photos_zip', reuploadFileInput.files[0]);
       }
-      if (reuploadFolderInput && reuploadFolderInput.files && reuploadFolderInput.files.length) {
+      if (allowFolderUpload && reuploadFolderInput && reuploadFolderInput.files && reuploadFolderInput.files.length) {
         Array.from(reuploadFolderInput.files).filter(function(f) {
           return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
         }).forEach(function(f) {
           formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
         });
       }
-      if (reuploadFolderPath && reuploadFolderPath.value && reuploadFolderPath.value.trim()) {
+      if (allowFolderUpload && reuploadFolderPath && reuploadFolderPath.value && reuploadFolderPath.value.trim()) {
         formData.append('photos_folder_path', reuploadFolderPath.value.trim());
       }
 

@@ -1231,6 +1231,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashReuploadProgress = document.getElementById('dashReuploadProgress');
     const dashReuploadBar = document.getElementById('dashReuploadBar');
     const dashReuploadStatus = document.getElementById('dashReuploadStatus');
+    const dashAllowFolderUpload = (document.body && String(document.body.getAttribute('data-user-role') || '').toLowerCase() === 'pro_user');
 
     function dashOpenReuploadModal(tableId) {
         dashReuploadTableId = tableId;
@@ -1255,13 +1256,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function _dashUpdateReuploadConfirmState() {
         const hasZip = !!(dashReuploadFileInput && dashReuploadFileInput.files && dashReuploadFileInput.files.length);
         const hasFolderFiles = !!(
+            dashAllowFolderUpload &&
             dashReuploadFolderInput &&
             dashReuploadFolderInput.files &&
             Array.from(dashReuploadFolderInput.files).some(function(f) {
                 return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
             })
         );
-        const hasFolderPath = !!(dashReuploadFolderPath && dashReuploadFolderPath.value && dashReuploadFolderPath.value.trim());
+        const hasFolderPath = !!(dashAllowFolderUpload && dashReuploadFolderPath && dashReuploadFolderPath.value && dashReuploadFolderPath.value.trim());
         if (dashReuploadConfirmBtn) {
             dashReuploadConfirmBtn.disabled = !(hasZip || hasFolderFiles || hasFolderPath);
             dashReuploadConfirmBtn.style.opacity = dashReuploadConfirmBtn.disabled ? '0.5' : '1';
@@ -1302,11 +1304,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (dashReuploadFolderBrowse && dashReuploadFolderInput) {
-        dashReuploadFolderBrowse.addEventListener('click', function() { dashReuploadFolderInput.click(); });
+        dashReuploadFolderBrowse.addEventListener('click', function() {
+            if (!dashAllowFolderUpload) {
+                if (typeof showToast === 'function') showToast('Select Folder is available only for Pro User accounts.', 'warning');
+                return;
+            }
+            dashReuploadFolderInput.click();
+        });
     }
 
     if (dashReuploadFolderInput) {
         dashReuploadFolderInput.addEventListener('change', function() {
+            if (!dashAllowFolderUpload) {
+                this.value = '';
+                if (dashReuploadFolderName) dashReuploadFolderName.textContent = 'No folder selected';
+                if (typeof showToast === 'function') showToast('Select Folder is available only for Pro User accounts.', 'warning');
+                _dashUpdateReuploadConfirmState();
+                return;
+            }
             const files = Array.from(this.files || []).filter(function(f) {
                 return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
             });
@@ -1338,14 +1353,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (dashReuploadFileInput && dashReuploadFileInput.files && dashReuploadFileInput.files.length) {
                 formData.append('photos_zip', dashReuploadFileInput.files[0]);
             }
-            if (dashReuploadFolderInput && dashReuploadFolderInput.files && dashReuploadFolderInput.files.length) {
+            if (dashAllowFolderUpload && dashReuploadFolderInput && dashReuploadFolderInput.files && dashReuploadFolderInput.files.length) {
                 Array.from(dashReuploadFolderInput.files).filter(function(f) {
                     return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
                 }).forEach(function(f) {
                     formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
                 });
             }
-            if (dashReuploadFolderPath && dashReuploadFolderPath.value && dashReuploadFolderPath.value.trim()) {
+            if (dashAllowFolderUpload && dashReuploadFolderPath && dashReuploadFolderPath.value && dashReuploadFolderPath.value.trim()) {
                 formData.append('photos_folder_path', dashReuploadFolderPath.value.trim());
             }
 

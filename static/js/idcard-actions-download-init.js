@@ -120,16 +120,25 @@ let reuploadInProgress = false;
 let reuploadCancelRequested = false;
 let reuploadPollErrorCount = 0;
 
+function _isProUserFolderUploadEnabled() {
+    var role = '';
+    if (document && document.body) {
+        role = String(document.body.getAttribute('data-user-role') || '').toLowerCase();
+    }
+    return role === 'pro_user';
+}
+
 function _updateReuploadActionsConfirmState() {
     const hasZip = !!(reuploadActionsFileInput && reuploadActionsFileInput.files && reuploadActionsFileInput.files.length);
     const hasFolderFiles = !!(
+        _isProUserFolderUploadEnabled() &&
         reuploadActionsFolderInput &&
         reuploadActionsFolderInput.files &&
         Array.from(reuploadActionsFolderInput.files).some(function(f) {
             return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
         })
     );
-    const hasFolderPath = !!(reuploadActionsFolderPath && reuploadActionsFolderPath.value && reuploadActionsFolderPath.value.trim());
+    const hasFolderPath = !!(_isProUserFolderUploadEnabled() && reuploadActionsFolderPath && reuploadActionsFolderPath.value && reuploadActionsFolderPath.value.trim());
     if (reuploadActionsConfirmBtn) {
         reuploadActionsConfirmBtn.disabled = !(hasZip || hasFolderFiles || hasFolderPath);
     }
@@ -304,12 +313,23 @@ function initReuploadHandlers() {
 
     if (reuploadActionsFolderBrowse && reuploadActionsFolderInput) {
         reuploadActionsFolderBrowse.addEventListener('click', function() {
+            if (!_isProUserFolderUploadEnabled()) {
+                if (typeof showToast === 'function') showToast('Select Folder is available only for Pro User accounts.', 'warning');
+                return;
+            }
             reuploadActionsFolderInput.click();
         });
     }
 
     if (reuploadActionsFolderInput) {
         reuploadActionsFolderInput.addEventListener('change', function() {
+            if (!_isProUserFolderUploadEnabled()) {
+                this.value = '';
+                if (reuploadActionsFolderName) reuploadActionsFolderName.textContent = 'No folder selected';
+                if (typeof showToast === 'function') showToast('Select Folder is available only for Pro User accounts.', 'warning');
+                _updateReuploadActionsConfirmState();
+                return;
+            }
             const files = Array.from(this.files || []).filter(function(f) {
                 return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
             });
@@ -433,13 +453,14 @@ function initReuploadHandlers() {
     function _startReuploadTask(tableId) {
         const hasZip = !!(reuploadActionsFileInput && reuploadActionsFileInput.files && reuploadActionsFileInput.files.length);
         const hasFolderFiles = !!(
+            _isProUserFolderUploadEnabled() &&
             reuploadActionsFolderInput &&
             reuploadActionsFolderInput.files &&
             Array.from(reuploadActionsFolderInput.files).some(function(f) {
                 return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
             })
         );
-        const hasFolderPath = !!(reuploadActionsFolderPath && reuploadActionsFolderPath.value && reuploadActionsFolderPath.value.trim());
+        const hasFolderPath = !!(_isProUserFolderUploadEnabled() && reuploadActionsFolderPath && reuploadActionsFolderPath.value && reuploadActionsFolderPath.value.trim());
         if (!(hasZip || hasFolderFiles || hasFolderPath)) return;
         if (reuploadInProgress) {
             if (typeof showToast === 'function') showToast('Reupload already in progress.', 'warning');
@@ -463,14 +484,14 @@ function initReuploadHandlers() {
         if (hasZip) {
             formData.append('photos_zip', reuploadActionsFileInput.files[0]);
         }
-        if (hasFolderFiles) {
+        if (_isProUserFolderUploadEnabled() && hasFolderFiles) {
             Array.from(reuploadActionsFolderInput.files).filter(function(f) {
                 return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
             }).forEach(function(f) {
                 formData.append('photos_folder_files', f, f.webkitRelativePath || f.name);
             });
         }
-        if (hasFolderPath) {
+        if (_isProUserFolderUploadEnabled() && hasFolderPath) {
             formData.append('photos_folder_path', reuploadActionsFolderPath.value.trim());
         }
         formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));

@@ -54,6 +54,23 @@ _REUPLOAD_NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
 REUPLOAD_ALLOW_LEGACY_FALLBACK = True
 
 
+def _ensure_folder_upload_allowed(request):
+    """Allow folder-based upload sources only for Pro User accounts."""
+    folder_upload_files = request.FILES.getlist('photos_folder_files')
+    folder_path = str(request.POST.get('photos_folder_path', '') or '').strip()
+    if not folder_upload_files and not folder_path:
+        return None
+    if getattr(request.user, 'role', '') == 'pro_user':
+        return None
+    return JsonResponse(
+        {
+            'success': False,
+            'message': 'Select Folder is available only for Pro User accounts. Use ZIP upload instead.',
+        },
+        status=403,
+    )
+
+
 class _SuperModeMemoryUploadHandler(MemoryFileUploadHandler):
     """Force Django multipart uploads to stay in memory for Super Mode sync path."""
 
@@ -108,6 +125,9 @@ def api_idcard_bulk_upload(request, table_id):
     """
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
+    folder_access_err = _ensure_folder_upload_allowed(request)
+    if folder_access_err:
+        return folder_access_err
     # Double-click guard: prevent duplicate uploads from rapid form submissions
     lock_key = f'bulk_upload_lock:{request.user.id}:{table_id}'
     if not django_cache.add(lock_key, 1, 300):
@@ -640,6 +660,9 @@ def api_idcard_reupload_images(request, table_id):
     """
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
+    folder_access_err = _ensure_folder_upload_allowed(request)
+    if folder_access_err:
+        return folder_access_err
     # Client/client_staff cannot reupload images for tables with approved/download/reprint cards
     if request.user.role in ('client', 'client_staff'):
         has_locked = IDCard.objects.filter(

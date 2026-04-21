@@ -22,6 +22,14 @@ var showValidationResults = window.IDCardApp._uploadFns.showValidationResults;
 var closeUploadModalFn = window.IDCardApp._uploadFns.closeUploadModalFn;
 var updateNextButtonState = window.IDCardApp._uploadFns.updateNextButtonState;
 
+function _isProUserFolderUploadEnabled() {
+    var role = '';
+    if (document && document.body) {
+        role = String(document.body.getAttribute('data-user-role') || '').toLowerCase();
+    }
+    return role === 'pro_user';
+}
+
 // ==========================================
 // XLSX UPLOAD HANDLERS
 // ==========================================
@@ -367,14 +375,14 @@ function initXlsxUpload() {
                 formData.append('unified_zip_count', unifiedZips.length.toString());
             }
 
-            if (_us.unifiedFolderFiles && _us.unifiedFolderFiles.length > 0) {
+            if (_isProUserFolderUploadEnabled() && _us.unifiedFolderFiles && _us.unifiedFolderFiles.length > 0) {
                 _us.unifiedFolderFiles.forEach(function(file) {
                     formData.append('photos_folder_files', file, file.webkitRelativePath || file.name);
                 });
             }
 
             var unifiedFolderPathInput = document.getElementById('unifiedFolderPathInput');
-            if (unifiedFolderPathInput && unifiedFolderPathInput.value && unifiedFolderPathInput.value.trim()) {
+            if (_isProUserFolderUploadEnabled() && unifiedFolderPathInput && unifiedFolderPathInput.value && unifiedFolderPathInput.value.trim()) {
                 formData.append('photos_folder_path', unifiedFolderPathInput.value.trim());
             }
 
@@ -737,11 +745,27 @@ function initUnifiedZipUpload() {
     }
 
     if (folderSelectBtn && folderInput) {
-        folderSelectBtn.addEventListener('click', function() { folderInput.click(); });
+        folderSelectBtn.addEventListener('click', function() {
+            if (!_isProUserFolderUploadEnabled()) {
+                if (typeof showToast === 'function') showToast('Select Folder is available only for Pro User accounts.', 'warning');
+                return;
+            }
+            folderInput.click();
+        });
     }
 
     if (folderInput) {
         folderInput.addEventListener('change', function() {
+            if (!_isProUserFolderUploadEnabled()) {
+                _us.unifiedFolderFiles = [];
+                this.value = '';
+                if (selectedFolderSummary) {
+                    selectedFolderSummary.style.display = 'none';
+                    selectedFolderSummary.innerHTML = '';
+                }
+                if (typeof showToast === 'function') showToast('Select Folder is available only for Pro User accounts.', 'warning');
+                return;
+            }
             var files = Array.from(this.files || []).filter(function(f) {
                 return /\.(jpe?g|png|gif|bmp|webp|heic|heif|hei)$/i.test(f.name || '');
             });
