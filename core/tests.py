@@ -3894,3 +3894,116 @@ class AdminClientStaffManagementTests(TestCase):
 
         api_response = self.client.get('/panel/api/client-staff/clients/')
         self.assertEqual(api_response.status_code, 403)
+
+
+class PoolRetrieveClassChangeFlowTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.client_owner_user, self.client_obj = _create_client_user(
+            'retrieve-owner@test.com',
+            'clientpass1',
+        )
+        self.client_obj.perm_idcard_retrieve = True
+        self.client_obj.perm_idcard_pool_list = True
+        self.client_obj.perm_idcard_pending_list = True
+        self.client_obj.save(update_fields=['perm_idcard_retrieve', 'perm_idcard_pool_list', 'perm_idcard_pending_list'])
+
+        self.group, self.table = _create_table(self.client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+            {'name': 'SECTION', 'type': 'section', 'order': 3},
+        ])
+
+        self.card = _create_card(
+            self.table,
+            field_data={'NAME': 'Scope Card', 'CLASS': '2', 'SECTION': 'A'},
+            status='pool',
+        )
+
+        self.staff_user = User.objects.create_user(
+            username='retrieve-assistant@test.com',
+            email='retrieve-assistant@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        self.staff_profile = Staff.objects.create(
+            user=self.staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+            perm_idcard_retrieve=True,
+            perm_idcard_pool_list=True,
+            perm_idcard_pending_list=True,
+            allowed_classes=['1'],
+            allowed_sections=[],
+            assigned_table_ids=[self.table.id],
+        )
+        self.staff_profile.assigned_groups.add(self.group)
+
+        self.client.login(username='retrieve-assistant@test.com', password='pass1234')
+
+    def test_single_retrieve_requires_class_change_then_updates_class_and_moves_pending(self):
+        blocked = self.client.post(
+            f'/panel/api/card/{self.card.id}/status/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json',
+        )
+        self.assertEqual(blocked.status_code, 409)
+        blocked_payload = blocked.json()
+        self.assertFalse(blocked_payload.get('success'))
+        self.assertTrue(blocked_payload.get('requires_class_change'))
+        self.assertIn('allowed_classes', blocked_payload)
+
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.status, 'pool')
+        self.assertEqual((self.card.field_data or {}).get('CLASS'), '2')
+
+        allowed = self.client.post(
+            f'/panel/api/card/{self.card.id}/status/',
+            data=json.dumps({
+                'status': 'pending',
+                'apply_class_change': True,
+                'updated_class': '1',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(allowed.status_code, 200)
+        allowed_payload = allowed.json()
+        self.assertTrue(allowed_payload.get('success'))
+
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.status, 'pending')
+        self.assertEqual((self.card.field_data or {}).get('CLASS'), '1')
+
+    def test_bulk_retrieve_accepts_class_update_map_for_out_of_scope_pool_card(self):
+        blocked = self.client.post(
+            f'/panel/api/table/{self.table.id}/cards/bulk-status/',
+            data=json.dumps({
+                'card_ids': [self.card.id],
+                'status': 'pending',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(blocked.status_code, 409)
+        blocked_payload = blocked.json()
+        self.assertTrue(blocked_payload.get('requires_class_change'))
+
+        allowed = self.client.post(
+            f'/panel/api/table/{self.table.id}/cards/bulk-status/',
+            data=json.dumps({
+                'card_ids': [self.card.id],
+                'status': 'pending',
+                'apply_class_change': True,
+                'pool_retrieve_class_updates': {
+                    str(self.card.id): '1',
+                },
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(allowed.status_code, 200)
+        allowed_payload = allowed.json()
+        self.assertTrue(allowed_payload.get('success'))
+
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.status, 'pending')
+        self.assertEqual((self.card.field_data or {}).get('CLASS'), '1')

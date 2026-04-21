@@ -33,6 +33,7 @@ from .idcard_helpers import (
     _check_client_scope_by_table,
     _check_client_scope_by_card,
     _get_class_section_course_branch_field_names,
+    _table_scope_filters_for_staff,
     _build_class_filter_q,
     invalidate_class_variant_cache,
     invalidate_filter_options_cache,
@@ -144,6 +145,144 @@ def _forbidden_card_ids_for_client_staff(user, table, card_ids):
         ).values_list('id', flat=True)
     )
     return [cid for cid in normalized if cid not in scoped_ids]
+
+
+def _pool_retrieve_scope_payload(user, card):
+    """Build frontend payload for class-change-before-retrieve flow."""
+    payload = {
+        'card_id': card.id,
+        'class_field': None,
+        'current_class': '',
+        'allowed_classes': [],
+    }
+
+    if not PermissionService.is_client_staff(user):
+        return payload
+
+    staff = getattr(user, 'staff_profile', None)
+    if not staff:
+        return payload
+
+    class_field_name, _section_field_name, _course_field_name, _branch_field_name = (
+        _get_class_section_course_branch_field_names(card.table)
+    )
+    payload['class_field'] = class_field_name
+
+    allowed_classes, _allowed_sections, _allowed_branches = _table_scope_filters_for_staff(staff, card.table)
+    payload['allowed_classes'] = [
+        str(value).strip()
+        for value in (allowed_classes or [])
+        if str(value).strip()
+    ]
+
+    if class_field_name:
+        field_data = card.field_data or {}
+        raw_value = (
+            field_data.get(class_field_name)
+            or field_data.get(class_field_name.upper())
+            or field_data.get(class_field_name.lower())
+            or ''
+        )
+        payload['current_class'] = str(raw_value).strip()
+
+    return payload
+
+
+def _pool_retrieve_requires_class_change(user, card):
+    """Return True when pool->pending retrieve needs a class update first."""
+    if not PermissionService.is_client_staff(user):
+        return False
+
+    if str(card.status or '').strip().lower() != 'pool':
+        return False
+
+    from core.utils.field_utils import normalize_class_value
+
+    payload = _pool_retrieve_scope_payload(user, card)
+    class_field_name = payload.get('class_field')
+    allowed_classes = payload.get('allowed_classes') or []
+    if not class_field_name or not allowed_classes:
+        return False
+
+    normalized_allowed = {
+        normalize_class_value(value)
+        for value in allowed_classes
+        if normalize_class_value(value)
+    }
+    if not normalized_allowed:
+        return False
+
+    current_class = payload.get('current_class') or ''
+    current_normalized = normalize_class_value(current_class)
+    return current_normalized not in normalized_allowed
+
+
+def _apply_pool_retrieve_class_change(user, card, requested_class):
+    """Apply class update for out-of-scope pool retrieve before status transition."""
+    if not PermissionService.is_client_staff(user):
+        return False, 'Class update is only available for assistant retrieve flow.'
+
+    requested_text = str(requested_class or '').strip()
+    if not requested_text:
+        return False, 'Select your assigned class before retrieving from pool.'
+
+    staff = getattr(user, 'staff_profile', None)
+    if not staff:
+        return False, 'Staff profile not found.'
+
+    class_field_name, _section_field_name, _course_field_name, _branch_field_name = (
+        _get_class_section_course_branch_field_names(card.table)
+    )
+    if not class_field_name:
+        return False, 'Class field is not configured for this table.'
+
+    allowed_classes, _allowed_sections, _allowed_branches = _table_scope_filters_for_staff(staff, card.table)
+    allowed_values = [
+        str(value).strip()
+        for value in (allowed_classes or [])
+        if str(value).strip()
+    ]
+    if not allowed_values:
+        return False, 'No assigned class available for this table.'
+
+    from core.utils.field_utils import normalize_class_value
+
+    normalized_allowed = {}
+    for value in allowed_values:
+        normalized = normalize_class_value(value)
+        if normalized and normalized not in normalized_allowed:
+            normalized_allowed[normalized] = value
+
+    requested_normalized = normalize_class_value(requested_text)
+    if not requested_normalized or requested_normalized not in normalized_allowed:
+        return False, 'Selected class is outside your assigned scope.'
+
+    selected_class_value = normalized_allowed[requested_normalized]
+    field_data = dict(card.field_data or {})
+    class_field_key = class_field_name
+    for key in (class_field_name, class_field_name.upper(), class_field_name.lower()):
+        if key in field_data:
+            class_field_key = key
+            break
+
+    field_data[class_field_key] = selected_class_value
+    card.field_data = field_data
+    card.modified_by = request_username = getattr(user, 'username', '') or ''
+    update_fields = ['field_data', 'modified_by', 'updated_at'] if request_username else ['field_data', 'updated_at']
+    card.save(update_fields=update_fields)
+
+    try:
+        invalidate_class_variant_cache(card.table_id)
+        invalidate_filter_options_cache(card.table_id)
+        CacheVersionService.bump('mob_filter', int(card.table_id))
+        CacheVersionService.bump('global_search', 'all')
+        table_client_id = getattr(getattr(card.table, 'group', None), 'client_id', None)
+        if table_client_id:
+            CacheVersionService.bump('class_section', int(table_client_id))
+    except Exception:
+        pass
+
+    return True, ''
 
 
 def _build_modifier_role_map(modifier_names):
@@ -1296,13 +1435,39 @@ def api_idcard_change_status(request, card_id):
         data = json.loads(request.body)
         new_status = data.get('status')
 
-        if (
+        is_pool_retrieve = (
             PermissionService.is_client_staff(request.user)
             and str(card.status or '').strip().lower() == 'pool'
             and str(new_status or '').strip().lower() == 'pending'
-            and not _is_card_in_client_staff_assignment_scope(request.user, card)
-        ):
-            return JsonResponse({'success': False, 'message': _POOL_RETRIEVE_SCOPE_MESSAGE}, status=403)
+        )
+
+        if is_pool_retrieve and not _is_card_in_client_staff_assignment_scope(request.user, card):
+            apply_class_change = _as_bool(data.get('apply_class_change'))
+            if apply_class_change:
+                updated_class = data.get('updated_class')
+                ok, error_message = _apply_pool_retrieve_class_change(request.user, card, updated_class)
+                if not ok:
+                    payload = _pool_retrieve_scope_payload(request.user, card)
+                    return JsonResponse({
+                        'success': False,
+                        'message': error_message,
+                        'requires_class_change': True,
+                        'retrieve_scope': 'pool_to_pending',
+                        **payload,
+                    }, status=400)
+                card.refresh_from_db()
+
+            if not _is_card_in_client_staff_assignment_scope(request.user, card):
+                payload = _pool_retrieve_scope_payload(request.user, card)
+                if _pool_retrieve_requires_class_change(request.user, card):
+                    return JsonResponse({
+                        'success': False,
+                        'message': _POOL_RETRIEVE_SCOPE_MESSAGE,
+                        'requires_class_change': True,
+                        'retrieve_scope': 'pool_to_pending',
+                        **payload,
+                    }, status=409)
+                return JsonResponse({'success': False, 'message': _POOL_RETRIEVE_SCOPE_MESSAGE}, status=403)
 
         from idcards.services_workflow import WorkflowService
         result = WorkflowService.transition(card, new_status, user=request.user, request=request)
@@ -1333,23 +1498,83 @@ def api_idcard_bulk_status(request, table_id):
         if not card_ids:
             return JsonResponse({'success': False, 'message': 'No cards selected'}, status=400)
 
+        is_pool_retrieve = (
+            PermissionService.is_client_staff(request.user)
+            and str(new_status or '').strip().lower() == 'pending'
+        )
+
         forbidden_ids = _forbidden_card_ids_for_client_staff(request.user, _tbl, card_ids)
         if forbidden_ids:
-            if str(new_status or '').strip().lower() == 'pending':
-                has_pool_mismatch = IDCard.objects.filter(
-                    table=_tbl,
-                    id__in=forbidden_ids,
-                    status='pool',
-                ).exists()
-                if has_pool_mismatch:
-                    return JsonResponse({
-                        'success': False,
-                        'message': _POOL_RETRIEVE_SCOPE_MESSAGE,
-                    }, status=403)
-            return JsonResponse({
-                'success': False,
-                'message': 'Some selected cards are outside your assigned scope.',
-            }, status=403)
+            if is_pool_retrieve:
+                apply_class_change = _as_bool(data.get('apply_class_change'))
+                class_updates_raw = data.get('pool_retrieve_class_updates') or {}
+                class_updates = class_updates_raw if isinstance(class_updates_raw, dict) else {}
+
+                if apply_class_change and class_updates:
+                    candidate_cards = list(
+                        IDCard.objects.select_related('table__group').filter(
+                            table=_tbl,
+                            id__in=forbidden_ids,
+                            status='pool',
+                        )
+                    )
+                    for pool_card in candidate_cards:
+                        requested_class = class_updates.get(str(pool_card.id), class_updates.get(pool_card.id))
+                        if requested_class is None:
+                            continue
+                        ok, error_message = _apply_pool_retrieve_class_change(
+                            request.user,
+                            pool_card,
+                            requested_class,
+                        )
+                        if not ok:
+                            payload = _pool_retrieve_scope_payload(request.user, pool_card)
+                            return JsonResponse({
+                                'success': False,
+                                'message': error_message,
+                                'requires_class_change': True,
+                                'retrieve_scope': 'pool_to_pending',
+                                'cards': [payload],
+                            }, status=400)
+
+                    forbidden_ids = _forbidden_card_ids_for_client_staff(request.user, _tbl, card_ids)
+
+                if forbidden_ids:
+                    has_pool_mismatch = IDCard.objects.filter(
+                        table=_tbl,
+                        id__in=forbidden_ids,
+                        status='pool',
+                    ).exists()
+                    if has_pool_mismatch:
+                        pool_cards = list(
+                            IDCard.objects.select_related('table__group').filter(
+                                table=_tbl,
+                                id__in=forbidden_ids,
+                                status='pool',
+                            )[:5]
+                        )
+                        payload_cards = [
+                            _pool_retrieve_scope_payload(request.user, pool_card)
+                            for pool_card in pool_cards
+                            if _pool_retrieve_requires_class_change(request.user, pool_card)
+                        ]
+                        if payload_cards:
+                            return JsonResponse({
+                                'success': False,
+                                'message': _POOL_RETRIEVE_SCOPE_MESSAGE,
+                                'requires_class_change': True,
+                                'retrieve_scope': 'pool_to_pending',
+                                'cards': payload_cards,
+                            }, status=409)
+                        return JsonResponse({
+                            'success': False,
+                            'message': _POOL_RETRIEVE_SCOPE_MESSAGE,
+                        }, status=403)
+            if forbidden_ids:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Some selected cards are outside your assigned scope.',
+                }, status=403)
 
         from idcards.services_workflow import WorkflowService
         result = WorkflowService.bulk_transition(

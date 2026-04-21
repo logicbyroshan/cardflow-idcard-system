@@ -343,6 +343,77 @@ function showWorkflowConfirm(message, onConfirm, options) {
     };
 }
 
+function _extractRetrieveClassChangeDetails(payload) {
+    if (!payload || !payload.requires_class_change) return null;
+    if (payload.card_id) return payload;
+    if (Array.isArray(payload.cards) && payload.cards.length === 1) return payload.cards[0];
+    return null;
+}
+
+function promptRetrieveClassAndConfirm(details, sourceLabel, onConfirmClass) {
+    if (!details || typeof onConfirmClass !== 'function') return false;
+
+    var allowedClasses = Array.isArray(details.allowed_classes)
+        ? details.allowed_classes.map(function(value) { return String(value || '').trim(); }).filter(Boolean)
+        : [];
+    if (!allowedClasses.length) {
+        if (typeof showToast === 'function') {
+            showToast('No assigned class available. Ask admin to set your class assignment.', false);
+        }
+        return true;
+    }
+
+    var currentClass = String(details.current_class || '').trim();
+    var promptLines = [
+        'This record is outside your assigned class scope.',
+        '',
+        'Assigned classes: ' + allowedClasses.join(', '),
+    ];
+    if (currentClass) {
+        promptLines.push('Current class: ' + currentClass);
+    }
+    promptLines.push('Enter one assigned class to continue:');
+
+    var picked = window.prompt(promptLines.join('\n'), allowedClasses[0]);
+    if (picked === null) {
+        return true;
+    }
+
+    picked = String(picked || '').trim();
+    if (!picked) {
+        if (typeof showToast === 'function') showToast('Class is required to retrieve this card.', false);
+        return true;
+    }
+
+    var matchedClass = null;
+    var pickedLower = picked.toLowerCase();
+    for (var i = 0; i < allowedClasses.length; i++) {
+        if (allowedClasses[i].toLowerCase() === pickedLower) {
+            matchedClass = allowedClasses[i];
+            break;
+        }
+    }
+    if (!matchedClass) {
+        if (typeof showToast === 'function') {
+            showToast('Select a class from your assigned classes only.', false);
+        }
+        return true;
+    }
+
+    showWorkflowConfirm(
+        'Change class to "' + matchedClass + '" and move this record from ' + sourceLabel + ' to Pending list?',
+        function() {
+            onConfirmClass(matchedClass);
+        },
+        {
+            actionType: sourceLabel === 'Download' ? 'retrieveDownload' : 'retrievePool',
+            note: 'Class will be updated only after you confirm. Cancel keeps card unchanged in ' + sourceLabel + '.',
+        }
+    );
+
+    return true;
+}
+
 // ==========================================
 // SINGLE CARD STATUS OPERATIONS
 // ==========================================
@@ -412,20 +483,36 @@ function retrieveCard(cardId) {
     const isDownloadList = currentStatus === 'download';
     const sourceLabel = isDownloadList ? 'Download' : 'Pool';
 
-    showWorkflowConfirm(`Are you sure you want to move this record from ${sourceLabel} to Pending list?`, function() {
-        if (typeof apiCall === 'function') {
-            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
-                .then(data => {
-                    if (data.success === false) {
-                        if (typeof showToast === 'function') showToast(data.message || 'Error', false);
+    function performRetrieve(payload) {
+        return apiCall(`/api/card/${cardId}/status/`, 'POST', payload)
+            .then(function(data) {
+                if (data.success === false) {
+                    var details = _extractRetrieveClassChangeDetails(data);
+                    if (details && promptRetrieveClassAndConfirm(details, sourceLabel, function(selectedClass) {
+                        performRetrieve({ status: 'pending', apply_class_change: true, updated_class: selectedClass });
+                    })) {
                         return;
                     }
-                    if (typeof showToast === 'function') showToast('Card retrieved to pending list');
-                    removeCardRow(cardId);
-                })
-                .catch(err => {
-                    if (typeof showToast === 'function') showToast(err.message || 'Failed to retrieve card', false);
-                });
+                    if (typeof showToast === 'function') showToast(data.message || 'Error', false);
+                    return;
+                }
+                if (typeof showToast === 'function') showToast('Card retrieved to pending list');
+                removeCardRow(cardId);
+            })
+            .catch(function(err) {
+                var details = _extractRetrieveClassChangeDetails(err && err.data);
+                if (details && promptRetrieveClassAndConfirm(details, sourceLabel, function(selectedClass) {
+                    performRetrieve({ status: 'pending', apply_class_change: true, updated_class: selectedClass });
+                })) {
+                    return;
+                }
+                if (typeof showToast === 'function') showToast((err && err.message) || 'Failed to retrieve card', false);
+            });
+    }
+
+    showWorkflowConfirm(`Are you sure you want to move this record from ${sourceLabel} to Pending list?`, function() {
+        if (typeof apiCall === 'function') {
+            performRetrieve({ status: 'pending' });
         }
     }, {
         actionType: isDownloadList ? 'retrieveDownload' : 'retrievePool',
@@ -484,6 +571,8 @@ IDCardApp.removeCardRows = removeCardRows;
 IDCardApp.refreshStatusCounts = refreshStatusCounts;
 IDCardApp.reindexVisibleSrNumbers = reindexVisibleSrNumbers;
 IDCardApp.showWorkflowConfirm = showWorkflowConfirm;
+IDCardApp.extractRetrieveClassChangeDetails = _extractRetrieveClassChangeDetails;
+IDCardApp.promptRetrieveClassAndConfirm = promptRetrieveClassAndConfirm;
 IDCardApp.verifyCard = verifyCard;
 IDCardApp.approveCard = approveCard;
 IDCardApp.unverifyCard = unverifyCard;

@@ -173,26 +173,79 @@ function bulkRetrieve(cardIds) {
     const currentStatus = (typeof CURRENT_STATUS !== 'undefined' ? String(CURRENT_STATUS).toLowerCase() : 'pool');
     const isDownloadList = currentStatus === 'download';
     const sourceLabel = isDownloadList ? 'Download' : 'Pool';
+    var tableId = null;
+
+    function performBulkRetrieve(payload) {
+        apiCall(panelUrl(`/api/table/${tableId}/cards/bulk-status/`), 'POST', payload, { timeout: 120000 })
+            .then(function(data) {
+                if (data.success === false) {
+                    var extractFn = window.IDCardApp && window.IDCardApp.extractRetrieveClassChangeDetails;
+                    var promptFn = window.IDCardApp && window.IDCardApp.promptRetrieveClassAndConfirm;
+                    var details = (typeof extractFn === 'function') ? extractFn(data) : null;
+                    if (
+                        details
+                        && cardIds.length === 1
+                        && typeof promptFn === 'function'
+                    ) {
+                        promptFn(details, sourceLabel, function(selectedClass) {
+                            var updatePayload = {
+                                card_ids: cardIds,
+                                status: 'pending',
+                                apply_class_change: true,
+                                pool_retrieve_class_updates: {},
+                            };
+                            updatePayload.pool_retrieve_class_updates[String(cardIds[0])] = selectedClass;
+                            performBulkRetrieve(updatePayload);
+                        });
+                        return;
+                    }
+                    if (
+                        data.requires_class_change
+                        && cardIds.length > 1
+                        && typeof showToast === 'function'
+                    ) {
+                        showToast('Select one record at a time to change class and retrieve.', false);
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast(data.message || 'Cannot retrieve cards', false);
+                    return;
+                }
+                if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) retrieved to pending`);
+                IDCardApp.refreshCardTable();
+            })
+            .catch(function(err) {
+                var extractFn = window.IDCardApp && window.IDCardApp.extractRetrieveClassChangeDetails;
+                var promptFn = window.IDCardApp && window.IDCardApp.promptRetrieveClassAndConfirm;
+                var details = (typeof extractFn === 'function') ? extractFn(err && err.data) : null;
+                if (
+                    details
+                    && cardIds.length === 1
+                    && typeof promptFn === 'function'
+                ) {
+                    promptFn(details, sourceLabel, function(selectedClass) {
+                        var updatePayload = {
+                            card_ids: cardIds,
+                            status: 'pending',
+                            apply_class_change: true,
+                            pool_retrieve_class_updates: {},
+                        };
+                        updatePayload.pool_retrieve_class_updates[String(cardIds[0])] = selectedClass;
+                        performBulkRetrieve(updatePayload);
+                    });
+                    return;
+                }
+                if (typeof showToast === 'function') showToast((err && err.message) || 'Bulk retrieve failed', false);
+            });
+    }
 
     IDCardApp.showWorkflowConfirm(`Are you sure you want to move ${cardIds.length} selected record(s) from ${sourceLabel} to Pending list?`, function() {
-        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
         if (!tableId) {
             if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(panelUrl(`/api/table/${tableId}/cards/bulk-status/`), 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
-                .then(data => {
-                    if (data.success === false) {
-                        if (typeof showToast === 'function') showToast(data.message || 'Cannot retrieve cards', false);
-                        return;
-                    }
-                    if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) retrieved to pending`);
-                    IDCardApp.refreshCardTable();
-                })
-                .catch(err => {
-                    if (typeof showToast === 'function') showToast(err.message || 'Bulk retrieve failed', false);
-                });
+            performBulkRetrieve({ card_ids: cardIds, status: 'pending' });
         }
     }, {
         actionType: isDownloadList ? 'retrieveDownload' : 'retrievePool',
