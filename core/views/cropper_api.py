@@ -243,6 +243,30 @@ def api_cropper_latest_version(request):
     # Always prefer same-origin local endpoint so download remains reachable
     # even when stored release URLs point to stale external hosts.
     fallback_url = reverse('engine_download')
+    bootstrap_version = str(
+        getattr(settings, 'CROPPER_BOOTSTRAP_VERSION', '')
+        or os.getenv('CROPPER_BOOTSTRAP_VERSION', '3.18.0')
+    ).strip() or '3.18.0'
+    bootstrap_download_override = str(
+        getattr(settings, 'CROPPER_BOOTSTRAP_DOWNLOAD_URL', '')
+        or os.getenv('CROPPER_BOOTSTRAP_DOWNLOAD_URL', '')
+    ).strip()
+
+    bootstrap_download_url = bootstrap_download_override or fallback_url
+    if not bootstrap_download_override:
+        bootstrap_release = CropperRelease.objects.filter(version=bootstrap_version).first()
+        if not bootstrap_release:
+            major_minor = '.'.join(str(bootstrap_version).split('.')[:2]).strip('.')
+            if major_minor:
+                # Use the newest patch in the same major.minor stream as bootstrap.
+                bootstrap_release = (
+                    CropperRelease.objects
+                    .filter(version__startswith=f'{major_minor}.')
+                    .order_by('-released_at')
+                    .first()
+                )
+        if bootstrap_release and str(bootstrap_release.download_url or '').strip():
+            bootstrap_download_url = str(bootstrap_release.download_url).strip()
 
     release = CropperRelease.objects.filter(is_latest=True).first()
 
@@ -268,10 +292,17 @@ def api_cropper_latest_version(request):
                 "available": True,
                 "version": release.version,
                 "download_url": fallback_url,
+                "bootstrap_version": bootstrap_version,
+                "bootstrap_download_url": bootstrap_download_url,
                 "changelog": release.changelog,
                 "released_at": release.released_at.isoformat() if release.released_at else None,
             })
-        return JsonResponse({"available": False, "download_url": fallback_url})
+        return JsonResponse({
+            "available": False,
+            "download_url": fallback_url,
+            "bootstrap_version": bootstrap_version,
+            "bootstrap_download_url": bootstrap_download_url,
+        })
 
     if release:
         release_v = _parse_semver_tuple(release.version)
@@ -281,6 +312,8 @@ def api_cropper_latest_version(request):
                 "available": True,
                 "version": release.version,
                 "download_url": fallback_url,
+                "bootstrap_version": bootstrap_version,
+                "bootstrap_download_url": bootstrap_download_url,
                 "changelog": release.changelog,
                 "released_at": release.released_at.isoformat() if release.released_at else None,
             })
@@ -289,6 +322,8 @@ def api_cropper_latest_version(request):
         "available": True,
         "version": local_version,
         "download_url": fallback_url,
+        "bootstrap_version": bootstrap_version,
+        "bootstrap_download_url": bootstrap_download_url,
         "changelog": "Local installer build available.",
         "released_at": None,
     })

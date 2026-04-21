@@ -168,6 +168,8 @@ function cropperApp() {
       available: false,
       version: '',
       downloadUrl: '',
+      bootstrapVersion: '3.18.0',
+      bootstrapDownloadUrl: '',
       changelog: '',
       installing: false,
       installError: '',
@@ -390,6 +392,10 @@ function cropperApp() {
     async _fetchLatestVersion() {
       try {
         var data = await ApiClient.get('/api/cropper/latest-version/');
+        if (data) {
+          this.update.bootstrapVersion = data.bootstrap_version || this.update.bootstrapVersion || '3.18.0';
+          this.update.bootstrapDownloadUrl = data.bootstrap_download_url || '';
+        }
         if (data && data.available) {
           // Store the latest release info for download buttons
           this.update.version = data.version || '';
@@ -407,6 +413,12 @@ function cropperApp() {
     async _checkForUpdates() {
       try {
         var data = await ApiClient.get('/api/cropper/latest-version/');
+
+        if (data) {
+          this.update.bootstrapVersion = data.bootstrap_version || this.update.bootstrapVersion || '3.18.0';
+          this.update.bootstrapDownloadUrl = data.bootstrap_download_url || '';
+        }
+
         if (!data || !data.available) {
           this.update.available = false;
           this.update.installError = '';
@@ -450,6 +462,26 @@ function cropperApp() {
       return '/panel/engine/download/';
     },
 
+    _resolvedBootstrapDownloadUrl() {
+      var url = String(this.update.bootstrapDownloadUrl || '');
+      if (url) {
+        if (url.charAt(0) === '/' || /^https?:\/\//i.test(url)) {
+          return url;
+        }
+      }
+      return this._resolvedUpdateDownloadUrl();
+    },
+
+    needsBootstrapInstaller() {
+      var installedVersion = this.engine && this.engine.version ? this.engine.version : '0.0.0';
+      var bootstrapVersion = this.update.bootstrapVersion || '3.18.0';
+      return this._semverCompare(installedVersion, bootstrapVersion) < 0;
+    },
+
+    downloadBootstrapInstaller() {
+      window.location.href = this._resolvedBootstrapDownloadUrl();
+    },
+
     /**
      * Download and apply update in-place through the local engine service.
      */
@@ -457,10 +489,24 @@ function cropperApp() {
       if (this.update.installing) return;
 
       var fallbackUrl = this._resolvedUpdateDownloadUrl();
+      var bootstrapVersion = this.update.bootstrapVersion || '3.18.0';
 
       // Only direct mode can install update on the current machine.
       if (!this.engine.connected || !this.engine.direct) {
         window.location.href = fallbackUrl;
+        return;
+      }
+
+      // Older engines do not support self-update upload/install.
+      if (this.needsBootstrapInstaller()) {
+        this.update.installError = (
+          'Current engine v' + (this.engine.version || 'unknown') +
+          ' does not support one-click update. Download and install v' +
+          bootstrapVersion + ' first.'
+        );
+        if (typeof Toast !== 'undefined') {
+          Toast.info('Please download and install v' + bootstrapVersion + ' first.');
+        }
         return;
       }
 

@@ -289,6 +289,44 @@ class CropperLatestVersionFallbackTests(TestCase):
         self.assertEqual(payload['version'], '9.9.9')
         self.assertEqual(payload['download_url'], '/panel/engine/download/')
 
+    def test_latest_version_includes_bootstrap_metadata_defaults(self):
+        from core.models import CropperRelease
+
+        CropperRelease.objects.all().delete()
+        response = self.client.get('/api/cropper/latest-version/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn('bootstrap_version', payload)
+        self.assertIn('bootstrap_download_url', payload)
+        self.assertEqual(payload['bootstrap_version'], '3.18.0')
+        self.assertEqual(payload['bootstrap_download_url'], '/panel/engine/download/')
+
+    def test_latest_version_prefers_bootstrap_stream_download_url(self):
+        from core.models import CropperRelease
+
+        CropperRelease.objects.all().delete()
+        CropperRelease.objects.create(
+            version='3.18.2',
+            download_url='https://example.test/AdarshEngineSetup-3.18.2.exe',
+            changelog='Bootstrap installer release',
+            is_latest=False,
+        )
+        CropperRelease.objects.create(
+            version='9.9.9',
+            download_url='https://example.test/AdarshEngineSetup-9.9.9.exe',
+            changelog='Latest release',
+            is_latest=True,
+        )
+
+        response = self.client.get('/api/cropper/latest-version/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['version'], '9.9.9')
+        self.assertEqual(payload['download_url'], '/panel/engine/download/')
+        self.assertEqual(payload['bootstrap_version'], '3.18.0')
+        self.assertEqual(payload['bootstrap_download_url'], 'https://example.test/AdarshEngineSetup-3.18.2.exe')
+
 
 class EngineDownloadInstallerGuardTests(TestCase):
     def setUp(self):
