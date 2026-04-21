@@ -24,6 +24,16 @@
 
         <!-- -- RIGHT: Notification bell + Hamburger -- -->
         <div class="flex items-center gap-1">
+            {% if is_impersonating %}
+            <button type="button"
+                    @click="window.dispatchEvent(new CustomEvent('stop-mobile-impersonation'))"
+                    class="h-10 px-2.5 inline-flex items-center gap-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 active:bg-amber-100 transition-colors"
+                    title="Stop Impersonation">
+                <i class="fa-solid fa-user-check text-[11px]"></i>
+                <span class="text-[10px] font-semibold">Stop</span>
+            </button>
+            {% endif %}
+
             <!-- Notification bell with count -->
                 <a href="{% url 'mobile_app:notifications' %}"
                     @click="return window.mobileTriggerDrawer($event, 'open-notification-drawer', this.getAttribute('href'))"

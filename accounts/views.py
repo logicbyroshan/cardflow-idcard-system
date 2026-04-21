@@ -92,12 +92,25 @@ class LogoutView(View):
     def post(self, request):
         from .services_impersonate import ImpersonateService
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        next_url = request.POST.get('next', '') or request.GET.get('next', '')
 
         # If this session is impersonating, stopping logout returns control to Pro User.
         if request.user.is_authenticated and ImpersonateService.is_impersonating(request):
             result = ImpersonateService.stop(request)
             if result.get('success'):
                 redirect_url = result.get('redirect_url') or '/panel/'
+                # Respect safe next URL for mobile surface handoff.
+                if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+                    redirect_url = next_url
+
+                # If we are returning to mobile app after stop-impersonation,
+                # keep the mobile auth checkpoint alive for the restored Pro session.
+                if redirect_url.startswith('/app/'):
+                    request.session['mobile_auth_ok'] = True
+                    request.session['_auth_login_surface'] = 'mobile'
+                    request.session['_auth_browser_fp'] = AuthService.browser_fingerprint_from_request(request)
+                    request.session['selected_role'] = getattr(request.user, 'role', '')
+
                 if is_ajax:
                     return JsonResponse({'success': True, 'redirect': redirect_url})
                 return redirect(redirect_url)
@@ -117,7 +130,6 @@ class LogoutView(View):
             ActivityService.log_logout(request, request.user)
         logout(request)
         # Respect ?next= or POST body next (e.g. from PWA logout)
-        next_url = request.POST.get('next', '') or request.GET.get('next', '')
         # S7: use Django's safe-redirect helper ÔÇö blocks //evil.com, /\evil.com, etc.
         if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
             login_url = reverse('accounts:login') + '?next=' + next_url

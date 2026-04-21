@@ -1033,3 +1033,29 @@ class ImpersonationApiTests(TestCase):
         payload = response.json()
         self.assertFalse(payload['success'])
         self.assertIn('inactive', payload['message'].lower())
+
+    def test_logout_while_impersonating_keeps_pro_session_for_mobile_next(self):
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
+        session = self.client.session
+        session['mobile_auth_ok'] = True
+        session['_auth_login_surface'] = 'mobile'
+        session['selected_role'] = 'pro_user'
+        session.save()
+
+        start = self.client.post(
+            '/panel/api/auth/impersonate/start/',
+            data=json.dumps({'user_id': self.target_user.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(start.status_code, 200)
+
+        response = self.client.post('/panel/auth/logout/', {'next': '/app/'})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], '/app/')
+
+        session = self.client.session
+        self.assertTrue(session.get('mobile_auth_ok'))
+        self.assertEqual(session.get('selected_role'), 'pro_user')
+        self.assertNotIn('_pro_original_user_id', session)
+
+        self.assertEqual(int(session.get('_auth_user_id')), self.pro_user.id)
