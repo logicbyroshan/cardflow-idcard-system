@@ -154,7 +154,7 @@ class ImpersonateService:
             .filter(is_active=True)
             .select_related('client_profile', 'staff_profile__client')
             .exclude(pk=request.user.pk)
-            .order_by('role', 'first_name', 'username')[:100]
+            .order_by('role', 'first_name', 'username')
         )
 
         result = []

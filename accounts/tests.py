@@ -977,6 +977,38 @@ class ImpersonationApiTests(TestCase):
         self.assertNotIn(self.target_user.id, returned_ids)
         self.assertIn(self.normal_user.id, returned_ids)
 
+    def test_impersonation_list_includes_assistant_and_super_admin_when_many_admin_staff_exist(self):
+        for idx in range(120):
+            User.objects.create_user(
+                username=f'bulk-admin-{idx}@example.com',
+                email=f'bulk-admin-{idx}@example.com',
+                password='testpass123',
+                role='admin_staff',
+            )
+
+        assistant_user = User.objects.create_user(
+            username='assistant-target-imp@example.com',
+            email='assistant-target-imp@example.com',
+            password='testpass123',
+            role='client_staff',
+        )
+        super_admin_user = User.objects.create_user(
+            username='superadmin-target-imp@example.com',
+            email='superadmin-target-imp@example.com',
+            password='testpass123',
+            role='super_admin',
+        )
+
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/impersonate/users/')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        returned_ids = {entry['id'] for entry in payload['users']}
+        self.assertIn(assistant_user.id, returned_ids)
+        self.assertIn(super_admin_user.id, returned_ids)
+
     def test_impersonation_start_requires_pro_user(self):
         self.client.login(username='normal-user-imp@example.com', password='testpass123')
         response = self.client.post(
