@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (!chips.length) {
             chips.push(
-                '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:6px;font-size:11px;font-weight:700;">All classes and sections</span>'
+                '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:6px;font-size:11px;font-weight:700;">No class/section assigned</span>'
             );
         }
 

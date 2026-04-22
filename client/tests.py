@@ -2337,3 +2337,110 @@ class ClientActivationPasswordFlowTests(TestCase):
         created_client = Client.objects.select_related('user').get(id=result.data['client']['id'])
         created_user = created_client.user
         self.assertTrue(created_user.check_password('ClientOnly@123'))
+
+
+class ClientStaffScopeBackfillCommandTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='backfill-owner@test.com',
+            email='backfill-owner@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj = Client.objects.create(user=owner, name='Backfill Client')
+
+        self.group_a = IDCardGroup.objects.create(client=self.client_obj, name='Group A')
+        self.group_b = IDCardGroup.objects.create(client=self.client_obj, name='Group B')
+
+        self.table_a = IDCardTable.objects.create(
+            group=self.group_a,
+            name='Table A',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+        self.table_b = IDCardTable.objects.create(
+            group=self.group_b,
+            name='Table B',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=self.table_a,
+            status='pending',
+            field_data={'CLASS': '8', 'SECTION': 'A', 'NAME': 'A1'},
+        )
+        IDCard.objects.create(
+            table=self.table_a,
+            status='pending',
+            field_data={'CLASS': '9', 'SECTION': 'B', 'NAME': 'A2'},
+        )
+        IDCard.objects.create(
+            table=self.table_b,
+            status='pending',
+            field_data={'CLASS': '11', 'SECTION': 'C', 'NAME': 'B1'},
+        )
+
+        staff_user = User.objects.create_user(
+            username='legacy-empty-scope@test.com',
+            email='legacy-empty-scope@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        self.staff_profile = Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+            perm_idcard_pending_list=True,
+            allowed_classes=[],
+            allowed_sections=[],
+            allowed_branches=[],
+            assignment_scopes=[],
+        )
+        self.staff_profile.assigned_groups.add(self.group_a)
+
+    def test_backfill_client_staff_scope_assignments_restores_legacy_empty_scope(self):
+        from io import StringIO
+        from django.core.management import call_command
+
+        dry_run_out = StringIO()
+        call_command(
+            'backfill_client_staff_scope_assignments',
+            '--staff-id',
+            str(self.staff_profile.id),
+            stdout=dry_run_out,
+        )
+
+        self.staff_profile.refresh_from_db()
+        self.assertEqual(self.staff_profile.assignment_scopes or [], [])
+        self.assertEqual(self.staff_profile.allowed_classes or [], [])
+        self.assertEqual(self.staff_profile.allowed_sections or [], [])
+
+        apply_out = StringIO()
+        call_command(
+            'backfill_client_staff_scope_assignments',
+            '--staff-id',
+            str(self.staff_profile.id),
+            '--apply',
+            stdout=apply_out,
+        )
+
+        self.staff_profile.refresh_from_db()
+        scopes = self.staff_profile.assignment_scopes or []
+        self.assertEqual(len(scopes), 1)
+        self.assertEqual(scopes[0].get('scope_type'), 'group')
+        self.assertEqual(scopes[0].get('scope_id'), self.group_a.id)
+        self.assertEqual(set(scopes[0].get('classes') or []), {'8', '9'})
+        self.assertEqual(set(scopes[0].get('sections') or []), {'A', 'B'})
+        self.assertEqual(set(self.staff_profile.allowed_classes or []), {'8', '9'})
+        self.assertEqual(set(self.staff_profile.allowed_sections or []), {'A', 'B'})
