@@ -563,6 +563,35 @@ class ActivityService:
         )
 
     @classmethod
+    def log_cards_download(cls, request, card_ids, format_name):
+        """Bulk log data download for individual cards to maintain deep history."""
+        if not card_ids:
+            return
+            
+        try:
+            from core.models import ActivityLog
+            user = getattr(request, 'user', None)
+            ip_address = cls._get_ip(request)
+            
+            logs = []
+            for cid in card_ids:
+                logs.append(ActivityLog(
+                    user=user if getattr(user, 'is_authenticated', False) else None,
+                    action='card_bulk_download',
+                    description=f'Data downloaded ({format_name})',
+                    ip_address=ip_address,
+                    target_model='IDCard',
+                    target_id=cid,
+                    target_name=f'Card #{cid}'
+                ))
+            
+            # Use bulk_create for performance, batch size 1000
+            ActivityLog.objects.bulk_create(logs, batch_size=1000)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Failed to bulk log card downloads')
+
+    @classmethod
     def log_website_update(cls, request, section=''):
         label = f'Website {section} updated' if section else 'Website content updated'
         cls.log('website_update', label, request=request)

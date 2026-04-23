@@ -761,6 +761,12 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
                 'message': result.message
             }, status=400)
         
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_cards_download(request, card_ids, 'Excel Data')
+        except Exception:
+            pass
+
         logger.info("Export XLSX: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
         return result.response
     except Exception as e:
@@ -860,6 +866,12 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
                 'message': result.message
             }, status=400)
         
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_cards_download(request, card_ids, f'Word Document ({doc_format.upper()})')
+        except Exception:
+            pass
+
         logger.info("Export %s: user=%s table=%d cards=%d", doc_format.upper(), request.user.id, table_id, len(card_ids))
         return result.response
     except Exception as e:
@@ -950,6 +962,12 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
                 'message': result.message
             }, status=400)
         
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_cards_download(request, card_ids, 'PDF Document')
+        except Exception:
+            pass
+
         logger.info("Export PDF: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
         return result.response
     except Exception as e:
@@ -1032,6 +1050,12 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
         break_mode=break_mode,
     )
     
+    try:
+        from core.services.activity_service import ActivityService
+        ActivityService.log_cards_download(request, card_ids, 'PDF Document (Async Requested)')
+    except Exception:
+        pass
+
     logger.info("Export PDF (async): user=%s table=%d cards=%d task=%s",
                 request.user.id, table_id, len(card_ids), task_id)
     
@@ -1198,6 +1222,12 @@ def api_export_images(request, table_id: int) -> JsonResponse:
             _log_export_failure(request, 'images', response_payload.get('message', 'Image export failed'), table_id=table_id)
             return JsonResponse(response_payload)
 
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_cards_download(request, card_ids, 'Image Archive (ZIP)')
+        except Exception:
+            pass
+
         logger.info("Export ZIP: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
         return JsonResponse(response_payload)
     except Exception as e:
@@ -1357,6 +1387,7 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         clean_table = clean_filename(table.name)
         
         total_cards_processed = 0
+        all_downloaded_card_ids = []
         file_entries = []  # list of (filename, disk_path) for combined ZIP
         temp_files = []  # track for cleanup on error
         
@@ -1368,6 +1399,7 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
             if card_count == 0:
                 continue
 
+            all_downloaded_card_ids.extend(list(cards_qs.values_list('id', flat=True)))
             cards = cards_qs
             total_cards_processed += card_count
             
@@ -1441,6 +1473,12 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         rel_path = os.path.relpath(combined_path, settings.MEDIA_ROOT).replace('\\', '/')
         download_url = f'{settings.MEDIA_URL}{rel_path}'
         
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_cards_download(request, all_downloaded_card_ids, 'Complete Archive (ZIP)')
+        except Exception:
+            pass
+
         logger.info("Export DOWNLOAD-ALL: user=%s table=%d files=%d cards=%d url=%s", 
                     request.user.id, table_id, len(file_entries), total_cards_processed, download_url)
         
