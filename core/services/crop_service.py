@@ -294,15 +294,24 @@ class CropService:
     # ── 3. Re-upload cropped images back to cards ────────────────────
 
     @classmethod
-    def reupload_cropped(cls, table_id: int, batch_id: str, use_edited: bool = False) -> dict:
+    def reupload_cropped(
+        cls, 
+        table_id: int, 
+        batch_id: str, 
+        use_edited: bool = False,
+        user=None,
+        request=None
+    ) -> dict:
         """
-        Read cropped (or edited) images from the batch folder and write
+        Takes the cropped images from a batch (or edited ones) and uploadswrite
         them back to the corresponding cards, replacing the original images.
 
         Args:
             table_id:   The IDCardTable PK (for permission verification)
             batch_id:   The crop batch identifier
             use_edited: If True, prefer images from the /edited/ folder
+            user:       The user making the request (for logging)
+            request:    The HTTP request (for logging)
 
         Returns dict with updated_count, error_count, errors[]
         """
@@ -428,6 +437,21 @@ class CropService:
                         from mediafiles.models import CardMedia
                         if not CardMedia.objects.filter(file=old_path).exists():
                             ImageService.delete_image(old_path)
+
+                    try:
+                        from core.services.activity_service import ActivityService
+                        action_type = "edited" if use_edited else "cropped"
+                        ActivityService.log(
+                            'card_update',
+                            f'Image "{field_name}" {action_type} via Face Cropper',
+                            user=user,
+                            request=request,
+                            target_model='IDCard',
+                            target_id=card_id,
+                            target_name=f'Card #{card_id}',
+                        )
+                    except Exception as _e:
+                        pass
 
                     updated_count += 1
                 else:

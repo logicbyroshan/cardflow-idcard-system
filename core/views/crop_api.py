@@ -318,7 +318,13 @@ def api_reupload_cropped(request, table_id):
     if batch_client_id and not PermissionService.can_access_client(request.user, int(batch_client_id)):
         return JsonResponse({"success": False, "message": "Access denied"}, status=403)
 
-    result = CropService.reupload_cropped(table_id, batch_id, use_edited=use_edited)
+    result = CropService.reupload_cropped(
+        table_id, 
+        batch_id, 
+        use_edited=use_edited, 
+        user=request.user if request.user.is_authenticated else None,
+        request=request
+    )
     status_code = 200 if result.get("success") else 400
     return JsonResponse(result, status=status_code)
 

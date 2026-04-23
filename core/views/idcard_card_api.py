@@ -1290,6 +1290,27 @@ def api_idcard_update(request, card_id):
                     target_id=card_id,
                     target_name=f'Card #{card_id}',
                 )
+                if image_files:
+                    for img_field in image_files.keys():
+                        ActivityService.log(
+                            'card_update',
+                            f'Image "{img_field}" re-uploaded',
+                            user=request.user if request.user.is_authenticated else None,
+                            request=request,
+                            target_model='IDCard',
+                            target_id=card_id,
+                            target_name=f'Card #{card_id}',
+                        )
+                if legacy_photo_file:
+                    ActivityService.log(
+                        'card_update',
+                        'Image "photo" re-uploaded',
+                        user=request.user if request.user.is_authenticated else None,
+                        request=request,
+                        target_model='IDCard',
+                        target_id=card_id,
+                        target_name=f'Card #{card_id}',
+                    )
             except Exception:
                 pass
             response_card = {
