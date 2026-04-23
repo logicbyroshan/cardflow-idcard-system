@@ -85,6 +85,25 @@ def _normalize_identifier(value: str) -> str:
     return str(value or '').strip().lower()
 
 
+def _normalize_phone_digits(value: str) -> str:
+    """Normalize phone-like input to digits only for resilient matching."""
+    return ''.join(ch for ch in str(value or '') if ch.isdigit())
+
+
+def _phone_digits_match(left: str, right: str) -> bool:
+    """Return True when two normalized phone strings can represent the same number."""
+    a = _normalize_phone_digits(left)
+    b = _normalize_phone_digits(right)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    # Allow matching local 10-digit numbers against country-code-prefixed values.
+    if len(a) >= 10 and len(b) >= 10:
+        return a.endswith(b) or b.endswith(a)
+    return False
+
+
 def _auth_fail_cache_key(identifier: str) -> str:
     digest = hashlib.sha256(identifier.encode('utf-8')).hexdigest()
     return f'auth_fail:{digest}'
@@ -469,10 +488,10 @@ class AuthService:
     @staticmethod
     def _find_user(identifier, role=None):
         """
-        Find a user by email or username, with optional role filter.
+        Find a user by email, username, or phone, with optional role filter.
 
         Args:
-            identifier: Email address or username
+            identifier: Email address, username, or phone number
             role: Optional role to filter by
 
         Returns:
@@ -489,10 +508,36 @@ class AuthService:
             else:
                 role_filter = Q(role=role)
 
-        # Try email first, then username
+        # Try email first, then username.
         user = User.objects.filter(Q(email__iexact=identifier) & role_filter).first()
         if not user:
             user = User.objects.filter(Q(username__iexact=identifier) & role_filter).first()
+        if user:
+            return user
+
+        # Finally, allow phone-number based login identifiers.
+        raw_identifier = str(identifier or '').strip()
+        normalized_identifier = _normalize_phone_digits(raw_identifier)
+        if not normalized_identifier:
+            return None
+
+        candidates = []
+        phone_qs = (
+            User.objects
+            .filter(role_filter)
+            .exclude(phone__isnull=True)
+            .exclude(phone__exact='')
+            .only('id', 'phone')
+        )
+        for candidate in phone_qs.iterator(chunk_size=200):
+            if _phone_digits_match(candidate.phone, normalized_identifier):
+                candidates.append(candidate)
+                if len(candidates) > 1:
+                    # Do not authenticate when phone identifier is ambiguous.
+                    return None
+
+        if len(candidates) == 1:
+            return candidates[0]
         return user
 
     @staticmethod

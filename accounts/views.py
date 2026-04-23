@@ -225,7 +225,7 @@ class CheckEmailAPIView(View):
             if not identifier:
                 return JsonResponse({
                     'success': False,
-                    'message': 'Email or username is required'
+                    'message': 'Email, username, or phone is required'
                 }, status=400)
             
             result = AuthService.check_user_exists(identifier)
@@ -271,7 +271,7 @@ class LoginAPIView(View):
             if not identifier or not password:
                 return JsonResponse({
                     'success': False,
-                    'message': 'Email/username and password are required'
+                    'message': 'Email/username/phone and password are required'
                 }, status=400)
             
             result = AuthService.authenticate_user(identifier, password)

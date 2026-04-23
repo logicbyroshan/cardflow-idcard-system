@@ -46,6 +46,15 @@ class AuthServiceTests(TestCase):
         self.assertTrue(result['success'])
         self.assertEqual(result['user'].email, 'test@example.com')
 
+    def test_authenticate_user_success_with_phone_identifier(self):
+        from accounts.services import AuthService
+        self.user.phone = '+91 98765-43210'
+        self.user.save(update_fields=['phone'])
+
+        result = AuthService.authenticate_user('9876543210', 'testpass123')
+        self.assertTrue(result['success'])
+        self.assertEqual(result['user'].email, 'test@example.com')
+
     def test_authenticate_user_wrong_password(self):
         from accounts.services import AuthService
         result = AuthService.authenticate_user('test@example.com', 'wrongpass')
@@ -229,6 +238,22 @@ class LoginViewTests(TestCase):
             '/panel/api/auth/login/',
             data=json.dumps({
                 'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+
+    def test_login_api_success_with_phone_identifier(self):
+        self.user.phone = '+91 90123-45678'
+        self.user.save(update_fields=['phone'])
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': '9012345678',
                 'password': 'testpass123',
             }),
             content_type='application/json',
