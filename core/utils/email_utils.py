@@ -514,10 +514,9 @@ def get_contact_submission_email_template(submission, request=None):
 def get_welcome_email_template(
         name,
         email,
-        password,
+        vault_url,
         role,
         login_url,
-        phone='',
         scenario='welcome',
         request=None,
 ):
@@ -527,13 +526,6 @@ def get_welcome_email_template(
                 'client': 'Client',
                 'client_staff': 'Client Staff',
         }.get(role, role.replace('_', ' ').title())
-
-        if phone and password == phone:
-                password_display = 'Your Mobile Number'
-                password_hint = 'Use your 10-digit mobile number as password.'
-        else:
-                password_display = password
-                password_hint = 'Please save this password securely.'
 
         is_temp = scenario == 'temp_password'
         kicker = 'Temporary Access' if is_temp else 'Account Activation'
@@ -555,9 +547,9 @@ def get_welcome_email_template(
             <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Email</div>
             <div style="font-size:14px;font-weight:700;color:#0f172a;word-break:break-word;">{escape(email)}</div>
             <div style="height:10px;"></div>
-            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Password</div>
-            <div style="font-size:14px;font-weight:700;color:#0f172a;font-family:'Courier New',monospace;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;display:inline-block;">{escape(password_display)}</div>
-            <div style="font-size:12px;color:#64748b;margin-top:6px;">{escape(password_hint)}</div>
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Credentials</div>
+            <div style="font-size:14px;font-weight:700;color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;display:inline-block;">🔒 Protected</div>
+            <div style="font-size:12px;color:#64748b;margin-top:6px;">Click the button below to view your password securely.</div>
             <div style="height:10px;"></div>
             <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Role</div>
             <div style="font-size:13px;font-weight:700;color:#0f172a;">{escape(role_display)}</div>
@@ -576,8 +568,8 @@ def get_welcome_email_template(
                 title=title,
                 subtitle=subtitle,
                 body_html=body_html,
-                cta_label='Login to Panel',
-                cta_url=login_url,
+                cta_label='View Secure Credentials',
+                cta_url=vault_url,
                 badge_text=role_display,
                 request=request,
         )
@@ -586,10 +578,10 @@ def get_welcome_email_template(
                 f"{'Temporary Password Updated' if is_temp else 'Welcome to Adarsh Admin'}\n\n"
                 f"Hello {name},\n\n"
                 f"Email: {email}\n"
-                f"Password: {password_display}\n"
+                f"Password: [Protected - Click link below to view]\n"
                 f"Role: {role_display}\n"
-                f"Login URL: {login_url}\n\n"
-                f"{password_hint}\n"
+                f"View Credentials: {vault_url}\n\n"
+                f"Panel Login URL: {login_url}\n\n"
                 "Security tip: change your password after login and never share credentials.\n"
         )
 
@@ -634,14 +626,20 @@ def send_welcome_email(name, email, password, role, request=None, phone='', emai
         # Build clean login URL (prefers PANEL_URL from settings)
         login_url = _get_panel_login_url(request)
         
+        from core.utils.secure_credentials import create_credential_token
+        token = create_credential_token(email, password, role)
+        
+        # Build vault URL
+        base_url = _resolve_site_base_url(request)
+        vault_url = f"{base_url}/panel/auth/secure-view/{token}/"
+        
         # Get email templates
         html_content, plain_content = get_welcome_email_template(
             name=name,
             email=email,
-            password=password,
+            vault_url=vault_url,
             role=role,
             login_url=login_url,
-            phone=phone,
             scenario=email_variant,
             request=request,
         )

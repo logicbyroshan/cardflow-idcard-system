@@ -26,6 +26,10 @@ urlpatterns = [
     # Redirect to appropriate dashboard
     path('dashboard/', views.redirect_to_dashboard, name='dashboard_redirect'),
     
+    # Secure Credential Vault (opened via email link)
+    path('secure-view/<str:token>/', views.SecureCredentialVaultView.as_view(), name='secure_credential_vault'),
+    
+    
     # ==========================================================================
     # API ENDPOINTS (JSON responses for AJAX)
     # Canonical routes are at /panel/api/auth/ via core/urls.py

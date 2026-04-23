@@ -81,6 +81,44 @@ class LoginPageView(View):
         return render(request, self.template_name)
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class SecureCredentialVaultView(View):
+    """
+    Render the Secure Credential Vault page.
+    Users enter their email address to view a one-time credential.
+    """
+    template_name = 'auth/secure_credential_vault.html'
+    
+    def get(self, request, token):
+        # We just render the page with the token in context.
+        # The Alpine.js/JS frontend will handle the email prompt and POST.
+        return render(request, self.template_name, {'token': token})
+        
+    def post(self, request, token):
+        try:
+            from core.utils.secure_credentials import verify_credential_token
+            data = json.loads(request.body)
+            email = data.get('email', '').strip()
+            
+            if not email:
+                return JsonResponse({'success': False, 'message': 'Email address is required.'}, status=400)
+                
+            password = verify_credential_token(token, email)
+            
+            if not password:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Invalid token, incorrect email, or this secure link has already expired.'
+                }, status=403)
+                
+            return JsonResponse({'success': True, 'password': password})
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            logger.exception("Secure Vault error: %s", e)
+            return JsonResponse({'success': False, 'message': 'An unexpected error occurred.'}, status=500)
+
+
 class LogoutView(View):
     """Handle user logout. Only POST allowed to prevent CSRF logout attacks."""
     
