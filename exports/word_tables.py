@@ -415,12 +415,18 @@ class WordTablesMixin:
         _font_pt = 7 if num_cols > 18 else (8 if num_cols > 15 else 9)
         _font_pt = max(7, _font_pt)
 
-        # Style the single header row (first page only — NOT set to repeat)
+        # Style the header row and mark it to repeat on every page
         self._style_header_row(
             table_obj.rows[0].cells, ordered_fields, column_widths,
             Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
             font_pt=_font_pt
         )
+
+        # Mark header row to repeat at top of each page when table spans pages
+        header_row = table_obj.rows[0]
+        trPr = header_row._tr.get_or_add_trPr()
+        tblHeader = parse_xml(r'<w:tblHeader {} />'.format(nsdecls('w')))
+        trPr.append(tblHeader)
 
         for card_idx, card in enumerate(cards_list):
             fd = card.field_data or {}
@@ -561,10 +567,8 @@ class WordTablesMixin:
             cell.width = Cm(column_widths[col_idx])
             
             if field['is_image']:
-                image_category = classify_column(field.get('name', ''), field.get('type', ''))
-                if image_category == 'photo':
-                    # Keep the 0.5pt border on the image itself; remove cell box border.
-                    self._remove_cell_borders(cell, parse_xml, nsdecls)
+                # Photo cells: keep table grid borders visible for structural consistency.
+                # The photo image itself gets its own bitmap-level border via _build_word_image_stream.
 
                 # Phase 3: DOCX always uses ORIGINAL images for print quality
                 image_path = ImageService.get_image_path_for_export(

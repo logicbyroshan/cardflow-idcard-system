@@ -70,13 +70,10 @@ class WordStylesMixin:
     
     def _add_header(self, doc, institution_name, table_name, Cm, Pt, RGBColor,
                     WD_TABLE_ALIGNMENT, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls):
-        """Add document header on FIRST PAGE ONLY."""
+        """Add document header that repeats on EVERY page."""
         section = doc.sections[0]
 
-        # Enable different first-page header so header shows only on page 1
-        section.different_first_page_header_footer = True
-
-        header = section.first_page_header
+        header = section.header
         header.is_linked_to_previous = False
         
         current_date = timezone.localtime(timezone.now()).strftime('%d-%m-%Y')
