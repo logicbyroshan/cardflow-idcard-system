@@ -2500,17 +2500,11 @@ function listApp() {
         },
         takePhoto() {
             if (this.viewMode || this.addFormSubmitting) return;
-            const hasSingleImageField = (this.imageFormFields || []).length <= 1;
-            if (this.editMode && this.editingId && hasSingleImageField) {
-                // Redirect to full camera.html  same as top-bar camera button
-                sessionStorage.setItem('cam_return_edit', String(this.editingId));
-                sessionStorage.setItem('cam_return_url', window.location.href);
-                window.location.href = '/app/camera/' + TABLE_ID + '/' + this.editingId + '/';
-            } else {
-                // Add mode and multi-image edit mode use inline picker for target field.
-                if (this.$refs.cameraInput) this.$refs.cameraInput.click();
-                this.showImagePicker = false;
-            }
+            
+            // Always use the native OS camera input (like Add mode)
+            // It reliably bypasses Android WebView permission issues compared to getUserMedia.
+            if (this.$refs.cameraInput) this.$refs.cameraInput.click();
+            this.showImagePicker = false;
         },
         pickFromGallery() {
             if (this.viewMode || this.addFormSubmitting) return;
