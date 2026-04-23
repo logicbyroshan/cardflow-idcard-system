@@ -62,10 +62,10 @@ class Command(BaseCommand):
         users = base_qs.order_by('role', 'username')
 
         if not users.exists():
-            self.stdout.write(self.style.SUCCESS("✓ No users found without usable passwords."))
+            self.stdout.write(self.style.SUCCESS("[OK] No users found without usable passwords."))
             return
 
-        self.stdout.write(self.style.ERROR(f"⚠ Found {users.count()} user(s) without usable passwords:\n"))
+        self.stdout.write(self.style.ERROR(f"[!] Found {users.count()} user(s) without usable passwords:\n"))
         for u in users:
             status = "ACTIVE" if u.is_active else "INACTIVE"
             color = self.style.SUCCESS if u.is_active else self.style.ERROR
