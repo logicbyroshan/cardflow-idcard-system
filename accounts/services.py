@@ -698,6 +698,8 @@ class AuthService:
                 # lookup differences (e.g. phone-based login found user by
                 # phone but authenticate() does its own username query).
                 if user.check_password(password):
+                    # Set backend attribute required by django.contrib.auth.login()
+                    user.backend = 'django.contrib.auth.backends.ModelBackend'
                     authenticated_user = user
                 else:
                     attempts = AuthService._record_login_failure(identifier)
