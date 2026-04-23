@@ -138,6 +138,18 @@
 </head>
 <body data-user-role="{{ request.user.role|default:'' }}" class="bg-[#eaf2ff] font-sans overscroll-none pwa-v2">
     <style>
+        :root {
+            --brand-light: #33b7ef;
+            --brand-dark: #2f80ed;
+        }
+        .from-brand-light { --tw-gradient-from: var(--brand-light) !important; --tw-gradient-to: rgb(51 183 239 / 0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+        .to-brand-dark { --tw-gradient-to: var(--brand-dark) !important; }
+        .bg-brand-light { background-color: var(--brand-light) !important; }
+        .bg-brand-dark { background-color: var(--brand-dark) !important; }
+        .text-brand-light { color: var(--brand-light) !important; }
+        .text-brand-dark { color: var(--brand-dark) !important; }
+        .border-brand-light { border-color: var(--brand-light) !important; }
+
         body.mobile-overlay-active {
             overflow: hidden !important;
             overscroll-behavior: contain;

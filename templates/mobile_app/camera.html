@@ -97,11 +97,18 @@
             <p class="absolute bottom-4 left-0 right-0 text-center text-white/60 text-xs">Align face within the guide</p>
         </div>
         <div x-show="isNativeShell && !photoTaken && !cameraError"
-             class="absolute inset-x-0 bottom-16 flex justify-center pointer-events-none"
-             style="display:none;">
-            <div class="px-3 py-1.5 rounded-md bg-black/55 text-white/80 text-[11px]">
-                Tap capture to open native camera
+             class="absolute inset-x-0 bottom-32 flex justify-center pointer-events-none">
+            <div class="px-4 py-2 rounded-full bg-black/60 backdrop-blur-md text-white text-[12px] flex items-center gap-2 border border-white/10 shadow-lg">
+                <i class="fa-solid fa-arrow-down text-brand-light animate-bounce"></i>
+                <span>Tap capture to open native camera</span>
             </div>
+        </div>
+
+        <div x-show="isNativeShell && !photoTaken && !cameraError" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+             <div class="flex flex-col items-center opacity-40">
+                  <i class="fa-solid fa-camera text-6xl text-white mb-3"></i>
+                  <p class="text-white text-sm font-semibold tracking-wide">Native Camera Mode</p>
+             </div>
         </div>
         <!-- Permission Error -->
         <div x-show="cameraError" class="absolute inset-0 flex items-center justify-center bg-gray-900">
