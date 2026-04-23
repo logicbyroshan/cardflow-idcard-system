@@ -405,23 +405,14 @@ PERMISSIONS_POLICY = 'camera=(self), microphone=(self), geolocation=(), payment=
 # =============================================================================
 
 # Password validation baseline.
-# Keeps 8-char minimum while adding low-friction protections against
-# very weak/common passwords and user-attribute similarity.
+# Only enforce minimum 6-character length — no common-password or
+# user-similarity checks.  Any combination of characters is allowed.
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {
-            'min_length': 8,
+            'min_length': 6,
         }
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-        'OPTIONS': {
-            'max_similarity': 0.7,
-        },
     },
 ]
 
