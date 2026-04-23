@@ -617,20 +617,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <a href="${clientLinkUrl}" class="client-name-link" onclick="event.stopPropagation()">${statusBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                 </td>
                                 <td class="text-center">
-                                    <span class="count-badge pending">${client.pending}</span>
+                                    ${directUrl ? `<a href="${directUrl}?status=pending" class="count-badge pending" onclick="event.stopPropagation()">${client.pending}</a>` : `<span class="count-badge pending">${client.pending}</span>`}
                                 </td>
                                 <td class="text-center">
-                                    <span class="count-badge verified">${client.verified}</span>
+                                    ${directUrl ? `<a href="${directUrl}?status=verified" class="count-badge verified" onclick="event.stopPropagation()">${client.verified}</a>` : `<span class="count-badge verified">${client.verified}</span>`}
                                 </td>
                                 <td class="text-center">
-                                    <span class="count-badge approved">${client.approved}</span>
+                                    ${directUrl ? `<a href="${directUrl}?status=approved" class="count-badge approved" onclick="event.stopPropagation()">${client.approved}</a>` : `<span class="count-badge approved">${client.approved}</span>`}
                                 </td>
                                 <td class="text-center">
-                                    <span class="count-badge downloaded">${client.downloaded}</span>
+                                    ${directUrl ? `<a href="${directUrl}?status=download" class="count-badge downloaded" onclick="event.stopPropagation()">${client.downloaded}</a>` : `<span class="count-badge downloaded">${client.downloaded}</span>`}
                                 </td>
                                 ${showPool ? `
                                 <td class="text-center">
-                                    <span class="count-badge pool">${client.pool}</span>
+                                    ${directUrl ? `<a href="${directUrl}?status=pool" class="count-badge pool" onclick="event.stopPropagation()">${client.pool}</a>` : `<span class="count-badge pool">${client.pool}</span>`}
                                 </td>
                                 ` : ''}
                             </tr>
@@ -1494,13 +1494,19 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <td class="text-center"><a href="${panelUrl('/print/table/' + t.id + '/')}" class="count-badge verified">${t.finalized}</a></td>
                                     </tr>
                                 `).join('');
+                                const hasSingleTable = tables.length === 1;
+                                const directUrl = hasSingleTable ? panelUrl('/print/table/' + tables[0].id + '/') : '';
                                 return `
                                     <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="print" data-sort-pending="${safeGenerateList}" data-sort-verified="${safeFinalized}" onclick="toggleScopedExpandRow(this)">
                                         <td>
                                             <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${iBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                         </td>
-                                        <td class="text-center"><span class="count-badge pending">${client.generate_list}</span></td>
-                                        <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
+                                        <td class="text-center">
+                                            ${directUrl ? `<a href="${directUrl}" class="count-badge pending" onclick="event.stopPropagation()">${client.generate_list}</a>` : `<span class="count-badge pending">${client.generate_list}</span>`}
+                                        </td>
+                                        <td class="text-center">
+                                            ${directUrl ? `<a href="${directUrl}" class="count-badge verified" onclick="event.stopPropagation()">${client.finalized}</a>` : `<span class="count-badge verified">${client.finalized}</span>`}
+                                        </td>
                                     </tr>
                                     ${subRows}
                                 `;
@@ -1539,13 +1545,19 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <td class="text-center"><a href="${panelUrl('/reprint/table/' + t.id + '/?step=confirmed')}" class="count-badge verified">${t.confirmed}</a></td>
                                     </tr>
                                 `).join('');
+                                const hasSingleTable = tables.length === 1;
+                                const directUrl = hasSingleTable ? panelUrl('/reprint/table/' + tables[0].id + '/') : '';
                                 return `
                                     <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="reprint" data-sort-pending="${safeRequested}" data-sort-verified="${safeConfirmed}" onclick="toggleScopedExpandRow(this)">
                                         <td>
                                             <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${iBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                         </td>
-                                        <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
-                                        <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
+                                        <td class="text-center">
+                                            ${directUrl ? `<a href="${directUrl}?step=request_list" class="count-badge pending" onclick="event.stopPropagation()">${client.requested}</a>` : `<span class="count-badge pending">${client.requested}</span>`}
+                                        </td>
+                                        <td class="text-center">
+                                            ${directUrl ? `<a href="${directUrl}?step=confirmed" class="count-badge verified" onclick="event.stopPropagation()">${client.confirmed}</a>` : `<span class="count-badge verified">${client.confirmed}</span>`}
+                                        </td>
                                     </tr>
                                     ${subRows}
                                 `;
