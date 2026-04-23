@@ -57,6 +57,7 @@ urlpatterns = [
 
     # Profile & Search APIs
     path('api/profile/update/', views.api_profile_update, name='api_profile_update'),
+    path('api/profile/delete-request/', views.api_profile_delete_request, name='api_profile_delete_request'),
     path('api/search/', views.api_search, name='api_search'),
     path('api/server-info/', views.api_server_info, name='api_server_info'),
     path('api/mobile-shell/config/', views.api_mobile_shell_config, name='api_mobile_shell_config'),

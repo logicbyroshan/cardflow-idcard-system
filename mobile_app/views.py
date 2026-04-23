@@ -4601,6 +4601,75 @@ def api_profile_update(request):
 
 
 @require_mobile_client
+@require_http_methods(["POST"])
+def api_profile_delete_request(request):
+    """Submit a data deletion request for the current user.
+
+    Google Play Store requires apps that collect user data to provide a visible
+    mechanism for requesting data deletion. This endpoint records the request
+    and notifies the admin team.
+    """
+    user = request.user
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        data = {}
+
+    if not data.get('confirm'):
+        return JsonResponse({
+            'success': False,
+            'message': 'Please confirm your deletion request.',
+        }, status=400)
+
+    user_email = getattr(user, 'email', '') or ''
+    user_name = user.get_full_name() or getattr(user, 'username', '')
+    user_role = getattr(user, 'role', 'unknown')
+
+    # Log the request for audit trail
+    logger.info(
+        'Data deletion requested — user_id=%s name=%s email=%s role=%s',
+        user.pk, user_name, user_email, user_role,
+    )
+
+    # Record activity if the service is available
+    try:
+        ActivityService.log(
+            user=user,
+            action='data_deletion_requested',
+            description=f'User {user_name} ({user_email}) requested account and data deletion via mobile app.',
+        )
+    except Exception:
+        pass  # Activity logging is best-effort
+
+    # Send notification email to admin
+    admin_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or getattr(settings, 'ADMIN_EMAIL', '')
+    if admin_email:
+        try:
+            from django.core.mail import send_mail as _send_mail
+            _send_mail(
+                subject=f'[Adarsh Admin] Data Deletion Request — {user_name}',
+                message=(
+                    f'A data deletion request has been submitted.\n\n'
+                    f'User ID: {user.pk}\n'
+                    f'Name: {user_name}\n'
+                    f'Email: {user_email}\n'
+                    f'Role: {user_role}\n\n'
+                    f'Please process this request within 7 business days per our privacy policy.'
+                ),
+                from_email=admin_email,
+                recipient_list=[admin_email],
+                fail_silently=True,
+            )
+        except Exception:
+            logger.warning('Failed to send data deletion notification email for user_id=%s', user.pk)
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Your data deletion request has been submitted. An administrator will process it within 7 business days.',
+    })
+
+
+@require_mobile_client
 @require_http_methods(["GET"])
 def api_search(request):
     """Global search API across all client cards."""

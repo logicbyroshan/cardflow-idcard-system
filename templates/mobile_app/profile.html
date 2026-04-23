@@ -160,6 +160,35 @@
         </div>
     </div>
 
+    <!-- Privacy & Data -->
+    <div class="px-4 pb-3">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Privacy & Data</p>
+        <div class="bg-gradient-to-br from-white via-white to-rose-50/25 rounded-2xl shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-100/70">
+            <a href="/privacy-policy/" target="_blank" class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 active:bg-gray-50 transition">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100/70 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-shield-halved text-blue-400 text-sm"></i>
+                    </div>
+                    <span class="text-[13px] font-semibold text-gray-700">Privacy Policy</span>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-gray-300 text-xs"></i>
+            </a>
+            <button type="button" @click="requestDataDeletion()" :disabled="deletionRequesting"
+                    class="w-full flex items-center justify-between px-4 py-3.5 hover:bg-red-50/50 active:bg-red-50 transition text-left">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-red-50 border border-red-100/70 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-trash-can text-red-400 text-sm"></i>
+                    </div>
+                    <div>
+                        <span class="text-[13px] font-semibold text-red-600 block">Request Data Deletion</span>
+                        <span class="text-[10px] text-gray-400">Request removal of your account and associated data</span>
+                    </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- App Update + Logout -->
     <div class="px-4 pb-8 space-y-2.5">
         <button type="button"
@@ -210,6 +239,7 @@ function profileApp() {
             statusText: 'Checking...',
             statusType: 'info',
         },
+        deletionRequesting: false,
         editForm: {
             name: '{{ user_name|escapejs }}',
             phone: '{{ user_phone|escapejs }}',
@@ -277,6 +307,33 @@ function profileApp() {
         showToast(msg, type='info') {
             this.toast = { show: true, message: msg, type };
             setTimeout(() => { this.toast.show = false; }, 2500);
+        },
+
+        async requestDataDeletion() {
+            if (this.deletionRequesting) return;
+            const confirmed = confirm(
+                'Are you sure you want to request deletion of your account and all associated data?\n\n'
+                + 'This action cannot be undone. An administrator will process your request within 7 business days.'
+            );
+            if (!confirmed) return;
+
+            this.deletionRequesting = true;
+            try {
+                const res = await fetch('/app/api/profile/delete-request/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ confirm: true }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showToast(data.message || 'Deletion request submitted. You will be contacted by an administrator.', 'success');
+                } else {
+                    this.showToast(data.message || 'Could not submit request. Try again later.', 'error');
+                }
+            } catch (e) {
+                this.showToast('Network error. Please try again.', 'error');
+            }
+            this.deletionRequesting = false;
         },
 
         async saveProfile() {
