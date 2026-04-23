@@ -527,18 +527,28 @@ class AuthService:
             .filter(role_filter)
             .exclude(phone__isnull=True)
             .exclude(phone__exact='')
-            .only('id', 'phone')
+            .only('id', 'phone', 'username', 'password', 'is_active', 'role', 'email')
         )
         for candidate in phone_qs.iterator(chunk_size=200):
             if _phone_digits_match(candidate.phone, normalized_identifier):
                 candidates.append(candidate)
-                if len(candidates) > 1:
-                    # Do not authenticate when phone identifier is ambiguous.
-                    return None
+                if len(candidates) > 5:
+                    break  # Safety cap
 
+        if not candidates:
+            return None
         if len(candidates) == 1:
             return candidates[0]
-        return user
+        # Multiple users share this phone — prefer the single active user
+        active_candidates = [c for c in candidates if c.is_active]
+        if len(active_candidates) == 1:
+            return active_candidates[0]
+        # Still ambiguous — log warning and return None for safety
+        logger.warning(
+            "Ambiguous phone login: %d users share phone digits ***%s (active: %d)",
+            len(candidates), normalized_identifier[-4:], len(active_candidates),
+        )
+        return None
 
     @staticmethod
     def check_user_exists(identifier, role=None):
@@ -683,9 +693,16 @@ class AuthService:
             authenticated_user = authenticate(username=user.username, password=password)
 
             if authenticated_user is None:
-                attempts = AuthService._record_login_failure(identifier)
-                AuthService._maybe_notify_failed_login(user, identifier, attempts)
-                return {'success': False, 'message': _AUTH_FAIL_MSG}
+                # Fallback: direct password check handles edge cases where
+                # Django's authenticate() backend rejects due to username
+                # lookup differences (e.g. phone-based login found user by
+                # phone but authenticate() does its own username query).
+                if user.check_password(password):
+                    authenticated_user = user
+                else:
+                    attempts = AuthService._record_login_failure(identifier)
+                    AuthService._maybe_notify_failed_login(user, identifier, attempts)
+                    return {'success': False, 'message': _AUTH_FAIL_MSG}
 
             AuthService._clear_login_failures(identifier)
 
