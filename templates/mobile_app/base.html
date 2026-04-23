@@ -487,11 +487,7 @@
             if (event) event.preventDefault();
             if (inProgress) return false;
 
-            if (!shouldUseNativeUpdateUi()) {
-                var browserNextUrl = '/app/?updated=' + Date.now();
-                window.location.replace(browserNextUrl);
-                return false;
-            }
+            // Removed early exit for non-native shell so PWAs can also clear caches.
 
             inProgress = true;
 
