@@ -310,6 +310,68 @@ def get_readable_field_name(field_name: str) -> str:
 # DATA FORMATTING
 # =============================================================================
 
+def humanize_label(name: str) -> str:
+    """Insert spaces into concatenated field names for readable export headers.
+
+    Examples:
+        PERMANENTADDRESS → PERMANENT ADDRESS
+        FATHERNAME       → FATHER NAME
+        MOTHERMOBILENO   → MOTHER MOBILE NO
+        STUDENTNAME      → STUDENT NAME
+        DOB              → DOB  (short words unchanged)
+    """
+    # Step 0: normalise separator characters (_, -, .) to spaces so that
+    # e.g. "FATHER_NAME" → "FATHER NAME" and "D.O.B" → "D O B" giving
+    # the export engine natural break points in column headers.
+    name = re.sub(r'[_\-.]+', ' ', name).strip()
+    name = re.sub(r'\s+', ' ', name)
+    if ' ' in name:
+        return name.upper()   # separators already created word boundaries
+    # Common word fragments found in Indian school/ID card field names
+    # Order matters: longer fragments first to avoid partial matches
+    _KNOWN_WORDS = [
+        'ADMISSION', 'PERMANENT', 'TEMPORARY', 'PRESENT', 'RESIDENTIAL',
+        'STUDENT', 'FATHER', 'MOTHER', 'GUARDIAN', 'HUSBAND',
+        'ADDRESS', 'VILLAGE', 'DISTRICT', 'MOBILE', 'CONTACT', 'PHONE',
+        'NUMBER', 'SECTION', 'CLASS', 'NAME', 'EMAIL', 'BIRTH',
+        'AADHAR', 'AADHAAR', 'PINCODE', 'STATE', 'CITY', 'COUNTRY',
+        'BLOOD', 'GROUP', 'GENDER', 'PHOTO', 'IMAGE', 'DATE',
+        'EMERGENCY', 'EMERG', 'CONTACT', 'CONT', 'TRANSPORT', 'DRIVER',
+        'JOINING', 'ENROL', 'ROLL', 'CATEGORY', 'CASTE',
+        'OCCUPATION', 'QUALIFICATION', 'DESIGNATION', 'RELIGION',
+        'NATIONALITY', 'HOUSE', 'WARD', 'BLOCK', 'POST', 'OFFICE',
+        'TEHSIL', 'TALUK', 'MANDAL',
+        'NEW', 'OLD', 'SR', 'NO', 'ID', 'OF', 'THE',
+    ]
+    upper = name.upper().strip()
+    if len(upper) <= 4:
+        return upper
+    # Greedy match: repeatedly pull the longest known word from the front
+    result_words = []
+    remaining = upper
+    while remaining:
+        matched = False
+        for kw in _KNOWN_WORDS:
+            if remaining.startswith(kw):
+                result_words.append(kw)
+                remaining = remaining[len(kw):]
+                matched = True
+                break
+        if not matched:
+            # If no known word matches the start, consume one char and try again
+            # We group unknown chars together until the next match
+            result_words.append(remaining[0])
+            remaining = remaining[1:]
+    # Merge single leftover characters back into adjacent words
+    merged = []
+    for w in result_words:
+        if len(w) == 1 and merged:
+            merged[-1] += w
+        else:
+            merged.append(w)
+    return ' '.join(merged)
+
+
 def format_field_value(value: Any, uppercase: bool = False) -> str:
     """
     Format a field value for export.

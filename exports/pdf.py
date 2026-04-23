@@ -40,6 +40,7 @@ from .utils import (
     get_class_field_name,
     get_section_field_name,
     stream_file_response,
+    humanize_label,
 )
 
 from .column_spec import get_column_spec, classify_column, is_nowrap_column
@@ -587,67 +588,6 @@ class PdfExporter:
         return digits_seps >= len(value) * 0.6
 
 
-    @staticmethod
-    def _humanize_label(name: str) -> str:
-        """Insert spaces into concatenated field names for readable PDF headers.
-
-        Examples:
-            PERMANENTADDRESS → PERMANENT ADDRESS
-            FATHERNAME       → FATHER NAME
-            MOTHERMOBILENO   → MOTHER MOBILE NO
-            STUDENTNAME      → STUDENT NAME
-            DOB              → DOB  (short words unchanged)
-        """
-        import re as _re
-        # Step 0: normalise separator characters (_, -, .) to spaces so that
-        # e.g. "FATHER_NAME" → "FATHER NAME" and "D.O.B" → "D O B" giving
-        # the PDF engine natural break points in column headers.
-        name = _re.sub(r'[_\-.]+', ' ', name).strip()
-        name = _re.sub(r'\s+', ' ', name)
-        if ' ' in name:
-            return name.upper()   # separators already created word boundaries
-        # Common word fragments found in Indian school/ID card field names
-        # Order matters: longer fragments first to avoid partial matches
-        _KNOWN_WORDS = [
-            'ADMISSION', 'PERMANENT', 'TEMPORARY', 'PRESENT', 'RESIDENTIAL',
-            'STUDENT', 'FATHER', 'MOTHER', 'GUARDIAN', 'HUSBAND',
-            'ADDRESS', 'VILLAGE', 'DISTRICT', 'MOBILE', 'CONTACT', 'PHONE',
-            'NUMBER', 'SECTION', 'CLASS', 'NAME', 'EMAIL', 'BIRTH',
-            'AADHAR', 'AADHAAR', 'PINCODE', 'STATE', 'CITY', 'COUNTRY',
-            'BLOOD', 'GROUP', 'GENDER', 'PHOTO', 'IMAGE', 'DATE',
-            'EMERGENCY', 'EMERG', 'CONTACT', 'CONT', 'TRANSPORT', 'DRIVER',
-            'JOINING', 'ENROL', 'ROLL', 'CATEGORY', 'CASTE',
-            'OCCUPATION', 'QUALIFICATION', 'DESIGNATION', 'RELIGION',
-            'NATIONALITY', 'HOUSE', 'WARD', 'BLOCK', 'POST', 'OFFICE',
-            'TEHSIL', 'TALUK', 'MANDAL',
-            'NEW', 'OLD', 'SR', 'NO', 'ID', 'OF', 'THE',
-        ]
-        upper = name.upper().strip()
-        if len(upper) <= 4:
-            return upper
-        # Greedy match: repeatedly pull the longest known word from the front
-        result_words = []
-        remaining = upper
-        while remaining:
-            matched = False
-            for word in _KNOWN_WORDS:
-                if remaining.startswith(word):
-                    result_words.append(word)
-                    remaining = remaining[len(word):]
-                    matched = True
-                    break
-            if not matched:
-                # No known word matched — take one character and keep going
-                result_words.append(remaining[0])
-                remaining = remaining[1:]
-        # Merge single leftover characters back into adjacent words
-        merged = []
-        for w in result_words:
-            if len(w) == 1 and merged:
-                merged[-1] += w
-            else:
-                merged.append(w)
-        return ' '.join(merged)
 
     def _build_column_configs(
         self,
@@ -684,7 +624,7 @@ class PdfExporter:
             ftype = field.get('type', 'text')
             is_image = field.get('is_image', False)
             spec = get_column_spec(name, ftype)
-            humanized = self._humanize_label(name.upper())
+            humanized = humanize_label(name.upper())
             if shorten_titles:
                 humanized = TITLE_SHORTENING_MAP.get(humanized, humanized)
             # Short single-word headers should not wrap

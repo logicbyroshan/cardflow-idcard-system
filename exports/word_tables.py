@@ -8,7 +8,7 @@ from django.core.files.storage import default_storage
 
 from mediafiles.services import ImageService
 
-from .utils import is_valid_image_path, format_field_value
+from .utils import is_valid_image_path, format_field_value, humanize_label
 from .column_spec import get_column_spec, is_nowrap_column, classify_column
 
 
@@ -490,13 +490,7 @@ class WordTablesMixin:
         
         # Field headers
         for field in ordered_fields:
-            import re as _re2
-            _raw = field['name']
-            # Normalise separator chars (_, -, .) → spaces so Word wraps
-            # at natural word boundaries, e.g. "FATHER_NAME" → "FATHER NAME".
-            _label = _re2.sub(r'[_\-.]+', ' ', _raw).strip()
-            _label = _re2.sub(r'\s+', ' ', _label).upper()
-            _label = self._prepare_text_for_word(_label)
+            _label = humanize_label(field['name'].upper())
             cells[col_idx].text = _label
             self._style_header_cell(cells[col_idx], column_widths[col_idx],
                                     Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
