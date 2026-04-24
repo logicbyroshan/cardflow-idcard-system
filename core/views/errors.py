@@ -59,6 +59,8 @@ def _render_error(request, *, status_code: int, title: str, heading: str, messag
 
 
 def error_400(request, exception=None):
+    if exception:
+        logger.error("400 Bad Request: %s [Path: %s]", exception, request.path)
     return _render_error(
         request,
         status_code=400,
