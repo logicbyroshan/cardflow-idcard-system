@@ -454,10 +454,6 @@ def home(request):
         context['row1_portfolio'] = []
         context['row2_portfolio'] = []
 
-    else:
-        context['row1_portfolio'] = []
-        context['row2_portfolio'] = []
-
     # SEO metadata
     context.update({
         'meta_title': f"Adarsh ID Cards Bhopal | Best ID Card Solution in MP",
