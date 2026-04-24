@@ -473,10 +473,20 @@ def dashboard(request):
 @require_http_methods(["GET"])
 @api_require_any_admin
 def api_dashboard_card_stats(request):
-    """API endpoint for live dashboard card stats refresh."""
+    """API endpoint for live dashboard card stats refresh.
+
+    Cached for 10 seconds per user scope to reduce DB pressure from polling.
+    """
     try:
         user = request.user
         is_scoped = PermissionService.is_admin_staff(user)
+        cache_suffix = f':{user.pk}' if is_scoped else ''
+        cache_key = f'api_dashboard_card_stats{cache_suffix}'
+
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return JsonResponse({'success': True, 'stats': cached})
+
         accessible_ids = PermissionService.get_accessible_client_ids(user) if is_scoped else []
 
         card_qs = IDCard.objects.all()
@@ -500,6 +510,7 @@ def api_dashboard_card_stats(request):
             'pool': agg.get('pool', 0),
         }
 
+        cache.set(cache_key, stats, 10)
         return JsonResponse({'success': True, 'stats': stats})
     except Exception as e:
         logger.exception('api_dashboard_card_stats error: %s', e)
@@ -509,10 +520,28 @@ def api_dashboard_card_stats(request):
 @require_http_methods(["GET"])
 @api_require_any_admin
 def api_recent_client_updates(request):
-    """API endpoint to get recent clients with their ID card status counts"""
+    """API endpoint to get recent clients with their ID card status counts.
+
+    Client results are cached for 10 seconds; live presence is always fresh.
+    """
     try:
         limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
         user = request.user
+
+        # Cache the heavy client-results portion (raw SQL aggregation)
+        is_scoped = PermissionService.is_admin_staff(user)
+        cache_suffix = f':{user.pk}' if is_scoped else ''
+        cache_key = f'api_recent_client_updates{cache_suffix}'
+
+        # Fast path: return cached results + fresh presence
+        cached_results = cache.get(cache_key)
+        if cached_results is not None:
+            presence_payload = LiveClientPresenceService.get_live_payload_for_user(user)
+            return JsonResponse({
+                'success': True,
+                'clients': cached_results,
+                **presence_payload,
+            })
 
         # Get recent clients - scoped by PermissionService
         # Show all accessible clients (including inactive) for dashboard recents.
@@ -616,15 +645,14 @@ def api_recent_client_updates(request):
                 'downloaded': cc.get('downloaded', 0),
                 'pool': cc.get('pool', 0),
             })
+        cache.set(cache_key, results, 10)
 
+        # Presence is always fresh (already optimized in Task 2)
         presence_payload = LiveClientPresenceService.get_live_payload_for_user(user)
-        payload = {
-            'clients': results,
-            **presence_payload,
-        }
         return JsonResponse({
             'success': True,
-            **payload,
+            'clients': results,
+            **presence_payload,
         })
     except Exception as e:
         logger.exception('api_recent_client_updates error: %s', e)

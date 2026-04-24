@@ -5,7 +5,11 @@ window.DashboardPage = window.DashboardPage || {};
 
 document.addEventListener('DOMContentLoaded', function() {
     const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
-    const DASHBOARD_LIVE_REFRESH_MS = 30000;
+    const DASHBOARD_LIVE_REFRESH_MS = 45000;
+    // Add ±5s jitter to stagger polling across concurrent users (anti-thundering-herd)
+    function jitteredRefreshMs() {
+        return DASHBOARD_LIVE_REFRESH_MS + Math.floor(Math.random() * 10000) - 5000;
+    }
     const DASHBOARD_PRESENCE_TOPIC = 'dashboard.working';
     const DASHBOARD_PRESENCE_SYNC_DEBOUNCE_MS = 300;
     const panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
@@ -857,12 +861,25 @@ document.addEventListener('DOMContentLoaded', function() {
     let liveRefreshTimer = null;
     function startLiveDashboardRefresh() {
         if (liveRefreshTimer || document.hidden) return;
-        liveRefreshTimer = setInterval(refreshLiveDashboardSections, DASHBOARD_LIVE_REFRESH_MS);
+        // Use setTimeout with jitter instead of fixed setInterval to stagger
+        // requests across concurrent users (anti-thundering-herd).
+        function scheduleNext() {
+            liveRefreshTimer = setTimeout(function() {
+                liveRefreshTimer = null;
+                // Skip if tab hidden or network offline
+                if (document.hidden || (typeof navigator.onLine !== 'undefined' && !navigator.onLine)) {
+                    return;
+                }
+                refreshLiveDashboardSections();
+                scheduleNext();
+            }, jitteredRefreshMs());
+        }
+        scheduleNext();
     }
 
     function stopLiveDashboardRefresh() {
         if (!liveRefreshTimer) return;
-        clearInterval(liveRefreshTimer);
+        clearTimeout(liveRefreshTimer);
         liveRefreshTimer = null;
     }
 

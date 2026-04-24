@@ -11,13 +11,25 @@
   let notifData = [];
   const POLL_INTERVAL = 60000; // 60 seconds
 
+  let notifPollTimer = null;
+
   /*  Init  */
   document.addEventListener('DOMContentLoaded', function() {
     // Skip polling entirely when the bell partial is not rendered (e.g. admin users)
     if (!document.getElementById('notifWrapper')) return;
 
     pollUnreadCount();
-    setInterval(pollUnreadCount, POLL_INTERVAL);
+    startNotifPolling();
+
+    // Pause polling when tab is hidden, resume on visible
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        stopNotifPolling();
+      } else {
+        pollUnreadCount();
+        startNotifPolling();
+      }
+    });
 
     // Close dropdown on outside click
     document.addEventListener('click', function(e) {
@@ -32,6 +44,18 @@
       if (e.key === 'Escape' && notifDropdownOpen) closeNotifDropdown();
     });
   });
+
+  function startNotifPolling() {
+    if (notifPollTimer) return;
+    notifPollTimer = setInterval(pollUnreadCount, POLL_INTERVAL);
+  }
+
+  function stopNotifPolling() {
+    if (notifPollTimer) {
+      clearInterval(notifPollTimer);
+      notifPollTimer = null;
+    }
+  }
 
   /*  Toggle  */
   window.toggleNotifDropdown = function() {

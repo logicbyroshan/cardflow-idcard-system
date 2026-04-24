@@ -40,8 +40,8 @@ worker_class = os.getenv("GUNICORN_WORKER_CLASS", "uvicorn.workers.UvicornWorker
 workers = _env_int("WEB_CONCURRENCY", _default_workers, minimum=1, maximum=4)
 threads = _env_int("GUNICORN_THREADS", 2, minimum=1, maximum=8) if worker_class == "gthread" else 1
 
-# Keep timeout reasonable; long tasks must move to background workers.
-timeout = _env_int("GUNICORN_TIMEOUT", 90, minimum=30, maximum=300)
+# Keep timeout tight; large exports are routed to background workers (async).
+timeout = _env_int("GUNICORN_TIMEOUT", 60, minimum=30, maximum=300)
 graceful_timeout = _env_int("GUNICORN_GRACEFUL_TIMEOUT", 30, minimum=10, maximum=120)
 keepalive = _env_int("GUNICORN_KEEPALIVE", 5, minimum=1, maximum=30)
 

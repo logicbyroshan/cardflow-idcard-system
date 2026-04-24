@@ -152,6 +152,100 @@ class BackgroundExportManager:
         return str(task.id)
 
     @classmethod
+    def start_xlsx_export(
+        cls,
+        user,
+        table_id: int,
+        card_ids: list,
+        status: str = '',
+    ) -> str:
+        """Enqueue an Excel export and return a task_id string."""
+        from core.models import BackgroundTask
+        from core.services.background_worker import background_worker
+        from core.services.super_mode_service import SuperModeService
+
+        metadata: Dict[str, Any] = {
+            'table_id': table_id,
+            'card_ids': list(card_ids) if card_ids else [],
+            'status': status,
+        }
+        metadata.update(SuperModeService.build_task_metadata(user))
+
+        task, error = BackgroundTask.create_if_no_active(
+            user=user,
+            task_type='export_excel',
+            metadata=metadata,
+            total=len(card_ids) if card_ids else 0,
+        )
+
+        if task is None:
+            existing = BackgroundTask.has_active_task(user, task_type='export_excel')
+            if existing:
+                return str(existing.id)
+            task = BackgroundTask.objects.create(
+                user=user,
+                task_type='export_excel',
+                metadata=metadata,
+                total=len(card_ids) if card_ids else 0,
+            )
+
+        background_worker.submit_task(task.id)
+        logger.info(
+            "XLSX export enqueued: user=%s table=%d cards=%d task_id=%d",
+            user.id, table_id, len(card_ids) if card_ids else 0, task.id,
+        )
+        return str(task.id)
+
+    @classmethod
+    def start_docx_export(
+        cls,
+        user,
+        table_id: int,
+        card_ids: list,
+        status: str = '',
+        doc_format: str = 'docx',
+        template_id: int = None,
+    ) -> str:
+        """Enqueue a Word export and return a task_id string."""
+        from core.models import BackgroundTask
+        from core.services.background_worker import background_worker
+        from core.services.super_mode_service import SuperModeService
+
+        metadata: Dict[str, Any] = {
+            'table_id': table_id,
+            'card_ids': list(card_ids) if card_ids else [],
+            'status': status,
+            'doc_format': doc_format if doc_format in ('docx', 'doc') else 'docx',
+            'template_id': template_id,
+        }
+        metadata.update(SuperModeService.build_task_metadata(user))
+
+        task, error = BackgroundTask.create_if_no_active(
+            user=user,
+            task_type='export_docx',
+            metadata=metadata,
+            total=len(card_ids) if card_ids else 0,
+        )
+
+        if task is None:
+            existing = BackgroundTask.has_active_task(user, task_type='export_docx')
+            if existing:
+                return str(existing.id)
+            task = BackgroundTask.objects.create(
+                user=user,
+                task_type='export_docx',
+                metadata=metadata,
+                total=len(card_ids) if card_ids else 0,
+            )
+
+        background_worker.submit_task(task.id)
+        logger.info(
+            "DOCX export enqueued: user=%s table=%d cards=%d task_id=%d",
+            user.id, table_id, len(card_ids) if card_ids else 0, task.id,
+        )
+        return str(task.id)
+
+    @classmethod
     def get_status(cls, task_id: str, user=None) -> Optional[Dict[str, Any]]:
         """
         Return a status dict for the given task_id string.
@@ -208,16 +302,18 @@ class BackgroundExportManager:
         file_size_label = _format_file_size(file_size_bytes)
 
         # Human-readable message
+        _type_labels = {'export_pdf': 'PDF', 'export_docx': 'Word', 'export_excel': 'Excel', 'export_zip': 'ZIP'}
+        _export_label = _type_labels.get(task.task_type, 'Export')
         if task.status == 'pending':
             message = 'Queued, waiting to start...'
         elif task.status == 'processing':
             total = task.total or 0
             if task.progress and total:
-                message = f'Generating PDF... ({task.progress}/{total} cards)'
+                message = f'Generating {_export_label}... ({task.progress}/{total} cards)'
             elif total:
-                message = f'Generating PDF for {total} cards...'
+                message = f'Generating {_export_label} for {total} cards...'
             else:
-                message = 'Generating PDF...'
+                message = f'Generating {_export_label}...'
         elif task.status == 'completed':
             count = result_meta.get('card_count', '')
             if count and file_size_label:

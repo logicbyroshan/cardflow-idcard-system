@@ -215,12 +215,44 @@ class LiveClientPresenceService:
 
     @classmethod
     def get_live_payload_for_user(cls, user):
-        active_client_ids = cls.get_live_client_ids_for_user(user)
-        active_assistants_now = cls.get_live_assistant_count_for_user(user)
-        active_assistant_client_ids = cls.get_live_assistant_client_ids_for_user(user)
+        """Build the complete presence payload with minimal DB queries.
+
+        Optimized: calls retire_stale_sessions() and permission checks ONCE
+        instead of 3x (one per sub-method).  Reduces DB round-trips from
+        6-9 queries to 2-3 per call.
+        """
+        now = timezone.now()
+        cls.retire_stale_sessions(now=now)
+
+        # Determine permission scope once
+        is_scoped = PermissionService.is_admin_staff(user)
+        allowed_ids = set(PermissionService.get_accessible_client_ids(user)) if is_scoped else None
+
+        # Single query: fetch all active sessions
+        active_qs = cls._active_queryset(now=now).values_list('client_id', 'user_id', 'user_role')
+        active_rows = list(active_qs)
+
+        # Split into client IDs and assistant data in Python (cheap)
+        all_client_ids = set()
+        assistant_user_ids = set()
+        assistant_client_ids = set()
+
+        for client_id, user_id, user_role in active_rows:
+            if is_scoped and allowed_ids and client_id not in allowed_ids:
+                continue
+            if client_id is not None:
+                all_client_ids.add(client_id)
+            if user_role == 'client_staff':
+                assistant_user_ids.add(user_id)
+                if client_id is not None:
+                    assistant_client_ids.add(client_id)
+
+        sorted_client_ids = sorted(all_client_ids)
+        sorted_assistant_client_ids = sorted(assistant_client_ids)
+
         return {
-            'active_clients_now': len(active_client_ids),
-            'active_client_ids': active_client_ids,
-            'active_assistants_now': active_assistants_now,
-            'active_assistant_client_ids': active_assistant_client_ids,
+            'active_clients_now': len(sorted_client_ids),
+            'active_client_ids': sorted_client_ids,
+            'active_assistants_now': len(assistant_user_ids),
+            'active_assistant_client_ids': sorted_assistant_client_ids,
         }

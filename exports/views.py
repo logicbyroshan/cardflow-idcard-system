@@ -31,6 +31,7 @@ from django.core.cache import cache as django_cache
 from .services import ExportService
 from .excel import ExcelExporter
 from .zip import ZipExporter, zip_result_to_dict
+from .export_throttle import acquire_global_export_slot, release_global_export_slot
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,15 @@ MAX_EXPORT_CARD_IDS: Optional[int] = None
 MAX_EXPORT_JSON_BODY_BYTES = int(os.getenv('MAX_EXPORT_JSON_BODY_BYTES', '5242880'))  # 5 MB
 
 _VALID_STATUSES = {'pending', 'verified', 'approved', 'download', 'pool'}
+
+# Cards above this threshold are routed to async background export.
+# Small exports stay sync for instant response; large ones go to BackgroundWorker.
+_ASYNC_EXPORT_THRESHOLD = int(os.getenv('ASYNC_EXPORT_THRESHOLD', '200'))
+
+_GLOBAL_THROTTLE_MSG = (
+    'Server is busy processing other exports. '
+    'Please try again in 30 seconds.'
+)
 
 
 def _is_json_request(request) -> bool:
@@ -746,10 +756,37 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
             'message': 'No cards selected for export'
         }, status=400)
     
+    # Route large exports to async background worker
+    if len(card_ids) > _ASYNC_EXPORT_THRESHOLD:
+        from .tasks import BackgroundExportManager
+        task_id = BackgroundExportManager.start_xlsx_export(
+            user=request.user,
+            table_id=table_id,
+            card_ids=card_ids,
+            status=_get_status_from_request(request),
+        )
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_cards_download(request, card_ids, 'Excel Data (Async Requested)')
+        except Exception:
+            pass
+        logger.info("Export XLSX (async): user=%s table=%d cards=%d task=%s",
+                    request.user.id, table_id, len(card_ids), task_id)
+        return JsonResponse({
+            'success': True,
+            'task_id': task_id,
+            'async': True,
+            'card_count': len(card_ids),
+        })
+
     # Concurrent export guard
     acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'xlsx', request_user=request.user)
     if not acquired:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many Excel exports running. Please wait.'}, status=429)
+    global_slot = acquire_global_export_slot()
+    if global_slot is None:
+        _release_export_lock(lock_key)
+        return JsonResponse({'success': False, 'level': 'warning', 'message': _GLOBAL_THROTTLE_MSG}, status=429)
     try:
         service = ExportService(request.user)
         result = service.export_excel(table_id, card_ids, status=_get_status_from_request(request))
@@ -774,6 +811,7 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
         _log_export_failure(request, 'xlsx', str(e), table_id=table_id)
         return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
     finally:
+        release_global_export_slot(global_slot)
         _release_export_lock(lock_key)
 
 
@@ -842,10 +880,39 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     if doc_format not in ('docx', 'doc'):
         doc_format = 'docx'
     
+    # Route large exports to async background worker
+    if len(card_ids) > _ASYNC_EXPORT_THRESHOLD:
+        from .tasks import BackgroundExportManager
+        task_id = BackgroundExportManager.start_docx_export(
+            user=request.user,
+            table_id=table_id,
+            card_ids=card_ids,
+            status=_get_status_from_request(request),
+            doc_format=doc_format,
+            template_id=template_id,
+        )
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_cards_download(request, card_ids, f'Word Document ({doc_format.upper()}, Async Requested)')
+        except Exception:
+            pass
+        logger.info("Export %s (async): user=%s table=%d cards=%d task=%s",
+                    doc_format.upper(), request.user.id, table_id, len(card_ids), task_id)
+        return JsonResponse({
+            'success': True,
+            'task_id': task_id,
+            'async': True,
+            'card_count': len(card_ids),
+        })
+
     # Concurrent export guard
     acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'docx', request_user=request.user)
     if not acquired:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many Word exports running. Please wait.'}, status=429)
+    global_slot = acquire_global_export_slot()
+    if global_slot is None:
+        _release_export_lock(lock_key)
+        return JsonResponse({'success': False, 'level': 'warning', 'message': _GLOBAL_THROTTLE_MSG}, status=429)
     try:
         service = ExportService(request.user)
         allow_large_exports = bool(is_super_admin or SuperModeService.is_effective_enabled(request.user))
@@ -879,6 +946,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         _log_export_failure(request, doc_format, str(e), table_id=table_id)
         return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
     finally:
+        release_global_export_slot(global_slot)
         _release_export_lock(lock_key)
 
 
@@ -939,10 +1007,41 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         if requested_break_mode in ('class_only', 'class_section'):
             break_mode = requested_break_mode
     
+    # Route large PDF exports to async path automatically
+    if len(card_ids) > _ASYNC_EXPORT_THRESHOLD:
+        from .tasks import BackgroundExportManager
+        task_id = BackgroundExportManager.start_pdf_export(
+            user=request.user,
+            table_id=table_id,
+            card_ids=card_ids,
+            status=_get_status_from_request(request),
+            template_id=template_id,
+            font_mode=font_mode,
+            shorten_titles=shorten_titles,
+            break_mode=break_mode,
+        )
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_cards_download(request, card_ids, 'PDF Document (Async Auto-Routed)')
+        except Exception:
+            pass
+        logger.info("Export PDF (async auto-routed): user=%s table=%d cards=%d task=%s",
+                    request.user.id, table_id, len(card_ids), task_id)
+        return JsonResponse({
+            'success': True,
+            'task_id': task_id,
+            'async': True,
+            'card_count': len(card_ids),
+        })
+
     # Concurrent export guard
     acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'pdf', request_user=request.user)
     if not acquired:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many PDF exports running. Please wait.'}, status=429)
+    global_slot = acquire_global_export_slot()
+    if global_slot is None:
+        _release_export_lock(lock_key)
+        return JsonResponse({'success': False, 'level': 'warning', 'message': _GLOBAL_THROTTLE_MSG}, status=429)
     try:
         service = ExportService(request.user)
         result = service.export_pdf(
@@ -975,6 +1074,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         _log_export_failure(request, 'pdf', str(e), table_id=table_id)
         return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
     finally:
+        release_global_export_slot(global_slot)
         _release_export_lock(lock_key)
 
 

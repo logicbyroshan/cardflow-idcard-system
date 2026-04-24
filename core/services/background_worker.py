@@ -78,6 +78,7 @@ class BackgroundWorker:
             'export_zip',
             'export_pdf',
             'export_docx',
+            'export_excel',
         }
 
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="bg_worker")
