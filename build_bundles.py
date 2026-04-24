@@ -47,6 +47,7 @@ JS_BUNDLES = [
         [
             "js/core/field-classifier.js",
             "js/core/api.js",
+            "js/core/session-keepalive.js",
             "js/core/toast.js",
             "js/core/confirm.js",
             "js/core/modal.js",

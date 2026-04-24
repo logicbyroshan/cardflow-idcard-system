@@ -70,6 +70,9 @@
                 response.clone().json()
                     .then(function (data) {
                         var msg = (data && data.message) || 'Permission denied';
+                        // Don't show toast for CSRF failures — ApiClient._request
+                        // will auto-retry with a fresh token silently.
+                        if (_isCsrfError(msg)) return;
                         if (typeof window.showToast === 'function') {
                             window.showToast(msg, 'error', 5000);
                         }
@@ -83,6 +86,20 @@
             return response;
         });
     };
+
+    /** Check if a 403 error message is a CSRF/token-expired issue. */
+    function _isCsrfError(msg) {
+        if (!msg) return false;
+        var lower = msg.toLowerCase();
+        return lower.indexOf('csrf') !== -1
+            || lower.indexOf('token expired') !== -1
+            || lower.indexOf('security token') !== -1
+            || lower.indexOf('session expired') !== -1
+            || lower.indexOf('session may have expired') !== -1;
+    }
+
+    // Expose for use by ApiClient
+    window._isCsrfError = _isCsrfError;
 })();
 
 /* ================================================
@@ -113,6 +130,50 @@
     // DEFAULTS
     // ------------------------------------------
     var DEFAULTS = { timeout: 30000, retries: 0, retryDelay: 1000 };
+
+    // ------------------------------------------
+    // CSRF AUTO-REFRESH (silent recovery)
+    // ------------------------------------------
+    var _csrfRefreshPromise = null;
+
+    /**
+     * Fetch a fresh CSRF token from the server.
+     * Deduplicates: if a refresh is already in-flight, returns the same promise.
+     */
+    function _refreshCSRF() {
+        if (_csrfRefreshPromise) return _csrfRefreshPromise;
+
+        _csrfRefreshPromise = new Promise(function (resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/panel/auth/api/auth/session-refresh/', true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.timeout = 8000;
+
+            xhr.onload = function () {
+                _csrfRefreshPromise = null;
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        if (data.csrf_token) {
+                            // Update meta tag + hidden inputs
+                            var meta = document.querySelector('meta[name="csrf-token"]');
+                            if (meta) meta.setAttribute('content', data.csrf_token);
+                            var hiddens = document.querySelectorAll('input[name="csrfmiddlewaretoken"]');
+                            for (var i = 0; i < hiddens.length; i++) hiddens[i].value = data.csrf_token;
+                            resolve(data.csrf_token);
+                            return;
+                        }
+                    } catch (e) {}
+                }
+                resolve(null);
+            };
+            xhr.onerror = function () { _csrfRefreshPromise = null; resolve(null); };
+            xhr.ontimeout = function () { _csrfRefreshPromise = null; resolve(null); };
+            xhr.send();
+        });
+
+        return _csrfRefreshPromise;
+    }
 
     // ------------------------------------------
     // LOW-LEVEL FETCH WRAPPER
@@ -165,6 +226,23 @@
                     var err = new Error(msg);
                     err.status = response.status;
                     err.data = body;
+
+                    // ── CSRF auto-recovery ──
+                    // If this is a CSRF failure, silently refresh the token
+                    // and retry the request ONCE before failing.
+                    if (response.status === 403
+                        && !config._csrfRetried
+                        && typeof window._isCsrfError === 'function'
+                        && window._isCsrfError(msg)) {
+
+                        var freshToken = await _refreshCSRF();
+                        if (freshToken) {
+                            // Retry with fresh CSRF token
+                            var retryOpts = Object.assign({}, options, { _csrfRetried: true });
+                            return _request(url, method, data, retryOpts);
+                        }
+                    }
+
                     throw err;
                 }
                 return body;

@@ -9,6 +9,7 @@ kept only for the login/logout page views and the dashboard redirect.
 """
 from django.urls import path
 from . import views
+from .session_refresh import api_session_refresh
 
 app_name = 'accounts'
 
@@ -51,4 +52,7 @@ urlpatterns = [
     path('api/auth/user-audit/users/', views.ProUserAuditUsersAPIView.as_view(), name='api_user_audit_users'),
     path('api/auth/user-audit/history/', views.ProUserAuditHistoryAPIView.as_view(), name='api_user_audit_history'),
     path('api/auth/user-audit/actions/', views.ProUserAuditActionsAPIView.as_view(), name='api_user_audit_actions'),
+
+    # Session refresh (silent keepalive for active users)
+    path('api/auth/session-refresh/', api_session_refresh, name='api_session_refresh'),
 ]
