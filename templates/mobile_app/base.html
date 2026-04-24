@@ -783,13 +783,120 @@
     })();
     </script>
 
-    <!-- Register PWA Service Worker (required for Chrome install prompt) -->
+    <!-- Register PWA Service Worker + Auto-Update -->
     <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/app/sw.js?v={{ APP_VERSION|urlencode }}', { scope: '/app/' }).catch(function () {});
+    (function setupAutoUpdate() {
+        if (!('serviceWorker' in navigator)) return;
+
+        var SW_URL = '/app/sw.js?v={{ APP_VERSION|urlencode }}';
+        var SW_SCOPE = '/app/';
+        var RELOAD_FLAG = '__adarsh_sw_reloaded';
+
+        /**
+         * Silently activate a waiting service worker.
+         * Returns a Promise that resolves once the new SW takes control.
+         */
+        function activateWaitingSW(reg) {
+            if (!reg || !reg.waiting) return Promise.resolve();
+            try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {}
+
+            return new Promise(function (resolve) {
+                var done = false;
+                function finish() {
+                    if (done) return;
+                    done = true;
+                    try { navigator.serviceWorker.removeEventListener('controllerchange', finish); } catch (e) {}
+                    resolve();
+                }
+                try { navigator.serviceWorker.addEventListener('controllerchange', finish); } catch (e) { finish(); return; }
+                setTimeout(finish, 1500);
+            });
+        }
+
+        /**
+         * Soft-reload: reload once after a new SW activates.
+         * Uses sessionStorage to prevent infinite reload loops.
+         */
+        function softReload() {
+            try {
+                if (sessionStorage.getItem(RELOAD_FLAG)) {
+                    // Already reloaded once this session for this SW update — don't loop
+                    sessionStorage.removeItem(RELOAD_FLAG);
+                    return;
+                }
+                sessionStorage.setItem(RELOAD_FLAG, '1');
+            } catch (e) {}
+            window.location.reload();
+        }
+
+        /**
+         * Handle a new service worker that is waiting (ready to take over).
+         * Activates it silently and reloads the page.
+         */
+        function handleWaitingSW(reg) {
+            activateWaitingSW(reg).then(function () {
+                softReload();
+            });
+        }
+
+        /**
+         * After registration, watch for future SW updates.
+         * If one installs and starts waiting, activate + reload.
+         */
+        function watchForUpdates(reg) {
+            if (!reg) return;
+
+            // If a SW is already waiting (installed before this page loaded), activate it now
+            if (reg.waiting) {
+                handleWaitingSW(reg);
+                return;
+            }
+
+            // If a SW is currently installing, watch for it to enter "waiting" state
+            if (reg.installing) {
+                reg.installing.addEventListener('statechange', function () {
+                    if (this.state === 'installed' && navigator.serviceWorker.controller) {
+                        handleWaitingSW(reg);
+                    }
+                });
+            }
+
+            // Watch for future updates (new SW versions deployed while user has app open)
+            reg.addEventListener('updatefound', function () {
+                var newWorker = reg.installing;
+                if (!newWorker) return;
+                newWorker.addEventListener('statechange', function () {
+                    if (this.state === 'installed' && navigator.serviceWorker.controller) {
+                        handleWaitingSW(reg);
+                    }
+                });
+            });
+        }
+
+        // Clear the reload guard on fresh navigations (not reloads)
+        try {
+            var navEntries = performance.getEntriesByType && performance.getEntriesByType('navigation');
+            var navType = (navEntries && navEntries[0]) ? navEntries[0].type : '';
+            if (navType === 'navigate') {
+                sessionStorage.removeItem(RELOAD_FLAG);
+            }
+        } catch (e) {}
+
+        // Register SW and start auto-update
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE })
+                .then(function (reg) {
+                    watchForUpdates(reg);
+
+                    // Proactively check for SW updates every 60 seconds
+                    // so long-open sessions pick up new deployments
+                    setInterval(function () {
+                        try { reg.update(); } catch (e) {}
+                    }, 60 * 1000);
+                })
+                .catch(function () {});
         });
-    }
+    })();
     </script>
 
     <script>
