@@ -141,7 +141,11 @@ INSTALLED_APPS = [
     'mobile_app',
     'panel',
     'officework',
+    'django.contrib.sitemaps',
+    'django.contrib.sites',
 ]
+
+SITE_ID = 1
 
 # Custom User Model - Keep pointing to core.User for database compatibility
 # The User class is defined in accounts but re-exported from core for migrations
