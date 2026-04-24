@@ -10,7 +10,11 @@
                 {% with row1_items=row1_portfolio|default:featured_portfolio|default:recent_portfolio %}
                     {% for item in row1_items %}
                         <div class="work-item">
-                            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
+                            {% if item.image %}
+                                <a href="{% url 'website:product_detail' item.category.slug item.slug %}">
+                                    <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">
+                                </a>
+                            {% endif %}
                         </div>
                     {% endfor %}
                     <!-- Duplicate for seamless loop -->
@@ -29,7 +33,11 @@
                 {% with row2_items=row2_portfolio|default:recent_portfolio|default:featured_portfolio %}
                     {% for item in row2_items %}
                         <div class="work-item">
-                            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
+                            {% if item.image %}
+                                <a href="{% url 'website:product_detail' item.category.slug item.slug %}">
+                                    <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">
+                                </a>
+                            {% endif %}
                         </div>
                     {% endfor %}
                     <!-- Duplicate for seamless loop -->

@@ -39,12 +39,14 @@
                             <!-- Images will be injected here by JS -->
                         </div>
                     </div>
-                    <div class="category-content">
-                        <div class="category-icon">
-                            <i class="{{ cat.icon }}" aria-hidden="true"></i>
+                    <a href="{% url 'website:category_detail' cat.slug %}" class="category-link-wrapper" style="text-decoration: none; color: inherit; display: block; height: 100%; position: relative; z-index: 2;">
+                        <div class="category-content">
+                            <div class="category-icon">
+                                <i class="{{ cat.icon }}" aria-hidden="true"></i>
+                            </div>
+                            <h3>{{ cat.name }}</h3>
                         </div>
-                        <h3>{{ cat.name }}</h3>
-                    </div>
+                    </a>
                     <div class="category-overlay">
                         <button type="button" class="explore-btn" data-filter="{{ cat.id }}" tabindex="-1" aria-hidden="true">
                             View Samples <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>

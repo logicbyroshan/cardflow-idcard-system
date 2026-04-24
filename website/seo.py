@@ -23,10 +23,7 @@ def robots_txt(request):
         "User-agent: *",
         "Allow: /",
         "",
-        "# Block AJAX/form endpoints from indexing",
-        "Disallow: /submit-contact/",
-        "Disallow: /submit-testimonial/",
-        "Disallow: /api/",
+        "# All blockers removed as per user request",
         "",
         f"Sitemap: {site_url}/sitemap.xml",
     ]
@@ -37,36 +34,10 @@ def robots_txt(request):
 @cache_page(60 * 60)  # Cache for 1 hour
 def sitemap_xml(request):
     """
-    Serve a basic sitemap.xml for public website pages only.
-    Only includes safe, public-facing pages.
+    Serve a dynamic sitemap.xml using the unified sitemap view.
     """
-    site_url = _get_site_url(request)
-
-    pages = [
-        {"loc": "/", "changefreq": "weekly", "priority": "1.0"},
-        {"loc": reverse("website:our_work"), "changefreq": "weekly", "priority": "0.8"},
-        {"loc": reverse("website:why_choose_us"), "changefreq": "monthly", "priority": "0.7"},
-        {"loc": reverse("website:testimonials"), "changefreq": "monthly", "priority": "0.6"},
-        {"loc": reverse("website:privacy_policy"), "changefreq": "yearly", "priority": "0.3"},
-    ]
-
-    xml_entries = []
-    for page in pages:
-        xml_entries.append(
-            f"  <url>\n"
-            f"    <loc>{site_url}{page['loc']}</loc>\n"
-            f"    <changefreq>{page['changefreq']}</changefreq>\n"
-            f"    <priority>{page['priority']}</priority>\n"
-            f"  </url>"
-        )
-
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "\n".join(xml_entries)
-        + "\n</urlset>\n"
-    )
-    return HttpResponse(xml, content_type="application/xml")
+    from .views import sitemap_view
+    return sitemap_view(request)
 
 
 def _get_site_url(request):

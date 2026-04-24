@@ -10,8 +10,11 @@ from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.conf import settings as _s
 from django.db.models import Avg, Case, When, Value, IntegerField, Q, F
-from django.urls import resolve, Resolver404
+from django.urls import resolve, Resolver404, reverse
 import logging
+from django.contrib.sitemaps.views import sitemap
+from .sitemaps import StaticViewSitemap, PortfolioCategorySitemap, PortfolioItemSitemap
+from django.shortcuts import get_object_or_404
 
 from accounts.rate_limit import rate_limit
 from core.services.cache_version_service import CacheVersionService
@@ -90,6 +93,7 @@ def get_common_context():
     return {
         'business': business,
         'site_name': business.site_name if business else 'Adarsh ID Cards',
+        'global_keywords': 'Adarsh Bhopal, Adarsh ID Cards, ID Card Solution Bhopal, Lanyards Bhopal, School ID Cards MP, ID Card Printing Bhopal',
     }
 
 
@@ -450,6 +454,17 @@ def home(request):
         context['row1_portfolio'] = []
         context['row2_portfolio'] = []
 
+    else:
+        context['row1_portfolio'] = []
+        context['row2_portfolio'] = []
+
+    # SEO metadata
+    context.update({
+        'meta_title': f"Adarsh ID Cards Bhopal | Best ID Card Solution in MP",
+        'meta_description': f"Adarsh ID Cards is the leading ID card solution provider in Bhopal, MP. We specialize in high-quality Lanyards, PVC ID Cards, and school stationery. Trusted by 1000+ institutions in Madhya Pradesh.",
+        'canonical_url': request.build_absolute_uri(),
+    })
+
     return render(request, 'website/index.html', context)
 
 
@@ -555,6 +570,9 @@ def our_work(request):
         'category_items': category_items,
         'category_item_totals': category_item_totals,
         'category_modal_batch_size': CATEGORY_MODAL_INITIAL_LIMIT,
+        'meta_title': f"Our Products | ID Card & Lanyard Solutions Bhopal, MP",
+        'meta_description': "Explore our wide range of professional ID cards, custom lanyards, and school stationery in Bhopal. Top-rated printing services in Madhya Pradesh (MP).",
+        'canonical_url': request.build_absolute_uri(),
     })
     return render(request, 'website/our-works.html', context)
 
@@ -667,6 +685,11 @@ def why_choose_us(request):
         }
         cache.set(why_cache_key, why_sections, WHY_CHOOSE_US_CACHE_TTL)
     context.update(why_sections)
+    context.update({
+        'meta_title': f"Why Choose Adarsh ID Cards | Leading Service in Bhopal, MP",
+        'meta_description': "Adarsh ID Cards Bhopal offers the best quality lanyards and ID card solutions in Madhya Pradesh. 20+ years of trust in professional printing.",
+        'canonical_url': request.build_absolute_uri(),
+    })
     return render(request, 'website/why-choose-us.html', context)
 
 
@@ -696,6 +719,9 @@ def testimonials_page(request):
             reviewer_ip=review_lookup_ip,
         ),
         'my_feedback_items': my_feedback_items,
+        'meta_title': f"Client Reviews | Best ID Card Printing in Bhopal, MP",
+        'meta_description': "Read what schools and offices in Bhopal and MP say about Adarsh ID Cards and Lanyard solutions. Quality you can trust.",
+        'canonical_url': request.build_absolute_uri(),
     })
     return render(request, 'website/testimonials.html', context)
 
@@ -703,6 +729,11 @@ def testimonials_page(request):
 def privacy_policy(request):
     """Privacy Policy Page - Static content, only needs base context"""
     context = get_common_context()
+    context.update({
+        'meta_title': f"Privacy Policy | {context['site_name']}",
+        'meta_description': "Read our privacy policy to understand how we handle your data and ensure your privacy.",
+        'canonical_url': request.build_absolute_uri(),
+    })
     return render(request, 'website/privacy-policy.html', context)
 
 
@@ -856,3 +887,72 @@ def submit_contact(request):
     except Exception as e:
         logger.error("Contact form submission failed: %s", e)
         return JsonResponse({'success': False, 'message': 'Server error. Please try again later.'}, status=500)
+
+
+# --- SEO Detail Views ---
+
+def category_detail(request, slug):
+    """List all items in a category with SEO metadata."""
+    category = get_object_or_404(PortfolioCategory, slug=slug, is_active=True)
+    items = PortfolioItem.objects.filter(category=category, is_active=True).order_by('order', '-created_at')
+    
+    context = get_common_context()
+    context.update({
+        'category': category,
+        'items': items,
+        'meta_title': f"{category.name} in Bhopal, MP | Adarsh ID Card Solutions",
+        'meta_description': f"High-quality {category.name} printing in Bhopal. {category.description[:100] if category.description else 'The best identity solutions in Madhya Pradesh.'} Contact Adarsh Bhopal for bulk orders.",
+        'canonical_url': request.build_absolute_uri(),
+        'breadcrumb': [
+            {'name': 'Home', 'url': reverse('website:home')},
+            {'name': 'Our Products', 'url': reverse('website:our_work')},
+            {'name': category.name, 'url': ''},
+        ]
+    })
+    return render(request, 'website/category-detail.html', context)
+
+
+def product_detail(request, category_slug, slug):
+    """Detailed view for a specific product with rich snippets context."""
+    item = get_object_or_404(PortfolioItem.objects.select_related('category'), slug=slug, category__slug=category_slug, is_active=True)
+    related_items = PortfolioItem.objects.filter(category=item.category, is_active=True).exclude(pk=item.pk).order_by('?')[:4]
+    
+    context = get_common_context()
+    context.update({
+        'item': item,
+        'related_items': related_items,
+        'meta_title': f"{item.title} - {item.category.name} Bhopal | Adarsh ID Cards MP",
+        'meta_description': f"Buy premium {item.title} ({item.category.name}) in Bhopal. Custom ID card solutions for schools and organizations across Madhya Pradesh by Adarsh Bhopal.",
+        'canonical_url': request.build_absolute_uri(),
+        'breadcrumb': [
+            {'name': 'Home', 'url': reverse('website:home')},
+            {'name': 'Our Products', 'url': reverse('website:our_work')},
+            {'name': item.category.name, 'url': reverse('website:category_detail', kwargs={'slug': item.category.slug})},
+            {'name': item.title, 'url': ''},
+        ]
+    })
+    return render(request, 'website/product-detail.html', context)
+
+
+# --- SEO Utility Views ---
+
+def sitemap_view(request):
+    """Dynamic XML sitemap."""
+    sitemaps = {
+        'static': StaticViewSitemap,
+        'categories': PortfolioCategorySitemap,
+        'products': PortfolioItemSitemap,
+    }
+    return sitemap(request, sitemaps=sitemaps)
+
+
+def robots_txt(request):
+    """SEO-optimized robots.txt."""
+    site_url = request.build_absolute_uri('/').rstrip('/')
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "",
+        f"Sitemap: {site_url}/sitemap.xml",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain")

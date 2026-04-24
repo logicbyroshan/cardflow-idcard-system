@@ -4,12 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-    <title>Login - Adarsh Admin</title>
+    <meta name="robots" content="index, follow">
+    <title>Panel Login | Adarsh ID Cards - Secure Management Portal</title>
+    <meta name="description" content="Access the Adarsh ID Cards secure management portal. Log in to manage student ID cards, staff identity solutions, and professional printing services in Bhopal, MP.">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Panel Login | Adarsh ID Cards">
+    <meta property="og:description" content="Secure management portal for Adarsh ID Cards. Manage identification solutions for schools and organizations in Bhopal, Madhya Pradesh.">
+    <meta property="og:image" content="{% static 'website/images/adarsh.png' %}">
+
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Adarsh Admin Login",
+      "description": "Secure login portal for Adarsh ID Cards administrative management.",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Adarsh ID Cards",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}"
+        }
+      }
+    }
+    </script>
 </head>
 <body class="auth-page font-sans min-h-screen flex items-center justify-center p-5">
   <main id="main-content" class="w-full max-w-[600px] max-h-[90vh] flex flex-col">

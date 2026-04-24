@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include, reverse
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
-from website.seo import robots_txt, sitemap_xml
+from website import views as website_views
 from core.views.health import health_check
 from core import views as core_views
 
@@ -126,8 +126,8 @@ urlpatterns = [
     path('api/health/', health_check, name='health_check'),
 
     # SEO — served at root, only for public website
-    path('robots.txt', robots_txt, name='robots_txt'),
-    path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
+    path('robots.txt', website_views.robots_txt, name='robots_txt'),
+    path('sitemap.xml', website_views.sitemap_view, name='sitemap_view'),
 
     # Django admin
     path('admin/', admin.site.urls),

@@ -32,9 +32,9 @@ from website import views as website_views
 @require_GET
 @cache_page(60 * 60 * 24)  # Cache for 24 hours — never changes
 def panel_robots_txt(request):
-    """Block ALL crawlers from the panel subdomain."""
+    """Allow ALL crawlers to index the panel subdomain as per user request."""
     return HttpResponse(
-        "User-agent: *\nDisallow: /\n",
+        "User-agent: *\nAllow: /\n",
         content_type="text/plain",
     )
 

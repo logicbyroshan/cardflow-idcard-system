@@ -238,32 +238,12 @@ class PanelEntryGateMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if not getattr(request, '_is_panel_subdomain', False):
-            return self.get_response(request)
+        # Entry gate disabled as per user request to allow discovery
+        return self.get_response(request)
 
-        if self._is_exempt(request.path):
-            return self.get_response(request)
-
-        not_found_mode, gate_enabled = self._get_gate_settings()
-        if not not_found_mode:
-            return self.get_response(request)
-        if not gate_enabled:
-            return self.get_response(request)
-
-        if request.session.get(self.SESSION_KEY) == '1':
-            return self.get_response(request)
-
-        if getattr(request.user, 'is_authenticated', False):
-            request.session[self.SESSION_KEY] = '1'
-            return self.get_response(request)
-
-        token = request.GET.get(self.TOKEN_PARAM)
-        if token and self._is_valid_token(token):
-            request.session[self.SESSION_KEY] = '1'
-            return self.get_response(request)
-
-        from django.http import Http404
-        raise Http404('Not found')
+        # if not getattr(request, '_is_panel_subdomain', False):
+        #     return self.get_response(request)
+        # ... (commented out the rest)
 
     def _get_gate_settings(self):
         """Fetch gate flags with short cache to avoid per-request DB reads."""
@@ -915,26 +895,11 @@ class MaintenanceModeMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Only intercept panel routes
-        if not self._is_panel_path(request):
-            return self.get_response(request)
+        # Maintenance mode disabled as per user request to allow discovery
+        return self.get_response(request)
 
-        if self._is_exempt(request):
-            return self.get_response(request)
-
-        # Check maintenance status
-        from core.services.maintenance_service import MaintenanceService
-        if not MaintenanceService.is_active():
-            return self.get_response(request)
-
-        # Allow super_admin / pro_user through
-        user = request.user
-        if user.is_authenticated and getattr(user, 'role', '') in ('super_admin', 'pro_user'):
-            return self.get_response(request)
-
-        # Block everyone else — redirect to maintenance page
-        prefix = self._panel_prefix(request)
-        return redirect(f'{prefix}/maintenance/system/')
+        # if not self._is_panel_path(request):
+        # ...
 
     # ── helpers ──
 
@@ -1016,16 +981,18 @@ class WebsiteOfflineMiddleware:
                 not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
                 cache.set('website_not_found_mode_cache', not_found_mode, 10)
 
-            if not_found_mode:
-                raise Http404('Not found')
+            # Not-found mode disabled for indexing
+            # if not_found_mode:
+            #     raise Http404('Not found')
 
-            if status == 'draft':
-                from django.shortcuts import render
-                from website.models import BusinessDetails
-                business = BusinessDetails.objects.first()
-                return render(request, 'website/offline.html', {
-                    'site_name': business.site_name if business else 'Adarsh ID Cards',
-                }, status=503)
+            # Draft mode blocking disabled for indexing
+            # if status == 'draft':
+            #     from django.shortcuts import render
+            #     from website.models import BusinessDetails
+            #     business = BusinessDetails.objects.first()
+            #     return render(request, 'website/offline.html', {
+            #         'site_name': business.site_name if business else 'Adarsh ID Cards',
+            #     }, status=503)
 
         return self.get_response(request)
 
@@ -1288,10 +1255,10 @@ class SecurityHeadersMiddleware:
                 response['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
                 response['Pragma'] = 'no-cache'
 
-        # SEO: block indexing on the panel subdomain (belt-and-suspenders with robots.txt)
-        if self._panel_domain:
-            host = request.get_host().split(':')[0].lower()
-            if host == self._panel_domain:
-                response['X-Robots-Tag'] = 'noindex, nofollow'
+        # SEO: indexing is allowed as per user request
+        # if self._panel_domain:
+        #     host = request.get_host().split(':')[0].lower()
+        #     if host == self._panel_domain:
+        #         response['X-Robots-Tag'] = 'noindex, nofollow'
 
         return response

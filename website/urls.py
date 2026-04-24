@@ -19,6 +19,10 @@ urlpatterns = [
     path('our-products/', views.our_work, name='our_work'),
     path('our-work/', RedirectView.as_view(pattern_name='website:our_work', permanent=True), name='our_work_legacy'),
     
+    # New Semantic URLs for Categories and Products
+    path('products/<slug:slug>/', views.category_detail, name='category_detail'),
+    path('products/<slug:category_slug>/<slug:slug>/', views.product_detail, name='product_detail'),
+
     path('why-choose-us/', views.why_choose_us, name='why_choose_us'),
     
     # Linked to testimonials_page in views.py
