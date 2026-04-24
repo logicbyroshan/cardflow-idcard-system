@@ -2,6 +2,15 @@
 {% load static %}
 {% load custom_filters %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=155">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=155">
+    <style>
+        .lightbox-product-link { color: #fff; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.4); transition: all 0.2s; }
+        .lightbox-product-link:hover { color: #0A92DD; border-bottom-color: #0A92DD; }
+    </style>
+{% endblock %}
+
 {% block content %}
     {% include 'partials/website/hero.html' %}
 
