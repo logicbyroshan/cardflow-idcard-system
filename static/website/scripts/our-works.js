@@ -723,8 +723,11 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         card.addEventListener('click', (e) => {
+            // Prevent navigation to allow modal to open for users.
+            // Search engines will still follow the href.
+            e.preventDefault();
             if (e.target.closest('.category-overlay .explore-btn')) {
-                e.preventDefault();
+                // Already handled by capture or bubbling if needed, but safe to prevent here too.
             }
             openFromCard();
         });
@@ -750,7 +753,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const shareBtn = document.getElementById('productGalleryShare');
     if (shareBtn) {
         shareBtn.addEventListener('click', () => {
-            const url = window.location.origin + window.location.pathname + '#category=' + currentGalleryCategorySlug;
+            // Use the clean SEO category URL instead of the hash link.
+            const url = window.location.origin + '/products/' + currentGalleryCategorySlug + '/';
             navigator.clipboard.writeText(url).then(() => {
                 const icon = shareBtn.querySelector('i');
                 icon.className = 'fas fa-check';

@@ -86,6 +86,89 @@
         </div>
     </div>
 </section>
+
+<!-- Product Detail Modal -->
+<div class="product-detail-modal" id="productDetailModal" role="dialog" aria-modal="true">
+    <div class="modal-overlay"></div>
+    <div class="modal-container">
+        <button class="modal-close" id="modalClose"><i class="fa-solid fa-xmark"></i></button>
+        <div id="modalContent">
+            <!-- Loaded via AJAX -->
+            <div class="modal-loader">Loading...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('productDetailModal');
+    const modalContent = document.getElementById('modalContent');
+    const modalClose = document.getElementById('modalClose');
+    const overlay = modal.querySelector('.modal-overlay');
+
+    function openModal(url) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        modalContent.innerHTML = '<div class="modal-loader">Loading...</div>';
+
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            initModalShare();
+        })
+        .catch(err => {
+            modalContent.innerHTML = '<p>Error loading content.</p>';
+        });
+    }
+
+    function initModalShare() {
+        const shareBtn = document.getElementById('modalShareBtn');
+        if (!shareBtn) return;
+
+        shareBtn.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            navigator.clipboard.writeText(url).then(() => {
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fa-solid fa-check"></i> Link Copied!';
+                this.classList.add('copied');
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.classList.remove('copied');
+                }, 2000);
+            });
+        });
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('.product-card a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            // Only intercept normal clicks
+            if (e.button === 0 && !e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey) {
+                e.preventDefault();
+                openModal(this.href);
+            }
+        });
+    });
+
+    modalClose.addEventListener('click', closeModal);
+    overlay.addEventListener('click', closeModal);
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+});
+</script>
 {% endblock %}
 
 {% block extra_css %}
@@ -100,5 +183,12 @@
 .product-image img { width: 100%; height: 200px; object-fit: cover; }
 .product-info { padding: 1rem; text-align: center; }
 .product-info h3 { font-size: 1.1rem; margin: 0; color: #333; }
+.product-detail-modal { position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center; padding: 2rem; }
+.product-detail-modal.active { display: flex; }
+.modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
+.modal-container { position: relative; background: #fff; width: 100%; max-width: 1000px; max-height: 90vh; border-radius: 20px; overflow-y: auto; z-index: 1; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
+.modal-close { position: absolute; top: 1.5rem; right: 1.5rem; background: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.2s; }
+.modal-close:hover { background: #0A92DD; color: #fff; transform: rotate(90deg); }
+.modal-loader { padding: 4rem; text-align: center; font-size: 1.2rem; color: #666; }
 </style>
 {% endblock %}

@@ -929,6 +929,10 @@ def product_detail(request, category_slug, slug):
             {'name': item.title, 'url': ''},
         ]
     })
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return render(request, 'website/includes/product-modal-content.html', context)
+        
     return render(request, 'website/product-detail.html', context)
 
 
