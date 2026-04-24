@@ -76,7 +76,13 @@ class LoginPageView(View):
         ua = request.META.get('HTTP_USER_AGENT', '')
         is_mobile_ua = bool(re.search(r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', ua, re.I))
         if is_mobile_ua:
-            return redirect('/app/login/?install=1')
+            # Preserve next_url if present so mobile users return to the correct app state
+            next_url = request.GET.get('next', '')
+            target = '/app/login/?install=1'
+            if next_url:
+                from urllib.parse import quote
+                target += '&next=' + quote(next_url)
+            return redirect(target)
         
         return render(request, self.template_name)
 
@@ -129,7 +135,12 @@ class LogoutView(View):
     
     def post(self, request):
         from .services_impersonate import ImpersonateService
-        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        # Detect AJAX/fetch requests to return JSON instead of 302
+        is_ajax = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            request.content_type == 'application/json' or
+            request.GET.get('format') == 'json'
+        )
         next_url = request.POST.get('next', '') or request.GET.get('next', '')
 
         # If this session is impersonating, stopping logout returns control to Pro User.

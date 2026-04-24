@@ -284,29 +284,37 @@
     <script src="{% static 'js/core/icon-button-text.js' %}"></script>
     <script src="{% static 'js/core/icon-consistency.js' %}?v={{ APP_VERSION|urlencode }}"></script>
     <script>
-    window.mobileLogout = function mobileLogout(event) {
+    window.mobileLogout = async function mobileLogout(event) {
         if (event) event.preventDefault();
+        
+        // 1. Extract CSRF token from cookie
         var csrf = '';
         var m = (document.cookie || '').match(/(?:^|;\s*)csrftoken=([^;]+)/);
         if (m && m[1]) csrf = decodeURIComponent(m[1]);
-        var form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/panel/auth/logout/';
+        
+        // 2. Prepare logout request
+        // Use URLSearchParams so it appears in request.POST on the server
+        var formData = new URLSearchParams();
+        formData.append('csrfmiddlewaretoken', csrf);
+        formData.append('next', '/app/');
 
-        var csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrfmiddlewaretoken';
-        csrfInput.value = csrf;
-        form.appendChild(csrfInput);
+        try {
+            // 3. Perform async logout
+            // We use 'X-Requested-With' to ensure the server returns JSON instead of a 302 redirect
+            await fetch('/panel/auth/logout/', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+        } catch (err) {
+            console.warn('Mobile logout fetch failed:', err);
+        }
 
-        var nextInput = document.createElement('input');
-        nextInput.type = 'hidden';
-        nextInput.name = 'next';
-        nextInput.value = '/app/';
-        form.appendChild(nextInput);
-
-        document.body.appendChild(form);
-        form.submit();
+        // 4. Clean transition to login page
+        // Doing this client-side after the fetch ensures Capacitor stays in a stable state
+        window.location.href = '/app/login/?logout=1';
         return false;
     };
 

@@ -1,6 +1,9 @@
 """Custom error pages for user-friendly navigation and support messaging."""
 
+import logging
 from django.shortcuts import render
+
+logger = logging.getLogger(__name__)
 
 
 def _panel_prefix(request) -> str:
