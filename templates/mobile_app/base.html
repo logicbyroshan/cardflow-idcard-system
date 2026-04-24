@@ -508,11 +508,25 @@
             });
         }
 
+        // Auto-check for mandatory APK/Shell updates on every load
+        window.addEventListener('load', function() {
+            setTimeout(async function() {
+                try {
+                    var configData = await fetchMobileShellConfig();
+                    if (configData && (isTruthyFlag(configData.update_required))) {
+                        // For mandatory updates, trigger the full update screen automatically.
+                        // This fulfills the "auto update by default" requirement.
+                        if (window.mobileUpdateApp) {
+                            window.mobileUpdateApp();
+                        }
+                    }
+                } catch (e) {}
+            }, 4000); 
+        });
+
         window.mobileUpdateApp = async function mobileUpdateApp(event) {
             if (event) event.preventDefault();
             if (inProgress) return false;
-
-            // Removed early exit for non-native shell so PWAs can also clear caches.
 
             inProgress = true;
 
@@ -528,6 +542,7 @@
                 var configData = await fetchMobileShellConfig();
                 var shouldOpenInstaller = shouldOpenInstallerForConfig(configData);
                 var updateLink = resolveUpdateLink(configData);
+                
                 if (shouldOpenInstaller && updateLink) {
                     await rampUpdateProgress(18, 42, 420, 'Contacting secure update server...');
                     var opened = await openUpdateLink(updateLink);
@@ -543,7 +558,6 @@
                         inProgress = false;
                         return false;
                     }
-
                     setUpdateProgress(38, 'Could not open installer directly. Trying in-app refresh...');
                 } else {
                     await rampUpdateProgress(18, 34, 280, 'App is already up to date. Refreshing in-app assets...');
@@ -886,6 +900,9 @@
         window.addEventListener('load', function () {
             navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE })
                 .then(function (reg) {
+                    // Check for updates immediately on registration
+                    try { reg.update(); } catch (e) {}
+                    
                     watchForUpdates(reg);
 
                     // Proactively check for SW updates every 60 seconds
