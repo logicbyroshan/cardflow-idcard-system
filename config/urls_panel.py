@@ -102,10 +102,19 @@ def _protected_media_serve(request, path, document_root=None):
                 if not client or not PermissionService.can_access_client(request.user, client.id):
                     return HttpResponse(status=404)
 
-            elif rel_path.startswith('exports/'):
+            # For async export files, only the owning user can access.
+            # Check both 'exports/' and 'temp/exports/' prefixes since async
+            # exports are stored under temp/exports/.
+            # Normalize stored result_path to forward slashes for cross-platform
+            # compatibility (os.path.relpath uses backslashes on Windows).
+            elif rel_path.startswith('exports/') or rel_path.startswith('temp/exports/'):
+                from django.db.models import Q
+                normalized_path = rel_path.replace('\\', '/')
                 owns_file = BackgroundTask.objects.filter(
                     user=request.user,
-                    result_path=rel_path,
+                ).filter(
+                    Q(result_path=normalized_path) |
+                    Q(result_path=normalized_path.replace('/', '\\'))
                 ).exists()
                 if not owns_file:
                     return HttpResponse(status=404)

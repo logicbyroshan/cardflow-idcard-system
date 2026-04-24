@@ -4634,9 +4634,9 @@ def api_profile_delete_request(request):
     # Record activity if the service is available
     try:
         ActivityService.log(
+            'other',
+            f'User {user_name} ({user_email}) requested account and data deletion via mobile app.',
             user=user,
-            action='data_deletion_requested',
-            description=f'User {user_name} ({user_email}) requested account and data deletion via mobile app.',
         )
     except Exception:
         pass  # Activity logging is best-effort

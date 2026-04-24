@@ -1,7 +1,7 @@
 """Custom error pages for user-friendly navigation and support messaging."""
 
 import logging
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +104,46 @@ def error_500(request):
 
 
 def csrf_failure(request, reason=''):
+    """
+    Custom CSRF failure handler.
+
+    When the user's session has expired (most common cause of CSRF failures),
+    redirect them to the login page instead of showing a dead-end error.
+    For AJAX requests, return a JSON response so the frontend can redirect.
+    """
+    from django.http import JsonResponse
+
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.headers.get('HX-Request') == 'true'
+        or (request.content_type or '') == 'application/json'
+    )
+
+    # Determine login URL based on routing context
+    panel_prefix = _panel_prefix(request)
+    login_url = f'{panel_prefix}/auth/login/'
+
+    # If user is not authenticated, the session likely expired —
+    # redirect to login instead of showing a dead-end 403 page.
+    user = getattr(request, 'user', None)
+    if not user or not getattr(user, 'is_authenticated', False):
+        if is_ajax:
+            return JsonResponse({
+                'success': False,
+                'message': 'Your session has expired. Please log in again.',
+                'redirect': login_url,
+                'force_logout': True,
+            }, status=403)
+        return redirect(login_url)
+
+    # User is still authenticated but CSRF token is stale/missing —
+    # show the error page with a helpful message.
+    if is_ajax:
+        return JsonResponse({
+            'success': False,
+            'message': 'Security token expired. Please refresh the page and try again.',
+        }, status=403)
+
     return _render_error(
         request,
         status_code=403,

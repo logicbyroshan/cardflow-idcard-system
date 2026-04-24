@@ -303,7 +303,7 @@ class CropService:
         request=None
     ) -> dict:
         """
-        Takes the cropped images from a batch (or edited ones) and uploadswrite
+        Read cropped (or edited) images from the batch folder and write
         them back to the corresponding cards, replacing the original images.
 
         Args:

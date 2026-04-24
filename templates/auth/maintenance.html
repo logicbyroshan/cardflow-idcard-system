@@ -43,7 +43,7 @@
         <i class="fa-solid fa-rotate" aria-hidden="true"></i>
         Check Status
     </button>
-    <a href="{% url 'logout' %}" class="btn btn-secondary">
+    <a href="#" onclick="event.preventDefault(); var f=document.createElement('form'); f.method='POST'; f.action='{% url 'logout' %}'; var i=document.createElement('input'); i.type='hidden'; i.name='csrfmiddlewaretoken'; i.value=(document.cookie.match(/csrftoken=([^;]+)/)||[])[1]||''; f.appendChild(i); document.body.appendChild(f); f.submit();" class="btn btn-secondary">
         <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
         Logout
     </a>

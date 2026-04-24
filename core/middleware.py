@@ -482,11 +482,53 @@ class PermissionValidationMiddleware:
             return '.'.join(parts[:3])
         return ip_value
 
+    @staticmethod
+    def _extract_stable_ua(ua_string):
+        """
+        Extract a stable browser family + major version from a User-Agent string.
+
+        Minor browser version changes (auto-updates like Chrome 120 → 121) only
+        bump the minor/patch version in the UA.  By extracting just the family
+        and major version (e.g. "chrome/120"), we avoid false-positive fingerprint
+        mismatches that would force-logout users after browser updates.
+        """
+        import re
+        ua = (ua_string or '').strip().lower()
+        if not ua:
+            return ''
+
+        # Extract platform (Windows, Mac, Linux, Android, iPhone, iPad)
+        platform = 'unknown'
+        for p in ('windows', 'macintosh', 'linux', 'android', 'iphone', 'ipad'):
+            if p in ua:
+                platform = p
+                break
+
+        # Extract browser family and major version
+        # Order matters: check specific browsers first before generic ones
+        browser = 'other'
+        patterns = [
+            (r'edg[ea]?/(\d+)', 'edge'),
+            (r'opr/(\d+)', 'opera'),
+            (r'chrome/(\d+)', 'chrome'),
+            (r'firefox/(\d+)', 'firefox'),
+            (r'safari/(\d+)', 'safari'),
+            (r'msie\s+(\d+)', 'ie'),
+            (r'trident/.*rv:(\d+)', 'ie'),
+        ]
+        for pattern, name in patterns:
+            m = re.search(pattern, ua)
+            if m:
+                browser = f'{name}/{m.group(1)}'
+                break
+
+        return f'{platform}|{browser}'
+
     @classmethod
     def build_session_fingerprint(cls, request):
-        """Build deterministic fingerprint from user-agent (+ optional coarse IP)."""
-        ua = (request.META.get('HTTP_USER_AGENT', '') or '').strip().lower()
-        ua_part = ua[:256]
+        """Build deterministic fingerprint from stable browser identity (+ optional coarse IP)."""
+        ua_raw = (request.META.get('HTTP_USER_AGENT', '') or '').strip()
+        ua_part = cls._extract_stable_ua(ua_raw)
 
         ip_part = ''
         if getattr(django_settings, 'SESSION_FINGERPRINT_INCLUDE_IP', False):
@@ -1095,14 +1137,18 @@ class SessionIdleTimeoutMiddleware:
 
         # Stamp session on first authenticated use (for absolute max-age tracking)
         # and throttle subsequent writes to once per ACTIVITY_WRITE_INTERVAL.
+        # Explicitly mark session as modified so Django's session middleware
+        # persists the change even when SESSION_SAVE_EVERY_REQUEST is False.
         session_created = request.session.get('_session_created')
         if session_created is None:
             request.session['_session_created'] = now
             request.session['_last_activity'] = now
+            request.session.modified = True
         else:
             last_activity = request.session.get('_last_activity')
             if last_activity is None or (now - last_activity) >= self.ACTIVITY_WRITE_INTERVAL:
                 request.session['_last_activity'] = now
+                request.session.modified = True
 
         return self.get_response(request)
 
