@@ -93,7 +93,7 @@ def get_common_context():
     return {
         'business': business,
         'site_name': business.site_name if business else 'Adarsh ID Cards',
-        'global_keywords': 'Adarsh Bhopal, Adarsh ID Cards, ID Card Solution Bhopal, Lanyards Bhopal, School ID Cards MP, ID Card Printing Bhopal',
+        'global_keywords': 'Adarsh ID Cards, Adarsh Bhopal, ID Card Printing Bhopal, Custom Lanyards Bhopal, School ID Cards MP, Identity Solutions Madhya Pradesh, PVC ID Card Manufacturer, RFID Cards Bhopal, Digital Lanyard Printing, School Stationery Suppliers Bhopal',
     }
 
 
@@ -456,8 +456,8 @@ def home(request):
 
     # SEO metadata
     context.update({
-        'meta_title': f"Adarsh ID Cards Bhopal | Best ID Card Solution in MP",
-        'meta_description': f"Adarsh ID Cards is the leading ID card solution provider in Bhopal, MP. We specialize in high-quality Lanyards, PVC ID Cards, and school stationery. Trusted by 1000+ institutions in Madhya Pradesh.",
+        'meta_title': f"Adarsh ID Cards Bhopal | Best ID Card & Lanyard Solution in MP",
+        'meta_description': f"Adarsh ID Cards is the leading ID card manufacturer in Bhopal, MP. We specialize in premium Lanyards, PVC ID Cards, and school stationery. Trusted by 1000+ institutions for quality and delivery.",
         'canonical_url': request.build_absolute_uri(),
     })
 
@@ -566,8 +566,8 @@ def our_work(request):
         'category_items': category_items,
         'category_item_totals': category_item_totals,
         'category_modal_batch_size': CATEGORY_MODAL_INITIAL_LIMIT,
-        'meta_title': f"Our Products | ID Card & Lanyard Solutions Bhopal, MP",
-        'meta_description': "Explore our wide range of professional ID cards, custom lanyards, and school stationery in Bhopal. Top-rated printing services in Madhya Pradesh (MP).",
+        'meta_title': f"Our Products Gallery | Premium ID Card & Lanyard Designs Bhopal",
+        'meta_description': "Browse our extensive collection of professional ID cards, custom printed lanyards, and institutions stationery. High-quality samples from Adarsh ID Cards Bhopal.",
         'canonical_url': request.build_absolute_uri(),
     })
     return render(request, 'website/our-works.html', context)
@@ -897,7 +897,8 @@ def category_detail(request, slug):
         'category': category,
         'items': items,
         'meta_title': f"{category.name} in Bhopal, MP | Adarsh ID Card Solutions",
-        'meta_description': f"High-quality {category.name} printing in Bhopal. {category.description[:100] if category.description else 'The best identity solutions in Madhya Pradesh.'} Contact Adarsh Bhopal for bulk orders.",
+        'meta_description': f"High-quality {category.name} printing in Bhopal. {category.description[:150] if category.description else 'The best identity solutions in Madhya Pradesh.'} Contact Adarsh Bhopal for bulk orders.",
+        'meta_keywords': f"{category.name}, {category.name} Bhopal, {category.name} printing MP, Adarsh ID Cards products",
         'canonical_url': request.build_absolute_uri(),
         'breadcrumb': [
             {'name': 'Home', 'url': reverse('website:home')},
@@ -919,6 +920,7 @@ def product_detail(request, category_slug, slug):
         'related_items': related_items,
         'meta_title': f"{item.title} - {item.category.name} Bhopal | Adarsh ID Cards MP",
         'meta_description': f"Buy premium {item.title} ({item.category.name}) in Bhopal. Custom ID card solutions for schools and organizations across Madhya Pradesh by Adarsh Bhopal.",
+        'meta_keywords': f"{item.title}, {item.category.name}, {item.title} Bhopal, ID Card printing Bhopal, Adarsh ID Cards",
         'canonical_url': request.build_absolute_uri(),
         'breadcrumb': [
             {'name': 'Home', 'url': reverse('website:home')},
@@ -952,3 +954,8 @@ def robots_txt(request):
         f"Sitemap: {site_url}/sitemap.xml",
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
+
+
+
+
+

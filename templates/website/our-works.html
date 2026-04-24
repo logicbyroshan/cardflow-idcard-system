@@ -6,6 +6,11 @@
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=155">
     <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=155">
+    <style>
+        .lightbox-product-link { color: #fff; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.4); transition: all 0.2s; }
+        .lightbox-product-link:hover { color: #0A92DD; border-bottom-color: #0A92DD; }
+        .portfolio-item { display: block; text-decoration: none; }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -100,7 +105,7 @@
             <!-- Portfolio Grid -->
             <div class="portfolio-grid" id="portfolioGrid">
                 {% for item in portfolio_items %}
-                <div class="portfolio-item {{ item.orientation|default:'square' }} {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}"
+                <a href="{% url 'website:product_detail' item.category.slug item.slug %}" class="portfolio-item {{ item.orientation|default:'square' }} {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}"
                      role="button" tabindex="0" aria-label="{{ item.title }}"
                      {% if item.item_type == 'video' or item.item_type == 'reel' %}
                      data-video-url="{{ item.video_source_url|default:item.video_fallback_url }}"
@@ -126,7 +131,7 @@
                             {% endif %}
                         {% endif %}
                     </div>
-                </div>
+                </a>
                 {% empty %}
                 <div class="empty-portfolio-message" style="column-span: all; text-align: center; padding: 60px 20px; width: 100%;">
                     <p style="color: var(--color-slate-400); font-size: 1.1rem; margin: 0;">No works uploaded yet.</p>

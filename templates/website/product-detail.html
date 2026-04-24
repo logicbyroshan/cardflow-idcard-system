@@ -13,7 +13,13 @@
     "@type": "Brand",
     "name": "{{ site_name }}"
   },
-  "category": "{{ item.category.name }}"
+  "category": "{{ item.category.name }}",
+  "offers": {
+    "@type": "Offer",
+    "availability": "https://schema.org/InStock",
+    "price": "0",
+    "priceCurrency": "INR"
+  }
 }
 </script>
 {% endblock %}

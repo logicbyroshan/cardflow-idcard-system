@@ -17,12 +17,13 @@
     <meta property="og:title" content="{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }}{% endif %}">
     <meta property="og:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description }}{% endif %}">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
-    <meta property="og:image" content="{% block og_image %}{% static 'website/images/adarsh.png' %}{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{% if item and item.image %}{{ request.scheme }}://{{ request.get_host }}{{ item.image.url }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}{% endif %}{% endblock %}">
     
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }}{% endif %}">
     <meta name="twitter:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description }}{% endif %}">
+    <meta name="twitter:image" content="{% block twitter_image %}{% if item and item.image %}{{ request.scheme }}://{{ request.get_host }}{{ item.image.url }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}{% endif %}{% endblock %}">
     
     <meta name="theme-color" content="#3498db">
 
@@ -239,7 +240,7 @@
             </div>
 
             <div class="footer-bottom">
-                <p>&copy; {% now "Y" %} {{ site_name }}. All rights reserved. | <a href="{% url 'website:privacy_policy' %}">Privacy Policy</a></p>
+                <p>&copy; {% now "Y" %} {{ site_name }}. All rights reserved. | <a href="{% url 'website:privacy_policy' %}">Privacy Policy</a> | <a href="/sitemap.xml">Sitemap</a></p>
             </div>
         </div>
     </footer>

@@ -3,21 +3,33 @@ from django.urls import reverse
 from .models import PortfolioCategory, PortfolioItem
 
 class StaticViewSitemap(Sitemap):
-    priority = 1.0
-    changefreq = 'weekly'
-
+    """Sitemap for main navigation pages."""
     def items(self):
-        return ['website:home', 'website:our_work', 'website:why_choose_us', 'website:testimonials', 'website:privacy_policy']
+        # List of (viewname, priority, changefreq)
+        return [
+            ('website:home', 1.0, 'daily'),
+            ('website:our_work', 0.9, 'daily'),
+            ('website:why_choose_us', 0.8, 'weekly'),
+            ('website:testimonials', 0.8, 'weekly'),
+            ('website:privacy_policy', 0.3, 'monthly'),
+        ]
 
     def location(self, item):
-        return reverse(item)
+        return reverse(item[0])
+
+    def priority(self, item):
+        return item[1]
+
+    def changefreq(self, item):
+        return item[2]
 
 class PortfolioCategorySitemap(Sitemap):
+    """Sitemap for product categories."""
     changefreq = "weekly"
     priority = 0.8
 
     def items(self):
-        return PortfolioCategory.objects.filter(is_active=True)
+        return PortfolioCategory.objects.filter(is_active=True).order_by('order')
 
     def location(self, obj):
         return reverse('website:category_detail', kwargs={'slug': obj.slug})
@@ -26,11 +38,12 @@ class PortfolioCategorySitemap(Sitemap):
         return obj.updated_at
 
 class PortfolioItemSitemap(Sitemap):
+    """Sitemap for individual products."""
     changefreq = "weekly"
-    priority = 0.7
+    priority = 0.9  # Higher priority for individual products
 
     def items(self):
-        return PortfolioItem.objects.filter(is_active=True).select_related('category')
+        return PortfolioItem.objects.filter(is_active=True).select_related('category').order_by('-updated_at')
 
     def location(self, obj):
         return reverse('website:product_detail', kwargs={'category_slug': obj.category.slug, 'slug': obj.slug})

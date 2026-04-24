@@ -20,7 +20,7 @@
                     <!-- Duplicate for seamless loop -->
                     {% for item in row1_items %}
                         <div class="work-item" aria-hidden="true">
-                            {% if item.image %}<img src="{{ item.image.url }}" alt="" loading="lazy" decoding="async">{% endif %}
+                            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
                         </div>
                     {% endfor %}
                 {% endwith %}
@@ -43,7 +43,7 @@
                     <!-- Duplicate for seamless loop -->
                     {% for item in row2_items %}
                         <div class="work-item" aria-hidden="true">
-                            {% if item.image %}<img src="{{ item.image.url }}" alt="" loading="lazy" decoding="async">{% endif %}
+                            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async">{% endif %}
                         </div>
                     {% endfor %}
                 {% endwith %}

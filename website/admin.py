@@ -67,6 +67,8 @@ class PortfolioCategoryAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
     ordering = ('order', 'name')
 
+    ordering = ('order', 'name')
+
 
 @admin.register(PortfolioItem)
 class PortfolioItemAdmin(admin.ModelAdmin):
@@ -79,6 +81,7 @@ class PortfolioItemAdmin(admin.ModelAdmin):
     def thumbnail(self, obj):
         return image_preview(obj.image)
     thumbnail.short_description = 'Preview'
+
 
 
 @admin.register(Testimonial)

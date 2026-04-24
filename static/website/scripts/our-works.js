@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Adarsh ID Cards - Our Works Logic (v3)
  * Handles Filtering, Lightbox, Category Exploration, Video Playback, Share
  */
@@ -946,6 +946,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 fallbackSrc: item.fallbackSrc || item.fallback || '',
                 title: item.title || '',
                 poster: item.poster || '',
+                productUrl: item.productUrl || '',
             };
         }).filter(Boolean);
     }
@@ -958,7 +959,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const isVideo = item.type === 'video';
 
         lightbox.classList.toggle('is-video', isVideo);
-        if (lightboxCaption) lightboxCaption.textContent = item.title || '';
+        if (lightboxCaption) {
+            const titleText = item.title || '';
+            if (item.productUrl) {
+                lightboxCaption.innerHTML = `<a href="${item.productUrl}" class="lightbox-product-link">${titleText}</a>`;
+            } else {
+                lightboxCaption.textContent = titleText;
+            }
+        }
 
         if (isVideo) {
             if (lightboxImg) lightboxImg.removeAttribute('src');
@@ -1104,12 +1112,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     fallbackSrc: el.dataset.videoFallbackUrl || el.dataset.videoUrl,
                     poster: el.dataset.videoThumb || el.dataset.src || '',
                     title: el.dataset.title || '',
+                    productUrl: el.getAttribute('href') || '',
                 };
             }
             return {
                 type: 'image',
                 src: el.dataset.src,
                 title: el.dataset.title || '',
+                productUrl: el.getAttribute('href') || '',
             };
         });
 
