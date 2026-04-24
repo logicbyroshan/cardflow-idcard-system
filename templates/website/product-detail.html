@@ -5,21 +5,38 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org/",
-  "@type": "Product",
-  "name": "{{ item.title }}",
-  "image": "{{ request.scheme }}://{{ request.get_host }}{{ item.media_url }}",
-  "description": "{{ item.description|truncatechars:160 }}",
-  "brand": {
-    "@type": "Brand",
-    "name": "{{ site_name }}"
-  },
-  "category": "{{ item.category.name }}",
-  "offers": {
-    "@type": "Offer",
-    "availability": "https://schema.org/InStock",
-    "price": "0",
-    "priceCurrency": "INR"
-  }
+  "@graph": [
+    {
+      "@type": "Product",
+      "name": "{{ item.title }}",
+      "image": "{{ request.scheme }}://{{ request.get_host }}{{ item.media_url }}",
+      "description": "{{ item.description|truncatechars:160 }}",
+      "brand": {
+        "@type": "Brand",
+        "name": "{{ site_name }}"
+      },
+      "category": "{{ item.category.name }}",
+      "offers": {
+        "@type": "Offer",
+        "availability": "https://schema.org/InStock",
+        "price": "0",
+        "priceCurrency": "INR"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {% for crumb in breadcrumb %}
+        {
+          "@type": "ListItem",
+          "position": {{ forloop.counter }},
+          "name": "{{ crumb.name }}",
+          "item": "{{ request.scheme }}://{{ request.get_host }}{{ crumb.url|default:request.path }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+  ]
 }
 </script>
 {% endblock %}

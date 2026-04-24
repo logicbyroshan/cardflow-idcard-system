@@ -1,6 +1,29 @@
 {% extends 'website/base.html' %}
 {% load static %}
 
+{% block extra_structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'website:home' %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Our Products",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'website:our_work' %}"
+    }
+  ]
+}
+</script>
+{% endblock %}
+
 {% block title %}Our Products{% endblock %}
 
 {% block extra_css %}
