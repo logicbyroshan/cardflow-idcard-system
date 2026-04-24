@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
         logoutBtn.addEventListener('click', async function() {
             var ok = await showConfirm({ title: 'Logout?', text: 'Are you sure you want to logout?', icon: 'fa-solid fa-right-from-bracket', confirmLabel: 'Logout', btnClass: 'btn-danger', hideWarning: true });
             if (ok) {
-                const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+                const csrfToken = (typeof getCSRFToken === 'function') ? getCSRFToken() : (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
                 logoutBtn.disabled = true;
                 try {
                     const response = await fetch('/panel/auth/logout/', {

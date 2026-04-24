@@ -287,10 +287,15 @@
     window.mobileLogout = async function mobileLogout(event) {
         if (event) event.preventDefault();
         
-        // 1. Extract CSRF token from cookie
+        // 1. Extract CSRF token — prefer meta tag (kept fresh by keepalive), fallback to cookie
         var csrf = '';
-        var m = (document.cookie || '').match(/(?:^|;\s*)csrftoken=([^;]+)/);
-        if (m && m[1]) csrf = decodeURIComponent(m[1]);
+        var metaEl = document.querySelector('meta[name="csrf-token"]');
+        if (metaEl && metaEl.content) {
+            csrf = metaEl.content;
+        } else {
+            var m = (document.cookie || '').match(/(?:^|;\s*)csrftoken=([^;]+)/);
+            if (m && m[1]) csrf = decodeURIComponent(m[1]);
+        }
         
         // 2. Prepare logout request
         // Use URLSearchParams so it appears in request.POST on the server

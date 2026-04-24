@@ -10,7 +10,7 @@ import re
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views import View
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
 from django.contrib.auth import get_user_model
@@ -125,8 +125,15 @@ class SecureCredentialVaultView(View):
             return JsonResponse({'success': False, 'message': 'An unexpected error occurred.'}, status=500)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LogoutView(View):
-    """Handle user logout. Only POST allowed to prevent CSRF logout attacks."""
+    """Handle user logout.
+    
+    CSRF-exempt because logout only destroys the caller's own session.
+    This prevents 403 errors when users click 'Logout' with a stale
+    CSRF token (the most common user-facing error).
+    Django's own LogoutView is also csrf_exempt for the same reason.
+    """
     
     def get(self, request):
         # GET requests redirect to login ÔÇö do NOT perform logout on GET

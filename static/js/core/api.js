@@ -112,19 +112,22 @@
     // CSRF TOKEN
     // ------------------------------------------
     function getCSRFToken() {
+        // Priority: meta tag (updated by session-keepalive) > cookie > hidden input
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+
         var cookie = document.cookie.split(';').find(function (c) {
             return c.trim().startsWith('csrftoken=');
         });
         if (cookie) return cookie.split('=')[1];
-
-        var meta = document.querySelector('meta[name="csrf-token"]');
-        if (meta) return meta.getAttribute('content');
 
         var hidden = document.querySelector('input[name="csrfmiddlewaretoken"]');
         if (hidden) return hidden.value;
 
         return '';
     }
+    // Expose globally so logout forms and other non-bundled code can use it
+    window.getCSRFToken = getCSRFToken;
 
     // ------------------------------------------
     // DEFAULTS
