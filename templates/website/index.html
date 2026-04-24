@@ -6,10 +6,12 @@
     {% include 'partials/website/hero.html' %}
 
     {% include 'partials/website/trusted-clients.html' %}
+    
+    {% include 'partials/website/bento-products.html' %}
 
     {% include 'partials/website/why-choose-us.html' %}
-
-    {% include 'partials/website/products.html' %}
+    
+    {% include 'website/includes/modals.html' %}
 
     {% include 'partials/website/testimonials.html' %}
 
@@ -19,6 +21,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'website/scripts/our-works.js' %}?v=156"></script>
 <script>
     // AJAX Contact Form Handling
     document.getElementById('contactForm').addEventListener('submit', function(e) {

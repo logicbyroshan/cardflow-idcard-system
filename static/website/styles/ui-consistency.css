@@ -981,3 +981,15 @@ body.mobile-menu-open {
         transform: scale(0.98);
     }
 }
+
+/* SEO Optimization Utilities */
+.category-card { position: relative; overflow: hidden; }
+.category-seo-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none; /* Let the card's JS click handler take over */
+}
+.category-content, .category-overlay { position: relative; z-index: 2; }
+.explore-btn { z-index: 3; }

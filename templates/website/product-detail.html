@@ -9,12 +9,9 @@
     {
       "@type": "Product",
       "name": "{{ item.title }}",
-      "image": "{{ request.scheme }}://{{ request.get_host }}{{ item.media_url }}",
+      "image": "{{ request.scheme }}://{{ request.get_host }}{% if item.image %}{{ item.image.url }}{% else %}{{ item.video_thumbnail_url }}{% endif %}",
       "description": "{{ item.description|truncatechars:160 }}",
-      "brand": {
-        "@type": "Brand",
-        "name": "{{ site_name }}"
-      },
+      "brand": { "@type": "Brand", "name": "{{ site_name }}" },
       "category": "{{ item.category.name }}",
       "offers": {
         "@type": "Offer",
@@ -22,6 +19,18 @@
         "price": "0",
         "priceCurrency": "INR"
       }
+    },
+    {
+      "@type": "{% if item.item_type == 'video' %}VideoObject{% else %}ImageObject{% endif %}",
+      "name": "{{ item.title }}",
+      "image": "{{ request.scheme }}://{{ request.get_host }}{% if item.image %}{{ item.image.url }}{% else %}{{ item.video_thumbnail_url }}{% endif %}",
+      "description": "{{ item.description|truncatechars:160 }}",
+      {% if item.item_type == 'video' %}
+      "thumbnailUrl": "{{ request.scheme }}://{{ request.get_host }}{{ item.video_thumbnail_url }}",
+      "contentUrl": "{{ request.scheme }}://{{ request.get_host }}{{ item.video_source_url }}",
+      "uploadDate": "{{ item.created_at|date:'c' }}",
+      {% endif %}
+      "publisher": { "@type": "Organization", "name": "{{ site_name }}" }
     },
     {
       "@type": "BreadcrumbList",

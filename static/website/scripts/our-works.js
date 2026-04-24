@@ -83,7 +83,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!exceptVideo || !item.contains(exceptVideo)) item.classList.remove('is-previewing');
         });
         document.querySelectorAll('.portfolio-item.playing').forEach((item) => {
-            if (!exceptVideo || !item.contains(exceptVideo)) item.classList.remove('playing');
+            if (!exceptVideo || !item.contains(exceptVideo)) {
+                item.classList.remove('playing');
+                if (typeof item._setInlinePlayingState === 'function') {
+                    item._setInlinePlayingState(false);
+                }
+            }
         });
     }
 

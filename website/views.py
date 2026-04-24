@@ -464,35 +464,19 @@ def home(request):
     return render(request, 'website/index.html', context)
 
 
-def our_work(request):
-    """Portfolio Page: Shows all items filtered by category"""
-    context = get_common_context()
-    
-    # Ensure default categories exist (cached to avoid 9 queries per page load)
+def _get_bento_context():
+    """Helper to get bento categories and their rotating media."""
+    # Ensure default categories exist
     if not cache.get('portfolio_defaults_ensured'):
         PortfolioCategory.ensure_defaults()
         cache.set('portfolio_defaults_ensured', True, 3600)
-    
-    # Get active categories
+
     categories = PortfolioCategory.objects.filter(is_active=True).order_by('order')
     
-    # Get all active items with custom ordering:
-    # Items with order > 0 first (sorted by order ASC), then order=0 sorted by latest first
-    items_qs = PortfolioItem.objects.filter(is_active=True).select_related('category').annotate(
-        has_order=Case(
-            When(order__gt=0, then=Value(0)),
-            default=Value(1),
-            output_field=IntegerField()
-        )
-    ).order_by('has_order', 'order', '-created_at')
-    items = _interleave_random_by_category(list(items_qs))
-    
-    # Build bento media + gallery modal data.
-    # For bento cards, prefer images but fall back to videos so video-only
-    # categories still show rotating media.
     _cat_media_map = defaultdict(list)
     _cat_items_initial_map = defaultdict(list)
     _cat_items_total_map = defaultdict(int)
+    
     modal_media_filter = (
         (Q(item_type='image') & Q(image__isnull=False) & ~Q(image=''))
         |
@@ -501,6 +485,7 @@ def our_work(request):
             & ((Q(video_file__isnull=False) & ~Q(video_file='')) | ~Q(video_url=''))
         )
     )
+    
     modal_items_qs = PortfolioItem.objects.filter(
         is_active=True,
         category__isnull=False,
@@ -517,8 +502,7 @@ def our_work(request):
     for item in modal_items_qs:
         cat_id = str(item.category_id)
         entry = _serialize_portfolio_modal_item(item)
-        has_modal_media = bool(entry.get('image') or entry.get('video'))
-        if not has_modal_media:
+        if not bool(entry.get('image') or entry.get('video')):
             continue
 
         _cat_items_total_map[cat_id] += 1
@@ -527,14 +511,10 @@ def our_work(request):
 
         if len(_cat_media_map[cat_id]) < CATEGORY_IMAGES_LIMIT:
             if entry.get('image'):
-                _cat_media_map[cat_id].append({
-                    'type': 'image',
-                    'src': entry['image'],
-                })
+                _cat_media_map[cat_id].append({'type': 'image', 'src': entry['image']})
             elif entry.get('video'):
                 _cat_media_map[cat_id].append({
-                    'type': 'video',
-                    'src': entry['video'],
+                    'type': 'video', 'src': entry['video'],
                     'fallback': entry.get('video_fallback') or entry['video'],
                     'poster': entry.get('image', ''),
                 })
@@ -551,21 +531,95 @@ def our_work(request):
     bento_categories = categories.filter(
         (Q(is_bento=True) & ~Q(slug__in=BENTO_FORCE_EXCLUDE_SLUGS))
         | Q(slug__in=BENTO_FORCE_INCLUDE_SLUGS)
-    ).annotate(
-        _bento_rank=bento_order_case
-    ).distinct().order_by('_bento_rank', 'order', 'name')
+    ).annotate(_bento_rank=bento_order_case).distinct().order_by('_bento_rank', 'order', 'name')
     extra_categories = categories.exclude(id__in=bento_categories.values('id'))
 
-    context.update({
-        'portfolio_items': items,
-        'portfolio_batch_size': PORTFOLIO_BATCH_SIZE,
-        'categories': categories,
+    return {
         'bento_categories': bento_categories,
         'extra_categories': extra_categories,
         'category_images': category_images,
         'category_items': category_items,
         'category_item_totals': category_item_totals,
         'category_modal_batch_size': CATEGORY_MODAL_INITIAL_LIMIT,
+    }
+
+
+def home(request):
+    """Homepage: Displays a summary of all sections"""
+    context = get_common_context()
+    
+    # Hero images
+    hero_cache_key = _website_public_cache_key('home_hero_images')
+    hero_images = cache.get(hero_cache_key)
+    if hero_images is None:
+        hero_images = list(HeroImage.objects.filter(is_active=True).order_by('order', 'pk'))
+        cache.set(hero_cache_key, hero_images, 60)
+    context['hero_images'] = hero_images
+    
+    # Bento Grid Data for Home Page
+    context.update(_get_bento_context())
+    
+    # Section data
+    home_sections_cache_key = _website_public_cache_key('home_sections')
+    home_sections = cache.get(home_sections_cache_key)
+    if home_sections is None:
+        image_products_filter = Q(item_type='image') & Q(image__isnull=False) & ~Q(image='')
+        home_sections = {
+            'trusted_clients': list(
+                PanelClient.objects.filter(website_is_visible=True)
+                .exclude(website_logo__isnull=True).exclude(website_logo='')
+                .order_by('website_display_order', 'name', 'id')
+            ),
+            'featured_portfolio': list(
+                PortfolioItem.objects.select_related('category').filter(is_active=True, is_featured=True).filter(image_products_filter).order_by('order')
+            ),
+            'recent_portfolio': list(
+                PortfolioItem.objects.select_related('category').filter(is_active=True).filter(image_products_filter).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]
+            ),
+            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
+        }
+        cache.set(home_sections_cache_key, home_sections, 60)
+    context.update(home_sections)
+
+    # ... (row logic)
+    featured_products = list(home_sections.get('featured_portfolio') or [])
+    recent_products = list(home_sections.get('recent_portfolio') or [])
+    deduped_products = []
+    seen_ids = set()
+    for item in featured_products + recent_products:
+        item_id = getattr(item, 'id', None)
+        if item_id in seen_ids: continue
+        seen_ids.add(item_id)
+        deduped_products.append(item)
+
+    all_products = _interleave_random_by_category(deduped_products)
+    if all_products:
+        row1_portfolio, row2_portfolio = _build_home_product_rows_by_category(all_products)
+        context['row1_portfolio'] = row1_portfolio
+        context['row2_portfolio'] = row2_portfolio
+
+    context.update({
+        'meta_title': f"Adarsh ID Cards Bhopal | Best ID Card & Lanyard Solution in MP",
+        'meta_description': f"Adarsh ID Cards is the leading ID card manufacturer in Bhopal, MP. We specialize in premium Lanyards, PVC ID Cards, and school stationery. Trusted by 1000+ institutions for quality and delivery.",
+        'canonical_url': request.build_absolute_uri(),
+    })
+    return render(request, 'website/index.html', context)
+
+
+def our_work(request):
+    """Portfolio Page: Shows all items filtered by category (infinite grid only)"""
+    context = get_common_context()
+    categories = PortfolioCategory.objects.filter(is_active=True).order_by('order')
+    
+    items_qs = PortfolioItem.objects.filter(is_active=True).select_related('category').annotate(
+        has_order=Case(When(order__gt=0, then=Value(0)), default=Value(1), output_field=IntegerField())
+    ).order_by('has_order', 'order', '-created_at')
+    items = _interleave_random_by_category(list(items_qs))
+    
+    context.update({
+        'portfolio_items': items,
+        'portfolio_batch_size': PORTFOLIO_BATCH_SIZE,
+        'categories': categories,
         'meta_title': f"Our Products Gallery | Premium ID Card & Lanyard Designs Bhopal",
         'meta_description': "Browse our extensive collection of professional ID cards, custom printed lanyards, and institutions stationery. High-quality samples from Adarsh ID Cards Bhopal.",
         'canonical_url': request.build_absolute_uri(),

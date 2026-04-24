@@ -29,7 +29,22 @@
     {
       "@type": "ListItem",
       "position": {{ forloop.counter }},
-      "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'website:product_detail' category.slug item.slug %}"
+      "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'website:product_detail' category.slug item.slug %}",
+      "item": {
+        "@type": "{% if item.item_type == 'video' %}VideoObject{% else %}ImageObject{% endif %}",
+        "name": "{{ item.title }}",
+        "description": "{{ item.description|truncatechars:200|default:category.name }}",
+        "url": "{{ request.scheme }}://{{ request.get_host }}{% if item.image %}{{ item.image.url }}{% elif item.video_source_url %}{{ item.video_source_url }}{% endif %}",
+        "contentUrl": "{{ request.scheme }}://{{ request.get_host }}{% if item.image %}{{ item.image.url }}{% elif item.video_source_url %}{{ item.video_source_url }}{% endif %}",
+        "thumbnailUrl": "{{ request.scheme }}://{{ request.get_host }}{% if item.video_thumbnail_url %}{{ item.video_thumbnail_url }}{% elif item.image %}{{ item.image.url }}{% endif %}",
+        {% if item.item_type == 'video' %}
+        "uploadDate": "{{ item.created_at|date:'c' }}",
+        "thumbnail": {
+          "@type": "ImageObject",
+          "url": "{{ request.scheme }}://{{ request.get_host }}{{ item.video_thumbnail_url }}"
+        }
+        {% endif %}
+      }
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
   ]
@@ -62,24 +77,30 @@
 
 <section class="category-items">
     <div class="container">
-        <div class="product-grid">
+        <div class="product-grid" id="portfolioGrid">
             {% for item in items %}
-                <div class="product-card">
-                    <a href="{% url 'website:product_detail' category.slug item.slug %}">
-                        <div class="product-image">
-                            {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
-                            {% elif item.item_type == 'video' %}
-                                <div class="video-placeholder">
-                                    <i class="fa-solid fa-play"></i>
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="product-info">
-                            <h3>{{ item.title }}</h3>
-                        </div>
-                    </a>
-                </div>
+                <a href="{% url 'website:product_detail' category.slug item.slug %}" 
+                   class="product-card portfolio-item" 
+                   data-src="{% if item.image %}{{ item.image.url }}{% endif %}"
+                   data-title="{{ item.title }}"
+                   data-category="{{ category.id }}"
+                   {% if item.item_type == 'video' %}
+                   data-video-url="{{ item.video_source_url }}"
+                   data-video-fallback-url="{{ item.video_fallback_url }}"
+                   {% endif %}>
+                    <div class="product-image">
+                        {% if item.image %}
+                            <img src="{{ item.image.url }}" alt="{{ item.title }} - {{ category.name }} Printing Services Bhopal Madhya Pradesh" loading="lazy">
+                        {% elif item.item_type == 'video' %}
+                            <div class="video-placeholder">
+                                <i class="fa-solid fa-play"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="product-info">
+                        <h3>{{ item.title }}</h3>
+                    </div>
+                </a>
             {% empty %}
                 <p>No products found in this category.</p>
             {% endfor %}
@@ -87,108 +108,30 @@
     </div>
 </section>
 
-<!-- Product Detail Modal -->
-<div class="product-detail-modal" id="productDetailModal" role="dialog" aria-modal="true">
-    <div class="modal-overlay"></div>
-    <div class="modal-container">
-        <button class="modal-close" id="modalClose"><i class="fa-solid fa-xmark"></i></button>
-        <div id="modalContent">
-            <!-- Loaded via AJAX -->
-            <div class="modal-loader">Loading...</div>
-        </div>
-    </div>
-</div>
+{% include 'website/includes/modals.html' %}
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('productDetailModal');
-    const modalContent = document.getElementById('modalContent');
-    const modalClose = document.getElementById('modalClose');
-    const overlay = modal.querySelector('.modal-overlay');
-
-    function openModal(url) {
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        modalContent.innerHTML = '<div class="modal-loader">Loading...</div>';
-
-        fetch(url, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(response => response.text())
-        .then(html => {
-            modalContent.innerHTML = html;
-            initModalShare();
-        })
-        .catch(err => {
-            modalContent.innerHTML = '<p>Error loading content.</p>';
-        });
-    }
-
-    function initModalShare() {
-        const shareBtn = document.getElementById('modalShareBtn');
-        if (!shareBtn) return;
-
-        shareBtn.addEventListener('click', function() {
-            const url = this.getAttribute('data-url');
-            navigator.clipboard.writeText(url).then(() => {
-                const originalText = this.innerHTML;
-                this.innerHTML = '<i class="fa-solid fa-check"></i> Link Copied!';
-                this.classList.add('copied');
-                setTimeout(() => {
-                    this.innerHTML = originalText;
-                    this.classList.remove('copied');
-                }, 2000);
-            });
-        });
-    }
-
-    function closeModal() {
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-
-    document.querySelectorAll('.product-card a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            // Only intercept normal clicks
-            if (e.button === 0 && !e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey) {
-                e.preventDefault();
-                openModal(this.href);
-            }
-        });
-    });
-
-    modalClose.addEventListener('click', closeModal);
-    overlay.addEventListener('click', closeModal);
-    
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeModal();
-        }
-    });
-});
-</script>
+<script src="{% static 'website/scripts/our-works.js' %}?v=156"></script>
 {% endblock %}
 
 {% block extra_css %}
 <style>
+.page-header { background: #f8fafc; padding: 4rem 0 3rem; margin-bottom: 2rem; border-bottom: 1px solid #edf2f7; }
 .breadcrumb-nav { margin-bottom: 1rem; }
-.breadcrumb { display: flex; list-style: none; padding: 0; font-size: 0.9rem; gap: 0.5rem; }
-.breadcrumb-item + .breadcrumb-item::before { content: "/"; color: #ccc; margin-right: 0.5rem; }
-.breadcrumb-item.active { color: #666; }
-.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 2rem; margin-top: 2rem; }
-.product-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.3s ease; }
-.product-card:hover { transform: translateY(-5px); }
-.product-image img { width: 100%; height: 200px; object-fit: cover; }
-.product-info { padding: 1rem; text-align: center; }
-.product-info h3 { font-size: 1.1rem; margin: 0; color: #333; }
-.product-detail-modal { position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center; padding: 2rem; }
-.product-detail-modal.active { display: flex; }
-.modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
-.modal-container { position: relative; background: #fff; width: 100%; max-width: 1000px; max-height: 90vh; border-radius: 20px; overflow-y: auto; z-index: 1; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
-.modal-close { position: absolute; top: 1.5rem; right: 1.5rem; background: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.2s; }
-.modal-close:hover { background: #0A92DD; color: #fff; transform: rotate(90deg); }
-.modal-loader { padding: 4rem; text-align: center; font-size: 1.2rem; color: #666; }
+.breadcrumb { display: flex; list-style: none; padding: 0; font-size: 0.85rem; gap: 0.5rem; opacity: 0.8; }
+.breadcrumb-item + .breadcrumb-item::before { content: "/"; color: #cbd5e0; margin-right: 0.5rem; }
+.breadcrumb-item a { color: var(--wa-brand-500); text-decoration: none; }
+.breadcrumb-item.active { color: var(--wa-text-500); }
+.category-desc { font-size: 1.1rem; color: var(--wa-text-500); max-width: 800px; margin-top: 1rem; }
+
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+.product-card { background: #fff; border-radius: var(--wa-card-radius); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid #edf2f7; display: block; text-decoration: none; }
+.product-card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); border-color: var(--wa-brand-400); }
+.product-image { height: 220px; overflow: hidden; background: #f1f5f9; position: relative; }
+.product-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.product-card:hover .product-image img { transform: scale(1.08); }
+.product-info { padding: 1.25rem; text-align: center; background: #fff; }
+.product-info h3 { font-size: 1.05rem; font-weight: 700; color: var(--wa-text-900); margin: 0; }
 </style>
 {% endblock %}

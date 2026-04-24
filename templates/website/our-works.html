@@ -51,66 +51,13 @@
         </div>
     </section>
 
-    <!-- Product Categories Showcase (Bento Grid) -->
-    <section class="categories-showcase" id="categories">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-badge">What We Create</span>
-                <h2>Our <span class="highlight">Product Range</span></h2>
-            </div>
-            <div class="categories-grid {% if bento_categories|length > 7 %}categories-grid-nine{% else %}categories-grid-seven{% endif %}">
-                {% for cat in bento_categories %}
-                <div class="category-card slot-{{ forloop.counter }} {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}" role="button" tabindex="0" aria-label="View samples for {{ cat.name }}">
-                    <div class="category-bg">
-                        <div class="bg-placeholder"></div>
-                        <div class="category-slider" data-cat-id="{{ cat.id }}">
-                            <!-- Images will be injected here by JS -->
-                        </div>
-                    </div>
-                    <a href="{% url 'website:category_detail' cat.slug %}" class="category-link-wrapper" style="text-decoration: none; color: inherit; display: block; height: 100%; position: relative; z-index: 2;">
-                        <div class="category-content">
-                            <div class="category-icon">
-                                <i class="{{ cat.icon }}" aria-hidden="true"></i>
-                            </div>
-                            <h3>{{ cat.name }}</h3>
-                        </div>
-                    </a>
-                    <div class="category-overlay">
-                        <button type="button" class="explore-btn" data-filter="{{ cat.id }}" tabindex="-1" aria-hidden="true">
-                            View Samples <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            {% if extra_categories %}
-            <!-- Additional Categories (below bento) -->
-            <div class="extra-categories-bar">
-                {% for cat in extra_categories %}
-                <button class="extra-category-tag explore-btn" data-filter="{{ cat.id }}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
-                    <i class="{{ cat.icon }}" aria-hidden="true"></i>
-                    <span>{{ cat.name }}</span>
-                </button>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-    </section>
-    
-    <!-- Category Images Data for JS -->
-    {{ category_images|json_script:"categoryImagesData" }}
-    {{ category_items|json_script:"categoryItemsData" }}
-    {{ category_item_totals|json_script:"categoryItemTotalsData" }}
+    <!-- Full Portfolio (Infinite Grid) -->
     <script id="portfolioPageConfig" type="application/json">
         {
             "portfolioBatchSize": {{ portfolio_batch_size|default:12 }},
-            "categoryModalBatchSize": {{ category_modal_batch_size|default:15 }},
             "categoryItemsApi": "{% url 'website:load_more_category_items' %}"
         }
     </script>
-
-    <!-- Portfolio Gallery Section -->
     <section class="portfolio-section" id="portfolio">
         <div class="container">
             <div class="section-header">
@@ -175,61 +122,7 @@
         </div>
     </section>
 
-    <!-- Modals (Gallery, Lightbox, Video) -->
-    <div class="product-gallery-modal" id="productGalleryModal" role="dialog" aria-modal="true" aria-labelledby="productGalleryTitle">
-        <div class="product-gallery-content">
-            <div class="product-gallery-header">
-                <h3 id="productGalleryTitle">Items</h3>
-                <div class="product-gallery-header-actions">
-                    <button class="product-gallery-share" id="productGalleryShare" aria-label="Share gallery">
-                        <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
-                    </button>
-                    <button class="product-gallery-close" id="productGalleryClose" aria-label="Close gallery"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                </div>
-            </div>
-            <div class="product-gallery-body">
-                <div id="productGallerySkeleton" class="gallery-load-skeleton" hidden aria-hidden="true">
-                    <div class="gallery-skeleton-card skeleton-tall"></div>
-                    <div class="gallery-skeleton-card skeleton-portrait"></div>
-                    <div class="gallery-skeleton-card skeleton-square"></div>
-                    <div class="gallery-skeleton-card skeleton-landscape"></div>
-                    <div class="gallery-skeleton-card skeleton-portrait"></div>
-                    <div class="gallery-skeleton-card skeleton-wide"></div>
-                </div>
-                <div class="product-gallery-grid" id="productGalleryGrid"></div>
-                <div class="gallery-load-more-wrap" id="productGalleryLoadMoreWrap" hidden>
-                    <button type="button" class="gallery-load-more-btn" id="productGalleryLoadMoreBtn">Load more samples</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Media preview">
-        <button class="lightbox-close" id="lightboxClose" aria-label="Close media preview"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous item"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
-        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next item"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
-        <div class="lightbox-content">
-            <div class="lightbox-stage">
-                <img src="" id="lightboxImage" alt="Media preview">
-                <video id="lightboxVideo" playsinline preload="metadata"></video>
-                <button class="lightbox-video-toggle" id="lightboxVideoToggle" aria-label="Play or pause video">
-                    <i class="fa-solid fa-play" aria-hidden="true"></i>
-                </button>
-                <div class="lightbox-video-time" id="lightboxVideoTime">0:00 / 0:00</div>
-            </div>
-            <div class="lightbox-footer">
-                <div class="lightbox-caption" id="lightboxCaption"></div>
-                <div class="lightbox-counter" id="lightboxCounter"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="video-modal" id="videoModal" role="dialog" aria-modal="true" aria-label="Video player">
-        <div class="video-modal-content">
-            <button class="video-modal-close" id="videoModalClose" aria-label="Close video"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-            <video id="modalVideo" src=""></video>
-        </div>
-    </div>
+    {% include 'website/includes/modals.html' %}
 {% endblock %}
 
 {% block extra_js %}

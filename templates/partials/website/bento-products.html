@@ -1,0 +1,60 @@
+{% load static %}
+<!-- Product Categories Showcase (Bento Grid) -->
+<section class="categories-showcase" id="categories">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-badge">What We Create</span>
+            <h2>Our <span class="highlight">Product Range</span></h2>
+        </div>
+        <div class="categories-grid {% if bento_categories|length > 7 %}categories-grid-nine{% else %}categories-grid-seven{% endif %}">
+            {% for cat in bento_categories %}
+            <div class="category-card slot-{{ forloop.counter }} {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}" role="button" tabindex="0" aria-label="View samples for {{ cat.name }}">
+                <!-- SEO Link for Indexing -->
+                <a href="{% url 'website:category_detail' cat.slug %}" class="category-seo-link" aria-hidden="true" tabindex="-1">{{ cat.name }}</a>
+                
+                <div class="category-bg">
+                    <div class="bg-placeholder"></div>
+                    <div class="category-slider" data-cat-id="{{ cat.id }}">
+                        <!-- Images will be injected here by JS -->
+                    </div>
+                </div>
+                <div class="category-content">
+                    <div class="category-icon">
+                        <i class="{{ cat.icon }}" aria-hidden="true"></i>
+                    </div>
+                    <h3>{{ cat.name }}</h3>
+                </div>
+                <div class="category-overlay">
+                    <button type="button" class="explore-btn" data-filter="{{ cat.id }}" tabindex="-1" aria-hidden="true">
+                        View Samples <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if extra_categories %}
+        <!-- Additional Categories (below bento) -->
+        <div class="extra-categories-bar">
+            {% for cat in extra_categories %}
+            <button class="extra-category-tag explore-btn" data-filter="{{ cat.id }}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
+                <i class="{{ cat.icon }}" aria-hidden="true"></i>
+                <span>{{ cat.name }}</span>
+            </button>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Data for JavaScript slider -->
+{{ category_images|json_script:"categoryImagesData" }}
+{{ category_items|json_script:"categoryItemsData" }}
+{{ category_item_totals|json_script:"categoryItemTotalsData" }}
+
+<script id="portfolioPageConfig" type="application/json">
+    {
+        "categoryModalBatchSize": {{ category_modal_batch_size|default:15 }},
+        "categoryItemsApi": "{% url 'website:load_more_category_items' %}"
+    }
+</script>
