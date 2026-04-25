@@ -2530,6 +2530,12 @@ function listApp() {
         handleImageSelected(event) {
             const file = event.target.files[0];
             if (!file) return;
+
+            if (typeof Cropper === 'undefined') {
+                this.showToast('Photo editor is still loading. Please wait a second and try again.', 'error');
+                return;
+            }
+
             if (!file.type.startsWith('image/')) { 
                 this.showToast('Please select an image file', 'error'); 
                 return; 
@@ -2539,6 +2545,8 @@ function listApp() {
                 return; 
             }
 
+            this.showToast('Loading photo...', 'info');
+
             // Store which field we are cropping for
             this.activeImageField = this.activeImageField || this._defaultImageFieldName();
             
@@ -2547,11 +2555,10 @@ function listApp() {
             reader.onload = (e) => {
                 this.cropImageSrc = e.target.result;
                 this.showCropper = true;
-                
-                // 2. We need to wait for Alpine to render the <img> tag before initializing Cropper
-                this.$nextTick(() => {
-                    this.initCropper();
-                });
+                // initCropper will be triggered by @load on the img tag for reliability
+            };
+            reader.onerror = () => {
+                this.showToast('Failed to read image file', 'error');
             };
             reader.readAsDataURL(file);
             
@@ -2559,32 +2566,34 @@ function listApp() {
             event.target.value = '';
         },
 
-        initCropper() {
-            const image = document.getElementById('cropperImage');
-            if (!image) {
-                console.error('Cropper image element not found');
-                return;
-            }
+        initCropper(imageEl) {
+            const image = imageEl || document.getElementById('cropperImage');
+            if (!image) return;
 
             if (this.cropperInstance) {
                 this.cropperInstance.destroy();
             }
 
             // Initialize Cropper.js
-            this.cropperInstance = new Cropper(image, {
-                aspectRatio: 0.8, // Standard ID card photo ratio (4:5)
-                viewMode: 1,
-                dragMode: 'move',
-                autoCropArea: 0.9,
-                restore: false,
-                guides: true,
-                center: true,
-                highlight: false,
-                cropBoxMovable: true,
-                cropBoxResizable: true,
-                toggleDragModeOnDblclick: false,
-                checkOrientation: true, // Handle mobile camera EXIF rotation
-            });
+            try {
+                this.cropperInstance = new Cropper(image, {
+                    aspectRatio: 0.8, // Standard ID card photo ratio (4:5)
+                    viewMode: 1,
+                    dragMode: 'move',
+                    autoCropArea: 0.9,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                    checkOrientation: true, // Handle mobile camera EXIF rotation
+                });
+            } catch (e) {
+                console.error('Cropper init failed:', e);
+                this.showToast('Failed to initialize photo editor', 'error');
+            }
         },
 
         confirmCrop() {

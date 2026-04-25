@@ -73,7 +73,10 @@
         <!-- Cropping Area -->
         <div class="flex-1 overflow-hidden relative flex items-center justify-center bg-black">
             <template x-if="cropImageSrc">
-                <img :src="cropImageSrc" id="cropperImage" class="max-w-full max-h-full opacity-0">
+                <img :src="cropImageSrc" 
+                     id="cropperImage" 
+                     class="max-w-full max-h-full opacity-0"
+                     @load="initCropper($event.target)">
             </template>
         </div>
 
