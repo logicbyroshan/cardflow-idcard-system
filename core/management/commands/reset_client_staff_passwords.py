@@ -1,5 +1,7 @@
 import sys
 from django.core.management.base import BaseCommand
+from django.contrib.sessions.models import Session
+from django.utils import timezone
 from client.models import Client
 from staff.models import Staff
 from accounts.services import normalize_password_input
@@ -56,6 +58,8 @@ class Command(BaseCommand):
             
         success_count = 0
         skip_count = 0
+        verify_fail_count = 0
+        session_revoked_count = 0
         invalid_phone_count = 0
         missing_user_count = 0
         
@@ -99,6 +103,30 @@ class Command(BaseCommand):
 
             user.set_password(normalized_password)
             user.save(update_fields=['password'])
+
+            # Verify password hash was updated as expected.
+            if not user.check_password(normalized_password):
+                self.stdout.write(self.style.ERROR(
+                    f"Verification failed for {user.username} - password hash mismatch after save."
+                ))
+                verify_fail_count += 1
+                continue
+
+            # Revoke active sessions for this user so stale sessions cannot survive reset.
+            try:
+                now = timezone.now()
+                for sess in Session.objects.filter(expire_date__gt=now):
+                    try:
+                        data = sess.get_decoded()
+                    except Exception:
+                        continue
+                    if str(data.get('_auth_user_id')) == str(user.id):
+                        sess.delete()
+                        session_revoked_count += 1
+            except Exception:
+                # Session revocation is best-effort; do not block password reset.
+                pass
+
             success_count += 1
             self.stdout.write(self.style.SUCCESS(
                 f"Reset password for {user.username} (phone normalized to last {len(normalized_password)} digits)."
@@ -106,5 +134,6 @@ class Command(BaseCommand):
             
         self.stdout.write(self.style.SUCCESS(
             f"\nFinished! Reset {success_count} passwords. Skipped {skip_count} "
-            f"(missing user: {missing_user_count}, invalid/too-short phone: {invalid_phone_count})."
+            f"(missing user: {missing_user_count}, invalid/too-short phone: {invalid_phone_count}, "
+            f"verification failed: {verify_fail_count}, sessions revoked: {session_revoked_count})."
         ))

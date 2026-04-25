@@ -11,6 +11,7 @@ Usage:
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from accounts.services import normalize_password_input
 
 User = get_user_model()
 
@@ -74,6 +75,7 @@ class Command(BaseCommand):
         phone_password_users = []
         custom_password_users = []
         unusable_password_users = []
+        invalid_phone_users = []
         checked = 0
 
         for user in qs:
@@ -82,11 +84,17 @@ class Command(BaseCommand):
             if not phone:
                 continue
 
+            normalized_phone = normalize_password_input(phone)
+            if not normalized_phone or len(normalized_phone) < 6:
+                invalid_phone_users.append((user, normalized_phone))
+                continue
+
             if not user.has_usable_password():
                 unusable_password_users.append(user)
                 continue
 
-            if user.check_password(phone):
+            # Use normalized phone to match current login/reset behavior.
+            if user.check_password(normalized_phone):
                 phone_password_users.append(user)
             else:
                 custom_password_users.append(user)
@@ -101,6 +109,9 @@ class Command(BaseCommand):
         )
         self.stdout.write(
             self.style.ERROR(f"  Unusable password:   {len(unusable_password_users)} users")
+        )
+        self.stdout.write(
+            self.style.WARNING(f"  Invalid phone data:  {len(invalid_phone_users)} users")
         )
         self.stdout.write(f"  Total checked:       {checked}")
 
@@ -143,6 +154,15 @@ class Command(BaseCommand):
                 )
             if len(unusable_password_users) > 20:
                 self.stdout.write(f"  ... and {len(unusable_password_users) - 20} more")
+
+        if invalid_phone_users:
+            self.stdout.write("\n" + self.style.MIGRATE_LABEL("Users with invalid phone format for password policy:"))
+            for user, normalized_phone in invalid_phone_users[:20]:
+                self.stdout.write(
+                    f"  ID: {user.id} | {user.role:<14} | {user.username} | raw={user.phone or 'no phone'} | norm={normalized_phone or 'empty'}"
+                )
+            if len(invalid_phone_users) > 20:
+                self.stdout.write(f"  ... and {len(invalid_phone_users) - 20} more")
 
         if checked >= limit and total_with_phone > limit:
             self.stdout.write(
