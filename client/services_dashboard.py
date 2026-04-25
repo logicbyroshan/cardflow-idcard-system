@@ -201,6 +201,13 @@ class ClientDashboardService(BaseService):
             if not client:
                 client = ClientAccessService.get_client_for_user(user)
             if not client:
+                user_role = getattr(user, 'role', 'unknown')
+                client_profile = getattr(user, 'client_profile', None)
+                staff_profile = getattr(user, 'staff_profile', None)
+                logger.warning(
+                    'ClientDashboardService.get_dashboard_data: Client not found for user_id=%s role=%s has_client_profile=%s has_staff_profile=%s',
+                    user.pk, user_role, client_profile is not None, staff_profile is not None
+                )
                 return ServiceResult(
                     success=False, 
                     message='Client profile not found'
@@ -276,6 +283,10 @@ class ClientDashboardService(BaseService):
             )
             
         except Exception as e:
+            logger.exception(
+                'ClientDashboardService.get_dashboard_data failed for user_id=%s role=%s: %s',
+                user.pk, getattr(user, 'role', 'unknown'), str(e)
+            )
             return cls._unexpected_error_result('get_dashboard_data', e)
     
     @classmethod

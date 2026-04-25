@@ -1576,6 +1576,24 @@ self.addEventListener('fetch', function(event) {
 def home(request):
     """Home dashboard with real card counts and recent activity."""
     user = request.user
+    
+    # Refresh user's related objects from database on each load
+    # This fixes stale cache issues after app updates and reloads
+    # Force fresh queries for client_profile and staff_profile relationships
+    try:
+        if PermissionService.is_client(user):
+            # Refresh client_profile - force a fresh DB query
+            fresh_user = type(user).objects.select_related('client_profile').get(pk=user.pk)
+            if hasattr(fresh_user, 'client_profile') and fresh_user.client_profile:
+                user.client_profile = fresh_user.client_profile
+        elif PermissionService.is_client_staff(user):
+            # Refresh staff_profile - force a fresh DB query  
+            fresh_user = type(user).objects.select_related('staff_profile__client').get(pk=user.pk)
+            if hasattr(fresh_user, 'staff_profile') and fresh_user.staff_profile:
+                user.staff_profile = fresh_user.staff_profile
+    except Exception as e:
+        logger.debug('Failed to refresh user related objects on home view: %s', e)
+    
     client, perms = _client_ctx(user)
     if not client:
         return _mobile_no_client_redirect()
@@ -4807,6 +4825,19 @@ def api_mobile_shell_device_register(request):
         defaults=defaults,
     )
 
+    # Invalidate dashboard cache on app update to ensure fresh stats on next load
+    # This prevents stale zero-stats after app reload
+    try:
+        from core.services.cache_version_service import CacheVersionService
+        from client.services_access import ClientAccessService
+        
+        client = ClientAccessService.get_client_for_user(request.user)
+        if client:
+            CacheVersionService.bump('client_dash_counts', f'client:{client.id}')
+            CacheVersionService.bump('client_staff', f'client:{client.id}')
+    except Exception as exc:
+        logger.debug('Failed to invalidate dashboard cache after device registration: %s', exc)
+
     config_payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
     return JsonResponse({
         'success': True,
@@ -4859,6 +4890,26 @@ def api_mobile_shell_device_ping(request):
             last_ip=_get_client_ip(request),
             is_active=True,
         )
+
+    # Invalidate dashboard cache if app build/version changed
+    # This ensures fresh stats on next dashboard load after app updates
+    try:
+        from core.services.cache_version_service import CacheVersionService
+        from client.services_access import ClientAccessService
+        
+        # Only invalidate if this is a new app version/build (to avoid excessive cache busting)
+        old_device = MobileDevice.objects.filter(
+            user=request.user,
+            platform='android',
+            installation_id=installation_id,
+        ).first()
+        if old_device and (old_device.app_build != app_build or old_device.app_version != app_version):
+            client = ClientAccessService.get_client_for_user(request.user)
+            if client:
+                CacheVersionService.bump('client_dash_counts', f'client:{client.id}')
+                CacheVersionService.bump('client_staff', f'client:{client.id}')
+    except Exception as exc:
+        logger.debug('Failed to invalidate dashboard cache after device ping: %s', exc)
 
     config_payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
     return JsonResponse({'success': True, 'data': {'config': config_payload}})

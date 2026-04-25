@@ -123,10 +123,29 @@ class ClientAccessService:
             return None
 
         if PermissionService.is_client(user):
-            return getattr(user, 'client_profile', None)
+            client_profile = getattr(user, 'client_profile', None)
+            if client_profile is None:
+                # Force fresh DB query if cache is stale
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                try:
+                    fresh_user = User.objects.select_related('client_profile').get(pk=user.pk)
+                    client_profile = getattr(fresh_user, 'client_profile', None)
+                except Exception:
+                    pass
+            return client_profile
 
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
+            if staff is None:
+                # Force fresh DB query if cache is stale
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                try:
+                    fresh_user = User.objects.select_related('staff_profile__client').get(pk=user.pk)
+                    staff = getattr(fresh_user, 'staff_profile', None)
+                except Exception:
+                    pass
             if staff:
                 return staff.client
 
