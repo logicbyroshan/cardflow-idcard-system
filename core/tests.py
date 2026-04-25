@@ -1906,6 +1906,14 @@ class DashboardAndLogsHardeningTests(TestCase):
         client_a = Client.objects.create(user=client_owner_a, name='Dashboard Client A', status='active')
         Client.objects.create(user=client_owner_b, name='Dashboard Client B', status='inactive')
 
+        User.objects.create_user(
+            username='dashboard-pro-user@test.com',
+            email='dashboard-pro-user@test.com',
+            password='pass1234',
+            role='pro_user',
+            is_active=True,
+        )
+
         admin_staff_active = User.objects.create_user(
             username='dashboard-admin-staff-active@test.com',
             email='dashboard-admin-staff-active@test.com',

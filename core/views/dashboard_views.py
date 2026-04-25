@@ -429,7 +429,9 @@ def dashboard(request):
 
         overview_stats = {
             'clients': clients_qs.count(),
-            'admins': User.objects.filter(role__in=['pro_user', 'super_admin']).count(),
+            # Keep pro_user permissions intact, but do not count them as admins
+            # in the dashboard's user overview card.
+            'admins': User.objects.filter(role='super_admin').count(),
             'operators': User.objects.filter(role='admin_staff').count(),
             'assistents': assistents_qs.count(),
         }

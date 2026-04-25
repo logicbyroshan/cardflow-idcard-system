@@ -40,8 +40,15 @@ def mobile_globals(request):
     if not user.is_authenticated:
         return {}
 
-    role = getattr(user, 'role', None)
-    if role not in ('super_admin', 'admin_staff', 'client', 'client_staff'):
+    from core.services.permission_service import PermissionService
+
+    # Keep mobile role gating aligned with PermissionService so role aliases
+    # like pro_user (treated as super-admin) are never excluded here.
+    if not (
+        PermissionService.is_any_admin(user)
+        or PermissionService.is_client(user)
+        or PermissionService.is_client_staff(user)
+    ):
         return {}
 
     ctx = {}
@@ -58,12 +65,11 @@ def mobile_globals(request):
         ctx['notification_count'] = 0
 
     # ── Admin overview stats (hamburger drawer Team Overview 2×2 grid) ──────
-    if role in ('super_admin', 'admin_staff'):
+    if PermissionService.is_any_admin(user):
         try:
             from client.models import Client
             from staff.models import Staff
             from idcards.models import IDCardTable, IDCard
-            from core.services.permission_service import PermissionService
             from django.db.models import Q
 
             accessible_ids = None

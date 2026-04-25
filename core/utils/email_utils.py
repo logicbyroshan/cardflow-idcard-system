@@ -6,6 +6,7 @@ import logging
 import secrets
 import string
 from html import escape
+from urllib.parse import urljoin
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -261,27 +262,22 @@ def build_unified_email_html(
                 tokens = EMAIL_THEME_TOKENS.get(theme, EMAIL_THEME_TOKENS['system'])
                 items = showcase_items if showcase_items is not None else get_email_product_showcase(request=request, limit=5)
                 website_url = _resolve_site_base_url(request)
+                products_url = urljoin(website_url.rstrip('/') + '/', 'our-products/')
                 safe_cta_url = escape(cta_url, quote=True)
+                safe_website_url = escape(website_url, quote=True)
+                safe_products_url = escape(products_url, quote=True)
 
                 showcase_html = ''
                 if items:
                                 cells = []
                                 for item in items[:5]:
-                                                item_title = escape(item.get('title') or 'Product')
-                                                item_category = escape(item.get('category') or 'Product')
                                                 item_image = escape(item.get('image_url') or '', quote=True)
                                                 cells.append(
                                                                 f"""
                                                                 <td style="padding:6px;vertical-align:top;">
                                                                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;">
                                                                                 <tr>
-                                                                                        <td style="padding:0;"><img src="{item_image}" alt="{item_title}" style="display:block;width:100%;height:92px;object-fit:cover;"></td>
-                                                                                </tr>
-                                                                                <tr>
-                                                                                        <td style="padding:8px 8px 10px;">
-                                                                                                <div style="font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{item_title}</div>
-                                                                                                <div style="font-size:10px;color:#64748b;margin-top:2px;">{item_category}</div>
-                                                                                        </td>
+                                                                                        <td style="padding:0;"><img src="{item_image}" alt="Product image" style="display:block;width:100%;height:112px;object-fit:cover;"></td>
                                                                                 </tr>
                                                                         </table>
                                                                 </td>
@@ -307,6 +303,15 @@ def build_unified_email_html(
                                                 f"background:{tokens['accent']};color:#ffffff !important;text-decoration:none;font-size:14px;font-weight:700;\">"
                                                 f"{escape(cta_label)}</a></p>"
                                 )
+
+                footer_cta_html = (
+                        f"<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-top:14px;\">"
+                        f"<tr>"
+                        f"<td style=\"padding:0 8px 0 0;\"><a href=\"{safe_website_url}\" style=\"display:inline-block;padding:11px 18px;border-radius:10px;background:{tokens['accent']};color:#ffffff !important;text-decoration:none;font-size:13px;font-weight:700;\">Visit Site</a></td>"
+                        f"<td style=\"padding:0;\"><a href=\"{safe_products_url}\" style=\"display:inline-block;padding:11px 18px;border-radius:10px;background:#ffffff;color:{tokens['accent']} !important;text-decoration:none;font-size:13px;font-weight:700;border:1px solid {tokens['accent']};\">Products</a></td>"
+                        f"</tr>"
+                        f"</table>"
+                )
 
                 badge_html = ''
                 if badge_text:
@@ -365,7 +370,7 @@ def build_unified_email_html(
                                         <tr>
                                                 <td class="email-pad" style="padding:14px 24px 18px;background:#f8fafc;border-top:1px solid #e5e7eb;">
                                                         <div style="font-size:12px;line-height:1.7;color:#64748b;">This is an automated message from Adarsh Admin. Please do not reply to this email.</div>
-                                                        <div style="font-size:12px;line-height:1.7;color:#64748b;">Explore more products: <a href="{escape(website_url, quote=True)}" style="color:{tokens['accent']};text-decoration:none;font-weight:700;">{escape(website_url)}</a></div>
+                                                        {footer_cta_html}
                                                 </td>
                                         </tr>
                                 </table>
@@ -514,7 +519,7 @@ def get_contact_submission_email_template(submission, request=None):
 def get_welcome_email_template(
         name,
         email,
-        vault_url,
+        password,
         role,
         login_url,
         scenario='welcome',
@@ -542,47 +547,46 @@ def get_welcome_email_template(
 <p style="margin:0 0 14px;">{'Use these updated temporary credentials to access your account.' if is_temp else 'Your account has been created successfully. Use the credentials below to log in.'}</p>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dbe4f2;border-left:4px solid {'#ea580c' if is_temp else '#2563eb'};border-radius:12px;background:#f8fbff;margin:10px 0 12px;">
-    <tr>
-        <td style="padding:14px 16px;">
-            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Email</div>
-            <div style="font-size:14px;font-weight:700;color:#0f172a;word-break:break-word;">{escape(email)}</div>
-            <div style="height:10px;"></div>
-            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Credentials</div>
-            <div style="font-size:14px;font-weight:700;color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;display:inline-block;">🔒 Protected</div>
-            <div style="font-size:12px;color:#64748b;margin-top:6px;">Click the button below to view your password securely.</div>
-            <div style="height:10px;"></div>
-            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Role</div>
-            <div style="font-size:13px;font-weight:700;color:#0f172a;">{escape(role_display)}</div>
-        </td>
-    </tr>
+        <tr>
+                <td style="padding:14px 16px;">
+                        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Email</div>
+                        <div style="font-size:14px;font-weight:700;color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;word-break:break-word;">{escape(email)}</div>
+                        <div style="height:10px;"></div>
+                        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Password</div>
+                        <div style="font-size:14px;font-weight:700;color:#0f172a;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;word-break:break-word;">{escape(password)}</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:6px;">You can copy these credentials and use them on the login page.</div>
+                        <div style="height:10px;"></div>
+                        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Role</div>
+                        <div style="font-size:13px;font-weight:700;color:#0f172a;">{escape(role_display)}</div>
+                </td>
+        </tr>
 </table>
 
 <div style="border:1px solid #fde68a;border-left:4px solid #d97706;border-radius:10px;background:#fffbeb;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.65;">
-    Security tip: change your password after login and never share credentials.
+        Security tip: change your password after login and never share credentials.
 </div>
 """
 
         html_content = build_unified_email_html(
-                theme=theme,
-                kicker=kicker,
-                title=title,
-                subtitle=subtitle,
-                body_html=body_html,
-                cta_label='View Secure Credentials',
-                cta_url=vault_url,
-                badge_text=role_display,
-                request=request,
+            theme=theme,
+            kicker=kicker,
+            title=title,
+            subtitle=subtitle,
+            body_html=body_html,
+            cta_label='Go to Login',
+            cta_url=login_url,
+            badge_text=role_display,
+            request=request,
         )
 
         plain_content = (
-                f"{'Temporary Password Updated' if is_temp else 'Welcome to Adarsh Admin'}\n\n"
-                f"Hello {name},\n\n"
-                f"Email: {email}\n"
-                f"Password: [Protected - Click link below to view]\n"
-                f"Role: {role_display}\n"
-                f"View Credentials: {vault_url}\n\n"
-                f"Panel Login URL: {login_url}\n\n"
-                "Security tip: change your password after login and never share credentials.\n"
+            f"{'Temporary Password Updated' if is_temp else 'Welcome to Adarsh Admin'}\n\n"
+            f"Hello {name},\n\n"
+            f"Email: {email}\n"
+            f"Password: {password}\n"
+            f"Role: {role_display}\n"
+            f"Login URL: {login_url}\n\n"
+            "Security tip: change your password after login and never share credentials.\n"
         )
 
         return html_content, plain_content
@@ -626,18 +630,11 @@ def send_welcome_email(name, email, password, role, request=None, phone='', emai
         # Build clean login URL (prefers PANEL_URL from settings)
         login_url = _get_panel_login_url(request)
         
-        from core.utils.secure_credentials import create_credential_token
-        token = create_credential_token(email, password, role)
-        
-        # Build vault URL
-        base_url = _resolve_site_base_url(request)
-        vault_url = f"{base_url}/panel/auth/secure-view/{token}/"
-        
         # Get email templates
         html_content, plain_content = get_welcome_email_template(
             name=name,
             email=email,
-            vault_url=vault_url,
+            password=password,
             role=role,
             login_url=login_url,
             scenario=email_variant,

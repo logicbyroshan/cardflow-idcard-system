@@ -7,7 +7,7 @@ from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
-from django.test import TestCase, override_settings
+from django.test import TestCase, RequestFactory, override_settings
 from django.core.management.base import CommandError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
@@ -258,6 +258,20 @@ class MobileAppBaseTestCase(TestCase):
 
 
 class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
+	def test_mobile_globals_includes_admin_stats_for_pro_user(self):
+		from mobile_app.context_processors import mobile_globals
+
+		request = RequestFactory().get('/app/groups/')
+		request.user = self.pro_user
+
+		ctx = mobile_globals(request)
+
+		self.assertIn('notification_count', ctx)
+		self.assertIn('admin_client_count', ctx)
+		self.assertIn('admin_staff_count', ctx)
+		self.assertIn('admin_table_count', ctx)
+		self.assertIn('admin_total_cards', ctx)
+
 	def test_manifest_endpoint_returns_pwa_payload(self):
 		response = self.client.get('/app/manifest.json')
 		self.assertEqual(response.status_code, 200)
