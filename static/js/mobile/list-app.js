@@ -100,11 +100,6 @@ function listApp() {
             submitting: false,
         },
 
-        // Manual Cropping state
-        showCropper: false,
-        cropImageSrc: null,
-        cropperInstance: null,
-        resumeAddFormAfterCrop: false,
         activeImageField: null,
         showImagePicker: false,
         reprintPicker: {
@@ -2532,11 +2527,6 @@ function listApp() {
             const file = event.target.files[0];
             if (!file) return;
 
-            if (typeof Cropper === 'undefined') {
-                this.showToast('Photo editor is still loading. Please wait a second and try again.', 'error');
-                return;
-            }
-
             if (!file.type.startsWith('image/')) { 
                 this.showToast('Please select an image file', 'error'); 
                 return; 
@@ -2546,23 +2536,17 @@ function listApp() {
                 return; 
             }
 
-            this.showToast('Loading photo...', 'info');
+            const targetField = this.activeImageField || this._defaultImageFieldName();
+            if (!this.form.imageFiles) this.form.imageFiles = {};
+            if (!this.form.imagePreviews) this.form.imagePreviews = {};
+            if (!this.form.imageHasPath) this.form.imageHasPath = {};
 
-            // Store which field we are cropping for
-            this.activeImageField = this.activeImageField || this._defaultImageFieldName();
-            
-            // 1. Create a data URL for the cropper to consume
             const reader = new FileReader();
             reader.onload = (e) => {
-                this.cropImageSrc = e.target.result;
-                // Treat cropper as the next full-screen step: temporarily hide
-                // the add/edit sheet so layering is deterministic on mobile.
-                this.resumeAddFormAfterCrop = !!this.showAddForm;
-                this.showAddForm = false;
-                this.$nextTick(() => {
-                    this.showCropper = true;
-                });
-                // initCropper will be triggered by @load on the img tag for reliability
+                this.form.imageFiles[targetField] = file;
+                this.form.imagePreviews[targetField] = e.target && e.target.result ? e.target.result : null;
+                this.form.imageHasPath[targetField] = true;
+                this.showToast('Photo selected successfully', 'success');
             };
             reader.onerror = () => {
                 this.showToast('Failed to read image file', 'error');
@@ -2571,119 +2555,6 @@ function listApp() {
             
             // Reset the input so the same file can be picked again if needed
             event.target.value = '';
-        },
-
-        initCropper(imageEl) {
-            console.log('MobileApp: Initializing cropper...');
-            const image = imageEl || document.getElementById('cropperImage');
-            if (!image) {
-                console.error('MobileApp: Cropper target image element not found.');
-                return;
-            }
-
-            if (typeof Cropper === 'undefined') {
-                console.error('MobileApp: Cropper library is not loaded.');
-                this.showToast('Photo editor library missing. Please refresh.', 'error');
-                return;
-            }
-
-            if (this.cropperInstance) {
-                this.cropperInstance.destroy();
-                this.cropperInstance = null;
-            }
-
-            // Initialize Cropper.js
-            try {
-                this.cropperInstance = new Cropper(image, {
-                    aspectRatio: 0.8, // Standard ID card photo ratio (4:5)
-                    viewMode: 1,
-                    dragMode: 'move',
-                    autoCropArea: 0.9,
-                    restore: false,
-                    guides: true,
-                    center: true,
-                    highlight: false,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false,
-                    checkOrientation: true,
-                    ready() {
-                        console.log('MobileApp: Cropper is ready.');
-                        image.style.opacity = '1';
-                    },
-                });
-            } catch (e) {
-                console.error('MobileApp: Cropper init exception:', e);
-                this.showToast('Failed to initialize photo editor', 'error');
-            }
-        },
-
-        confirmCrop() {
-            if (!this.cropperInstance) return;
-
-            // Get cropped image as a canvas
-            const canvas = this.cropperInstance.getCroppedCanvas({
-                width: 800,  // Higher resolution for production quality
-                height: 1000,
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high',
-            });
-
-            if (!canvas) {
-                this.showToast('Failed to process cropped image', 'error');
-                return;
-            }
-
-            // Convert canvas to Blob (JPEG for better compression/quality ratio)
-            canvas.toBlob((blob) => {
-                if (!blob) {
-                    this.showToast('Failed to create image blob', 'error');
-                    return;
-                }
-
-                // Create a File object from the blob
-                const timestamp = new Date().getTime();
-                const croppedFile = new File([blob], `cropped_${timestamp}.jpg`, { type: 'image/jpeg' });
-
-                const targetField = this.activeImageField;
-                if (!this.form.imageFiles) this.form.imageFiles = {};
-                if (!this.form.imagePreviews) this.form.imagePreviews = {};
-                if (!this.form.imageHasPath) this.form.imageHasPath = {};
-
-                // Update the form state with the cropped version
-                this.form.imageFiles[targetField] = croppedFile;
-                this.form.imagePreviews[targetField] = canvas.toDataURL('image/jpeg');
-                this.form.imageHasPath[targetField] = true;
-
-                this.showToast('Photo adjusted successfully', 'success');
-                this.cancelCrop(); // Close and cleanup
-            }, 'image/jpeg', 0.9);
-        },
-
-        cancelCrop() {
-            if (this.cropperInstance) {
-                this.cropperInstance.destroy();
-                this.cropperInstance = null;
-            }
-            this.showCropper = false;
-            this.cropImageSrc = null;
-            if (this.resumeAddFormAfterCrop) {
-                this.showAddForm = true;
-            }
-            this.resumeAddFormAfterCrop = false;
-            // Note: we don't reset activeImageField here to keep context if they try again
-        },
-
-        rotateCropper(degree) {
-            if (this.cropperInstance) {
-                this.cropperInstance.rotate(degree);
-            }
-        },
-
-        resetCropper() {
-            if (this.cropperInstance) {
-                this.cropperInstance.reset();
-            }
         },
         async submitAddForm() {
             if (this.viewMode) {

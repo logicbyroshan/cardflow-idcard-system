@@ -1878,6 +1878,46 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		ids = [item['id'] for item in payload['data']['cards']]
 		self.assertIn(card.id, ids)
 
+	def test_mobile_list_api_requires_explicit_valid_status(self):
+		self._login_mobile_super_admin()
+
+		missing_status = self.client.get(f'/app/api/table/{self.table.id}/cards/')
+		self.assertEqual(missing_status.status_code, 400)
+		self.assertEqual(missing_status.json().get('message'), 'status is required')
+
+		invalid_status = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=invalid-status')
+		self.assertEqual(invalid_status.status_code, 400)
+		self.assertEqual(invalid_status.json().get('message'), 'Invalid status')
+
+	def test_mobile_list_api_pending_scope_excludes_approved_cards(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+		]
+		self.table.save(update_fields=['fields'])
+
+		search_token = 'MOBILE-PENDING-SCOPE-ONLY'
+		pending_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': search_token},
+			status='pending',
+		)
+		approved_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': search_token},
+			status='approved',
+		)
+
+		response = self.client.get(
+			f'/app/api/table/{self.table.id}/cards/?status=pending&search={search_token}'
+		)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertIn(pending_card.id, ids)
+		self.assertNotIn(approved_card.id, ids)
+
 	def test_mobile_list_api_honors_class_and_section_filters(self):
 		self._login_mobile_super_admin()
 		self.table.fields = [
@@ -3430,7 +3470,7 @@ class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 			{'method': 'get', 'url': f'/app/api/card/{self.card.id}/detail/', 'allowed': (200, 403)},
 			{'method': 'post', 'url': f'/app/api/card/{self.card.id}/status/', 'payload': {'status': 'verified'}, 'allowed': (200, 400, 403)},
 			{'method': 'post', 'url': f'/app/api/card/{temp_card_for_delete.id}/delete/', 'allowed': (200, 400, 403)},
-			{'method': 'get', 'url': f'/app/api/table/{self.table.id}/cards/', 'allowed': (200, 403)},
+			{'method': 'get', 'url': f'/app/api/table/{self.table.id}/cards/?status=pending', 'allowed': (200, 403)},
 			{'method': 'post', 'url': f'/app/api/table/{self.table.id}/bulk-status/', 'payload': {'ids': [self.card.id], 'status': 'verified'}, 'allowed': (200, 400, 403)},
 			{'method': 'post', 'url': f'/app/api/table/{self.table.id}/upload-photo/', 'payload': {'card_id': self.card.id, 'field_name': 'PHOTO'}, 'allowed': (200, 400, 403)},
 			{'method': 'post', 'url': f'/app/api/table/{self.table.id}/card/add/', 'payload': {'field_data': {'NAME': 'Phase1 Add', 'ROLL NO': '501'}}, 'allowed': (200, 400, 403)},

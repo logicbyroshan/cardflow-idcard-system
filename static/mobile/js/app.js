@@ -835,6 +835,22 @@ window.showConfirm = function showConfirm(options) {
         return;
     }
 
+    function canShowDeferredSyncBadgeForRole() {
+        var role = '';
+        try {
+            role = String((document.body && document.body.getAttribute('data-user-role')) || '').trim().toLowerCase();
+        } catch (err) {
+            role = '';
+        }
+
+        // Show operational sync badge only for admin surfaces.
+        return role === 'super_admin' || role === 'admin_staff';
+    }
+
+    if (!canShowDeferredSyncBadgeForRole()) {
+        return;
+    }
+
     function ensureSyncBadge() {
         var existing = document.getElementById('mobile-deferred-sync-badge');
         if (existing) return existing;

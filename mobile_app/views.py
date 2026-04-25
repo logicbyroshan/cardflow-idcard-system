@@ -3489,7 +3489,14 @@ def api_card_detail(request, card_id):
 @require_http_methods(["GET"])
 def api_cards(request, table_id):
     """Get cards for a table (paginated)."""
-    status_filter = request.GET.get('status', '')
+    status_filter = str(request.GET.get('status', '') or '').strip().lower()
+    if not status_filter:
+        return JsonResponse({'success': False, 'message': 'status is required'}, status=400)
+
+    valid_statuses = {'pending', 'verified', 'approved', 'download', 'pool', 'reprint'}
+    if status_filter not in valid_statuses:
+        return JsonResponse({'success': False, 'message': 'Invalid status'}, status=400)
+
     search = _sanitize_search_query(request.GET.get('search', ''))
     from_date = (request.GET.get('from') or '').strip()
     to_date = (request.GET.get('to') or '').strip()
@@ -3505,15 +3512,10 @@ def api_cards(request, table_id):
         page, per_page = 1, 50
 
     offset = (page - 1) * per_page
-    # Ensure status filter is never None for mobile list API, to prevent showing Approved in Pending.
-    # If the param is missing, we default to 'pending' to keep the view scoped.
-    _actual_status = status_filter or None
-    if not _actual_status and not search:
-        _actual_status = 'pending'
 
     result = ClientCardService.get_cards(
         request.user, table_id,
-        _actual_status, offset, per_page,
+        status_filter, offset, per_page,
         search or None,
         from_date=from_date,
         to_date=to_date,
