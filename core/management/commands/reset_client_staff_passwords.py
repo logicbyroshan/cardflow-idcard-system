@@ -65,9 +65,18 @@ class Command(BaseCommand):
                 skip_count += 1
                 continue
                 
-            user.set_password(phone)
+            # Use universal password normalization
+            from accounts.services import normalize_password_input
+            normalized_password = normalize_password_input(phone)
+            
+            if not normalized_password:
+                self.stdout.write(self.style.WARNING(f"Skipping {user.username} - Phone number contains no digits!"))
+                skip_count += 1
+                continue
+
+            user.set_password(normalized_password)
             user.save(update_fields=['password'])
             success_count += 1
-            self.stdout.write(self.style.SUCCESS(f"Reset password for {user.username} to {phone}"))
+            self.stdout.write(self.style.SUCCESS(f"Reset password for {user.username} to normalized format: {normalized_password}"))
             
         self.stdout.write(self.style.SUCCESS(f"\nFinished! Reset {success_count} passwords. Skipped {skip_count}."))

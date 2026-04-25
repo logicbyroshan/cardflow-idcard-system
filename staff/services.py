@@ -1,4 +1,4 @@
-﻿"""
+"""
 Staff Services Module — SINGLE AUTHORITY for admin-staff mutations.
 
 Handles:
@@ -22,6 +22,7 @@ ACCESS RULES:
 import logging
 from typing import Dict, Any, Optional, List
 
+from accounts.services import normalize_password_input
 logger = logging.getLogger(__name__)
 
 
@@ -288,11 +289,13 @@ class AdminStaffCreationService:
                 }
             
             with transaction.atomic():
-                # Use custom password if provided, otherwise phone, otherwise random
-                # SECURITY NOTE: Phone-as-password is a deliberate UX choice — the welcome
-                # email tells users "use your mobile number". When a stronger policy is
-                # desired, always pass an explicit password from the UI instead.
-                final_password = password.strip() if password and password.strip() else (phone if phone else generate_secure_password())
+                # Universal password normalization (phone formats -> digits, text -> intact)
+                if password and password.strip():
+                    final_password = normalize_password_input(password)
+                elif phone:
+                    final_password = normalize_password_input(phone)
+                else:
+                    final_password = generate_secure_password()
                 
                 # Create User — inactive by default; welcome email sent on first activation
                 user = User.objects.create_user(
@@ -499,17 +502,41 @@ class AdminStaffCreationService:
                 user.is_active = not user.is_active
 
                 if user.is_active and is_first_activation:
-                    first_password = generate_secure_password()
-                    user.set_password(first_password)
-                    # Do NOT set welcome_email_sent here — set it only after
-                    # the email is actually delivered so retries are possible.
+                    phone_value = (user.phone or '').strip()
+                    
+                    # Use existing phone-based password if it exists, otherwise generate random
+                    has_usable_password = bool(user.has_usable_password())
+                    
+                    # Universal normalization for checking/setting phone passwords
+                    normalized_phone_pw = normalize_password_input(phone_value)
+                    
+                    can_reuse_phone_password = (
+                        has_usable_password and bool(phone_value) and (
+                            user.check_password(phone_value) or 
+                            user.check_password(normalized_phone_pw)
+                        )
+                    )
+
+                    credential_password = ''
+                    if can_reuse_phone_password:
+                        # Use the normalized format as standard
+                        credential_password = normalized_phone_pw
+                        if not user.check_password(credential_password):
+                            user.set_password(credential_password)
+                    elif normalized_phone_pw:
+                        user.set_password(normalized_phone_pw)
+                        credential_password = normalized_phone_pw
+                    else:
+                        credential_password = generate_secure_password()
+                        user.set_password(credential_password)
+
                     user.save(update_fields=['is_active', 'password'])
                     send_welcome = True
                     welcome_user_id = user.pk
                     welcome_info = {
                         'full_name': user.get_full_name(),
                         'email': user.email,
-                        'password': first_password,
+                        'password': credential_password,
                         'phone': user.phone or '',
                     }
                 else:

@@ -2567,11 +2567,22 @@ function listApp() {
         },
 
         initCropper(imageEl) {
+            console.log('MobileApp: Initializing cropper...');
             const image = imageEl || document.getElementById('cropperImage');
-            if (!image) return;
+            if (!image) {
+                console.error('MobileApp: Cropper target image element not found.');
+                return;
+            }
+
+            if (typeof Cropper === 'undefined') {
+                console.error('MobileApp: Cropper library is not loaded.');
+                this.showToast('Photo editor library missing. Please refresh.', 'error');
+                return;
+            }
 
             if (this.cropperInstance) {
                 this.cropperInstance.destroy();
+                this.cropperInstance = null;
             }
 
             // Initialize Cropper.js
@@ -2588,10 +2599,14 @@ function listApp() {
                     cropBoxMovable: true,
                     cropBoxResizable: true,
                     toggleDragModeOnDblclick: false,
-                    checkOrientation: true, // Handle mobile camera EXIF rotation
+                    checkOrientation: true,
+                    ready() {
+                        console.log('MobileApp: Cropper is ready.');
+                        image.style.opacity = '1';
+                    },
                 });
             } catch (e) {
-                console.error('Cropper init failed:', e);
+                console.error('MobileApp: Cropper init exception:', e);
                 this.showToast('Failed to initialize photo editor', 'error');
             }
         },

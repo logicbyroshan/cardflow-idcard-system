@@ -12,6 +12,7 @@ Architecture rule:
 import logging
 
 from django.db import transaction
+from accounts.services import normalize_password_input
 
 logger = logging.getLogger(__name__)
 
@@ -88,17 +89,21 @@ class UserProfileService:
         if not current_password or not new_password:
             return False, 'Both current and new password are required'
 
-        if not user.check_password(current_password):
+        # Universal password normalization (phone formats -> digits, text -> intact)
+        normalized_current = normalize_password_input(current_password)
+        normalized_new = normalize_password_input(new_password)
+
+        if not user.check_password(current_password) and not user.check_password(normalized_current):
             return False, 'Current password is incorrect'
 
         # Use Django's password validators for consistent strength checks
         from django.contrib.auth.password_validation import validate_password
         try:
-            validate_password(new_password, user=user)
+            validate_password(normalized_new, user=user)
         except Exception as e:
             return False, str(e)
 
-        user.set_password(new_password)
+        user.set_password(normalized_new)
         user.save()
 
         # Security hardening: revoke other active sessions after password change.

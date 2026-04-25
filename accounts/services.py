@@ -10,6 +10,7 @@ import secrets
 import string
 import hashlib
 import os
+import re
 from django.core.cache import cache
 from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.models import Group
@@ -102,6 +103,24 @@ def _phone_digits_match(left: str, right: str) -> bool:
     if len(a) >= 10 and len(b) >= 10:
         return a.endswith(b) or b.endswith(a)
     return False
+
+
+def normalize_password_input(password: str) -> str:
+    if not password:
+        return password
+
+    password = password.strip()
+
+    digits = re.sub(r'\D', '', password)
+
+    # Only normalize if input is purely phone-like
+    cleaned = password.replace(" ", "").replace("-", "").replace("+", "")
+    if cleaned.isdigit():
+        if len(digits) > 10:
+            digits = digits[-10:]
+        return digits
+
+    return password
 
 
 def _auth_fail_cache_key(identifier: str) -> str:
@@ -690,14 +709,14 @@ class AuthService:
                 AuthService._maybe_notify_failed_login(user, identifier, attempts)
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
 
-            authenticated_user = authenticate(username=user.username, password=password)
+            # Normalize password input (phone formats -> digits, text -> intact)
+            normalized_password = normalize_password_input(password)
+
+            authenticated_user = authenticate(username=user.username, password=normalized_password)
 
             if authenticated_user is None:
-                # Fallback: direct password check handles edge cases where
-                # Django's authenticate() backend rejects due to username
-                # lookup differences (e.g. phone-based login found user by
-                # phone but authenticate() does its own username query).
-                if user.check_password(password):
+                # Fallback: direct password check
+                if user.check_password(normalized_password):
                     # Set backend attribute required by django.contrib.auth.login()
                     user.backend = 'django.contrib.auth.backends.ModelBackend'
                     authenticated_user = user
@@ -1057,8 +1076,12 @@ class OTPService:
             # Validate password (using AUTH_PASSWORD_VALIDATORS from settings —
             # currently only MinimumLengthValidator, so mobile numbers etc. are allowed)
             from django.contrib.auth.password_validation import validate_password
+            
+            # Universal password normalization (phone formats -> digits, text -> intact)
+            normalized_new_password = normalize_password_input(new_password)
+            
             try:
-                validate_password(new_password, user=user)
+                validate_password(normalized_new_password, user=user)
             except Exception as validation_error:
                 # Collect all error messages from validators
                 msgs = getattr(validation_error, 'messages', [str(validation_error)])
@@ -1068,7 +1091,7 @@ class OTPService:
                 }
 
             # Set new password
-            user.set_password(new_password)
+            user.set_password(normalized_new_password)
             user.save()
 
             # Security: invalidate all active sessions for this user.

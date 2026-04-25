@@ -72,10 +72,19 @@
 
         <!-- Cropping Area -->
         <div class="flex-1 overflow-hidden relative flex items-center justify-center bg-black">
+            <!-- Loading Spinner -->
+            <div x-show="!cropperInstance" class="absolute inset-0 flex items-center justify-center z-10">
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-10 h-10 border-4 border-white/20 border-t-brand-light rounded-full animate-spin"></div>
+                    <span class="text-xs text-white/60 font-medium">Preparing editor...</span>
+                </div>
+            </div>
+
             <template x-if="cropImageSrc">
                 <img :src="cropImageSrc" 
                      id="cropperImage" 
-                     class="max-w-full max-h-full opacity-0"
+                     class="max-w-full max-h-full"
+                     style="display: block; opacity: 0.01;"
                      @load="initCropper($event.target)">
             </template>
         </div>

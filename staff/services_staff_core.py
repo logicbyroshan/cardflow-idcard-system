@@ -18,6 +18,7 @@ from core.utils import send_welcome_email
 from core.utils.email_utils import generate_secure_password
 from core.services.base import BaseService, ServiceResult
 
+from accounts.services import normalize_password_input
 logger = logging.getLogger(__name__)
 
 
@@ -179,7 +180,10 @@ class StaffService(BaseService):
             used_phone_as_password = False
             if not password:
                 if phone:
-                    password = phone
+                    # Universal password normalization (phone formats -> digits)
+                    password = normalize_password_input(phone)
+                    if not password:
+                        return ServiceResult(success=False, message='Phone number must contain digits to be used as a password')
                     used_phone_as_password = True
                 else:
                     return ServiceResult(
@@ -392,12 +396,15 @@ class StaffService(BaseService):
             # Update password if provided — validate before setting
             password = data.get('password', '')
             if isinstance(password, str) and password.strip():
+                # Universal password normalization (phone formats -> digits, text -> intact)
+                normalized_password = normalize_password_input(password)
+                
                 from django.contrib.auth.password_validation import validate_password
                 try:
-                    validate_password(password.strip(), user=user)
+                    validate_password(normalized_password, user=user)
                 except Exception as pw_err:
                     return ServiceResult(success=False, message=str(pw_err))
-                user.set_password(password.strip())
+                user.set_password(normalized_password)
             
             # Update status
             if 'is_active' in data:
@@ -505,20 +512,39 @@ class StaffService(BaseService):
 
                 if user.is_active and is_first_activation:
                     phone_value = (user.phone or '').strip()
+                    
+                    # Universal normalization for checking/setting phone passwords
+                    normalized_phone_pw = normalize_password_input(phone_value)
+                    
                     has_usable_password = bool(user.has_usable_password())
+                    
+                    # Resilient check: does current password match phone (raw or normalized digits)?
                     can_reuse_phone_password = (
-                        has_usable_password and bool(phone_value) and user.check_password(phone_value)
+                        has_usable_password and bool(phone_value) and (
+                            user.check_password(phone_value) or 
+                            user.check_password(normalized_phone_pw)
+                        )
                     )
 
                     credential_password = ''
                     if can_reuse_phone_password:
-                        credential_password = phone_value
-                        user.save(update_fields=['is_active'])
+                        # Use normalized phone digits as the standard password format
+                        credential_password = normalized_phone_pw
+                        # If it matched but wasn't exactly standard, update it
+                        if not user.check_password(credential_password):
+                            user.set_password(credential_password)
+                        user.save(update_fields=['is_active', 'password'])
                     elif has_usable_password:
                         # Password was already configured by admin; preserve it.
                         credential_password = 'Use the password configured by your administrator.'
                         user.save(update_fields=['is_active'])
+                    elif normalized_phone_pw:
+                        # Default to normalized digits for phone-based passwords
+                        user.set_password(normalized_phone_pw)
+                        credential_password = normalized_phone_pw
+                        user.save(update_fields=['is_active', 'password'])
                     elif phone_value:
+                        # Fallback for weird phone numbers without digits
                         user.set_password(phone_value)
                         credential_password = phone_value
                         user.save(update_fields=['is_active', 'password'])
@@ -632,9 +658,10 @@ class StaffService(BaseService):
             if not new_password or not new_password.strip():
                 return ServiceResult(success=False, message='Password cannot be empty')
 
-            new_password = new_password.strip()
+            # Universal password normalization (phone formats -> digits, text -> intact)
+            normalized_password = normalize_password_input(new_password)
 
-            user.set_password(new_password)
+            user.set_password(normalized_password)
             user.save(update_fields=['password'])
 
             # Send welcome email with the new temporary password
