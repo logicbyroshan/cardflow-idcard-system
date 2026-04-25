@@ -2,6 +2,7 @@ import sys
 from django.core.management.base import BaseCommand
 from client.models import Client
 from staff.models import Staff
+from accounts.services import normalize_password_input
 
 class Command(BaseCommand):
     help = 'Interactive command to reset passwords of all client_staff for a specific client to their mobile number.'
@@ -55,9 +56,24 @@ class Command(BaseCommand):
             
         success_count = 0
         skip_count = 0
+        invalid_phone_count = 0
+        missing_user_count = 0
         
         for staff in assistants:
-            user = staff.user
+            try:
+                user = staff.user
+            except Exception:
+                self.stdout.write(self.style.WARNING(f"Skipping staff ID {staff.id} - Related user missing!"))
+                skip_count += 1
+                missing_user_count += 1
+                continue
+
+            if not user:
+                self.stdout.write(self.style.WARNING(f"Skipping staff ID {staff.id} - Related user missing!"))
+                skip_count += 1
+                missing_user_count += 1
+                continue
+
             phone = user.phone
             
             if not phone:
@@ -65,18 +81,30 @@ class Command(BaseCommand):
                 skip_count += 1
                 continue
                 
-            # Use universal password normalization
-            from accounts.services import normalize_password_input
             normalized_password = normalize_password_input(phone)
             
             if not normalized_password:
                 self.stdout.write(self.style.WARNING(f"Skipping {user.username} - Phone number contains no digits!"))
                 skip_count += 1
+                invalid_phone_count += 1
+                continue
+
+            if len(normalized_password) < 6:
+                self.stdout.write(self.style.WARNING(
+                    f"Skipping {user.username} - Normalized phone password too short (<6 chars)."
+                ))
+                skip_count += 1
+                invalid_phone_count += 1
                 continue
 
             user.set_password(normalized_password)
             user.save(update_fields=['password'])
             success_count += 1
-            self.stdout.write(self.style.SUCCESS(f"Reset password for {user.username} to normalized format: {normalized_password}"))
+            self.stdout.write(self.style.SUCCESS(
+                f"Reset password for {user.username} (phone normalized to last {len(normalized_password)} digits)."
+            ))
             
-        self.stdout.write(self.style.SUCCESS(f"\nFinished! Reset {success_count} passwords. Skipped {skip_count}."))
+        self.stdout.write(self.style.SUCCESS(
+            f"\nFinished! Reset {success_count} passwords. Skipped {skip_count} "
+            f"(missing user: {missing_user_count}, invalid/too-short phone: {invalid_phone_count})."
+        ))

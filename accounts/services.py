@@ -111,11 +111,19 @@ def normalize_password_input(password: str) -> str:
 
     password = password.strip()
 
-    digits = re.sub(r'\D', '', password)
+    # Keep alphanumeric/symbolic custom passwords intact.
+    if re.search(r'[A-Za-z]', password):
+        return password
 
-    # Only normalize if input is purely phone-like
-    cleaned = password.replace(" ", "").replace("-", "").replace("+", "")
-    if cleaned.isdigit():
+    digits = re.sub(r'\D', '', password)
+    if not digits:
+        return password
+
+    # Normalize only when every non-digit character is a common phone separator.
+    # This accepts values like "+91 98765-43210", "(987) 654-3210", or "91.98765.43210"
+    # while preserving custom passwords such as "1234!@#".
+    leftover = re.sub(r'[\d\s\-\+\(\)\.]', '', password)
+    if not leftover:
         if len(digits) > 10:
             digits = digits[-10:]
         return digits

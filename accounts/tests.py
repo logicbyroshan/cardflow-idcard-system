@@ -89,6 +89,32 @@ class AuthServiceTests(TestCase):
         self.assertEqual(url, '/panel/')
 
 
+class PasswordNormalizationTests(TestCase):
+    def test_normalize_password_phone_with_country_and_brackets(self):
+        from accounts.services import normalize_password_input
+
+        self.assertEqual(
+            normalize_password_input('(+91) 98765-43210'),
+            '9876543210',
+        )
+
+    def test_normalize_password_phone_with_dots(self):
+        from accounts.services import normalize_password_input
+
+        self.assertEqual(
+            normalize_password_input('91.98765.43210'),
+            '9876543210',
+        )
+
+    def test_normalize_password_keeps_symbolic_custom_password(self):
+        from accounts.services import normalize_password_input
+
+        self.assertEqual(
+            normalize_password_input('1234!@#'),
+            '1234!@#',
+        )
+
+
 class OTPServiceTests(TestCase):
     """Tests for accounts.services.OTPService"""
 
