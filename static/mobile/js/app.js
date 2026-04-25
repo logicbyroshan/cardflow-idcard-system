@@ -861,9 +861,6 @@ window.showConfirm = function showConfirm(options) {
 
     var badgeHideTimer = null;
     function renderSyncBadge(state) {
-        // Hiding as per user request: "synicin 2 save chanes etc thing is there alwsys fix it or hide it"
-        return;
-        
         var badge = ensureSyncBadge();
         if (!badge) return;
 
@@ -884,7 +881,7 @@ window.showConfirm = function showConfirm(options) {
 
         badge.style.display = 'block';
         badge.textContent = online
-            ? ('Syncing ' + pending + ' saved change(s)...')
+            ? ('Sync pending: ' + pending + ' saved change(s)')
             : ('Saved offline: ' + pending + ' change(s)');
     }
 

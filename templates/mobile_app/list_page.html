@@ -57,11 +57,12 @@
     <!-- Photo Cropping Overlay -->
     <div x-show="showCropper" 
          x-cloak
-         class="fixed inset-0 z-[10050] bg-black flex flex-col"
+            class="fixed inset-0 bg-black flex flex-col"
+            data-mobile-overlay-root
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 scale-95"
          x-transition:enter-end="opacity-100 scale-100"
-         style="display:none;">
+            style="display:none; z-index:10080;">
         
         <!-- Header -->
         <div class="px-5 py-4 flex items-center justify-between bg-black text-white border-b border-white/10">

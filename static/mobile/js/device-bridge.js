@@ -368,13 +368,39 @@
         }
     }
 
+    function isValidCriticalQueueItem(item) {
+        return !!(item && typeof item === 'object' && String(item.url || '').trim());
+    }
+
+    function isValidDeferredUploadRecord(record) {
+        return !!(
+            record &&
+            typeof record === 'object' &&
+            String(record.id || '').trim() &&
+            String(record.url || '').trim() &&
+            Array.isArray(record.entries) &&
+            record.entries.length
+        );
+    }
+
+    function sanitizeCriticalQueue(queue) {
+        if (!Array.isArray(queue) || !queue.length) return [];
+        return queue.filter(isValidCriticalQueueItem);
+    }
+
     async function getDeferredSyncState() {
         var deferredUploads = await getAllDeferredUploads();
+        var criticalQueue = readCriticalQueue();
+        var validDeferredUploads = deferredUploads.filter(isValidDeferredUploadRecord);
+        var validRuntimeQueue = runtimeUploadQueue.filter(function(task) {
+            return !!(task && typeof task.run === 'function');
+        });
+
         return {
-            criticalPending: readCriticalQueue().length,
-            deferredUploadPending: deferredUploads.length,
-            runtimeUploadPending: runtimeUploadQueue.length,
-            totalPending: readCriticalQueue().length + deferredUploads.length + runtimeUploadQueue.length,
+            criticalPending: criticalQueue.length,
+            deferredUploadPending: validDeferredUploads.length,
+            runtimeUploadPending: validRuntimeQueue.length,
+            totalPending: criticalQueue.length + validDeferredUploads.length + validRuntimeQueue.length,
             online: isOnline(),
         };
     }
@@ -390,7 +416,13 @@
             var raw = localStorage.getItem(QUEUE_KEY);
             if (!raw) return [];
             var parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
+            if (!Array.isArray(parsed)) return [];
+
+            var sanitized = sanitizeCriticalQueue(parsed);
+            if (sanitized.length !== parsed.length) {
+                writeCriticalQueue(sanitized);
+            }
+            return sanitized;
         } catch (err) {
             return [];
         }
@@ -633,7 +665,12 @@
             var now = Date.now();
             for (var i = 0; i < all.length; i++) {
                 var task = all[i];
-                if (!task || !task.id || !task.url) continue;
+                if (!isValidDeferredUploadRecord(task)) {
+                    if (task && task.id) {
+                        await deleteDeferredUpload(task.id);
+                    }
+                    continue;
+                }
                 if (Number(task.next_attempt_at || 0) > now) continue;
 
                 var formData = rebuildFormData(task.entries || []);

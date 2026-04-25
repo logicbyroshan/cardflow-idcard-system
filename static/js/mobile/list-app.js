@@ -104,6 +104,7 @@ function listApp() {
         showCropper: false,
         cropImageSrc: null,
         cropperInstance: null,
+        resumeAddFormAfterCrop: false,
         activeImageField: null,
         showImagePicker: false,
         reprintPicker: {
@@ -2554,7 +2555,13 @@ function listApp() {
             const reader = new FileReader();
             reader.onload = (e) => {
                 this.cropImageSrc = e.target.result;
-                this.showCropper = true;
+                // Treat cropper as the next full-screen step: temporarily hide
+                // the add/edit sheet so layering is deterministic on mobile.
+                this.resumeAddFormAfterCrop = !!this.showAddForm;
+                this.showAddForm = false;
+                this.$nextTick(() => {
+                    this.showCropper = true;
+                });
                 // initCropper will be triggered by @load on the img tag for reliability
             };
             reader.onerror = () => {
@@ -2660,6 +2667,10 @@ function listApp() {
             }
             this.showCropper = false;
             this.cropImageSrc = null;
+            if (this.resumeAddFormAfterCrop) {
+                this.showAddForm = true;
+            }
+            this.resumeAddFormAfterCrop = false;
             // Note: we don't reset activeImageField here to keep context if they try again
         },
 
