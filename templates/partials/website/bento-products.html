@@ -2,10 +2,7 @@
 <!-- Product Categories Showcase (Bento Grid) -->
 <section class="categories-showcase" id="categories">
     <div class="container">
-        <div class="section-header">
-            <span class="section-badge">What We Create</span>
-            <h2>Our <span class="highlight">Product Range</span></h2>
-        </div>
+        <h2 class="section-title">Our Product Range</h2>
         <div class="categories-grid {% if bento_categories|length > 7 %}categories-grid-nine{% else %}categories-grid-seven{% endif %}">
             {% for cat in bento_categories %}
             <div class="category-card slot-{{ forloop.counter }} {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}" role="button" tabindex="0" aria-label="View samples for {{ cat.name }}">

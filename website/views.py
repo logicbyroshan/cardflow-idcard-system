@@ -616,6 +616,9 @@ def our_work(request):
     ).order_by('has_order', 'order', '-created_at')
     items = _interleave_random_by_category(list(items_qs))
     
+    # Bento Grid Data (for View Samples modal)
+    context.update(_get_bento_context())
+
     context.update({
         'portfolio_items': items,
         'portfolio_batch_size': PORTFOLIO_BATCH_SIZE,
@@ -946,7 +949,9 @@ def category_detail(request, slug):
     category = get_object_or_404(PortfolioCategory, slug=slug, is_active=True)
     items = PortfolioItem.objects.filter(category=category, is_active=True).order_by('order', '-created_at')
     
+    # Bento Grid Data (for View Samples modal)
     context = get_common_context()
+    context.update(_get_bento_context())
     context.update({
         'category': category,
         'items': items,

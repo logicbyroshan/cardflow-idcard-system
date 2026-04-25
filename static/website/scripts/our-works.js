@@ -555,9 +555,6 @@ document.addEventListener('DOMContentLoaded', function() {
             applyLazyImageAttrs(img, index < 2);
             wrapper.appendChild(img);
 
-            wrapper.addEventListener('click', () => {
-                if (mediaIndex >= 0) openLightboxAt(mediaList, mediaIndex);
-            });
             wrapper.addEventListener('dblclick', () => {
                 if (mediaIndex >= 0) openLightboxAt(mediaList, mediaIndex);
             });
@@ -565,6 +562,16 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             markGalleryItemReady(wrapper);
         }
+
+        // Common click listener for both images and videos to open lightbox
+        wrapper.addEventListener('click', (e) => {
+            // Only open lightbox if the click wasn't on an interactive element (like the play button)
+            // though stopPropagation on the play button should already handle this.
+            if (mediaIndex >= 0) {
+                const autoplay = isVideoItem; // Maybe autoplay if it's a video? User said "then play"
+                openLightboxAt(mediaList, mediaIndex, { autoplayVideo: autoplay });
+            }
+        });
 
         return { wrapper, readyPromise };
     }
@@ -1247,45 +1254,44 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Portfolio media interaction: one-at-a-time playback + dblclick to open viewer.
-    document.querySelectorAll('.portfolio-item').forEach((item) => {
-        const videoUrl = item.dataset.videoUrl;
+    // Portfolio media interaction: one-at-a-time playback + click to open viewer.
+    // Use event delegation for better support with dynamically loaded items
+    const mainPortfolioGrid = document.getElementById('portfolioGrid');
+    if (mainPortfolioGrid) {
+        mainPortfolioGrid.addEventListener('click', (e) => {
+            const item = e.target.closest('.portfolio-item');
+            if (!item) return;
 
-        let clickTimer = null;
+            const playIcon = e.target.closest('.portfolio-play-icon');
+            const videoUrl = item.dataset.videoUrl;
 
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (!videoUrl) {
-                openPortfolioMediaViewer(item, false);
+            if (playIcon && videoUrl) {
+                // Play inline if the play icon was clicked
+                e.preventDefault();
+                e.stopPropagation();
+                toggleInlinePortfolioVideo(item);
                 return;
             }
 
-            if (clickTimer) {
-                window.clearTimeout(clickTimer);
-                clickTimer = null;
-            }
-
-            clickTimer = window.setTimeout(() => {
-                toggleInlinePortfolioVideo(item);
-                clickTimer = null;
-            }, 220);
-        });
-
-        item.addEventListener('dblclick', (e) => {
-            if (!videoUrl) return;
+            // Otherwise open viewer
             e.preventDefault();
-            if (clickTimer) {
-                window.clearTimeout(clickTimer);
-                clickTimer = null;
-            }
-            openPortfolioMediaViewer(item, true);
+            openPortfolioMediaViewer(item, Boolean(videoUrl));
         });
+    }
 
+    // Still keep keydown for accessibility on individual items (or could delegate too)
+    document.querySelectorAll('.portfolio-item').forEach((item) => {
         item.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter' && e.key !== ' ') return;
             e.preventDefault();
-            if (videoUrl) toggleInlinePortfolioVideo(item);
-            else openPortfolioMediaViewer(item, false);
+            const videoUrl = item.dataset.videoUrl;
+            if (videoUrl) {
+                // For keyboard, maybe open viewer by default, or toggle inline?
+                // Let's stick to opening viewer for consistency with click.
+                openPortfolioMediaViewer(item, true);
+            } else {
+                openPortfolioMediaViewer(item, false);
+            }
         });
     });
 

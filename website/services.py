@@ -231,7 +231,7 @@ class BusinessDetailsService:
     """Manages the singleton BusinessDetails record."""
 
     EDITABLE_FIELDS = [
-        'site_name', 'tagline', 'address', 'phone', 'email', 'working_hours',
+        'site_name', 'tagline', 'address', 'phone1', 'phone2', 'email', 'working_hours',
         'facebook_url', 'instagram_url', 'twitter_url', 'whatsapp_number',
         'meta_description', 'meta_keywords',
         'footer_text',

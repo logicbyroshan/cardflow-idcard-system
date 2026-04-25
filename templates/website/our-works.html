@@ -55,9 +55,15 @@
     <script id="portfolioPageConfig" type="application/json">
         {
             "portfolioBatchSize": {{ portfolio_batch_size|default:12 }},
+            "categoryModalBatchSize": {{ category_modal_batch_size|default:15 }},
             "categoryItemsApi": "{% url 'website:load_more_category_items' %}"
         }
     </script>
+    
+    <!-- Data for JavaScript modal gallery -->
+    {{ category_images|json_script:"categoryImagesData" }}
+    {{ category_items|json_script:"categoryItemsData" }}
+    {{ category_item_totals|json_script:"categoryItemTotalsData" }}
     <section class="portfolio-section" id="portfolio">
         <div class="container">
             <div class="section-header">
@@ -94,7 +100,7 @@
                                 <video class="portfolio-preview-fallback" muted playsinline preload="none" data-preview-primary="{{ item.video_source_url|default:item.video_fallback_url }}" data-preview-fallback="{{ item.video_fallback_url }}" aria-hidden="true"></video>
                                 <div class="portfolio-video-placeholder is-loading"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
                             {% endif %}
-                            <div class="portfolio-play-icon" aria-hidden="true"><i class="fa-solid fa-play-circle"></i></div>
+                            <div class="portfolio-play-icon" role="button" aria-label="Play video inline" tabindex="0"><i class="fa-solid fa-play-circle"></i></div>
                         {% else %}
                             {% if item.image %}
                                 <img data-src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">

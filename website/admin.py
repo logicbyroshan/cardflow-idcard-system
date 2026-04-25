@@ -24,7 +24,7 @@ class BusinessDetailsAdmin(admin.ModelAdmin):
             'fields': ('site_name', 'tagline')
         }),
         ('Contact Information', {
-            'fields': ('email', 'phone', 'address', 'working_hours')
+            'fields': ('email', ('phone1', 'phone2'), 'address', 'working_hours')
         }),
         ('Social Media', {
             'fields': ('facebook_url', 'instagram_url', 'twitter_url', 'whatsapp_number'),

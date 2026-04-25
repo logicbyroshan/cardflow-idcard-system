@@ -273,11 +273,16 @@
                                 <a href="mailto:{{ business.email }}">{{ business.email }}</a>
                             </div>
                             {% endif %}
-                            {% if business.phone %}
+                            {% if business.phone1 or business.phone2 %}
                             <div class="contact-card">
                                 <i class="fa-solid fa-phone"></i>
                                 <h4>Phone</h4>
-                                <a href="tel:{{ business.phone }}">{{ business.phone }}</a>
+                                {% if business.phone1 %}
+                                <a href="tel:{{ business.phone1 }}">{{ business.phone1 }}</a>
+                                {% endif %}
+                                {% if business.phone2 %}
+                                <a href="tel:{{ business.phone2 }}">{{ business.phone2 }}</a>
+                                {% endif %}
                             </div>
                             {% endif %}
                             {% if business.address %}

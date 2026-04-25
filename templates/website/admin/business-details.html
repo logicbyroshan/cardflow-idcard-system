@@ -485,7 +485,7 @@
             <span class="wa-section-bar-left"><i class="fa-solid fa-phone"></i> Contact Info</span>
             {% if is_super_admin or perm_website_edit %}
             <span class="wa-section-bar-actions">
-                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="email,phone,address,working_hours">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="email,phone1,phone2,address,working_hours">
                     <i class="fa-solid fa-save"></i> Save Changes
                 </button>
             </span>
@@ -497,8 +497,14 @@
                 <input type="email" id="email" name="email" value="{{ business.email|default:'' }}">
             </div>
             <div class="wa-form-group">
-                <label for="phone">Phone</label>
-                <input type="text" id="phone" name="phone" value="{{ business.phone|default:'' }}">
+                <label for="phone1">Phone 1</label>
+                <input type="text" id="phone1" name="phone1" value="{{ business.phone1|default:'' }}">
+            </div>
+        </div>
+        <div class="wa-form-row">
+            <div class="wa-form-group">
+                <label for="phone2">Phone 2</label>
+                <input type="text" id="phone2" name="phone2" value="{{ business.phone2|default:'' }}">
             </div>
         </div>
         <div class="wa-form-row">

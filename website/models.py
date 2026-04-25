@@ -54,7 +54,8 @@ class BusinessDetails(models.Model):
     
     # Contact Info
     address = models.CharField(max_length=500, blank=True)
-    phone = models.CharField(max_length=50, blank=True)
+    phone1 = models.CharField(max_length=20, blank=True, help_text='First phone number with country code e.g. 919876543210')
+    phone2 = models.CharField(max_length=20, blank=True, help_text='Second phone number with country code e.g. 919876543211')
     email = models.EmailField(blank=True)
     working_hours = models.CharField(max_length=255, blank=True, help_text='e.g. Mon-Sat: 9AM - 6PM')
     

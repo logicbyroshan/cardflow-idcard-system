@@ -49,7 +49,16 @@
                     <div class="info-icon"><i class="fa-solid fa-phone" aria-hidden="true"></i></div>
                     <div class="info-content">
                         <h3>Phone</h3>
-                        <p>{{ business.phone|default:'Contact us for details' }}</p>
+                        <p>
+                            {% if business.phone1 %}
+                            <a href="tel:{{ business.phone1 }}">{{ business.phone1 }}</a>
+                            {% endif %}
+                            {% if business.phone1 and business.phone2 %}, {% endif %}
+                            {% if business.phone2 %}
+                            <a href="tel:{{ business.phone2 }}">{{ business.phone2 }}</a>
+                            {% endif %}
+                            {% if not business.phone1 and not business.phone2 %}Contact us for details{% endif %}
+                        </p>
                     </div>
                 </div>
                 

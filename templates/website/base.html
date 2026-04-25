@@ -69,7 +69,7 @@
           },
           "contactPoint": {
             "@type": "ContactPoint",
-            "telephone": "{{ business.phone }}",
+            "telephone": "{{ business.phone1 }}",
             "contactType": "customer service",
             "email": "{{ business.email }}"
           },
@@ -105,10 +105,16 @@
     <div class="top-bar">
         <div class="container">
             <div class="top-bar-content">
-                {% if business.phone %}
-                    <a href="tel:{{ business.phone|cut:' '|cut:'-'|cut:'('|cut:')' }}" class="top-bar-item" aria-label="Call {{ business.phone }}">
-                        <i class="fa-solid fa-phone" aria-hidden="true"></i>
-                        <span>{{ business.phone }}</span>
+                {% if business.phone1 %}
+                    <a href="https://wa.me/{{ business.phone1|cut:'+'|cut:' '|cut:'-'|cut:'('|cut:')' }}?text={{ 'Hello, I want to know more about your products.'|urlencode }}" class="top-bar-item" aria-label="WhatsApp {{ business.phone1 }}" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+                        <span>{{ business.phone1 }}</span>
+                    </a>
+                {% endif %}
+                {% if business.phone2 %}
+                    <a href="https://wa.me/{{ business.phone2|cut:'+'|cut:' '|cut:'-'|cut:'('|cut:')' }}?text={{ 'Hello, I want to know more about your products.'|urlencode }}" class="top-bar-item" aria-label="WhatsApp {{ business.phone2 }}" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+                        <span>{{ business.phone2 }}</span>
                     </a>
                 {% endif %}
                 {% if business.email %}

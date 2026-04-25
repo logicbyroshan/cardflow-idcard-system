@@ -109,6 +109,18 @@
 </section>
 
 {% include 'website/includes/modals.html' %}
+
+<script id="portfolioPageConfig" type="application/json">
+    {
+        "categoryModalBatchSize": {{ category_modal_batch_size|default:15 }},
+        "categoryItemsApi": "{% url 'website:load_more_category_items' %}"
+    }
+</script>
+
+<!-- Data for JavaScript modal gallery -->
+{{ category_images|json_script:"categoryImagesData" }}
+{{ category_items|json_script:"categoryItemsData" }}
+{{ category_item_totals|json_script:"categoryItemTotalsData" }}
 {% endblock %}
 
 {% block extra_js %}
