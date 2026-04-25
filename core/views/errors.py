@@ -128,9 +128,13 @@ def csrf_failure(request, reason=''):
     user = getattr(request, 'user', None)
     if not user or not getattr(user, 'is_authenticated', False):
         if is_ajax:
+            # If they are already on the login page, the "session expired" message is confusing.
+            is_login_page = '/auth/login/' in (request.headers.get('Referer', '') or '')
+            message = 'Security token expired. Please refresh.' if is_login_page else 'Session expired. Please log in again.'
+            
             return JsonResponse({
                 'success': False,
-                'message': 'Your session has expired. Please log in again.',
+                'message': message,
                 'redirect': login_url,
                 'force_logout': True,
             }, status=403)

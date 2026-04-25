@@ -60,7 +60,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Session expired. Please refresh the page.');
             }
             if (response.status === 403) {
-                throw new Error('Request was blocked (CSRF). Please refresh the page and try again.');
+                // CSRF token expired or missing - auto-refresh to recover
+                window.location.reload();
+                return new Promise(() => {}); // Return a pending promise to stop execution
             }
             throw new Error('Server error (' + response.status + '). Please refresh and try again.');
         }

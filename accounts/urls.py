@@ -21,6 +21,9 @@ urlpatterns = [
     # Login page (multi-step: email → password)
     path('login/', views.LoginPageView.as_view(), name='login'),
     
+    # CSRF token acquisition
+    path('csrf/', views.GetCSRFTokenView.as_view(), name='get_csrf_token'),
+    
     # Logout
     path('logout/', views.LogoutView.as_view(), name='logout'),
     

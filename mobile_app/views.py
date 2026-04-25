@@ -1192,51 +1192,17 @@ def api_mobile_login(request):
         if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
             current_session_key = request.session.session_key or ''
 
-        surface_limits = AuthService.role_surface_limits(user)
-        max_mobile_sessions = int(surface_limits.get('mobile', 1) or 1)
+        # Check for existing sessions (for logging purposes)
         session_inspection = AuthService.inspect_active_sessions_for_user(
             user.id,
             browser_fingerprint=browser_fingerprint,
             exclude_session_key=current_session_key,
-            stop_after=max_mobile_sessions + 1,
         )
         surface_counts = session_inspection.get('surface_counts') or {}
         active_mobile_sessions = int(surface_counts.get('mobile', 0) or 0)
 
-        if active_mobile_sessions >= max_mobile_sessions and force_logout_other:
-            revoke_needed = max(1, active_mobile_sessions - max_mobile_sessions + 1)
-            AuthService.revoke_active_sessions_for_user(
-                user.id,
-                surface='mobile',
-                exclude_session_key=current_session_key,
-                max_revoke=revoke_needed,
-            )
-            session_inspection = AuthService.inspect_active_sessions_for_user(
-                user.id,
-                browser_fingerprint=browser_fingerprint,
-                exclude_session_key=current_session_key,
-                stop_after=max_mobile_sessions + 1,
-            )
-            surface_counts = session_inspection.get('surface_counts') or {}
-            active_mobile_sessions = int(surface_counts.get('mobile', 0) or 0)
-
-        if active_mobile_sessions >= max_mobile_sessions:
-            active_session_devices = AuthService.list_active_sessions_for_user(
-                user.id,
-                surface='mobile',
-                exclude_session_key=current_session_key,
-                limit=4,
-            )
-            return JsonResponse({
-                'success': False,
-                'session_limit_hit': True,
-                'can_force_logout_other': True,
-                'takeover_surface': 'mobile',
-                'active_session_devices': active_session_devices,
-                'message': f'Maximum {max_mobile_sessions} active mobile login(s) are allowed for this account. Logout from the other mobile to continue.',
-            }, status=200)
-
         auth_login(request, user)
+        
         request.session['selected_role'] = getattr(user, 'role', '')
         AuthService.apply_session_auth_context(
             request,
@@ -2425,7 +2391,7 @@ def card_list(request, table_id, status):
 
     def _is_image_like_name(raw_name):
         _name = str(raw_name).strip().lower()
-        if not _name:
+        if not _name or _name.startswith(('ref', '__', '_')):
             return False
         return any(_kw in _name for _kw in image_field_keywords)
 

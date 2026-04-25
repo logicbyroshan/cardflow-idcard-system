@@ -88,6 +88,16 @@ class LoginPageView(View):
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
+class GetCSRFTokenView(View):
+    """
+    Dedicated endpoint to acquire a fresh CSRF token.
+    Useful for PWAs or AJAX-heavy flows that need to recover from expired tokens.
+    """
+    def get(self, request):
+        return JsonResponse({'success': True})
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class SecureCredentialVaultView(View):
     """
     Render the Secure Credential Vault page.
@@ -340,59 +350,14 @@ class LoginAPIView(View):
                 if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
                     current_session_key = request.session.session_key or ''
 
-                surface_limits = AuthService.role_surface_limits(user)
-                max_desktop_sessions = int(surface_limits.get('desktop', 1) or 1)
+                # Check for existing sessions (for logging/UI purposes)
                 session_inspection = AuthService.inspect_active_sessions_for_user(
                     user.id,
                     browser_fingerprint=browser_fingerprint,
                     exclude_session_key=current_session_key,
-                    stop_after=max_desktop_sessions + 1,
                 )
-                surface_counts = session_inspection.get('surface_counts') or {}
-                active_sessions = int(surface_counts.get('desktop', 0) or 0)
                 has_different_browser_session = bool(session_inspection.get('has_different_browser'))
-
-                if active_sessions >= max_desktop_sessions and force_logout_other:
-                    revoke_needed = max(1, active_sessions - max_desktop_sessions + 1)
-                    AuthService.revoke_active_sessions_for_user(
-                        user.id,
-                        surface='desktop',
-                        exclude_session_key=current_session_key,
-                        max_revoke=revoke_needed,
-                    )
-                    session_inspection = AuthService.inspect_active_sessions_for_user(
-                        user.id,
-                        browser_fingerprint=browser_fingerprint,
-                        exclude_session_key=current_session_key,
-                        stop_after=max_desktop_sessions + 1,
-                    )
-                    surface_counts = session_inspection.get('surface_counts') or {}
-                    active_sessions = int(surface_counts.get('desktop', 0) or 0)
-                    has_different_browser_session = bool(session_inspection.get('has_different_browser'))
-
-                if active_sessions >= max_desktop_sessions:
-                    active_session_devices = AuthService.list_active_sessions_for_user(
-                        user.id,
-                        surface='desktop',
-                        exclude_session_key=current_session_key,
-                        limit=4,
-                    )
-                    logger.warning(
-                        "Login blocked by desktop session limit: user=%s role=%s ip=%s active_desktop_sessions=%s desktop_limit=%s",
-                        _mask_login_identifier(identifier),
-                        resolved_role,
-                        client_ip,
-                        active_sessions,
-                        max_desktop_sessions,
-                    )
-                    return JsonResponse({
-                        'success': False,
-                        'session_limit_hit': True,
-                        'can_force_logout_other': True,
-                        'takeover_surface': 'desktop',
-                        'active_session_devices': active_session_devices,
-                        'message': f'Maximum {max_desktop_sessions} active desktop login(s) are allowed for this account. Logout from the other desktop/browser to continue.'
-                    })
+                active_sessions = session_inspection.get('count', 0)
 
                 # Log the user in
                 login(request, user)

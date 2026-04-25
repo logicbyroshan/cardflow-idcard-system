@@ -402,6 +402,46 @@
     }
 
     // ==========================================
+    // GLOBAL SESSION INTERCEPTOR (401/403)
+    // ==========================================
+
+    /**
+     * Intercept 401 Unauthorized errors globally and trigger a page reload.
+     * This ensures that when a session expires (e.g. in another tab), the user 
+     * is redirected to the login page on their next interaction.
+     */
+    function initSessionInterceptor() {
+        // Intercept native Fetch API
+        if (typeof window.fetch === 'function') {
+            const originalFetch = window.fetch;
+            window.fetch = async function(...args) {
+                try {
+                    const response = await originalFetch.apply(this, args);
+                    if (response.status === 401) {
+                        window.location.reload();
+                    }
+                    return response;
+                } catch (err) {
+                    throw err;
+                }
+            };
+        }
+
+        // Intercept XMLHttpRequest (for jQuery, HTMX, etc.)
+        if (typeof XMLHttpRequest !== 'undefined') {
+            const originalOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function() {
+                this.addEventListener('load', function() {
+                    if (this.status === 401) {
+                        window.location.reload();
+                    }
+                });
+                return originalOpen.apply(this, arguments);
+            }
+        }
+    }
+
+    // ==========================================
     // INITIALIZATION
     // ==========================================
 
@@ -413,6 +453,9 @@
 
         // Log module status
         const status = logModuleStatus();
+
+        // Initialize session interceptor (401/403 handling)
+        initSessionInterceptor();
 
         // Initialize global keyboard shortcuts
         initKeyboardShortcuts();

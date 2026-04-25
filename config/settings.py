@@ -309,7 +309,8 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 # ── Cookie hardening (always applied, both dev and prod) ──
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 7   # 7-day sessions — PWA auto-logout
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30   # 30-day sessions
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False # Session persists after browser close
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
 # Ensure session cookie expiry is extended on every request.
 # Active users will never face session cookie expiration.
@@ -318,27 +319,20 @@ SESSION_SAVE_EVERY_REQUEST = True
 # Note: CSRF_COOKIE_HTTPONLY left False (Django default) because JS reads
 # the csrftoken cookie via getCSRFToken() for AJAX requests.
 
-# ── Cross-subdomain cookies ──
-# If SESSION_COOKIE_DOMAIN is set (e.g. ".adarshbhopal.in"), the session
-# cookie is readable by ALL subdomains.  Only needed if you want a login
-# on panel.* to also be recognised on www.* (rare — www is public).
-_session_cookie_domain = os.getenv('SESSION_COOKIE_DOMAIN', '').strip()
-_allow_wildcard_session_cookie = _env_bool('ALLOW_WILDCARD_SESSION_COOKIE_DOMAIN', False)
-_is_wildcard_cookie_domain = _session_cookie_domain.startswith('.')
-if _session_cookie_domain and (not _is_wildcard_cookie_domain or _allow_wildcard_session_cookie):
-    SESSION_COOKIE_DOMAIN = _session_cookie_domain
-
-# CSRF cookie domain — must match the session cookie domain when using
-# subdomains, otherwise the csrftoken cookie set on one subdomain is
-# invisible to another and POST requests fail with 403.
-_csrf_cookie_domain_fallback = (
-    _session_cookie_domain
-    if (not _is_wildcard_cookie_domain or _allow_wildcard_session_cookie)
-    else ''
-)
-_csrf_cookie_domain = os.getenv('CSRF_COOKIE_DOMAIN', _csrf_cookie_domain_fallback).strip()
-if _csrf_cookie_domain:
-    CSRF_COOKIE_DOMAIN = _csrf_cookie_domain
+# ── Domain restriction ──
+# Enforce authentication only on the panel subdomain.
+if not DEBUG:
+    SESSION_COOKIE_DOMAIN = "panel.adarshbhopal.in"
+    CSRF_COOKIE_DOMAIN = "panel.adarshbhopal.in"
+else:
+    # Local development support
+    _session_cookie_domain = os.getenv('SESSION_COOKIE_DOMAIN', '').strip()
+    if _session_cookie_domain:
+        SESSION_COOKIE_DOMAIN = _session_cookie_domain
+    
+    _csrf_cookie_domain = os.getenv('CSRF_COOKIE_DOMAIN', '').strip()
+    if _csrf_cookie_domain:
+        CSRF_COOKIE_DOMAIN = _csrf_cookie_domain
 
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.

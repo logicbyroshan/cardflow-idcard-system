@@ -1379,7 +1379,7 @@ function listApp() {
 
         _isImageLikeFieldName(name) {
             const n = this._normalizeFieldName(name);
-            if (!n) return false;
+            if (!n || n.startsWith('ref') || n.startsWith('__') || n.startsWith('_')) return false;
             return n.includes('photo') || n.includes('image') || n.includes('signature') || n.includes('barcode') || n.includes('qr');
         },
 
@@ -1766,6 +1766,7 @@ function listApp() {
             const names = [];
             const seen = {};
 
+            // 1. Prioritize explicit table definitions
             (this.tableFields || []).forEach((f) => {
                 if (!this._isPhotoFieldDef(f)) return;
                 const n = String(f.name || '').trim();
@@ -1776,11 +1777,20 @@ function listApp() {
                 names.push(n);
             });
 
+            // 2. Discover ad-hoc fields only if we haven't found enough in definitions
+            //    or if they are very clearly intended (non-reference)
+            const hasTablePhotos = names.length > 0;
             Object.keys(source).forEach((k) => {
                 const key = String(k || '').trim();
                 if (!key || !this._isImageLikeFieldName(key)) return;
+                
                 const lk = this._normalizeLookupKey(key);
                 if (!lk || seen[lk]) return;
+
+                // If table already defines photos, don't auto-add more from data keys 
+                // unless it's a completely empty table definition.
+                if (hasTablePhotos) return;
+
                 seen[lk] = true;
                 names.push(key);
             });
