@@ -819,6 +819,87 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		)
 		self.assertEqual(response.status_code, 400)
 
+	def test_filtered_select_all_ids_match_bulk_verify_with_expected_skips(self):
+		self.admin_staff_profile.perm_idcard_pending_list = True
+		self.admin_staff_profile.perm_idcard_verify = True
+		self.admin_staff_profile.save(update_fields=['perm_idcard_pending_list', 'perm_idcard_verify'])
+		self.admin_staff_profile.assigned_clients.set([self.client_profile])
+		self._login_mobile_admin_staff()
+		table = IDCardTable.objects.create(
+			group=self.group,
+			name='Filtered Select All Verify Table',
+			fields=[
+				{'name': 'NAME', 'type': 'text', 'order': 0, 'mandatory': True},
+				{'name': 'CLASS', 'type': 'class', 'order': 1},
+				{'name': 'SECTION', 'type': 'section', 'order': 2},
+			],
+		)
+
+		eligible_ids = []
+		skipped_ids = []
+		for idx in range(60):
+			is_eligible = idx < 38
+			fd = {
+				'CLASS': '2',
+				'SECTION': 'C',
+			}
+			if is_eligible:
+				fd['NAME'] = f'Select All Eligible {idx:02d}'
+			else:
+				fd['NAME'] = ''
+
+			card = IDCard.objects.create(
+				table=table,
+				field_data=fd,
+				status='pending',
+			)
+			if is_eligible:
+				eligible_ids.append(card.id)
+			else:
+				skipped_ids.append(card.id)
+
+		# Noise rows outside the selected class/section filter.
+		for idx in range(5):
+			IDCard.objects.create(
+				table=table,
+				field_data={'NAME': f'Noise {idx:02d}', 'CLASS': '2', 'SECTION': 'B'},
+				status='pending',
+			)
+
+		ids_response = self.client.get(
+			f'/app/api/table/{table.id}/cards/all-ids/?status=pending&class=2&section=C'
+		)
+		self.assertEqual(ids_response.status_code, 200)
+		ids_payload = ids_response.json()
+		self.assertTrue(ids_payload['success'])
+		selected_ids = ids_payload.get('card_ids') or []
+		self.assertEqual(len(selected_ids), 60)
+		self.assertEqual(set(selected_ids), set(eligible_ids + skipped_ids))
+
+		bulk_response = self.client.post(
+			f'/app/api/table/{table.id}/bulk-status/',
+			data=json.dumps({'card_ids': selected_ids, 'status': 'verified'}),
+			content_type='application/json',
+		)
+		self.assertEqual(bulk_response.status_code, 200)
+		bulk_payload = bulk_response.json()
+		self.assertTrue(bulk_payload['success'])
+		self.assertEqual(int(bulk_payload.get('updated_count') or 0), 38)
+		self.assertEqual(int(bulk_payload.get('skipped_count') or 0), 22)
+		self.assertEqual(set(bulk_payload.get('skipped_ids') or []), set(skipped_ids))
+
+		remaining_pending = set(
+			IDCard.objects.filter(table=table, status='pending', field_data__CLASS='2', field_data__SECTION='C')
+			.values_list('id', flat=True)
+		)
+		moved_verified = set(
+			IDCard.objects.filter(table=table, status='verified', field_data__CLASS='2', field_data__SECTION='C')
+			.values_list('id', flat=True)
+		)
+
+		self.assertEqual(remaining_pending, set(skipped_ids))
+		self.assertEqual(moved_verified, set(eligible_ids))
+
 	def test_card_add_requires_add_permission_for_client_role(self):
 		self._login_mobile_client()
 		response = self.client.post(

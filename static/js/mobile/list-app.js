@@ -2356,6 +2356,7 @@ function listApp() {
                 const processedSet = new Set();
                 const skippedSet = new Set();
                 let firstErrorMessage = '';
+                let lastSuccessMessage = '';
 
                 for (let i = 0; i < chunks.length; i += 1) {
                     const batch = chunks[i];
@@ -2377,6 +2378,10 @@ function listApp() {
                         break;
                     }
 
+                    if (data.message) {
+                        lastSuccessMessage = String(data.message);
+                    }
+
                     batch.forEach((id) => processedSet.add(Number(id)));
                     (data.skipped_ids || []).forEach((id) => skippedSet.add(Number(id)));
                 }
@@ -2388,11 +2393,14 @@ function listApp() {
                     const movedIds = processedIds.filter((id) => !skippedSet.has(Number(id)));
                     keepSelected = actedIds.filter((id) => !processedSet.has(Number(id)) || skippedSet.has(Number(id)));
                     const movedCount = movedIds.length;
+                    const skippedCount = skippedSet.size;
 
                     if (firstErrorMessage) {
                         this.showToast(`${movedCount} ${label}. Some records were not processed.`, 'info');
+                    } else if (skippedCount > 0) {
+                        this.showToast(lastSuccessMessage || `${movedCount} ${label}. ${skippedCount} skipped.`, 'info');
                     } else {
-                        this.showToast(`${movedCount} ${label}`, 'success');
+                        this.showToast(lastSuccessMessage || `${movedCount} ${label}`, 'success');
                     }
 
                     // Update top badge counts immediately without waiting for reload.
