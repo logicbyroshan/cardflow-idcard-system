@@ -576,27 +576,11 @@
                     }
                 }
 
-                setUpdateProgress(58, 'Clearing cached assets...');
-                if ('caches' in window) {
-                    var keys = await caches.keys();
-                    var total = keys.length || 1;
-                    for (var k = 0; k < keys.length; k++) {
-                        try { await caches.delete(keys[k]); } catch (err) {}
-                        setUpdateProgress(58 + ((k + 1) / total) * 22, 'Clearing cached assets...');
-                    }
-                }
-
-                setUpdateProgress(84, 'Refreshing service worker...');
-                if (registrations.length) {
-                    for (var r = 0; r < registrations.length; r++) {
-                        try { await registrations[r].unregister(); } catch (err) {}
-                    }
-                }
-
-                setUpdateProgress(96, 'Opening latest app...');
-                var nextUrl = '/app/?updated=' + Date.now();
+                // Keep runtime caches/session path stable: a hard wipe can force zeroed fallback stats.
+                await rampUpdateProgress(58, 88, 260, 'Applying latest app assets...');
+                setUpdateProgress(96, 'Reloading with latest app assets...');
                 setTimeout(function() {
-                    window.location.replace(nextUrl);
+                    window.location.reload();
                 }, 450);
             } catch (err) {
                 setUpdateProgress(100, 'Update failed. Reloading...');

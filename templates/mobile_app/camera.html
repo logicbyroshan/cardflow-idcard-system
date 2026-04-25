@@ -4,6 +4,68 @@
 {% block title %}Camera Capture - Adarsh ID Cards{% endblock %}
 
 {% block extra_head %}
+<style>
+    .passport-safe-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .passport-safe-frame {
+        position: relative;
+        width: min(72vw, 290px);
+        aspect-ratio: 35 / 45;
+        border-radius: 22px;
+        border: 2px solid rgba(255, 255, 255, 0.92);
+        box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.48), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(1px);
+    }
+
+    .passport-safe-frame::before,
+    .passport-safe-frame::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        pointer-events: none;
+    }
+
+    .passport-safe-frame::before {
+        top: 11%;
+        width: 60%;
+        height: 60%;
+        border: 1.5px dashed rgba(255, 255, 255, 0.75);
+        border-radius: 48% 48% 42% 42%;
+    }
+
+    .passport-safe-frame::after {
+        bottom: 26%;
+        width: 78%;
+        border-top: 1px dashed rgba(255, 255, 255, 0.65);
+    }
+
+    .passport-safe-corner {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-color: rgba(255, 255, 255, 0.97);
+        border-style: solid;
+        border-width: 0;
+    }
+
+    .passport-safe-corner.tl { top: 8px; left: 8px; border-top-width: 3px; border-left-width: 3px; }
+    .passport-safe-corner.tr { top: 8px; right: 8px; border-top-width: 3px; border-right-width: 3px; }
+    .passport-safe-corner.bl { bottom: 8px; left: 8px; border-bottom-width: 3px; border-left-width: 3px; }
+    .passport-safe-corner.br { bottom: 8px; right: 8px; border-bottom-width: 3px; border-right-width: 3px; }
+
+    @media (max-width: 380px) {
+        .passport-safe-frame {
+            width: min(78vw, 270px);
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -91,10 +153,15 @@
                :class="{ 'hidden': photoTaken }"></video>
         <canvas x-ref="canvas" class="w-full h-full object-cover"
                 :class="{ 'hidden': !photoTaken }"></canvas>
-        <!-- Face guide -->
-        <div x-show="!photoTaken" class="absolute inset-0 pointer-events-none">
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-60 border-2 border-white/40 rounded-[40%] border-dashed"></div>
-            <p class="absolute bottom-4 left-0 right-0 text-center text-white/60 text-xs">Align face within the guide</p>
+        <!-- Passport portrait safe-area guide -->
+        <div x-show="!photoTaken" class="passport-safe-overlay pointer-events-none">
+            <div class="passport-safe-frame" aria-hidden="true">
+                <span class="passport-safe-corner tl"></span>
+                <span class="passport-safe-corner tr"></span>
+                <span class="passport-safe-corner bl"></span>
+                <span class="passport-safe-corner br"></span>
+            </div>
+            <p class="absolute bottom-4 left-0 right-0 text-center text-white/70 text-xs font-medium tracking-wide">Align head and shoulders inside passport frame</p>
         </div>
         <div x-show="isNativeShell && !photoTaken && !cameraError"
              class="absolute inset-x-0 bottom-32 flex justify-center pointer-events-none">

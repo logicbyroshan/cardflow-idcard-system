@@ -3443,6 +3443,17 @@ class MobileAppProfileUpdateFlowContractTests(TestCase):
 		self.assertIn('payload.update_required', content)
 		self.assertIn('payload.update_recommended', content)
 
+	def test_base_template_update_flow_uses_safe_reload_without_destructive_reset(self):
+		base_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'base.html'
+		content = base_path.read_text(encoding='utf-8')
+
+		self.assertIn("setUpdateProgress(96, 'Reloading with latest app assets...');", content)
+		self.assertIn('window.location.reload();', content)
+		self.assertNotIn('window.location.replace(nextUrl);', content)
+		self.assertNotIn("'/app/?updated=' + Date.now()", content)
+		self.assertNotIn('await caches.delete(keys[k]);', content)
+		self.assertNotIn('await registrations[r].unregister();', content)
+
 
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 	def _post_json(self, url, payload):
