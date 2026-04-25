@@ -71,6 +71,8 @@ class ImpersonateService:
         original_user_id = current_user.pk
         original_user_name = current_user.get_full_name() or current_user.username
 
+        # Impersonation should not revoke the target user's real device sessions.
+        request._skip_device_session_enforcement = True
         # Switch to target user — login() flushes and recreates the session
         login(request, target_user, backend='django.contrib.auth.backends.ModelBackend')
 
@@ -119,6 +121,8 @@ class ImpersonateService:
 
         impersonated_name = request.user.get_full_name() or request.user.username
 
+        # Returning from impersonation should also avoid side-effect session revocations.
+        request._skip_device_session_enforcement = True
         # Switch back — login() flushes the session (clears impersonation markers)
         login(request, original_user, backend='django.contrib.auth.backends.ModelBackend')
 

@@ -54,6 +54,11 @@ def manage_user_device_sessions(sender, request, user, **kwargs):
     if not user or not user.id:
         return
 
+    # Impersonation transitions intentionally bypass global device-limit enforcement
+    # so acting as a user from Pro mode does not log out that user's real devices.
+    if getattr(request, '_skip_device_session_enforcement', False):
+        return
+
     from django.db import transaction
     import logging
     logger = logging.getLogger(__name__)

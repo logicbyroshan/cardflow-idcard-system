@@ -616,6 +616,12 @@ def _admin_accessible_client_ids(user):
         result = None
     elif PermissionService.is_admin_staff(user):
         result = PermissionService.get_accessible_client_ids(user)
+        # Defensive fallback: if cached scope is empty but staff has assignments,
+        # read directly from M2M to avoid temporary stale-zero dashboards.
+        if not result:
+            staff = getattr(user, 'staff_profile', None)
+            if staff is not None:
+                result = list(staff.assigned_clients.values_list('id', flat=True))
     else:
         result = []
 
@@ -1576,23 +1582,13 @@ self.addEventListener('fetch', function(event) {
 def home(request):
     """Home dashboard with real card counts and recent activity."""
     user = request.user
-    
-    # Refresh user's related objects from database on each load
-    # This fixes stale cache issues after app updates and reloads
-    # Force fresh queries for client_profile and staff_profile relationships
-    try:
-        if PermissionService.is_client(user):
-            # Refresh client_profile - force a fresh DB query
-            fresh_user = type(user).objects.select_related('client_profile').get(pk=user.pk)
-            if hasattr(fresh_user, 'client_profile') and fresh_user.client_profile:
-                user.client_profile = fresh_user.client_profile
-        elif PermissionService.is_client_staff(user):
-            # Refresh staff_profile - force a fresh DB query  
-            fresh_user = type(user).objects.select_related('staff_profile__client').get(pk=user.pk)
-            if hasattr(fresh_user, 'staff_profile') and fresh_user.staff_profile:
-                user.staff_profile = fresh_user.staff_profile
-    except Exception as e:
-        logger.debug('Failed to refresh user related objects on home view: %s', e)
+
+    # Ensure related-object caches do not hold stale values between auth transitions.
+    # request.user is a SimpleLazyObject here, so avoid model-manager access on its type.
+    if PermissionService.is_client(user):
+        user.__dict__.pop('_client_profile_cache', None)
+    elif PermissionService.is_client_staff(user):
+        user.__dict__.pop('_staff_profile_cache', None)
     
     client, perms = _client_ctx(user)
     if not client:
@@ -1605,6 +1601,60 @@ def home(request):
     accessible_ids = _admin_accessible_client_ids(user) if _is_admin else None
 
     result = ClientDashboardService.get_dashboard_data(user, client=client)
+
+    def _compute_mobile_counts_fallback(_user, _client_obj):
+        """Direct DB fallback counts to keep mobile stats aligned with desktop."""
+        _counts = {
+            'pending': 0,
+            'verified': 0,
+            'approved': 0,
+            'download': 0,
+            'pool': 0,
+            'reprint': 0,
+        }
+
+        _tables_qs = IDCardTable.objects.filter(group__client=_client_obj, is_active=True)
+        if PermissionService.is_client_staff(_user):
+            _staff = getattr(_user, 'staff_profile', None)
+            if not _staff:
+                return _counts
+            _assigned_tids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
+            _assigned_gids = _staff_assigned_group_ids_for_access(_staff)
+            if _assigned_tids and _assigned_gids:
+                _tables_qs = _tables_qs.filter(Q(id__in=_assigned_tids) | Q(group_id__in=_assigned_gids))
+            elif _assigned_tids:
+                _tables_qs = _tables_qs.filter(id__in=_assigned_tids)
+            elif _assigned_gids:
+                _tables_qs = _tables_qs.filter(group_id__in=_assigned_gids)
+
+        _tables = list(_tables_qs.only('id', 'fields'))
+        if not _tables:
+            return _counts
+
+        if PermissionService.is_client_staff(_user):
+            for _table in _tables:
+                _scoped_qs = ClientCardService._apply_client_staff_row_scope(
+                    _user,
+                    _table,
+                    IDCard.objects.filter(table_id=_table.id),
+                )
+                for _row in _scoped_qs.values('status').annotate(n=Count('id')):
+                    _status = _row.get('status')
+                    if _status in _counts:
+                        _counts[_status] += int(_row.get('n', 0) or 0)
+            return _counts
+
+        _rows = (
+            IDCard.objects
+            .filter(table_id__in=[_t.id for _t in _tables])
+            .values('status')
+            .annotate(n=Count('id'))
+        )
+        for _row in _rows:
+            _status = _row.get('status')
+            if _status in _counts:
+                _counts[_status] += int(_row.get('n', 0) or 0)
+        return _counts
 
     tables = IDCardTable.objects.filter(
         group__client=client, is_active=True,
@@ -1678,6 +1728,20 @@ def home(request):
     elif result.success:
         data = result.data
         counts = data.get('counts', data.get('card_counts', {}))
+        # If service unexpectedly returns all-zero while tables exist,
+        # recompute directly from DB to match desktop dashboard numbers.
+        _service_total = int(data.get('total_cards', 0) or 0)
+        if _service_total == 0 and tables.exists():
+            _fallback_counts = _compute_mobile_counts_fallback(user, client)
+            _fallback_total = (
+                _fallback_counts.get('pending', 0)
+                + _fallback_counts.get('verified', 0)
+                + _fallback_counts.get('approved', 0)
+                + _fallback_counts.get('download', 0)
+            )
+            if _fallback_total > 0:
+                counts = _fallback_counts
+                data = {**data, 'total_cards': _fallback_total}
         ctx.update({
             'pending_count': counts.get('pending', 0),
             'verified_count': counts.get('verified', 0),
@@ -1687,10 +1751,20 @@ def home(request):
             'total_cards': data.get('total_cards', 0),
         })
     else:
+        _fallback_counts = _compute_mobile_counts_fallback(user, client)
+        _fallback_total = (
+            _fallback_counts.get('pending', 0)
+            + _fallback_counts.get('verified', 0)
+            + _fallback_counts.get('approved', 0)
+            + _fallback_counts.get('download', 0)
+        )
         ctx.update({
-            'pending_count': 0, 'verified_count': 0,
-            'approved_count': 0, 'download_count': 0,
-            'pool_count': 0, 'total_cards': 0,
+            'pending_count': _fallback_counts.get('pending', 0),
+            'verified_count': _fallback_counts.get('verified', 0),
+            'approved_count': _fallback_counts.get('approved', 0),
+            'download_count': _fallback_counts.get('download', 0),
+            'pool_count': _fallback_counts.get('pool', 0),
+            'total_cards': _fallback_total,
         })
 
     # Build card-based recent activity in the exact format the template expects

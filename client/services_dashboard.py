@@ -223,15 +223,10 @@ class ClientDashboardService(BaseService):
             if table_ids:
                 if PermissionService.is_client_staff(user):
                     staff = getattr(user, 'staff_profile', None)
-                    restricted_tables = []
 
-                    if staff is not None:
-                        for table in tables:
-                            allowed_classes, allowed_sections, allowed_branches = ClientCardService._table_scope_filters(staff, table)
-                            if allowed_classes or allowed_sections or allowed_branches:
-                                restricted_tables.append(table)
-
-                    for table in restricted_tables:
+                    # Always evaluate all accessible tables. The row-scope helper already
+                    # returns full table rows when no class/section/branch restriction exists.
+                    for table in tables:
                         scoped_qs = ClientCardService._apply_client_staff_row_scope(
                             user,
                             table,
@@ -327,16 +322,9 @@ class ClientDashboardService(BaseService):
             group_counts_map = defaultdict(dict)
 
             if PermissionService.is_client_staff(user):
-                staff = getattr(user, 'staff_profile', None)
-                restricted_tables = []
-
-                if staff is not None:
-                    for table in accessible_tables:
-                        allowed_classes, allowed_sections, allowed_branches = ClientCardService._table_scope_filters(staff, table)
-                        if allowed_classes or allowed_sections or allowed_branches:
-                            restricted_tables.append(table)
-
-                for table in restricted_tables:
+                # Same rule as get_dashboard_data(): apply row-scope across every
+                # accessible table to avoid dropping counts to zero for unscoped staff.
+                for table in accessible_tables:
                     table_cache_key = cls._group_staff_table_counts_cache_key(
                         user,
                         table.id,
