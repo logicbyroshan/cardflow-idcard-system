@@ -1336,6 +1336,14 @@ def pwa_service_worker(request):
         '/app/search/',
     ]
 
+    # Exclude login and CSRF from caching (Step 10)
+    online_required_prefixes.extend([
+        '/panel/auth/login/',
+        '/panel/auth/csrf/',
+        '/auth/login/',
+        '/csrf/',
+    ])
+
     sw_template = """\
 /* Adarsh ID Cards — PWA Service Worker (Phase 5) */
 const CACHE_GROUP = '__CACHE_GROUP__';
@@ -1741,11 +1749,22 @@ def home(request):
             client_ids = [c.id for c in client_list]
 
             # 1 query: card counts by (client, status) for all visible clients
-            _cc_raw = (
-                IDCard.objects.filter(table__group__client_id__in=client_ids)
-                .values('table__group__client_id', 'status')
-                .annotate(n=Count('id'))
-            )
+            _cc_qs = IDCard.objects.filter(table__group__client_id__in=client_ids)
+            if PermissionService.is_client_staff(user):
+                # For staff, we must iterate clients/tables because row-scope is table-specific.
+                # However, for the dashboard top-level, we can at least filter by assigned tables.
+                staff = getattr(user, 'staff_profile', None)
+                if staff:
+                    _assigned_tids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
+                    _assigned_gids = _staff_assigned_group_ids_for_access(staff)
+                    if _assigned_tids and _assigned_gids:
+                        _cc_qs = _cc_qs.filter(Q(table_id__in=_assigned_tids) | Q(table__group_id__in=_assigned_gids))
+                    elif _assigned_tids:
+                        _cc_qs = _cc_qs.filter(table_id__in=_assigned_tids)
+                    elif _assigned_gids:
+                        _cc_qs = _cc_qs.filter(table__group_id__in=_assigned_gids)
+
+            _cc_raw = _cc_qs.values('table__group__client_id', 'status').annotate(n=Count('id'))
             _cc_map = {}
             for _row in _cc_raw:
                 _cc_map.setdefault(_row['table__group__client_id'], {})[_row['status']] = _row['n']
@@ -1824,19 +1843,20 @@ def home(request):
             _gc_map = {}
             _tc_map = {}
             if _table_ids:
-                _gc_raw = (
-                    IDCard.objects.filter(table_id__in=_table_ids)
-                    .values('table__group_id', 'status')
-                    .annotate(n=Count('id'))
-                )
+                # Optimized: Build status maps for groups and tables in the assigned scope.
+                _cards_qs = IDCard.objects.filter(table_id__in=_table_ids)
+                if PermissionService.is_client_staff(user):
+                    # Apply row-level scope (Class/Section) to the counts as well.
+                    # We have to do this carefully since _apply_client_staff_row_scope is table-specific.
+                    # For performance on dashboard, we use a slightly more generic approach if possible,
+                    # but here we can just apply it to the whole queryset since all tables belong to the same staff.
+                    _cards_qs = ClientCardService._apply_client_staff_row_scope(user, None, _cards_qs)
+
+                _gc_raw = _cards_qs.values('table__group_id', 'status').annotate(n=Count('id'))
                 for _row in _gc_raw:
                     _gc_map.setdefault(_row['table__group_id'], {})[_row['status']] = _row['n']
 
-                _tc_raw = (
-                    IDCard.objects.filter(table_id__in=_table_ids)
-                    .values('table_id', 'status')
-                    .annotate(n=Count('id'))
-                )
+                _tc_raw = _cards_qs.values('table_id', 'status').annotate(n=Count('id'))
                 for _row in _tc_raw:
                     _tc_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
 
@@ -2503,18 +2523,23 @@ def card_list(request, table_id, status):
             slots.append({'url': primary_photo_url, 'has_path': True})
             urls.append(primary_photo_url)
 
-        for _key, _val in _fd.items():
-            _kl = str(_key).strip().lower()
-            if not _is_image_like_name(_kl):
-                continue
-            _url, _has_path = _normalize_photo_value(_val)
-            if _url and _url not in urls:
-                slots.append({'url': _url, 'has_path': True})
-                urls.append(_url)
-            elif not _url and _has_path:
-                slots.append({'url': None, 'has_path': True})
+        # Only auto-discover fields if table definition is empty or generic.
+        # This prevents "REF_PHOTO" etc. from creating excessive columns when
+        # explicit fields like "STUDENT PHOTO" are already present.
+        if not photo_field_names:
+            for _key, _val in _fd.items():
+                _kl = str(_key).strip().lower()
+                if not _is_image_like_name(_kl):
+                    continue
+                _url, _has_path = _normalize_photo_value(_val)
+                if _url and _url not in urls:
+                    slots.append({'url': _url, 'has_path': True})
+                    urls.append(_url)
+                elif not _url and _has_path:
+                    slots.append({'url': None, 'has_path': True})
 
         if not slots:
+            # Absolute fallback: search all values for anything that looks like a path/URL
             for _val in _fd.values():
                 _url, _has_path = _normalize_photo_value(_val)
                 if _url and _url not in urls:
@@ -2649,7 +2674,11 @@ def card_list(request, table_id, status):
         }
     # Count badges — single aggregate query replaces 4 separate COUNTs
     tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
-    for _row in IDCard.objects.filter(table=table).values('status').annotate(n=Count('id')):
+    _tab_counts_qs = IDCard.objects.filter(table=table)
+    if PermissionService.is_client_staff(user):
+        _tab_counts_qs = ClientCardService._apply_client_staff_row_scope(user, table, _tab_counts_qs)
+    
+    for _row in _tab_counts_qs.values('status').annotate(n=Count('id')):
         if _row['status'] in tab_counts:
             tab_counts[_row['status']] = _row['n']
 
@@ -2945,12 +2974,18 @@ def reprint_table(request, table_id):
     if notice_type not in ('success', 'error', 'info'):
         notice_type = 'info'
 
-    counts_raw = (
-        ReprintRequest.objects
-        .filter(table=table, status__in=['requested', 'confirmed'], card__status='download')
-        .values('status')
-        .annotate(n=Count('id'))
+    _counts_qs = ReprintRequest.objects.filter(
+        table=table, status__in=['requested', 'confirmed'], card__status='download'
     )
+    if PermissionService.is_client_staff(user):
+        # We use ClientCardService row scope logic on the card relation
+        _counts_qs = _counts_qs.filter(
+            card_id__in=ClientCardService._apply_client_staff_row_scope(
+                user, table, IDCard.objects.filter(table=table)
+            ).values_list('id', flat=True)
+        )
+
+    counts_raw = _counts_qs.values('status').annotate(n=Count('id'))
     step_counts = {'requested': 0, 'confirmed': 0}
     for row in counts_raw:
         if row['status'] in step_counts:
@@ -3470,9 +3505,15 @@ def api_cards(request, table_id):
         page, per_page = 1, 50
 
     offset = (page - 1) * per_page
+    # Ensure status filter is never None for mobile list API, to prevent showing Approved in Pending.
+    # If the param is missing, we default to 'pending' to keep the view scoped.
+    _actual_status = status_filter or None
+    if not _actual_status and not search:
+        _actual_status = 'pending'
+
     result = ClientCardService.get_cards(
         request.user, table_id,
-        status_filter or None, offset, per_page,
+        _actual_status, offset, per_page,
         search or None,
         from_date=from_date,
         to_date=to_date,

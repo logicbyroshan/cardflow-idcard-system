@@ -161,6 +161,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Device-based session management — tracks last_active per device/session
+    'accounts.middleware.DeviceSessionMiddleware',
     # Messages MUST be before custom middleware so force-logout redirects
     # can attach messages that are visible on the landing page.
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -306,33 +308,21 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
-# ── Cookie hardening (always applied, both dev and prod) ──
+# ── Cookie hardening ──
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
+SESSION_COOKIE_SECURE = True           # Enforce HTTPS
+CSRF_COOKIE_SECURE = True              # Enforce HTTPS
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30   # 30-day sessions
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False # Session persists after browser close
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
 # Ensure session cookie expiry is extended on every request.
-# Active users will never face session cookie expiration.
-# The SessionIdleTimeoutMiddleware still enforces idle/absolute limits.
 SESSION_SAVE_EVERY_REQUEST = True
-# Note: CSRF_COOKIE_HTTPONLY left False (Django default) because JS reads
-# the csrftoken cookie via getCSRFToken() for AJAX requests.
 
 # ── Domain restriction ──
-# Enforce authentication only on the panel subdomain.
-if not DEBUG:
-    SESSION_COOKIE_DOMAIN = "panel.adarshbhopal.in"
-    CSRF_COOKIE_DOMAIN = "panel.adarshbhopal.in"
-else:
-    # Local development support
-    _session_cookie_domain = os.getenv('SESSION_COOKIE_DOMAIN', '').strip()
-    if _session_cookie_domain:
-        SESSION_COOKIE_DOMAIN = _session_cookie_domain
-    
-    _csrf_cookie_domain = os.getenv('CSRF_COOKIE_DOMAIN', '').strip()
-    if _csrf_cookie_domain:
-        CSRF_COOKIE_DOMAIN = _csrf_cookie_domain
+# REMOVE any existing domain overrides to prevent duplicate cookies
+CSRF_COOKIE_DOMAIN = None
+SESSION_COOKIE_DOMAIN = None
 
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.

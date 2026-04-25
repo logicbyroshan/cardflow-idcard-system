@@ -123,22 +123,21 @@ def csrf_failure(request, reason=''):
     panel_prefix = _panel_prefix(request)
     login_url = f'{panel_prefix}/auth/login/'
 
-    # If user is not authenticated, the session likely expired —
-    # redirect to login instead of showing a dead-end 403 page.
-    user = getattr(request, 'user', None)
-    if not user or not getattr(user, 'is_authenticated', False):
-        if is_ajax:
-            # If they are already on the login page, the "session expired" message is confusing.
-            is_login_page = '/auth/login/' in (request.headers.get('Referer', '') or '')
-            message = 'Security token expired. Please refresh.' if is_login_page else 'Session expired. Please log in again.'
-            
-            return JsonResponse({
-                'success': False,
-                'message': message,
-                'redirect': login_url,
-                'force_logout': True,
-            }, status=403)
-        return redirect(login_url)
+    # Determine message based on requested logic
+    current_path = str(getattr(request, 'path', '') or '')
+    is_login_path = '/auth/login/' in current_path or '/app/login/' in current_path
+    message = 'Security token expired. Please refresh.' if is_login_path else 'Session expired. Please log in again.'
+
+    if is_ajax:
+        return JsonResponse({
+            'success': False,
+            'message': message,
+            'redirect': login_url,
+            'force_logout': True,
+        }, status=403)
+    
+    # If session expired on a page load, just redirect to login
+    return redirect(login_url)
 
     # User is still authenticated but CSRF token is stale/missing —
     # show the error page with a helpful message.

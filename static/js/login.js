@@ -39,8 +39,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Functions
     function getCSRFToken() {
-        const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-        return cookie ? cookie.split('=')[1] : '';
+        return document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1] || '';
     }
 
     /**
@@ -60,9 +62,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Session expired. Please refresh the page.');
             }
             if (response.status === 403) {
-                // CSRF token expired or missing - auto-refresh to recover
-                window.location.reload();
-                return new Promise(() => {}); // Return a pending promise to stop execution
+                // Step 6: Frontend Auto-Recovery (Reload ONCE only)
+                if (!window.__csrfRetry) {
+                    window.__csrfRetry = true;
+                    try { sessionStorage.setItem('__csrf_retry', '1'); } catch(e) {}
+                    window.location.reload();
+                    return new Promise(() => {}); // stop execution
+                }
             }
             throw new Error('Server error (' + response.status + '). Please refresh and try again.');
         }
