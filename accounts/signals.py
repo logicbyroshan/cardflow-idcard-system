@@ -78,29 +78,41 @@ def manage_user_device_sessions(sender, request, user, **kwargs):
                     'last_active': timezone.now()
                 }
             )
+            # UPDATED: Ensure current session is explicitly marked as freshest
+            UserDeviceSession.objects.filter(session_key=session_key).update(
+                last_active=timezone.now()
+            )
 
             # 2. Enforce limits for this device type
             limits = get_limits(user)
             limit = limits.get(device_type, 1)
 
             # UPDATED: Use select_for_update and only() for high performance and race protection
-            active_sessions = UserDeviceSession.objects.select_for_update().filter(
+            active_sessions_qs = UserDeviceSession.objects.select_for_update().filter(
                 user=user,
                 device_type=device_type
-            ).only('id', 'session_key').order_by('-last_active')
+            ).only('id', 'session_key', 'last_active').order_by('-last_active')
 
-            if active_sessions.count() > limit:
-                # Identify oldest sessions to revoke
-                stale_entries = active_sessions[limit:]
-                from django.core.cache import cache
+            # UPDATED Step 1: EXCLUDE current session BEFORE deletion to prevent immediate logout
+            active_sessions = [s for s in active_sessions_qs if s.session_key != session_key]
+
+            # UPDATED Step 2: Apply correct limit logic (if other sessions >= limit, remove oldest)
+            if len(active_sessions) >= limit:
+                stale_entries = active_sessions[limit-1:]
+                from django.contrib.sessions.backends.db import SessionStore
+                
                 for entry in stale_entries:
                     try:
-                        # Revoke Django session
+                        # UPDATED Step 3: Safe and thorough session deletion
+                        # Delete DB session
                         Session.objects.filter(session_key=entry.session_key).delete()
                         
-                        # Clear from cache (standard Django prefix pattern)
-                        cache.delete(f"django.contrib.sessions.cache{entry.session_key}")
-                        
+                        # Delete session properly from backend (robustly handles cache/db invalidation)
+                        try:
+                            SessionStore().delete(entry.session_key)
+                        except Exception:
+                            pass
+
                         logger.info(f"Revoked session {entry.session_key[:8]} for user {user.username} (Limit hit)")
                         entry.delete()
                     except Exception:
