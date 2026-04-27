@@ -931,6 +931,34 @@ function listApp() {
             }
         },
 
+        triggerDownload(url, filename) {
+            if (!url) return;
+            const isNative = window.adarshDeviceBridge && typeof window.adarshDeviceBridge.isNativeShell === 'function' && window.adarshDeviceBridge.isNativeShell();
+            
+            if (isNative) {
+                // For Native/Capacitor shell on Android, direct location assignment is often 
+                // more reliably intercepted by the system downloader or PDF viewer.
+                try {
+                    window.location.assign(url);
+                } catch (e) {
+                    // Fallback to traditional anchor click if assign fails
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename || 'download';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => a.remove(), 100);
+                }
+            } else {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename || 'download';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => a.remove(), 100);
+            }
+        },
+
         cancelDownload() {
             if (this.downloadModal.abortController) {
                 this.downloadModal.cancelling = true;
@@ -965,13 +993,7 @@ function listApp() {
 
                 if (data.status === 'completed' && data.download_url) {
                     this.updateDownloadProgress(95, options.readyText || 'Saving file...');
-                    const a = document.createElement('a');
-                    a.href = data.download_url;
-                    const resultFilename = data.result && data.result.filename ? data.result.filename : '';
-                    a.download = resultFilename || options.fallbackFilename || 'export';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
+                    this.triggerDownload(data.download_url, data.result?.filename || options.fallbackFilename || 'export');
 
                     if (typeof options.afterSuccess === 'function') {
                         await options.afterSuccess();
@@ -2810,12 +2832,7 @@ function listApp() {
 
                         if (statusData.state === 'completed' && statusData.download_url) {
                             this.updateDownloadProgress(95, 'Saving file...');
-                            const a = document.createElement('a');
-                            a.href = statusData.download_url;
-                            a.download = statusData.filename || ('cards_' + TABLE_ID + '_' + LIST_TYPE + '.pdf');
-                            document.body.appendChild(a);
-                            a.click();
-                            a.remove();
+                            this.triggerDownload(statusData.download_url, statusData.filename || ('cards_' + TABLE_ID + '_' + LIST_TYPE + '.pdf'));
                             this.completeDownload(true, 'PDF saved to your device');
                             return;
                         }
@@ -2917,28 +2934,20 @@ function listApp() {
                     for (const zipInfo of zipFiles) {
                         const progress = 40 + Math.round((downloaded / totalZips) * 50);
                         this.updateDownloadProgress(progress, 'Downloading ' + (downloaded + 1) + ' of ' + totalZips + '...');
-                        const a = document.createElement('a');
-                        document.body.appendChild(a);
-
+                        
                         if (zipInfo.download_url) {
-                            a.href = zipInfo.download_url;
-                            a.download = zipInfo.filename || 'images.zip';
-                            a.click();
+                            this.triggerDownload(zipInfo.download_url, zipInfo.filename || 'images.zip');
                         } else if (zipInfo.data) {
                             const bin = atob(zipInfo.data);
                             const bytes = new Uint8Array(bin.length);
                             for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
                             const blob = new Blob([bytes], { type: 'application/zip' });
                             const url = URL.createObjectURL(blob);
-                            a.href = url;
-                            a.download = zipInfo.filename || 'images.zip';
-                            a.click();
-                            URL.revokeObjectURL(url);
+                            this.triggerDownload(url, zipInfo.filename || 'images.zip');
+                            setTimeout(() => URL.revokeObjectURL(url), 5000);
                         } else {
                             throw new Error('Missing image file payload');
                         }
-
-                        document.body.removeChild(a);
                         downloaded++;
                     }
                     const totalSize = zipFiles.reduce((sum, z) => sum + (z.data?.length || 0) * 0.75, 0);
@@ -3046,14 +3055,9 @@ function listApp() {
 
                 const blob = await res.blob();
                 const filename = 'cards_' + TABLE_ID + '_' + LIST_TYPE + '.xlsx';
-                const link = document.createElement('a');
                 const url = URL.createObjectURL(blob);
-                link.href = url;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                URL.revokeObjectURL(url);
+                this.triggerDownload(url, filename);
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
 
                 this.showToast('Excel file downloaded', 'success');
 

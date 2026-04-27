@@ -168,12 +168,16 @@ def _pool_retrieve_scope_payload(user, card):
     )
     payload['class_field'] = class_field_name
 
-    allowed_classes, _allowed_sections, _allowed_branches = _table_scope_filters_for_staff(staff, card.table)
-    payload['allowed_classes'] = [
-        str(value).strip()
-        for value in (allowed_classes or [])
-        if str(value).strip()
-    ]
+    allowed_classes, _allowed_sections, _allowed_branches, is_unfiltered = _table_scope_filters_for_staff(staff, card.table)
+    
+    if is_unfiltered:
+        payload['allowed_classes'] = []
+    else:
+        payload['allowed_classes'] = [
+            str(value).strip()
+            for value in (allowed_classes or [])
+            if str(value).strip()
+        ]
 
     if class_field_name:
         field_data = card.field_data or {}
@@ -236,7 +240,7 @@ def _apply_pool_retrieve_class_change(user, card, requested_class):
     if not class_field_name:
         return False, 'Class field is not configured for this table.'
 
-    allowed_classes, _allowed_sections, _allowed_branches = _table_scope_filters_for_staff(staff, card.table)
+    allowed_classes, _allowed_sections, _allowed_branches, _ = _table_scope_filters_for_staff(staff, card.table)
     allowed_values = [
         str(value).strip()
         for value in (allowed_classes or [])

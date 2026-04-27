@@ -11,6 +11,40 @@
 // ==========================================
 
 /**
+ * Safely trigger a download using anchor click or window.location.assign 
+ * based on environment (Mobile APK vs Desktop).
+ */
+function _triggerSafeDownload(url, filename) {
+    if (!url) return;
+    const isNative = window.adarshDeviceBridge && typeof window.adarshDeviceBridge.isNativeShell === 'function' && window.adarshDeviceBridge.isNativeShell();
+    
+    if (isNative) {
+        // For Native/Capacitor shell on Android, direct location assignment is often 
+        // more reliably intercepted by the system downloader or PDF viewer.
+        try {
+            window.location.assign(url);
+        } catch (e) {
+            // Fallback to traditional anchor click if assign fails
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename || 'download';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => a.remove(), 100);
+        }
+    } else {
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename || 'download';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 100);
+    }
+}
+
+/**
  * Get current status label for request body.
  */
 function _getCurrentStatus() {
@@ -401,13 +435,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                     }
 
                     setTimeout(function () {
-                        var a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = data.download_url;
-                        a.download = (data.result && data.result.filename) || options.fallbackFilename || 'export';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
+                        _triggerSafeDownload(data.download_url, (data.result && data.result.filename) || options.fallbackFilename || 'export');
 
                         if (typeof showDownloadComplete === 'function') {
                             showDownloadComplete(options.completeMessage || 'File downloaded successfully!');
@@ -594,15 +622,8 @@ function downloadImages(cardIds, renameOptions) {
                         const zipInfo = fileList[downloadIndex];
 
                         try {
-                            const a = document.createElement('a');
-                            a.style.display = 'none';
-
                             if (zipInfo.download_url) {
-                                a.href = zipInfo.download_url;
-                                a.download = zipInfo.filename || 'images.zip';
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
+                                _triggerSafeDownload(zipInfo.download_url, zipInfo.filename || 'images.zip');
                             } else if (zipInfo.data) {
                                 // Backward compatibility for older base64 payloads.
                                 var bin = atob(zipInfo.data);
@@ -611,12 +632,8 @@ function downloadImages(cardIds, renameOptions) {
                                 var blob = new Blob([bytes], { type: 'application/zip' });
 
                                 const url = window.URL.createObjectURL(blob);
-                                a.href = url;
-                                a.download = zipInfo.filename || 'images.zip';
-                                document.body.appendChild(a);
-                                a.click();
-                                window.URL.revokeObjectURL(url);
-                                document.body.removeChild(a);
+                                _triggerSafeDownload(url, zipInfo.filename || 'images.zip');
+                                setTimeout(() => window.URL.revokeObjectURL(url), 5000);
                             } else {
                                 throw new Error('Missing image file payload');
                             }
@@ -771,16 +788,8 @@ function downloadDocx(cardIds, format, templateId) {
         if (xhr.status === 200) {
             const blob = xhr.response;
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = _getDownloadFilename(xhr, format);
-            
-            document.body.appendChild(a);
-            a.click();
-            
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            _triggerSafeDownload(url, _getDownloadFilename(xhr, format));
+            setTimeout(() => window.URL.revokeObjectURL(url), 5000);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Document downloaded successfully!');
             _moveCardsToDownloadIfApproved(cardIds);
@@ -910,16 +919,8 @@ function downloadXlsx(cardIds, options) {
         if (xhr.status === 200) {
             const blob = xhr.response;
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = _getDownloadFilename(xhr, 'xlsx');
-            
-            document.body.appendChild(a);
-            a.click();
-            
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            _triggerSafeDownload(url, _getDownloadFilename(xhr, 'xlsx'));
+            setTimeout(() => window.URL.revokeObjectURL(url), 5000);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Excel file downloaded successfully!');
             if (includeImagesZip) {
@@ -1234,13 +1235,7 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize)
                 }
                 // Trigger download
                 setTimeout(function() {
-                    var a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = data.download_url;
-                    a.download = data.filename || 'export.pdf';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                    _triggerSafeDownload(data.download_url, data.filename || 'export.pdf');
                     if (typeof showDownloadComplete === 'function') {
                         var doneMessage = sizeLabel
                             ? ('PDF file downloaded successfully! (' + sizeLabel + ')')
@@ -1329,16 +1324,8 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitle
         if (xhr.status === 200) {
             const blob = xhr.response;
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = _getDownloadFilename(xhr, 'pdf');
-            
-            document.body.appendChild(a);
-            a.click();
-            
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            _triggerSafeDownload(url, _getDownloadFilename(xhr, 'pdf'));
+            setTimeout(() => window.URL.revokeObjectURL(url), 5000);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('PDF file downloaded successfully!');
             _releaseLegacyPdfLock();

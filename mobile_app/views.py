@@ -843,6 +843,7 @@ def _staff_table_scope_filters(staff, table):
         return (
             _dedupe_scope_values(staff.allowed_classes or []),
             _dedupe_scope_values(staff.allowed_sections or []),
+            False,
         )
 
     matched = []
@@ -865,15 +866,28 @@ def _staff_table_scope_filters(staff, table):
         return (
             _dedupe_scope_values(staff.allowed_classes or []),
             _dedupe_scope_values(staff.allowed_sections or []),
+            False,
         )
 
+    # If ANY scope is broad, everything is allowed for this table
+    is_unfiltered = False
     classes = []
     sections = []
     for scope in matched:
-        classes.extend(scope.get('classes') or [])
-        sections.extend(scope.get('sections') or [])
+        s_classes = scope.get('classes') or []
+        s_sections = scope.get('sections') or []
+        
+        if not s_classes and not s_sections:
+            is_unfiltered = True
+            break
+            
+        classes.extend(s_classes)
+        sections.extend(s_sections)
 
-    return (_dedupe_scope_values(classes), _dedupe_scope_values(sections))
+    if is_unfiltered:
+        return ([], [], True)
+
+    return (_dedupe_scope_values(classes), _dedupe_scope_values(sections), False)
 
 
 def _get_table_filter_metadata(table, table_fields):
@@ -1627,7 +1641,7 @@ def home(request):
             elif _assigned_gids:
                 _tables_qs = _tables_qs.filter(group_id__in=_assigned_gids)
 
-        _tables = list(_tables_qs.only('id', 'fields'))
+        _tables = list(_tables_qs.only('id', 'group_id', 'fields'))
         if not _tables:
             return _counts
 
@@ -2420,10 +2434,11 @@ def card_list(request, table_id, status):
     # For client_staff: apply class/section filter
     allowed_classes = []
     allowed_sections = []
+    is_unfiltered = False
     if PermissionService.is_client_staff(user):
         staff = getattr(user, 'staff_profile', None)
         if staff:
-            allowed_classes, allowed_sections = _staff_table_scope_filters(staff, table)
+            allowed_classes, allowed_sections, is_unfiltered = _staff_table_scope_filters(staff, table)
         cards_qs = ClientCardService._apply_client_staff_row_scope(user, table, cards_qs)
 
     if selected_class:
@@ -2740,30 +2755,31 @@ def card_list(request, table_id, status):
     class_to_sections = dict(filter_meta.get('class_to_sections') or {})
 
     # Respect explicit client_staff restrictions in filter options.
-    _allowed_norm_classes = {
-        normalize_class_value(value)
-        for value in (allowed_classes or [])
-        if normalize_class_value(value)
-    }
-
-    if _allowed_norm_classes:
-        all_classes = [c for c in all_classes if normalize_class_value(c) in _allowed_norm_classes]
-    if allowed_sections:
-        _allowed_set = set(allowed_sections)
-        all_sections = [s for s in all_sections if s in _allowed_set]
-
-    if _allowed_norm_classes:
-        class_to_sections = {
-            _cls: _sections
-            for _cls, _sections in class_to_sections.items()
-            if normalize_class_value(_cls) in _allowed_norm_classes
+    if not is_unfiltered:
+        _allowed_norm_classes = {
+            normalize_class_value(value)
+            for value in (allowed_classes or [])
+            if normalize_class_value(value)
         }
-    if allowed_sections:
-        _allowed_sec_set = set(allowed_sections)
-        class_to_sections = {
-            _cls: [s for s in _sections if s in _allowed_sec_set]
-            for _cls, _sections in class_to_sections.items()
-        }
+
+        if _allowed_norm_classes:
+            all_classes = [c for c in all_classes if normalize_class_value(c) in _allowed_norm_classes]
+        if allowed_sections:
+            _allowed_set = set(allowed_sections)
+            all_sections = [s for s in all_sections if s in _allowed_set]
+
+        if _allowed_norm_classes:
+            class_to_sections = {
+                _cls: _sections
+                for _cls, _sections in class_to_sections.items()
+                if normalize_class_value(_cls) in _allowed_norm_classes
+            }
+        if allowed_sections:
+            _allowed_sec_set = set(allowed_sections)
+            class_to_sections = {
+                _cls: [s for s in _sections if s in _allowed_sec_set]
+                for _cls, _sections in class_to_sections.items()
+            }
     # Count badges — single aggregate query replaces 4 separate COUNTs
     tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
     _tab_counts_qs = IDCard.objects.filter(table=table)

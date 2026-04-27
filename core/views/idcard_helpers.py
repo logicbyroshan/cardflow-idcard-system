@@ -125,6 +125,7 @@ def _table_scope_filters_for_staff(staff, table):
             _dedupe_scope_values(staff.allowed_classes or []),
             _dedupe_scope_values(staff.allowed_sections or []),
             _dedupe_scope_values(staff.allowed_branches or []),
+            False,
         )
 
     matched = []
@@ -148,20 +149,34 @@ def _table_scope_filters_for_staff(staff, table):
             _dedupe_scope_values(staff.allowed_classes or []),
             _dedupe_scope_values(staff.allowed_sections or []),
             _dedupe_scope_values(staff.allowed_branches or []),
+            False,
         )
 
+    is_unfiltered = False
     classes = []
     sections = []
     branches = []
     for scope in matched:
-        classes.extend(scope.get('classes') or [])
-        sections.extend(scope.get('sections') or [])
-        branches.extend(scope.get('branches') or [])
+        s_classes = scope.get('classes') or []
+        s_sections = scope.get('sections') or []
+        s_branches = scope.get('branches') or []
+        
+        if not s_classes and not s_sections and not s_branches:
+            is_unfiltered = True
+            break
+            
+        classes.extend(s_classes)
+        sections.extend(s_sections)
+        branches.extend(s_branches)
+
+    if is_unfiltered:
+        return ([], [], [], True)
 
     return (
         _dedupe_scope_values(classes),
         _dedupe_scope_values(sections),
         _dedupe_scope_values(branches),
+        False,
     )
 
 
@@ -367,10 +382,14 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     if not _table_is_assigned_to_staff(staff, table):
         return qs.none()
 
-    allowed_classes, allowed_sections, allowed_branches = _table_scope_filters_for_staff(staff, table)
+    allowed_classes, allowed_sections, allowed_branches, is_unfiltered = _table_scope_filters_for_staff(staff, table)
+
+    if is_unfiltered:
+        return qs
 
     if not (allowed_classes or allowed_sections or allowed_branches):
-        return qs.none()
+        # Broad assignment fallback
+        return qs
 
     if str(status_filter or '').strip().lower() == 'pool':
         return qs

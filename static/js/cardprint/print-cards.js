@@ -103,14 +103,39 @@ function _filenameFromDisposition(disposition, fallbackName) {
   }
 }
 
+/**
+ * Safely trigger a download using anchor click or window.location.assign 
+ * based on environment (Mobile APK vs Desktop).
+ */
+function _triggerSafeDownload(url, filename) {
+    if (!url) return;
+    const isNative = window.adarshDeviceBridge && typeof window.adarshDeviceBridge.isNativeShell === 'function' && window.adarshDeviceBridge.isNativeShell();
+    
+    if (isNative) {
+        try {
+            window.location.assign(url);
+        } catch (e) {
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename || 'download';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
+        }
+    } else {
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename || 'download';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
+    }
+}
+
 function _triggerUrlDownload(url, filename) {
-  var a = document.createElement('a');
-  a.style.display = 'none';
-  a.href = url;
-  if (filename) a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  _triggerSafeDownload(url, filename);
 }
 
 function _downloadBlobExport(url, payload, fallbackFilename, successMessage) {
@@ -142,8 +167,8 @@ function _downloadBlobExport(url, payload, fallbackFilename, successMessage) {
         ApiClient.downloadBlob(blob, filename);
       } else {
         var blobUrl = window.URL.createObjectURL(blob);
-        _triggerUrlDownload(blobUrl, filename);
-        window.URL.revokeObjectURL(blobUrl);
+        _triggerSafeDownload(blobUrl, filename);
+        setTimeout(function() { window.URL.revokeObjectURL(blobUrl); }, 5000);
       }
       showToast(successMessage || 'Download complete', 'success');
     });

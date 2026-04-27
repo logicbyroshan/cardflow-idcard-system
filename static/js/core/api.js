@@ -128,6 +128,37 @@
     }
     // Expose globally so logout forms and other non-bundled code can use it
     window.getCSRFToken = getCSRFToken;
+    
+    /**
+     * Safely trigger a download using anchor click or window.location.assign 
+     * based on environment (Mobile APK vs Desktop).
+     */
+    function _triggerSafeDownload(url, filename) {
+        if (!url) return;
+        var isNative = window.adarshDeviceBridge && typeof window.adarshDeviceBridge.isNativeShell === 'function' && window.adarshDeviceBridge.isNativeShell();
+        
+        if (isNative) {
+            try {
+                window.location.assign(url);
+            } catch (e) {
+                var a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename || 'download';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function() { a.remove(); }, 100);
+            }
+        } else {
+            var a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename || 'download';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function() { a.remove(); }, 100);
+        }
+    }
 
     // ------------------------------------------
     // DEFAULTS
@@ -344,14 +375,8 @@
     // ------------------------------------------
     function downloadBlob(blob, filename) {
         var u = window.URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = u;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(u);
-        document.body.removeChild(a);
+        _triggerSafeDownload(u, filename);
+        setTimeout(function() { window.URL.revokeObjectURL(u); }, 5000);
     }
 
     function downloadBase64(b64, filename, mime) {

@@ -11,11 +11,38 @@ function initIdcardGroup(config) {
   var panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
   var allowFolderUpload = (document.body && String(document.body.getAttribute('data-user-role') || '').toLowerCase() === 'pro_user');
 
-  function panelUrl(path) {
-    if (!path) return path;
-    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
-    var normalized = path.charAt(0) === '/' ? path : '/' + path;
     return panelBase + normalized;
+  }
+
+  /**
+   * Safely trigger a download using anchor click or window.location.assign 
+   * based on environment (Mobile APK vs Desktop).
+   */
+  function _triggerSafeDownload(url, filename) {
+    if (!url) return;
+    const isNative = window.adarshDeviceBridge && typeof window.adarshDeviceBridge.isNativeShell === 'function' && window.adarshDeviceBridge.isNativeShell();
+    
+    if (isNative) {
+        try {
+            window.location.assign(url);
+        } catch (e) {
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename || 'download';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
+        }
+    } else {
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename || 'download';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
+    }
   }
 
   var switchToGroupSettingBtn = document.getElementById('switchToGroupSetting');
@@ -329,12 +356,7 @@ function initIdcardGroup(config) {
         dlBar.style.width = '90%';
         dlStatus.textContent = 'Downloading ' + (data.filename || 'AllCards.zip') + '...';
         
-        var a = document.createElement('a');
-        a.href = data.download_url;
-        a.download = data.filename || 'AllCards.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        _triggerSafeDownload(data.download_url, data.filename || 'AllCards.zip');
         
         dlBar.style.width = '100%';
         dlStatus.textContent = 'Download complete! (' + (data.total_cards || 0) + ' cards, ' + (data.total_files || 0) + ' files)';
@@ -397,13 +419,8 @@ function initIdcardGroup(config) {
     var byteArray = new Uint8Array(byteNumbers);
     var blob = new Blob([byteArray], { type: mimeType });
     var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    _triggerSafeDownload(url, filename);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
   }
 
   // ==================== REUPLOAD IMAGES ====================

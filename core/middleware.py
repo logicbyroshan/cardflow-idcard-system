@@ -373,9 +373,9 @@ class PermissionValidationMiddleware:
         if not is_task_polling:
             self._sync_revalidation_marker(request)
 
-        fingerprint_result = self._validate_session_fingerprint(request)
-        if fingerprint_result is not None:
-            return fingerprint_result
+        # fingerprint_result = self._validate_session_fingerprint(request)
+        # if fingerprint_result is not None:
+        #     return fingerprint_result
         
         # Re-fetch user from database to get latest state
         # This catches changes made by admin while user is logged in
@@ -527,27 +527,7 @@ class PermissionValidationMiddleware:
         request.session[cls.SESSION_FP_KEY] = cls.build_session_fingerprint(request)
 
     def _validate_session_fingerprint(self, request):
-        """Validate session fingerprint for authenticated requests."""
-        if not getattr(django_settings, 'SESSION_FINGERPRINT_ENABLED', False):
-            return None
-
-        if not request.META.get('HTTP_USER_AGENT'):
-            return None
-
-        current_fp = self.build_session_fingerprint(request)
-        stored_fp = request.session.get(self.SESSION_FP_KEY)
-
-        if not stored_fp:
-            request.session[self.SESSION_FP_KEY] = current_fp
-            return None
-
-        if stored_fp != current_fp:
-            logger.warning(
-                "PermissionValidationMiddleware: session fingerprint mismatch user=%s",
-                getattr(request.user, 'username', '?'),
-            )
-            return self._force_logout(request, 'Session verification failed. Please log in again.')
-
+        """DEPRECATED: Fingerprint validation disabled due to session instability."""
         return None
 
     def _validation_unavailable_response(self, request):

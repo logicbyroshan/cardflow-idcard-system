@@ -146,8 +146,13 @@ class LogoutView(View):
     """
     
     def get(self, request):
-        # GET requests redirect to login ÔÇö do NOT perform logout on GET
-        # (prevents CSRF logout via <img src="/logout/"> attacks)
+        # S7: Allow force-logout via GET for APK/mobile users who cannot clear cookies manually.
+        if request.GET.get('force') == '1' or request.GET.get('force_logout') == '1':
+            if request.user.is_authenticated:
+                ActivityService.log_logout(request, request.user)
+            logout(request)
+            return redirect(reverse('accounts:login') + '?logged_out=1')
+
         return redirect('accounts:login')
     
     def post(self, request):

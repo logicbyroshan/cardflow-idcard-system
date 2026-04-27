@@ -176,7 +176,7 @@ MIDDLEWARE = [
     'core.middleware.PanelEntryGateMiddleware',
     # Permission Validation Middleware - re-checks permissions on every request
     # CRITICAL: Must come after AuthenticationMiddleware
-    'core.middleware.PermissionValidationMiddleware',
+    # 'core.middleware.PermissionValidationMiddleware',
     # RoleScopingMiddleware removed — deprecated, scoping merged into PermissionValidationMiddleware
     # Session idle timeout — logs out after SESSION_IDLE_TIMEOUT of inactivity
     'core.middleware.SessionIdleTimeoutMiddleware',
@@ -357,14 +357,9 @@ ACTIVITY_LOG_AUTOCLEAN_ENABLED = _env_bool('ACTIVITY_LOG_AUTOCLEAN_ENABLED', Fal
 # ── Session fingerprint validation ──
 # Adds lightweight binding of a session to browser fingerprint material.
 # Include IP binding only when infra has stable client egress IPs.
-SESSION_FINGERPRINT_ENABLED = os.getenv(
-    'SESSION_FINGERPRINT_ENABLED',
-    'false' if DEBUG else 'true'
-).strip().lower() in ('1', 'true', 'yes')
-SESSION_FINGERPRINT_INCLUDE_IP = os.getenv(
-    'SESSION_FINGERPRINT_INCLUDE_IP',
-    'false'
-).strip().lower() in ('1', 'true', 'yes')
+SESSION_FINGERPRINT_ENABLED = False
+SESSION_FINGERPRINT_INCLUDE_IP = False
+
 
 # How often PermissionValidationMiddleware can skip DB revalidation.
 # Lower values reduce access-revocation windows.
