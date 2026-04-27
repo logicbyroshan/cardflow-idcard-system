@@ -11,6 +11,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
 from django.contrib.auth import get_user_model
@@ -63,6 +64,9 @@ class LoginPageView(View):
     template_name = 'auth/login.html'
     
     def get(self, request):
+        # Force token generation so the response always carries a usable CSRF token.
+        get_token(request)
+
         # If user is already authenticated, redirect to dashboard
         if request.user.is_authenticated:
             # Respect ?next= param (e.g. from PWA ÔåÆ login redirect)
@@ -94,7 +98,8 @@ class GetCSRFTokenView(View):
     Useful for PWAs or AJAX-heavy flows that need to recover from expired tokens.
     """
     def get(self, request):
-        return JsonResponse({'success': True})
+        token = get_token(request)
+        return JsonResponse({'success': True, 'csrfToken': token})
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')

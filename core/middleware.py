@@ -104,6 +104,12 @@ class SubdomainRoutingMiddleware:
         return bool(configured and legacy and configured == legacy)
 
     def _delete_cookie_on_legacy_domains(self, response, cookie_name: str, samesite_value: str, legacy_domain: str):
+        # Django stores response cookies by name only. If this response already
+        # sets a fresh cookie for the panel host, avoid overwriting it with a
+        # legacy-domain delete cookie of the same name.
+        if cookie_name in response.cookies:
+            return
+
         for domain in (legacy_domain, f'.{legacy_domain}'):
             response.delete_cookie(
                 cookie_name,

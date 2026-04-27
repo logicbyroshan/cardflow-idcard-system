@@ -1324,6 +1324,46 @@ class SubdomainRoutingSecurityTests(TestCase):
         self.assertIn(response.cookies['sessionid']['domain'], ('adarshbhopal.in', '.adarshbhopal.in'))
         self.assertIn(response.cookies['csrftoken']['domain'], ('adarshbhopal.in', '.adarshbhopal.in'))
 
+    @override_settings(
+        DEBUG=False,
+        ALLOWED_HOSTS=['panel.adarshbhopal.in'],
+        PANEL_DOMAIN='panel.adarshbhopal.in',
+        SESSION_COOKIE_NAME='sessionid',
+        CSRF_COOKIE_NAME='csrftoken',
+    )
+    def test_legacy_cleanup_does_not_override_fresh_panel_auth_cookies(self):
+        from core.middleware import SubdomainRoutingMiddleware
+
+        def _response_with_fresh_panel_cookies(_request):
+            response = HttpResponse('ok')
+            response.set_cookie('sessionid', 'live-session', domain='panel.adarshbhopal.in', path='/', samesite='Lax')
+            response.set_cookie('csrftoken', 'live-csrf', domain='panel.adarshbhopal.in', path='/', samesite='Lax')
+            return response
+
+        middleware = SubdomainRoutingMiddleware(_response_with_fresh_panel_cookies)
+        request = self.factory.get('/auth/login/', HTTP_HOST='panel.adarshbhopal.in')
+
+        response = middleware(request)
+        self.assertEqual(response.cookies['sessionid'].value, 'live-session')
+        self.assertEqual(response.cookies['csrftoken'].value, 'live-csrf')
+        self.assertEqual(response.cookies['sessionid']['domain'], 'panel.adarshbhopal.in')
+        self.assertEqual(response.cookies['csrftoken']['domain'], 'panel.adarshbhopal.in')
+
+    @override_settings(
+        DEBUG=False,
+        ALLOWED_HOSTS=['panel.adarshbhopal.in'],
+        PANEL_DOMAIN='panel.adarshbhopal.in',
+        SESSION_COOKIE_DOMAIN='panel.adarshbhopal.in',
+        CSRF_COOKIE_DOMAIN='panel.adarshbhopal.in',
+    )
+    def test_panel_login_sets_panel_domain_csrf_cookie(self):
+        response = self.client.get('/login/', HTTP_HOST='panel.adarshbhopal.in')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('csrftoken', response.cookies)
+        self.assertEqual(response.cookies['csrftoken']['domain'], 'panel.adarshbhopal.in')
+        self.assertTrue(response.cookies['csrftoken'].value)
+
 
 # ── IDCardTable Field Tests ──
 class IDCardTableFieldTests(TestCase):
