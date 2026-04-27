@@ -75,22 +75,26 @@ def _env_float(name: str, default: float, *, minimum: float | None = None, maxim
     return parsed
 
 # Allowed Hosts
-# In DEBUG mode, default to localhost hosts only. Override via DEBUG_ALLOWED_HOSTS.
+# Combine environment-defined hosts with local development defaults.
+_env_hosts = [
+    host.strip()
+    for host in os.getenv('ALLOWED_HOSTS', '').split(',')
+    if host.strip()
+]
+_debug_hosts = [
+    host.strip()
+    for host in os.getenv('DEBUG_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver').split(',')
+    if host.strip()
+]
+
 if DEBUG:
-    _debug_hosts = os.getenv('DEBUG_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
-    ALLOWED_HOSTS = [
-        host.strip()
-        for host in _debug_hosts.split(',')
-        if host.strip()
-    ]
+    # In DEBUG mode, allow both production domains and local dev hosts.
+    ALLOWED_HOSTS = list(set(_env_hosts + _debug_hosts))
     if not ALLOWED_HOSTS:
         ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 else:
-    ALLOWED_HOSTS = [
-        host.strip()
-        for host in os.getenv('ALLOWED_HOSTS', '').split(',')
-        if host.strip()
-    ]
+    # In production, strictly use environment-defined hosts.
+    ALLOWED_HOSTS = _env_hosts
     if not ALLOWED_HOSTS:
         raise ImproperlyConfigured(
             'ALLOWED_HOSTS is not set. Add comma-separated hostnames to your .env file.'

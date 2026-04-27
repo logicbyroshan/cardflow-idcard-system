@@ -554,8 +554,13 @@ def api_idcard_cards_json(request, table_id):
         if class_filter and class_field_name:
             qs = _build_class_filter_q(qs, class_filter, class_field_name)
         if section_filter and section_field_name:
-            qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data'))
-            qs = qs.filter(_sec__iexact=section_filter)
+            qs = IDCardService._apply_compact_text_filter(
+                qs,
+                section_filter,
+                section_field_name,
+                table_id=table_id,
+                alias='_sec_cmp',
+            )
         if course_filter and course_field_name:
             qs = IDCardService._apply_compact_text_filter(
                 qs,
@@ -903,16 +908,14 @@ def api_idcard_filter_options(request, table_id):
         )
 
     if section_field_name:
-        section_values = sorted(
-            [
-                str(v) for v in
-                qs.annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
-                .exclude(_sv__isnull=True).exclude(_sv='')
-                .order_by()
-                .values_list('_sv', flat=True).distinct()
-                if v is not None
-            ],
+        raw_sections = (
+            qs.annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
+            .exclude(_sv__isnull=True).exclude(_sv='')
+            .order_by()
+            .values_list('_sv', flat=True).distinct()
         )
+        # Deduplicate by trimming and uppercasing to merge variants like "A" and "A "
+        section_values = sorted(list({str(v).strip().upper() for v in raw_sections if v is not None}))
 
     if course_field_name:
         raw_with_counts = (

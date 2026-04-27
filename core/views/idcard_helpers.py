@@ -409,9 +409,27 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     if allowed_sections:
         if not section_field:
             return qs.none()
-        qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField()))
-        qs = qs.filter(_scope_sec__in=allowed_sections)
+        
+        # Deduplicate allowed sections (already trimmed by _dedupe_scope_values, but uppercase for safety)
+        allowed_normalized = {str(s).strip().upper() for s in allowed_sections if str(s).strip()}
+        if not allowed_normalized:
+            return qs.none()
 
+        qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField()))
+        
+        # Get all distinct raw section values from the table to find matches
+        raw_values = list(
+            qs.exclude(_scope_sec__isnull=True)
+            .exclude(_scope_sec='')
+            .values_list('_scope_sec', flat=True)
+            .distinct()
+        )
+        # Match raw values that normalize to the same as the allowed sections
+        matching_raw = [raw for raw in raw_values if str(raw).strip().upper() in allowed_normalized]
+        if not matching_raw:
+            return qs.none()
+        
+        qs = qs.filter(_scope_sec__in=matching_raw)
     if allowed_branches:
         if not branch_field:
             return qs.none()
