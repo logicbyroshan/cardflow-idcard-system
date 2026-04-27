@@ -5,8 +5,10 @@ Split from base.py for maintainability.
 import json
 import logging
 import re
+from collections import defaultdict
 from django.conf import settings
 from django.core.cache import cache
+from django.contrib.sessions.models import Session
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.urls import reverse
@@ -52,6 +54,66 @@ _ACTIVITY_STATUS_TO_QUERY = {
 }
 _ACTIVITY_MOVE_TO_RE = re.compile(r'\bmoved\s+from\s+.+?\s+to\s+([a-zA-Z_\- ]+)', re.IGNORECASE)
 _ACTIVITY_CLIENT_SUFFIX_RE = re.compile(r'\bfor\s+"?([^"\n]+?)"?\s*$', re.IGNORECASE)
+
+
+def _dashboard_live_surface_counts(*, user, is_scoped=False, accessible_ids=None):
+    """Return unique logged-in user counts split by desktop/mobile surface."""
+    now = timezone.now()
+    cache_key = f'dashboard_live_surface_counts:{user.pk if is_scoped else "all"}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    allowed_user_ids = None
+    if is_scoped:
+        scoped_client_ids = list(accessible_ids or [])
+        client_user_ids = set(
+            Client.objects.filter(id__in=scoped_client_ids).values_list('user_id', flat=True)
+        )
+        assistant_user_ids = set(
+            Staff.objects.filter(
+                staff_type='client_staff',
+                client_id__in=scoped_client_ids,
+            ).values_list('user_id', flat=True)
+        )
+        admin_user_ids = set(
+            User.objects.filter(role__in=['super_admin', 'admin_staff', 'pro_user']).values_list('id', flat=True)
+        )
+        allowed_user_ids = client_user_ids | assistant_user_ids | admin_user_ids
+
+    per_user_surfaces = defaultdict(set)
+    for session in Session.objects.filter(expire_date__gt=now).iterator(chunk_size=200):
+        try:
+            data = session.get_decoded()
+        except Exception:
+            continue
+
+        raw_uid = data.get('_auth_user_id')
+        if not raw_uid:
+            continue
+        uid = str(raw_uid).strip()
+        if not uid.isdigit():
+            continue
+        user_id = int(uid)
+
+        if allowed_user_ids is not None and user_id not in allowed_user_ids:
+            continue
+
+        surface = str(data.get('_auth_login_surface') or '').strip().lower()
+        if surface not in {'desktop', 'mobile'}:
+            surface = 'mobile' if bool(data.get('mobile_auth_ok')) else 'desktop'
+
+        per_user_surfaces[user_id].add(surface)
+
+    desktop_users = sum(1 for surfaces in per_user_surfaces.values() if 'desktop' in surfaces)
+    mobile_users = sum(1 for surfaces in per_user_surfaces.values() if 'mobile' in surfaces)
+
+    result = {
+        'desktop': desktop_users,
+        'mobile': mobile_users,
+    }
+    cache.set(cache_key, result, 15)
+    return result
 
 
 def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
@@ -437,6 +499,12 @@ def dashboard(request):
         }
         cache.set(overview_cache_key, overview_stats, 30)
 
+    live_surface_counts = _dashboard_live_surface_counts(
+        user=request.user,
+        is_scoped=is_scoped,
+        accessible_ids=accessible_ids,
+    )
+
     context = {
         'active_page': 'dashboard',
         'user_role': get_user_role(request.user),
@@ -450,6 +518,8 @@ def dashboard(request):
         'overview_admins_count': overview_stats.get('admins', 0),
         'overview_operators_count': overview_stats.get('operators', 0),
         'overview_assistents_count': overview_stats.get('assistents', 0),
+        'overview_live_desktop_count': live_surface_counts.get('desktop', 0),
+        'overview_live_mobile_count': live_surface_counts.get('mobile', 0),
     }
 
     recent_cache_key = _dashboard_recent_activity_cache_key(

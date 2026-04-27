@@ -128,6 +128,14 @@
       background: var(--color-slate-200);
       color: var(--color-slate-600);
     }
+
+    #client-dropdown .dropdown-toggle {
+      min-width: 200px;
+    }
+
+    #client-dropdown .dropdown-options {
+      min-width: 220px;
+    }
   </style>
 {% endblock %}
 
@@ -321,6 +329,81 @@
 
         if (!dropdown || !toggle || !options || dropdown.dataset.dropdownBound === '1') return;
 
+        var typeQuery = '';
+        var typeQueryTimer = null;
+
+        function resetTypeQuery() {
+          typeQuery = '';
+          if (typeQueryTimer) {
+            clearTimeout(typeQueryTimer);
+            typeQueryTimer = null;
+          }
+        }
+
+        function getOptionLabel(option) {
+          return (option && option.textContent ? option.textContent : '').trim().toLowerCase();
+        }
+
+        function applyClientOptionFilter() {
+          var opts = Array.prototype.slice.call(options.querySelectorAll('.dropdown-option'));
+          var hasVisible = false;
+          var q = typeQuery.trim().toLowerCase();
+
+          opts.forEach(function(option) {
+            if (!q) {
+              option.style.display = '';
+              hasVisible = true;
+              return;
+            }
+            var match = getOptionLabel(option).indexOf(q) !== -1;
+            option.style.display = match ? '' : 'none';
+            if (match) hasVisible = true;
+          });
+
+          // Keep dropdown usable even when nothing matches.
+          if (!hasVisible) {
+            opts.forEach(function(option) { option.style.display = ''; });
+          }
+        }
+
+        function pushTypeQuery(char) {
+          typeQuery += char;
+          applyClientOptionFilter();
+          if (typeQueryTimer) clearTimeout(typeQueryTimer);
+          typeQueryTimer = setTimeout(function() {
+            resetTypeQuery();
+            applyClientOptionFilter();
+          }, 800);
+        }
+
+        function handleTypeSearchKey(e) {
+          if (!dropdown.classList.contains('open')) return;
+
+          if (e.key === 'Backspace') {
+            if (!typeQuery) return;
+            e.preventDefault();
+            typeQuery = typeQuery.slice(0, -1);
+            applyClientOptionFilter();
+            if (typeQueryTimer) clearTimeout(typeQueryTimer);
+            typeQueryTimer = setTimeout(function() {
+              resetTypeQuery();
+              applyClientOptionFilter();
+            }, 800);
+            return;
+          }
+
+          if (e.key === 'Escape') {
+            resetTypeQuery();
+            applyClientOptionFilter();
+            return;
+          }
+
+          if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            pushTypeQuery(e.key.toLowerCase());
+          }
+        }
+
         function syncSelectedText() {
           if (!selectedText) return;
           var active = options.querySelector('.dropdown-option.selected');
@@ -330,11 +413,20 @@
         toggle.addEventListener('click', function(e) {
           e.stopPropagation();
           dropdown.classList.toggle('open');
+          if (dropdown.classList.contains('open')) {
+            resetTypeQuery();
+            applyClientOptionFilter();
+          }
         });
+
+        toggle.addEventListener('keydown', handleTypeSearchKey);
+        options.addEventListener('keydown', handleTypeSearchKey);
+        dropdown.addEventListener('keydown', handleTypeSearchKey);
 
         options.addEventListener('click', function(e) {
           var option = e.target.closest('.dropdown-option');
           if (!option) return;
+          if (option.style.display === 'none') return;
 
           options.querySelectorAll('.dropdown-option').forEach(function(item) {
             item.classList.remove('selected');
@@ -343,13 +435,20 @@
 
           if (selectedText) selectedText.textContent = option.textContent.trim();
           dropdown.classList.remove('open');
+          resetTypeQuery();
+          applyClientOptionFilter();
         });
 
         document.addEventListener('click', function(e) {
-          if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+          if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('open');
+            resetTypeQuery();
+            applyClientOptionFilter();
+          }
         });
 
         syncSelectedText();
+        applyClientOptionFilter();
         dropdown.dataset.dropdownBound = '1';
       }
 

@@ -4035,6 +4035,63 @@ class AdminClientStaffManagementTests(TestCase):
         self.assertEqual(staff_data.get('assigned_group_ids'), [group.id])
         self.assertEqual(len(staff_data.get('assignment_scopes') or []), 1)
 
+    def test_update_client_staff_persists_assignment_scope_payload(self):
+        from staff.models import Staff
+        from idcards.models import IDCardGroup
+
+        user = User.objects.create_user(
+            username='client-staff-assignment-update@test.com',
+            email='client-staff-assignment-update@test.com',
+            password='pass1234',
+            role='client_staff',
+            first_name='Assignment',
+            last_name='Update',
+        )
+        staff_obj = Staff.objects.create(
+            user=user,
+            staff_type='client_staff',
+            client=self.client_a,
+            allowed_classes=['Old Class'],
+            allowed_sections=['Old Section'],
+            allowed_branches=['Old Branch'],
+        )
+
+        group = IDCardGroup.objects.create(client=self.client_a, name='Updated Scope Group')
+
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.post(
+            f'/panel/api/client-staff/{staff_obj.id}/update/',
+            data=json.dumps({
+                'name': 'Assignment Update',
+                'assigned_groups': [group.id],
+                'assignment_id_source': 'group',
+                'allowed_classes': ['Class 11'],
+                'allowed_sections': ['B'],
+                'allowed_branches': ['Commerce'],
+                'assignment_scopes': [
+                    {
+                        'scope_type': 'group',
+                        'scope_id': group.id,
+                        'classes': ['Class 11'],
+                        'sections': ['B'],
+                        'branches': ['Commerce'],
+                    }
+                ],
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        staff_obj.refresh_from_db()
+        self.assertEqual(staff_obj.allowed_classes, ['Class 11'])
+        self.assertEqual(staff_obj.allowed_sections, ['B'])
+        self.assertEqual(staff_obj.allowed_branches, ['Commerce'])
+        self.assertEqual(staff_obj.assignment_scopes[0].get('scope_id'), group.id)
+        self.assertEqual(set(staff_obj.assigned_groups.values_list('id', flat=True)), {group.id})
+
     def test_admin_staff_without_manage_client_permission_is_denied(self):
         self.admin_staff_profile.perm_idcard_client_list = False
         self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])

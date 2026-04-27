@@ -149,6 +149,20 @@ def _build_admin_client_staff_payload(payload):
         if key in payload:
             data[key] = payload.get(key)
 
+    # Preserve assignment payload fields when present (assign drawer updates).
+    for key in (
+        'assigned_groups',
+        'assigned_group_ids',
+        'assigned_table_ids',
+        'assignment_id_source',
+        'allowed_classes',
+        'allowed_sections',
+        'allowed_branches',
+        'assignment_scopes',
+    ):
+        if key in payload:
+            data[key] = payload.get(key)
+
     for perm in CLIENT_STAFF_ALLOWED_PERMISSION_FIELDS:
         if perm in payload:
             data[perm] = payload.get(perm)

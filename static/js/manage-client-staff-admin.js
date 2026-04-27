@@ -77,6 +77,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
     }
 
+    function adminApiUrl(path) {
+        return panelBasePath() + path;
+    }
+
     function clientStaffHistoryApiUrl(staffId) {
         return panelBasePath() + '/api/client-staff/' + encodeURIComponent(String(staffId)) + '/login-history/?limit=80';
     }
@@ -114,22 +118,59 @@ document.addEventListener('DOMContentLoaded', function() {
         return out;
     }
 
-    function assignmentCardHtml(title, classes, sections, branches) {
+    function buildClassSectionPairChips(classes, sections) {
         var chips = [];
+        var maxVisible = 12;
+
+        if (classes.length && sections.length) {
+            var total = 0;
+            for (var ci = 0; ci < classes.length; ci += 1) {
+                for (var si = 0; si < sections.length; si += 1) {
+                    total += 1;
+                    if (chips.length < maxVisible) {
+                        chips.push(
+                            '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:11px;font-weight:700;">' +
+                            escapeHtml(classes[ci]) + ' "' + escapeHtml(sections[si]) + '"' +
+                            '</span>'
+                        );
+                    }
+                }
+            }
+            if (total > maxVisible) {
+                chips.push(
+                    '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px dashed #93c5fd;background:#ffffff;color:#1e3a8a;border-radius:6px;font-size:11px;font-weight:700;">+' + (total - maxVisible) + ' more</span>'
+                );
+            }
+            return chips;
+        }
+
         if (classes.length) {
-            chips.push(
-                '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:11px;font-weight:700;">Classes: ' +
-                escapeHtml(classes.join(', ')) +
-                '</span>'
-            );
+            classes.forEach(function (cls) {
+                chips.push(
+                    '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:11px;font-weight:700;">' +
+                    escapeHtml(cls) +
+                    '</span>'
+                );
+            });
+            return chips;
         }
+
         if (sections.length) {
-            chips.push(
-                '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c;border-radius:6px;font-size:11px;font-weight:700;">Sections: ' +
-                escapeHtml(sections.join(', ')) +
-                '</span>'
-            );
+            sections.forEach(function (sec) {
+                chips.push(
+                    '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c;border-radius:6px;font-size:11px;font-weight:700;">' +
+                    '"' + escapeHtml(sec) + '"' +
+                    '</span>'
+                );
+            });
+            return chips;
         }
+
+        return chips;
+    }
+
+    function assignmentCardHtml(title, classes, sections, branches) {
+        var chips = buildClassSectionPairChips(classes, sections);
         if (branches.length) {
             chips.push(
                 '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #a5f3fc;background:#ecfeff;color:#0f766e;border-radius:6px;font-size:11px;font-weight:700;">Branches: ' +
@@ -309,8 +350,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var activeDesktop = Number(surfaceCounts.desktop || 0);
         var activeMobile = Number(surfaceCounts.mobile || 0);
         var rows = [
-            '<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-desktop"></i> Website: ' + activeDesktop + '</span>',
-            '<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ' + activeMobile + '</span>'
+            '<span class="' + chipClass + ' ' + chipClass + '--meta" style="border-color:' + (activeDesktop > 0 ? '#86efac' : '#fecaca') + ';background:' + (activeDesktop > 0 ? '#f0fdf4' : '#fef2f2') + ';color:' + (activeDesktop > 0 ? '#166534' : '#991b1b') + ';"><i class="fa-solid fa-circle" style="font-size:8px;color:' + (activeDesktop > 0 ? '#16a34a' : '#dc2626') + ';"></i> Website ' + (activeDesktop > 0 ? 'Live' : 'Offline') + '</span>',
+            '<span class="' + chipClass + ' ' + chipClass + '--meta" style="border-color:' + (activeMobile > 0 ? '#86efac' : '#fecaca') + ';background:' + (activeMobile > 0 ? '#f0fdf4' : '#fef2f2') + ';color:' + (activeMobile > 0 ? '#166534' : '#991b1b') + ';"><i class="fa-solid fa-circle" style="font-size:8px;color:' + (activeMobile > 0 ? '#16a34a' : '#dc2626') + ';"></i> Mobile ' + (activeMobile > 0 ? 'Live' : 'Offline') + '</span>'
         ];
 
         var devices = Array.isArray(payload.active_devices_info) ? payload.active_devices_info : [];
@@ -336,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var activeDesktop = Number(surfaceCounts.desktop || 0);
         var activeMobile = Number(surfaceCounts.mobile || 0);
         if (subtitle) {
-            subtitle.textContent = (staffName || 'Assistent') + ' - Active devices: ' + activeDevices + ' (Desktop: ' + activeDesktop + ', Mobile: ' + activeMobile + ')';
+            subtitle.textContent = (staffName || 'Assistent') + ' - Active sessions: ' + activeDevices;
         }
 
         var events = Array.isArray(payload.events) ? payload.events : [];
@@ -381,8 +422,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<span class="staff-history-chip staff-history-chip--action"><i class="fa-solid ' + icon + '"></i> ' + actionLabel + '</span>' +
                         deviceChip +
                         '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-network-wired"></i> ' + ip + '</span>' +
-                        '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-desktop"></i> Website: ' + activeDesktop + '</span>' +
-                        '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ' + activeMobile + '</span>' +
                         fpChips +
                     '</div>' +
                 '</div>';
@@ -770,7 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchClientsForAssignment() {
         try {
-            var data = await ApiClient.get('/api/client-staff/clients/');
+            var data = await ApiClient.get(adminApiUrl('/api/client-staff/clients/'));
             if (data.success) {
                 NS.allClients = data.clients || [];
             } else {
@@ -1030,7 +1069,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 initClientAssignment(staffData.client_id || null);
-                renderAssignmentSummary(staffData);
+                renderAssignmentSummary(null);
             }
         } else if (mode === 'assign') {
             if (drawerTitle) drawerTitle.textContent = 'Assigned Classes';
@@ -1089,7 +1128,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchStaffDetails(staffId) {
         try {
-            var data = await ApiClient.get('/api/client-staff/' + staffId + '/');
+            var data = await ApiClient.get(adminApiUrl('/api/client-staff/' + staffId + '/'));
             if (data.success) return data.staff;
             showToast(data.message || 'Failed to fetch staff details', 'error');
             return null;
@@ -1101,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function createStaff(formData) {
         try {
-            return await ApiClient.post('/api/client-staff/create/', formData);
+            return await ApiClient.post(adminApiUrl('/api/client-staff/create/'), formData);
         } catch (error) {
             if (error && error.data && typeof error.data === 'object') return error.data;
             return { success: false, message: (error && error.message) ? error.message : 'Network error. Please try again.' };
@@ -1110,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function updateStaff(staffId, formData) {
         try {
-            return await ApiClient.post('/api/client-staff/' + staffId + '/update/', formData);
+            return await ApiClient.post(adminApiUrl('/api/client-staff/' + staffId + '/update/'), formData);
         } catch (error) {
             if (error && error.data && typeof error.data === 'object') return error.data;
             return { success: false, message: (error && error.message) ? error.message : 'Network error. Please try again.' };
@@ -1119,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function deleteStaffApi(staffId) {
         try {
-            return await ApiClient.post('/api/client-staff/' + staffId + '/delete/');
+            return await ApiClient.post(adminApiUrl('/api/client-staff/' + staffId + '/delete/'));
         } catch (error) {
             if (error && error.data && typeof error.data === 'object') return error.data;
             return { success: false, message: (error && error.message) ? error.message : 'Network error. Please try again.' };
@@ -1128,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function toggleStaffStatus(staffId) {
         try {
-            return await ApiClient.post('/api/client-staff/' + staffId + '/toggle-status/');
+            return await ApiClient.post(adminApiUrl('/api/client-staff/' + staffId + '/toggle-status/'));
         } catch (error) {
             if (error && error.data && typeof error.data === 'object') return error.data;
             return { success: false, message: (error && error.message) ? error.message : 'Network error. Please try again.' };
@@ -1476,7 +1515,7 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
         try {
-            var result = await ApiClient.post('/api/client-staff/' + tempPwTargetId + '/set-temp-password/', { password: password });
+            var result = await ApiClient.post(adminApiUrl('/api/client-staff/' + tempPwTargetId + '/set-temp-password/'), { password: password });
             if (result.success) {
                 closeTempPasswordModal();
                 showToast(result.message || 'Temporary password set successfully!', 'success');

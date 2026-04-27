@@ -14,6 +14,7 @@ from django.utils.timezone import localtime
 from core.models import User, EmailLog
 from staff.models import Staff
 from client.models import Client
+from idcards.models import IDCardGroup
 from core.utils import send_welcome_email
 from core.utils.email_utils import generate_secure_password
 from core.services.base import BaseService, ServiceResult
@@ -378,6 +379,7 @@ class StaffService(BaseService):
         try:
             staff = get_object_or_404(Staff, id=staff_id)
             user = staff.user
+            assignment_group_ids_to_set = None
             
             # Update user fields
             if data.get('email'):
@@ -433,8 +435,93 @@ class StaffService(BaseService):
                     if getattr(staff, perm, False):
                         if hasattr(staff.client, perm) and not getattr(staff.client, perm, False):
                             setattr(staff, perm, False)
+
+            assignment_keys = (
+                'assigned_groups',
+                'assigned_group_ids',
+                'assigned_table_ids',
+                'assignment_id_source',
+                'allowed_classes',
+                'allowed_sections',
+                'allowed_branches',
+                'assignment_scopes',
+            )
+            has_assignment_update = any(key in data for key in assignment_keys)
+
+            # Support client_staff assignment scope updates from admin-side APIs.
+            if staff.staff_type == 'client_staff' and staff.client and has_assignment_update:
+                from client.services_staff import ClientStaffService
+
+                raw_scope_ids = data.get('assigned_groups')
+                if raw_scope_ids is None:
+                    raw_scope_ids = data.get('assigned_group_ids')
+                if raw_scope_ids is None and 'assigned_table_ids' in data:
+                    raw_scope_ids = data.get('assigned_table_ids')
+
+                id_source = data.get('assignment_id_source', 'auto')
+                resolved_group_ids, resolved_table_ids = ClientStaffService._resolve_assignment_scope_ids(
+                    staff.client,
+                    raw_scope_ids,
+                    id_source,
+                )
+
+                normalized_scopes = None
+                if 'assignment_scopes' in data:
+                    normalized_scopes = ClientStaffService._normalize_assignment_scopes(
+                        staff.client,
+                        data.get('assignment_scopes'),
+                    )
+                    staff.assignment_scopes = normalized_scopes
+
+                    scope_group_ids = sorted({
+                        int(scope.get('group_id')) for scope in normalized_scopes
+                        if str(scope.get('group_id', '')).strip().isdigit() and int(scope.get('group_id')) > 0
+                    })
+                    scope_table_ids = sorted({
+                        int(scope.get('scope_id')) for scope in normalized_scopes
+                        if str(scope.get('scope_type', '')).strip().lower() == 'table'
+                        and str(scope.get('scope_id', '')).strip().isdigit()
+                        and int(scope.get('scope_id')) > 0
+                    })
+
+                    resolved_group_ids = sorted(set(resolved_group_ids) | set(scope_group_ids))
+                    resolved_table_ids = sorted(set(resolved_table_ids) | set(scope_table_ids))
+
+                if (
+                    'assigned_groups' in data
+                    or 'assigned_group_ids' in data
+                    or 'assigned_table_ids' in data
+                    or 'assignment_scopes' in data
+                ):
+                    assignment_group_ids_to_set = resolved_group_ids
+                    staff.assigned_table_ids = resolved_table_ids
+
+                if normalized_scopes is not None and normalized_scopes:
+                    classes, sections, branches = ClientStaffService._scope_value_union(normalized_scopes)
+                    staff.allowed_classes = classes
+                    staff.allowed_sections = sections
+                    staff.allowed_branches = branches
+                else:
+                    if 'allowed_classes' in data:
+                        staff.allowed_classes = ClientStaffService._normalize_scope_value_list(data.get('allowed_classes'))
+                    elif 'assignment_scopes' in data:
+                        staff.allowed_classes = []
+
+                    if 'allowed_sections' in data:
+                        staff.allowed_sections = ClientStaffService._normalize_scope_value_list(data.get('allowed_sections'))
+                    elif 'assignment_scopes' in data:
+                        staff.allowed_sections = []
+
+                    if 'allowed_branches' in data:
+                        staff.allowed_branches = ClientStaffService._normalize_scope_value_list(data.get('allowed_branches'))
+                    elif 'assignment_scopes' in data:
+                        staff.allowed_branches = []
             
             staff.save()
+
+            if assignment_group_ids_to_set is not None:
+                groups = IDCardGroup.objects.filter(client=staff.client, id__in=assignment_group_ids_to_set)
+                staff.assigned_groups.set(groups)
             
             # Update assigned clients (M2M)
             if 'assigned_clients' in data:

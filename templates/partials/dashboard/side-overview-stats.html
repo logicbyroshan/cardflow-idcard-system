@@ -1,10 +1,18 @@
 <div class="dashboard-card">
-  <div class="dashboard-card-header">
+  <div class="dashboard-card-header user-overview-header">
     <h3><i class="fa-solid fa-chart-simple"></i> Users Overview</h3>
+    <div class="user-overview-live-badges" aria-label="Active device usage">
+      <span class="user-overview-live-badge user-overview-live-badge-desktop" title="Users active on desktop web">
+        <i class="fa-solid fa-desktop"></i> Desktop: {{ overview_live_desktop_count|default:0 }}
+      </span>
+      <span class="user-overview-live-badge user-overview-live-badge-mobile" title="Users active on mobile app">
+        <i class="fa-solid fa-mobile-screen-button"></i> Mobile: {{ overview_live_mobile_count|default:0 }}
+      </span>
+    </div>
   </div>
   <div class="dashboard-card-body p-0">
     <div class="cards-overview" aria-label="Dashboard stats overview">
-      <div class="card-overview-item card-overview-item-static">
+      <a href="{% url 'manage_clients' %}" class="card-overview-item" title="Open Manage Clients">
         <div class="card-overview-left">
           <div class="card-overview-icon clients">
             <i class="fa-solid fa-building"></i>
@@ -12,7 +20,7 @@
           <span class="card-overview-label">Clients</span>
         </div>
         <span class="card-overview-value">{{ overview_clients_count|default:0 }}</span>
-      </div>
+      </a>
 
       <div class="card-overview-item card-overview-item-static">
         <div class="card-overview-left">
@@ -24,7 +32,7 @@
         <span class="card-overview-value">{{ overview_admins_count|default:0 }}</span>
       </div>
 
-      <div class="card-overview-item card-overview-item-static">
+      <a href="{% url 'manage_staff' %}" class="card-overview-item" title="Open Manage Operator">
         <div class="card-overview-left">
           <div class="card-overview-icon staff">
             <i class="fa-solid fa-user-tie"></i>
@@ -32,9 +40,9 @@
           <span class="card-overview-label">Operators</span>
         </div>
         <span class="card-overview-value">{{ overview_operators_count|default:0 }}</span>
-      </div>
+      </a>
 
-      <div class="card-overview-item card-overview-item-static">
+      <a href="{% url 'manage_client_staff' %}" class="card-overview-item" title="Open Manage Assistent">
         <div class="card-overview-left">
           <div class="card-overview-icon active-staff">
             <i class="fa-solid fa-user-gear"></i>
@@ -42,7 +50,7 @@
           <span class="card-overview-label">Assistents</span>
         </div>
         <span class="card-overview-value">{{ overview_assistents_count|default:0 }}</span>
-      </div>
+      </a>
     </div>
   </div>
 </div>

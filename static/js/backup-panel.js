@@ -151,7 +151,7 @@
       container.innerHTML =
         '<div class="backup-empty-state">' +
         '<i class="fa-solid fa-database"></i>' +
-        '<p>No backups yet. Use the <strong>Take Backup</strong> button on the Dashboard to create one.</p>' +
+        '<p>No backups yet. Use the <strong>Take Backup</strong> button above to create one.</p>' +
         '</div>';
       _renderBackupPagination(0);
       return;
