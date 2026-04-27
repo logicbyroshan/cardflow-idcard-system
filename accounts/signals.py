@@ -33,17 +33,15 @@ def get_device_type(request):
 def get_limits(user):
     """
     Define session limits based on user role.
-    PRO USER -> 5 web + 5 mobile
-    ADMIN -> 2 web + 2 mobile
-    NORMAL USER -> 1 web + 1 mobile
+    Delegates to AuthService for centralized limit management.
     """
-    role = getattr(user, 'role', 'client')
-    if user.is_superuser or role in ('super_admin', 'admin_staff'):
-        return {'web': 2, 'mobile': 2}
-    if role == 'pro_user':
-        return {'web': 5, 'mobile': 5}
-    # Default for 'client', 'client_staff' or unknown
-    return {'web': 1, 'mobile': 1}
+    from .services import AuthService
+    raw_limits = AuthService.role_surface_limits(user)
+    # Map 'desktop' key from service to 'web' key used in signal logic
+    return {
+        'web': raw_limits.get('desktop', 1),
+        'mobile': raw_limits.get('mobile', 1)
+    }
 
 @receiver(user_logged_in)
 def manage_user_device_sessions(sender, request, user, **kwargs):

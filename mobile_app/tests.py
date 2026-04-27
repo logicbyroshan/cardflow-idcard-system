@@ -357,15 +357,11 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertTrue(response.json()['success'])
 		mock_log_login.assert_called_once()
 
-	@mock.patch('mobile_app.views.ActivityService.log_login')
-	@mock.patch('mobile_app.views.AuthService.authenticate_user')
-	def test_mobile_login_blocks_client_when_mobile_session_limit_reached(self, mock_authenticate, mock_log_login):
+	def test_mobile_login_automatically_revokes_old_mobile_session_for_client(self):
 		self._create_authenticated_session_for_user(self.client_user, surface='mobile', mobile_auth_ok=True)
-		mock_authenticate.return_value = {
-			'success': True,
-			'user': self.client_user,
-			'message': 'ok',
-		}
+		from django.contrib.sessions.models import Session
+		self.assertEqual(Session.objects.count(), 1)
+		old_key = Session.objects.first().session_key
 
 		response = self.client.post(
 			'/app/api/auth/login/',
@@ -374,11 +370,11 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		)
 
 		self.assertEqual(response.status_code, 200)
-		self.assertFalse(response.json()['success'])
-		self.assertTrue(response.json().get('session_limit_hit'))
-		self.assertTrue(response.json().get('can_force_logout_other'))
-		self.assertIn('Maximum 1 active mobile login', response.json().get('message', ''))
-		mock_log_login.assert_not_called()
+		self.assertTrue(response.json()['success'])
+		
+		# Verify old session was kicked
+		self.assertFalse(Session.objects.filter(session_key=old_key).exists())
+		self.assertEqual(Session.objects.count(), 1)
 
 	@mock.patch('mobile_app.views.ActivityService.log_login')
 	@mock.patch('mobile_app.views.AuthService.authenticate_user')

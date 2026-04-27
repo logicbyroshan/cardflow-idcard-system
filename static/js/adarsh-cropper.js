@@ -46,6 +46,7 @@ function cropperApp() {
     folderLocked: false,   // lock the path once processing starts
     workingFolder: '',     // tracks active folder through pipeline steps
     processing: false,
+    stopping: false,       // tracks if stop was requested
 
     // -- Progress --
     progress: {
@@ -162,6 +163,8 @@ function cropperApp() {
     _keepaliveId: null,
     _retryGaveUp: false,   // true once all retry stages exhausted
     _pendingPreviewReload: false, // true when restored state needs image URL refresh
+    _abortController: null, // used to cancel ongoing fetch requests
+
 
     // -- Update state --
     update: {
@@ -552,8 +555,32 @@ function cropperApp() {
       }
     },
 
+    /**
+     * Stop the current processing pipeline.
+     * Signals the local engine to stop and aborts browser-side loop.
+     */
+    async stopProcessing() {
+      if (!this.processing || this.stopping) return;
+      
+      this.stopping = true;
+      this.progress.detail = 'Stopping... please wait.';
+      
+      // 1. Abort ongoing fetch requests in the browser
+      if (this._abortController) {
+        this._abortController.abort();
+      }
+      
+      // 2. Signal the backend/local engine to stop
+      try {
+        await ApiClient.post('/api/engine/stop/', {});
+      } catch (err) {
+        console.debug('[Cropper] Engine stop signal failed (might not be supported):', err);
+      }
+    },
+
     // 
     //  PROGRESS HELPERS
+
     // 
     _showProgress(label) {
       this.progress.visible = true;
@@ -659,10 +686,11 @@ function cropperApp() {
       // Lock the folder path so it can't be accidentally changed
       this.folderLocked = true;
       this.processing = true;
-      this.result.visible = false;
-      this.preview.visible = false;
       this.error.visible = false;
+      this.stopping = false;
+      this._abortController = new AbortController();
       this._showProgress('Processing...');
+
 
       try {
         // Use workingFolder if we already have one (chained ops), otherwise start from path
@@ -681,6 +709,7 @@ function cropperApp() {
                 'Content-Type': 'application/json',
                 'X-ENGINE-KEY': ENGINE_API_KEY,
               },
+              signal: this._abortController.signal,
               body: JSON.stringify({
                 folder_path: outputFolder,
                 photos_per_page: this.pipeline.photosPerPage || 3,
@@ -697,12 +726,14 @@ function cropperApp() {
             pickData = await ApiClient.post('/api/engine/page-photo-picker-folder/', {
               folder_path: outputFolder,
               photos_per_page: this.pipeline.photosPerPage || 3,
-            });
+            }, { signal: this._abortController.signal });
           }
 
           this._hideProgress();
+          if (this.stopping) return;
 
           if (pickData && pickData.total != null) {
+
             this._showResult(pickData);
             var pickedFilesWritten = Number(pickData.photos_written || 0);
             if (pickData.output_folder && (pickData.success > 0 || pickedFilesWritten > 0)) {
@@ -732,6 +763,7 @@ function cropperApp() {
                 'Content-Type': 'application/json',
                 'X-ENGINE-KEY': ENGINE_API_KEY,
               },
+              signal: this._abortController.signal,
               body: JSON.stringify({ folder_path: faceCropInputFolder }),
             });
             if (!resp.ok) {
@@ -744,13 +776,16 @@ function cropperApp() {
             // -- Django proxy fallback ---------------------------------
             data = await ApiClient.post(
               '/api/engine/process-folder/',
-              { folder_path: faceCropInputFolder }
+              { folder_path: faceCropInputFolder },
+              { signal: this._abortController.signal }
             );
           }
 
           this._hideProgress();
+          if (this.stopping) return;
 
           if (data && data.total != null) {
+
             this._updateProgress(100, 'Cropping complete!');
             this._showResult(data);
             
@@ -783,7 +818,10 @@ function cropperApp() {
         this._handleProcessError(err);
       } finally {
         this.processing = false;
+        this.stopping = false;
+        this._abortController = null;
       }
+
     },
 
     /**
@@ -808,6 +846,7 @@ function cropperApp() {
                 'Content-Type': 'application/json',
                 'X-ENGINE-KEY': ENGINE_API_KEY,
               },
+              signal: this._abortController.signal,
               body: JSON.stringify({
                 folder_path: currentFolder,
                 target_kb: this.pipeline.compressKB
@@ -824,10 +863,13 @@ function cropperApp() {
             compressData = await ApiClient.post('/api/engine/compress-folder/', {
               folder_path: currentFolder,
               target_kb: this.pipeline.compressKB
-            });
+            }, { signal: this._abortController.signal });
           }
 
+          if (this.stopping) return currentFolder;
+
           if (compressData && compressData.total >= 0) {
+
             // Update currentFolder to compressed output for next steps
             if (compressData.output_folder) {
               currentFolder = compressData.output_folder;
@@ -881,6 +923,7 @@ function cropperApp() {
                 'Content-Type': 'application/json',
                 'X-ENGINE-KEY': ENGINE_API_KEY,
               },
+              signal: this._abortController.signal,
               body: JSON.stringify({
                 folder_path: currentFolder,
                 operation: this.pipeline.renameOperation,
@@ -901,10 +944,13 @@ function cropperApp() {
               operation: this.pipeline.renameOperation,
               params: renameParams,
               skip_conflicts: true
-            });
+            }, { signal: this._abortController.signal });
           }
 
+          if (this.stopping) return currentFolder;
+
           if (renameData && renameData.renamed >= 0) {
+
             // Build result for display if this is the final step and no prior result
             if (!hadFaceCrop && !pipelineResult) {
               pipelineResult = {

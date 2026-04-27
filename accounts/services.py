@@ -74,10 +74,10 @@ _ROLE_SURFACE_LIMITS = {
     # One desktop + one mobile for standard staff/client roles.
     'client': {'desktop': 1, 'mobile': 1},
     'client_staff': {'desktop': 1, 'mobile': 1},
-    'admin_staff': {'desktop': 1, 'mobile': 1},
-    # Elevated allowance for privileged roles.
-    'super_admin': {'desktop': 3, 'mobile': 3},
-    'pro_user': {'desktop': 10, 'mobile': 10},
+    # PRO and ADMIN have effectively no limit (9999).
+    'admin_staff': {'desktop': 9999, 'mobile': 9999},
+    'super_admin': {'desktop': 9999, 'mobile': 9999},
+    'pro_user': {'desktop': 9999, 'mobile': 9999},
 }
 
 

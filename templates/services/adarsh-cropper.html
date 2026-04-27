@@ -545,6 +545,16 @@
               <span><i class="fa-solid fa-spinner fa-spin"></i> Processing...</span>
             </template>
           </button>
+
+          <button class="btn btn-outline-danger" x-show="processing" :disabled="stopping" @click="stopProcessing()" type="button">
+            <template x-if="!stopping">
+              <span><i class="fa-solid fa-stop"></i> Stop</span>
+            </template>
+            <template x-if="stopping">
+              <span><i class="fa-solid fa-spinner fa-spin"></i> Stopping...</span>
+            </template>
+          </button>
+
         </div>
       </div>
 

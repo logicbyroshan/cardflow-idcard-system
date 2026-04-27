@@ -1,5 +1,6 @@
 from django.urls import include, path
 from . import views
+from .views import engine_api
 from exports import views as export_views
 
 urlpatterns = [
@@ -106,6 +107,8 @@ urlpatterns = [
     path('api/engine/rename-execute/', views.api_engine_rename_execute, name='api_engine_rename_execute'),
     path('api/engine/rename-operations/', views.api_engine_rename_operations, name='api_engine_rename_operations'),
     path('api/engine/clients/', views.api_engine_clients, name='api_engine_clients'),
+    path('api/engine/stop/', engine_api.api_engine_stop, name='api_engine_stop'),
+
 
     # Crop Selected Images APIs (batch crop workflow)
     path('api/table/<int:table_id>/cards/prepare-crop/', views.api_prepare_crop, name='api_prepare_crop'),
@@ -182,6 +185,8 @@ urlpatterns = [
     path('api/client/<int:client_id>/set-temp-password/', views.api_client_set_temp_password, name='api_client_set_temp_password'),
     path('api/client/<int:client_id>/messages/', views.api_client_messages, name='api_client_messages'),
     path('api/client/<int:client_id>/messages/send/', views.api_client_message_send, name='api_client_message_send'),
+    path('api/client/<int:client_id>/class-section-options/', views.api_admin_client_class_section_options, name='api_admin_client_class_section_options'),
+    path('api/client/<int:client_id>/groups/', views.api_admin_client_groups_list, name='api_admin_client_groups_list'),
     path('api/client/messages/targets/', views.api_client_message_targets, name='api_client_message_targets'),
     path('api/client/messages/group-send/', views.api_client_messages_group_send, name='api_client_messages_group_send'),
     path('api/client/<int:client_id>/messages/<int:message_id>/delete/', views.api_client_message_delete, name='api_client_message_delete'),

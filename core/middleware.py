@@ -81,6 +81,9 @@ class SubdomainRoutingMiddleware:
             if request.path_info.startswith('/panel/'):
                 request.path_info = request.path_info[len('/panel'):]
                 request.path = request.path_info
+            elif request.path_info == '/panel':
+                request.path_info = '/'
+                request.path = request.path_info
         elif getattr(django_settings, 'DEBUG', False) and (request.path_info.startswith('/panel/') or request.path_info == '/panel'):
             # Local dev / unknown host accessing /panel/… paths:
             # Route through urls_panel and strip the prefix.  Also set a
@@ -326,6 +329,7 @@ class PermissionValidationMiddleware:
         '/favicon.ico',
         '/api/health/',
         '/robots.txt',
+        '/panel-entry/',
     ]
     
     def __init__(self, get_response):
@@ -425,7 +429,8 @@ class PermissionValidationMiddleware:
         # Panel-specific exempt paths (with correct prefix)
         prefix = self._panel_prefix(request)
         for suffix in self.EXEMPT_SUFFIXES:
-            if path.startswith(f'{prefix}/{suffix}'):
+            exempt_path = f'{prefix}/{suffix}'
+            if path.startswith(exempt_path) or f'{path}/'.startswith(exempt_path):
                 return True
         
         # On local dev: public website pages (not under /panel/) don't need auth

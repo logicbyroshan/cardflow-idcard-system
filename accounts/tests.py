@@ -288,9 +288,14 @@ class LoginViewTests(TestCase):
         data = response.json()
         self.assertTrue(data['success'])
 
-    def test_login_api_blocks_when_concurrent_sessions_reach_limit(self):
+    def test_login_api_automatically_revokes_oldest_session_for_client(self):
+        # Create an existing session for the user
+        from django.contrib.sessions.models import Session
         self._create_authenticated_session(surface='desktop')
+        self.assertEqual(Session.objects.count(), 1)
+        old_session_key = Session.objects.first().session_key
 
+        # Login again - should succeed immediately (no stop) and kick the old one
         response = self.client.post(
             '/panel/api/auth/login/',
             data=json.dumps({
@@ -302,10 +307,12 @@ class LoginViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertFalse(payload['success'])
-        self.assertTrue(payload.get('session_limit_hit'))
-        self.assertTrue(payload.get('can_force_logout_other'))
-        self.assertIn('Maximum 1 active desktop login', payload['message'])
+        self.assertTrue(payload['success'], f"Login failed: {payload.get('message')}")
+        
+        # Verify old session was revoked
+        self.assertFalse(Session.objects.filter(session_key=old_session_key).exists())
+        # Current session exists
+        self.assertEqual(Session.objects.count(), 1)
 
     def test_login_api_force_logout_other_device_allows_handoff(self):
         from accounts.services import AuthService
@@ -333,7 +340,7 @@ class LoginViewTests(TestCase):
         surface_counts = inspection.get('surface_counts') or {}
         self.assertEqual(int(surface_counts.get('desktop', 0) or 0), 1)
 
-    def test_login_api_allows_super_admin_up_to_three_desktop_sessions(self):
+    def test_login_api_allows_super_admin_unlimited_desktop_sessions(self):
         super_admin = User.objects.create_user(
             username='sa-limit@example.com',
             email='sa-limit@example.com',
@@ -341,7 +348,8 @@ class LoginViewTests(TestCase):
             role='super_admin',
         )
 
-        for _ in range(3):
+        # Create 5 existing sessions
+        for _ in range(5):
             session = SessionStore()
             session['_auth_user_id'] = str(super_admin.pk)
             session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
@@ -349,6 +357,7 @@ class LoginViewTests(TestCase):
             session['_auth_login_surface'] = 'desktop'
             session.save()
 
+        # Login 6th time - should succeed and NOT revoke any existing sessions
         response = self.client.post(
             '/panel/api/auth/login/',
             data=json.dumps({
@@ -361,10 +370,19 @@ class LoginViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertFalse(payload['success'])
-        self.assertIn('Maximum 3 active desktop login', payload['message'])
+        self.assertTrue(payload['success'])
+        
+        # Verify all 6 sessions exist (5 old + 1 new)
+        from django.contrib.sessions.models import Session
+        count = Session.objects.filter(session_key__in=[s.session_key for s in Session.objects.all()]).count()
+        # Filter by user in session data to be sure
+        user_sessions = 0
+        for s in Session.objects.all():
+            if str(s.get_decoded().get('_auth_user_id')) == str(super_admin.pk):
+                user_sessions += 1
+        self.assertEqual(user_sessions, 6)
 
-    def test_login_api_allows_pro_user_up_to_ten_desktop_sessions(self):
+    def test_login_api_allows_pro_user_unlimited_desktop_sessions(self):
         pro_user = User.objects.create_user(
             username='pro-limit@example.com',
             email='pro-limit@example.com',
@@ -372,7 +390,8 @@ class LoginViewTests(TestCase):
             role='pro_user',
         )
 
-        for _ in range(10):
+        # Create 12 existing sessions
+        for _ in range(12):
             session = SessionStore()
             session['_auth_user_id'] = str(pro_user.pk)
             session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
@@ -392,8 +411,13 @@ class LoginViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertFalse(payload['success'])
-        self.assertIn('Maximum 10 active desktop login', payload['message'])
+        self.assertTrue(payload['success'])
+        
+        user_sessions = 0
+        for s in Session.objects.all():
+            if str(s.get_decoded().get('_auth_user_id')) == str(pro_user.pk):
+                user_sessions += 1
+        self.assertEqual(user_sessions, 13)
 
     def test_login_api_logs_cross_browser_activity_for_client(self):
         from accounts.services import AuthService

@@ -23,7 +23,18 @@ document.addEventListener('DOMContentLoaded', function() {
             'perm-idcard-updated-at',
             'perm-idcard-retrieve',
             'perm-mobile-app'
-        ]
+        ],
+        assignmentScopeChips: [],
+        currentDraftGroupId: null,
+        classSectionOptions: {
+            classes: [],
+            sections: [],
+            branches: [],
+            class_sections: {}
+        },
+        selectedClasses: new Set(),
+        selectedSections: new Set(),
+        selectedBranches: new Set()
     };
 
     var staffDrawer = document.getElementById('staff-drawer');
@@ -63,6 +74,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var assignmentSummarySection = document.getElementById('staff-assignment-summary-section');
     var assignmentSummaryMeta = document.getElementById('staff-assignment-summary-meta');
     var assignmentSummaryList = document.getElementById('staff-assignment-summary-list');
+
+    // NEW Class/Section Assignment Elements
+    var classSectionFilterSection = document.getElementById('class-section-filter-section');
+    var classOptionsList = document.getElementById('class-options-list');
+    var sectionOptionsList = document.getElementById('section-options-list');
+    var branchOptionsList = document.getElementById('branch-options-list');
+    var saveAssignmentChipBtn = document.getElementById('save-current-assignment-chip-btn');
+    var groupAssignmentChipSection = document.getElementById('group-assignment-chip-section');
+    var groupAssignmentChipList = document.getElementById('group-assignment-chip-list');
 
     function escapeHtml(str) {
         return String(str == null ? '' : str)
@@ -118,6 +138,92 @@ document.addEventListener('DOMContentLoaded', function() {
         return out;
     }
 
+    function setDrawerSectionVisibility(mode) {
+        var assignmentOnly = mode === 'assign';
+        
+        var infoSection = document.getElementById('staff-info-section');
+        var permissionsSection = document.getElementById('staff-permissions-section');
+        var clientAssignmentSection = document.getElementById('client-assignment-section');
+        var avatarSection = document.getElementById('staff-avatar-section');
+        var groupSelectionGroup = document.getElementById('group-selection-group');
+
+        if (infoSection) infoSection.style.display = assignmentOnly ? 'none' : '';
+        if (permissionsSection) permissionsSection.style.display = assignmentOnly ? 'none' : '';
+        if (clientAssignmentSection) clientAssignmentSection.style.display = assignmentOnly ? 'none' : '';
+        if (avatarSection) avatarSection.style.display = assignmentOnly ? 'none' : '';
+        if (groupSelectionGroup) groupSelectionGroup.style.display = assignmentOnly ? '' : 'none';
+
+        if (classSectionFilterSection) classSectionFilterSection.style.display = assignmentOnly ? '' : 'none';
+        if (groupAssignmentChipSection) groupAssignmentChipSection.style.display = assignmentOnly ? '' : 'none';
+
+        if (assignmentSummarySection) {
+            assignmentSummarySection.style.display = (mode === 'view' || mode === 'assign' || mode === 'edit') ? '' : 'none';
+        }
+    }
+
+    function renderAssignmentScopeChips() {
+        if (!groupAssignmentChipList) return;
+        groupAssignmentChipList.innerHTML = '';
+
+        if (!NS.assignmentScopeChips || NS.assignmentScopeChips.length === 0) {
+            groupAssignmentChipList.innerHTML = '<div class="assignment-options-empty" id="group-assignment-chip-empty">No group assignments added yet.</div>';
+            return;
+        }
+
+        NS.assignmentScopeChips.forEach(function(chip, index) {
+            var el = document.createElement('div');
+            el.className = 'assignment-scope-chip';
+            
+            var label = chip.group_name || ('Group #' + chip.group_id);
+            var details = [];
+            if (chip.classes && chip.classes.length) details.push('Classes: ' + chip.classes.join(', '));
+            if (chip.sections && chip.sections.length) details.push('Sections: ' + chip.sections.join(', '));
+            
+            var detailText = details.length ? ' (' + details.join('; ') + ')' : ' (Full Access)';
+            
+            el.innerHTML = 
+                '<span class="chip-text"><strong>' + escapeHtml(label) + '</strong>' + escapeHtml(detailText) + '</span>' +
+                '<button type="button" class="chip-remove-btn" data-index="' + index + '"><i class="fa-solid fa-xmark"></i></button>';
+            
+            el.querySelector('.chip-remove-btn').addEventListener('click', function() {
+                NS.assignmentScopeChips.splice(index, 1);
+                renderAssignmentScopeChips();
+            });
+            
+            groupAssignmentChipList.appendChild(el);
+        });
+    }
+
+    function renderCheckboxOptions(container, options, selectedSet, onToggle) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (!options || options.length === 0) {
+            container.innerHTML = '<div class="assignment-options-empty">No options available.</div>';
+            return;
+        }
+
+        options.forEach(function(opt) {
+            var wrapper = document.createElement('label');
+            wrapper.className = 'assignment-checkbox-item';
+            
+            var input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = selectedSet.has(opt);
+            input.addEventListener('change', function() {
+                if (input.checked) selectedSet.add(opt);
+                else selectedSet.delete(opt);
+                if (onToggle) onToggle(opt, input.checked);
+            });
+            
+            var span = document.createElement('span');
+            span.textContent = opt;
+            
+            wrapper.appendChild(input);
+            wrapper.appendChild(span);
+            container.appendChild(wrapper);
+        });
+    }
+
     function buildClassSectionPairChips(classes, sections) {
         var chips = [];
         var maxVisible = 12;
@@ -128,11 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 for (var si = 0; si < sections.length; si += 1) {
                     total += 1;
                     if (chips.length < maxVisible) {
-                        chips.push(
-                            '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:11px;font-weight:700;">' +
-                            escapeHtml(classes[ci]) + ' "' + escapeHtml(sections[si]) + '"' +
-                            '</span>'
-                        );
+                        chips.push('<span class="staff-assignment-chip">' + escapeHtml(classes[ci]) + ' "' + escapeHtml(sections[si]) + '"</span>');
                     }
                 }
             }
@@ -878,6 +980,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 NS.selectedClientIds.add(client.id);
                 renderClientList(clientSearchInput ? clientSearchInput.value : '');
                 updateClientSelectionText();
+                if (typeof fetchClientGroups === 'function') fetchClientGroups(client.id);
+                closeClientDropdown();
             });
 
             clientMultiselectList.appendChild(item);
@@ -1045,7 +1149,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (tempPwBtn) tempPwBtn.style.display = 'none';
             enableFormInputs(true);
             initClientAssignment(null);
-            renderAssignmentSummary(null);
+            NS.assignmentScopeChips = [];
+            renderAssignmentScopeChips();
+            setDrawerSectionVisibility('add');
         } else if (mode === 'edit') {
             if (drawerTitle) drawerTitle.textContent = 'Edit Assistent';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-pen-to-square';
@@ -1054,6 +1160,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (pwRow) pwRow.style.display = 'none';
             if (tempPwBtn) tempPwBtn.style.display = '';
             enableFormInputs(true);
+            setDrawerSectionVisibility('edit');
 
             if (staffData) {
                 document.getElementById('staff-name').value = staffData.name || '';
@@ -1068,16 +1175,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (el) el.checked = staffData[apiField] === true;
                 });
 
+                NS.assignmentScopeChips = Array.isArray(staffData.assignment_scopes) ? JSON.parse(JSON.stringify(staffData.assignment_scopes)) : [];
+                renderAssignmentScopeChips();
                 initClientAssignment(staffData.client_id || null);
-                renderAssignmentSummary(null);
             }
         } else if (mode === 'assign') {
             if (drawerTitle) drawerTitle.textContent = 'Assigned Classes';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-layer-group';
-            if (submitBtn) submitBtn.style.display = 'none';
+            if (submitBtnText) submitBtnText.textContent = 'Save Assignments';
+            if (submitBtn) submitBtn.style.display = 'inline-flex';
             if (pwRow) pwRow.style.display = 'none';
             if (tempPwBtn) tempPwBtn.style.display = 'none';
             enableFormInputs(false);
+            setDrawerSectionVisibility('assign');
 
             if (staffData) {
                 document.getElementById('staff-name').value = staffData.name || '';
@@ -1086,14 +1196,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('staff-address').value = staffData.address || '';
                 setStatusDropdown(staffData.status === 'active' ? 'true' : 'false');
 
-                NS.permissionFields.forEach(function(field) {
-                    var el = document.getElementById(field);
-                    var apiField = field.replace(/-/g, '_');
-                    if (el) el.checked = staffData[apiField] === true;
-                });
+                NS.assignmentScopeChips = Array.isArray(staffData.assignment_scopes) ? JSON.parse(JSON.stringify(staffData.assignment_scopes)) : [];
+                renderAssignmentScopeChips();
 
                 initClientAssignment(staffData.client_id || null);
-                renderAssignmentSummary(staffData);
+                if (staffData.client_id) fetchClientGroups(staffData.client_id);
             }
         } else {
             if (drawerTitle) drawerTitle.textContent = 'View Assistent';
@@ -1102,6 +1209,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (pwRow) pwRow.style.display = 'none';
             if (tempPwBtn) tempPwBtn.style.display = 'none';
             enableFormInputs(false);
+            setDrawerSectionVisibility('view');
 
             if (staffData) {
                 document.getElementById('staff-name').value = staffData.name || '';
@@ -1116,8 +1224,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (el) el.checked = staffData[apiField] === true;
                 });
 
+                NS.assignmentScopeChips = Array.isArray(staffData.assignment_scopes) ? JSON.parse(JSON.stringify(staffData.assignment_scopes)) : [];
+                renderAssignmentScopeChips();
                 initClientAssignment(staffData.client_id || null);
-                renderAssignmentSummary(staffData);
             }
         }
 
@@ -1397,8 +1506,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             var result;
             try {
+                formData.assignment_scopes = NS.assignmentScopeChips;
                 if (NS.currentMode === 'edit' && NS.selectedStaffId) {
                     result = await updateStaff(NS.selectedStaffId, formData);
+                } else if (NS.currentMode === 'assign' && NS.selectedStaffId) {
+                    // For "Assign" mode, we only care about assignment_scopes
+                    result = await updateStaff(NS.selectedStaffId, { assignment_scopes: NS.assignmentScopeChips });
                 } else {
                     result = await createStaff(formData);
                 }
@@ -1532,4 +1645,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     enableActionButtons(false);
     updateClientSelectionText();
+
+    var saveAssignmentBtn = document.getElementById('save-group-assignment-btn');
+    if (saveAssignmentBtn) {
+        saveAssignmentBtn.addEventListener('click', function() {
+            saveCurrentAssignmentChip();
+        });
+    }
+
+    var assignmentGroupSelect = document.getElementById('assignment-group-select');
+    if (assignmentGroupSelect) {
+        assignmentGroupSelect.addEventListener('change', function() {
+            var selectedClientId = getSelectedClientId();
+            if (selectedClientId && this.value) {
+                updateAssignmentUIForGroup(selectedClientId, this.value);
+            }
+        });
+    }
 });

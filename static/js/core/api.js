@@ -201,9 +201,14 @@
             fetchOpts.body = JSON.stringify(data);
         }
 
-        var controller = new AbortController();
-        var tid = setTimeout(function () { controller.abort(); }, config.timeout);
-        fetchOpts.signal = controller.signal;
+        // Support external AbortSignal for manual cancellation
+        var controller = config.signal ? null : new AbortController();
+        var signal = config.signal || controller.signal;
+        
+        // Only set timeout if we are using our own controller
+        var tid = controller ? setTimeout(function () { controller.abort(); }, config.timeout) : null;
+        fetchOpts.signal = signal;
+
 
         var lastError;
         var attempts = 0;

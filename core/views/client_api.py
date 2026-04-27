@@ -724,6 +724,217 @@ def api_admin_client_staff_set_temp_password(request, staff_id):
 
 @require_http_methods(["GET"])
 @api_require_any_admin
+def api_admin_client_class_section_options(request, client_id):
+    """
+    API: Get distinct class and section values from all cards of a specific client.
+    Used by admin side assistant management to assign classes/sections.
+    """
+    from idcards.models import IDCard, IDCardTable
+    from idcards.models import IDCardGroup
+
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    client = Client.objects.filter(id=client_id).first()
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    raw_group_ids = request.GET.get('group_ids', '').strip()
+    id_source = (request.GET.get('id_source', '') or '').strip().lower()
+    if id_source not in ('group', 'table'):
+        id_source = 'auto'
+
+    resolved_id_source = id_source
+    if resolved_id_source == 'auto':
+        group_count = IDCardGroup.objects.filter(client=client).count()
+        resolved_id_source = 'table' if group_count <= 1 else 'group'
+
+    group_ids = []
+    if raw_group_ids:
+        try:
+            group_ids = sorted({int(x) for x in raw_group_ids.split(',') if str(x).strip().isdigit()})
+        except Exception:
+            group_ids = []
+
+    # Resolve effective tables.
+    tables_qs = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
+
+    if group_ids:
+        valid_group_ids = set(
+            IDCardGroup.objects.filter(client=client, id__in=group_ids).values_list('id', flat=True)
+        )
+        valid_table_ids = set(
+            IDCardTable.objects.filter(group__client=client, id__in=group_ids).values_list('id', flat=True)
+        )
+
+        if resolved_id_source == 'table':
+            if valid_table_ids:
+                tables_qs = tables_qs.filter(id__in=list(valid_table_ids))
+            elif valid_group_ids:
+                tables_qs = tables_qs.filter(group_id__in=list(valid_group_ids))
+            else:
+                tables_qs = tables_qs.none()
+        elif resolved_id_source == 'group':
+            if valid_group_ids:
+                tables_qs = tables_qs.filter(group_id__in=list(valid_group_ids))
+            elif valid_table_ids:
+                tables_qs = tables_qs.filter(id__in=list(valid_table_ids))
+            else:
+                tables_qs = tables_qs.none()
+
+    tables = list(tables_qs.values('id', 'fields'))
+
+    classes = set()
+    sections = set()
+    branches = set()
+    class_sections = {}
+    class_counts = {}
+    section_counts = {}
+    class_section_counts = {}
+    table_field_map = {}
+    has_class_field = False
+    has_section_field = False
+    has_branch_field = False
+
+    for table in tables:
+        class_field = None
+        section_field = None
+        branch_field = None
+        for field in (table.get('fields') or []):
+            ft = field.get('type', '').lower()
+            fn = field.get('name', '')
+            fn_lower = fn.lower()
+            if ft == 'class' or fn.lower() == 'class':
+                class_field = fn
+            elif ft == 'section' or fn.lower() == 'section':
+                section_field = fn
+            elif (
+                ft == 'branch'
+                or fn_lower == 'branch'
+                or fn_lower == 'stream'
+                or fn_lower == 'course'
+                or 'branch' in fn_lower
+                or 'stream' in fn_lower
+                or 'course' in fn_lower
+            ):
+                branch_field = fn
+
+        if class_field: has_class_field = True
+        if section_field: has_section_field = True
+        if branch_field: has_branch_field = True
+
+        if class_field or section_field or branch_field:
+            table_field_map[table['id']] = (class_field, section_field, branch_field)
+
+    table_ids = list(table_field_map.keys())
+    if table_ids:
+        cards = IDCard.objects.filter(table_id__in=table_ids).values_list('table_id', 'field_data').iterator(chunk_size=1000)
+    else:
+        cards = []
+
+    for table_id, fd in cards:
+        if not fd: continue
+        class_field, section_field, branch_field = table_field_map.get(table_id, (None, None, None))
+        class_val = ''
+        section_val = ''
+        if class_field:
+            val = fd.get(class_field, '') or fd.get(class_field.upper(), '') or fd.get(class_field.lower(), '')
+            if val:
+                class_val = str(val).strip()
+                if class_val: classes.add(class_val)
+        if section_field:
+            val = fd.get(section_field, '') or fd.get(section_field.upper(), '') or fd.get(section_field.lower(), '')
+            if val:
+                section_val = str(val).strip()
+                if section_val: sections.add(section_val)
+        if branch_field:
+            val = fd.get(branch_field, '') or fd.get(branch_field.upper(), '') or fd.get(branch_field.lower(), '')
+            if val:
+                branch_val = str(val).strip()
+                if branch_val: branches.add(branch_val)
+
+        if class_val:
+            if class_val not in class_sections:
+                class_sections[class_val] = set()
+            if section_val:
+                class_sections[class_val].add(section_val)
+            class_counts[class_val] = class_counts.get(class_val, 0) + 1
+        if section_val:
+            section_counts[section_val] = section_counts.get(section_val, 0) + 1
+        if class_val and section_val:
+            class_section_counts.setdefault(class_val, {})
+            class_section_counts[class_val][section_val] = class_section_counts[class_val].get(section_val, 0) + 1
+
+    return JsonResponse({
+        'success': True,
+        'resolved_id_source': resolved_id_source,
+        'classes': sorted(classes),
+        'sections': sorted(sections),
+        'branches': sorted(branches),
+        'has_class_field': has_class_field,
+        'has_section_field': has_section_field,
+        'has_branch_field': has_branch_field,
+        'class_sections': {k: sorted(v) for k, v in sorted(class_sections.items())},
+        'class_counts': {k: int(v) for k, v in sorted(class_counts.items())},
+        'section_counts': {k: int(v) for k, v in sorted(section_counts.items())},
+        'class_section_counts': {k: {sk: int(sv) for sk, sv in sorted(sv.items())} for k, sv in sorted(class_section_counts.items())},
+    })
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_admin_client_groups_list(request, client_id):
+    """
+    API: Get list of assignable groups for a specific client.
+    Similar to the client-side api_client_groups_list but for admin use.
+    """
+    from idcards.models import IDCardGroup, IDCardTable
+    from client.models import Client
+
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    client = Client.objects.filter(id=client_id).first()
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    groups_qs = IDCardGroup.objects.filter(client=client).order_by('name')
+    group_count = groups_qs.count()
+
+    # If only one group, show tables as assignable units (matches client-side behavior)
+    if group_count <= 1:
+        tables_qs = IDCardTable.objects.filter(
+            group__client=client,
+            deleted_by_client=False,
+        ).order_by('name').values('id', 'name', 'group_id')
+        groups_data = [
+            {
+                'id': t['id'],
+                'name': t['name'],
+                'group_id': t['group_id'],
+                'source': 'table',
+            }
+            for t in tables_qs
+        ]
+    else:
+        groups_data = [
+            {
+                'id': g.id,
+                'name': g.name,
+                'group_id': g.id,
+                'source': 'group',
+            }
+            for g in groups_qs
+        ]
+
+    return JsonResponse({
+        'success': True,
+        'groups': groups_data
+    })
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='client_msg_list')
 def api_client_messages(request, client_id):
     """API endpoint to fetch admin-sent message history for a client."""

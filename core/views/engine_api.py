@@ -1604,3 +1604,38 @@ def api_engine_clients(request):
     except Exception as exc:
         logger.exception("api_engine_clients error")
         return _internal_error_response()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/stop/
+# ═══════════════════════════════════════════════════════════════════════════
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_stop(request):
+    """
+    Proxy POST → engine /stop.
+    Signifies the engine to abort current processing tasks.
+    """
+    try:
+        resp = http_client.post(
+            f"{ENGINE_BASE}/stop",
+            headers=_engine_headers(),
+            timeout=5,
+        )
+        # We don't raise_for_status() because even if the engine doesn't
+        # support /stop (404), we want the browser-side loop to proceed
+        # with its own cancellation logic.
+        return JsonResponse({
+            "success": True,
+            "engine_responded": resp.ok,
+            "status_code": resp.status_code,
+        })
+    except Exception as exc:
+        logger.debug("Engine stop request failed (might not be supported): %s", exc)
+        return JsonResponse({
+            "success": True,
+            "engine_responded": False,
+            "message": "Stop signal sent to browser; engine might not support remote stop."
+        })
+
