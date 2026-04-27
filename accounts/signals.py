@@ -39,11 +39,11 @@ def get_limits(user):
     """
     role = getattr(user, 'role', 'client')
     if user.is_superuser or role in ('super_admin', 'admin_staff'):
-        return {'web': 5, 'mobile': 5}
+        return {'web': 2, 'mobile': 2}
     if role == 'pro_user':
-        return {'web': 10, 'mobile': 10}
+        return {'web': 5, 'mobile': 5}
     # Default for 'client', 'client_staff' or unknown
-    return {'web': 3, 'mobile': 3}
+    return {'web': 1, 'mobile': 1}
 
 @receiver(user_logged_in)
 def manage_user_device_sessions(sender, request, user, **kwargs):

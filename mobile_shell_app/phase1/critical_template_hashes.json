@@ -17,7 +17,7 @@
                       },
                       {
                           "path":  "templates/mobile_app/list_page.html",
-                          "sha256":  "9BA590825CCC93B8F801829921492F83E71687C9AFCB123FF9600F3BBDC05F89"
+                          "sha256":  "411FEE74C39AC82F4F8614AE32E6CB40F8AFAD4CD57DF2ADB02CA54CE5925AE5"
                       },
                       {
                           "path":  "templates/mobile_app/card_detail.html",
@@ -41,7 +41,7 @@
                       },
                       {
                           "path":  "templates/mobile_app/partials/add_form_sheet.html",
-                          "sha256":  "31F6448F58F3D9D79412E1C58DE2A9AC258446EF8311F19F39C39D7AB44A2CFE"
+                          "sha256":  "A64858597DCFB1EE99CCDEDFDA4278B41589CE4896BB8CA4279117795FD61191"
                       }
                   ]
 }

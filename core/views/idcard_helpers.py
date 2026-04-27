@@ -125,7 +125,6 @@ def _table_scope_filters_for_staff(staff, table):
             _dedupe_scope_values(staff.allowed_classes or []),
             _dedupe_scope_values(staff.allowed_sections or []),
             _dedupe_scope_values(staff.allowed_branches or []),
-            False,
         )
 
     matched = []
@@ -149,34 +148,20 @@ def _table_scope_filters_for_staff(staff, table):
             _dedupe_scope_values(staff.allowed_classes or []),
             _dedupe_scope_values(staff.allowed_sections or []),
             _dedupe_scope_values(staff.allowed_branches or []),
-            False,
         )
 
-    is_unfiltered = False
     classes = []
     sections = []
     branches = []
     for scope in matched:
-        s_classes = scope.get('classes') or []
-        s_sections = scope.get('sections') or []
-        s_branches = scope.get('branches') or []
-        
-        if not s_classes and not s_sections and not s_branches:
-            is_unfiltered = True
-            break
-            
-        classes.extend(s_classes)
-        sections.extend(s_sections)
-        branches.extend(s_branches)
-
-    if is_unfiltered:
-        return ([], [], [], True)
+        classes.extend(scope.get('classes') or [])
+        sections.extend(scope.get('sections') or [])
+        branches.extend(scope.get('branches') or [])
 
     return (
         _dedupe_scope_values(classes),
         _dedupe_scope_values(sections),
         _dedupe_scope_values(branches),
-        False,
     )
 
 
@@ -382,14 +367,10 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     if not _table_is_assigned_to_staff(staff, table):
         return qs.none()
 
-    allowed_classes, allowed_sections, allowed_branches, is_unfiltered = _table_scope_filters_for_staff(staff, table)
-
-    if is_unfiltered:
-        return qs
+    allowed_classes, allowed_sections, allowed_branches = _table_scope_filters_for_staff(staff, table)
 
     if not (allowed_classes or allowed_sections or allowed_branches):
-        # Broad assignment fallback
-        return qs
+        return qs.none()
 
     if str(status_filter or '').strip().lower() == 'pool':
         return qs
@@ -428,27 +409,9 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     if allowed_sections:
         if not section_field:
             return qs.none()
-        
-        # Deduplicate allowed sections (already trimmed by _dedupe_scope_values, but uppercase for safety)
-        allowed_normalized = {str(s).strip().upper() for s in allowed_sections if str(s).strip()}
-        if not allowed_normalized:
-            return qs.none()
-
         qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField()))
-        
-        # Get all distinct raw section values from the table to find matches
-        raw_values = list(
-            qs.exclude(_scope_sec__isnull=True)
-            .exclude(_scope_sec='')
-            .values_list('_scope_sec', flat=True)
-            .distinct()
-        )
-        # Match raw values that normalize to the same as the allowed sections
-        matching_raw = [raw for raw in raw_values if str(raw).strip().upper() in allowed_normalized]
-        if not matching_raw:
-            return qs.none()
-        
-        qs = qs.filter(_scope_sec__in=matching_raw)
+        qs = qs.filter(_scope_sec__in=allowed_sections)
+
     if allowed_branches:
         if not branch_field:
             return qs.none()

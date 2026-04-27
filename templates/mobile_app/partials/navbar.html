@@ -5,7 +5,7 @@
         <!-- -- LEFT: Profile avatar icon only (opens left profile drawer) -- -->
         <a href="{% url 'mobile_app:profile' %}"
             @click="return window.mobileTriggerDrawer($event, 'open-profile-drawer', this.getAttribute('href'))"
-            class="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-gray-700 shadow-sm active:scale-95 transition-transform flex-shrink-0 select-none border border-gray-200 overflow-hidden">
+            class="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-700 shadow-sm active:scale-95 transition-transform flex-shrink-0 select-none border border-gray-200 overflow-hidden">
             {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
                 <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" class="w-full h-full object-contain bg-white">
             {% elif is_super_admin %}

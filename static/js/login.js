@@ -38,52 +38,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleNewPassword = document.getElementById('toggleNewPassword');
     
     // Functions
-    function authBasePath() {
-        return window.location.pathname.indexOf('/panel/') === 0 ? '/panel/auth' : '/auth';
-    }
-
     function getCSRFToken() {
-        const cookieToken = document.cookie
+        return document.cookie
             .split('; ')
             .find(row => row.startsWith('csrftoken='))
             ?.split('=')[1] || '';
-
-        if (cookieToken) return cookieToken;
-
-        const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        if (metaToken) return metaToken;
-
-        const hiddenToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
-        return hiddenToken;
-    }
-
-    async function ensureCSRFCookie() {
-        const existing = getCSRFToken();
-        if (existing) return existing;
-
-        try {
-            await fetch(authBasePath() + '/csrf/', {
-                method: 'GET',
-                credentials: 'same-origin',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
-        } catch (e) {
-            // Ignore fetch errors here; caller will surface a user-facing message.
-        }
-
-        return getCSRFToken();
     }
 
     /**
      * Safe JSON POST  handles redirects, non-JSON responses, and CSRF errors
      * gracefully instead of showing a generic "Network error".
      */
-    async function safePost(url, body, retry = true) {
-        const csrfToken = await ensureCSRFCookie();
+    async function safePost(url, body) {
         const response = await fetch(url, {
             method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
             body: JSON.stringify(body)
         });
         const ct = response.headers.get('content-type') || '';
@@ -93,10 +62,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Session expired. Please refresh the page.');
             }
             if (response.status === 403) {
-                const refreshed = await ensureCSRFCookie();
-                if (retry && refreshed && refreshed !== csrfToken) {
-                    return safePost(url, body, false);
-                }
                 // Step 6: Frontend Auto-Recovery (Reload ONCE only)
                 if (!window.__csrfRetry) {
                     window.__csrfRetry = true;
@@ -108,12 +73,6 @@ document.addEventListener('DOMContentLoaded', function() {
             throw new Error('Server error (' + response.status + '). Please refresh and try again.');
         }
         const data = await response.json();
-        if (response.status === 403 && retry) {
-            const refreshed = await ensureCSRFCookie();
-            if (refreshed && refreshed !== csrfToken) {
-                return safePost(url, body, false);
-            }
-        }
         if (response.status === 429) {
             throw new Error(data.message || 'Too many requests. Please wait and try again.');
         }

@@ -67,97 +67,9 @@ class SubdomainRoutingMiddleware:
         self.website_domain = getattr(django_settings, 'WEBSITE_DOMAIN', '').lower().strip()
         self.panel_domain = getattr(django_settings, 'PANEL_DOMAIN', '').lower().strip()
 
-    @staticmethod
-    def _is_panel_scoped_path(path: str) -> bool:
-        if not path:
-            return False
-        return (
-            path == '/panel'
-            or path.startswith('/panel/')
-            or path == '/app'
-            or path.startswith('/app/')
-        )
-
-    def _build_panel_redirect_url(self, request):
-        panel_url = (getattr(django_settings, 'PANEL_URL', '') or '').strip().rstrip('/')
-        if panel_url:
-            return f'{panel_url}{request.get_full_path()}'
-
-        scheme = 'https' if request.is_secure() else 'http'
-        return f'{scheme}://{self.panel_domain}{request.get_full_path()}'
-
-    def _legacy_shared_cookie_domain(self) -> str:
-        if not self.panel_domain:
-            return ''
-        labels = [segment for segment in self.panel_domain.split('.') if segment]
-        if len(labels) < 3:
-            return ''
-        return '.'.join(labels[-2:])
-
-    @staticmethod
-    def _normalize_cookie_domain(value: str) -> str:
-        return str(value or '').strip().lstrip('.').lower()
-
-    def _configured_cookie_matches_legacy(self, cookie_domain: str, legacy_domain: str) -> bool:
-        configured = self._normalize_cookie_domain(cookie_domain)
-        legacy = self._normalize_cookie_domain(legacy_domain)
-        return bool(configured and legacy and configured == legacy)
-
-    def _delete_cookie_on_legacy_domains(self, response, cookie_name: str, samesite_value: str, legacy_domain: str):
-        # Django stores response cookies by name only. If this response already
-        # sets a fresh cookie for the panel host, avoid overwriting it with a
-        # legacy-domain delete cookie of the same name.
-        if cookie_name in response.cookies:
-            return
-
-        for domain in (legacy_domain, f'.{legacy_domain}'):
-            response.delete_cookie(
-                cookie_name,
-                path='/',
-                domain=domain,
-                samesite=samesite_value,
-            )
-
-    def _clear_legacy_shared_domain_auth_cookies(self, response):
-        legacy_domain = self._legacy_shared_cookie_domain()
-        if not legacy_domain:
-            return
-
-        session_cookie_name = getattr(django_settings, 'SESSION_COOKIE_NAME', 'sessionid')
-        csrf_cookie_name = getattr(django_settings, 'CSRF_COOKIE_NAME', 'csrftoken')
-
-        configured_session_domain = getattr(django_settings, 'SESSION_COOKIE_DOMAIN', '')
-        if not self._configured_cookie_matches_legacy(configured_session_domain, legacy_domain):
-            self._delete_cookie_on_legacy_domains(
-                response,
-                session_cookie_name,
-                getattr(django_settings, 'SESSION_COOKIE_SAMESITE', 'Lax'),
-                legacy_domain,
-            )
-
-        configured_csrf_domain = getattr(django_settings, 'CSRF_COOKIE_DOMAIN', '')
-        if not self._configured_cookie_matches_legacy(configured_csrf_domain, legacy_domain):
-            self._delete_cookie_on_legacy_domains(
-                response,
-                csrf_cookie_name,
-                getattr(django_settings, 'CSRF_COOKIE_SAMESITE', 'Lax'),
-                legacy_domain,
-            )
-
     def __call__(self, request):
         host = request.get_host().split(':')[0].lower()  # strip port
         _set_panel_cookie = False
-
-        # Production hardening:
-        # Prevent panel/app routes from being served on non-panel hosts.
-        # This blocks accidental session/csrf cookie issuance on root/legacy domains.
-        if (
-            not getattr(django_settings, 'DEBUG', False)
-            and self.panel_domain
-            and host != self.panel_domain
-            and self._is_panel_scoped_path(request.path_info)
-        ):
-            return redirect(self._build_panel_redirect_url(request))
 
         if self.website_domain and host == self.website_domain:
             request.urlconf = 'config.urls_website'
@@ -191,9 +103,6 @@ class SubdomainRoutingMiddleware:
             request._is_panel_subdomain = False
 
         response = self.get_response(request)
-
-        if host == self.panel_domain:
-            self._clear_legacy_shared_domain_auth_cookies(response)
 
         # Set / clear the panel context cookie for local dev routing
         if _set_panel_cookie:
@@ -464,9 +373,9 @@ class PermissionValidationMiddleware:
         if not is_task_polling:
             self._sync_revalidation_marker(request)
 
-        # fingerprint_result = self._validate_session_fingerprint(request)
-        # if fingerprint_result is not None:
-        #     return fingerprint_result
+        fingerprint_result = self._validate_session_fingerprint(request)
+        if fingerprint_result is not None:
+            return fingerprint_result
         
         # Re-fetch user from database to get latest state
         # This catches changes made by admin while user is logged in
@@ -618,7 +527,27 @@ class PermissionValidationMiddleware:
         request.session[cls.SESSION_FP_KEY] = cls.build_session_fingerprint(request)
 
     def _validate_session_fingerprint(self, request):
-        """DEPRECATED: Fingerprint validation disabled due to session instability."""
+        """Validate session fingerprint for authenticated requests."""
+        if not getattr(django_settings, 'SESSION_FINGERPRINT_ENABLED', False):
+            return None
+
+        if not request.META.get('HTTP_USER_AGENT'):
+            return None
+
+        current_fp = self.build_session_fingerprint(request)
+        stored_fp = request.session.get(self.SESSION_FP_KEY)
+
+        if not stored_fp:
+            request.session[self.SESSION_FP_KEY] = current_fp
+            return None
+
+        if stored_fp != current_fp:
+            logger.warning(
+                "PermissionValidationMiddleware: session fingerprint mismatch user=%s",
+                getattr(request.user, 'username', '?'),
+            )
+            return self._force_logout(request, 'Session verification failed. Please log in again.')
+
         return None
 
     def _validation_unavailable_response(self, request):

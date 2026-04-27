@@ -124,7 +124,7 @@ class ClientCardService(BaseService):
         return matched
 
     @classmethod
-    def _table_scope_filters(cls, staff, table) -> Tuple[List[str], List[str], List[str], bool]:
+    def _table_scope_filters(cls, staff, table) -> Tuple[List[str], List[str], List[str]]:
         table_key = (int(table.id), int(table.group_id))
         cached_scopes = getattr(staff, '_cached_table_scope_filters', None)
         if isinstance(cached_scopes, dict) and table_key in cached_scopes:
@@ -136,7 +136,6 @@ class ClientCardService(BaseService):
                 cls._dedupe_scope_values(staff.allowed_classes or []),
                 cls._dedupe_scope_values(staff.allowed_sections or []),
                 cls._dedupe_scope_values(staff.allowed_branches or []),
-                False,  # Legacy system doesn't use the explicit is_unfiltered flag here
             )
             if not isinstance(cached_scopes, dict):
                 cached_scopes = {}
@@ -151,7 +150,6 @@ class ClientCardService(BaseService):
                 cls._dedupe_scope_values(staff.allowed_classes or []),
                 cls._dedupe_scope_values(staff.allowed_sections or []),
                 cls._dedupe_scope_values(staff.allowed_branches or []),
-                False,
             )
             if not isinstance(cached_scopes, dict):
                 cached_scopes = {}
@@ -159,35 +157,19 @@ class ClientCardService(BaseService):
             setattr(staff, '_cached_table_scope_filters', cached_scopes)
             return result
 
-        # New Scope System: If ANY matched scope is broad (no filters), the entire table is unfiltered.
-        is_unfiltered = False
         classes: List[str] = []
         sections: List[str] = []
         branches: List[str] = []
-        
         for scope in matched:
-            s_classes = scope.get('classes') or []
-            s_sections = scope.get('sections') or []
-            s_branches = scope.get('branches') or []
-            
-            if not s_classes and not s_sections and not s_branches:
-                is_unfiltered = True
-                break
-                
-            classes.extend(s_classes)
-            sections.extend(s_sections)
-            branches.extend(s_branches)
+            classes.extend(scope.get('classes') or [])
+            sections.extend(scope.get('sections') or [])
+            branches.extend(scope.get('branches') or [])
 
-        if is_unfiltered:
-            result = ([], [], [], True)
-        else:
-            result = (
-                cls._dedupe_scope_values(classes),
-                cls._dedupe_scope_values(sections),
-                cls._dedupe_scope_values(branches),
-                False,
-            )
-            
+        result = (
+            cls._dedupe_scope_values(classes),
+            cls._dedupe_scope_values(sections),
+            cls._dedupe_scope_values(branches),
+        )
         if not isinstance(cached_scopes, dict):
             cached_scopes = {}
         cached_scopes[table_key] = result
@@ -269,19 +251,23 @@ class ClientCardService(BaseService):
         if not cls._table_is_assigned_to_staff(staff, table):
             return qs.none()
 
-        allowed_classes, allowed_sections, allowed_branches, is_unfiltered = cls._table_scope_filters(staff, table)
-        
-        if is_unfiltered:
-            return qs
+        allowed_classes, allowed_sections, allowed_branches = cls._table_scope_filters(staff, table)
 
         class_field, section_field, branch_field = cls._get_class_section_branch_fields(table)
 
-        # Check if we should enforce strict assignment-based filtering
         matched_scopes = cls._matched_assignment_scopes_for_table(staff, table)
         if matched_scopes and (class_field or section_field or branch_field):
-            # We already checked is_unfiltered above. If we are here, it means 
-            # there are filters present in at least some scopes, and no scope is broad.
-            pass
+            has_scope_filters = False
+            for scope in matched_scopes:
+                scope_classes = cls._dedupe_scope_values(scope.get('classes') or [])
+                scope_sections = cls._dedupe_scope_values(scope.get('sections') or [])
+                scope_branches = cls._dedupe_scope_values(scope.get('branches') or [])
+                if scope_classes or scope_sections or scope_branches:
+                    has_scope_filters = True
+                    break
+
+            if not has_scope_filters:
+                return qs.none()
 
         if allowed_classes:
             if not class_field:
@@ -308,10 +294,10 @@ class ClientCardService(BaseService):
                 return qs.none()
             qs = qs.filter(_scope_cls__in=matching_raw)
 
-            normalized_sections = [str(s).strip().upper() for s in allowed_sections if s]
-            if not normalized_sections:
+        if allowed_sections:
+            if not section_field:
                 return qs.none()
-            qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField())).filter(_scope_sec__in=normalized_sections)
+            qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField())).filter(_scope_sec__in=allowed_sections)
 
         if allowed_branches:
             if not branch_field:

@@ -428,10 +428,9 @@ class IDCardCardService(BaseService):
                 if class_filter and class_field_name:
                     cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name, table_id=table_id)
                 if section_filter and section_field_name:
-                    cards_query = cls._apply_compact_text_filter(
-                        cards_query, section_filter, section_field_name,
-                        table_id=table_id, alias='_sec_cmp',
-                    )
+                    cards_query = cards_query.annotate(
+                        _sec=KeyTextTransform(section_field_name, 'field_data')
+                    ).filter(_sec__iexact=section_filter)
                 if course_filter and course_field_name:
                     cards_query = cls._apply_compact_text_filter(
                         cards_query,
@@ -595,10 +594,9 @@ class IDCardCardService(BaseService):
                 if class_filter and class_field_name:
                     cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name, table_id=table_id)
                 if section_filter and section_field_name:
-                    cards_query = cls._apply_compact_text_filter(
-                        cards_query, section_filter, section_field_name,
-                        table_id=table_id, alias='_sec_cmp',
-                    )
+                    cards_query = cards_query.annotate(
+                        _sec=KeyTextTransform(section_field_name, 'field_data')
+                    ).filter(_sec__iexact=section_filter)
                 if course_filter and course_field_name:
                     cards_query = cls._apply_compact_text_filter(
                         cards_query,

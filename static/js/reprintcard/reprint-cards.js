@@ -569,47 +569,34 @@ function parseFilenameFromDisposition(disposition, fallbackExt) {
   var parts = [window.CLIENT_NAME || '', window.TABLE_NAME || '', 'Reprint'].filter(Boolean).map(function(v) {
     return String(v).replace(/\s+/g, '');
   });
-/**
- * Safely trigger a download using anchor click or window.location.assign 
- * based on environment (Mobile APK vs Desktop).
- */
-function _triggerSafeDownload(url, filename) {
-    if (!url) return;
-    const isNative = window.adarshDeviceBridge && typeof window.adarshDeviceBridge.isNativeShell === 'function' && window.adarshDeviceBridge.isNativeShell();
-    
-    if (isNative) {
-        try {
-            window.location.assign(url);
-        } catch (e) {
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = filename || 'download';
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
-        }
-    } else {
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = filename || 'download';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
-    }
+  return (parts.length ? parts.join('_') : 'export') + '.' + fallbackExt;
 }
 
 function triggerBlobDownload(blob, filename) {
-    var url = window.URL.createObjectURL(blob);
-    _triggerSafeDownload(url, filename);
-    setTimeout(function() {
-        window.URL.revokeObjectURL(url);
-    }, 5000);
+  var url = window.URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    window.URL.revokeObjectURL(url);
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 0);
 }
 
 function triggerUrlDownload(url, filename) {
-  _triggerSafeDownload(url, filename);
+  if (!url) return;
+  var a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  if (filename) a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 0);
 }
 
 function decodeBase64ToBlob(base64Str, mimeType) {

@@ -11,7 +11,6 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
-from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
 from django.contrib.auth import get_user_model
@@ -64,9 +63,6 @@ class LoginPageView(View):
     template_name = 'auth/login.html'
     
     def get(self, request):
-        # Force token generation so the response always carries a usable CSRF token.
-        get_token(request)
-
         # If user is already authenticated, redirect to dashboard
         if request.user.is_authenticated:
             # Respect ?next= param (e.g. from PWA ÔåÆ login redirect)
@@ -98,8 +94,7 @@ class GetCSRFTokenView(View):
     Useful for PWAs or AJAX-heavy flows that need to recover from expired tokens.
     """
     def get(self, request):
-        token = get_token(request)
-        return JsonResponse({'success': True, 'csrfToken': token})
+        return JsonResponse({'success': True})
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
@@ -151,13 +146,8 @@ class LogoutView(View):
     """
     
     def get(self, request):
-        # S7: Allow force-logout via GET for APK/mobile users who cannot clear cookies manually.
-        if request.GET.get('force') == '1' or request.GET.get('force_logout') == '1':
-            if request.user.is_authenticated:
-                ActivityService.log_logout(request, request.user)
-            logout(request)
-            return redirect(reverse('accounts:login') + '?logged_out=1')
-
+        # GET requests redirect to login ÔÇö do NOT perform logout on GET
+        # (prevents CSRF logout via <img src="/logout/"> attacks)
         return redirect('accounts:login')
     
     def post(self, request):

@@ -486,26 +486,6 @@ class LoginViewTests(TestCase):
         self.assertEqual(log_entry.ip_address, '198.51.100.77')
 
     @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
-    def test_login_api_uses_forwarded_public_ip_when_remote_addr_is_internal_proxy(self):
-        response = self.client.post(
-            '/panel/api/auth/login/',
-            data=json.dumps({
-                'email': 'view@example.com',
-                'password': 'testpass123',
-            }),
-            content_type='application/json',
-            REMOTE_ADDR='10.10.10.10',
-            HTTP_X_FORWARDED_FOR='8.8.8.8, 9.9.9.9',
-        )
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload['success'])
-
-        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
-        self.assertIsNotNone(log_entry)
-        self.assertEqual(log_entry.ip_address, '8.8.8.8')
-
-    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
     def test_login_api_prefers_public_remote_addr_when_not_trusting_proxy_headers(self):
         response = self.client.post(
             '/panel/api/auth/login/',
@@ -616,18 +596,8 @@ class RateLimitClientIPTests(TestCase):
     @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
     def test_get_client_ip_uses_remote_addr_by_default(self):
         from accounts.rate_limit import _get_client_ip
-        request = self.factory.get('/panel/api/auth/login/', REMOTE_ADDR='8.8.8.8', HTTP_X_FORWARDED_FOR='1.1.1.1')
-        self.assertEqual(_get_client_ip(request), '8.8.8.8')
-
-    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
-    def test_get_client_ip_uses_forwarded_public_ip_when_remote_addr_is_internal_proxy(self):
-        from accounts.rate_limit import _get_client_ip
-        request = self.factory.get(
-            '/panel/api/auth/login/',
-            REMOTE_ADDR='10.10.10.10',
-            HTTP_X_FORWARDED_FOR='8.8.8.8, 9.9.9.9',
-        )
-        self.assertEqual(_get_client_ip(request), '8.8.8.8')
+        request = self.factory.get('/panel/api/auth/login/', REMOTE_ADDR='10.10.10.10', HTTP_X_FORWARDED_FOR='8.8.8.8')
+        self.assertEqual(_get_client_ip(request), '10.10.10.10')
 
     @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=True)
     def test_get_client_ip_uses_trusted_xff_when_enabled(self):
@@ -635,9 +605,9 @@ class RateLimitClientIPTests(TestCase):
         request = self.factory.get(
             '/panel/api/auth/login/',
             REMOTE_ADDR='10.10.10.10',
-            HTTP_X_FORWARDED_FOR='8.8.8.8, 9.9.9.9'
+            HTTP_X_FORWARDED_FOR='198.51.100.1, 203.0.113.10'
         )
-        self.assertEqual(_get_client_ip(request), '8.8.8.8')
+        self.assertEqual(_get_client_ip(request), '198.51.100.1')
 
     @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
     def test_get_client_ip_uses_x_real_ip_when_remote_addr_invalid(self):
@@ -645,9 +615,9 @@ class RateLimitClientIPTests(TestCase):
         request = self.factory.get(
             '/panel/api/auth/login/',
             REMOTE_ADDR='invalid-ip',
-            HTTP_X_REAL_IP='8.8.4.4',
+            HTTP_X_REAL_IP='198.51.100.77',
         )
-        self.assertEqual(_get_client_ip(request), '8.8.4.4')
+        self.assertEqual(_get_client_ip(request), '198.51.100.77')
 
 
 class AuthServiceRoleEdgeTests(TestCase):

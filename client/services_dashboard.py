@@ -232,8 +232,12 @@ class ClientDashboardService(BaseService):
                             table,
                             IDCard.objects.filter(table_id=table.id),
                         )
-                        table_status_rows = scoped_qs.values('status').annotate(count=Count('id'))
-                        cls._accumulate_status_rows(counts, table_status_rows)
+                        table_status_map = {
+                            row['status']: int(row.get('count', 0) or 0)
+                            for row in scoped_qs.values('status').annotate(count=Count('id'))
+                            if row.get('status')
+                        }
+                        cls._accumulate_status_map(counts, table_status_map)
                 else:
                     status_rows = IDCard.objects.filter(
                         table_id__in=table_ids

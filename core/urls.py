@@ -93,6 +93,7 @@ urlpatterns = [
 
     # Engine Proxy APIs (browser → Django → Adarsh Engine, avoids CORS)
     path('api/engine/status/', views.api_engine_status, name='api_engine_status'),
+    path('api/engine/self-update/', views.api_engine_self_update, name='api_engine_self_update'),
     path('api/engine/process-folder/', views.api_engine_process_folder, name='api_engine_process_folder'),
     path('api/engine/page-photo-picker-folder/', views.api_engine_page_photo_picker_folder, name='api_engine_page_photo_picker_folder'),
     path('api/engine/preview/', views.api_engine_preview, name='api_engine_preview'),
@@ -115,6 +116,7 @@ urlpatterns = [
     path('api/crop-batch/<str:batch_id>/cleanup/', views.api_crop_batch_cleanup, name='api_crop_batch_cleanup'),
 
     # Cropper Auto-Update APIs
+    path('api/cropper/release-webhook/', views.api_cropper_release_webhook, name='api_cropper_release_webhook'),
     path('api/cropper/latest-version/', views.api_cropper_latest_version, name='api_cropper_latest_version'),
 
     # Website Management → redirect to new website admin dashboard

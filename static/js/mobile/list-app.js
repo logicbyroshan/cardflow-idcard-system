@@ -155,7 +155,6 @@ function listApp() {
             imageFiles: {},
             imagePreviews: {},
             imageHasPath: {},
-            imageInitialHasPath: {},
             imageRemoveFlags: {},
         },
 
@@ -933,34 +932,6 @@ function listApp() {
             }
         },
 
-        triggerDownload(url, filename) {
-            if (!url) return;
-            const isNative = window.adarshDeviceBridge && typeof window.adarshDeviceBridge.isNativeShell === 'function' && window.adarshDeviceBridge.isNativeShell();
-            
-            if (isNative) {
-                // For Native/Capacitor shell on Android, direct location assignment is often 
-                // more reliably intercepted by the system downloader or PDF viewer.
-                try {
-                    window.location.assign(url);
-                } catch (e) {
-                    // Fallback to traditional anchor click if assign fails
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename || 'download';
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => a.remove(), 100);
-                }
-            } else {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename || 'download';
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => a.remove(), 100);
-            }
-        },
-
         cancelDownload() {
             if (this.downloadModal.abortController) {
                 this.downloadModal.cancelling = true;
@@ -995,7 +966,13 @@ function listApp() {
 
                 if (data.status === 'completed' && data.download_url) {
                     this.updateDownloadProgress(95, options.readyText || 'Saving file...');
-                    this.triggerDownload(data.download_url, data.result?.filename || options.fallbackFilename || 'export');
+                    const a = document.createElement('a');
+                    a.href = data.download_url;
+                    const resultFilename = data.result && data.result.filename ? data.result.filename : '';
+                    a.download = resultFilename || options.fallbackFilename || 'export';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
 
                     if (typeof options.afterSuccess === 'function') {
                         await options.afterSuccess();
@@ -1836,7 +1813,6 @@ function listApp() {
             const imageFiles = {};
             const imagePreviews = {};
             const imageHasPath = {};
-            const imageInitialHasPath = {};
             const imageRemoveFlags = {};
 
             this.imageFormFields.forEach((fieldName) => {
@@ -1845,6 +1821,7 @@ function listApp() {
                 imageFiles[fieldName] = null;
                 imagePreviews[fieldName] = normalized.url || null;
                 imageHasPath[fieldName] = !!normalized.hasPath;
+                imageRemoveFlags[fieldName] = false;
             });
 
             const cardPhotoSlots = Array.isArray(card.photo_slots) ? card.photo_slots : [];
@@ -1881,11 +1858,6 @@ function listApp() {
             this.form.imageFiles = imageFiles;
             this.form.imagePreviews = imagePreviews;
             this.form.imageHasPath = imageHasPath;
-            this.imageFormFields.forEach((fieldName) => {
-                imageInitialHasPath[fieldName] = !!imageHasPath[fieldName];
-                imageRemoveFlags[fieldName] = false;
-            });
-            this.form.imageInitialHasPath = imageInitialHasPath;
             this.form.imageRemoveFlags = imageRemoveFlags;
 
             if (!this.activeImageField || !this.imageFormFields.includes(this.activeImageField)) {
@@ -1899,6 +1871,35 @@ function listApp() {
 
         _imageHasPath(fieldName) {
             return !!((this.form.imageHasPath || {})[fieldName]);
+        },
+
+        removeImage(fieldName) {
+            if (this.viewMode || this.addFormSubmitting) return;
+
+            const targetField = fieldName || this.activeImageField || this._defaultImageFieldName();
+            if (!targetField) return;
+
+            if (!this.form.imageFiles) this.form.imageFiles = {};
+            if (!this.form.imagePreviews) this.form.imagePreviews = {};
+            if (!this.form.imageHasPath) this.form.imageHasPath = {};
+            if (!this.form.imageRemoveFlags) this.form.imageRemoveFlags = {};
+
+            const hadAnyValue = Boolean(
+                this.form.imageFiles[targetField]
+                || this.form.imagePreviews[targetField]
+                || this.form.imageHasPath[targetField]
+            );
+            if (!hadAnyValue) {
+                this.showToast('No photo to remove', 'info');
+                return;
+            }
+
+            this.form.imageFiles[targetField] = null;
+            this.form.imagePreviews[targetField] = null;
+            this.form.imageHasPath[targetField] = false;
+            this.form.imageRemoveFlags[targetField] = true;
+            this.showImagePicker = false;
+            this.showToast('Photo removed. Save changes to apply.', 'info');
         },
 
         startImageSelection(fieldName) {
@@ -2540,7 +2541,6 @@ function listApp() {
                 imageFiles: {},
                 imagePreviews: {},
                 imageHasPath: {},
-                imageInitialHasPath: {},
                 imageRemoveFlags: {},
             };
             this._initDynamicForm({});
@@ -2564,36 +2564,6 @@ function listApp() {
             if (this.viewMode || this.addFormSubmitting) return;
             if (this.$refs.galleryInput) this.$refs.galleryInput.click();
             this.showImagePicker = false;
-        },
-        removeImage(fieldName) {
-            if (this.viewMode || this.addFormSubmitting) return;
-
-            const targetField = fieldName || this.activeImageField || this._defaultImageFieldName();
-            if (!targetField) return;
-
-            if (!this.form.imageFiles) this.form.imageFiles = {};
-            if (!this.form.imagePreviews) this.form.imagePreviews = {};
-            if (!this.form.imageHasPath) this.form.imageHasPath = {};
-            if (!this.form.imageInitialHasPath) this.form.imageInitialHasPath = {};
-            if (!this.form.imageRemoveFlags) this.form.imageRemoveFlags = {};
-
-            const hadAnyValue = Boolean(
-                this.form.imageFiles[targetField]
-                || this.form.imagePreviews[targetField]
-                || this.form.imageHasPath[targetField]
-            );
-            if (!hadAnyValue) {
-                this.showToast('No photo to remove', 'info');
-                return;
-            }
-
-            const hadInitialPath = !!this.form.imageInitialHasPath[targetField];
-            this.form.imageFiles[targetField] = null;
-            this.form.imagePreviews[targetField] = null;
-            this.form.imageHasPath[targetField] = false;
-            this.form.imageRemoveFlags[targetField] = hadInitialPath;
-            this.showImagePicker = false;
-            this.showToast(hadInitialPath ? 'Photo removed. Save changes to apply.' : 'Photo cleared.', 'info');
         },
         handleImageSelected(event) {
             const file = event.target.files[0];
@@ -2669,13 +2639,10 @@ function listApp() {
                     return;
                 }
 
-                if (this.editMode) {
-                    Object.entries(this.form.imageRemoveFlags || {}).forEach(([fieldName, shouldRemove]) => {
-                        if (!shouldRemove) return;
-                        fieldData[fieldName] = '';
-                    });
-                }
-
+                Object.entries(this.form.imageRemoveFlags || {}).forEach(([fieldName, shouldRemove]) => {
+                    if (!shouldRemove) return;
+                    fieldData[fieldName] = '';
+                });
                 fd.append('field_data', JSON.stringify(fieldData));
                 Object.entries(this.form.imageFiles || {}).forEach(([fieldName, fileObj]) => {
                     if (!fileObj) return;
@@ -2720,23 +2687,19 @@ function listApp() {
                                         const mergedFieldData = Object.assign({}, existing.field_data || {}, fieldData);
                                         const fallbackSlots = (this.imageFormFields || []).map((fieldName, slotIdx) => {
                                             const wasRemoved = !!((this.form.imageRemoveFlags || {})[fieldName]);
-                                            const previewUrl = wasRemoved
-                                                ? null
-                                                : (
-                                                    (this.form.imagePreviews || {})[fieldName]
-                                                    || ((existing.photo_slots || [])[slotIdx] || {}).url
-                                                    || null
-                                                );
-                                            const hasPath = wasRemoved
-                                                ? false
-                                                : !!(
-                                                    (this.form.imageHasPath || {})[fieldName]
-                                                    || ((existing.photo_slots || [])[slotIdx] || {}).has_path
-                                                    || previewUrl
-                                                );
+                                            const previewUrl = (this.form.imagePreviews || {})[fieldName]
+                                                || ((existing.photo_slots || [])[slotIdx] || {}).url
+                                                || null;
+                                            const hasPath = !!(
+                                                !wasRemoved && (
+                                                (this.form.imageHasPath || {})[fieldName]
+                                                || ((existing.photo_slots || [])[slotIdx] || {}).has_path
+                                                || previewUrl
+                                                )
+                                            );
                                             return {
-                                                url: previewUrl,
-                                                has_path: hasPath,
+                                                url: wasRemoved ? null : previewUrl,
+                                                has_path: wasRemoved ? false : hasPath,
                                             };
                                         });
                                         const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
@@ -2890,7 +2853,12 @@ function listApp() {
 
                         if (statusData.state === 'completed' && statusData.download_url) {
                             this.updateDownloadProgress(95, 'Saving file...');
-                            this.triggerDownload(statusData.download_url, statusData.filename || ('cards_' + TABLE_ID + '_' + LIST_TYPE + '.pdf'));
+                            const a = document.createElement('a');
+                            a.href = statusData.download_url;
+                            a.download = statusData.filename || ('cards_' + TABLE_ID + '_' + LIST_TYPE + '.pdf');
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
                             this.completeDownload(true, 'PDF saved to your device');
                             return;
                         }
@@ -2992,20 +2960,28 @@ function listApp() {
                     for (const zipInfo of zipFiles) {
                         const progress = 40 + Math.round((downloaded / totalZips) * 50);
                         this.updateDownloadProgress(progress, 'Downloading ' + (downloaded + 1) + ' of ' + totalZips + '...');
-                        
+                        const a = document.createElement('a');
+                        document.body.appendChild(a);
+
                         if (zipInfo.download_url) {
-                            this.triggerDownload(zipInfo.download_url, zipInfo.filename || 'images.zip');
+                            a.href = zipInfo.download_url;
+                            a.download = zipInfo.filename || 'images.zip';
+                            a.click();
                         } else if (zipInfo.data) {
                             const bin = atob(zipInfo.data);
                             const bytes = new Uint8Array(bin.length);
                             for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
                             const blob = new Blob([bytes], { type: 'application/zip' });
                             const url = URL.createObjectURL(blob);
-                            this.triggerDownload(url, zipInfo.filename || 'images.zip');
-                            setTimeout(() => URL.revokeObjectURL(url), 5000);
+                            a.href = url;
+                            a.download = zipInfo.filename || 'images.zip';
+                            a.click();
+                            URL.revokeObjectURL(url);
                         } else {
                             throw new Error('Missing image file payload');
                         }
+
+                        document.body.removeChild(a);
                         downloaded++;
                     }
                     const totalSize = zipFiles.reduce((sum, z) => sum + (z.data?.length || 0) * 0.75, 0);
@@ -3113,9 +3089,14 @@ function listApp() {
 
                 const blob = await res.blob();
                 const filename = 'cards_' + TABLE_ID + '_' + LIST_TYPE + '.xlsx';
+                const link = document.createElement('a');
                 const url = URL.createObjectURL(blob);
-                this.triggerDownload(url, filename);
-                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
 
                 this.showToast('Excel file downloaded', 'success');
 

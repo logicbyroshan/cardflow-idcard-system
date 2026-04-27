@@ -95,37 +95,6 @@
         return false;
     }
 
-    /**
-     * Safely trigger a download using anchor click or window.location.assign 
-     * based on environment (Mobile APK vs Desktop).
-     */
-    function _triggerSafeDownload(url, filename) {
-        if (!url) return;
-        var isNative = window.adarshDeviceBridge && typeof window.adarshDeviceBridge.isNativeShell === 'function' && window.adarshDeviceBridge.isNativeShell();
-        
-        if (isNative) {
-            try {
-                window.location.assign(url);
-            } catch (e) {
-                var a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = filename || 'download';
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(function() { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
-            }
-        } else {
-            var a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = filename || 'download';
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(function() { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
-        }
-    }
-
     // =========================================
     // BLOCKING OVERLAY HELPERS (Enhanced)
     // =========================================
@@ -971,12 +940,29 @@
     // =========================================
     function _triggerBlobDownload(blob, filename) {
         var url = window.URL.createObjectURL(blob);
-        _triggerSafeDownload(url, filename);
-        setTimeout(function () { window.URL.revokeObjectURL(url); }, 5000);
+        var a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+            window.URL.revokeObjectURL(url);
+            if (a.parentNode) a.parentNode.removeChild(a);
+        }, 100);
     }
 
     function _triggerUrlDownload(url, filename) {
-        _triggerSafeDownload(url, filename);
+        if (!url) return;
+        var a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        if (filename) a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+            if (a.parentNode) a.parentNode.removeChild(a);
+        }, 100);
     }
 
     function _pollAsyncExportTask(taskId, dl, opts) {

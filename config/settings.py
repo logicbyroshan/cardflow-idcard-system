@@ -75,26 +75,22 @@ def _env_float(name: str, default: float, *, minimum: float | None = None, maxim
     return parsed
 
 # Allowed Hosts
-# Combine environment-defined hosts with local development defaults.
-_env_hosts = [
-    host.strip()
-    for host in os.getenv('ALLOWED_HOSTS', '').split(',')
-    if host.strip()
-]
-_debug_hosts = [
-    host.strip()
-    for host in os.getenv('DEBUG_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver').split(',')
-    if host.strip()
-]
-
+# In DEBUG mode, default to localhost hosts only. Override via DEBUG_ALLOWED_HOSTS.
 if DEBUG:
-    # In DEBUG mode, allow both production domains and local dev hosts.
-    ALLOWED_HOSTS = list(set(_env_hosts + _debug_hosts))
+    _debug_hosts = os.getenv('DEBUG_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
+    ALLOWED_HOSTS = [
+        host.strip()
+        for host in _debug_hosts.split(',')
+        if host.strip()
+    ]
     if not ALLOWED_HOSTS:
         ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 else:
-    # In production, strictly use environment-defined hosts.
-    ALLOWED_HOSTS = _env_hosts
+    ALLOWED_HOSTS = [
+        host.strip()
+        for host in os.getenv('ALLOWED_HOSTS', '').split(',')
+        if host.strip()
+    ]
     if not ALLOWED_HOSTS:
         raise ImproperlyConfigured(
             'ALLOWED_HOSTS is not set. Add comma-separated hostnames to your .env file.'
@@ -176,7 +172,7 @@ MIDDLEWARE = [
     'core.middleware.PanelEntryGateMiddleware',
     # Permission Validation Middleware - re-checks permissions on every request
     # CRITICAL: Must come after AuthenticationMiddleware
-    # 'core.middleware.PermissionValidationMiddleware',
+    'core.middleware.PermissionValidationMiddleware',
     # RoleScopingMiddleware removed — deprecated, scoping merged into PermissionValidationMiddleware
     # Session idle timeout — logs out after SESSION_IDLE_TIMEOUT of inactivity
     'core.middleware.SessionIdleTimeoutMiddleware',
@@ -325,26 +321,8 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 # ── Domain restriction ──
 # REMOVE any existing domain overrides to prevent duplicate cookies
-CSRF_COOKIE_DOMAIN = os.getenv('CSRF_COOKIE_DOMAIN')
-SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN')
-
-
-def _normalize_cookie_domain(value: str) -> str:
-    return str(value or '').strip().lstrip('.').lower()
-
-
-# Production safety: when panel subdomain split-routing is enabled,
-# force auth cookies to panel host only to avoid root-domain collisions.
-if not DEBUG and PANEL_DOMAIN:
-    _panel_cookie_domain = _normalize_cookie_domain(PANEL_DOMAIN)
-
-    _session_cookie_domain = _normalize_cookie_domain(SESSION_COOKIE_DOMAIN)
-    if _session_cookie_domain != _panel_cookie_domain:
-        SESSION_COOKIE_DOMAIN = PANEL_DOMAIN
-
-    _csrf_cookie_domain = _normalize_cookie_domain(CSRF_COOKIE_DOMAIN)
-    if _csrf_cookie_domain != _panel_cookie_domain:
-        CSRF_COOKIE_DOMAIN = PANEL_DOMAIN
+CSRF_COOKIE_DOMAIN = None
+SESSION_COOKIE_DOMAIN = None
 
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.
@@ -375,9 +353,14 @@ ACTIVITY_LOG_AUTOCLEAN_ENABLED = _env_bool('ACTIVITY_LOG_AUTOCLEAN_ENABLED', Fal
 # ── Session fingerprint validation ──
 # Adds lightweight binding of a session to browser fingerprint material.
 # Include IP binding only when infra has stable client egress IPs.
-SESSION_FINGERPRINT_ENABLED = False
-SESSION_FINGERPRINT_INCLUDE_IP = False
-
+SESSION_FINGERPRINT_ENABLED = os.getenv(
+    'SESSION_FINGERPRINT_ENABLED',
+    'false' if DEBUG else 'true'
+).strip().lower() in ('1', 'true', 'yes')
+SESSION_FINGERPRINT_INCLUDE_IP = os.getenv(
+    'SESSION_FINGERPRINT_INCLUDE_IP',
+    'false'
+).strip().lower() in ('1', 'true', 'yes')
 
 # How often PermissionValidationMiddleware can skip DB revalidation.
 # Lower values reduce access-revocation windows.

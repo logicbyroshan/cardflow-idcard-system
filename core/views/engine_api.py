@@ -103,13 +103,7 @@ def _is_engine_path_allowed(user, path_value: Path) -> bool:
 
     # Allow internal engine working paths under MEDIA_ROOT for admin workflows.
     rel_path = os.path.relpath(target, media_root).replace('\\', '/')
-    # Allow engine/, temp/, and any folder with cropped/, edited/, failed/ subfolders
-    if rel_path.startswith('engine/') or rel_path.startswith('temp/'):
-        return True
-    # Allow paths that contain /cropped/, /edited/, /failed/ (engine output folders)
-    if '/cropped/' in rel_path or '/edited/' in rel_path or '/failed/' in rel_path:
-        return True
-    return False
+    return rel_path.startswith('engine/') or rel_path.startswith('temp/')
 
 
 def _path_access_error(request, path_value: Path):
@@ -118,6 +112,128 @@ def _path_access_error(request, path_value: Path):
         return None
     logger.warning("Engine path denied for user=%s path=%s", getattr(request.user, 'pk', None), path_value)
     return JsonResponse({"success": False, "message": "Access denied for this path."}, status=403)
+
+
+def _select_engine_installer_path():
+    """Return the newest installer path from known source locations."""
+    from django.http import Http404
+
+    installer_names = [
+        'AdarshEngineSetup.exe',
+        'AdarshCropperSetup.exe',
+        'PassportEngineSetup.exe',
+        'PhotoCropperSetup.exe',
+    ]
+    installer_globs = [
+        'AdarshEngineSetup*.exe',
+        'AdarshCropperSetup*.exe',
+        'PassportEngineSetup*.exe',
+        'PhotoCropperSetup*.exe',
+    ]
+    search_dirs = []
+
+    media_engine_dir = None
+    if getattr(settings, 'MEDIA_ROOT', None):
+        media_engine_dir = Path(settings.MEDIA_ROOT) / 'engine'
+        search_dirs.append(media_engine_dir)
+
+    for sdir in getattr(settings, 'STATICFILES_DIRS', []):
+        search_dirs.append(Path(sdir) / 'engine')
+
+    if getattr(settings, 'STATIC_ROOT', None):
+        search_dirs.append(Path(settings.STATIC_ROOT) / 'engine')
+
+    base_dir = Path(getattr(settings, 'BASE_DIR', Path(__file__).resolve().parents[2]))
+    search_dirs.extend([
+        base_dir / 'static' / 'engine',
+        base_dir / 'staticfiles' / 'engine',
+    ])
+    search_dirs.extend([
+        base_dir / 'Face Cropper' / 'Output',
+        base_dir / 'Face Cropper' / 'installer',
+        base_dir / 'Face Cropper' / 'dist',
+        base_dir / 'Output',
+        base_dir / 'installer',
+    ])
+
+    media_root_real = None
+    if media_engine_dir:
+        try:
+            media_root_real = str(media_engine_dir.resolve())
+        except Exception:
+            media_root_real = None
+
+    def _is_media_candidate(path_obj: Path) -> bool:
+        if not media_root_real:
+            return False
+        try:
+            candidate_parent = str(path_obj.resolve().parent)
+            return candidate_parent == media_root_real
+        except Exception:
+            return False
+
+    def _sha256_file(path_obj: Path):
+        hasher = hashlib.sha256()
+        with open(path_obj, 'rb') as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b''):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+
+    exact_candidates = []
+    glob_candidates = []
+    seen_paths = set()
+    for folder in search_dirs:
+        if not folder.exists() or not folder.is_dir():
+            continue
+        for name in installer_names:
+            candidate = folder / name
+            if candidate.exists() and candidate.is_file():
+                key = str(candidate.resolve())
+                if key not in seen_paths:
+                    exact_candidates.append(candidate)
+                    seen_paths.add(key)
+        for pattern in installer_globs:
+            for candidate in folder.glob(pattern):
+                if not candidate.exists() or not candidate.is_file():
+                    continue
+                key = str(candidate.resolve())
+                if key not in seen_paths:
+                    glob_candidates.append(candidate)
+                    seen_paths.add(key)
+
+    candidates = exact_candidates if exact_candidates else glob_candidates
+    preferred_candidates = [c for c in candidates if not _is_media_candidate(c)]
+    if preferred_candidates:
+        candidates = preferred_candidates
+
+    raw_engine_exe = base_dir / 'Face Cropper' / 'dist' / 'AdarshEngine.exe'
+    raw_engine_hash = None
+    raw_engine_size = None
+    try:
+        if raw_engine_exe.exists() and raw_engine_exe.is_file():
+            raw_engine_size = raw_engine_exe.stat().st_size
+            raw_engine_hash = _sha256_file(raw_engine_exe)
+    except Exception:
+        raw_engine_hash = None
+        raw_engine_size = None
+
+    if raw_engine_hash and raw_engine_size:
+        filtered = []
+        for candidate in candidates:
+            try:
+                if candidate.stat().st_size == raw_engine_size and _sha256_file(candidate) == raw_engine_hash:
+                    logger.warning("Skipping installer candidate identical to raw engine exe: %s", candidate)
+                    continue
+            except Exception:
+                pass
+            filtered.append(candidate)
+        candidates = filtered
+
+    if not candidates:
+        logger.error("AdarshEngineSetup.exe not found in any candidate path.")
+        raise Http404("AdarshEngine installer not found.")
+
+    return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1133,6 +1249,82 @@ def engine_download(request):
     # Tell the browser the exact byte size so it shows a proper progress bar
     response['Content-Length'] = exe_path.stat().st_size
     return response
+
+
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_self_update(request):
+    """
+    Proxy POST → engine /self-update.
+
+    The browser calls Django, Django streams the installer from disk,
+    and the local engine launches the setup detached.
+    """
+    from django.http import Http404
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except (json.JSONDecodeError, ValueError):
+        body = {}
+
+    silent = bool(body.get('silent', True))
+    source_version = str(body.get('source_version', '') or '').strip()
+
+    try:
+        installer_path = _select_engine_installer_path()
+    except Http404 as exc:
+        return JsonResponse({"success": False, "message": str(exc)}, status=404)
+    except Exception:
+        logger.exception("Engine self-update installer resolution failed")
+        return _internal_error_response()
+
+    try:
+        with installer_path.open('rb') as installer_fh:
+            resp = http_client.post(
+                f"{ENGINE_BASE}/self-update",
+                headers=_engine_headers(),
+                files={
+                    'installer': (installer_path.name, installer_fh, 'application/octet-stream'),
+                },
+                data={
+                    'silent': 'true' if silent else 'false',
+                    'source_version': source_version,
+                },
+                timeout=120,
+            )
+        resp.raise_for_status()
+        try:
+            payload = resp.json()
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+        payload.setdefault('accepted', True)
+        return JsonResponse(payload, status=resp.status_code)
+    except http_client.ConnectionError:
+        return JsonResponse({
+            "success": False,
+            "message": "Cannot connect to Adarsh Engine. Is the service running?",
+        }, status=502)
+    except http_client.Timeout:
+        return JsonResponse({
+            "success": False,
+            "message": "Engine update timed out.",
+        }, status=504)
+    except http_client.HTTPError as exc:
+        detail = ""
+        try:
+            detail = exc.response.json().get('detail', '')
+        except Exception:
+            pass
+        return JsonResponse({
+            "success": False,
+            "message": detail or f"Engine error {exc.response.status_code}",
+        }, status=exc.response.status_code)
+    except Exception:
+        logger.exception("engine self-update proxy error")
+        return _internal_error_response()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

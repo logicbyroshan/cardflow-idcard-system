@@ -1149,9 +1149,6 @@ body[style*="overflow:hidden"] {
 /* Sidebar-specific avatar styling */
 .sidebar .user-avatar {
   position: relative;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
   border-radius: 8px !important;
 }
 
@@ -2492,7 +2489,5 @@ body.bulk-operation-active #blockingOverlay * {
 .view-avatar,
 .view-avatar img {
   border-radius: 8px !important;
-  object-fit: contain;
-  overflow: hidden;
 }
 

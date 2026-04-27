@@ -63,13 +63,7 @@ def _render_error(request, *, status_code: int, title: str, heading: str, messag
 
 def error_400(request, exception=None):
     if exception:
-        # Capture the specific cause (e.g. DisallowedHost, BadRequest) for diagnostics
-        exc_type = type(exception).__name__
-        logger.error(
-            "400 Bad Request [%s]: %s [Path: %s, User: %s]",
-            exc_type, exception, request.path, getattr(request.user, 'username', 'anonymous')
-        )
-    
+        logger.error("400 Bad Request: %s [Path: %s]", exception, request.path)
     return _render_error(
         request,
         status_code=400,
@@ -142,13 +136,10 @@ def csrf_failure(request, reason=''):
             'force_logout': True,
         }, status=403)
     
-    if not is_ajax:
-        # If session expired on a regular page load, just redirect to login.
-        # This is the most common case and provides the smoothest UX.
-        return redirect(login_url)
+    # If session expired on a page load, just redirect to login
+    return redirect(login_url)
 
-    # User is still authenticated but CSRF token is stale/missing (POST requests) —
-    # show the error page with a helpful message.
+    # User is still authenticated but CSRF token is stale/missing —
     # show the error page with a helpful message.
     if is_ajax:
         return JsonResponse({

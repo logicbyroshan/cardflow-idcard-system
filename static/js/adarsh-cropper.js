@@ -488,14 +488,7 @@ function cropperApp() {
     async installEngineUpdate() {
       if (this.update.installing) return;
 
-      var fallbackUrl = this._resolvedUpdateDownloadUrl();
       var bootstrapVersion = this.update.bootstrapVersion || '3.18.0';
-
-      // Only direct mode can install update on the current machine.
-      if (!this.engine.connected || !this.engine.direct) {
-        window.location.href = fallbackUrl;
-        return;
-      }
 
       // Older engines do not support self-update upload/install.
       if (this.needsBootstrapInstaller()) {
@@ -513,35 +506,19 @@ function cropperApp() {
       this.update.installing = true;
       this.update.installError = '';
       this._showProgress('Installing engine update...');
-      this._updateProgress(5, 'Downloading installer package...');
+      this._updateProgress(5, 'Requesting update from server...');
 
       try {
-        var downloadResp = await fetch(fallbackUrl, {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (!downloadResp.ok) {
-          throw new Error('Failed to download installer (' + downloadResp.status + ')');
-        }
-
-        var installerBlob = await downloadResp.blob();
-        if (!installerBlob || installerBlob.size < 128 * 1024) {
-          throw new Error('Downloaded installer is invalid or incomplete.');
-        }
-
-        this._updateProgress(45, 'Sending installer to local engine...');
-
-        var formData = new FormData();
-        formData.append('installer', installerBlob, 'AdarshEngineSetup.exe');
-        formData.append('silent', 'true');
-        formData.append('source_version', this.update.version || '');
-
-        var installResp = await fetch(ENGINE_DIRECT_URL + '/self-update', {
+        var installResp = await fetch('/api/engine/self-update/', {
           method: 'POST',
+          credentials: 'include',
           headers: {
-            'X-ENGINE-KEY': ENGINE_API_KEY,
+            'Content-Type': 'application/json',
           },
-          body: formData,
+          body: JSON.stringify({
+            silent: true,
+            source_version: this.update.version || '',
+          }),
         });
 
         var installData = {};

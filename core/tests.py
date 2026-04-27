@@ -378,6 +378,50 @@ class EngineDownloadInstallerGuardTests(TestCase):
         )
 
 
+class EngineSelfUpdateProxyTests(TestCase):
+    def setUp(self):
+        self.admin = _create_super_admin('engine-update-admin@test.com')
+        self.client.force_login(self.admin)
+
+    def test_engine_self_update_proxies_installer_to_local_engine(self):
+        from core.views.engine_api import api_engine_self_update
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            installer_path = Path(tmpdir) / 'AdarshEngineSetup.exe'
+            installer_path.write_bytes(b'x' * (128 * 1024))
+
+            class FakeResponse:
+                status_code = 200
+
+                def raise_for_status(self):
+                    return None
+
+                def json(self):
+                    return {'accepted': True, 'message': 'Installer launched.'}
+
+            factory = RequestFactory()
+            request = factory.post(
+                '/panel/api/engine/self-update/',
+                data=json.dumps({'silent': True, 'source_version': '3.19.0'}),
+                content_type='application/json',
+            )
+            request.user = self.admin
+
+            with patch('core.views.engine_api._select_engine_installer_path', return_value=installer_path), \
+                 patch('core.views.engine_api.http_client.post', return_value=FakeResponse()) as mock_post:
+                response = api_engine_self_update(request)
+
+            self.assertEqual(response.status_code, 200)
+            payload = json.loads(response.content.decode('utf-8'))
+            self.assertTrue(payload['accepted'])
+            self.assertEqual(payload['message'], 'Installer launched.')
+            self.assertTrue(mock_post.called)
+            posted_kwargs = mock_post.call_args.kwargs
+            self.assertIn('files', posted_kwargs)
+            self.assertIn('data', posted_kwargs)
+            self.assertEqual(posted_kwargs['data']['source_version'], '3.19.0')
+
+
 class EngineDownloadSelectionTests(TestCase):
     def setUp(self):
         self.admin = _create_super_admin('engine-selection-admin@test.com')
@@ -1271,98 +1315,6 @@ class SubdomainRoutingSecurityTests(TestCase):
 
         middleware(request)
         self.assertTrue(getattr(request, '_is_panel_subdomain', False))
-
-    @override_settings(
-        DEBUG=False,
-        ALLOWED_HOSTS=['adarshbhopal.in', 'panel.adarshbhopal.in'],
-        PANEL_DOMAIN='panel.adarshbhopal.in',
-        PANEL_URL='https://panel.adarshbhopal.in',
-    )
-    def test_non_panel_host_redirects_panel_paths_to_panel_domain(self):
-        from core.middleware import SubdomainRoutingMiddleware
-
-        middleware = SubdomainRoutingMiddleware(lambda request: HttpResponse('ok'))
-        request = self.factory.get('/panel/auth/login/?next=/panel/', HTTP_HOST='adarshbhopal.in')
-
-        response = middleware(request)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            response['Location'],
-            'https://panel.adarshbhopal.in/panel/auth/login/?next=/panel/',
-        )
-
-    @override_settings(
-        DEBUG=True,
-        ALLOWED_HOSTS=['localhost'],
-        PANEL_DOMAIN='panel.adarshbhopal.in',
-    )
-    def test_debug_mode_keeps_local_panel_path_access(self):
-        from core.middleware import SubdomainRoutingMiddleware
-
-        middleware = SubdomainRoutingMiddleware(lambda request: HttpResponse('ok'))
-        request = self.factory.get('/panel/auth/login/', HTTP_HOST='localhost')
-
-        response = middleware(request)
-        self.assertEqual(response.status_code, 200)
-
-    @override_settings(
-        DEBUG=False,
-        ALLOWED_HOSTS=['panel.adarshbhopal.in'],
-        PANEL_DOMAIN='panel.adarshbhopal.in',
-        SESSION_COOKIE_NAME='sessionid',
-        CSRF_COOKIE_NAME='csrftoken',
-    )
-    def test_panel_host_response_clears_legacy_shared_domain_auth_cookies(self):
-        from core.middleware import SubdomainRoutingMiddleware
-
-        middleware = SubdomainRoutingMiddleware(lambda request: HttpResponse('ok'))
-        request = self.factory.get('/auth/login/', HTTP_HOST='panel.adarshbhopal.in')
-
-        response = middleware(request)
-        self.assertIn('sessionid', response.cookies)
-        self.assertIn('csrftoken', response.cookies)
-        self.assertIn(response.cookies['sessionid']['domain'], ('adarshbhopal.in', '.adarshbhopal.in'))
-        self.assertIn(response.cookies['csrftoken']['domain'], ('adarshbhopal.in', '.adarshbhopal.in'))
-
-    @override_settings(
-        DEBUG=False,
-        ALLOWED_HOSTS=['panel.adarshbhopal.in'],
-        PANEL_DOMAIN='panel.adarshbhopal.in',
-        SESSION_COOKIE_NAME='sessionid',
-        CSRF_COOKIE_NAME='csrftoken',
-    )
-    def test_legacy_cleanup_does_not_override_fresh_panel_auth_cookies(self):
-        from core.middleware import SubdomainRoutingMiddleware
-
-        def _response_with_fresh_panel_cookies(_request):
-            response = HttpResponse('ok')
-            response.set_cookie('sessionid', 'live-session', domain='panel.adarshbhopal.in', path='/', samesite='Lax')
-            response.set_cookie('csrftoken', 'live-csrf', domain='panel.adarshbhopal.in', path='/', samesite='Lax')
-            return response
-
-        middleware = SubdomainRoutingMiddleware(_response_with_fresh_panel_cookies)
-        request = self.factory.get('/auth/login/', HTTP_HOST='panel.adarshbhopal.in')
-
-        response = middleware(request)
-        self.assertEqual(response.cookies['sessionid'].value, 'live-session')
-        self.assertEqual(response.cookies['csrftoken'].value, 'live-csrf')
-        self.assertEqual(response.cookies['sessionid']['domain'], 'panel.adarshbhopal.in')
-        self.assertEqual(response.cookies['csrftoken']['domain'], 'panel.adarshbhopal.in')
-
-    @override_settings(
-        DEBUG=False,
-        ALLOWED_HOSTS=['panel.adarshbhopal.in'],
-        PANEL_DOMAIN='panel.adarshbhopal.in',
-        SESSION_COOKIE_DOMAIN='panel.adarshbhopal.in',
-        CSRF_COOKIE_DOMAIN='panel.adarshbhopal.in',
-    )
-    def test_panel_login_sets_panel_domain_csrf_cookie(self):
-        response = self.client.get('/login/', HTTP_HOST='panel.adarshbhopal.in')
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('csrftoken', response.cookies)
-        self.assertEqual(response.cookies['csrftoken']['domain'], 'panel.adarshbhopal.in')
-        self.assertTrue(response.cookies['csrftoken'].value)
 
 
 # ── IDCardTable Field Tests ──
