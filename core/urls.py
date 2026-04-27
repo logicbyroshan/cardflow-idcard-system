@@ -1,6 +1,5 @@
 from django.urls import include, path
 from . import views
-from .views import engine_api
 from exports import views as export_views
 
 urlpatterns = [
@@ -107,7 +106,7 @@ urlpatterns = [
     path('api/engine/rename-execute/', views.api_engine_rename_execute, name='api_engine_rename_execute'),
     path('api/engine/rename-operations/', views.api_engine_rename_operations, name='api_engine_rename_operations'),
     path('api/engine/clients/', views.api_engine_clients, name='api_engine_clients'),
-    path('api/engine/stop/', engine_api.api_engine_stop, name='api_engine_stop'),
+    path('api/engine/stop/', views.api_engine_stop, name='api_engine_stop'),
 
 
     # Crop Selected Images APIs (batch crop workflow)
