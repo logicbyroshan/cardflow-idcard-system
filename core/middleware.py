@@ -67,9 +67,68 @@ class SubdomainRoutingMiddleware:
         self.website_domain = getattr(django_settings, 'WEBSITE_DOMAIN', '').lower().strip()
         self.panel_domain = getattr(django_settings, 'PANEL_DOMAIN', '').lower().strip()
 
+    @staticmethod
+    def _is_panel_scoped_path(path: str) -> bool:
+        if not path:
+            return False
+        return (
+            path == '/panel'
+            or path.startswith('/panel/')
+            or path == '/app'
+            or path.startswith('/app/')
+        )
+
+    def _build_panel_redirect_url(self, request):
+        panel_url = (getattr(django_settings, 'PANEL_URL', '') or '').strip().rstrip('/')
+        if panel_url:
+            return f'{panel_url}{request.get_full_path()}'
+
+        scheme = 'https' if request.is_secure() else 'http'
+        return f'{scheme}://{self.panel_domain}{request.get_full_path()}'
+
+    def _legacy_shared_cookie_domain(self) -> str:
+        if not self.panel_domain:
+            return ''
+        labels = [segment for segment in self.panel_domain.split('.') if segment]
+        if len(labels) < 3:
+            return ''
+        return '.'.join(labels[-2:])
+
+    def _clear_legacy_shared_domain_auth_cookies(self, response):
+        legacy_domain = self._legacy_shared_cookie_domain()
+        if not legacy_domain:
+            return
+
+        session_cookie_name = getattr(django_settings, 'SESSION_COOKIE_NAME', 'sessionid')
+        csrf_cookie_name = getattr(django_settings, 'CSRF_COOKIE_NAME', 'csrftoken')
+
+        response.delete_cookie(
+            session_cookie_name,
+            path='/',
+            domain=legacy_domain,
+            samesite=getattr(django_settings, 'SESSION_COOKIE_SAMESITE', 'Lax'),
+        )
+        response.delete_cookie(
+            csrf_cookie_name,
+            path='/',
+            domain=legacy_domain,
+            samesite=getattr(django_settings, 'CSRF_COOKIE_SAMESITE', 'Lax'),
+        )
+
     def __call__(self, request):
         host = request.get_host().split(':')[0].lower()  # strip port
         _set_panel_cookie = False
+
+        # Production hardening:
+        # Prevent panel/app routes from being served on non-panel hosts.
+        # This blocks accidental session/csrf cookie issuance on root/legacy domains.
+        if (
+            not getattr(django_settings, 'DEBUG', False)
+            and self.panel_domain
+            and host != self.panel_domain
+            and self._is_panel_scoped_path(request.path_info)
+        ):
+            return redirect(self._build_panel_redirect_url(request))
 
         if self.website_domain and host == self.website_domain:
             request.urlconf = 'config.urls_website'
@@ -103,6 +162,9 @@ class SubdomainRoutingMiddleware:
             request._is_panel_subdomain = False
 
         response = self.get_response(request)
+
+        if host == self.panel_domain:
+            self._clear_legacy_shared_domain_auth_cookies(response)
 
         # Set / clear the panel context cookie for local dev routing
         if _set_panel_cookie:

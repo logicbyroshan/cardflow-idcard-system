@@ -1272,6 +1272,58 @@ class SubdomainRoutingSecurityTests(TestCase):
         middleware(request)
         self.assertTrue(getattr(request, '_is_panel_subdomain', False))
 
+    @override_settings(
+        DEBUG=False,
+        ALLOWED_HOSTS=['adarshbhopal.in', 'panel.adarshbhopal.in'],
+        PANEL_DOMAIN='panel.adarshbhopal.in',
+        PANEL_URL='https://panel.adarshbhopal.in',
+    )
+    def test_non_panel_host_redirects_panel_paths_to_panel_domain(self):
+        from core.middleware import SubdomainRoutingMiddleware
+
+        middleware = SubdomainRoutingMiddleware(lambda request: HttpResponse('ok'))
+        request = self.factory.get('/panel/auth/login/?next=/panel/', HTTP_HOST='adarshbhopal.in')
+
+        response = middleware(request)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response['Location'],
+            'https://panel.adarshbhopal.in/panel/auth/login/?next=/panel/',
+        )
+
+    @override_settings(
+        DEBUG=True,
+        ALLOWED_HOSTS=['localhost'],
+        PANEL_DOMAIN='panel.adarshbhopal.in',
+    )
+    def test_debug_mode_keeps_local_panel_path_access(self):
+        from core.middleware import SubdomainRoutingMiddleware
+
+        middleware = SubdomainRoutingMiddleware(lambda request: HttpResponse('ok'))
+        request = self.factory.get('/panel/auth/login/', HTTP_HOST='localhost')
+
+        response = middleware(request)
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(
+        DEBUG=False,
+        ALLOWED_HOSTS=['panel.adarshbhopal.in'],
+        PANEL_DOMAIN='panel.adarshbhopal.in',
+        SESSION_COOKIE_NAME='sessionid',
+        CSRF_COOKIE_NAME='csrftoken',
+    )
+    def test_panel_host_response_clears_legacy_shared_domain_auth_cookies(self):
+        from core.middleware import SubdomainRoutingMiddleware
+
+        middleware = SubdomainRoutingMiddleware(lambda request: HttpResponse('ok'))
+        request = self.factory.get('/auth/login/', HTTP_HOST='panel.adarshbhopal.in')
+
+        response = middleware(request)
+        self.assertIn('sessionid', response.cookies)
+        self.assertIn('csrftoken', response.cookies)
+        self.assertEqual(response.cookies['sessionid']['domain'], 'adarshbhopal.in')
+        self.assertEqual(response.cookies['csrftoken']['domain'], 'adarshbhopal.in')
+
 
 # ── IDCardTable Field Tests ──
 class IDCardTableFieldTests(TestCase):
