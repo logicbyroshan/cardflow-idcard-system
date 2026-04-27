@@ -22,13 +22,6 @@
             </p>
             <div class="hero-buttons">
                 <a href="#contact" class="btn btn-primary"><i class="fa-solid fa-envelope"></i> Enquire Now</a>
-                {% with apk_download_url=MOBILE_ANDROID_APP_DOWNLOAD_URL|default:'' %}
-                <a href="{% if apk_download_url %}{{ apk_download_url }}{% else %}#download-app{% endif %}"
-                   class="btn btn-secondary"
-                   {% if apk_download_url %}target="_blank" rel="noopener noreferrer"{% else %}title="Download temporarily unavailable"{% endif %}>
-                    <i class="fa-solid fa-download"></i> Download App
-                </a>
-                {% endwith %}
             </div>
         </div>
     </div>

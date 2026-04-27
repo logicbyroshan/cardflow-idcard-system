@@ -7,7 +7,7 @@ from django.test import TestCase, SimpleTestCase, RequestFactory, override_setti
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
@@ -2280,6 +2280,7 @@ class SecurityApiRegressionTests(TestCase):
         self.assertIn('only super admin can delete clients', delete_resp.json().get('message', '').lower())
         self.assertTrue(Client.objects.filter(id=new_client_id).exists())
 
+
     def test_delete_all_confirmation_locks_after_five_failed_attempts(self):
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')
 
@@ -2708,6 +2709,61 @@ class SecurityApiRegressionTests(TestCase):
         self.assertEqual(scoped_payload.get('active_assistants_now'), 0)
         self.assertEqual(scoped_payload.get('active_client_ids'), [self.client_a.id])
         self.assertEqual(scoped_payload.get('active_assistant_client_ids'), [])
+
+
+class CreateTableFromLegacyXlsTests(TestCase):
+    def setUp(self):
+        self.admin = _create_super_admin('xls-create-admin@test.com', 'adminpass1')
+        _client_user, client_obj = _create_client_user('xls-create-client@test.com', 'clientpass1')
+        self.group, _table = _create_table(client_obj)
+        self.client.force_login(self.admin)
+
+    def test_create_table_from_legacy_xls_file(self):
+        from idcards.models import IDCardTable
+
+        class _FakeSheet:
+            def __init__(self):
+                self.ncols = 2
+                self.nrows = 3
+                self._rows = [
+                    ['NAME', 'CLASS'],
+                    ['ALICE', '10'],
+                    ['BOB', '11'],
+                ]
+
+            def cell_value(self, row_idx, col_idx):
+                return self._rows[row_idx][col_idx]
+
+        class _FakeWorkbook:
+            def sheet_by_index(self, _index):
+                return _FakeSheet()
+
+        upload = SimpleUploadedFile(
+            'legacy.xls',
+            b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1fake-xls-content',
+            content_type='application/vnd.ms-excel',
+        )
+
+        with patch('xlrd.open_workbook', return_value=_FakeWorkbook()) as mocked_open_workbook, \
+             patch(
+                 'core.views.idcard_api.api_idcard_bulk_upload',
+                 return_value=JsonResponse({'success': True, 'cards_created': 2, 'message': 'Imported'}),
+             ) as mocked_bulk_upload:
+            response = self.client.post(
+                reverse('api_create_table_from_xlsx', args=[self.group.id]),
+                {'file': upload, 'table_name': 'Legacy Upload Table'},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('fields_created'), 2)
+        mocked_open_workbook.assert_called_once()
+        mocked_bulk_upload.assert_called_once()
+
+        created_table = IDCardTable.objects.get(id=payload['table_id'])
+        self.assertEqual(created_table.name, 'LEGACY UPLOAD TABLE')
+        self.assertEqual([f.get('name') for f in (created_table.fields or [])], ['NAME', 'CLASS'])
 
 
 class CardHistoryApiTests(TestCase):
@@ -3468,6 +3524,34 @@ class ReuploadDirectTaskFlowTests(TestCase):
                 remaining_files.extend(files)
 
         self.assertEqual(remaining_files, [])
+
+    def test_bulk_upload_task_accepts_legacy_xls_extension(self):
+        from core.models import BackgroundTask
+
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        spreadsheet = SimpleUploadedFile(
+            'legacy-upload.xls',
+            b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1fake-xls-content',
+            content_type='application/vnd.ms-excel',
+        )
+
+        with patch('core.views.task_api.background_worker.submit_task') as mock_submit:
+            response = self.client.post(
+                f'/panel/api/table/{self.table.id}/bulk-upload-task/',
+                data={'file': spreadsheet},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertIn('task_id', payload)
+        mock_submit.assert_called_once()
+
+        task = BackgroundTask.objects.get(id=payload['task_id'])
+        self.assertEqual(task.task_type, 'bulk_upload')
+        self.assertEqual(task.metadata.get('table_id'), self.table.id)
+        self.assertEqual(task.metadata.get('original_filename'), 'legacy-upload.xls')
 
     def test_bulk_upload_task_rejects_folder_source_for_non_pro_user(self):
         self.client.login(username='reupload-admin@test.com', password='adminpass1')

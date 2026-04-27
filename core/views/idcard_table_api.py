@@ -431,7 +431,6 @@ def api_create_table_from_xlsx(request, group_id):
     Returns JSON:
         { success, message, table_id, table_name, cards_created, ... }
     """
-    import openpyxl
     from io import BytesIO
 
     # Admin-only hard gate: clients/client_staff should never use this flow.
@@ -468,6 +467,18 @@ def api_create_table_from_xlsx(request, group_id):
 
     # ── 2. Read headers ─────────────────────────────────────────────
     sample_rows = []
+
+    def _clean_spreadsheet_cell(cell):
+        if isinstance(cell, str):
+            return (
+                cell.strip()
+                .replace('_x000D_', '')
+                .replace('_X000D_', '')
+                .replace('_x000d_', '')
+                .replace('\r', '')
+            )
+        return cell
+
     try:
         if file_name.endswith('.csv'):
             import csv, io
@@ -480,24 +491,51 @@ def api_create_table_from_xlsx(request, group_id):
                     break
                 sample_rows.append(list(row))
         else:
-            wb = openpyxl.load_workbook(BytesIO(uploaded_file.read()), read_only=True, data_only=True)
+            file_content = uploaded_file.read()
             uploaded_file.seek(0)
-            ws = wb.active
-            raw_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
-            headers = [
-                str(cell).strip().replace('_x000D_', '').replace('_X000D_', '').replace('_x000d_', '').replace('\r', '')
-                if cell is not None else ''
-                for cell in raw_row
-            ]
-            for row in ws.iter_rows(min_row=2, max_row=1 + _SAMPLE_ROW_SCAN_LIMIT, values_only=True):
-                sample_rows.append([
-                    str(cell).strip().replace('_x000D_', '').replace('_X000D_', '').replace('_x000d_', '').replace('\r', '')
-                    if isinstance(cell, str) else cell
-                    for cell in row
-                ])
-            wb.close()
+
+            if len(file_content) < 4:
+                raise ValueError('Spreadsheet file is too small.')
+
+            magic_bytes = file_content[:4]
+            is_zip = magic_bytes[:2] == b'PK'
+            is_old_xls = (magic_bytes[0] == 0xD0 and magic_bytes[1] == 0xCF)
+
+            if is_old_xls or file_name.endswith('.xls'):
+                import xlrd
+
+                wb = xlrd.open_workbook(file_contents=file_content)
+                ws = wb.sheet_by_index(0)
+
+                headers = [
+                    _clean_spreadsheet_cell(ws.cell_value(0, col_idx)) if ws.nrows > 0 else ''
+                    for col_idx in range(ws.ncols)
+                ]
+
+                max_row = min(ws.nrows, 1 + _SAMPLE_ROW_SCAN_LIMIT)
+                for row_idx in range(1, max_row):
+                    row = [
+                        _clean_spreadsheet_cell(ws.cell_value(row_idx, col_idx))
+                        for col_idx in range(ws.ncols)
+                    ]
+                    sample_rows.append(row)
+            elif is_zip or file_name.endswith('.xlsx'):
+                import openpyxl
+
+                wb = openpyxl.load_workbook(BytesIO(file_content), read_only=True, data_only=True)
+                ws = wb.active
+                raw_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+                headers = [
+                    _clean_spreadsheet_cell(cell) if cell is not None else ''
+                    for cell in raw_row
+                ]
+                for row in ws.iter_rows(min_row=2, max_row=1 + _SAMPLE_ROW_SCAN_LIMIT, values_only=True):
+                    sample_rows.append([_clean_spreadsheet_cell(cell) for cell in row])
+                wb.close()
+            else:
+                raise ValueError('Unrecognized spreadsheet format.')
     except Exception as exc:
-        logger.error("Failed to read XLSX headers: %s", exc)
+        logger.error("Failed to read spreadsheet headers: %s", exc)
         return JsonResponse({
             'success': False,
             'message': 'Could not read the spreadsheet. Please check the file format.'
