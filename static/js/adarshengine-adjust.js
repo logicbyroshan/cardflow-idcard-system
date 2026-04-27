@@ -306,32 +306,111 @@
     whitePoint = Math.round(whitePoint);
     gamma = Math.round(gamma * 100) / 100;
 
+    //  Step 6: Auto Color Temperature (Yellow/Blue Cast Detection) 
+    var temperature = 0;
+    var rSum = 0, gSum = 0, bSum = 0;
+    
+    for (var i = 0; i < data.length; i += 16) {
+      rSum += data[i];
+      gSum += data[i + 1];
+      bSum += data[i + 2];
+    }
+    
+    var pixelCount = data.length / 16;
+    var avgR = rSum / pixelCount;
+    var avgG = gSum / pixelCount;
+    var avgB = bSum / pixelCount;
+    
+    var rbDiff = avgR - avgB;
+    
+    if (rbDiff > 8 && avgR > avgG - 5) {
+      temperature = Math.max(-35, Math.min(-10, -rbDiff * 1.2));
+    } else if (rbDiff < -8) {
+      temperature = Math.max(10, Math.min(30, -rbDiff * 1.0));
+    } else if (Math.abs(rbDiff) <= 8 && avgLum < 140) {
+      temperature = 5;
+    }
+    
+    temperature = Math.round(temperature);
+
+    //  Step 7: Auto Vibrance (Dull Image Detection) 
+    var vibrance = 0;
+    var satSum = 0;
+    
+    for (var i = 0; i < data.length; i += 16) {
+      var r = data[i];
+      var g = data[i + 1];
+      var b = data[i + 2];
+      var maxC = Math.max(r, g, b);
+      var minC = Math.min(r, g, b);
+      satSum += (maxC - minC);
+    }
+    
+    var avgSat = satSum / pixelCount;
+    
+    if (avgSat < 45) {
+      vibrance = Math.round(Math.max(15, Math.min(25, (45 - avgSat) * 0.6)));
+    } else if (avgSat < 60) {
+      vibrance = 10;
+    }
+
+    //  Step 8: Lift Shadows (Brighten Faces) 
+    if (blackPoint > 15) {
+      var shadowLift = Math.round(blackPoint * 0.25);
+      blackPoint = Math.max(5, blackPoint - shadowLift);
+    }
+
+    //  Step 9: Subtle Contrast Boost 
+    var currentRange = whitePoint - blackPoint;
+    if (currentRange < 200) {
+      var expansion = Math.min(15, Math.round(currentRange * 0.08));
+      blackPoint = Math.max(0, blackPoint - Math.round(expansion / 2));
+      whitePoint = Math.min(255, whitePoint + Math.round(expansion / 2));
+    }
+    
+    if (whitePoint - blackPoint < 30) {
+      var mid = Math.round((blackPoint + whitePoint) / 2);
+      blackPoint = Math.max(0, mid - 15);
+      whitePoint = Math.min(255, mid + 15);
+    }
+
+    blackPoint = Math.round(blackPoint);
+    whitePoint = Math.round(whitePoint);
+
     this._log(
       'Auto Levels: BP=' + blackPoint,
       'WP=' + whitePoint,
       'Gamma=' + gamma.toFixed(2),
-      'AvgLum=' + avgLum.toFixed(1)
+      'AvgLum=' + avgLum.toFixed(1),
+      'Temp=' + temperature,
+      'Vib=' + vibrance
     );
 
-    //  Step 6: Apply to sliders and parameters 
+    //  Step 10: Apply to sliders and parameters 
     this.params.blackPoint = blackPoint;
     this.params.whitePoint = whitePoint;
     this.params.gamma = gamma;
+    this.params.vibrance = vibrance;
+    this.params.temperature = temperature;
 
     var e = this._els;
     if (e.black) {
       e.black.value    = blackPoint;
       e.white.value    = whitePoint;
       e.gamma.value    = Math.round(gamma * 100);
+      e.vibrance.value = vibrance;
+      if (e.temp) e.temp.value = temperature;
 
       e.blackVal.textContent = blackPoint;
       e.whiteVal.textContent = whitePoint;
       e.gammaVal.textContent = gamma.toFixed(2);
+      e.vibranceVal.textContent = vibrance;
+      if (e.tempVal) e.tempVal.textContent = temperature;
     }
 
     this._syncHandlePositions();
 
-    //  Step 7: Re-render with new values 
+    //  Step 11: Re-render with new values 
     this.render();
   };
 

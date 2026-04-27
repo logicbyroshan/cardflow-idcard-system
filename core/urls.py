@@ -115,7 +115,6 @@ urlpatterns = [
     path('api/crop-batch/<str:batch_id>/cleanup/', views.api_crop_batch_cleanup, name='api_crop_batch_cleanup'),
 
     # Cropper Auto-Update APIs
-    path('api/cropper/release-webhook/', views.api_cropper_release_webhook, name='api_cropper_release_webhook'),
     path('api/cropper/latest-version/', views.api_cropper_latest_version, name='api_cropper_latest_version'),
 
     # Website Management → redirect to new website admin dashboard

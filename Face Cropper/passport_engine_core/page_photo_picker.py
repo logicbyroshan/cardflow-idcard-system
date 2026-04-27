@@ -1049,8 +1049,10 @@ def pick_page_photos_in_folder(folder_path: str, photos_per_page: int = _DEFAULT
     Extract person-photo patches from every page image in a folder.
 
     Output folders:
-      - <folder>/picked
-            - <folder>/failed
+      - If photos_per_page == 1: <folder>/picked
+      - If photos_per_page == 2: <folder>/picked_1 and <folder>/picked_2
+      - If photos_per_page == 3: <folder>/picked_1, <folder>/picked_2, <folder>/picked_3
+      - <folder>/failed (for pages with no valid photos)
     """
     folder = Path(folder_path).resolve()
     if not folder.exists():
@@ -1063,21 +1065,32 @@ def pick_page_photos_in_folder(folder_path: str, photos_per_page: int = _DEFAULT
 
     photos_per_page = _sanitize_photos_per_page(photos_per_page)
 
-    picked_dir = folder / "picked"
+    # Create output folders based on photos_per_page
+    if photos_per_page == 1:
+        picked_dirs = [folder / "picked"]
+    else:
+        picked_dirs = [folder / f"picked_{i}" for i in range(1, photos_per_page + 1)]
+    
     failed_dir = folder / "failed"
-    picked_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create all directories
+    for picked_dir in picked_dirs:
+        picked_dir.mkdir(parents=True, exist_ok=True)
+        _clear_previous_outputs(picked_dir)
+    
     failed_dir.mkdir(parents=True, exist_ok=True)
-    _clear_previous_outputs(picked_dir)
     _clear_previous_outputs(failed_dir)
 
     input_images = _iter_input_images(folder)
     if not input_images:
+        output_folder_str = str(picked_dirs[0]) if photos_per_page == 1 else ", ".join(str(d) for d in picked_dirs)
         return {
             "total": 0,
             "success": 0,
             "failed": 0,
             "accuracy": 0.0,
-            "output_folder": str(picked_dir),
+            "output_folder": output_folder_str,
+            "output_folders": [str(d) for d in picked_dirs],
             "failed_folder": str(failed_dir),
             "processing_time": 0.0,
             "errors": [],
@@ -1136,18 +1149,22 @@ def pick_page_photos_in_folder(folder_path: str, photos_per_page: int = _DEFAULT
 
         stem = src.stem
         for idx, patch in enumerate(selected_patches, start=1):
-            out_name = f"{stem}_{idx}.jpg"
-            out_path = picked_dir / out_name
+            # Determine which folder to save to
+            target_dir = picked_dirs[idx - 1] if idx <= len(picked_dirs) else picked_dirs[-1]
+            
+            # Keep original filename without _1, _2, _3 suffix
+            out_name = f"{stem}.jpg"
+            out_path = target_dir / out_name
 
-            # Keep names collision-safe if re-running in same folder.
+            # Keep names collision-safe if re-running in same folder
             suffix = 1
             while out_path.exists():
-                out_name = f"{stem}_{idx}_{suffix}.jpg"
-                out_path = picked_dir / out_name
+                out_name = f"{stem}_{suffix}.jpg"
+                out_path = target_dir / out_name
                 suffix += 1
 
             rgb = cv2.cvtColor(patch, cv2.COLOR_BGR2RGB)
-            Image.fromarray(rgb).save(out_path, quality=95)
+            Image.fromarray(rgb).save(out_path, quality=100, optimize=False)
 
             picked_files.append(out_name)
             photos_written += 1
@@ -1159,12 +1176,15 @@ def pick_page_photos_in_folder(folder_path: str, photos_per_page: int = _DEFAULT
     total = pages_processed
     accuracy = round((pages_success / total) * 100, 2) if total else 0.0
 
+    output_folder_str = str(picked_dirs[0]) if photos_per_page == 1 else ", ".join(str(d) for d in picked_dirs)
+
     return {
         "total": total,
         "success": pages_success,
         "failed": pages_failed,
         "accuracy": accuracy,
-        "output_folder": str(picked_dir),
+        "output_folder": output_folder_str,
+        "output_folders": [str(d) for d in picked_dirs],
         "failed_folder": str(failed_dir),
         "processing_time": elapsed,
         "errors": errors[:200],

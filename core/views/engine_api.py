@@ -103,7 +103,13 @@ def _is_engine_path_allowed(user, path_value: Path) -> bool:
 
     # Allow internal engine working paths under MEDIA_ROOT for admin workflows.
     rel_path = os.path.relpath(target, media_root).replace('\\', '/')
-    return rel_path.startswith('engine/') or rel_path.startswith('temp/')
+    # Allow engine/, temp/, and any folder with cropped/, edited/, failed/ subfolders
+    if rel_path.startswith('engine/') or rel_path.startswith('temp/'):
+        return True
+    # Allow paths that contain /cropped/, /edited/, /failed/ (engine output folders)
+    if '/cropped/' in rel_path or '/edited/' in rel_path or '/failed/' in rel_path:
+        return True
+    return False
 
 
 def _path_access_error(request, path_value: Path):
