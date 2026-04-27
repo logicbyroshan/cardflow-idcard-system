@@ -3468,6 +3468,21 @@ class MobileAppProfileUpdateFlowContractTests(TestCase):
 		self.assertNotIn('await caches.delete(keys[k]);', content)
 		self.assertNotIn('await registrations[r].unregister();', content)
 
+	def test_add_form_sheet_has_remove_current_photo_action(self):
+		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'partials' / 'add_form_sheet.html'
+		content = template_path.read_text(encoding='utf-8')
+
+		self.assertIn('Remove Current Photo', content)
+		self.assertIn('@click="removeImage(activeImageField)"', content)
+
+	def test_mobile_list_app_tracks_explicit_image_removal_flags(self):
+		script_path = Path(__file__).resolve().parent.parent / 'static' / 'js' / 'mobile' / 'list-app.js'
+		content = script_path.read_text(encoding='utf-8')
+
+		self.assertIn('removeImage(fieldName)', content)
+		self.assertIn('imageRemoveFlags', content)
+		self.assertIn("fieldData[fieldName] = ''", content)
+
 
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 	def _post_json(self, url, payload):

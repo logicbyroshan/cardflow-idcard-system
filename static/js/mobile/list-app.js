@@ -155,6 +155,8 @@ function listApp() {
             imageFiles: {},
             imagePreviews: {},
             imageHasPath: {},
+            imageInitialHasPath: {},
+            imageRemoveFlags: {},
         },
 
         init() {
@@ -1834,6 +1836,8 @@ function listApp() {
             const imageFiles = {};
             const imagePreviews = {};
             const imageHasPath = {};
+            const imageInitialHasPath = {};
+            const imageRemoveFlags = {};
 
             this.imageFormFields.forEach((fieldName) => {
                 const rawVal = this._getFieldValue(fd, [fieldName], '');
@@ -1877,6 +1881,12 @@ function listApp() {
             this.form.imageFiles = imageFiles;
             this.form.imagePreviews = imagePreviews;
             this.form.imageHasPath = imageHasPath;
+            this.imageFormFields.forEach((fieldName) => {
+                imageInitialHasPath[fieldName] = !!imageHasPath[fieldName];
+                imageRemoveFlags[fieldName] = false;
+            });
+            this.form.imageInitialHasPath = imageInitialHasPath;
+            this.form.imageRemoveFlags = imageRemoveFlags;
 
             if (!this.activeImageField || !this.imageFormFields.includes(this.activeImageField)) {
                 this.activeImageField = this.imageFormFields[0] || this._defaultImageFieldName();
@@ -2530,6 +2540,8 @@ function listApp() {
                 imageFiles: {},
                 imagePreviews: {},
                 imageHasPath: {},
+                imageInitialHasPath: {},
+                imageRemoveFlags: {},
             };
             this._initDynamicForm({});
             this._initImageForm({}, {});
@@ -2553,6 +2565,36 @@ function listApp() {
             if (this.$refs.galleryInput) this.$refs.galleryInput.click();
             this.showImagePicker = false;
         },
+        removeImage(fieldName) {
+            if (this.viewMode || this.addFormSubmitting) return;
+
+            const targetField = fieldName || this.activeImageField || this._defaultImageFieldName();
+            if (!targetField) return;
+
+            if (!this.form.imageFiles) this.form.imageFiles = {};
+            if (!this.form.imagePreviews) this.form.imagePreviews = {};
+            if (!this.form.imageHasPath) this.form.imageHasPath = {};
+            if (!this.form.imageInitialHasPath) this.form.imageInitialHasPath = {};
+            if (!this.form.imageRemoveFlags) this.form.imageRemoveFlags = {};
+
+            const hadAnyValue = Boolean(
+                this.form.imageFiles[targetField]
+                || this.form.imagePreviews[targetField]
+                || this.form.imageHasPath[targetField]
+            );
+            if (!hadAnyValue) {
+                this.showToast('No photo to remove', 'info');
+                return;
+            }
+
+            const hadInitialPath = !!this.form.imageInitialHasPath[targetField];
+            this.form.imageFiles[targetField] = null;
+            this.form.imagePreviews[targetField] = null;
+            this.form.imageHasPath[targetField] = false;
+            this.form.imageRemoveFlags[targetField] = hadInitialPath;
+            this.showImagePicker = false;
+            this.showToast(hadInitialPath ? 'Photo removed. Save changes to apply.' : 'Photo cleared.', 'info');
+        },
         handleImageSelected(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -2570,12 +2612,14 @@ function listApp() {
             if (!this.form.imageFiles) this.form.imageFiles = {};
             if (!this.form.imagePreviews) this.form.imagePreviews = {};
             if (!this.form.imageHasPath) this.form.imageHasPath = {};
+            if (!this.form.imageRemoveFlags) this.form.imageRemoveFlags = {};
 
             const reader = new FileReader();
             reader.onload = (e) => {
                 this.form.imageFiles[targetField] = file;
                 this.form.imagePreviews[targetField] = e.target && e.target.result ? e.target.result : null;
                 this.form.imageHasPath[targetField] = true;
+                this.form.imageRemoveFlags[targetField] = false;
                 this.showToast('Photo selected successfully', 'success');
             };
             reader.onerror = () => {
@@ -2625,6 +2669,13 @@ function listApp() {
                     return;
                 }
 
+                if (this.editMode) {
+                    Object.entries(this.form.imageRemoveFlags || {}).forEach(([fieldName, shouldRemove]) => {
+                        if (!shouldRemove) return;
+                        fieldData[fieldName] = '';
+                    });
+                }
+
                 fd.append('field_data', JSON.stringify(fieldData));
                 Object.entries(this.form.imageFiles || {}).forEach(([fieldName, fileObj]) => {
                     if (!fileObj) return;
@@ -2668,14 +2719,21 @@ function listApp() {
                                         const existing = this.studentsData[idx];
                                         const mergedFieldData = Object.assign({}, existing.field_data || {}, fieldData);
                                         const fallbackSlots = (this.imageFormFields || []).map((fieldName, slotIdx) => {
-                                            const previewUrl = (this.form.imagePreviews || {})[fieldName]
-                                                || ((existing.photo_slots || [])[slotIdx] || {}).url
-                                                || null;
-                                            const hasPath = !!(
-                                                (this.form.imageHasPath || {})[fieldName]
-                                                || ((existing.photo_slots || [])[slotIdx] || {}).has_path
-                                                || previewUrl
-                                            );
+                                            const wasRemoved = !!((this.form.imageRemoveFlags || {})[fieldName]);
+                                            const previewUrl = wasRemoved
+                                                ? null
+                                                : (
+                                                    (this.form.imagePreviews || {})[fieldName]
+                                                    || ((existing.photo_slots || [])[slotIdx] || {}).url
+                                                    || null
+                                                );
+                                            const hasPath = wasRemoved
+                                                ? false
+                                                : !!(
+                                                    (this.form.imageHasPath || {})[fieldName]
+                                                    || ((existing.photo_slots || [])[slotIdx] || {}).has_path
+                                                    || previewUrl
+                                                );
                                             return {
                                                 url: previewUrl,
                                                 has_path: hasPath,

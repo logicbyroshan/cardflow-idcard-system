@@ -95,7 +95,7 @@
                     </template>
                 </div>
 
-                <p class="text-[10px] text-slate-500 text-center" x-text="viewMode ? 'Photo previews' : 'Tap any image slot to upload or replace with a clear image'" ></p>
+                <p class="text-[10px] text-slate-500 text-center" x-text="viewMode ? 'Photo previews' : 'Tap any image slot to upload, replace, or remove image'" ></p>
             </div>
 
             <!-- Image Picker -->
@@ -112,6 +112,15 @@
                         <span class="text-[10px] font-bold text-gray-600">Gallery</span>
                     </button>
                 </div>
+                <button
+                    @click="removeImage(activeImageField)"
+                    x-show="activeImageField && (_imagePreview(activeImageField) || _imageHasPath(activeImageField))"
+                    :disabled="addFormSubmitting"
+                    class="mt-2.5 w-full py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                >
+                    <i class="fa-solid fa-trash-can text-[10px]"></i>
+                    <span>Remove Current Photo</span>
+                </button>
             </div>
 
             <input type="file" x-ref="cameraInput" accept="image/*" capture="environment" class="hidden" @change="handleImageSelected($event)">
