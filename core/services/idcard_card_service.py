@@ -226,16 +226,46 @@ class IDCardCardService(BaseService):
         """Get the name/text field from table definitions for sorting."""
         if not table.fields:
             return None
+
+        def _norm(text):
+            return ' '.join(str(text or '').strip().lower().replace('_', ' ').replace('-', ' ').split())
+
+        def _is_primary_name_candidate(name_norm):
+            if not name_norm:
+                return False
+            exact = {
+                'name',
+                'student name',
+                'employee name',
+                'emp name',
+                'staff name',
+                'full name',
+                'candidate name',
+            }
+            if name_norm in exact:
+                return True
+            if 'name' not in name_norm:
+                return False
+            blocked = ('father', 'mother', 'guardian', 'parent', 'relation', 'spouse', 'husband', 'wife')
+            return not any(token in name_norm for token in blocked)
+
         for field in table.fields:
-            ftype = field.get('type', '')
-            fname = field.get('name', '')
-            if fname.lower() == 'name' or fname.lower() == 'student name':
+            ftype = str(field.get('type', '') or '').strip().lower()
+            fname = str(field.get('name', '') or '').strip()
+            fname_norm = _norm(fname)
+            if ftype == 'name' and fname:
                 return fname
+            if _is_primary_name_candidate(fname_norm):
+                return fname
+
         # Fallback: first text field
         for field in table.fields:
-            ftype = field.get('type', '')
+            ftype = str(field.get('type', '') or '').strip().lower()
+            fname = str(field.get('name', '') or '').strip()
+            if not fname:
+                continue
             if ftype in ('text', 'name', ''):
-                return field.get('name', '')
+                return fname
         return None
 
     @classmethod

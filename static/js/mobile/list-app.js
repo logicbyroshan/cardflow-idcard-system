@@ -12,6 +12,14 @@ const MOBILE_LIST_AUTO_FILTER_MAX_PAGES = 3;
 const MOBILE_LIST_FOCUS_MAX_PAGES = 12;
 const MOBILE_LIST_SEARCH_AUTO_EXPAND_PAGES = 8;
 
+function normalizeMobileSortMode(rawValue) {
+    const normalized = String(rawValue || 'sr-asc').trim().toLowerCase();
+    if (normalized === 'name-asc' || normalized === 'name-desc' || normalized === 'sr-asc') {
+        return normalized;
+    }
+    return 'sr-asc';
+}
+
 function buildEndpoint(base, path) {
     const normalizedBase = String(base || '').replace(/\/+$/, '');
     const normalizedPath = String(path || '').replace(/^\/+/, '');
@@ -61,6 +69,7 @@ function listApp() {
             })(),
             selectedClass: (typeof INITIAL_SELECTED_CLASS !== 'undefined' ? String(INITIAL_SELECTED_CLASS || '') : ''),
             selectedSection: (typeof INITIAL_SELECTED_SECTION !== 'undefined' ? String(INITIAL_SELECTED_SECTION || '') : ''),
+            sortMode: normalizeMobileSortMode(typeof INITIAL_SORT_MODE !== 'undefined' ? INITIAL_SORT_MODE : 'sr-asc'),
             dateFrom: (typeof INITIAL_FROM_DATE !== 'undefined' ? String(INITIAL_FROM_DATE || '') : ''),
             dateTo: (typeof INITIAL_TO_DATE !== 'undefined' ? String(INITIAL_TO_DATE || '') : ''),
         },
@@ -72,6 +81,7 @@ function listApp() {
             })(),
             selectedClass: (typeof INITIAL_SELECTED_CLASS !== 'undefined' ? String(INITIAL_SELECTED_CLASS || '') : ''),
             selectedSection: (typeof INITIAL_SELECTED_SECTION !== 'undefined' ? String(INITIAL_SELECTED_SECTION || '') : ''),
+            sortMode: normalizeMobileSortMode(typeof INITIAL_SORT_MODE !== 'undefined' ? INITIAL_SORT_MODE : 'sr-asc'),
             dateFrom: (typeof INITIAL_FROM_DATE !== 'undefined' ? String(INITIAL_FROM_DATE || '') : ''),
             dateTo: (typeof INITIAL_TO_DATE !== 'undefined' ? String(INITIAL_TO_DATE || '') : ''),
         },
@@ -422,6 +432,11 @@ function listApp() {
                 params.set('photo', this.filters.photo);
             }
 
+            const sortMode = normalizeMobileSortMode(this.filters.sortMode);
+            if (sortMode !== 'sr-asc') {
+                params.set('sort', sortMode);
+            }
+
             return params;
         },
         async _fetchAllMatchingIds() {
@@ -514,6 +529,7 @@ function listApp() {
             if (this.filters.photo !== 'all') return true;
             if (this.filters.selectedClass !== '') return true;
             if (this.filters.selectedSection !== '') return true;
+            if (normalizeMobileSortMode(this.filters.sortMode) !== 'sr-asc') return true;
             if (LIST_TYPE === 'download') {
                 if (this.filters.dateFrom !== '') return true;
                 if (this.filters.dateTo !== '') return true;
@@ -531,6 +547,7 @@ function listApp() {
             if (String(this.filters.photo || 'all') !== String(this.serverFilterState.photo || 'all')) return true;
             if (String(this.filters.selectedClass || '') !== String(this.serverFilterState.selectedClass || '')) return true;
             if (String(this.filters.selectedSection || '') !== String(this.serverFilterState.selectedSection || '')) return true;
+            if (normalizeMobileSortMode(this.filters.sortMode) !== normalizeMobileSortMode(this.serverFilterState.sortMode)) return true;
             if (LIST_TYPE === 'download') {
                 if (String(this.filters.dateFrom || '') !== String(this.serverFilterState.dateFrom || '')) return true;
                 if (String(this.filters.dateTo || '') !== String(this.serverFilterState.dateTo || '')) return true;
@@ -558,6 +575,10 @@ function listApp() {
 
             if (sectionValue) params.set('section', sectionValue);
             else params.delete('section');
+
+            const sortValue = normalizeMobileSortMode(this.filters.sortMode);
+            if (sortValue !== 'sr-asc') params.set('sort', sortValue);
+            else params.delete('sort');
 
             if (LIST_TYPE === 'download') {
                 const fromValue = String(this.filters.dateFrom || '').trim();
@@ -748,7 +769,7 @@ function listApp() {
             }
         },
         resetFilters() {
-            this.filters = { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' };
+            this.filters = { photo: 'all', selectedClass: '', selectedSection: '', sortMode: 'sr-asc', dateFrom: '', dateTo: '' };
             this.filtersActive = false;
             this.searchQuery = '';
             this.searchScopeHintShown = false;
@@ -2287,6 +2308,8 @@ function listApp() {
                 }
                 if (this.filters.selectedClass) params.set('class', this.filters.selectedClass);
                 if (this.filters.selectedSection) params.set('section', this.filters.selectedSection);
+                const sortMode = normalizeMobileSortMode(this.filters.sortMode);
+                if (sortMode !== 'sr-asc') params.set('sort', sortMode);
                 if (LIST_TYPE === 'download') {
                     if (this.filters.dateFrom) params.set('from', this.filters.dateFrom);
                     if (this.filters.dateTo) params.set('to', this.filters.dateTo);

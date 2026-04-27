@@ -5,6 +5,25 @@
 (function() {
 'use strict';
 
+var _validSortModes = {
+    'sr-asc': true,
+    'sr-desc': true,
+    'name-asc': true,
+    'name-desc': true,
+    'date-new': true,
+    'date-old': true,
+};
+
+function _initialSortFromUrl() {
+    try {
+        var raw = new URLSearchParams(window.location.search || '').get('sort') || 'sr-asc';
+        var normalized = String(raw || '').trim().toLowerCase();
+        return _validSortModes[normalized] ? normalized : 'sr-asc';
+    } catch (_err) {
+        return 'sr-asc';
+    }
+}
+
 // ==========================================
 // SHARED STATE (used by all table sub-modules)
 // ==========================================
@@ -16,7 +35,7 @@ var _ts = {
     currentPage: 1,
     rowsPerPage: 100,
     currentFilter: 'all',
-    currentSort: 'sr-asc',
+    currentSort: _initialSortFromUrl(),
     searchQuery: '',
     currentFilterField: 'all',
     endlessScrollMode: true,

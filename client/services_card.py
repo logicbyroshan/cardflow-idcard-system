@@ -84,6 +84,59 @@ class ClientCardService(BaseService):
         return class_field, section_field, branch_field
 
     @staticmethod
+    def _get_name_field(table):
+        if not table or not table.fields:
+            return None
+
+        def _norm(text):
+            return ' '.join(str(text or '').strip().lower().replace('_', ' ').replace('-', ' ').split())
+
+        def _is_primary_name_candidate(name_norm):
+            if not name_norm:
+                return False
+            exact = {
+                'name',
+                'student name',
+                'employee name',
+                'emp name',
+                'staff name',
+                'full name',
+                'candidate name',
+            }
+            if name_norm in exact:
+                return True
+            if 'name' not in name_norm:
+                return False
+            blocked = ('father', 'mother', 'guardian', 'parent', 'relation', 'spouse', 'husband', 'wife')
+            return not any(token in name_norm for token in blocked)
+
+        for field in table.fields:
+            fname = str(field.get('name', '') or '').strip()
+            ftype = str(field.get('type', '') or '').strip().lower()
+            if ftype == 'name' and fname:
+                return fname
+            if _is_primary_name_candidate(_norm(fname)):
+                return fname
+        for field in table.fields:
+            fname = str(field.get('name', '') or '').strip()
+            ftype = str(field.get('type', '') or '').strip().lower()
+            if fname and ftype in ('text', 'name', ''):
+                return fname
+        return None
+
+    @staticmethod
+    def _get_field_value_case_insensitive(field_data, field_name):
+        if not isinstance(field_data, dict):
+            return ''
+        wanted = str(field_name or '').strip().lower()
+        if not wanted:
+            return ''
+        for key, value in field_data.items():
+            if str(key or '').strip().lower() == wanted:
+                return value
+        return ''
+
+    @staticmethod
     def _dedupe_scope_values(values: Any) -> List[str]:
         out: List[str] = []
         seen = set()
@@ -404,6 +457,7 @@ class ClientCardService(BaseService):
         class_filter: Optional[str] = None,
         section_filter: Optional[str] = None,
         photo_filter: Optional[str] = None,
+        sort_order: Optional[str] = None,
     ) -> ServiceResult:
         """
         Get cards for a table (with permission checks).
@@ -571,6 +625,19 @@ class ClientCardService(BaseService):
                     cards_query = cards_query.none()
                 else:
                     cards_query = cards_query.filter(id__in=matching_photo_ids)
+
+            normalized_sort = str(sort_order or '').strip().lower()
+            if normalized_sort not in ('sr-asc', 'name-asc', 'name-desc'):
+                normalized_sort = 'sr-asc'
+
+            if normalized_sort in ('name-asc', 'name-desc'):
+                name_field = cls._get_name_field(table)
+                if name_field:
+                    cards_query = cards_query.annotate(_name_sort=Cast(KeyTextTransform(name_field, 'field_data'), CharField()))
+                    if normalized_sort == 'name-asc':
+                        cards_query = cards_query.order_by('_name_sort', 'id')
+                    else:
+                        cards_query = cards_query.order_by('-_name_sort', '-id')
             
             total_count = cards_query.count()
 
@@ -586,15 +653,14 @@ class ClientCardService(BaseService):
             
             # Serialize
             card_list = []
+            detected_name_field = cls._get_name_field(table)
             for idx, card in enumerate(cards):
                 # Extract common fields from field_data for convenience
                 field_data = card.field_data or {}
-                name = (
-                    field_data.get('NAME') or 
-                    field_data.get('name') or 
-                    field_data.get('Name') or 
-                    f'Card #{card.id}'
-                )
+                name = None
+                if detected_name_field:
+                    name = cls._get_field_value_case_insensitive(field_data, detected_name_field)
+                name = name or field_data.get('NAME') or field_data.get('name') or field_data.get('Name') or f'Card #{card.id}'
                 id_number = (
                     field_data.get('ID') or 
                     field_data.get('id') or 

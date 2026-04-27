@@ -67,10 +67,18 @@ MAX_GLOBAL_SEARCH_DB_SCAN = 100
 MAX_REPRINT_ACTION_IDS = 200
 MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
 MOBILE_INSTALLATION_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._:-]{7,79}$')
+MOBILE_SORT_MODES = frozenset({'sr-asc', 'name-asc', 'name-desc'})
 
 
 def _truthy(value):
     return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _normalize_mobile_sort_mode(value):
+    normalized = str(value or '').strip().lower()
+    if normalized in MOBILE_SORT_MODES:
+        return normalized
+    return 'sr-asc'
 
 
 def _mobile_shell_safe_int(raw_value, default=0):
@@ -2355,6 +2363,7 @@ def card_list(request, table_id, status):
     selected_photo = str(request.GET.get('photo', '') or '').strip().lower()
     if selected_photo not in ('with', 'without'):
         selected_photo = ''
+    selected_sort = _normalize_mobile_sort_mode(request.GET.get('sort', 'sr-asc'))
     selected_class = (request.GET.get('class') or '').strip()
     selected_section = (request.GET.get('section') or '').strip()
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
@@ -2481,6 +2490,16 @@ def card_list(request, table_id, status):
             cards_qs = cards_qs.none()
         else:
             cards_qs = cards_qs.filter(id__in=matching_photo_ids)
+
+    if selected_sort in ('name-asc', 'name-desc'):
+        name_field_name = ClientCardService._get_name_field(table)
+
+        if name_field_name:
+            cards_qs = cards_qs.annotate(_name_sort=Cast(KeyTextTransform(name_field_name, 'field_data'), CharField()))
+            if selected_sort == 'name-asc':
+                cards_qs = cards_qs.order_by('_name_sort', 'id')
+            else:
+                cards_qs = cards_qs.order_by('-_name_sort', '-id')
 
     try:
         _page_size_raw = getattr(
@@ -2694,9 +2713,14 @@ def card_list(request, table_id, status):
         return ordered
 
     cards = []
+    display_name_field = ClientCardService._get_name_field(table)
     for idx, card in enumerate(cards_batch):
         fd = card.field_data or {}
-        name = fd.get('NAME') or fd.get('name') or fd.get('Name') or ''
+        name = ''
+        if display_name_field:
+            name = _get_field_value_case_insensitive(fd, display_name_field) or ''
+        if not name:
+            name = fd.get('NAME') or fd.get('name') or fd.get('Name') or ''
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or fd.get('ID') or ''
         father_name = fd.get('FATHER NAME') or fd.get("FATHER'S NAME") or fd.get('FATHER_NAME') or fd.get('father_name') or ''
         mother_name = fd.get('MOTHER NAME') or fd.get("MOTHER'S NAME") or fd.get('MOTHER_NAME') or fd.get('mother_name') or ''
@@ -2849,6 +2873,7 @@ def card_list(request, table_id, status):
         'to_date': to_date if status == 'download' else '',
         'selected_search': selected_search,
         'selected_photo': selected_photo,
+        'selected_sort': selected_sort,
         'search_scope_table_id': table.id,
         'selected_class': selected_class,
         'selected_section': selected_section,
@@ -3595,6 +3620,7 @@ def api_cards(request, table_id):
     photo_filter = str(request.GET.get('photo', '') or '').strip().lower()
     if photo_filter not in ('with', 'without'):
         photo_filter = ''
+    sort_mode = _normalize_mobile_sort_mode(request.GET.get('sort', 'sr-asc'))
     class_filter = (request.GET.get('class') or '').strip()
     section_filter = (request.GET.get('section') or '').strip()
     try:
@@ -3614,6 +3640,7 @@ def api_cards(request, table_id):
         class_filter=class_filter or None,
         section_filter=section_filter or None,
         photo_filter=photo_filter or None,
+        sort_order=sort_mode,
     )
     if result.success:
         return JsonResponse({'success': True, 'data': result.data})

@@ -221,7 +221,9 @@ function _renderDependentFilterOptions() {
 function updateClearFiltersVisibility() {
     const btn = document.getElementById('clearFiltersBtn');
     if (!btn) return;
-    const hasFilter = currentClassFilter || currentSectionFilter || currentCourseFilter || currentBranchFilter || IDCardApp._activeImageSort;
+    const currentSort = (IDCardApp._ts && IDCardApp._ts.currentSort) ? IDCardApp._ts.currentSort : 'sr-asc';
+    const hasSortFilter = currentSort !== 'sr-asc';
+    const hasFilter = currentClassFilter || currentSectionFilter || currentCourseFilter || currentBranchFilter || IDCardApp._activeImageSort || hasSortFilter;
     if (hasFilter) {
         btn.classList.add('visible');
     } else {
@@ -280,6 +282,21 @@ function initClearFiltersButton() {
         }
         // Reset image sort filter
         clearImageSortFilter();
+        // Reset name sort filter
+        if (IDCardApp._ts) {
+            IDCardApp._ts.currentSort = 'sr-asc';
+        }
+        const sortToggle = document.getElementById('sortToggle');
+        const sortOptions = document.querySelectorAll('#sortOptions .dropdown-option');
+        sortOptions.forEach(function(o) {
+            o.classList.remove('selected');
+            if ((o.getAttribute('data-value') || '') === 'sr-asc') {
+                o.classList.add('selected');
+            }
+        });
+        if (sortToggle) {
+            sortToggle.innerHTML = '<i class="fa-solid fa-sort"></i> Sort: Newest <i class="fa-solid fa-chevron-down"></i>';
+        }
         // Hide clear button
         _renderDependentFilterOptions();
         updateClearFiltersVisibility();
@@ -629,6 +646,20 @@ function applyClassSectionFilters() {
 
 function initSortHandlers() {
     const sortOptions = document.querySelectorAll('#sortOptions .dropdown-option');
+
+    const activeSort = (IDCardApp._ts && IDCardApp._ts.currentSort) ? IDCardApp._ts.currentSort : 'sr-asc';
+    sortOptions.forEach(option => {
+        option.classList.remove('selected');
+        if ((option.getAttribute('data-value') || '') === activeSort) {
+            option.classList.add('selected');
+            const sortToggle = document.getElementById('sortToggle');
+            if (sortToggle) {
+                const icon = '<i class="fa-solid fa-sort"></i> ';
+                const chevron = ' <i class="fa-solid fa-chevron-down"></i>';
+                sortToggle.innerHTML = icon + option.textContent.trim() + chevron;
+            }
+        }
+    });
     
     sortOptions.forEach(option => {
         option.addEventListener('click', function() {
@@ -646,6 +677,7 @@ function initSortHandlers() {
             
             sortOptions.forEach(o => o.classList.remove('selected'));
             this.classList.add('selected');
+            updateClearFiltersVisibility();
         });
     });
 }

@@ -14,6 +14,7 @@ from django.utils import timezone
 from unittest.mock import patch
 from datetime import timedelta
 from pathlib import Path
+from types import SimpleNamespace
 import json
 import os
 import tempfile
@@ -22,6 +23,7 @@ import zipfile
 import hmac
 import time
 import hashlib
+from core.services.idcard_card_service import IDCardCardService
 
 User = get_user_model()
 
@@ -60,6 +62,23 @@ def _create_card(table, field_data=None, status='pending'):
     if field_data is None:
         field_data = {'NAME': 'JOHN DOE', 'CLASS': '10'}
     return IDCard.objects.create(table=table, field_data=field_data, status=status)
+
+
+class NameFieldDetectionTests(SimpleTestCase):
+    def test_get_name_field_detects_emp_name_variant(self):
+        table = SimpleNamespace(fields=[
+            {'name': 'ROLL NO', 'type': 'text'},
+            {'name': 'EMP NAME', 'type': 'text'},
+            {'name': 'FATHER NAME', 'type': 'text'},
+        ])
+        self.assertEqual(IDCardCardService._get_name_field(table), 'EMP NAME')
+
+    def test_get_name_field_prefers_primary_name_over_parent_name(self):
+        table = SimpleNamespace(fields=[
+            {'name': 'FATHER NAME', 'type': 'text'},
+            {'name': 'STUDENT NAME', 'type': 'text'},
+        ])
+        self.assertEqual(IDCardCardService._get_name_field(table), 'STUDENT NAME')
 
 
 class AlpineRuntimeTemplateGuardTests(TestCase):
@@ -450,16 +469,12 @@ class EngineDownloadSelectionTests(TestCase):
 
             now = time.time()
             os.utime(source_setup, (now - 120, now - 120))
-            os.utime(media_setup, (now, now))
 
-            with override_settings(
-                MEDIA_ROOT=str(media_root),
-                STATICFILES_DIRS=[str(static_root)],
-                STATIC_ROOT=str(tmp_root / 'collected-static'),
-            ):
-                factory = RequestFactory()
-                request = factory.get('/panel/engine/download/')
-                request.user = self.admin
+            factory = RequestFactory()
+            request = factory.get('/api/engine/download/')
+            request.user = self.admin
+
+            with override_settings(MEDIA_ROOT=str(media_root), BASE_DIR=str(tmp_root)):
                 response = engine_download(request)
                 try:
                     served_bytes = b''.join(response.streaming_content)

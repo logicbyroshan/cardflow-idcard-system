@@ -7,6 +7,17 @@
             <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status" onclick="var o=document.getElementById('imageSortModalOverlay');if(o){o.classList.add('active');document.body.style.overflow='hidden';}">
                 <i class="fa-solid fa-image"></i> Image Sort
             </button>
+            <div class="custom-dropdown filter-dropdown" id="sortDropdown">
+                <button class="dropdown-toggle filter-toggle" id="sortToggle" type="button">
+                    <span>Sort: Newest</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options filter-options" id="sortOptions">
+                    <div class="dropdown-option selected" data-value="sr-asc">Sort: Newest</div>
+                    <div class="dropdown-option" data-value="name-asc">Name A to Z</div>
+                    <div class="dropdown-option" data-value="name-desc">Name Z to A</div>
+                </div>
+            </div>
             {% if table.has_class_field %}
             <!-- Class Filter Dropdown -->
             <div class="custom-dropdown filter-dropdown" id="classFilterDropdown">

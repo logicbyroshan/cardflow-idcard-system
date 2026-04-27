@@ -2091,6 +2091,67 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertEqual(response.context.get('selected_class'), '10')
 		self.assertEqual(response.context.get('selected_section'), 'A')
 
+	def test_mobile_list_page_honors_name_sort_query(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+		]
+		self.table.save(update_fields=['fields'])
+
+		IDCard.objects.create(table=self.table, field_data={'NAME': 'Sort Name Zeta Student'}, status='pending')
+		IDCard.objects.create(table=self.table, field_data={'NAME': 'Sort Name Alpha Student'}, status='pending')
+		IDCard.objects.create(table=self.table, field_data={'NAME': 'Sort Name Beta Student'}, status='pending')
+
+		response = self.client.get(f'/app/table/{self.table.id}/pending/?sort=name-asc&search=Sort Name')
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context.get('selected_sort'), 'name-asc')
+		students = response.context.get('students', [])
+		names = [str(item.get('name') or '').strip() for item in students]
+		self.assertEqual(names, ['Sort Name Alpha Student', 'Sort Name Beta Student', 'Sort Name Zeta Student'])
+
+	def test_mobile_list_api_honors_name_sort_query(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+		]
+		self.table.save(update_fields=['fields'])
+
+		IDCard.objects.create(table=self.table, field_data={'NAME': 'Sort Name Zeta Student'}, status='pending')
+		IDCard.objects.create(table=self.table, field_data={'NAME': 'Sort Name Alpha Student'}, status='pending')
+		IDCard.objects.create(table=self.table, field_data={'NAME': 'Sort Name Beta Student'}, status='pending')
+
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=pending&search=Sort Name&sort=name-asc')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		names = [str(item.get('name') or '').strip() for item in payload['data']['cards']]
+		self.assertEqual(names, ['Sort Name Alpha Student', 'Sort Name Beta Student', 'Sort Name Zeta Student'])
+
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=pending&search=Sort Name&sort=name-desc')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		names = [str(item.get('name') or '').strip() for item in payload['data']['cards']]
+		self.assertEqual(names, ['Sort Name Zeta Student', 'Sort Name Beta Student', 'Sort Name Alpha Student'])
+
+	def test_mobile_list_api_honors_emp_name_sort_query(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'EMP NAME', 'type': 'text', 'order': 0},
+		]
+		self.table.save(update_fields=['fields'])
+
+		IDCard.objects.create(table=self.table, field_data={'EMP NAME': 'Sort Emp Zeta'}, status='pending')
+		IDCard.objects.create(table=self.table, field_data={'EMP NAME': 'Sort Emp Alpha'}, status='pending')
+		IDCard.objects.create(table=self.table, field_data={'EMP NAME': 'Sort Emp Beta'}, status='pending')
+
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=pending&search=Sort Emp&sort=name-asc')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		names = [str(item.get('name') or '').strip() for item in payload['data']['cards']]
+		self.assertEqual(names, ['Sort Emp Alpha', 'Sort Emp Beta', 'Sort Emp Zeta'])
+
 	def test_mobile_list_api_honors_search_and_photo_filters_for_full_dataset(self):
 		self._login_mobile_super_admin()
 		self.table.fields = [
@@ -2827,6 +2888,7 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertIn('const INITIAL_PAGE_SIZE = {{ page_size|default:50 }};', list_page)
 		self.assertIn("const INITIAL_SEARCH_QUERY = '{{ selected_search|default:\"\"|escapejs }}';", list_page)
 		self.assertIn("const INITIAL_PHOTO_FILTER = '{{ selected_photo|default:\"\"|escapejs }}';", list_page)
+		self.assertIn("const INITIAL_SORT_MODE = '{{ selected_sort|default:\"sr-asc\"|escapejs }}';", list_page)
 		self.assertIn("'Showing ' + visibleCount + ' of ' + totalRecords + ' records'", list_table)
 		self.assertIn('this._syncPagingFromInitialData();', script)
 		self.assertIn('if (this._hasServerBackedFilterChange()) {', script)
@@ -2839,6 +2901,7 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertIn('window.location.reload();', script)
 		self.assertIn('forceReloadWhenSame: this.filtersActive', script)
 		self.assertIn("if (this.filters.photo === 'with' || this.filters.photo === 'without')", script)
+		self.assertIn("const sortValue = normalizeMobileSortMode(this.filters.sortMode);", script)
 		self.assertIn('this.totalRecords = Math.max(0, apiTotal);', script)
 		self.assertIn('this._queueNextPageIfNeeded();', script)
 		self.assertIn('@click="applyFilters()"', list_filters)
