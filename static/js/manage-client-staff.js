@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
         values.forEach(function (v) {
             var text = String(v == null ? '' : v).trim();
             if (!text) return;
-            var key = text.toLowerCase();
+            var key = text.toUpperCase(); // Normalize to uppercase for comparison
             if (seen.has(key)) return;
             seen.add(key);
             out.push(text);
@@ -388,11 +388,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function _normalizeStringList(values) {
-        return Array.from(new Set((values || []).map(function (v) {
-            return String(v || '').trim();
-        }).filter(function (v) {
-            return !!v;
-        })));
+        var seen = new Set();
+        var out = [];
+        (values || []).forEach(function (v) {
+            var text = String(v == null ? '' : v).trim();
+            if (!text) return;
+            var key = text.toUpperCase(); // Normalize to uppercase for comparison
+            if (seen.has(key)) return;
+            seen.add(key);
+            out.push(text);
+        });
+        return out;
     }
 
     function _cloneClassSectionMap(mapObj) {

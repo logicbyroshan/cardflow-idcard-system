@@ -325,8 +325,8 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 # ── Domain restriction ──
 # REMOVE any existing domain overrides to prevent duplicate cookies
-CSRF_COOKIE_DOMAIN = None
-SESSION_COOKIE_DOMAIN = None
+CSRF_COOKIE_DOMAIN = os.getenv('CSRF_COOKIE_DOMAIN')
+SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN')
 
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.

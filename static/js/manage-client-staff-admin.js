@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
         values.forEach(function(v) {
             var text = String(v == null ? '' : v).trim();
             if (!text) return;
-            var key = text.toLowerCase();
+            var key = text.toUpperCase(); // Normalize to uppercase for comparison
             if (seen[key]) return;
             seen[key] = true;
             out.push(text);
@@ -966,6 +966,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function setDrawerSectionVisibility(mode) {
+        var infoSection = document.getElementById('staff-info-section');
+        var permsSection = document.getElementById('staff-permissions-section');
+        var assignSection = document.getElementById('client-assignment-section');
+        var summarySection = document.getElementById('staff-assignment-summary-section');
+
+        if (mode === 'assign') {
+            if (infoSection) infoSection.style.display = 'none';
+            if (permsSection) permsSection.style.display = 'none';
+            if (assignSection) assignSection.style.display = '';
+            if (summarySection) summarySection.style.display = '';
+        } else {
+            if (infoSection) infoSection.style.display = '';
+            if (permsSection) permsSection.style.display = '';
+            if (assignSection) assignSection.style.display = (mode === 'add' || mode === 'edit') ? '' : 'none';
+            // summarySection is usually handled by renderAssignmentSummary
+        }
+    }
+
     function closeDrawer() {
         if (staffDrawer) staffDrawer.classList.remove('open');
         if (staffDrawerOverlay) staffDrawerOverlay.classList.remove('active');
@@ -987,6 +1006,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         resetClientAssignment();
         renderAssignmentSummary(null);
+        setDrawerSectionVisibility(NS.currentMode);
 
         if (submitBtn) {
             submitBtn.disabled = false;
