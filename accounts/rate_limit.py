@@ -100,9 +100,25 @@ def _get_client_ip(request):
             return x_real_ip
         return remote_addr or '0.0.0.0'
 
-    # Untrusted proxy mode: preserve REMOTE_ADDR behavior for compatibility.
-    if remote_addr:
+    # Untrusted proxy mode:
+    # - Keep public REMOTE_ADDR as the source of truth (anti-spoof default).
+    # - If REMOTE_ADDR is internal/private, assume a local reverse-proxy hop
+    #   and prefer forwarded public client IPs when available.
+    if remote_addr and not _is_internal_ip(remote_addr):
         return remote_addr
+
+    if remote_addr and _is_internal_ip(remote_addr):
+        for ip in xff_ips:
+            if not _is_internal_ip(ip):
+                return ip
+        if x_real_ip and not _is_internal_ip(x_real_ip):
+            return x_real_ip
+        if x_real_ip:
+            return x_real_ip
+        if xff_ips:
+            return xff_ips[0]
+        return remote_addr
+
     # Fall back only when REMOTE_ADDR is missing/invalid.
     if x_real_ip:
         return x_real_ip
