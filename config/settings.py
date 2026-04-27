@@ -328,6 +328,24 @@ SESSION_SAVE_EVERY_REQUEST = True
 CSRF_COOKIE_DOMAIN = os.getenv('CSRF_COOKIE_DOMAIN')
 SESSION_COOKIE_DOMAIN = os.getenv('SESSION_COOKIE_DOMAIN')
 
+
+def _normalize_cookie_domain(value: str) -> str:
+    return str(value or '').strip().lstrip('.').lower()
+
+
+# Production safety: when panel subdomain split-routing is enabled,
+# force auth cookies to panel host only to avoid root-domain collisions.
+if not DEBUG and PANEL_DOMAIN:
+    _panel_cookie_domain = _normalize_cookie_domain(PANEL_DOMAIN)
+
+    _session_cookie_domain = _normalize_cookie_domain(SESSION_COOKIE_DOMAIN)
+    if _session_cookie_domain != _panel_cookie_domain:
+        SESSION_COOKIE_DOMAIN = PANEL_DOMAIN
+
+    _csrf_cookie_domain = _normalize_cookie_domain(CSRF_COOKIE_DOMAIN)
+    if _csrf_cookie_domain != _panel_cookie_domain:
+        CSRF_COOKIE_DOMAIN = PANEL_DOMAIN
+
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.
 # Set to 0 to disable. Default: 30 days (matches SESSION_COOKIE_AGE).

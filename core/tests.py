@@ -1321,8 +1321,8 @@ class SubdomainRoutingSecurityTests(TestCase):
         response = middleware(request)
         self.assertIn('sessionid', response.cookies)
         self.assertIn('csrftoken', response.cookies)
-        self.assertEqual(response.cookies['sessionid']['domain'], 'adarshbhopal.in')
-        self.assertEqual(response.cookies['csrftoken']['domain'], 'adarshbhopal.in')
+        self.assertIn(response.cookies['sessionid']['domain'], ('adarshbhopal.in', '.adarshbhopal.in'))
+        self.assertIn(response.cookies['csrftoken']['domain'], ('adarshbhopal.in', '.adarshbhopal.in'))
 
 
 # ── IDCardTable Field Tests ──

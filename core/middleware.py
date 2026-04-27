@@ -94,6 +94,24 @@ class SubdomainRoutingMiddleware:
             return ''
         return '.'.join(labels[-2:])
 
+    @staticmethod
+    def _normalize_cookie_domain(value: str) -> str:
+        return str(value or '').strip().lstrip('.').lower()
+
+    def _configured_cookie_matches_legacy(self, cookie_domain: str, legacy_domain: str) -> bool:
+        configured = self._normalize_cookie_domain(cookie_domain)
+        legacy = self._normalize_cookie_domain(legacy_domain)
+        return bool(configured and legacy and configured == legacy)
+
+    def _delete_cookie_on_legacy_domains(self, response, cookie_name: str, samesite_value: str, legacy_domain: str):
+        for domain in (legacy_domain, f'.{legacy_domain}'):
+            response.delete_cookie(
+                cookie_name,
+                path='/',
+                domain=domain,
+                samesite=samesite_value,
+            )
+
     def _clear_legacy_shared_domain_auth_cookies(self, response):
         legacy_domain = self._legacy_shared_cookie_domain()
         if not legacy_domain:
@@ -102,18 +120,23 @@ class SubdomainRoutingMiddleware:
         session_cookie_name = getattr(django_settings, 'SESSION_COOKIE_NAME', 'sessionid')
         csrf_cookie_name = getattr(django_settings, 'CSRF_COOKIE_NAME', 'csrftoken')
 
-        response.delete_cookie(
-            session_cookie_name,
-            path='/',
-            domain=legacy_domain,
-            samesite=getattr(django_settings, 'SESSION_COOKIE_SAMESITE', 'Lax'),
-        )
-        response.delete_cookie(
-            csrf_cookie_name,
-            path='/',
-            domain=legacy_domain,
-            samesite=getattr(django_settings, 'CSRF_COOKIE_SAMESITE', 'Lax'),
-        )
+        configured_session_domain = getattr(django_settings, 'SESSION_COOKIE_DOMAIN', '')
+        if not self._configured_cookie_matches_legacy(configured_session_domain, legacy_domain):
+            self._delete_cookie_on_legacy_domains(
+                response,
+                session_cookie_name,
+                getattr(django_settings, 'SESSION_COOKIE_SAMESITE', 'Lax'),
+                legacy_domain,
+            )
+
+        configured_csrf_domain = getattr(django_settings, 'CSRF_COOKIE_DOMAIN', '')
+        if not self._configured_cookie_matches_legacy(configured_csrf_domain, legacy_domain):
+            self._delete_cookie_on_legacy_domains(
+                response,
+                csrf_cookie_name,
+                getattr(django_settings, 'CSRF_COOKIE_SAMESITE', 'Lax'),
+                legacy_domain,
+            )
 
     def __call__(self, request):
         host = request.get_host().split(':')[0].lower()  # strip port
