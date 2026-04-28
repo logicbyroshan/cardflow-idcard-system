@@ -624,9 +624,6 @@ else:
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# NOTE: AUTH_USER_MODEL is now defined at the top with INSTALLED_APPS
-# AUTH_USER_MODEL = 'accounts.User'
-
 # Login settings
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'

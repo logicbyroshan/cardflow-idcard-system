@@ -787,7 +787,7 @@ class StreamingZipIndex:
         Returns:
             Dict with {bytes, ext, original_name} or None if not found/invalid
         """
-        from ..services.image_service import ImageService
+        from mediafiles.services import ImageService
         
         normalized = BaseService.normalize_image_identifier(key) if key else None
         if not normalized or normalized not in self._index:

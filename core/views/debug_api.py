@@ -162,7 +162,7 @@ def api_debug_image_integrity(request):
         count, orphan CardMedia count.
     """
     from ..services.permission_service import PermissionService
-    from ..services.image_service import ImageService
+    from mediafiles.services import ImageService
     from ..services.base import BaseService
     from mediafiles.models import CardMedia
     from mediafiles.services import ThumbnailService

@@ -24,7 +24,6 @@
 # =============================================================================
 
 from .base import ServiceResult, BaseService
-from .image_service import ImageService
 from .client_service import ClientService
 from .staff_service import StaffService
 from .idcard_service import IDCardService
@@ -35,7 +34,6 @@ from .notification_service import NotificationService
 __all__ = [
     'ServiceResult',
     'BaseService',
-    'ImageService',
     'ClientService',
     'StaffService',
     'IDCardService',

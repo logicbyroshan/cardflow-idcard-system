@@ -21,7 +21,7 @@ from django.utils.timezone import localtime
 from idcards.models import IDCardGroup, IDCardTable, IDCard
 from .cache_version_service import CacheVersionService
 from .base import BaseService, ServiceResult
-from .image_service import ImageService
+from mediafiles.services import ImageService
 
 logger = logging.getLogger(__name__)
 

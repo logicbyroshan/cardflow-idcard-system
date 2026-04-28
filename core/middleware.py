@@ -596,7 +596,7 @@ class PermissionValidationMiddleware:
                 return None
         
         # Cache the fresh user on the request object to avoid duplicate DB hits
-        # within the same request cycle (e.g., RoleScopingMiddleware also accesses user)
+        # within the same request cycle
         _cache_attr = '_pvm_fresh_user'
         fresh_user = getattr(request, _cache_attr, None)
         
@@ -855,20 +855,6 @@ class PermissionValidationMiddleware:
         return redirect(f'{prefix}/inactive/?reason={quote(message)}')
 
 
-class RoleScopingMiddleware:
-    """
-    DEPRECATED: Role scoping is now merged into PermissionValidationMiddleware.
-    This middleware is kept as a pass-through for backward compatibility.
-    It can be safely removed from MIDDLEWARE in settings.py.
-    """
-    
-    def __init__(self, get_response):
-        self.get_response = get_response
-    
-    def __call__(self, request):
-        # Role scoping is now handled by PermissionValidationMiddleware._annotate_request_scope()
-        return self.get_response(request)
-
 
 class MaintenanceModeMiddleware:
     """
@@ -973,31 +959,12 @@ class WebsiteOfflineMiddleware:
             from website.models import WebsiteStatus
             from core.models import SystemSettings
             from django.core.cache import cache
-            from django.http import Http404
 
             # Cache status for 10 seconds to avoid DB hit on every request
             status = cache.get('website_status_cache')
             if status is None:
                 status = WebsiteStatus.get_status()
                 cache.set('website_status_cache', status, 10)
-
-            not_found_mode = cache.get('website_not_found_mode_cache')
-            if not_found_mode is None:
-                not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
-                cache.set('website_not_found_mode_cache', not_found_mode, 10)
-
-            # Not-found mode disabled for indexing
-            # if not_found_mode:
-            #     raise Http404('Not found')
-
-            # Draft mode blocking disabled for indexing
-            # if status == 'draft':
-            #     from django.shortcuts import render
-            #     from website.models import BusinessDetails
-            #     business = BusinessDetails.objects.first()
-            #     return render(request, 'website/offline.html', {
-            #         'site_name': business.site_name if business else 'Adarsh ID Cards',
-            #     }, status=503)
 
         return self.get_response(request)
 
@@ -1260,10 +1227,5 @@ class SecurityHeadersMiddleware:
                 response['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
                 response['Pragma'] = 'no-cache'
 
-        # SEO: indexing is allowed as per user request
-        # if self._panel_domain:
-        #     host = request.get_host().split(':')[0].lower()
-        #     if host == self._panel_domain:
-        #         response['X-Robots-Tag'] = 'noindex, nofollow'
 
         return response

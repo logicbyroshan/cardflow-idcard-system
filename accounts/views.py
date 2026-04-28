@@ -244,13 +244,6 @@ class BaseDashboardView(LoginRequiredMixin, View):
         }
 
 
-class OwnerDashboardView(BaseDashboardView):
-    """DEPRECATED ÔÇö redirects to /panel/."""
-    allowed_roles = ['super_admin', 'pro_user']
-    def get(self, request):
-        return redirect('/panel/')
-
-
 class StaffDashboardView(BaseDashboardView):
     """DEPRECATED ÔÇö redirects to /panel/."""
     allowed_roles = ['admin_staff']

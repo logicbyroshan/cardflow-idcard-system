@@ -22,7 +22,7 @@ from django.core.cache import cache as django_cache
 
 from idcards.models import IDCardGroup, IDCard, IDCardTable
 from ..services import IDCardService
-from ..services.image_service import ImageService
+from mediafiles.services import ImageService
 from ..services.base import BaseService
 from ..services.activity_service import ActivityService
 from ..services.permission_service import (

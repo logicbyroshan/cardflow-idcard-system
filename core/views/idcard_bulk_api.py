@@ -22,7 +22,7 @@ from django.core.files.uploadhandler import MemoryFileUploadHandler
 
 from idcards.models import IDCard, IDCardTable
 from ..services import IDCardService
-from ..services.image_service import ImageService
+from mediafiles.services import ImageService
 from ..services.base import BaseService
 from ..services.cache_version_service import CacheVersionService
 from ..services.super_mode_service import SuperModeService
