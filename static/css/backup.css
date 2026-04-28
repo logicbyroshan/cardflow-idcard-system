@@ -260,7 +260,31 @@
 .backup-btn-refresh:hover { background: var(--color-indigo-50); }
 
 /* ─── Client selection page ─── */
+.backup-select-page,
+.backup-select-page .main.backup-main {
+  height: 100vh;
+  min-height: 0;
+}
+
+.backup-select-page .main.backup-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.backup-select-page .main.backup-main > .topbar {
+  flex-shrink: 0;
+}
+
 .backup-page { padding: 0; }
+
+.backup-select-page .backup-page {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
 .backup-error-box {
   padding: 20px;
@@ -276,6 +300,7 @@
   justify-content: space-between;
   padding: 16px 18px 12px;
   border-bottom: 1px solid var(--color-gray-200);
+  flex-shrink: 0;
 }
 .backup-page-header h1 {
   font-size: var(--ui-font-size-lg, 15px);
@@ -300,6 +325,7 @@
   padding: 10px 18px;
   border-bottom: 1px solid var(--color-gray-200);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 .backup-sort-label {
   font-size: var(--ui-font-size-sm, 12px);
@@ -348,6 +374,9 @@
   padding: 16px 18px;
   /* Reserve space at the bottom so cards aren't hidden behind the fixed bar */
   padding-bottom: 80px;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
   overflow-y: auto;
 }
 .backup-client-card {
