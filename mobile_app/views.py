@@ -1216,7 +1216,17 @@ def api_mobile_login(request):
         active_mobile_sessions = int(surface_counts.get('mobile', 0) or 0)
 
         auth_login(request, user)
-        
+
+        # Seed session fingerprint immediately so the very next
+        # request doesn't see a mismatch and force-logout the user.
+        from core.middleware import PermissionValidationMiddleware
+        PermissionValidationMiddleware.seed_session_fingerprint(request)
+
+        # Reset the absolute max-age clock for a fresh session lifetime.
+        import time as _time
+        request.session['_session_created'] = _time.time()
+        request.session['_last_activity'] = _time.time()
+
         request.session['selected_role'] = getattr(user, 'role', '')
         AuthService.apply_session_auth_context(
             request,

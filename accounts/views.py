@@ -362,6 +362,19 @@ class LoginAPIView(View):
                 # Log the user in
                 login(request, user)
                 
+                # Seed session fingerprint immediately so the very next
+                # request doesn't see a mismatch and force-logout the user.
+                from core.middleware import PermissionValidationMiddleware
+                PermissionValidationMiddleware.seed_session_fingerprint(request)
+
+                # Reset the absolute max-age clock so a fresh login always
+                # starts with a full lifetime instead of inheriting a stale
+                # _session_created from a previous session (Django's login()
+                # cycles the key but preserves session data).
+                import time as _time
+                request.session['_session_created'] = _time.time()
+                request.session['_last_activity'] = _time.time()
+
                 # Store actual role resolved from user identity (email/username)
                 request.session['selected_role'] = resolved_role
                 AuthService.apply_session_auth_context(

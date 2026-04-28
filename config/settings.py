@@ -327,7 +327,8 @@ SESSION_COOKIE_DOMAIN = None
 # ── Session idle timeout (seconds) ──
 # If a user has no requests for this period, session expires on next request.
 # Set to 0 to disable. Default: 30 days (matches SESSION_COOKIE_AGE).
-SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 7)))
+# The absolute max-age policy provides a secondary safety net.
+SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 30)))
 
 # ── Session absolute max-age (seconds) ──
 # Hard cap on session lifetime regardless of activity.

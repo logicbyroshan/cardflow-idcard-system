@@ -43,6 +43,77 @@ def get_limits(user):
         'mobile': raw_limits.get('mobile', 1)
     }
 
+
+def _purge_orphaned_device_sessions(user, device_type, logger):
+    """
+    Remove UserDeviceSession records whose Django Session no longer exists.
+
+    Without this cleanup, expired/revoked sessions accumulate as orphans and
+    inflate the active-session count, causing premature eviction of real
+    sessions when the limit is enforced.
+    """
+    try:
+        device_records = UserDeviceSession.objects.filter(
+            user=user,
+            device_type=device_type,
+        ).values_list('id', 'session_key', named=True)
+
+        if not device_records:
+            return
+
+        # Collect session keys that still exist in the Django Session table
+        all_keys = [r.session_key for r in device_records]
+        existing_keys = set(
+            Session.objects
+            .filter(session_key__in=all_keys, expire_date__gt=timezone.now())
+            .values_list('session_key', flat=True)
+        )
+
+        # Delete records whose session no longer exists
+        orphan_ids = [r.id for r in device_records if r.session_key not in existing_keys]
+        if orphan_ids:
+            deleted_count = UserDeviceSession.objects.filter(id__in=orphan_ids).delete()[0]
+            if deleted_count:
+                logger.info(
+                    "Purged %d orphaned UserDeviceSession records for user=%s device_type=%s",
+                    deleted_count, user.username, device_type,
+                )
+    except Exception as exc:
+        logger.warning("Orphan device-session cleanup failed for user=%s: %s", user.username, exc)
+
+
+def _delete_session_thoroughly(session_key, logger):
+    """
+    Delete a Django session from both the DB and the cache layer.
+
+    When using cached_db session backend, deleting only the DB row leaves a
+    stale copy in Redis that can keep the evicted user authenticated until the
+    cache entry expires.  This helper invalidates both layers.
+    """
+    # 1. Delete from DB
+    Session.objects.filter(session_key=session_key).delete()
+
+    # 2. Invalidate cache (for cached_db backend)
+    try:
+        from django.contrib.sessions.backends.db import SessionStore
+        store = SessionStore(session_key=session_key)
+        store.delete()
+    except Exception:
+        pass
+
+    # 3. Explicit cache key deletion (belt-and-suspenders for Redis)
+    try:
+        from django.core.cache import cache
+        from django.conf import settings
+        prefix = getattr(settings, 'CACHE_KEY_PREFIX', '')
+        version = getattr(settings, 'CACHE_VERSION', 1)
+        # Django's cached_db backend uses this cache-key pattern
+        cache_key = f"django.contrib.sessions.cached_db{session_key}"
+        cache.delete(cache_key, version=version)
+    except Exception:
+        pass
+
+
 @receiver(user_logged_in)
 def manage_user_device_sessions(sender, request, user, **kwargs):
     """
@@ -69,6 +140,10 @@ def manage_user_device_sessions(sender, request, user, **kwargs):
     device_type = get_device_type(request)
 
     try:
+        # STEP 0: Purge orphaned records BEFORE doing limit math.
+        # This prevents expired sessions from inflating the count.
+        _purge_orphaned_device_sessions(user, device_type, logger)
+
         with transaction.atomic():
             # 1. Record/Update current device session
             UserDeviceSession.objects.update_or_create(
@@ -81,42 +156,35 @@ def manage_user_device_sessions(sender, request, user, **kwargs):
                     'last_active': timezone.now()
                 }
             )
-            # UPDATED: Ensure current session is explicitly marked as freshest
-            UserDeviceSession.objects.filter(session_key=session_key).update(
-                last_active=timezone.now()
-            )
 
             # 2. Enforce limits for this device type
             limits = get_limits(user)
             limit = limits.get(device_type, 1)
 
-            # UPDATED: Use select_for_update and only() for high performance and race protection
+            # Use select_for_update for race protection
             active_sessions_qs = UserDeviceSession.objects.select_for_update().filter(
                 user=user,
                 device_type=device_type
             ).only('id', 'session_key', 'last_active').order_by('-last_active')
 
-            # UPDATED Step 1: EXCLUDE current session BEFORE deletion to prevent immediate logout
+            # EXCLUDE current session BEFORE deletion to prevent immediate logout
             active_sessions = [s for s in active_sessions_qs if s.session_key != session_key]
 
-            # UPDATED Step 2: Apply correct limit logic (if other sessions >= limit, remove oldest)
+            # If the number of OTHER sessions >= limit, remove the oldest ones.
+            # We keep at most (limit - 1) other sessions because the current
+            # session already occupies one slot.
             if len(active_sessions) >= limit:
-                stale_entries = active_sessions[limit-1:]
-                from django.contrib.sessions.backends.db import SessionStore
+                stale_entries = active_sessions[limit - 1:]
                 
                 for entry in stale_entries:
                     try:
-                        # UPDATED Step 3: Safe and thorough session deletion
-                        # Delete DB session
-                        Session.objects.filter(session_key=entry.session_key).delete()
-                        
-                        # Delete session properly from backend (robustly handles cache/db invalidation)
-                        try:
-                            SessionStore().delete(entry.session_key)
-                        except Exception:
-                            pass
+                        # Thoroughly delete the session from DB + cache
+                        _delete_session_thoroughly(entry.session_key, logger)
 
-                        logger.info(f"Revoked session {entry.session_key[:8]} for user {user.username} (Limit hit)")
+                        logger.info(
+                            "Revoked session %s for user %s (device_type=%s, limit=%d hit)",
+                            entry.session_key[:8], user.username, device_type, limit,
+                        )
                         entry.delete()
                     except Exception:
                         pass

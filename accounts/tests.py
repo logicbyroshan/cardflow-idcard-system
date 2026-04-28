@@ -289,11 +289,23 @@ class LoginViewTests(TestCase):
         self.assertTrue(data['success'])
 
     def test_login_api_automatically_revokes_oldest_session_for_client(self):
-        # Create an existing session for the user
+        # Create an existing session for the user WITH a matching
+        # UserDeviceSession record so the signal can find and revoke it.
         from django.contrib.sessions.models import Session
+        from accounts.models import UserDeviceSession
+        from django.utils import timezone
+
         self._create_authenticated_session(surface='desktop')
         self.assertEqual(Session.objects.count(), 1)
         old_session_key = Session.objects.first().session_key
+
+        # Register the session with the device-tracking table
+        UserDeviceSession.objects.create(
+            user=self.user,
+            session_key=old_session_key,
+            device_type='web',
+            last_active=timezone.now(),
+        )
 
         # Login again - should succeed immediately (no stop) and kick the old one
         response = self.client.post(
@@ -316,8 +328,19 @@ class LoginViewTests(TestCase):
 
     def test_login_api_force_logout_other_device_allows_handoff(self):
         from accounts.services import AuthService
+        from accounts.models import UserDeviceSession
+        from django.utils import timezone
 
         self._create_authenticated_session(surface='desktop')
+        old_session_key = Session.objects.first().session_key
+
+        # Register with device-tracking so the signal can manage it
+        UserDeviceSession.objects.create(
+            user=self.user,
+            session_key=old_session_key,
+            device_type='web',
+            last_active=timezone.now(),
+        )
 
         response = self.client.post(
             '/panel/api/auth/login/',
@@ -834,10 +857,20 @@ class UserProfileServiceTests(TestCase):
         from django.test import Client
         from accounts.services_profile import UserProfileService
 
+        # Use a super_admin user for this test so that the login signal
+        # doesn't enforce device limits (limit=9999) and both sessions
+        # survive the test setup phase.
+        sa_user = User.objects.create_user(
+            username='sa-pwchange@example.com',
+            email='sa-pwchange@example.com',
+            password='testpass123',
+            role='super_admin',
+        )
+
         client_a = Client()
         client_b = Client()
-        self.assertTrue(client_a.login(username='profile@example.com', password='testpass123'))
-        self.assertTrue(client_b.login(username='profile@example.com', password='testpass123'))
+        self.assertTrue(client_a.login(username='sa-pwchange@example.com', password='testpass123'))
+        self.assertTrue(client_b.login(username='sa-pwchange@example.com', password='testpass123'))
 
         key_a = client_a.session.session_key
         key_b = client_b.session.session_key
@@ -845,7 +878,7 @@ class UserProfileServiceTests(TestCase):
         self.assertTrue(Session.objects.filter(session_key=key_b).exists())
 
         success, _message = UserProfileService.change_password(
-            self.user,
+            sa_user,
             'testpass123',
             'newpass123',
             current_session_key=key_a,

@@ -470,12 +470,13 @@ class PermissionValidationMiddleware:
     @staticmethod
     def _extract_stable_ua(ua_string):
         """
-        Extract a stable browser family + major version from a User-Agent string.
+        Extract a stable platform + browser family from a User-Agent string.
 
-        Minor browser version changes (auto-updates like Chrome 120 → 121) only
-        bump the minor/patch version in the UA.  By extracting just the family
-        and major version (e.g. "chrome/120"), we avoid false-positive fingerprint
-        mismatches that would force-logout users after browser updates.
+        We intentionally omit the browser major version so that automatic
+        browser updates (e.g. Chrome 126 → 127) do NOT change the fingerprint
+        and do NOT force-logout users mid-session.  The combination of
+        platform + browser family is still unique enough to detect session
+        hijacking across fundamentally different environments.
         """
         import re
         ua = (ua_string or '').strip().lower()
@@ -489,22 +490,21 @@ class PermissionValidationMiddleware:
                 platform = p
                 break
 
-        # Extract browser family and major version
+        # Extract browser family only (no version) to survive auto-updates
         # Order matters: check specific browsers first before generic ones
         browser = 'other'
         patterns = [
-            (r'edg[ea]?/(\d+)', 'edge'),
-            (r'opr/(\d+)', 'opera'),
-            (r'chrome/(\d+)', 'chrome'),
-            (r'firefox/(\d+)', 'firefox'),
-            (r'safari/(\d+)', 'safari'),
-            (r'msie\s+(\d+)', 'ie'),
-            (r'trident/.*rv:(\d+)', 'ie'),
+            (r'edg[ea]?/\d+', 'edge'),
+            (r'opr/\d+', 'opera'),
+            (r'chrome/\d+', 'chrome'),
+            (r'firefox/\d+', 'firefox'),
+            (r'safari/\d+', 'safari'),
+            (r'msie\s+\d+', 'ie'),
+            (r'trident/.*rv:\d+', 'ie'),
         ]
         for pattern, name in patterns:
-            m = re.search(pattern, ua)
-            if m:
-                browser = f'{name}/{m.group(1)}'
+            if re.search(pattern, ua):
+                browser = name
                 break
 
         return f'{platform}|{browser}'
