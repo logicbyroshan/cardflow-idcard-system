@@ -67,6 +67,10 @@
     chatPollConnectedMs: 12000,
     chatPollDisconnectedMs: 4000,
     desktopPermissionBootstrapDone: false,
+    leads: [],
+    leadsLoaded: false,
+    leadTemplates: { whatsapp: '', email: '' },
+    activeTemplateType: 'whatsapp',
   };
 
   var ui = {
@@ -126,6 +130,18 @@
     taskModalClose: document.getElementById('officeTaskModalClose'),
     taskBoard: document.getElementById('officeTaskBoard'),
     taskColumns: Array.prototype.slice.call(document.querySelectorAll('.office-kanban-column[data-status]')),
+    
+    // Leads UI
+    leadsList: document.getElementById('officeLeadsList'),
+    leadsTable: document.getElementById('officeLeadsTable'),
+    createLeadBtn: document.getElementById('officeCreateLeadBtn'),
+    leadModal: document.getElementById('officeLeadModal'),
+    leadModalBackdrop: document.getElementById('officeLeadModalBackdrop'),
+    leadModalClose: document.getElementById('officeLeadModalClose'),
+    leadForm: document.getElementById('officeLeadForm'),
+    leadEditId: document.getElementById('officeLeadEditId'),
+    leadCancelBtn: document.getElementById('officeLeadCancelBtn'),
+    leadFormHeading: document.getElementById('officeLeadFormHeading'),
   };
 
   function notify(message, type) {
@@ -485,6 +501,10 @@
       panel.hidden = !isActive;
     });
     persistRouteState(tabName, Number(state.activeGroupId || 0));
+
+    if (tabName === 'leads' && !state.leadsLoaded) {
+      loadLeads();
+    }
   }
 
   function resetChatState() {
@@ -2977,6 +2997,295 @@
     ]);
 
     startChatPolling();
+  }
+
+  // --- Leads Logic ---
+  function loadLeads() {
+    if (!endpoints.leadsList) return;
+    
+    window.ApiClient.get(endpoints.leadsList)
+      .then(function(res) {
+        if (res.success) {
+          state.leads = res.data || [];
+          state.leadsLoaded = true;
+          renderLeadsList();
+        } else {
+          notify(res.message || 'Failed to load leads', 'error');
+        }
+      })
+      .catch(function(err) {
+        notify('Network error while loading leads', 'error');
+      });
+  }
+
+  function renderLeadsList() {
+    if (!ui.leadsList) return;
+    
+    if (state.leads.length === 0) {
+      ui.leadsList.innerHTML = '<tr><td colspan="5" class="text-center">No leads found. Click "Add New Lead" to create one.</td></tr>';
+      return;
+    }
+    
+    ui.leadsList.innerHTML = state.leads.map(function(lead) {
+      const waUrl = getLeadContactUrl(lead, 'whatsapp');
+      const mailUrl = getLeadContactUrl(lead, 'email');
+      
+      return `
+        <tr>
+          <td>
+            <div class="lead-name-cell">
+              <strong>${escapeHtml(lead.customer_name)}</strong>
+              <span class="lead-date">${lead.created_at}</span>
+            </div>
+          </td>
+          <td>
+            <div class="lead-contact-cell">
+              <div><i class="fa-solid fa-phone"></i> ${escapeHtml(lead.contact || '-')}</div>
+              <div><i class="fa-solid fa-envelope"></i> ${escapeHtml(lead.email || '-')}</div>
+            </div>
+          </td>
+          <td>${escapeHtml(lead.location || '-')}</td>
+          <td><div class="lead-desc-cell">${escapeHtml(lead.description || '-')}</div></td>
+          <td>
+            <div class="office-table-actions">
+              <a href="tel:${lead.contact}" class="btn-action btn-call" title="Call"><i class="fa-solid fa-phone"></i></a>
+              <a href="${waUrl}" target="_blank" class="btn-action btn-whatsapp" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+              <a href="${mailUrl}" class="btn-action btn-mail" title="Email"><i class="fa-solid fa-envelope"></i></a>
+              <button type="button" class="btn-action btn-edit" onclick="window.OfficeWorkEditLead(${lead.id})" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button type="button" class="btn-action btn-delete" onclick="window.OfficeWorkDeleteLead(${lead.id})" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function getLeadContactUrl(lead, type) {
+    let content = state.leadTemplates[type] || '';
+    if (content) {
+      content = content
+        .replace(/{{customer_name}}/g, lead.customer_name || '')
+        .replace(/{{contact}}/g, lead.contact || '')
+        .replace(/{{email}}/g, lead.email || '')
+        .replace(/{{location}}/g, lead.location || '')
+        .replace(/{{description}}/g, lead.description || '');
+    }
+
+    if (type === 'whatsapp') {
+      const phone = (lead.whatsapp || lead.contact || '').replace(/\D/g, '');
+      return `https://wa.me/${phone}${content ? '?text=' + encodeURIComponent(content) : ''}`;
+    } else {
+      const subject = encodeURIComponent('Inquiry from Adarsh');
+      return `mailto:${lead.email}?subject=${subject}${content ? '&body=' + encodeURIComponent(content) : ''}`;
+    }
+  }
+
+  window.OfficeWorkEditLead = function(id) {
+    const lead = state.leads.find(l => l.id === id);
+    if (lead) openLeadModal(lead);
+  };
+
+  window.OfficeWorkDeleteLead = function(id) {
+    if (!confirm('Are you sure you want to delete this lead?')) return;
+    
+    window.ApiClient.post(endpoints.leadDeleteBase + id + '/delete/')
+      .then(function(res) {
+        if (res.success) {
+          notify('Lead deleted successfully', 'success');
+          loadLeads();
+        } else {
+          notify(res.message || 'Failed to delete lead', 'error');
+        }
+      });
+  };
+
+  function openLeadModal(lead) {
+    state.leadModalOpen = true;
+    if (lead) {
+      ui.leadFormHeading.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Lead';
+      ui.leadEditId.value = lead.id;
+      document.getElementById('officeLeadName').value = lead.customer_name;
+      document.getElementById('officeLeadContact').value = lead.contact;
+      document.getElementById('officeLeadWhatsapp').value = lead.whatsapp;
+      document.getElementById('officeLeadEmail').value = lead.email;
+      document.getElementById('officeLeadLocation').value = lead.location;
+      document.getElementById('officeLeadDescription').value = lead.description;
+    } else {
+      ui.leadFormHeading.innerHTML = '<i class="fa-solid fa-plus"></i> Add New Lead';
+      ui.leadEditId.value = '';
+      ui.leadForm.reset();
+    }
+    
+    ui.leadModal.hidden = false;
+    ui.leadModalBackdrop.hidden = false;
+  }
+
+  function closeLeadModal() {
+    state.leadModalOpen = false;
+    ui.leadModal.hidden = true;
+    ui.leadModalBackdrop.hidden = true;
+  }
+
+  function handleLeadFormSubmit(e) {
+    e.preventDefault();
+    const id = ui.leadEditId.value;
+    const payload = {
+      customer_name: document.getElementById('officeLeadName').value,
+      contact: document.getElementById('officeLeadContact').value,
+      whatsapp: document.getElementById('officeLeadWhatsapp').value,
+      email: document.getElementById('officeLeadEmail').value,
+      location: document.getElementById('officeLeadLocation').value,
+      description: document.getElementById('officeLeadDescription').value,
+    };
+    
+    const url = id ? (endpoints.leadUpdateBase + id + '/update/') : endpoints.leadCreate;
+    
+    window.ApiClient.post(url, payload)
+      .then(function(res) {
+        if (res.success) {
+          notify(id ? 'Lead updated' : 'Lead created', 'success');
+          closeLeadModal();
+          loadLeads();
+        } else {
+          notify(res.message || 'Error saving lead', 'error');
+        }
+      });
+  }
+
+  // --- Event Listeners for Leads ---
+  if (ui.createLeadBtn) ui.createLeadBtn.addEventListener('click', function() { openLeadModal(); });
+  if (ui.leadModalClose) ui.leadModalClose.addEventListener('click', closeLeadModal);
+  if (ui.leadCancelBtn) ui.leadCancelBtn.addEventListener('click', closeLeadModal);
+  if (ui.leadForm) ui.leadForm.addEventListener('submit', handleLeadFormSubmit);
+  if (ui.leadModalBackdrop) ui.leadModalBackdrop.addEventListener('click', closeLeadModal);
+
+  // --- Lead Templates ---
+  function loadLeadTemplates() {
+    if (!endpoints.leadTemplatesList) return;
+    window.ApiClient.get(endpoints.leadTemplatesList).then(res => {
+      if (res.success) {
+        state.leadTemplates = Object.assign({ whatsapp: '', email: '' }, res.templates);
+        renderLeadsList(); // Refresh links
+      }
+    });
+  }
+
+  function openTemplateModal() {
+    ui.templateModal = document.getElementById('officeTemplateModal');
+    ui.templateModalBackdrop = document.getElementById('officeTemplateModalBackdrop');
+    ui.templateText = document.getElementById('officeTemplateText');
+    
+    ui.templateModal.hidden = false;
+    ui.templateModalBackdrop.hidden = false;
+    
+    switchTemplateTab(state.activeTemplateType);
+  }
+
+  function closeTemplateModal() {
+    ui.templateModal.hidden = true;
+    ui.templateModalBackdrop.hidden = true;
+  }
+
+  function switchTemplateTab(type) {
+    state.activeTemplateType = type;
+    document.querySelectorAll('.office-template-tab-btn').forEach(btn => {
+      btn.classList.toggle('is-active', btn.dataset.templateType === type);
+    });
+    document.getElementById('officeTemplateText').value = state.leadTemplates[type] || '';
+  }
+
+  function saveTemplate() {
+    const content = document.getElementById('officeTemplateText').value;
+    const type = state.activeTemplateType;
+    
+    window.ApiClient.post(endpoints.leadTemplateSave, {
+      template_type: type,
+      content: content
+    }).then(res => {
+      if (res.success) {
+        state.leadTemplates[type] = content;
+        notify(res.message, 'success');
+        renderLeadsList();
+      } else {
+        notify(res.message, 'error');
+      }
+    });
+  }
+
+  const templateBtn = document.getElementById('officeLeadTemplateBtn');
+  if (templateBtn) templateBtn.addEventListener('click', openTemplateModal);
+  
+  const templateClose = document.getElementById('officeTemplateModalClose');
+  if (templateClose) templateClose.addEventListener('click', closeTemplateModal);
+  
+  const templateCancel = document.getElementById('officeTemplateCancelBtn');
+  if (templateCancel) templateCancel.addEventListener('click', closeTemplateModal);
+  
+  const templateSave = document.getElementById('officeSaveTemplateBtn');
+  if (templateSave) templateSave.addEventListener('click', saveTemplate);
+  
+  document.querySelectorAll('.office-template-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTemplateTab(btn.dataset.templateType));
+  });
+
+  loadLeadTemplates();
+
+  // --- Search New Clients (UI Only) ---
+  const searchNewBtn = document.getElementById('officeLeadSearchNewBtn');
+  const searchModal = document.getElementById('officeSearchClientsModal');
+  const searchBackdrop = document.getElementById('officeSearchClientsModalBackdrop');
+  const searchClose = document.getElementById('officeSearchClientsModalClose');
+  const searchCancel = document.getElementById('officeSearchClientsCancelBtn');
+  const startSearchBtn = document.getElementById('officeStartSearchBtn');
+  const searchStatusBox = document.getElementById('officeSearchStatusBox');
+
+  function openSearchModal() {
+    searchModal.hidden = false;
+    searchBackdrop.hidden = false;
+    searchStatusBox.hidden = true;
+  }
+
+  function closeSearchModal() {
+    searchModal.hidden = true;
+    searchBackdrop.hidden = true;
+  }
+
+  if (searchNewBtn) searchNewBtn.addEventListener('click', openSearchModal);
+  if (searchClose) searchClose.addEventListener('click', closeSearchModal);
+  if (searchCancel) searchCancel.addEventListener('click', closeSearchModal);
+  if (searchBackdrop) searchBackdrop.addEventListener('click', closeSearchModal);
+
+  if (startSearchBtn) {
+    startSearchBtn.addEventListener('click', function() {
+      const dist = document.getElementById('officeSearchDistrict').value;
+      if (!dist) {
+        notify('Please enter a district', 'error');
+        return;
+      }
+      searchStatusBox.hidden = false;
+      startSearchBtn.disabled = true;
+      notify('Search engine initialized...', 'info');
+      
+      // Simulated delay for UI demonstration
+      setTimeout(() => {
+        notify('This feature is currently under development. Web scraper integration coming soon.', 'info');
+        startSearchBtn.disabled = false;
+        searchStatusBox.hidden = true;
+      }, 5000);
+    });
+  }
+
+  const leadSearchInput = document.getElementById('officeLeadSearch');
+  if (leadSearchInput) {
+    leadSearchInput.addEventListener('input', function(e) {
+      const q = e.target.value.toLowerCase().trim();
+      const rows = ui.leadsList.querySelectorAll('tr');
+      rows.forEach(row => {
+        if (row.cells.length < 2) return;
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.indexOf(q) >= 0 ? '' : 'none';
+      });
+    });
   }
 
   init();

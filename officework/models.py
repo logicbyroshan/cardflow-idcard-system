@@ -269,3 +269,47 @@ class OfficeWorkTaskComment(models.Model):
             except Exception:
                 self.attachment_size_bytes = 0
         super().save(*args, **kwargs)
+
+
+class OfficeWorkLead(models.Model):
+    """Lead management for office work."""
+
+    customer_name = models.CharField(max_length=150)
+    contact = models.CharField(max_length=50, blank=True, default='')
+    whatsapp = models.CharField(max_length=50, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    location = models.CharField(max_length=200, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+
+    created_by = models.ForeignKey(
+        'core.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='office_work_leads_created',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        db_table = 'core_officeworklead'
+        verbose_name = 'Office Work Lead'
+        verbose_name_plural = 'Office Work Leads'
+
+    def __str__(self):
+        return self.customer_name
+
+
+class OfficeWorkLeadTemplate(models.Model):
+    TEMPLATE_TYPES = [
+        ('whatsapp', 'WhatsApp'),
+        ('email', 'Email'),
+    ]
+    template_type = models.CharField(max_length=20, choices=TEMPLATE_TYPES, unique=True)
+    content = models.TextField(help_text="Use {{customer_name}}, {{contact}}, {{email}}, {{location}}, {{description}} as placeholders")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.get_template_type_display()} Template"
