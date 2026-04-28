@@ -14,11 +14,11 @@
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
     {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState" x-init="init">
+<body class="backup-select-page" x-data="layoutState" x-init="init">
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
   {% include 'partials/sidebar.html' %}
 
-  <main class="main" id="main-content">
+  <main class="main backup-main" id="main-content">
     {% include 'partials/panel/topbar.html' with breadcrumb_label="Backup" %}
 
     <div class="backup-page">
@@ -146,15 +146,37 @@
   <script>
   (function(){
     const TASK_ID = {{ task.pk|default:"0" }};
+    let backupStartInFlight = false;
+
+    function getCheckboxes() {
+      return [...document.querySelectorAll('.backup-client-check')];
+    }
 
     function getSelectedIds() {
-      return [...document.querySelectorAll('.backup-client-check:checked')].map(cb => parseInt(cb.value));
+      return getCheckboxes()
+        .filter(cb => cb.checked)
+        .map(cb => parseInt(cb.value, 10))
+        .filter(Number.isFinite);
+    }
+
+    function updateSelectAllLabel() {
+      const boxes = getCheckboxes();
+      const checkedCount = boxes.filter(b => b.checked).length;
+      const allChecked = boxes.length > 0 && checkedCount === boxes.length;
+      const labelEl = document.getElementById('selectAllText');
+      if (labelEl) {
+        labelEl.textContent = allChecked ? 'Deselect All' : 'Select All';
+      }
     }
 
     function updateBottomBar() {
       const ids = getSelectedIds();
       const bar = document.getElementById('backupBottomBar');
       const text = document.getElementById('selectedCountText');
+      updateSelectAllLabel();
+
+      if (!bar || !text) return;
+
       if (ids.length > 0) {
         bar.style.display = 'flex';
         text.textContent = ids.length + ' client(s) selected';
@@ -167,6 +189,7 @@
     document.addEventListener('change', function(e) {
       if (e.target.classList.contains('backup-client-check')) {
         const card = e.target.closest('.backup-client-card');
+        if (!card) return;
         if (e.target.checked) {
           card.classList.add('selected');
         } else {
@@ -177,15 +200,18 @@
     });
 
     window.toggleSelectAll = function() {
-      const boxes = document.querySelectorAll('.backup-client-check');
+      const boxes = getCheckboxes();
       const allChecked = [...boxes].every(b => b.checked);
       boxes.forEach(b => {
         b.checked = !allChecked;
         const card = b.closest('.backup-client-card');
-        if (b.checked) card.classList.add('selected');
-        else card.classList.remove('selected');
+        if (!card) return;
+        if (b.checked) {
+          card.classList.add('selected');
+        } else {
+          card.classList.remove('selected');
+        }
       });
-      document.getElementById('selectAllText').textContent = allChecked ? 'Select All' : 'Deselect All';
       updateBottomBar();
     };
 
@@ -201,11 +227,26 @@
     };
 
     window.startBackup = function() {
+      if (backupStartInFlight) return;
+
+      const ids = getSelectedIds();
+      if (!ids.length) {
+        if (window.showToast) showToast('Select at least one client.', 'error');
+        return;
+      }
+
+      if (!TASK_ID) {
+        if (window.showToast) showToast('Backup task is missing. Please reopen this page.', 'error');
+        return;
+      }
+
       const btn = document.getElementById('startBackupBtn');
+      if (!btn) return;
+
+      backupStartInFlight = true;
       btn.disabled = true;
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Starting...';
 
-      const ids = getSelectedIds();
       fetch('/panel/api/backup/start/', {
         method: 'POST',
         headers: {
@@ -214,23 +255,45 @@
         },
         body: JSON.stringify({ task_id: TASK_ID, client_ids: ids }),
       })
-      .then(r => r.json())
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        return { ok: r.ok, data: data };
+      })
       .then(data => {
-        if (data.success) {
-          if (window.showToast) showToast(data.message, 'success');
+        if (data.ok && data.data && data.data.success) {
+          if (window.showToast) showToast(data.data.message || 'Backup started successfully.', 'success');
           setTimeout(() => { window.location.href = '/panel/manage-panel/?tab=backups'; }, 1500);
         } else {
-          if (window.showToast) showToast(data.message || 'Failed to start backup.', 'error');
+          if (window.showToast) showToast((data.data && data.data.message) || 'Failed to start backup.', 'error');
+          backupStartInFlight = false;
           btn.disabled = false;
           btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Start Backup Now';
         }
       })
       .catch(() => {
         if (window.showToast) showToast('Network error.', 'error');
+        backupStartInFlight = false;
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Start Backup Now';
       });
     };
+
+    // Initial state sync for pre-checked items (if any).
+    updateBottomBar();
+
+    // Close confirmation modal on backdrop click.
+    document.getElementById('backupStartModal')?.addEventListener('click', function(e) {
+      if (e.target && e.target.id === 'backupStartModal') {
+        closeStartModal();
+      }
+    });
+
+    // ESC key closes modal.
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeStartModal();
+      }
+    });
   })();
   </script>
 </body>
