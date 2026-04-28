@@ -144,8 +144,28 @@
 
     function _getCardName(card) {
         var f = card.ordered_fields;
+        if (!f || !f.length) return '';
+
+        // Match server _get_name_field logic:
+        // 1. Field with type='name'
         for (var i = 0; i < f.length; i++) {
-            if (f[i].type !== 'image') return (f[i].value || '').toLowerCase();
+            if (f[i].type === 'name') return (f[i].value || '').toLowerCase();
+        }
+        // 2. Field whose name contains 'name' (excluding father/mother/guardian etc.)
+        var blocked = ['father', 'mother', 'guardian', 'parent', 'relation', 'spouse', 'husband', 'wife'];
+        for (var j = 0; j < f.length; j++) {
+            if (f[j].type === 'image') continue;
+            var fn = (f[j].name || '').toLowerCase().replace(/[_\-\.]/g, ' ');
+            if (fn.indexOf('name') === -1) continue;
+            var isBlocked = false;
+            for (var b = 0; b < blocked.length; b++) {
+                if (fn.indexOf(blocked[b]) !== -1) { isBlocked = true; break; }
+            }
+            if (!isBlocked) return (f[j].value || '').toLowerCase();
+        }
+        // 3. Fallback: first text field
+        for (var k = 0; k < f.length; k++) {
+            if (f[k].type !== 'image') return (f[k].value || '').toLowerCase();
         }
         return '';
     }
@@ -635,6 +655,7 @@
 
             // Include current server-side filters
             if (_searchQuery) params.set('search', _searchQuery);
+            if (_sortMode && _sortMode !== 'sr-asc') params.set('sort', _sortMode);
             var classF = IDCardApp.currentClassFilter || '';
             var secF   = IDCardApp.currentSectionFilter || '';
             if (classF)  params.set('class', classF);
@@ -1043,10 +1064,21 @@
         };
 
         IDCardApp.sortRows = function (sortValue) {
+            var prev = _sortMode;
             _sortMode = sortValue;
-            _applyFilters();
-            _scrollEl.scrollTop = 0;
-            _render(true);
+            // Name/date sorts require server-side ordering for correct pagination.
+            // Only sr-asc/sr-desc are safe to apply client-side on partial data.
+            var needsServerSort = (sortValue === 'name-asc' || sortValue === 'name-desc'
+                || sortValue === 'date-new' || sortValue === 'date-old');
+            var prevNeeded = (prev === 'name-asc' || prev === 'name-desc'
+                || prev === 'date-new' || prev === 'date-old');
+            if (needsServerSort || prevNeeded) {
+                _resetAndFetch();
+            } else {
+                _applyFilters();
+                _scrollEl.scrollTop = 0;
+                _render(true);
+            }
         };
 
         //  Render 

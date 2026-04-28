@@ -607,6 +607,39 @@ def api_idcard_cards_json(request, table_id):
             except (ValueError, TypeError):
                 pass
 
+    # Server-side sort override (name A-Z / Z-A, date)
+    sort_order = request.GET.get('sort', '').strip().lower()
+    if sort_order in ('name-asc', 'name-desc'):
+        from django.db.models.functions import Lower as _Lower
+        from django.db.models import Value as _Val, IntegerField as _IntF, Case as _Case, When as _When
+        name_field = IDCardService._get_name_field(table)
+        if name_field:
+            qs = qs.annotate(
+                _name_raw=KeyTextTransform(name_field, 'field_data'),
+                _name_sort=_Lower(Coalesce(
+                    KeyTextTransform(name_field, 'field_data'),
+                    _Val(''),
+                )),
+                _name_empty=_Case(
+                    _When(
+                        Q(_name_raw__isnull=True) | Q(_name_raw=''),
+                        then=_Val(1),
+                    ),
+                    default=_Val(0),
+                    output_field=_IntF(),
+                ),
+            )
+            if sort_order == 'name-asc':
+                qs = qs.order_by('_name_empty', '_name_sort', 'id')
+            else:
+                qs = qs.order_by('_name_empty', '-_name_sort', '-id')
+    elif sort_order == 'sr-desc':
+        qs = qs.order_by('created_at', '-id')
+    elif sort_order == 'date-new':
+        qs = qs.order_by('-updated_at', '-id')
+    elif sort_order == 'date-old':
+        qs = qs.order_by('updated_at', 'id')
+
     total = qs.count()
 
     # Cursor-based pagination: WHERE id < cursor ORDER BY id DESC LIMIT N
