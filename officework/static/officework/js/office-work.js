@@ -133,15 +133,29 @@
     
     // Leads UI
     leadsList: document.getElementById('officeLeadsList'),
-    leadsTable: document.getElementById('officeLeadsTable'),
     createLeadBtn: document.getElementById('officeCreateLeadBtn'),
     leadModal: document.getElementById('officeLeadModal'),
-    leadModalBackdrop: document.getElementById('officeLeadModalBackdrop'),
-    leadModalClose: document.getElementById('officeLeadModalClose'),
+    leadModalBackdrop: document.getElementById('officeLeadModal-backdrop'),
+    leadModalClose: document.getElementById('officeLeadModal-close'),
     leadForm: document.getElementById('officeLeadForm'),
     leadEditId: document.getElementById('officeLeadEditId'),
     leadCancelBtn: document.getElementById('officeLeadCancelBtn'),
-    leadFormHeading: document.getElementById('officeLeadFormHeading'),
+    leadFormHeading: document.getElementById('officeLeadModal-title-text'),
+
+    // Extra Modals
+    xlsxUploadBtn: document.getElementById('officeXlsxUploadBtn'),
+    xlsxModal: document.getElementById('officeXlsxUploadModal'),
+    xlsxClose: document.getElementById('officeXlsxUploadModal-close'),
+    templateBtn: document.getElementById('officeLeadTemplateBtn'),
+    templateModal: document.getElementById('officeTemplateModal'),
+    templateClose: document.getElementById('officeTemplateModal-close'),
+    templateCancel: document.getElementById('officeTemplateCancelBtn'),
+    templateSave: document.getElementById('officeSaveTemplateBtn'),
+    searchNewBtn: document.getElementById('officeLeadSearchNewBtn'),
+    searchModal: document.getElementById('officeSearchClientsModal'),
+    searchClose: document.getElementById('officeSearchClientsModal-close'),
+    searchCancel: document.getElementById('officeSearchClientsCancelBtn'),
+    searchBackdrop: document.getElementById('officeSearchClientsModal-backdrop'),
   };
 
   function notify(message, type) {
@@ -831,9 +845,6 @@
     }).join('');
   }
 
-  function renderAvailableMembersList() {
-    return;
-  }
 
   function switchActiveGroup(nextGroupId) {
     var parsedId = Number(nextGroupId || 0);
@@ -1357,12 +1368,6 @@
     return 'User ' + id;
   }
 
-  var TASK_STATUS_META = {
-    todo: { label: 'To Do' },
-    in_progress: { label: 'In Progress' },
-    done: { label: 'Done' },
-    pending: { label: 'Pending' },
-  };
 
   var TASK_STATUS_ORDER = ['todo', 'in_progress', 'done', 'pending'];
 
@@ -1430,13 +1435,6 @@
     });
   }
 
-  function truncateTaskDescription(text) {
-    var raw = String(text || '').trim();
-    if (raw.length <= 120) {
-      return raw;
-    }
-    return raw.slice(0, 117) + '...';
-  }
 
   function taskCommentsEndpoint(taskId) {
     return (endpoints.taskCommentsBase || endpoints.taskUpdateBase) + encodeURIComponent(taskId) + '/comments/';
@@ -2668,24 +2666,27 @@
     }
 
     if (ui.taskDeleteBtn) {
-      ui.taskDeleteBtn.addEventListener('click', async function () {
+      ui.taskDeleteBtn.addEventListener('click', function () {
         var taskId = getTaskEditId();
-        if (taskId <= 0) {
-          return;
-        }
-        if (!window.confirm('Delete this card?')) {
-          return;
-        }
-
-        try {
-          await deleteTaskById(taskId);
-          removeTaskItem(taskId);
-          renderTaskBoard();
-          closeTaskModal();
-          notify('Card deleted.', 'success');
-        } catch (error) {
-          notify((error && error.message) || 'Failed to delete card.', 'error');
-        }
+        if (taskId <= 0) return;
+        var item = taskById(taskId);
+        
+        openDeleteConfirm({
+          title: 'Delete Card',
+          message: 'Delete this card?',
+          itemName: (item && item.title) || 'this task',
+          onConfirm: async function() {
+            try {
+              await deleteTaskById(taskId);
+              removeTaskItem(taskId);
+              renderTaskBoard();
+              closeTaskModal();
+              notify('Card deleted.', 'success');
+            } catch (error) {
+              notify((error && error.message) || 'Failed to delete card.', 'error');
+            }
+          }
+        });
       });
     }
 
@@ -3094,17 +3095,25 @@
   };
 
   window.OfficeWorkDeleteLead = function(id) {
-    if (!confirm('Are you sure you want to delete this lead?')) return;
-    
-    window.ApiClient.post(endpoints.leadDeleteBase + id + '/delete/')
-      .then(function(res) {
-        if (res.success) {
-          notify('Lead deleted successfully', 'success');
-          loadLeads();
-        } else {
-          notify(res.message || 'Failed to delete lead', 'error');
-        }
-      });
+    const lead = state.leads.find(l => l.id === id);
+    if (!lead) return;
+
+    openDeleteConfirm({
+      title: 'Delete Lead',
+      message: 'Are you sure you want to delete this lead?',
+      itemName: lead.customer_name || 'this lead',
+      onConfirm: function() {
+        window.ApiClient.post(endpoints.leadDeleteBase + id + '/delete/')
+          .then(function (res) {
+            if (res.success) {
+              notify('Lead deleted successfully', 'success');
+              loadLeads();
+            } else {
+              notify(res.message || 'Failed to delete lead', 'error');
+            }
+          });
+      }
+    });
   };
 
   function openLeadModal(lead) {
@@ -3168,6 +3177,7 @@
   if (ui.leadModalBackdrop) ui.leadModalBackdrop.addEventListener('click', closeLeadModal);
 
   // --- Lead Templates ---
+  // --- Lead Templates ---
   function loadLeadTemplates() {
     if (!endpoints.leadTemplatesList) return;
     window.ApiClient.get(endpoints.leadTemplatesList).then(res => {
@@ -3179,19 +3189,16 @@
   }
 
   function openTemplateModal() {
-    ui.templateModal = document.getElementById('officeTemplateModal');
-    ui.templateModalBackdrop = document.getElementById('officeTemplateModalBackdrop');
-    ui.templateText = document.getElementById('officeTemplateText');
-    
-    ui.templateModal.hidden = false;
-    ui.templateModalBackdrop.hidden = false;
-    
-    switchTemplateTab(state.activeTemplateType);
+    if (ui.templateModal) {
+      ui.templateModal.hidden = false;
+      switchTemplateTab(state.activeTemplateType);
+    }
   }
 
   function closeTemplateModal() {
-    ui.templateModal.hidden = true;
-    ui.templateModalBackdrop.hidden = true;
+    if (ui.templateModal) {
+      ui.templateModal.hidden = true;
+    }
   }
 
   function switchTemplateTab(type) {
@@ -3199,11 +3206,14 @@
     document.querySelectorAll('.office-template-tab-btn').forEach(btn => {
       btn.classList.toggle('is-active', btn.dataset.templateType === type);
     });
-    document.getElementById('officeTemplateText').value = state.leadTemplates[type] || '';
+    const txt = document.getElementById('officeTemplateText');
+    if (txt) txt.value = state.leadTemplates[type] || '';
   }
 
   function saveTemplate() {
-    const content = document.getElementById('officeTemplateText').value;
+    const txt = document.getElementById('officeTemplateText');
+    if (!txt) return;
+    const content = txt.value;
     const type = state.activeTemplateType;
     
     window.ApiClient.post(endpoints.leadTemplateSave, {
@@ -3220,17 +3230,10 @@
     });
   }
 
-  const templateBtn = document.getElementById('officeLeadTemplateBtn');
-  if (templateBtn) templateBtn.addEventListener('click', openTemplateModal);
-  
-  const templateClose = document.getElementById('officeTemplateModalClose');
-  if (templateClose) templateClose.addEventListener('click', closeTemplateModal);
-  
-  const templateCancel = document.getElementById('officeTemplateCancelBtn');
-  if (templateCancel) templateCancel.addEventListener('click', closeTemplateModal);
-  
-  const templateSave = document.getElementById('officeSaveTemplateBtn');
-  if (templateSave) templateSave.addEventListener('click', saveTemplate);
+  if (ui.templateBtn) ui.templateBtn.addEventListener('click', openTemplateModal);
+  if (ui.templateClose) ui.templateClose.addEventListener('click', closeTemplateModal);
+  if (ui.templateCancel) ui.templateCancel.addEventListener('click', closeTemplateModal);
+  if (ui.templateSave) ui.templateSave.addEventListener('click', saveTemplate);
   
   document.querySelectorAll('.office-template-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTemplateTab(btn.dataset.templateType));
@@ -3239,30 +3242,26 @@
   loadLeadTemplates();
 
   // --- Search New Clients (UI Only) ---
-  const searchNewBtn = document.getElementById('officeLeadSearchNewBtn');
-  const searchModal = document.getElementById('officeSearchClientsModal');
-  const searchBackdrop = document.getElementById('officeSearchClientsModalBackdrop');
-  const searchClose = document.getElementById('officeSearchClientsModalClose');
-  const searchCancel = document.getElementById('officeSearchClientsCancelBtn');
-  const startSearchBtn = document.getElementById('officeStartSearchBtn');
-  const searchStatusBox = document.getElementById('officeSearchStatusBox');
-
   function openSearchModal() {
-    searchModal.hidden = false;
-    searchBackdrop.hidden = false;
-    searchStatusBox.hidden = true;
+    if (ui.searchModal) {
+      ui.searchModal.hidden = false;
+      const statusBox = document.getElementById('officeSearchStatusBox');
+      if (statusBox) statusBox.hidden = true;
+    }
   }
 
   function closeSearchModal() {
-    searchModal.hidden = true;
-    searchBackdrop.hidden = true;
+    if (ui.searchModal) {
+      ui.searchModal.hidden = true;
+    }
   }
 
-  if (searchNewBtn) searchNewBtn.addEventListener('click', openSearchModal);
-  if (searchClose) searchClose.addEventListener('click', closeSearchModal);
-  if (searchCancel) searchCancel.addEventListener('click', closeSearchModal);
-  if (searchBackdrop) searchBackdrop.addEventListener('click', closeSearchModal);
+  if (ui.searchNewBtn) ui.searchNewBtn.addEventListener('click', openSearchModal);
+  if (ui.searchClose) ui.searchClose.addEventListener('click', closeSearchModal);
+  if (ui.searchCancel) ui.searchCancel.addEventListener('click', closeSearchModal);
+  if (ui.searchBackdrop) ui.searchBackdrop.addEventListener('click', closeSearchModal);
 
+  const startSearchBtn = document.getElementById('officeStartSearchBtn');
   if (startSearchBtn) {
     startSearchBtn.addEventListener('click', function() {
       const dist = document.getElementById('officeSearchDistrict').value;
@@ -3270,16 +3269,40 @@
         notify('Please enter a district', 'error');
         return;
       }
-      searchStatusBox.hidden = false;
+      const statusBox = document.getElementById('officeSearchStatusBox');
+      if (statusBox) statusBox.hidden = false;
       startSearchBtn.disabled = true;
       notify('Search engine initialized...', 'info');
       
-      // Simulated delay for UI demonstration
       setTimeout(() => {
         notify('This feature is currently under development. Web scraper integration coming soon.', 'info');
         startSearchBtn.disabled = false;
-        searchStatusBox.hidden = true;
+        if (statusBox) statusBox.hidden = true;
       }, 5000);
+    });
+  }
+
+  // --- XLSX Upload (Placeholder) ---
+  function openXlsxModal() {
+    if (ui.xlsxModal) {
+      ui.xlsxModal.hidden = false;
+    }
+  }
+  function closeXlsxModal() {
+    if (ui.xlsxModal) {
+      ui.xlsxModal.hidden = true;
+    }
+  }
+  if (ui.xlsxUploadBtn) ui.xlsxUploadBtn.addEventListener('click', openXlsxModal);
+  if (ui.xlsxClose) ui.xlsxClose.addEventListener('click', closeXlsxModal);
+  const xlsxCancel = document.getElementById('officeXlsxCancelBtn');
+  if (xlsxCancel) xlsxCancel.addEventListener('click', closeXlsxModal);
+
+  const startXlsxBtn = document.getElementById('officeStartXlsxBtn');
+  if (startXlsxBtn) {
+    startXlsxBtn.addEventListener('click', function() {
+      notify('XLSX upload service is coming soon.', 'info');
+      closeXlsxModal();
     });
   }
 
@@ -3294,6 +3317,21 @@
         row.style.display = text.indexOf(q) >= 0 ? '' : 'none';
       });
     });
+  }
+
+  /**
+   * Helper to open the global delete confirmation modal.
+   * requires alpine-state.js and delete-modal component.
+   */
+  function openDeleteConfirm(opts) {
+    if (typeof window.openDeleteConfirm === 'function') {
+      window.openDeleteConfirm(opts);
+    } else {
+      // Fallback if global system is not ready
+      if (window.confirm(opts.message || 'Are you sure?')) {
+        if (typeof opts.onConfirm === 'function') opts.onConfirm();
+      }
+    }
   }
 
   init();

@@ -46,7 +46,7 @@ Slots are injected via:
       <i class="{{ icon|default:'fa-solid fa-plus' }}" id="{{ modal_id }}-icon"></i>
       <span id="{{ modal_id }}-title-text">{{ title }}</span>
     </h3>
-    <button type="button" class="modal-close"
+    <button type="button" class="modal-close" id="{{ modal_id }}-close"
             onclick="window.closeSideModal && window.closeSideModal('{{ modal_id }}')"
             aria-label="Close">
       <i class="fa-solid fa-xmark"></i>
