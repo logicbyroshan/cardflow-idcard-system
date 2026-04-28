@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
+import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, typography, spacing, radius, shadows } from '../theme';
 
@@ -11,15 +12,25 @@ export default function NotificationsScreen({ navigation }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await apiGet('/app/api/notifications/');
-        if (data?.success) setNotifications(data.data || []);
-      } catch (e) { /* silent */ }
-      setLoading(false);
-    })();
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadNotifications = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const { ok, data } = await apiGet('/app/api/notifications/');
+      if (ok && data?.success) setNotifications(data.data || []);
+      else setError(data?.message || 'Failed to load notifications');
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
+
+  useEffect(() => { loadNotifications(); }, []);
 
   const renderItem = ({ item }) => {
     const ic = ICON_MAP[item.color] || { bg: '#f3f4f6', c: '#9ca3af' };
@@ -53,6 +64,7 @@ export default function NotificationsScreen({ navigation }) {
   return (
     <View style={s.root}>
       <TopBar title="Notifications" subtitle="Activity & updates" onBack={() => navigation.goBack()} />
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadNotifications(true)} />}
       {loading ? (
         <View style={s.loadingWrap}><ActivityIndicator size="large" color={colors.brandLight} /></View>
       ) : (
@@ -62,6 +74,7 @@ export default function NotificationsScreen({ navigation }) {
           keyExtractor={(item, i) => item.id?.toString() || i.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNotifications(true)} tintColor={colors.brandLight} />}
           ListEmptyComponent={EmptyState}
         />
       )}

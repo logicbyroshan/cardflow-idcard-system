@@ -46,14 +46,23 @@ async function saveCookiesFromResponse(response) {
       });
     }
     // Parse from response (may be multiple headers joined by comma)
-    const parts = setCookie.split(/,(?=\s*\w+=)/);
+    // Note: React Native's fetch might join multiple Set-Cookie headers with a comma.
+    // We use a more robust split that avoids splitting on commas inside dates (e.g., "expires=Mon, 01-Jan-2024").
+    const parts = setCookie.split(/,(?=\s*[\w-]+=)/);
+    
     parts.forEach(part => {
-      const cookie = part.trim().split(';')[0];
+      const cookieTrimmed = part.trim();
+      if (!cookieTrimmed) return;
+      
+      const cookie = cookieTrimmed.split(';')[0];
       const [k, ...rest] = cookie.split('=');
       if (k) {
-        newCookies[k.trim()] = rest.join('=');
-        if (k.trim() === 'csrftoken') {
-          cachedCsrf = rest.join('=');
+        const key = k.trim();
+        const value = rest.join('=');
+        newCookies[key] = value;
+        
+        if (key === 'csrftoken') {
+          cachedCsrf = value;
           AsyncStorage.setItem(STORAGE_KEYS.csrfToken, cachedCsrf).catch(() => {});
         }
       }
@@ -64,7 +73,7 @@ async function saveCookiesFromResponse(response) {
       .join('; ');
     await AsyncStorage.setItem(STORAGE_KEYS.cookies, cachedCookies);
   } catch (e) {
-    // silent
+    console.warn('[API] Cookie save error:', e);
   }
 }
 
@@ -77,6 +86,7 @@ async function apiFetch(path, options = {}) {
   const headers = {
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': 'AdarshMobileApp/1.0 (Android Native)',
     ...(options.headers || {}),
   };
 
@@ -109,12 +119,22 @@ async function apiFetch(path, options = {}) {
   return response;
 }
 
-// ─── Public API Methods ─────────────────────────────────────────────────────
-
 export async function apiGet(path) {
-  const response = await apiFetch(path);
-  const data = await response.json();
-  return { ok: response.ok, status: response.status, data };
+  try {
+    const response = await apiFetch(path);
+    const text = await response.text();
+    let data = {};
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.warn('[API] JSON Parse Error for path:', path, 'Response:', text.substring(0, 100));
+      return { ok: false, status: response.status, data: { message: 'Invalid server response' } };
+    }
+    return { ok: response.ok, status: response.status, data };
+  } catch (e) {
+    console.warn('[API] Fetch Error for path:', path, e);
+    return { ok: false, status: 0, data: { message: e.message || 'Network error' } };
+  }
 }
 
 export async function apiPost(path, body = {}) {

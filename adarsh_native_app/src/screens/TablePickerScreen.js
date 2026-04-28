@@ -36,7 +36,7 @@ export default function TablePickerScreen({ navigation, route }) {
       style={s.card}
       activeOpacity={0.7}
       onPress={() => {
-        // Navigate to card list — will be implemented in Phase 2
+        navigation.navigate('CardList', { tableId: item.id, status });
       }}
     >
       <View style={s.iconWrap}>

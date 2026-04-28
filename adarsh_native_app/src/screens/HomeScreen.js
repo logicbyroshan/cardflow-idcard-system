@@ -15,6 +15,7 @@ const STATUS_CONFIG = [
   { key: 'approved', label: 'Approved', icon: 'check-double',  bg: '#e0f2fe', text: '#0369a1', border: '#bae6fd' },
   { key: 'download', label: 'Download', icon: 'download',      bg: '#ede9fe', text: '#7c3aed', border: '#ddd6fe' },
   { key: 'pool',     label: 'Pool',     icon: 'inbox',         bg: '#fce7f3', text: '#be185d', border: '#fbcfe8' },
+  { key: 'total',    label: 'Total',    icon: 'id-card',       bg: 'rgba(51,183,239,0.1)', text: colors.brandLight, border: 'rgba(51,183,239,0.3)' },
 ];
 
 export default function HomeScreen({ navigation }) {
@@ -40,7 +41,7 @@ export default function HomeScreen({ navigation }) {
 
   const onRefresh = useCallback(async () => { setRefreshing(true); await loadDashboard(); setRefreshing(false); }, [loadDashboard]);
 
-  const totalCards = useMemo(() => STATUS_CONFIG.reduce((sum, s) => sum + (counts[s.key] || 0), 0), [counts]);
+  const totalCards = useMemo(() => STATUS_CONFIG.filter(s => s.key !== 'total').reduce((sum, s) => sum + (counts[s.key] || 0), 0), [counts]);
 
   if (loading) return (
     <View style={s.root}>
@@ -48,6 +49,19 @@ export default function HomeScreen({ navigation }) {
         <Text style={s.headerTitle}>Adarsh ID Cards</Text>
       </LinearGradient>
       <DashboardSkeleton />
+    </View>
+  );
+
+  if (error && !counts.pending && !refreshing) return (
+    <View style={s.root}>
+      <LinearGradient colors={gradients.brand} style={[s.header, { paddingTop: insets.top + 12 }]}>
+        <Text style={s.headerTitle}>Adarsh ID Cards</Text>
+      </LinearGradient>
+      <ErrorView 
+        type={error === 'network' ? ERROR_TYPES.NETWORK : ERROR_TYPES.SERVER} 
+        onRetry={loadDashboard}
+        message={typeof error === 'string' && error !== 'network' && error !== 'server' ? error : null}
+      />
     </View>
   );
 
@@ -65,50 +79,83 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={s.headerBtn}><FontAwesome5 name="user" size={14} color="#fff" solid /></TouchableOpacity>
           </View>
         </View>
-        {/* Total Cards Summary */}
-        <View style={s.summaryCard}>
-          <FontAwesome5 name="id-card" size={16} color="#fff" solid />
-          <View style={s.summaryInfo}>
-            <Text style={s.summaryCount}>{totalCards.toLocaleString()}</Text>
-            <Text style={s.summaryLabel}>Total Cards</Text>
-          </View>
         </View>
+        {/* Full Search Bar */}
+        <TouchableOpacity 
+          style={s.searchBar} 
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Search')}
+        >
+          <FontAwesome5 name="search" size={12} color="rgba(255,255,255,0.6)" />
+          <Text style={s.searchPlaceholder}>Search for cards, names, numbers...</Text>
+        </TouchableOpacity>
       </LinearGradient>
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}>
 
+        {error && <ErrorBanner message={error === 'network' ? 'Connection lost' : 'Failed to sync latest data'} onDismiss={() => setError(null)} onRetry={loadDashboard} />}
+
         {/* Status Cards Grid */}
         <Text style={s.secTitle}>CARD STATUS</Text>
         <View style={s.statusGrid}>
-          {STATUS_CONFIG.map(st => (
-            <TouchableOpacity key={st.key} style={[s.statusCard, { borderColor: st.border }]} activeOpacity={0.7}
-              onPress={() => navigation.navigate('TablePicker', { status: st.key })}>
-              <View style={[s.statusIcon, { backgroundColor: st.bg }]}>
-                <FontAwesome5 name={st.icon} size={14} color={st.text} solid />
-              </View>
-              <Text style={[s.statusCount, { color: st.text }]}>{(counts[st.key] || 0).toLocaleString()}</Text>
-              <Text style={s.statusLabel}>{st.label}</Text>
-            </TouchableOpacity>
-          ))}
+          {STATUS_CONFIG.map(st => {
+            const countValue = st.key === 'total' ? totalCards : (counts[st.key] || 0);
+            return (
+              <TouchableOpacity key={st.key} style={[s.statusCard, { borderColor: st.border }]} activeOpacity={0.7}
+                onPress={() => navigation.navigate('TablePicker', { status: st.key === 'total' ? 'pending' : st.key })}>
+                <View style={[s.statusIcon, { backgroundColor: st.bg }]}>
+                  <FontAwesome5 name={st.icon} size={14} color={st.text} solid />
+                </View>
+                <Text style={[s.statusCount, { color: st.text }]}>{countValue.toLocaleString()}</Text>
+                <Text style={s.statusLabel}>{st.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Quick Actions */}
-        <Text style={s.secTitle}>QUICK ACTIONS</Text>
-        <View style={s.quickGrid}>
-          {[
-            { icon: 'search', c: '#3b82f6', bg: '#dbeafe', label: 'Search', screen: 'Search' },
-            { icon: 'layer-group', c: '#8b5cf6', bg: '#ede9fe', label: 'Groups', screen: 'Groups' },
-            { icon: 'users', c: '#6366f1', bg: '#eef2ff', label: 'Staff', screen: 'StaffManage' },
-            { icon: 'building', c: '#0ea5e9', bg: '#e0f2fe', label: 'Clients', screen: 'ClientsList' },
-            { icon: 'cog', c: '#6b7280', bg: '#f3f4f6', label: 'Settings', screen: 'Settings' },
-            { icon: 'user', c: '#10b981', bg: '#d1fae5', label: 'Profile', screen: 'Profile' },
-          ].map(q => (
-            <TouchableOpacity key={q.screen} style={s.quickBtn} activeOpacity={0.7} onPress={() => navigation.navigate(q.screen)}>
-              <View style={[s.quickIcon, { backgroundColor: q.bg }]}><FontAwesome5 name={q.icon} size={14} color={q.c} solid /></View>
-              <Text style={s.quickLabel}>{q.label}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* Groups/Tables Section */}
+        <Text style={s.secTitle}>GROUPS / TABLES</Text>
+        <View style={s.tablesContainer}>
+          {counts.tables && counts.tables.length > 0 ? (
+            counts.tables.map(table => (
+              <View key={table.id} style={s.tableListItem}>
+                <View style={s.tableHeader}>
+                  <View style={s.tableIconMain}><FontAwesome5 name="table" size={14} color={colors.brandLight} /></View>
+                  <Text style={s.tableListItemName}>{table.name}</Text>
+                </View>
+                <View style={s.tableActionsRow}>
+                  {[
+                    { key: 'pending',  label: 'Pending',  bg: '#fef3c7', text: '#b45309' },
+                    { key: 'verified', label: 'Verified', bg: '#d1fae5', text: '#047857' },
+                    { key: 'approved', label: 'Approved', bg: '#e0f2fe', text: '#0369a1' },
+                    { key: 'download', label: 'Download', bg: '#ede9fe', text: '#7c3aed' },
+                    { key: 'pool',     label: 'Pool',     bg: '#fce7f3', text: '#be185d' },
+                  ].map(st => (
+                    <TouchableOpacity 
+                      key={st.key} 
+                      style={[s.statusPillBtn, { backgroundColor: st.bg }]} 
+                      onPress={() => navigation.navigate('CardList', { tableId: table.id, status: st.key })}
+                    >
+                      <Text style={[s.statusPillLabel, { color: st.text }]}>{st.label}</Text>
+                      <Text style={[s.statusPillCount, { color: st.text }]}>{table[st.key] || 0}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={s.emptyTables}><Text style={s.emptyTablesText}>No tables found</Text></View>
+          )}
+          
+          <TouchableOpacity 
+            style={s.viewAllBtn} 
+            activeOpacity={0.7} 
+            onPress={() => navigation.navigate('Groups')}
+          >
+            <Text style={s.viewAllBtnText}>View All Groups & Details</Text>
+            <FontAwesome5 name="arrow-right" size={10} color={colors.brandLight} />
+          </TouchableOpacity>
         </View>
 
         {/* Recent Activity */}
@@ -145,23 +192,30 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
   headerBtns: { flexDirection: 'row', gap: 8 },
   headerBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  summaryCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  summaryInfo: { flex: 1 },
-  summaryCount: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  summaryLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 1 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  searchPlaceholder: { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   scroll: { flex: 1 }, scrollC: { paddingBottom: 40 },
   secTitle: { fontSize: 10, fontWeight: '700', color: colors.gray400, letterSpacing: 1.2, marginHorizontal: 20, marginTop: 16, marginBottom: 8 },
   // Status Grid
   statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 16 },
   statusCard: { width: '31%', backgroundColor: '#fff', borderRadius: 16, padding: 12, alignItems: 'center', borderWidth: 1.5, ...shadows.sm },
-  statusIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  statusCount: { fontSize: 20, fontWeight: '800' },
+  statusIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  statusCount: { fontSize: 18, fontWeight: '800' },
   statusLabel: { fontSize: 10, fontWeight: '600', color: colors.gray400, marginTop: 2 },
-  // Quick Actions
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 16 },
-  quickBtn: { width: '31%', backgroundColor: '#fff', borderRadius: 16, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  quickIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  quickLabel: { fontSize: 11, fontWeight: '600', color: colors.gray700 },
+  // Tables Section
+  tablesContainer: { paddingHorizontal: 16, gap: 12 },
+  tableListItem: { backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  tableHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  tableIconMain: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(51,183,239,0.08)', alignItems: 'center', justifyContent: 'center' },
+  tableListItemName: { fontSize: 14, fontWeight: '700', color: colors.gray800 },
+  tableActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  statusPillBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, minWidth: '31%' },
+  statusPillLabel: { fontSize: 9, fontWeight: '700' },
+  statusPillCount: { fontSize: 11, fontWeight: '800' },
+  viewAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: 'rgba(51,183,239,0.05)', borderRadius: 16, borderDash: [4, 4], borderStyle: 'dashed', borderWidth: 1, borderColor: 'rgba(51,183,239,0.3)', marginTop: 4 },
+  viewAllBtnText: { fontSize: 12, fontWeight: '700', color: colors.brandLight },
+  emptyTables: { padding: 20, alignItems: 'center' },
+  emptyTablesText: { fontSize: 12, color: colors.gray400 },
   // Activity
   activityCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', ...shadows.sm },
   actRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },

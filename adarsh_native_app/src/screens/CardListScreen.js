@@ -109,7 +109,12 @@ export default function CardListScreen({ navigation, route }) {
 
   return (
     <View style={s.root}>
-      <TopBar title={`${statusDisplay} Cards`} subtitle={tableName || `Table #${tableId}`} onBack={() => navigation.goBack()} />
+      <TopBar 
+        title={`${statusDisplay} Cards`} 
+        subtitle={tableName || `Table #${tableId}`} 
+        onBack={() => navigation.goBack()} 
+        rightAction={{ icon: 'plus', onPress: () => navigation.navigate('CardForm', { tableId, status }) }}
+      />
       {error && <ErrorBanner message={error} onRetry={() => loadCards(1)} onDismiss={() => setError(null)} />}
       {loading ? (
         <CardListSkeleton />

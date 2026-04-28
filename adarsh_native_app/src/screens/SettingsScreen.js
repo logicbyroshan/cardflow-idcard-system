@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { SettingsSkeleton } from '../components/Skeleton';
+import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, shadows } from '../theme';
 
@@ -10,15 +11,25 @@ export default function SettingsScreen({ navigation }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data: resp } = await apiGet('/app/api/settings/');
-        if (resp?.success) setData(resp.data);
-      } catch (e) { /* silent */ }
-      setLoading(false);
-    })();
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadSettings = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const { ok, data: resp } = await apiGet('/app/api/settings/');
+      if (ok && resp?.success) setData(resp.data);
+      else setError(resp?.message || 'Failed to load settings');
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
+
+  useEffect(() => { loadSettings(); }, []);
 
   if (loading) return (
     <View style={s.root}><TopBar title="Settings" onBack={() => navigation.goBack()} /><SettingsSkeleton /></View>
@@ -29,7 +40,13 @@ export default function SettingsScreen({ navigation }) {
   return (
     <View style={s.root}>
       <TopBar title="Settings" subtitle="System information & stats" onBack={() => navigation.goBack()} />
-      <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadSettings(true)} />}
+      <ScrollView 
+        style={s.scroll} 
+        contentContainerStyle={s.scrollC} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadSettings(true)} tintColor={colors.brandLight} />}
+      >
 
         {/* Stats */}
         <Text style={s.secTitle}>CLIENT STATS</Text>

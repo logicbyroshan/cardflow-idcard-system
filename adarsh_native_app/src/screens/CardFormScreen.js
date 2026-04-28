@@ -4,8 +4,9 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
-import { apiGet, apiPostForm } from '../api/client';
 import { ListSkeleton } from '../components/Skeleton';
+import { ErrorBanner } from '../components/NetworkGuard';
+import { apiGet, apiPostForm } from '../api/client';
 import { colors, gradients, shadows } from '../theme';
 
 export default function CardFormScreen({ navigation, route }) {
@@ -17,27 +18,36 @@ export default function CardFormScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [tableName, setTableName] = useState('');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const [error, setError] = useState(null);
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // Load table fields
-        const { data: fData } = await apiGet(`/app/api/table/${tableId}/filter-options/?status=pending`);
-        if (fData?.success && fData.data?.fields) setFields(fData.data.fields);
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Load table fields
+      const { ok: fOk, data: fData } = await apiGet(`/app/api/table/${tableId}/filter-options/?status=pending`);
+      if (fOk && fData?.success && fData.data?.fields) {
+        setFields(fData.data.fields);
+      }
 
-        // If editing, load existing card data
-        if (isEdit) {
-          const { data: cData } = await apiGet(`/app/api/card/${cardId}/detail/`);
-          if (cData?.success) {
-            setValues(cData.data?.field_data || {});
-            setTableName(cData.data?.table_name || '');
-          }
+      // If editing, load existing card data
+      if (isEdit) {
+        const { ok: cOk, data: cData } = await apiGet(`/app/api/card/${cardId}/detail/`);
+        if (cOk && cData?.success) {
+          setValues(cData.data?.field_data || {});
+          setTableName(cData.data?.table_name || '');
+        } else if (!cOk) {
+          setError('Failed to load card details');
         }
-      } catch (e) { /* silent */ }
-      setLoading(false);
-    })();
-  }, []);
+      }
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -71,6 +81,7 @@ export default function CardFormScreen({ navigation, route }) {
   return (
     <View style={s.root}>
       <TopBar title={isEdit ? 'Edit Card' : 'Add New Card'} subtitle={tableName || `Table #${tableId}`} onBack={() => navigation.goBack()} />
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={loadData} />}
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         {fieldList.length === 0 && (

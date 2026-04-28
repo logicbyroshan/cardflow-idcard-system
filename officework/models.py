@@ -2,13 +2,6 @@ from django.db import models
 from django.utils import timezone
 
 
-def office_work_shared_file_upload_to(instance, filename):
-    import os
-
-    safe_name = os.path.basename(str(filename or '').strip()) or 'shared-file'
-    return f'office-work/shared/{timezone.now():%Y/%m/%d}/{safe_name}'
-
-
 def office_work_chat_attachment_upload_to(instance, filename):
     import os
 
@@ -267,43 +260,4 @@ class OfficeWorkTaskComment(models.Model):
                 self.attachment_size_bytes = int(getattr(self.attachment, 'size', 0) or 0)
             except Exception:
                 self.attachment_size_bytes = 0
-        super().save(*args, **kwargs)
-
-
-class OfficeWorkSharedFile(models.Model):
-    """Files shared between admin and operator inside Office Work module."""
-
-    uploaded_by = models.ForeignKey(
-        'core.User',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='office_work_shared_files',
-    )
-    title = models.CharField(max_length=200, blank=True, default='')
-    note = models.TextField(blank=True, default='')
-    original_name = models.CharField(max_length=255, blank=True, default='')
-    file = models.FileField(upload_to=office_work_shared_file_upload_to)
-    size_bytes = models.BigIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-
-    class Meta:
-        ordering = ['-created_at']
-        db_table = 'core_officeworksharedfile'
-        indexes = [
-            models.Index(fields=['-created_at'], name='owfile_created_idx'),
-        ]
-        verbose_name = 'Office Work Shared File'
-        verbose_name_plural = 'Office Work Shared Files'
-
-    def __str__(self):
-        return self.title or self.original_name or f'OfficeFile<{self.id}>'
-
-    def save(self, *args, **kwargs):
-        if self.file:
-            self.original_name = self.original_name or self.file.name.rsplit('/', 1)[-1]
-            try:
-                self.size_bytes = int(getattr(self.file, 'size', 0) or 0)
-            except Exception:
-                self.size_bytes = 0
         super().save(*args, **kwargs)

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert, Switch } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert, Switch, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
-import { apiGet, apiPost } from '../api/client';
 import { ListSkeleton } from '../components/Skeleton';
+import { ErrorBanner } from '../components/NetworkGuard';
+import { apiGet, apiPost } from '../api/client';
 import { colors, gradients, shadows } from '../theme';
 
 export default function StaffManageScreen({ navigation }) {
@@ -19,12 +20,25 @@ export default function StaffManageScreen({ navigation }) {
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
-  const loadStaff = async () => {
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadStaff = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
     try {
-      const { data } = await apiGet('/app/api/staff/');
-      if (data?.success) setStaff(data.data?.staff || []);
-    } catch (e) { /* silent */ }
+      const { ok, data } = await apiGet('/app/api/staff/');
+      if (ok && data?.success) {
+        setStaff(data.data?.staff || []);
+      } else {
+        setError(data?.message || 'Failed to load staff');
+      }
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
     setLoading(false);
+    setRefreshing(false);
   };
 
   useEffect(() => { loadStaff(); }, []);
@@ -103,6 +117,7 @@ export default function StaffManageScreen({ navigation }) {
     <View style={s.root}>
       <TopBar title="Staff Management" subtitle="Manage operators & assistants" onBack={() => navigation.goBack()} rightAction={{ icon: 'plus', onPress: openCreate }} />
 
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadStaff(true)} />}
       {loading ? (
         <ListSkeleton rows={5} />
       ) : (
@@ -112,6 +127,7 @@ export default function StaffManageScreen({ navigation }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadStaff(true)} tintColor={colors.brandLight} />}
           ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="users" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No staff members</Text></View>}
         />
       )}

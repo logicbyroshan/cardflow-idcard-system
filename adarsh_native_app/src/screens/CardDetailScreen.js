@@ -68,7 +68,12 @@ export default function CardDetailScreen({ navigation, route }) {
   return (
     <View style={s.root}>
       {/* Header with status badge */}
-      <TopBar title={card.name || 'Card Detail'} subtitle={`${card.table_name || ''} - ${card.group_name || ''}`} onBack={() => navigation.goBack()} />
+      <TopBar 
+        title={card.name || 'Card Detail'} 
+        subtitle={`${card.table_name || ''} - ${card.group_name || ''}`} 
+        onBack={() => navigation.goBack()} 
+        rightAction={{ icon: 'pen', onPress: () => navigation.navigate('CardForm', { tableId: card.table_id, cardId: card.id }) }}
+      />
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
         {/* Hero Card */}

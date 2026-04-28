@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
+import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, shadows } from '../theme';
 
@@ -13,28 +14,43 @@ export default function ReprintScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState('request_list');
   const [totals, setTotals] = useState({ request: 0, confirmed: 0, download: 0 });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        if (!clientId) { setLoading(false); return; }
-        const { data } = await apiGet(`/app/api/reprint/${clientId}/`);
-        if (data?.success) {
-          setTables(data.data?.tables || []);
-          setTotals({
-            request: data.data?.request_total || 0,
-            confirmed: data.data?.confirmed_total || 0,
-            download: data.data?.download_total || 0,
-          });
-        }
-      } catch (e) { /* silent */ }
-      setLoading(false);
-    })();
-  }, [clientId]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadData = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      if (!clientId) { setLoading(false); return; }
+      const { ok, data } = await apiGet(`/app/api/reprint/${clientId}/`);
+      if (ok && data?.success) {
+        setTables(data.data?.tables || []);
+        setTotals({
+          request: data.data?.request_total || 0,
+          confirmed: data.data?.confirmed_total || 0,
+          download: data.data?.download_total || 0,
+        });
+      } else {
+        setError(data?.message || 'Failed to load reprint data');
+      }
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
+
+  useEffect(() => { loadData(); }, [clientId]);
 
   const renderItem = ({ item }) => {
     const count = activeTab === 'request_list' ? item.requested : item.confirmed;
     return (
-      <View style={s.card}>
+      <TouchableOpacity 
+        style={s.card} 
+        activeOpacity={0.7} 
+        onPress={() => navigation.navigate('CardList', { tableId: item.id, status: 'reprint' })}
+      >
         <View style={s.cardLeft}>
           <View style={s.tableIcon}><FontAwesome5 name="redo" size={12} color="#f59e0b" /></View>
           <View style={s.info}>
@@ -45,7 +61,8 @@ export default function ReprintScreen({ navigation, route }) {
         <View style={s.countBadge}>
           <Text style={s.countText}>{count}</Text>
         </View>
-      </View>
+        <FontAwesome5 name="chevron-right" size={10} color={colors.gray300} style={{ marginLeft: 8 }} />
+      </TouchableOpacity>
     );
   };
 
@@ -70,6 +87,7 @@ export default function ReprintScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadData(true)} />}
       {loading ? (
         <ListSkeleton rows={4} />
       ) : (
@@ -79,6 +97,7 @@ export default function ReprintScreen({ navigation, route }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={colors.brandLight} />}
           ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="redo" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No {activeTab === 'request_list' ? 'requested' : 'confirmed'} reprints</Text></View>}
         />
       )}

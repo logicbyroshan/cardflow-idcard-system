@@ -351,10 +351,11 @@ MOBILE_PUBLIC_BENTO_ORDER = [
 # ---------------------------------------------------------------------------
 
 def is_mobile(request):
-    """Check if request comes from a mobile device."""
+    """Check if request comes from a mobile device or native app."""
     ua = request.META.get('HTTP_USER_AGENT', '')
+    # Expanded regex to include 'Adarsh' (custom) and 'okhttp' (standard Android networking)
     return bool(re.search(
-        r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini',
+        r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Adarsh|okhttp',
         ua, re.I,
     ))
 
@@ -402,7 +403,8 @@ def require_mobile_client(view_func):
             return redirect('/app/login/?revoked=1')
 
         # Enforce mobile UA on the server as well (client-side block is not sufficient).
-        if not is_mobile(request):
+        # We allow a bypass if the session is already explicitly marked as mobile auth OK.
+        if not is_mobile(request) and not request.session.get('mobile_auth_ok'):
             if is_api_request:
                 return JsonResponse({
                     'success': False,
@@ -4964,6 +4966,29 @@ def api_dashboard_data(request):
             recent_data.append({'name': name, 'status': c.status, 'table_name': c.table.name if c.table else '', 'time_ago': _ts(c.updated_at, _now) if c.updated_at else ''})
 
         counts['recent_activity'] = recent_data
+
+        # Tables with counts for Home Screen
+        tables_data = []
+        tables_annotated = tables_qs.annotate(
+            p=Count('idcard', filter=Q(idcard__status='pending')),
+            v=Count('idcard', filter=Q(idcard__status='verified')),
+            a=Count('idcard', filter=Q(idcard__status='approved')),
+            d=Count('idcard', filter=Q(idcard__status='download')),
+            po=Count('idcard', filter=Q(idcard__status='pool')),
+        ).order_by('name')
+
+        for t in tables_annotated:
+            tables_data.append({
+                'id': t.id,
+                'name': t.name,
+                'pending': t.p,
+                'verified': t.v,
+                'approved': t.a,
+                'download': t.d,
+                'pool': t.po,
+            })
+        counts['tables'] = tables_data
+
         return JsonResponse({'success': True, 'data': counts})
     except Exception:
         logger.exception('api_dashboard_data error')

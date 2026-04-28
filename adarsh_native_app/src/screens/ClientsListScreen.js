@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert, Switch } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert, Switch, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
-import { apiGet, apiPost } from '../api/client';
 import { ListSkeleton } from '../components/Skeleton';
+import { ErrorBanner } from '../components/NetworkGuard';
+import { apiGet, apiPost } from '../api/client';
 import { colors, gradients, shadows } from '../theme';
 
 export default function ClientsListScreen({ navigation }) {
@@ -21,21 +22,30 @@ export default function ClientsListScreen({ navigation }) {
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
-  const loadClients = async () => {
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadClients = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
     try {
-      // Use table picker API for client list (clients are implied by table groups)
-      // For direct client management, use impersonate users endpoint
-      const { data } = await apiGet('/app/api/impersonate/users/');
-      if (data?.success) {
+      const { ok, data } = await apiGet('/app/api/impersonate/users/');
+      if (ok && data?.success) {
         const cl = (data.data || data.users || []).map(c => ({
           id: c.id, name: c.name || c.full_name || '', email: c.email || '',
           phone: c.phone || '', is_active: c.is_active !== false, role: c.role || '',
         }));
         setClients(cl);
         setFiltered(cl);
+      } else {
+        setError(data?.message || 'Failed to load clients');
       }
-    } catch (e) { /* silent */ }
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
     setLoading(false);
+    setRefreshing(false);
   };
 
   useEffect(() => { loadClients(); }, []);
@@ -134,6 +144,7 @@ export default function ClientsListScreen({ navigation }) {
         <TextInput style={s.searchInput} value={search} onChangeText={setSearch} placeholder="Search clients..." placeholderTextColor={colors.gray300} />
       </View>
 
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadClients(true)} />}
       {loading ? (
         <ListSkeleton rows={5} />
       ) : (
@@ -143,6 +154,7 @@ export default function ClientsListScreen({ navigation }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadClients(true)} tintColor={colors.brandLight} />}
           ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="building" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>{search ? 'No matching clients' : 'No clients found'}</Text></View>}
         />
       )}

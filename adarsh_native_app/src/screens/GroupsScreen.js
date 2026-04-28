@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
+import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, shadows } from '../theme';
 
@@ -12,15 +13,31 @@ export default function GroupsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [expandedGroupId, setExpandedGroupId] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await apiGet('/app/api/groups/');
-        if (data?.success) { setGroups(data.data?.groups || []); setTables(data.data?.tables || []); }
-      } catch (e) { /* silent */ }
-      setLoading(false);
-    })();
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadData = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const { ok, data } = await apiGet('/app/api/groups/');
+      if (ok && data?.success) {
+        setGroups(data.data?.groups || []);
+        setTables(data.data?.tables || []);
+      } else {
+        setError(data?.message || 'Failed to load groups');
+      }
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const onRefresh = () => loadData(true);
 
   const toggleGroup = (id) => setExpandedGroupId(prev => prev === id ? null : id);
 
@@ -47,7 +64,12 @@ export default function GroupsScreen({ navigation }) {
         {isExpanded && groupTables.length > 0 && (
           <View style={s.tablesList}>
             {groupTables.map(table => (
-              <View key={table.id} style={s.tableRow}>
+              <TouchableOpacity 
+                key={table.id} 
+                style={s.tableRow} 
+                onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pending' })}
+                activeOpacity={0.7}
+              >
                 <View style={s.tableIcon}><FontAwesome5 name="table" size={10} color={colors.brandLight} /></View>
                 <View style={s.tableInfo}>
                   <Text style={s.tableName} numberOfLines={1}>{table.name}</Text>
@@ -59,7 +81,8 @@ export default function GroupsScreen({ navigation }) {
                   {table.approved_cards > 0 && <MiniCount count={table.approved_cards} bg="#e0f2fe" c="#0369a1" />}
                   {table.download_cards > 0 && <MiniCount count={table.download_cards} bg="#ede9fe" c="#7c3aed" />}
                 </View>
-              </View>
+                <FontAwesome5 name="chevron-right" size={8} color={colors.gray300} />
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -74,6 +97,7 @@ export default function GroupsScreen({ navigation }) {
   return (
     <View style={s.root}>
       <TopBar title="Groups & Tables" subtitle="Manage your groups" onBack={() => navigation.goBack()} />
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadData(true)} />}
       {loading ? (
         <ListSkeleton rows={5} />
       ) : (
@@ -83,6 +107,7 @@ export default function GroupsScreen({ navigation }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}
           ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="layer-group" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No groups found</Text></View>}
         />
       )}

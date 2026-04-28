@@ -43,16 +43,6 @@
                 </div>
 
                 <div class="app-download-actions">
-                    {% if apk_available %}
-                    <a href="{% static 'app/adarsh-id-cards.apk' %}" class="btn-download-apk" download>
-                        <i class="fa-brands fa-android"></i>
-                        <div>
-                            <small>Download for</small>
-                            <strong>Android</strong>
-                        </div>
-                    </a>
-                    {% if apk_size_mb %}<span style="color: rgba(255,255,255,0.4); font-size: 0.75rem; margin-left: 0.75rem;">{{ apk_size_mb }} MB</span>{% endif %}
-                    {% else %}
                     <div class="btn-download-apk btn-download-soon">
                         <i class="fa-brands fa-android"></i>
                         <div>
@@ -60,16 +50,11 @@
                             <strong>Android App</strong>
                         </div>
                     </div>
-                    {% endif %}
                 </div>
 
                 <div class="app-install-note">
                     <i class="fa-solid fa-info-circle"></i>
-                    {% if apk_available %}
-                    <p>After downloading, open the APK file and allow installation from unknown sources if prompted. Version {{ app_version }}</p>
-                    {% else %}
                     <p>The Android app is being prepared. Check back soon! Contact us for early access.</p>
-                    {% endif %}
                 </div>
             </div>
 

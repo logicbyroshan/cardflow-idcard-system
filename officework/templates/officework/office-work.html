@@ -37,9 +37,6 @@
         <button type="button" class="office-tab-btn" data-tab="tasks" role="tab" aria-selected="false">
           <i class="fa-solid fa-list-check"></i> Tasks
         </button>
-        <button type="button" class="office-tab-btn" data-tab="share" role="tab" aria-selected="false">
-          <i class="fa-solid fa-share-from-square"></i> Share
-        </button>
       </div>
     </div>
   </section>
@@ -315,49 +312,6 @@
         </section>
       </section>
 
-      <section class="office-panel" data-panel="share" role="tabpanel" hidden>
-        <div class="office-section">
-          <h3><i class="fa-solid fa-upload"></i> Share File</h3>
-          <form id="officeShareForm" class="office-share-form" enctype="multipart/form-data">
-            <div class="office-grid-two">
-              <div>
-                <label for="officeShareTitle">Title</label>
-                <input id="officeShareTitle" class="office-input" type="text" maxlength="200" placeholder="Optional title">
-              </div>
-              <div>
-                <label for="officeShareFile">File</label>
-                <input id="officeShareFile" class="office-input" type="file" required>
-              </div>
-            </div>
-            <div>
-              <label for="officeShareNote">Note</label>
-              <textarea id="officeShareNote" class="office-input" rows="3" placeholder="Optional note"></textarea>
-            </div>
-            <button type="submit" class="btn btn-md btn-primary office-submit-btn">
-              <i class="fa-solid fa-upload"></i>
-              Upload
-            </button>
-          </form>
-        </div>
-
-        <div class="office-section office-table-wrap">
-          <h3><i class="fa-solid fa-folder-open"></i> Shared Files</h3>
-          <div class="office-table-scroll">
-            <table class="data-table office-table" id="officeShareTable">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>File</th>
-                  <th>Size</th>
-                  <th>Uploaded By</th>
-                  <th>Uploaded At</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
       </section>
     </div>
   </section>
@@ -373,8 +327,7 @@ window.OfficeWorkConfig = {
     wsPath: "/ws/panel/realtime/",
     chatTopicPrefix: "officework.chat.group.",
     userTopicPrefix: "officework.chat.user.",
-    tasksTopic: "officework.tasks",
-    shareTopic: "officework.share"
+    taskCommentsBase: "/api/office-work/tasks/",
   },
   endpoints: {
     chatGroupsList: "{% url 'api_office_work_chat_groups_list' %}",
@@ -384,11 +337,7 @@ window.OfficeWorkConfig = {
     chatSend: "{% url 'api_office_work_chat_send' %}",
     tasksList: "{% url 'api_office_work_tasks_list' %}",
     taskCreate: "{% url 'api_office_work_task_create' %}",
-    taskUpdateBase: "/api/office-work/tasks/",
-    taskCommentsBase: "/api/office-work/tasks/",
-    shareList: "{% url 'api_office_work_share_list' %}",
-    shareUpload: "{% url 'api_office_work_share_upload' %}",
-    shareDeleteBase: "/api/office-work/share/"
+    taskUpdateBase: "/api/office-work/tasks/"
   }
 };
 </script>

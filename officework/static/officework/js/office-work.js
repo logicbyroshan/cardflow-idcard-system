@@ -58,8 +58,6 @@
     taskModalOpen: false,
     taskCurrentItem: null,
     taskCommentsByTaskId: {},
-    taskPendingCommentFile: null,
-    fileItems: [],
     pollTimer: null,
     chatLoaded: false,
     chatLoadInFlight: false,
@@ -128,11 +126,6 @@
     taskModalClose: document.getElementById('officeTaskModalClose'),
     taskBoard: document.getElementById('officeTaskBoard'),
     taskColumns: Array.prototype.slice.call(document.querySelectorAll('.office-kanban-column[data-status]')),
-    shareForm: document.getElementById('officeShareForm'),
-    shareTitle: document.getElementById('officeShareTitle'),
-    shareFile: document.getElementById('officeShareFile'),
-    shareNote: document.getElementById('officeShareNote'),
-    shareTableBody: document.querySelector('#officeShareTable tbody'),
   };
 
   function notify(message, type) {
@@ -1320,10 +1313,6 @@
     return String((cfg.realtime && cfg.realtime.tasksTopic) || 'officework.tasks').trim();
   }
 
-  function currentShareTopic() {
-    return String((cfg.realtime && cfg.realtime.shareTopic) || 'officework.share').trim();
-  }
-
   function getTaskEditId() {
     return Number((ui.taskEditId && ui.taskEditId.value) || 0);
   }
@@ -1901,43 +1890,6 @@
     }
   }
 
-  function renderShareRows() {
-    if (!ui.shareTableBody) {
-      return;
-    }
-    if (!state.fileItems.length) {
-      ui.shareTableBody.innerHTML = '<tr><td colspan="6">No shared files yet.</td></tr>';
-      return;
-    }
-
-    var rows = state.fileItems.map(function (item) {
-      return '' +
-        '<tr data-file-id="' + escapeHtml(item.id) + '">' +
-        '  <td>' + escapeHtml(item.title || '-') + '</td>' +
-        '  <td><a href="' + escapeHtml(item.download_url || '#') + '">' + escapeHtml(item.original_name || '-') + '</a></td>' +
-        '  <td>' + escapeHtml(formatBytes(item.size_bytes)) + '</td>' +
-        '  <td>' + escapeHtml(item.uploaded_by_name || '-') + '</td>' +
-        '  <td>' + escapeHtml(formatDateTime(item.created_at)) + '</td>' +
-        '  <td><button type="button" class="btn btn-sm btn-danger" data-action="delete-file">Delete</button></td>' +
-        '</tr>';
-    });
-
-    ui.shareTableBody.innerHTML = rows.join('');
-  }
-
-  async function loadSharedFiles() {
-    try {
-      var data = await ApiClient.get(endpoints.shareList);
-      if (!data || !data.success) {
-        return;
-      }
-      state.fileItems = Array.isArray(data.files) ? data.files : [];
-      renderShareRows();
-    } catch (error) {
-      notify((error && error.message) || 'Failed to load shared files.', 'error');
-    }
-  }
-
   function startChatPolling() {
     if (state.pollTimer) {
       window.clearInterval(state.pollTimer);
@@ -2064,16 +2016,6 @@
       return;
     }
 
-    if (packet.type === 'realtime.event' && packet.event === 'officework.share.uploaded') {
-      loadSharedFiles();
-      return;
-    }
-
-    if (packet.type === 'realtime.event' && packet.event === 'officework.share.deleted') {
-      loadSharedFiles();
-      return;
-    }
-
     if (packet.type === 'realtime.error' && packet.message) {
       notify(packet.message, 'error');
     }
@@ -2085,7 +2027,7 @@
     }
 
     window.AppRealtimeService.onMessage(handleRealtimePacket);
-    var initialTopics = [currentUserTopic(), currentTasksTopic(), currentShareTopic()].filter(function (topic) {
+    var initialTopics = [currentUserTopic(), currentTasksTopic()].filter(function (topic) {
       return !!topic;
     });
 
@@ -2857,77 +2799,6 @@
     });
   }
 
-  function bindShareForm() {
-    if (!ui.shareForm) {
-      return;
-    }
-
-    ui.shareForm.addEventListener('submit', async function (event) {
-      event.preventDefault();
-      var selectedFile = ui.shareFile.files && ui.shareFile.files[0];
-      if (!selectedFile) {
-        notify('Please select a file first.', 'error');
-        return;
-      }
-
-      var formData = new FormData();
-      formData.append('title', String(ui.shareTitle.value || '').trim());
-      formData.append('note', String(ui.shareNote.value || '').trim());
-      formData.append('file', selectedFile);
-
-      try {
-        var data = await ApiClient.upload(endpoints.shareUpload, formData);
-        if (!data || !data.success) {
-          notify((data && data.message) || 'Failed to upload file.', 'error');
-          return;
-        }
-
-        ui.shareForm.reset();
-        notify('File shared successfully.', 'success');
-        await loadSharedFiles();
-      } catch (error) {
-        var errMessage = (error && error.data && error.data.message) || (error && error.message) || 'Failed to upload file.';
-        notify(errMessage, 'error');
-      }
-    });
-
-    if (ui.shareTableBody) {
-      ui.shareTableBody.addEventListener('click', async function (event) {
-        var actionNode = event.target.closest('[data-action]');
-        if (!actionNode || actionNode.getAttribute('data-action') !== 'delete-file') {
-          return;
-        }
-
-        var row = actionNode.closest('tr[data-file-id]');
-        if (!row) {
-          return;
-        }
-
-        var fileId = row.getAttribute('data-file-id');
-        if (!fileId) {
-          return;
-        }
-
-        if (!window.confirm('Delete this shared file?')) {
-          return;
-        }
-
-        try {
-          var deleteUrl = endpoints.shareDeleteBase + encodeURIComponent(fileId) + '/delete/';
-          var data = await ApiClient.post(deleteUrl, {});
-          if (!data || !data.success) {
-            notify((data && data.message) || 'Failed to delete shared file.', 'error');
-            return;
-          }
-          notify('Shared file deleted.', 'success');
-          await loadSharedFiles();
-        } catch (error) {
-          notify((error && error.message) || 'Failed to delete shared file.', 'error');
-        }
-      });
-    }
-  }
-
   async function init() {
     var routeIntent = parseRouteIntent();
 
@@ -2937,12 +2808,11 @@
     bindAttachmentTools();
     bindChatForm();
     bindTaskForm();
-    bindShareForm();
     resetTaskEditor();
     setActiveTab(routeIntent.tab || 'chat');
     updateChatCountPill();
     initRealtime();
-
+ 
     await loadGroups({ keepCurrent: true });
 
     if (Number(routeIntent.groupId || 0) > 0) {
@@ -2964,7 +2834,6 @@
     await Promise.all([
       loadChat({ forceInitial: true }),
       loadTasks(),
-      loadSharedFiles(),
     ]);
 
     startChatPolling();
