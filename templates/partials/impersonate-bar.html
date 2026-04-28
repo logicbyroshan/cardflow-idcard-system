@@ -28,7 +28,7 @@
     fetch('/panel/api/auth/impersonate/stop/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-      body: '{}'
+      body: JSON.stringify({ next: window.location.pathname + window.location.search })
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {

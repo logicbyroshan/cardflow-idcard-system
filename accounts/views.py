@@ -162,7 +162,7 @@ class LogoutView(View):
 
         # If this session is impersonating, stopping logout returns control to Pro User.
         if request.user.is_authenticated and ImpersonateService.is_impersonating(request):
-            result = ImpersonateService.stop(request)
+            result = ImpersonateService.stop(request, next_url=next_url)
             if result.get('success'):
                 redirect_url = result.get('redirect_url') or '/panel/'
                 # Respect safe next URL for mobile surface handoff.
@@ -654,7 +654,15 @@ class ImpersonateStopAPIView(LoginRequiredMixin, View):
     def post(self, request):
         from .services_impersonate import ImpersonateService
         try:
-            result = ImpersonateService.stop(request)
+            next_url = ''
+            if request.body:
+                try:
+                    data = json.loads(request.body)
+                    next_url = str(data.get('next', '') or '').strip()
+                except json.JSONDecodeError:
+                    pass
+
+            result = ImpersonateService.stop(request, next_url=next_url)
             if result.get('success'):
                 ActivityService.log(
                     'impersonate_stop',

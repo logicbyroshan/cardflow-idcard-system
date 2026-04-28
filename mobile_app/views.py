@@ -5526,7 +5526,14 @@ def api_impersonate_stop(request):
     """Stop impersonation from mobile and return to pro user on mobile surface."""
     from accounts.services_impersonate import ImpersonateService
 
-    result = ImpersonateService.stop(request)
+    next_url = ''
+    try:
+        data = json.loads(request.body)
+        next_url = str(data.get('next', '') or '').strip()
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    result = ImpersonateService.stop(request, next_url=next_url)
     if not result.get('success'):
         return JsonResponse(result, status=400)
 
@@ -5534,7 +5541,9 @@ def api_impersonate_stop(request):
     request.session['_auth_login_surface'] = 'mobile'
     request.session['_auth_browser_fp'] = AuthService.browser_fingerprint_from_request(request)
     request.session['selected_role'] = getattr(request.user, 'role', '')
-    result['redirect_url'] = '/app/'
+    # Only override to /app/ if we didn't get a specific next_url via stop()
+    if not result.get('redirect_url') or result['redirect_url'] == '/panel/':
+        result['redirect_url'] = '/app/'
     return JsonResponse(result)
 
 

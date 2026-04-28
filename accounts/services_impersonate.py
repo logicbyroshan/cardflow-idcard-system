@@ -103,9 +103,13 @@ class ImpersonateService:
         }
 
     @classmethod
-    def stop(cls, request) -> dict:
+    def stop(cls, request, next_url: str = '') -> dict:
         """
         Stop impersonating and return to the Pro User session.
+
+        Args:
+            request: Current HttpRequest
+            next_url: Optional URL to redirect to after stopping
 
         Returns:
             dict with success, message, redirect_url
@@ -138,10 +142,16 @@ class ImpersonateService:
         )
 
         from .services import DASHBOARD_URLS
+        redirect_url = DASHBOARD_URLS.get('pro_user', '/panel/')
+        
+        # If a safe next_url is provided, use it
+        if next_url and next_url.startswith('/'):
+            redirect_url = next_url
+
         return {
             'success': True,
             'message': 'Impersonation stopped.',
-            'redirect_url': DASHBOARD_URLS.get('pro_user', '/panel/'),
+            'redirect_url': redirect_url,
         }
 
     @classmethod
