@@ -50,17 +50,18 @@ document.addEventListener('DOMContentLoaded', function() {
      * gracefully instead of showing a generic "Network error".
      */
     async function safePost(url, body) {
+        const csrf = getCSRFToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrf) headers['X-CSRFToken'] = csrf;
+
         const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            headers: headers,
             body: JSON.stringify(body)
         });
         const ct = response.headers.get('content-type') || '';
         if (!ct.includes('application/json')) {
             // Server returned HTML instead of JSON
-            if (response.redirected) {
-                throw new Error('Session expired. Please refresh the page.');
-            }
             if (response.status === 403) {
                 // Step 6: Frontend Auto-Recovery (Reload ONCE only)
                 if (!window.__csrfRetry) {

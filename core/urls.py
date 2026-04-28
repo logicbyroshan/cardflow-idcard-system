@@ -1,4 +1,5 @@
 from django.urls import include, path
+from django.views.decorators.csrf import csrf_exempt
 from . import views
 from exports import views as export_views
 
@@ -12,17 +13,17 @@ urlpatterns = [
     path('api/auth/check-maintenance/', views.api_check_maintenance, name='api_check_maintenance'),
     path('api/maintenance/status/', views.api_system_maintenance_check, name='api_system_maintenance_check'),
     path('api/maintenance/toggle/', views.api_maintenance_toggle, name='api_maintenance_toggle'),
-    path('api/auth/check-email/', views.api_check_email, name='api_check_email'),
-    path('api/auth/login/', views.api_login, name='api_login'),
-    path('api/auth/forgot-password/', views.api_forgot_password, name='api_forgot_password'),
-    path('api/auth/verify-otp/', views.api_verify_otp, name='api_verify_otp'),
-    path('api/auth/reset-password/', views.api_reset_password, name='api_reset_password'),
-    path('api/auth/impersonate/start/', views.api_impersonate_start, name='api_impersonate_start'),
-    path('api/auth/impersonate/stop/', views.api_impersonate_stop, name='api_impersonate_stop'),
-    path('api/auth/impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),
-    path('api/auth/user-audit/users/', views.api_user_audit_users, name='api_user_audit_users'),
-    path('api/auth/user-audit/history/', views.api_user_audit_history, name='api_user_audit_history'),
-    path('api/auth/user-audit/actions/', views.api_user_audit_actions, name='api_user_audit_actions'),
+    path('api/auth/check-email/', csrf_exempt(views.api_check_email), name='api_check_email'),
+    path('api/auth/login/', csrf_exempt(views.api_login), name='api_login'),
+    path('api/auth/forgot-password/', csrf_exempt(views.api_forgot_password), name='api_forgot_password'),
+    path('api/auth/verify-otp/', csrf_exempt(views.api_verify_otp), name='api_verify_otp'),
+    path('api/auth/reset-password/', csrf_exempt(views.api_reset_password), name='api_reset_password'),
+    path('api/auth/impersonate/start/', csrf_exempt(views.api_impersonate_start), name='api_impersonate_start'),
+    path('api/auth/impersonate/stop/', csrf_exempt(views.api_impersonate_stop), name='api_impersonate_stop'),
+    path('api/auth/impersonate/users/', csrf_exempt(views.api_impersonate_users), name='api_impersonate_users'),
+    path('api/auth/user-audit/users/', csrf_exempt(views.api_user_audit_users), name='api_user_audit_users'),
+    path('api/auth/user-audit/history/', csrf_exempt(views.api_user_audit_history), name='api_user_audit_history'),
+    path('api/auth/user-audit/actions/', csrf_exempt(views.api_user_audit_actions), name='api_user_audit_actions'),
     
     # Role-specific Dashboards
     path('admin-staff-dashboard/', views.admin_staff_dashboard, name='admin_staff_dashboard'),
