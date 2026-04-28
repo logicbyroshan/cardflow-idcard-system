@@ -174,7 +174,7 @@ function cropperApp() {
       available: false,
       version: '',
       downloadUrl: '',
-      bootstrapVersion: '3.18.0',
+      bootstrapVersion: '3.19.0',
       bootstrapDownloadUrl: '',
       changelog: '',
       installing: false,
@@ -578,6 +578,49 @@ function cropperApp() {
         await ApiClient.post('/api/engine/stop/', {});
       } catch (err) {
         console.debug('[Cropper] Engine stop signal failed (might not be supported):', err);
+      }
+    },
+
+    /**
+     * Shut down the engine service completely (full process exit).
+     * Requires user confirmation. After shutdown, engine goes offline.
+     */
+    async shutdownEngine() {
+      if (!this.engine.connected) {
+        if (typeof Toast !== 'undefined') Toast.info('Engine is already offline.');
+        return;
+      }
+
+      var confirmed = confirm(
+        'Stop Adarsh Engine?\n\n' +
+        'This will shut down the local photo processing engine. ' +
+        'You will need to restart the service manually or reboot your computer.\n\n' +
+        'Are you sure?'
+      );
+      if (!confirmed) return;
+
+      try {
+        var resp = await fetch('/api/engine/shutdown/', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        var data = {};
+        try { data = await resp.json(); } catch (_) {}
+
+        this.engine.connected = false;
+        this.engine.checked = true;
+        this._broadcastEngineState();
+
+        if (typeof Toast !== 'undefined') {
+          Toast.success('Engine stopped successfully. Restart the service when needed.');
+        }
+      } catch (err) {
+        console.warn('[Cropper] Shutdown request failed:', err);
+        if (typeof Toast !== 'undefined') {
+          Toast.error('Failed to stop engine: ' + (err.message || 'Unknown error'));
+        }
       }
     },
 

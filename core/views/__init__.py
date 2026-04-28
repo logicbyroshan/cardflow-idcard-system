@@ -203,6 +203,7 @@ from .engine_api import (
     api_engine_clients,
     api_engine_self_update,
     api_engine_stop,
+    api_engine_shutdown,
     engine_download,
 )
 
