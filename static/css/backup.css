@@ -346,6 +346,9 @@
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
   padding: 16px 18px;
+  /* Reserve space at the bottom so cards aren't hidden behind the fixed bar */
+  padding-bottom: 80px;
+  overflow-y: auto;
 }
 .backup-client-card {
   display: flex;

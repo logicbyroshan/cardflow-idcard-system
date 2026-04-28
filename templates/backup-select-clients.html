@@ -206,7 +206,7 @@
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Starting...';
 
       const ids = getSelectedIds();
-      fetch('/api/backup/start/', {
+      fetch('/panel/api/backup/start/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,7 +218,7 @@
       .then(data => {
         if (data.success) {
           if (window.showToast) showToast(data.message, 'success');
-          setTimeout(() => { window.location.href = '/manage-panel/?tab=backups'; }, 1500);
+          setTimeout(() => { window.location.href = '/panel/manage-panel/?tab=backups'; }, 1500);
         } else {
           if (window.showToast) showToast(data.message || 'Failed to start backup.', 'error');
           btn.disabled = false;

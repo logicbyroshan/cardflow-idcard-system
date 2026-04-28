@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             try {
-                const data = await ApiClient.post('/api/profile/update/', formData);
+                const data = await ApiClient.post('/panel/api/profile/update/', formData);
                 
                 if (data.success) {
                     showToast('Profile information updated successfully!', 'success');
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             try {
-                const data = await ApiClient.post('/api/profile/change-password/', {
+                const data = await ApiClient.post('/panel/api/profile/change-password/', {
                     current_password: currentPassword,
                     new_password: newPassword,
                     confirm_password: confirmPassword
@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadProfile() {
         try {
-            const data = await ApiClient.get('/api/profile/');
+            const data = await ApiClient.get('/panel/api/profile/');
             
             if (data.success) {
                 const profile = data.profile;
@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function saveSecuritySettings(payload, successMessage) {
         try {
-            const data = await ApiClient.post('/api/profile/security-settings/update/', payload);
+            const data = await ApiClient.post('/panel/api/profile/security-settings/update/', payload);
             if (!data.success) {
                 showToast(data.message || 'Failed to update security settings', 'error');
                 return false;
@@ -382,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderSuperModeStatus();
 
             try {
-                const data = await ApiClient.post('/api/profile/super-mode/toggle/', {
+                const data = await ApiClient.post('/panel/api/profile/super-mode/toggle/', {
                     enabled: nextValue,
                 });
 

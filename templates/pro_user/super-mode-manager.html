@@ -340,6 +340,7 @@
             <div class="sm-field">
               <label for="smSelfRam">RAM Allocation</label>
               <select id="smSelfRam">
+                {% if not super_mode_self.ram_allocation_mb %}<option value="" disabled selected>Select RAM</option>{% endif %}
                 {% for mb in super_mode_self_options %}
                 <option value="{{ mb }}" {% if super_mode_self.ram_allocation_mb == mb %}selected{% endif %}>{{ mb }} MB</option>
                 {% endfor %}
@@ -350,12 +351,12 @@
               <label class="sm-switch" for="smSelfEnabled">
                 <input type="checkbox" id="smSelfEnabled" {% if super_mode_self.is_enabled %}checked{% endif %}>
                 <span class="sm-switch-track" aria-hidden="true"></span>
-                <span id="smSelfToggleLabel">Mode Off</span>
+                <span id="smSelfToggleLabel">{% if super_mode_self.is_enabled %}Mode On{% else %}Mode Off{% endif %}</span>
               </label>
             </div>
             <div class="sm-field">
               <label>Current Effective</label>
-              <input type="text" id="smSelfInfo" value="{{ super_mode_self.ram_allocation_mb|default:0 }} MB" readonly>
+              <input type="text" id="smSelfInfo" value="{% if super_mode_self.ram_allocation_mb %}{{ super_mode_self.ram_allocation_mb }} MB{% else %}Not assigned{% endif %}" readonly>
             </div>
           </div>
           <div class="sm-actions">

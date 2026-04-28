@@ -170,11 +170,11 @@
         var sm = user.super_mode || {};
         var options = Array.isArray(sm.allowed_options_mb) ? sm.allowed_options_mb : [];
         var currentRam = parseInt(sm.ram_allocation_mb || 0, 10);
-        if (!currentRam && options.length) {
-          currentRam = options[0];
+        var optionHtml = '';
+        if (!currentRam) {
+          optionHtml = '<option value="" disabled selected>Select RAM</option>';
         }
-
-        var optionHtml = options.map(function (mb) {
+        optionHtml += options.map(function (mb) {
           var selected = Number(mb) === Number(currentRam) ? ' selected' : '';
           return '<option value="' + mb + '"' + selected + '>' + mb + ' MB</option>';
         }).join('');
@@ -408,6 +408,14 @@
         var payload = parseUserRowPayload(row);
 
         if (target.classList.contains('sm-ram-select') && !payload.assigned) {
+          return;
+        }
+
+        if (payload.assigned && !payload.ramMb) {
+          showMessage('Please select a RAM allocation first.', 'warning');
+          // Revert the checkbox
+          var assignToggle = row.querySelector('.sm-assign-toggle');
+          if (assignToggle) { assignToggle.checked = false; }
           return;
         }
 

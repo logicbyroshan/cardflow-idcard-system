@@ -107,7 +107,7 @@
     const skeletonStart = showSkeleton ? _renderBackupsSkeleton(container, 3) : null;
 
     try {
-      const response = await fetch('/api/backup/list/');
+      const response = await fetch('/panel/api/backup/list/');
       const data = await response.json();
 
       if (!data.success) {
@@ -455,7 +455,7 @@
         html += '<div class="backup-download-list">';
         html += '<div class="backup-download-item">';
         html += '<span><span class="backup-download-name">' + fname + '</span><span class="backup-download-size"> (' + sizeStr + ')</span></span>';
-        html += '<a href="/api/backup/download/' + b.id + '/" class="backup-download-link"><i class="fa-solid fa-download"></i> Download ZIP</a>';
+        html += '<a href="/panel/api/backup/download/' + b.id + '/" class="backup-download-link"><i class="fa-solid fa-download"></i> Download ZIP</a>';
         html += '</div>';
         html += '</div>';
       } else {
@@ -525,7 +525,7 @@
     const btn = document.getElementById('deleteNowBtn');
     btn.disabled = true;
 
-    fetch('/api/backup/' + _activeModalTaskId + '/delete-now/', {
+    fetch('/panel/api/backup/' + _activeModalTaskId + '/delete-now/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
