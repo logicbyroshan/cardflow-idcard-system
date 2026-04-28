@@ -157,19 +157,6 @@ def _filter_ordered_fields_by_names(ordered_fields, allowed_names):
     return [f for f in ordered_fields if f.get('name') in allowed]
 
 
-def _promote_legacy_print_list(table):
-    """Compatibility shim: migrate legacy `print_list` rows to `generate_list`.
-
-    Older callers still invoke this helper before rendering print pages.
-    """
-    if table is None:
-        return 0
-    return int(
-        PrintRequest.objects.filter(table=table, status='print_list').update(
-            status='generate_list',
-            updated_at=timezone.now(),
-        )
-    )
 
 
 def _safe_template_pdf_url(file_field):
@@ -1450,63 +1437,6 @@ def api_print_retrieve_finalized(request, table_id):
     })
 
 
-@require_http_methods(["GET"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_print_pool_list(request, table_id):
-    """List pool items with pagination and search."""
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    query = request.GET.get('q', '').strip()
-    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
-
-    pr_qs = PrintRequest.objects.filter(
-        table=table, status='pool',
-    ).select_related('card', 'requested_by').order_by('-updated_at')
-
-    if query:
-        pr_qs = IDCardService._apply_search_filter(
-            pr_qs,
-            query,
-            table=table,
-            json_field='card__field_data',
-            id_lookup='card__id',
-        )
-
-    total = pr_qs.count()
-    batch = list(pr_qs[offset:offset + limit + 1])
-    has_more = len(batch) > limit
-    if has_more:
-        batch = batch[:limit]
-
-    items = []
-    for idx, pr in enumerate(batch):
-        card = pr.card
-        fd = card.field_data or {}
-        fd_upper = {k.upper(): v for k, v in fd.items()}
-        ordered_fields = _build_ordered_fields(table, fd, fd_upper)
-        req_by = pr.requested_by
-        items.append({
-            'pr_id': pr.id,
-            'card_id': card.id,
-            'sr_no': offset + idx + 1,
-            'status': card.status,
-            'status_display': card.get_status_display(),
-            'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
-            'pool_at': localtime(pr.updated_at).strftime('%d %b %Y %H:%M'),
-            'ordered_fields': ordered_fields,
-        })
-
-    return JsonResponse({
-        'status': 'ok',
-        'items': items,
-        'total': total,
-        'has_more': has_more,
-        'offset': offset,
-        'limit': limit,
-    })
 
 # ===========================================================================
 # GENERATE CARD � PAGE VIEWS
@@ -1912,7 +1842,7 @@ def api_template_save(request, table_id):
         card_orientation,
     )
 
-    # TODO: Replace with new JSON-based template editor
+    # Clean up legacy config keys if present.
     cfg.pop('editable_design_front', None)
     cfg.pop('editable_design_back', None)
     cfg.pop('mapping_confidence', None)
@@ -2126,8 +2056,6 @@ def api_generate_pdf(request, table_id):
     if export_format not in {'pdf', 'png', 'zip'}:
         export_format = 'pdf'
 
-    queue_ready = bool(data.get('queue_ready', False))
-
     batch_size = data.get('batch_size')
     try:
         batch_size = int(batch_size) if batch_size is not None else None
@@ -2182,17 +2110,6 @@ def api_generate_pdf(request, table_id):
         prs = prs[:1]
 
     layout_options = data.get('layout') if isinstance(data.get('layout'), dict) else None
-    if queue_ready:
-        payload = GenerateCardService.build_job_payload(
-            table,
-            tmpl,
-            prs,
-            requested_by=request.user,
-            layout_options=layout_options,
-            export_format=export_format,
-            batch_size=batch_size,
-        )
-        return JsonResponse({'status': 'ok', 'queue_ready': True, 'job': payload})
 
     pdf_bytes = None
     if export_format == 'zip':
