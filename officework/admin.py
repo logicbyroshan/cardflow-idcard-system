@@ -4,8 +4,9 @@ from .models import (
     OfficeWorkChatGroup,
     OfficeWorkChatGroupMember,
     OfficeWorkChatMessage,
-    OfficeWorkSharedFile,
     OfficeWorkTask,
+    OfficeWorkLead,
+    OfficeWorkLeadTemplate,
 )
 
 
@@ -49,9 +50,15 @@ class OfficeWorkTaskAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at', 'completed_at')
 
 
-@admin.register(OfficeWorkSharedFile)
-class OfficeWorkSharedFileAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title', 'original_name', 'uploaded_by', 'size_bytes', 'created_at')
-    search_fields = ('title', 'original_name', 'uploaded_by__username', 'uploaded_by__email')
-    list_filter = ('created_at',)
-    readonly_fields = ('created_at',)
+@admin.register(OfficeWorkLead)
+class OfficeWorkLeadAdmin(admin.ModelAdmin):
+    list_display = ('id', 'customer_name', 'contact', 'whatsapp', 'email', 'location', 'created_at')
+    list_filter = ('created_at', 'location')
+    search_fields = ('customer_name', 'contact', 'email', 'location')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(OfficeWorkLeadTemplate)
+class OfficeWorkLeadTemplateAdmin(admin.ModelAdmin):
+    list_display = ('template_type', 'updated_at')
+    search_fields = ('content',)

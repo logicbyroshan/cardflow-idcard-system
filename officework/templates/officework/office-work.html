@@ -37,6 +37,9 @@
         <button type="button" class="office-tab-btn" data-tab="tasks" role="tab" aria-selected="false">
           <i class="fa-solid fa-list-check"></i> Tasks
         </button>
+        <button type="button" class="office-tab-btn" data-tab="leads" role="tab" aria-selected="false">
+          <i class="fa-solid fa-user-tag"></i> Leads
+        </button>
       </div>
     </div>
   </section>
@@ -312,6 +315,165 @@
         </section>
       </section>
 
+      <section class="office-panel" data-panel="leads" role="tabpanel" hidden>
+        <section class="office-section">
+          <div class="office-section-head">
+            <h3><i class="fa-solid fa-user-tag"></i> Lead Management</h3>
+            <div class="office-section-actions">
+              <button type="button" id="officeLeadSearchNewBtn" class="btn btn-sm btn-accent">
+                <i class="fa-solid fa-magnifying-glass-location"></i> Search New Clients
+              </button>
+              <button type="button" id="officeLeadTemplateBtn" class="btn btn-sm btn-neutral">
+                <i class="fa-solid fa-message"></i> Message Templates
+              </button>
+              <button type="button" id="officeCreateLeadBtn" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-plus"></i> Add New Lead
+              </button>
+            </div>
+          </div>
+
+          <div class="office-leads-search-row">
+            <div class="office-search-input-wrap">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="officeLeadSearch" class="office-input" placeholder="Search leads by name, contact, or location...">
+            </div>
+          </div>
+          
+          <div class="office-table-wrapper">
+            <table class="office-table" id="officeLeadsTable">
+              <thead>
+                <tr>
+                  <th>Customer Name</th>
+                  <th>Contact</th>
+                  <th>Location</th>
+                  <th>Description</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="officeLeadsList">
+                <tr><td colspan="5" class="text-center">Loading leads...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Lead Modal -->
+        <div id="officeLeadModalBackdrop" class="office-task-modal-backdrop" hidden></div>
+        <section id="officeLeadModal" class="office-task-modal" role="dialog" aria-modal="true" hidden>
+          <header class="office-task-modal-header">
+            <h3 id="officeLeadFormHeading"><i class="fa-solid fa-plus"></i> Add New Lead</h3>
+            <button id="officeLeadModalClose" type="button" class="office-task-modal-close">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </header>
+          <form id="officeLeadForm" class="office-task-form">
+            <input id="officeLeadEditId" type="hidden" value="">
+            <div class="office-task-modal-layout">
+              <div class="office-task-modal-main" style="flex: 1;">
+                <div class="office-grid-two">
+                  <div>
+                    <label for="officeLeadName">Customer Name</label>
+                    <input id="officeLeadName" class="office-input" type="text" placeholder="Full Name" required>
+                  </div>
+                  <div>
+                    <label for="officeLeadContact">Contact Number</label>
+                    <input id="officeLeadContact" class="office-input" type="text" placeholder="Phone">
+                  </div>
+                </div>
+                <div class="office-grid-two">
+                  <div>
+                    <label for="officeLeadWhatsapp">WhatsApp</label>
+                    <input id="officeLeadWhatsapp" class="office-input" type="text" placeholder="WhatsApp Number">
+                  </div>
+                  <div>
+                    <label for="officeLeadEmail">Email Address</label>
+                    <input id="officeLeadEmail" class="office-input" type="email" placeholder="Email">
+                  </div>
+                </div>
+                <div>
+                  <label for="officeLeadLocation">Location</label>
+                  <input id="officeLeadLocation" class="office-input" type="text" placeholder="City, State">
+                </div>
+                <div>
+                  <label for="officeLeadDescription">Description / Notes</label>
+                  <textarea id="officeLeadDescription" class="office-input" rows="4" placeholder="Additional details..."></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="office-task-form-actions">
+              <button type="submit" class="btn btn-md btn-primary office-submit-btn">Save Lead</button>
+              <button id="officeLeadCancelBtn" type="button" class="btn btn-md btn-neutral">Cancel</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Template Modal -->
+        <div id="officeTemplateModalBackdrop" class="office-task-modal-backdrop" hidden></div>
+        <section id="officeTemplateModal" class="office-task-modal" role="dialog" aria-modal="true" hidden>
+          <header class="office-task-modal-header">
+            <h3><i class="fa-solid fa-message"></i> Message Templates</h3>
+            <button id="officeTemplateModalClose" type="button" class="office-task-modal-close">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </header>
+          <div class="office-task-form">
+            <div class="office-template-tabs">
+              <button class="office-template-tab-btn is-active" data-template-type="whatsapp">WhatsApp</button>
+              <button class="office-template-tab-btn" data-template-type="email">Email</button>
+            </div>
+            
+            <div class="office-template-content">
+              <div class="office-template-placeholder-info">
+                <strong>Placeholders:</strong> <code>{{customer_name}}</code>, <code>{{contact}}</code>, <code>{{email}}</code>, <code>{{location}}</code>, <code>{{description}}</code>
+              </div>
+              <textarea id="officeTemplateText" class="office-input" rows="8" placeholder="Type your message template here..."></textarea>
+            </div>
+
+            <div class="office-task-form-actions">
+              <button id="officeSaveTemplateBtn" type="button" class="btn btn-md btn-primary office-submit-btn">Save Template</button>
+              <button id="officeTemplateCancelBtn" type="button" class="btn btn-md btn-neutral">Close</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Search New Clients Modal (UI Only) -->
+        <div id="officeSearchClientsModalBackdrop" class="office-task-modal-backdrop" hidden></div>
+        <section id="officeSearchClientsModal" class="office-task-modal" role="dialog" aria-modal="true" hidden>
+          <header class="office-task-modal-header">
+            <h3><i class="fa-solid fa-magnifying-glass-location"></i> Search New Clients</h3>
+            <button id="officeSearchClientsModalClose" type="button" class="office-task-modal-close">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </header>
+          <div class="office-task-form">
+            <div class="office-search-clients-intro">
+              <p>Find potential clients by searching Google Maps for specific locations. This feature will use our advanced web scraper to collect lead data.</p>
+            </div>
+            
+            <div class="office-grid-two">
+              <div>
+                <label for="officeSearchDistrict">District</label>
+                <input type="text" id="officeSearchDistrict" class="office-input" placeholder="e.g. Ahmedabad">
+              </div>
+              <div>
+                <label for="officeSearchTehsil">Tehsil / Taluka</label>
+                <input type="text" id="officeSearchTehsil" class="office-input" placeholder="e.g. Sanand">
+              </div>
+            </div>
+
+            <div class="office-search-status-box" id="officeSearchStatusBox" hidden>
+              <div class="office-loader-spinner"></div>
+              <p>Searching data on Google Maps... <br><small>This may take a few minutes using the web scraper engine.</small></p>
+            </div>
+
+            <div class="office-task-form-actions">
+              <button id="officeStartSearchBtn" type="button" class="btn btn-md btn-primary office-submit-btn">Start Search</button>
+              <button id="officeSearchClientsCancelBtn" type="button" class="btn btn-md btn-neutral">Close</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
       </section>
     </div>
   </section>
@@ -337,7 +499,13 @@ window.OfficeWorkConfig = {
     chatSend: "{% url 'api_office_work_chat_send' %}",
     tasksList: "{% url 'api_office_work_tasks_list' %}",
     taskCreate: "{% url 'api_office_work_task_create' %}",
-    taskUpdateBase: "/api/office-work/tasks/"
+    taskUpdateBase: "/api/office-work/tasks/",
+    leadsList: "{% url 'api_office_work_leads_list' %}",
+    leadCreate: "{% url 'api_office_work_lead_create' %}",
+    leadUpdateBase: "/api/office-work/leads/",
+    leadDeleteBase: "/api/office-work/leads/",
+    leadTemplatesList: "{% url 'api_office_work_lead_templates_list' %}",
+    leadTemplateSave: "{% url 'api_office_work_lead_template_save' %}"
   }
 };
 </script>

@@ -1707,3 +1707,271 @@ textarea.office-input {
     border-radius: 0;
   }
 }
+
+/* --- Lead Management Styles --- */
+.office-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-slate-100);
+}
+
+.office-leads-search-row {
+  margin-bottom: 16px;
+}
+
+.office-search-input-wrap {
+  position: relative;
+  max-width: 450px;
+}
+
+.office-search-input-wrap i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-slate-400);
+  font-size: 14px;
+}
+
+.office-search-input-wrap .office-input {
+  padding-left: 36px;
+  height: 40px;
+  border-radius: 8px !important;
+  background: var(--color-white);
+  border: 1px solid var(--color-slate-200);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+}
+
+.office-table-wrapper {
+  background: var(--color-white);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+  border: 1px solid var(--color-slate-200);
+}
+
+/* --- Lead Template UI --- */
+.office-template-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-slate-200);
+  padding-bottom: 8px;
+}
+
+.office-template-tab-btn {
+  padding: 8px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--color-slate-500);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.office-template-tab-btn:hover {
+  background: var(--color-slate-50);
+  color: var(--color-slate-700);
+}
+
+.office-template-tab-btn.is-active {
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--color-primary);
+}
+
+.office-template-placeholder-info {
+  background: #f1f5f9;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--color-slate-600);
+  border: 1px solid var(--color-slate-200);
+}
+
+.office-template-placeholder-info code {
+  background: #e2e8f0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.office-template-content textarea {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+}
+
+/* --- Search New Clients Modal --- */
+.office-search-clients-intro {
+  background: rgba(var(--primary-rgb), 0.04);
+  padding: 14px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(var(--primary-rgb), 0.1);
+}
+
+.office-search-clients-intro p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-slate-600);
+  line-height: 1.5;
+}
+
+.office-search-status-box {
+  background: #f8fbff;
+  border: 1px dashed var(--color-primary);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.office-search-status-box p {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-slate-800);
+}
+
+.office-search-status-box small {
+  color: var(--color-slate-500);
+  font-weight: 400;
+}
+
+.office-loader-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(var(--primary-rgb), 0.1);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: office-spin 0.8s linear infinite;
+}
+
+@keyframes office-spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: 0;
+}
+
+.btn-accent:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.office-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ui-font-size-sm, 13px);
+}
+
+.office-table th {
+  background: #f8fbff;
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--color-slate-700);
+  border-bottom: 2px solid var(--color-slate-200);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.office-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-slate-100);
+  vertical-align: top;
+  color: var(--color-slate-600);
+}
+
+.office-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.office-table tr:hover td {
+  background-color: #fcfdfe;
+}
+
+.lead-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lead-name-cell strong {
+  font-size: 15px;
+  color: var(--color-slate-900);
+}
+
+.lead-date {
+  font-size: 11px;
+  color: var(--color-slate-400);
+}
+
+.lead-contact-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lead-contact-cell div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lead-contact-cell i {
+  color: var(--color-primary);
+  width: 14px;
+  text-align: center;
+}
+
+.lead-desc-cell {
+  max-width: 300px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+.office-table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-action {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-slate-200);
+  background: var(--color-white);
+  color: var(--color-slate-600);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-action i {
+  font-size: 14px;
+}
+
+.btn-call:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.btn-whatsapp:hover { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+.btn-mail:hover { background: #fdf2f2; color: #dc2626; border-color: #fecaca; }
+.btn-edit:hover { background: #faf5ff; color: #9333ea; border-color: #e9d5ff; }
+.btn-delete:hover { background: #fff1f2; color: #e11d48; border-color: #fecdd3; }
