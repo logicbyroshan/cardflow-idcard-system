@@ -43,18 +43,33 @@
                 </div>
 
                 <div class="app-download-actions">
-                    <a href="/static/app/adarsh-id-cards.apk" class="btn-download-apk" download>
+                    {% if apk_available %}
+                    <a href="{% static 'app/adarsh-id-cards.apk' %}" class="btn-download-apk" download>
                         <i class="fa-brands fa-android"></i>
                         <div>
                             <small>Download for</small>
                             <strong>Android</strong>
                         </div>
                     </a>
+                    {% if apk_size_mb %}<span style="color: rgba(255,255,255,0.4); font-size: 0.75rem; margin-left: 0.75rem;">{{ apk_size_mb }} MB</span>{% endif %}
+                    {% else %}
+                    <div class="btn-download-apk btn-download-soon">
+                        <i class="fa-brands fa-android"></i>
+                        <div>
+                            <small>Coming Soon</small>
+                            <strong>Android App</strong>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="app-install-note">
                     <i class="fa-solid fa-info-circle"></i>
-                    <p>After downloading, open the APK file and allow installation from unknown sources if prompted. Version 1.0.0</p>
+                    {% if apk_available %}
+                    <p>After downloading, open the APK file and allow installation from unknown sources if prompted. Version {{ app_version }}</p>
+                    {% else %}
+                    <p>The Android app is being prepared. Check back soon! Contact us for early access.</p>
+                    {% endif %}
                 </div>
             </div>
 
@@ -196,6 +211,16 @@
 .btn-download-apk:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+}
+.btn-download-soon {
+    opacity: 0.7;
+    cursor: default;
+    pointer-events: none;
+    border: 2px dashed rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1) !important;
+}
+.btn-download-soon, .btn-download-soon strong, .btn-download-soon small {
+    color: rgba(255,255,255,0.8) !important;
 }
 .btn-download-apk i {
     font-size: 1.8rem;

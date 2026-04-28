@@ -1,4 +1,5 @@
 from collections import defaultdict
+import os
 import random
 from urllib.parse import urlsplit, parse_qsl, urlencode
 
@@ -819,7 +820,16 @@ def panel_entry(request):
 def download_app(request):
     """Android app download page."""
     context = get_common_context()
+
+    # Check if APK file exists
+    apk_path = os.path.join(_s.STATIC_ROOT or os.path.join(_s.BASE_DIR, 'static'), 'app', 'adarsh-id-cards.apk')
+    apk_exists = os.path.isfile(apk_path)
+    apk_size_mb = round(os.path.getsize(apk_path) / (1024 * 1024), 1) if apk_exists else 0
+
     context.update({
+        'apk_available': apk_exists,
+        'apk_size_mb': apk_size_mb,
+        'app_version': '1.0.0',
         'meta_title': 'Download Android App | Adarsh ID Cards',
         'meta_description': 'Download the Adarsh ID Cards Android app for instant card management on your mobile device.',
         'canonical_url': request.build_absolute_uri(),

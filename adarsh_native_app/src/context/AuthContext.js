@@ -79,14 +79,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      // POST logout to server
-      await apiPost('/panel/auth/logout/', {});
-    } catch (e) {
-      // continue even if network fails
-    }
+    // Always clear local state first — even if server call fails
     setUser(null);
     setIsAuthenticated(false);
+    try {
+      // Panel subdomain doesn't use /panel/ prefix — it's just /auth/logout/
+      await apiPost('/auth/logout/', {});
+    } catch (e) {
+      // Network failure during logout is fine — session will expire on server
+    }
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
     await clearAuth();
   }, []);
