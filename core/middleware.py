@@ -42,6 +42,38 @@ def _is_task_polling_path(path: str) -> bool:
     return any(path.startswith(prefix) for prefix in TASK_POLLING_PATH_PREFIXES)
 
 
+class MobileAppCSRFBypassMiddleware:
+    """
+    Bypasses CSRF checks for mobile app and PWA authentication APIs.
+    
+    This ensures that native app and PWA clients never see 'Security token expired'
+    errors during login/logout/otp-verify, regardless of cookie/header state.
+    
+    Must be placed BEFORE CsrfViewMiddleware in settings.py.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # We check multiple path attributes to ensure coverage across different 
+        # proxy/routing configurations.
+        path = (request.path or '').lower()
+        path_info = (request.path_info or '').lower()
+        
+        # Explicitly bypass CSRF for all authentication-related API endpoints.
+        # This covers:
+        # - /api/auth/* (Main panel APIs)
+        # - /app/api/auth/* (Mobile/PWA specific APIs)
+        auth_patterns = ['/api/auth/', '/app/api/auth/', '/auth/login', '/auth/logout']
+        
+        if any(p in path for p in auth_patterns) or any(p in path_info for p in auth_patterns):
+            # This is a Django internal flag that CsrfViewMiddleware respects.
+            # Setting it to True tells Django to skip CSRF validation for this request.
+            request._dont_enforce_csrf_checks = True
+        
+        return self.get_response(request)
+
+
 class SubdomainRoutingMiddleware:
     """
     Routes requests to different URL configurations based on the subdomain.

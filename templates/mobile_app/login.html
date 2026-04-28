@@ -391,12 +391,13 @@
         setLoading(true);
         try {
             var body = { email: email, password: password };
+            var headers = { 'Content-Type': 'application/json' };
+            var csrf = getCsrf();
+            if (csrf) headers['X-CSRFToken'] = csrf;
+
             var resp = await fetch('/app/api/auth/login/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrf(),
-                },
+                headers: headers,
                 body: JSON.stringify(body),
             });
 
@@ -412,10 +413,7 @@
                     body.force_logout_other = true;
                     resp = await fetch('/app/api/auth/login/', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCsrf(),
-                        },
+                        headers: headers,
                         body: JSON.stringify(body),
                     });
                     data = await resp.json();

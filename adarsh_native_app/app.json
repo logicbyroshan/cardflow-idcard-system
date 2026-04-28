@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Adarsh ID Cards",
-    "slug": "adarsh-id-cards",
-    "version": "1.0.0",
+    "slug": "adarsh-final-deploye",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -32,7 +32,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "adarsh-id-cards"
+        "projectId": "125d37b2-2573-4ec7-8aef-aca3a7e24453"
       }
     }
   }

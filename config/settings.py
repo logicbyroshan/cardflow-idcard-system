@@ -155,6 +155,7 @@ MIDDLEWARE = [
     # Subdomain routing — sets request.urlconf based on Host header
     # MUST be first so all downstream middleware see the correct URL conf
     'core.middleware.SubdomainRoutingMiddleware',
+    'core.middleware.MobileAppCSRFBypassMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',

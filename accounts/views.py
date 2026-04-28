@@ -269,6 +269,7 @@ class ClientStaffDashboardView(BaseDashboardView):
 # API VIEWS (JSON responses for AJAX calls)
 # =============================================================================
 
+@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=10, window_seconds=60), name='dispatch')
 class CheckEmailAPIView(View):
     """
@@ -310,6 +311,7 @@ class CheckEmailAPIView(View):
             }, status=500)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class LoginAPIView(View):
     """
@@ -427,6 +429,7 @@ class LoginAPIView(View):
             }, status=500)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=3, window_seconds=60), name='dispatch')
 class ForgotPasswordAPIView(View):
     """
@@ -472,6 +475,7 @@ class ForgotPasswordAPIView(View):
             }, status=500)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class VerifyOTPAPIView(View):
     """
@@ -516,6 +520,7 @@ class VerifyOTPAPIView(View):
             }, status=500)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(rate_limit(max_requests=5, window_seconds=60), name='dispatch')
 class ResetPasswordAPIView(View):
     """

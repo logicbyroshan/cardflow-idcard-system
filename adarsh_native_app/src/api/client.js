@@ -80,8 +80,9 @@ async function apiFetch(path, options = {}) {
     ...(options.headers || {}),
   };
 
-  // Attach CSRF for mutations
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && cachedCsrf) {
+  // Attach CSRF for mutations — SKIP for auth paths as they are exempt on backend
+  const isAuth = path.includes('/auth/') || path.includes('/login');
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && cachedCsrf && !isAuth) {
     headers['X-CSRFToken'] = cachedCsrf;
   }
 
@@ -141,6 +142,8 @@ export async function apiPostForm(path, formData, extraHeaders = {}) {
  */
 export async function fetchInitialCsrf() {
   try {
+    // Clear any stale cookies before fetching a fresh token
+    await clearAuth();
     const response = await apiFetch('/app/login/', { method: 'GET' });
     await saveCookiesFromResponse(response);
     return !!cachedCsrf;

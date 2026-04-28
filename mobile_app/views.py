@@ -24,7 +24,7 @@ from django.core.cache import cache
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
 from django.db.models import Count, Q, Max, CharField, F, Case, When, Value, IntegerField
@@ -1170,6 +1170,7 @@ def desktop_required(request):
     })
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 @rate_limit(max_requests=6, window_seconds=60, key_prefix='mob_login')
 def api_mobile_login(request):
