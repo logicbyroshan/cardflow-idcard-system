@@ -1894,6 +1894,25 @@ function listApp() {
             return !!((this.form.imageHasPath || {})[fieldName]);
         },
 
+        _revokeBlobPreview(previewUrl) {
+            if (!previewUrl || typeof previewUrl !== 'string') return;
+            if (!previewUrl.startsWith('blob:')) return;
+            try {
+                URL.revokeObjectURL(previewUrl);
+            } catch (_) {}
+        },
+
+        _clearImagePreview(fieldName) {
+            if (!fieldName || !this.form || !this.form.imagePreviews) return;
+            this._revokeBlobPreview(this.form.imagePreviews[fieldName]);
+            this.form.imagePreviews[fieldName] = null;
+        },
+
+        _clearAllImagePreviews() {
+            const previews = (this.form && this.form.imagePreviews) || {};
+            Object.values(previews).forEach((previewUrl) => this._revokeBlobPreview(previewUrl));
+        },
+
         removeImage(fieldName) {
             if (this.viewMode || this.addFormSubmitting) return;
 
@@ -1916,7 +1935,7 @@ function listApp() {
             }
 
             this.form.imageFiles[targetField] = null;
-            this.form.imagePreviews[targetField] = null;
+            this._clearImagePreview(targetField);
             this.form.imageHasPath[targetField] = false;
             this.form.imageRemoveFlags[targetField] = true;
             this.showImagePicker = false;
@@ -2549,6 +2568,7 @@ function listApp() {
         },
         closeAddForm(forceClose) {
             if (this.addFormSubmitting && !forceClose) return;
+            this._clearAllImagePreviews();
             this.showAddForm = false;
             this.showImagePicker = false;
             this.viewMode = false;
@@ -2559,6 +2579,7 @@ function listApp() {
             this.reprintPendingCardIds = [];
         },
         resetForm() {
+            this._clearAllImagePreviews();
             this.form = {
                 dynamicValues: {},
                 imageFiles: {},
@@ -2607,18 +2628,25 @@ function listApp() {
             if (!this.form.imageHasPath) this.form.imageHasPath = {};
             if (!this.form.imageRemoveFlags) this.form.imageRemoveFlags = {};
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                this.form.imageFiles[targetField] = file;
-                this.form.imagePreviews[targetField] = e.target && e.target.result ? e.target.result : null;
-                this.form.imageHasPath[targetField] = true;
-                this.form.imageRemoveFlags[targetField] = false;
+            this._clearImagePreview(targetField);
+
+            let previewUrl = null;
+            try {
+                previewUrl = URL.createObjectURL(file);
+            } catch (_) {
+                previewUrl = null;
+            }
+
+            this.form.imageFiles[targetField] = file;
+            this.form.imagePreviews[targetField] = previewUrl;
+            this.form.imageHasPath[targetField] = true;
+            this.form.imageRemoveFlags[targetField] = false;
+
+            if (previewUrl) {
                 this.showToast('Photo selected successfully', 'success');
-            };
-            reader.onerror = () => {
-                this.showToast('Failed to read image file', 'error');
-            };
-            reader.readAsDataURL(file);
+            } else {
+                this.showToast('Photo selected, but preview could not be created', 'info');
+            }
             
             // Reset the input so the same file can be picked again if needed
             event.target.value = '';
