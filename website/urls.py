@@ -15,6 +15,7 @@ urlpatterns = [
 
     # Panel entry gateway (website button -> panel)
     path('panel-entry/', views.panel_entry, name='panel_entry'),
+    path('download-app/', views.download_app, name='download_app'),
     
     path('our-products/', views.our_work, name='our_work'),
     path('our-work/', RedirectView.as_view(pattern_name='website:our_work', permanent=True), name='our_work_legacy'),

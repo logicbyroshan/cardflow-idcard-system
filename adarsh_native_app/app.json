@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Adarsh ID Cards",
+    "slug": "adarsh-id-cards",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e1e2e"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.adarshbhopal.idcards"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFB800"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.adarshbhopal.idcards"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "adarsh-id-cards"
+      }
+    }
+  }
+}

@@ -56,10 +56,19 @@ urlpatterns = [
     path('api/staff/<int:staff_id>/delete/', views.api_staff_delete, name='api_staff_delete'),
 
     # Profile & Search APIs
+    path('api/profile/', views.api_profile_data, name='api_profile_data'),
     path('api/profile/update/', views.api_profile_update, name='api_profile_update'),
     path('api/profile/delete-request/', views.api_profile_delete_request, name='api_profile_delete_request'),
     path('api/search/', views.api_search, name='api_search'),
     path('api/server-info/', views.api_server_info, name='api_server_info'),
+
+    # Native app specific APIs
+    path('api/notifications/', views.api_notifications_list, name='api_notifications_list'),
+    path('api/tables/', views.api_tables_list, name='api_tables_list'),
+    path('api/groups/', views.api_groups_list, name='api_groups_list'),
+    path('api/settings/', views.api_settings_data, name='api_settings_data'),
+    path('api/dashboard/', views.api_dashboard_data, name='api_dashboard_data'),
+    path('api/reprint/<int:client_id>/', views.api_reprint_data, name='api_reprint_data'),
     path('api/mobile-shell/config/', views.api_mobile_shell_config, name='api_mobile_shell_config'),
     path('api/mobile-shell/device/register/', views.api_mobile_shell_device_register, name='api_mobile_shell_device_register'),
     path('api/mobile-shell/device/ping/', views.api_mobile_shell_device_ping, name='api_mobile_shell_device_ping'),

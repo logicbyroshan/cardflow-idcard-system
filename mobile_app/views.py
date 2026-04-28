@@ -4702,6 +4702,327 @@ def api_staff_delete(request, staff_id):
             return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
+# ─── Native App JSON APIs (for React Native) ────────────────────────────────
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_profile_data(request):
+    """Return current user profile data as JSON for native app."""
+    user = request.user
+    ctx = _get_mobile_context(request)
+    try:
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'name': user.get_full_name() or user.username,
+                'email': user.email or '',
+                'phone': getattr(user, 'phone', '') or '',
+                'role': ctx.get('user_role', ''),
+                'client_name': ctx.get('client_name', ''),
+                'is_super_admin': ctx.get('is_super_admin', False),
+                'is_client': ctx.get('is_client', False),
+                'is_admin_staff': ctx.get('is_admin_staff', False),
+            }
+        })
+    except Exception:
+        logger.exception('api_profile_data error')
+        return JsonResponse({'success': False, 'message': 'Unable to load profile.'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_notifications_list(request):
+    """Return notification list as JSON for native app."""
+    try:
+        from core.models import Notification
+        qs = Notification.objects.filter(
+            user=request.user
+        ).order_by('-created_at')[:50]
+
+        items = []
+        for n in qs:
+            items.append({
+                'id': n.id,
+                'title': n.title or '',
+                'message': n.message or '',
+                'icon': n.icon or 'bell',
+                'color': n.color or 'blue',
+                'read': n.is_read,
+                'time': n.created_at.strftime('%b %d, %Y %I:%M %p') if n.created_at else '',
+            })
+        return JsonResponse({'success': True, 'data': items})
+    except ImportError:
+        # Notification model may not exist yet
+        return JsonResponse({'success': True, 'data': []})
+    except Exception:
+        logger.exception('api_notifications_list error')
+        return JsonResponse({'success': False, 'message': 'Unable to load notifications.'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_tables_list(request):
+    """Return tables with status counts as JSON for native table picker."""
+    from core.models import Table, IdCard
+    from django.db.models import Count, Q
+
+    status = request.GET.get('status', 'pending')
+    valid_statuses = ['pending', 'verified', 'approved', 'download', 'pool']
+    if status not in valid_statuses:
+        status = 'pending'
+
+    try:
+        ctx = _get_mobile_context(request)
+        user = request.user
+
+        # Determine accessible tables based on role
+        if ctx.get('is_super_admin'):
+            tables_qs = Table.objects.select_related('group', 'group__client').all()
+        elif ctx.get('is_client') or ctx.get('is_admin_staff'):
+            client = getattr(user, 'client_profile', None) or getattr(user, 'staff_profile', None)
+            client_obj = getattr(client, 'client', client) if hasattr(client, 'client') else client
+            if client_obj and hasattr(client_obj, 'id'):
+                tables_qs = Table.objects.select_related('group', 'group__client').filter(
+                    group__client_id=client_obj.id
+                )
+            else:
+                tables_qs = Table.objects.none()
+        else:
+            tables_qs = Table.objects.none()
+
+        # Annotate with status count
+        tables_qs = tables_qs.annotate(
+            status_count=Count('idcard', filter=Q(idcard__status=status))
+        ).filter(status_count__gt=0).order_by('name')
+
+        items = []
+        for t in tables_qs:
+            items.append({
+                'id': t.id,
+                'name': t.name,
+                'group_name': t.group.name if t.group else '',
+                'client_name': t.group.client.name if t.group and t.group.client else '',
+                'status_count': t.status_count,
+            })
+
+        return JsonResponse({'success': True, 'data': items})
+    except Exception:
+        logger.exception('api_tables_list error')
+        return JsonResponse({'success': False, 'message': 'Unable to load tables.'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_groups_list(request):
+    """Return groups with tables + status counts as JSON for native groups screen."""
+    try:
+        user = request.user
+        client, perms = _client_ctx(user)
+        if not client:
+            return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
+
+        tables_qs = IDCardTable.objects.filter(group__client=client).select_related('group')
+
+        if PermissionService.is_client_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if staff:
+                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
+                if assigned_table_ids and assigned_group_ids:
+                    tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+                elif assigned_table_ids:
+                    tables_qs = tables_qs.filter(id__in=assigned_table_ids)
+                elif assigned_group_ids:
+                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+
+        scoped_table_ids = tables_qs.values('id')
+        scoped_group_ids = tables_qs.values('group_id')
+
+        groups = IDCardGroup.objects.filter(id__in=scoped_group_ids).annotate(
+            table_count=Count('tables', filter=Q(tables__id__in=scoped_table_ids), distinct=True),
+            total_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids)),
+            pending_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='pending')),
+            verified_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='verified')),
+            approved_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='approved')),
+            download_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='download')),
+        ).order_by('name')
+
+        tables_annotated = tables_qs.annotate(
+            total_cards=Count('id_cards'),
+            pending_cards=Count('id_cards', filter=Q(id_cards__status='pending')),
+            verified_cards=Count('id_cards', filter=Q(id_cards__status='verified')),
+            approved_cards=Count('id_cards', filter=Q(id_cards__status='approved')),
+            download_cards=Count('id_cards', filter=Q(id_cards__status='download')),
+        ).order_by('group__name', 'name')
+
+        groups_data = [{'id': g.id, 'name': g.name, 'table_count': g.table_count, 'total_cards': g.total_cards, 'pending_cards': g.pending_cards, 'verified_cards': g.verified_cards, 'approved_cards': g.approved_cards, 'download_cards': g.download_cards} for g in groups]
+        tables_data = [{'id': t.id, 'name': t.name, 'group_id': t.group_id, 'total_cards': t.total_cards, 'pending_cards': t.pending_cards, 'verified_cards': t.verified_cards, 'approved_cards': t.approved_cards, 'download_cards': t.download_cards} for t in tables_annotated]
+
+        return JsonResponse({'success': True, 'data': {'groups': groups_data, 'tables': tables_data}})
+    except Exception:
+        logger.exception('api_groups_list error')
+        return JsonResponse({'success': False, 'message': 'Unable to load groups.'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_settings_data(request):
+    """Return settings page data as JSON for native settings screen."""
+    try:
+        user = request.user
+        client, perms = _client_ctx(user)
+        if not client:
+            return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
+
+        d = {}
+        d['table_count'] = IDCardTable.objects.filter(group__client=client, is_active=True).count()
+        d['group_count'] = IDCardGroup.objects.filter(client=client).count()
+        d['total_cards'] = IDCard.objects.filter(table__group__client=client).count()
+
+        if PermissionService.is_any_admin(user):
+            from client.models import Client as _Client
+            accessible_ids = _admin_accessible_client_ids(user)
+            _c = _Client.objects.filter(status='active')
+            _t = IDCardTable.objects.filter(is_active=True)
+            _cd = IDCard.objects.all()
+            _st = Staff.objects.all()
+            if accessible_ids is not None:
+                _c = _c.filter(id__in=accessible_ids)
+                _t = _t.filter(group__client_id__in=accessible_ids)
+                _cd = _cd.filter(table__group__client_id__in=accessible_ids)
+                _st = _st.filter(Q(client_id__in=accessible_ids) | Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)).distinct()
+            d['admin_client_count'] = _c.count()
+            d['admin_staff_count'] = _st.count()
+            d['admin_table_count'] = _t.count()
+            d['admin_total_cards'] = _cd.count()
+
+        # Recent logs
+        from django.utils.timesince import timesince as _timesince
+        from django.utils import timezone as _tz
+        _now = _tz.now()
+        _cards = list(IDCard.objects.filter(table__group__client=client).select_related('table', 'table__group').order_by('-updated_at')[:15])
+        d['log_activities'] = [{'name': (c.field_data or {}).get('NAME') or (c.field_data or {}).get('name') or f'Card #{c.id}', 'status': c.status, 'status_display': c.status.replace('_', ' ').title(), 'updated_at': _timesince(c.updated_at, _now) if c.updated_at else '—', 'table_name': c.table.name if c.table else '', 'group_name': c.table.group.name if c.table and c.table.group else ''} for c in _cards]
+
+        # System info
+        import django as _dj, sys as _sy, os as _o
+        try:
+            with open(_o.path.join(settings.BASE_DIR, 'VERSION.txt')) as _vf:
+                d['app_version'] = _vf.read().strip()
+        except Exception:
+            d['app_version'] = str(getattr(settings, 'APP_VERSION', 'v0.00.00') or 'v0.00.00')
+        d['django_version'] = _dj.__version__
+        d['python_version'] = f'{_sy.version_info.major}.{_sy.version_info.minor}.{_sy.version_info.micro}'
+        d['debug_mode'] = settings.DEBUG
+
+        return JsonResponse({'success': True, 'data': d})
+    except Exception:
+        logger.exception('api_settings_data error')
+        return JsonResponse({'success': False, 'message': 'Unable to load settings.'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_dashboard_data(request):
+    """Return dashboard status counts as JSON for native home screen."""
+    try:
+        user = request.user
+        client, _ = _client_ctx(user)
+        if not client:
+            return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
+
+        tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True)
+
+        if PermissionService.is_client_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if staff:
+                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
+                if assigned_table_ids and assigned_group_ids:
+                    tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+                elif assigned_table_ids:
+                    tables_qs = tables_qs.filter(id__in=assigned_table_ids)
+                elif assigned_group_ids:
+                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+
+        scoped_ids = list(tables_qs.values_list('id', flat=True))
+        cards_qs = IDCard.objects.filter(table_id__in=scoped_ids)
+
+        counts = {}
+        for row in cards_qs.values('status').annotate(n=Count('id')):
+            counts[row['status']] = row['n']
+
+        # Recent activity
+        from django.utils.timesince import timesince as _ts
+        from django.utils import timezone as _tz
+        _now = _tz.now()
+        recent = list(IDCard.objects.filter(table_id__in=scoped_ids).select_related('table').order_by('-updated_at')[:8])
+        recent_data = []
+        for c in recent:
+            fd = c.field_data or {}
+            name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{c.id}'
+            recent_data.append({'name': name, 'status': c.status, 'table_name': c.table.name if c.table else '', 'time_ago': _ts(c.updated_at, _now) if c.updated_at else ''})
+
+        counts['recent_activity'] = recent_data
+        return JsonResponse({'success': True, 'data': counts})
+    except Exception:
+        logger.exception('api_dashboard_data error')
+        return JsonResponse({'success': False, 'message': 'Unable to load dashboard.'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_reprint_data(request, client_id):
+    """Return reprint request/confirmed counts per table as JSON."""
+    try:
+        user = request.user
+        if not PermissionService.can_access_client(user, client_id):
+            return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+        tables_qs = IDCardTable.objects.filter(group__client_id=client_id, is_active=True).select_related('group').order_by('group__name', 'name')
+        if PermissionService.is_client_staff(user):
+            staff = getattr(user, 'staff_profile', None)
+            if staff:
+                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
+                if assigned_table_ids and assigned_group_ids:
+                    tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+                elif assigned_table_ids:
+                    tables_qs = tables_qs.filter(id__in=assigned_table_ids)
+                elif assigned_group_ids:
+                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+
+        tables = list(tables_qs)
+        table_ids = [t.id for t in tables]
+
+        reprint_map = {}
+        if table_ids:
+            for row in ReprintRequest.objects.filter(table_id__in=table_ids, status__in=['requested', 'confirmed']).values('table_id', 'status').annotate(n=Count('id')):
+                reprint_map.setdefault(row['table_id'], {})[row['status']] = row['n']
+
+        download_map = {}
+        if table_ids:
+            for row in IDCard.objects.filter(table_id__in=table_ids, status='download').values('table_id').annotate(n=Count('id')):
+                download_map[row['table_id']] = row['n']
+
+        request_total = 0
+        confirmed_total = 0
+        download_total = 0
+        items = []
+        for t in tables:
+            sm = reprint_map.get(t.id, {})
+            requested = int(sm.get('requested', 0) or 0)
+            confirmed = int(sm.get('confirmed', 0) or 0)
+            request_total += requested
+            confirmed_total += confirmed
+            download_total += int(download_map.get(t.id, 0) or 0)
+            items.append({'id': t.id, 'name': t.name, 'group_name': t.group.name, 'requested': requested, 'confirmed': confirmed})
+
+        return JsonResponse({'success': True, 'data': {'tables': items, 'request_total': request_total, 'confirmed_total': confirmed_total, 'download_total': download_total}})
+    except Exception:
+        logger.exception('api_reprint_data error')
+        return JsonResponse({'success': False, 'message': 'Unable to load reprint data.'}, status=500)
+
+
 @require_mobile_client
 @require_http_methods(["POST"])
 def api_profile_update(request):

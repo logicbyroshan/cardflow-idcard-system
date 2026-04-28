@@ -816,6 +816,17 @@ def panel_entry(request):
     return redirect(destination)
 
 
+def download_app(request):
+    """Android app download page."""
+    context = get_common_context()
+    context.update({
+        'meta_title': 'Download Android App | Adarsh ID Cards',
+        'meta_description': 'Download the Adarsh ID Cards Android app for instant card management on your mobile device.',
+        'canonical_url': request.build_absolute_uri(),
+    })
+    return render(request, 'website/download-app.html', context)
+
+
 def _get_client_ip(request):
     forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', '')
     if forwarded_for:
