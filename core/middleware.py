@@ -55,10 +55,20 @@ class MobileAppCSRFBypassMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        path = request.path_info
+        # We check multiple path attributes to ensure coverage across different 
+        # proxy/routing configurations.
+        path = (request.path or '').lower()
+        path_info = (request.path_info or '').lower()
+        
         # Explicitly bypass CSRF for all authentication-related API endpoints.
-        # This covers both main panel APIs and mobile/PWA specific APIs.
-        if '/api/auth/' in path or '/app/api/auth/' in path:
+        # This covers:
+        # - /api/auth/* (Main panel APIs)
+        # - /app/api/auth/* (Mobile/PWA specific APIs)
+        auth_patterns = ['/api/auth/', '/app/api/auth/', '/auth/login', '/auth/logout']
+        
+        if any(p in path for p in auth_patterns) or any(p in path_info for p in auth_patterns):
+            # This is a Django internal flag that CsrfViewMiddleware respects.
+            # Setting it to True tells Django to skip CSRF validation for this request.
             request._dont_enforce_csrf_checks = True
         
         return self.get_response(request)
