@@ -4,9 +4,13 @@ from .models import (
     OfficeWorkChatGroup,
     OfficeWorkChatGroupMember,
     OfficeWorkChatMessage,
-    OfficeWorkSharedFile,
     OfficeWorkTask,
 )
+
+try:
+    from .models import OfficeWorkSharedFile
+except ImportError:
+    OfficeWorkSharedFile = None
 
 
 class OfficeWorkChatGroupMemberInline(admin.TabularInline):
@@ -49,9 +53,10 @@ class OfficeWorkTaskAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at', 'completed_at')
 
 
-@admin.register(OfficeWorkSharedFile)
-class OfficeWorkSharedFileAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title', 'original_name', 'uploaded_by', 'size_bytes', 'created_at')
-    search_fields = ('title', 'original_name', 'uploaded_by__username', 'uploaded_by__email')
-    list_filter = ('created_at',)
-    readonly_fields = ('created_at',)
+if OfficeWorkSharedFile is not None:
+    @admin.register(OfficeWorkSharedFile)
+    class OfficeWorkSharedFileAdmin(admin.ModelAdmin):
+        list_display = ('id', 'title', 'original_name', 'uploaded_by', 'size_bytes', 'created_at')
+        search_fields = ('title', 'original_name', 'uploaded_by__username', 'uploaded_by__email')
+        list_filter = ('created_at',)
+        readonly_fields = ('created_at',)
