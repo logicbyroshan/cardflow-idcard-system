@@ -13,9 +13,10 @@ import re
 from typing import Dict, Any, List
 
 from django.shortcuts import get_object_or_404
-from django.db.models import Count, Q, CharField
+from django.db.models import Count, Q, CharField, Value, IntegerField
+from django.db.models import Case, When
 from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast, Coalesce
+from django.db.models.functions import Cast, Coalesce, Lower
 from django.utils.timezone import localtime
 
 from idcards.models import IDCardGroup, IDCardTable, IDCard
@@ -515,23 +516,32 @@ class IDCardCardService(BaseService):
             # sr-asc default: newest status movement first (with created_at fallback).
             if sort_order == 'sr-desc':
                 cards_query = cards_query.order_by('created_at', '-id')
-            elif sort_order == 'name-asc':
-                # Sort by first text field in field_data (Name/name)
+            elif sort_order in ('name-asc', 'name-desc'):
+                # Sort by detected name field, case-insensitive.
+                # Case/When pushes NULL/empty names to the end.
                 name_field = cls._get_name_field(table)
                 if name_field:
                     cards_query = cards_query.annotate(
-                        _name=KeyTextTransform(name_field, 'field_data')
-                    ).order_by('_name', 'id')
+                        _name_raw=KeyTextTransform(name_field, 'field_data'),
+                        _name_sort=Lower(Coalesce(
+                            KeyTextTransform(name_field, 'field_data'),
+                            Value(''),
+                        )),
+                        _name_empty=Case(
+                            When(
+                                Q(_name_raw__isnull=True) | Q(_name_raw=''),
+                                then=Value(1),
+                            ),
+                            default=Value(0),
+                            output_field=IntegerField(),
+                        ),
+                    )
+                    if sort_order == 'name-asc':
+                        cards_query = cards_query.order_by('_name_empty', '_name_sort', 'id')
+                    else:
+                        cards_query = cards_query.order_by('_name_empty', '-_name_sort', '-id')
                 else:
-                    cards_query = cards_query.order_by('id')
-            elif sort_order == 'name-desc':
-                name_field = cls._get_name_field(table)
-                if name_field:
-                    cards_query = cards_query.annotate(
-                        _name=KeyTextTransform(name_field, 'field_data')
-                    ).order_by('-_name', '-id')
-                else:
-                    cards_query = cards_query.order_by('-id')
+                    cards_query = cards_query.order_by('id' if sort_order == 'name-asc' else '-id')
             elif sort_order == 'date-new':
                 cards_query = cards_query.order_by('-updated_at', '-id')
             elif sort_order == 'date-old':

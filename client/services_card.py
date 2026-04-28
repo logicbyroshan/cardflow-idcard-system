@@ -8,8 +8,8 @@ from django.utils.dateparse import parse_datetime, parse_date
 from django.utils.timezone import make_aware, is_naive
 from django.db.models import Count, Q
 from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast
-from django.db.models import CharField
+from django.db.models.functions import Cast, Lower, Coalesce
+from django.db.models import CharField, Value, IntegerField, Case, When
 
 from core.services import IDCardService
 from core.models import User
@@ -633,11 +633,25 @@ class ClientCardService(BaseService):
             if normalized_sort in ('name-asc', 'name-desc'):
                 name_field = cls._get_name_field(table)
                 if name_field:
-                    cards_query = cards_query.annotate(_name_sort=Cast(KeyTextTransform(name_field, 'field_data'), CharField()))
+                    cards_query = cards_query.annotate(
+                        _name_raw=KeyTextTransform(name_field, 'field_data'),
+                        _name_sort=Lower(Coalesce(
+                            KeyTextTransform(name_field, 'field_data'),
+                            Value(''),
+                        )),
+                        _name_empty=Case(
+                            When(
+                                Q(_name_raw__isnull=True) | Q(_name_raw=''),
+                                then=Value(1),
+                            ),
+                            default=Value(0),
+                            output_field=IntegerField(),
+                        ),
+                    )
                     if normalized_sort == 'name-asc':
-                        cards_query = cards_query.order_by('_name_sort', 'id')
+                        cards_query = cards_query.order_by('_name_empty', '_name_sort', 'id')
                     else:
-                        cards_query = cards_query.order_by('-_name_sort', '-id')
+                        cards_query = cards_query.order_by('_name_empty', '-_name_sort', '-id')
             
             total_count = cards_query.count()
 
