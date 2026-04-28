@@ -848,6 +848,37 @@ async def serve_image_endpoint(path: str = Query("", description="Full path to i
     return FileResponse(str(file_path), media_type=content_type)
 
 
+# ── Engine shutdown (browser-triggered) ──────────────────────────────
+
+@app.post("/shutdown")
+async def shutdown_endpoint():
+    """
+    Gracefully shut down the engine service.
+
+    Called from the browser panel when the admin clicks the "Stop Engine" button.
+    Triggers uvicorn's should_exit flag so the process exits cleanly.
+    NSSM will NOT auto-restart after a clean exit (exit code 0).
+    """
+    logger.info("Shutdown requested via API — stopping engine.")
+
+    import asyncio
+
+    async def _delayed_exit():
+        await asyncio.sleep(0.5)  # Give the response time to send
+        if _server is not None:
+            _server.should_exit = True
+        else:
+            # Fallback: force exit if _server reference is missing
+            os._exit(0)
+
+    asyncio.ensure_future(_delayed_exit())
+
+    return JSONResponse(content={
+        "accepted": True,
+        "message": "Engine is shutting down. Service will stop in ~1 second.",
+    })
+
+
 # ── Graceful shutdown (SIGTERM / SIGINT) ─────────────────────────────────
 
 _server = None  # set in __main__ block

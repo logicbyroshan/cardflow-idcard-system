@@ -107,6 +107,7 @@ urlpatterns = [
     path('api/engine/rename-operations/', views.api_engine_rename_operations, name='api_engine_rename_operations'),
     path('api/engine/clients/', views.api_engine_clients, name='api_engine_clients'),
     path('api/engine/stop/', views.api_engine_stop, name='api_engine_stop'),
+    path('api/engine/shutdown/', views.api_engine_shutdown, name='api_engine_shutdown'),
 
 
     # Crop Selected Images APIs (batch crop workflow)

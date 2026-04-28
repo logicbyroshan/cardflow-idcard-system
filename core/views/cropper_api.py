@@ -245,8 +245,8 @@ def api_cropper_latest_version(request):
     fallback_url = reverse('engine_download')
     bootstrap_version = str(
         getattr(settings, 'CROPPER_BOOTSTRAP_VERSION', '')
-        or os.getenv('CROPPER_BOOTSTRAP_VERSION', '3.18.0')
-    ).strip() or '3.18.0'
+        or os.getenv('CROPPER_BOOTSTRAP_VERSION', '3.19.0')
+    ).strip() or '3.19.0'
     bootstrap_download_override = str(
         getattr(settings, 'CROPPER_BOOTSTRAP_DOWNLOAD_URL', '')
         or os.getenv('CROPPER_BOOTSTRAP_DOWNLOAD_URL', '')

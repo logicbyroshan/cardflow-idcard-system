@@ -1639,3 +1639,44 @@ def api_engine_stop(request):
             "message": "Stop signal sent to browser; engine might not support remote stop."
         })
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/shutdown/
+#  Gracefully shut down the engine service (process exit).
+# ═══════════════════════════════════════════════════════════════════════════
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_shutdown(request):
+    """
+    Proxy POST → engine /shutdown.
+    Triggers a graceful shutdown of the local Adarsh Engine service.
+    The engine will exit cleanly — user must restart manually or reboot.
+    """
+    try:
+        resp = http_client.post(
+            f"{ENGINE_BASE}/shutdown",
+            headers=_engine_headers(),
+            timeout=5,
+        )
+        try:
+            payload = resp.json()
+        except Exception:
+            payload = {}
+        return JsonResponse({
+            "success": True,
+            "accepted": payload.get("accepted", resp.ok),
+            "message": payload.get("message", "Shutdown signal sent to engine."),
+        })
+    except http_client.ConnectionError:
+        return JsonResponse({
+            "success": False,
+            "message": "Cannot connect to Adarsh Engine. It may already be stopped.",
+        }, status=502)
+    except Exception as exc:
+        logger.debug("Engine shutdown request failed: %s", exc)
+        return JsonResponse({
+            "success": False,
+            "message": "Failed to send shutdown signal.",
+        }, status=500)
+
