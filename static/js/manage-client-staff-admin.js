@@ -11,15 +11,12 @@ document.addEventListener('DOMContentLoaded', function() {
             'perm-idcard-pool-list',
             'perm-idcard-approved-list',
             'perm-idcard-download-list',
-            'perm-reprint-request-list',
-            'perm-confirmed-list',
             'perm-idcard-bulk-download',
             'perm-idcard-add',
             'perm-idcard-edit',
             'perm-idcard-delete',
             'perm-idcard-info',
             'perm-idcard-verify',
-            'perm-idcard-reprint-list',
             'perm-idcard-updated-at',
             'perm-idcard-retrieve',
             'perm-mobile-app'
@@ -1133,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span id="submit-btn-text">Add Staff</span>';
+            submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span id="submit-btn-text">Add Assistant</span>';
         }
 
         var submitBtnText = document.getElementById('submit-btn-text');
@@ -1141,9 +1138,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var pwRow = document.getElementById('staffPasswordOptionRow');
 
         if (mode === 'add') {
-            if (drawerTitle) drawerTitle.textContent = 'Add New Assistent';
+            if (drawerTitle) drawerTitle.textContent = 'Add New Assistant';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-user-plus';
-            if (submitBtnText) submitBtnText.textContent = 'Add Staff';
+            if (submitBtnText) submitBtnText.textContent = 'Add Assistant';
             if (submitBtn) submitBtn.style.display = 'inline-flex';
             if (pwRow) pwRow.style.display = '';
             if (tempPwBtn) tempPwBtn.style.display = 'none';
@@ -1153,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderAssignmentScopeChips();
             setDrawerSectionVisibility('add');
         } else if (mode === 'edit') {
-            if (drawerTitle) drawerTitle.textContent = 'Edit Assistent';
+            if (drawerTitle) drawerTitle.textContent = 'Edit Assistant';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-pen-to-square';
             if (submitBtnText) submitBtnText.textContent = 'Save Changes';
             if (submitBtn) submitBtn.style.display = 'inline-flex';
@@ -1203,7 +1200,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (staffData.client_id) fetchClientGroups(staffData.client_id);
             }
         } else {
-            if (drawerTitle) drawerTitle.textContent = 'View Assistent';
+            if (drawerTitle) drawerTitle.textContent = 'View Assistant';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-eye';
             if (submitBtn) submitBtn.style.display = 'none';
             if (pwRow) pwRow.style.display = 'none';

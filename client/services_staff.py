@@ -38,13 +38,11 @@ class ClientStaffService(BaseService):
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list',
-        'perm_reprint_request_list', 'perm_confirmed_list',
         # ── Export / Download ───────────────────────────────────────
         'perm_idcard_bulk_download',
         # ── Card Actions ──────────────────────────────────────────────
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
         'perm_idcard_info', 'perm_idcard_verify',
-        'perm_idcard_reprint_list',
         'perm_idcard_updated_at',
         'perm_idcard_retrieve',
         # ── App & Access ───────────────────────────────────────────
@@ -560,6 +558,18 @@ class ClientStaffService(BaseService):
                             staff_kwargs[perm] = cls.parse_bool(data[perm])
                         else:
                             staff_kwargs[perm] = False
+                
+                # Set default permissions for new client_staff (locked, enabled)
+                # These are set as defaults if not explicitly provided in data
+                if 'perm_idcard_pending_list' not in data:
+                    if getattr(client, 'perm_idcard_pending_list', False):
+                        staff_kwargs['perm_idcard_pending_list'] = True
+                if 'perm_idcard_verified_list' not in data:
+                    if getattr(client, 'perm_idcard_verified_list', False):
+                        staff_kwargs['perm_idcard_verified_list'] = True
+                if 'perm_idcard_pool_list' not in data:
+                    if getattr(client, 'perm_idcard_pool_list', False):
+                        staff_kwargs['perm_idcard_pool_list'] = True
 
                 # Sensitive perms are never delegable to client_staff.
                 for perm in cls.NON_DELEGABLE_CLIENT_STAFF_PERMS:

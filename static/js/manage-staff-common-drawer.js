@@ -444,6 +444,24 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             }
         });
     }
+    
+    // ==================== ASSIGN BUTTON HANDLER ====================
+    var assignStaffBtn = document.getElementById('assignStaffBtn');
+    if (assignStaffBtn) {
+        assignStaffBtn.addEventListener('click', async function () {
+            if (!ctx.selectedStaffId) return;
+            try {
+                var d = await ctx._api.fetchStaffDetails(cfg, ctx.selectedStaffId);
+                if (d) {
+                    openDrawer('assign', d);
+                } else {
+                    showToast('Failed to load staff data', 'error');
+                }
+            } catch (err) {
+                showToast(err.message || 'Failed to load staff data', 'error');
+            }
+        });
+    }
 
     // ==================== FORM SUBMIT ====================
     if (staffForm) {

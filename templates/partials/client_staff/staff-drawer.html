@@ -3,7 +3,7 @@
     <div class="drawer-header">
         <h2 class="drawer-title" id="drawer-title">
             <i class="fa-solid fa-user-plus" id="drawer-icon"></i>
-            <span id="drawer-title-text">Add New Staff</span>
+            <span id="drawer-title-text">Add New Assistant</span>
         </h2>
         <button type="button" class="drawer-close" id="drawer-close-btn" title="Close" aria-label="Close">
             <i class="fa-solid fa-xmark"></i>
@@ -16,72 +16,7 @@
         <div class="drawer-body">
             <div class="profile-upload-section flex-row items-center gap-4" id="staff-avatar-section">
                 {% include 'partials/components/user-avatar.html' with role='client_staff' size='large' %}
-                <span class="text-xs text-gray-500">Staff avatar</span>
-            </div>
-
-            {% include 'partials/client_staff/staff-drawer-client-assignment.html' %}
-
-            <div class="form-group" id="group-selection-group" style="display:none;">
-                <label class="form-label">Select Group/Table <span class="required">*</span></label>
-                <select id="assignment-group-select" class="form-select">
-                    <option value="">Select Group/Table...</option>
-                </select>
-                <small class="field-hint">Choose the group to assign classes from.</small>
-            </div>
-
-            <!-- Class/Section Filters (Synced from client side) -->
-            <div class="form-section" id="class-section-filter-section" style="display:none;">
-                <h3 class="section-title">
-                    <i class="fa-solid fa-filter"></i> Class &amp; Section Filter
-                </h3>
-                <div class="form-row">
-                    <div class="form-group" id="class-filter-group">
-                        <label>Allowed Classes</label>
-                        <div class="assignment-checkbox-list" id="class-options-list">
-                            <div class="assignment-options-empty">Select one group first.</div>
-                        </div>
-                    </div>
-                    <div class="form-group" id="section-filter-group">
-                        <label>Allowed Sections</label>
-                        <div class="assignment-checkbox-list" id="section-options-list">
-                            <div class="assignment-options-empty">Select one group first.</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-row" id="branch-filter-row" style="display:none;">
-                    <div class="form-group">
-                        <label>Allowed Branches / Courses</label>
-                        <div class="assignment-checkbox-list" id="branch-options-list">
-                            <div class="assignment-options-empty">Select one group first.</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-row assignment-builder-action-row">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <button type="button" class="btn btn-sm btn-primary" id="save-group-assignment-btn">
-                            <i class="fa-solid fa-floppy-disk"></i> Save Group Assignment
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-section" id="group-assignment-chip-section" style="display:none;">
-                <h3 class="section-title">
-                    <i class="fa-solid fa-layer-group"></i> Saved Group Assignments
-                </h3>
-                <div class="assignment-scope-chip-list" id="group-assignment-chip-list">
-                    <div class="assignment-options-empty" id="group-assignment-chip-empty">No group assignments added yet.</div>
-                </div>
-            </div>
-
-            <div class="form-section" id="staff-assignment-summary-section" style="display: none;">
-                <h3 class="section-title">
-                    <i class="fa-solid fa-layer-group"></i> Assigned Classes &amp; Sections
-                </h3>
-                <div id="staff-assignment-summary-meta" class="text-xs text-gray-500" style="margin-bottom: 8px;"></div>
-                <div id="staff-assignment-summary-list" style="display: grid; gap: 8px;">
-                    <div class="text-xs text-gray-500">No class/section assignments found.</div>
-                </div>
+                <span class="text-xs text-gray-500">Assistant avatar</span>
             </div>
             {% include 'partials/staff/staff-drawer-info.html' %}
             {% include 'partials/client_staff/staff-drawer-permissions.html' %}
