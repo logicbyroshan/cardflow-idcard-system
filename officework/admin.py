@@ -9,6 +9,11 @@ from .models import (
     OfficeWorkLeadTemplate,
 )
 
+try:
+    from .models import OfficeWorkSharedFile
+except ImportError:
+    OfficeWorkSharedFile = None
+
 
 class OfficeWorkChatGroupMemberInline(admin.TabularInline):
     model = OfficeWorkChatGroupMember

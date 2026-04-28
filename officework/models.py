@@ -3,7 +3,11 @@ from django.utils import timezone
 
 
 def office_work_shared_file_upload_to(instance, filename):
-    return f'office-work/shared/{filename}'
+    """Legacy upload helper kept for migration import compatibility."""
+    import os
+
+    safe_name = os.path.basename(str(filename or '').strip()) or 'shared-file'
+    return f'office-work/shared/{timezone.now():%Y/%m/%d}/{safe_name}'
 
 
 def office_work_chat_attachment_upload_to(instance, filename):

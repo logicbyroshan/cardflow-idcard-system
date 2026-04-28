@@ -145,8 +145,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px;
-  border-bottom: 1px solid var(--color-slate-200);
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
 }
 
@@ -301,20 +301,22 @@
 }
 
 .office-chat-header {
-  background: #eaf4ec;
-  border-bottom: 1px solid #d4e7d7;
-  padding: 8px 12px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 12px 14px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 12px;
+  min-height: 60px;
 }
 
 .office-chat-header h3 {
   margin: 0;
-  font-size: var(--ui-font-size-md, 13px);
-  color: #0f172a;
+  font-size: var(--ui-font-size-md, 14px);
+  color: var(--color-white);
   line-height: 1.2;
+  font-weight: 700;
 }
 
 .office-chat-message-pill {
@@ -345,17 +347,17 @@
 
 .office-chat-group-meta {
   font-size: var(--ui-font-size-xs, 11px);
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.75);
   text-align: left;
 }
 
 .office-chat-group-meta.is-online {
-  color: #16a34a;
+  color: #4ade80;
   font-weight: 700;
 }
 
 .office-chat-group-meta.is-offline {
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .office-chat-header-main {
@@ -400,17 +402,35 @@
 #officeChatList.client-message-thread .client-message-bubble {
   width: auto;
   max-width: min(74%, 540px);
-  border: 1px solid #d7e4d8;
-  border-radius: 8px 8px 8px 2px;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-  padding: 6px 8px 5px;
+  border: 0;
+  border-radius: 12px 12px 12px 4px;
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  padding: 8px 12px 6px;
+  color: var(--color-slate-800);
 }
 
 #officeChatList.client-message-thread .office-chat-row-self .client-message-bubble {
-  border-color: #b8df9f;
-  border-radius: 8px 8px 2px 8px;
-  background: #dcf8c6;
+  border: 0;
+  border-radius: 12px 12px 4px 12px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+  color: var(--color-white);
+  box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.2);
+}
+
+#officeChatList.client-message-thread .office-chat-row-self .client-message-text {
+  color: var(--color-white);
+}
+
+#officeChatList.client-message-thread .office-chat-row-self .office-chat-msg-time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+#officeChatList.client-message-thread .office-chat-row-self .office-chat-file-link {
+  color: var(--color-white);
+  background: rgba(255, 255, 255, 0.15);
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 #officeChatList.client-message-thread .client-message-text {
@@ -538,6 +558,59 @@
 
 .office-chat-composer-btn:hover {
   filter: brightness(0.96);
+}
+
+.office-chat-composer.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  border-radius: 6px;
+}
+
+.office-chat-composer.is-loading::before {
+  content: "Uploading...";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.office-chat-image-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  margin-top: 6px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.office-chat-image-preview:hover {
+  transform: scale(1.01);
+}
+
+.office-chat-audio-player {
+  margin-top: 8px;
+  width: 100%;
+  height: 36px;
+}
+
+.office-chat-attachment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .office-chat-file-link {

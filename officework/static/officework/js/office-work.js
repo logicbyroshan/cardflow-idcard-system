@@ -970,16 +970,48 @@
         '</span>'
       )
       : '';
+    var attachmentHtml = '';
+    if (item.attachment) {
+      var contentType = String(item.attachment.content_type || '').toLowerCase();
+      var isImage = contentType.indexOf('image/') === 0;
+      var isAudio = contentType.indexOf('audio/') === 0;
+
+      if (isImage) {
+        attachmentHtml = '' +
+          '<div class="office-chat-attachment-item">' +
+          '  <img class="office-chat-image-preview" src="' + escapeHtml(item.attachment.download_url) + '" alt="' + escapeHtml(item.attachment.name) + '" onclick="window.open(this.src, \'_blank\')">' +
+          '  <a class="office-chat-file-link" href="' + escapeHtml(item.attachment.download_url) + '" title="Download original">' +
+          '    <i class="fa-solid fa-download"></i>' +
+          '    <span>' + escapeHtml(item.attachment.name) + ' (' + escapeHtml(formatBytes(item.attachment.size_bytes)) + ')</span>' +
+          '  </a>' +
+          '</div>';
+      } else if (isAudio) {
+        attachmentHtml = '' +
+          '<div class="office-chat-attachment-item">' +
+          '  <div class="office-chat-file-link">' +
+          '    <i class="fa-solid fa-file-audio"></i>' +
+          '    <span>' + escapeHtml(item.attachment.name) + ' (' + escapeHtml(formatBytes(item.attachment.size_bytes)) + ')</span>' +
+          '  </div>' +
+          '  <audio class="office-chat-audio-player" controls src="' + escapeHtml(item.attachment.download_url) + '"></audio>' +
+          '  <a class="office-chat-file-link" href="' + escapeHtml(item.attachment.download_url) + '" title="Download original">' +
+          '    <i class="fa-solid fa-download"></i>' +
+          '    <span>Download</span>' +
+          '  </a>' +
+          '</div>';
+      } else {
+        attachmentHtml = '' +
+          '<a class="office-chat-file-link" href="' + escapeHtml(item.attachment.download_url || '#') + '">' +
+          '  <i class="fa-solid fa-file-arrow-down"></i>' +
+          '  <span>' + escapeHtml(item.attachment.name || 'Attachment') + '</span>' +
+          '  <span>(' + escapeHtml(formatBytes(item.attachment.size_bytes || 0)) + ')</span>' +
+          '</a>';
+      }
+    }
+
     row.innerHTML = '' +
       '<div class="client-message-bubble">' +
       (item.message ? '  <div class="client-message-text">' + escapeHtml(item.message || '') + '</div>' : '') +
-      (item.attachment ? (
-        '  <a class="office-chat-file-link" href="' + escapeHtml(item.attachment.download_url || '#') + '">' +
-        '    <i class="fa-solid fa-file-arrow-down"></i>' +
-        '    <span>' + escapeHtml(item.attachment.name || 'Attachment') + '</span>' +
-        '    <span>(' + escapeHtml(formatBytes(item.attachment.size_bytes || 0)) + ')</span>' +
-        '  </a>'
-      ) : '') +
+      attachmentHtml +
       '  <div class="office-chat-msg-footer">' +
       '    <span class="office-chat-msg-time">' + escapeHtml(timeText) + '</span>' +
       deliveryStateHtml +
@@ -1188,8 +1220,19 @@
     }
 
     state.pendingAttachment = file;
+    var isImage = file.type.indexOf('image/') === 0;
+    var previewHtml = '';
+    
+    if (isImage) {
+      previewHtml = '<i class="fa-solid fa-image"></i> ';
+    } else if (file.type.indexOf('audio/') === 0) {
+      previewHtml = '<i class="fa-solid fa-file-audio"></i> ';
+    } else {
+      previewHtml = '<i class="fa-solid fa-file"></i> ';
+    }
+
     if (ui.chatAttachmentName) {
-      ui.chatAttachmentName.textContent = String(file.name || 'Attachment') + ' (' + formatBytes(sizeBytes) + ')';
+      ui.chatAttachmentName.innerHTML = previewHtml + '<span>' + escapeHtml(file.name || 'Attachment') + ' (' + formatBytes(sizeBytes) + ')</span>';
     }
     if (ui.chatAttachmentPreview) {
       ui.chatAttachmentPreview.hidden = false;
@@ -2059,17 +2102,29 @@
 
   async function sendChatViaApi(text, file) {
     var data;
-    if (file) {
-      var formData = new FormData();
-      formData.append('message', text || '');
-      formData.append('group_id', String(state.activeGroupId || ''));
-      formData.append('file', file);
-      data = await ApiClient.upload(endpoints.chatSend, formData);
-    } else {
-      data = await ApiClient.post(endpoints.chatSend, {
-        message: text,
-        group_id: state.activeGroupId,
-      });
+    var composer = ui.chatForm && ui.chatForm.querySelector('.office-chat-composer');
+
+    if (composer) {
+      composer.classList.add('is-loading');
+    }
+
+    try {
+      if (file) {
+        var formData = new FormData();
+        formData.append('message', text || '');
+        formData.append('group_id', String(state.activeGroupId || ''));
+        formData.append('file', file);
+        data = await ApiClient.upload(endpoints.chatSend, formData);
+      } else {
+        data = await ApiClient.post(endpoints.chatSend, {
+          message: text,
+          group_id: state.activeGroupId,
+        });
+      }
+    } finally {
+      if (composer) {
+        composer.classList.remove('is-loading');
+      }
     }
 
     if (!data || !data.success || !data.item) {
