@@ -103,6 +103,8 @@ from .client_api import (
     api_admin_client_staff_delete,
     api_admin_client_staff_toggle_status,
     api_admin_client_staff_set_temp_password,
+    api_admin_client_class_section_options,
+    api_admin_client_groups_list,
 )
 
 from .staff_api import (
