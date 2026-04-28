@@ -1,0 +1,302 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block content %}
+<section class="app-download-hero">
+    <div class="container">
+        <div class="app-download-content">
+            <div class="app-info">
+                <div class="app-icon-wrap">
+                    <i class="fa-brands fa-android"></i>
+                </div>
+                <h1>Adarsh ID Cards</h1>
+                <p class="app-tagline">Smart Card Management — Right in Your Pocket</p>
+                <p class="app-desc">
+                    Manage your ID cards, track orders, view card status, and get instant notifications — all from your Android device. Fast, secure, and always in sync.
+                </p>
+
+                <div class="app-features-grid">
+                    <div class="app-feature">
+                        <i class="fa-solid fa-shield-alt"></i>
+                        <span>Secure Login</span>
+                    </div>
+                    <div class="app-feature">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Instant Access</span>
+                    </div>
+                    <div class="app-feature">
+                        <i class="fa-solid fa-sync-alt"></i>
+                        <span>Real-time Sync</span>
+                    </div>
+                    <div class="app-feature">
+                        <i class="fa-solid fa-bell"></i>
+                        <span>Notifications</span>
+                    </div>
+                    <div class="app-feature">
+                        <i class="fa-solid fa-search"></i>
+                        <span>Quick Search</span>
+                    </div>
+                    <div class="app-feature">
+                        <i class="fa-solid fa-mobile-alt"></i>
+                        <span>Works Offline</span>
+                    </div>
+                </div>
+
+                <div class="app-download-actions">
+                    <a href="/static/app/adarsh-id-cards.apk" class="btn-download-apk" download>
+                        <i class="fa-brands fa-android"></i>
+                        <div>
+                            <small>Download for</small>
+                            <strong>Android</strong>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="app-install-note">
+                    <i class="fa-solid fa-info-circle"></i>
+                    <p>After downloading, open the APK file and allow installation from unknown sources if prompted. Version 1.0.0</p>
+                </div>
+            </div>
+
+            <div class="app-preview">
+                <div class="phone-frame">
+                    <div class="phone-screen">
+                        <div class="phone-mockup-gradient"></div>
+                        <div class="phone-mockup-content">
+                            <i class="fa-solid fa-id-card" style="font-size: 3rem; color: rgba(255,255,255,0.9); margin-bottom: 1rem;"></i>
+                            <span style="color: #fff; font-size: 1.1rem; font-weight: 700;">Adarsh ID Cards</span>
+                            <span style="color: rgba(255,255,255,0.6); font-size: 0.75rem;">Smart Card Management</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.app-download-hero {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    padding: 3rem 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #5b21b6 100%);
+    position: relative;
+    overflow: hidden;
+}
+.app-download-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.app-download-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -10%;
+    width: 350px;
+    height: 350px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.app-download-content {
+    display: flex;
+    align-items: center;
+    gap: 4rem;
+    position: relative;
+    z-index: 1;
+}
+.app-info {
+    flex: 1;
+}
+.app-icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    backdrop-filter: blur(8px);
+}
+.app-icon-wrap i {
+    font-size: 2.2rem;
+    color: #a3e635;
+}
+.app-info h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.5px;
+}
+.app-tagline {
+    font-size: 1.1rem;
+    color: rgba(255,255,255,0.75);
+    margin: 0 0 1rem;
+}
+.app-desc {
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.7;
+    margin: 0 0 2rem;
+    max-width: 480px;
+}
+.app-features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+.app-feature {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 0.6rem 0.8rem;
+    backdrop-filter: blur(4px);
+}
+.app-feature i {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.85rem;
+    width: 20px;
+    text-align: center;
+}
+.app-feature span {
+    color: rgba(255,255,255,0.85);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.btn-download-apk {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #fff;
+    color: #1e1e2e;
+    padding: 0.85rem 2rem;
+    border-radius: 16px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.btn-download-apk:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+}
+.btn-download-apk i {
+    font-size: 1.8rem;
+    color: #3ddc84;
+}
+.btn-download-apk small {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.btn-download-apk strong {
+    font-size: 1.15rem;
+    color: #1e1e2e;
+}
+.app-install-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    max-width: 480px;
+}
+.app-install-note i {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.85rem;
+    margin-top: 2px;
+}
+.app-install-note p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.4);
+    line-height: 1.5;
+}
+.app-preview {
+    flex-shrink: 0;
+}
+.phone-frame {
+    width: 260px;
+    height: 520px;
+    background: #111;
+    border-radius: 36px;
+    padding: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    border: 3px solid rgba(255,255,255,0.15);
+}
+.phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+}
+.phone-mockup-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.phone-mockup-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+@media (max-width: 768px) {
+    .app-download-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    .app-info h1 {
+        font-size: 1.8rem;
+    }
+    .app-features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .app-desc, .app-install-note {
+        max-width: 100%;
+    }
+    .app-download-actions {
+        display: flex;
+        justify-content: center;
+    }
+    .app-install-note {
+        justify-content: center;
+        text-align: left;
+    }
+    .app-preview {
+        order: -1;
+    }
+    .phone-frame {
+        width: 200px;
+        height: 400px;
+    }
+}
+</style>
+{% endblock %}
