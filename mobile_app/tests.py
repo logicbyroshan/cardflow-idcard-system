@@ -2130,6 +2130,13 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		names = [str(item.get('name') or '').strip() for item in payload['data']['cards']]
 		self.assertEqual(names, ['Sort Name Zeta Student', 'Sort Name Beta Student', 'Sort Name Alpha Student'])
 
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=pending&search=Sort Name&sort=name-desc&cursor=999999')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		names = [str(item.get('name') or '').strip() for item in payload['data']['cards']]
+		self.assertEqual(names, ['Sort Name Zeta Student', 'Sort Name Beta Student', 'Sort Name Alpha Student'])
+
 	def test_mobile_list_api_honors_emp_name_sort_query(self):
 		self._login_mobile_super_admin()
 		self.table.fields = [

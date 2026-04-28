@@ -19,6 +19,19 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Upload XLSX</span>
             </button>
             {% endif %}
+            {% if perm_reupload_idcard_image or perm_idcard_bulk_reupload %}
+            {% if perm_idcard_bulk_upload %}
+            <div class="action-divider"></div>
+            {% endif %}
+            <button class="btn action-btn btn-amber" id="reuploadImageBtn" title="Reupload images from ZIP">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span class="btn-text">Reupload Image</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_add or perm_idcard_edit or perm_idcard_info or perm_idcard_delete %}
+            {% if perm_idcard_bulk_upload or perm_reupload_idcard_image or perm_idcard_bulk_reupload %}
+            <div class="action-divider"></div>
+            {% endif %}
             {% if perm_idcard_add %}
             <button class="btn action-btn btn-blue" id="addBtn" title="Add new card">
                 <i class="fa-solid fa-plus"></i>
@@ -37,26 +50,26 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">View</span>
             </button>
             {% endif %}
-            {% if perm_idcard_verify %}
-            <button class="btn action-btn btn-green" id="verifyBtn" disabled title="Verify selected cards">
-                <i class="fa-solid fa-circle-check"></i>
-                <span class="btn-text">Verify Selected</span>
-            </button>
-            {% endif %}
             {% if perm_idcard_delete %}
             <button class="btn action-btn btn-red" id="deleteBtn" disabled title="Move to pool">
                 <i class="fa-solid fa-trash"></i>
                 <span class="btn-text">Delete</span>
             </button>
             {% endif %}
-            {% if perm_reupload_idcard_image or perm_idcard_bulk_reupload %}
-            <button class="btn action-btn btn-red" id="reuploadImageBtn" title="Reupload images from ZIP">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-                <span class="btn-text">Reupload Image</span>
+            {% endif %}
+            {% if perm_idcard_verify %}
+            {% if perm_idcard_bulk_upload or perm_reupload_idcard_image or perm_idcard_bulk_reupload or perm_idcard_add or perm_idcard_edit or perm_idcard_info or perm_idcard_delete %}
+            <div class="action-divider"></div>
+            {% endif %}
+            <button class="btn action-btn btn-green" id="verifyBtn" disabled title="Verify selected cards">
+                <i class="fa-solid fa-circle-check"></i>
+                <span class="btn-text">Verify Selected</span>
             </button>
             {% endif %}
             {% if perm_idcard_bulk_download %}
+            {% if perm_idcard_bulk_upload or perm_reupload_idcard_image or perm_idcard_bulk_reupload or perm_idcard_add or perm_idcard_edit or perm_idcard_info or perm_idcard_delete or perm_idcard_verify %}
             <div class="action-divider"></div>
+            {% endif %}
             <button class="btn action-btn btn-purple" id="downloadImgBtn" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
@@ -104,8 +117,8 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_reupload_idcard_image or perm_idcard_bulk_reupload %}
-            <button class="btn action-btn btn-red" id="reuploadImageBtnV" title="Reupload images from ZIP">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
+            <button class="btn action-btn btn-amber" id="reuploadImageBtnV" title="Reupload images from ZIP">
+                <i class="fa-solid fa-arrows-rotate"></i>
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
@@ -154,8 +167,8 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_reupload_idcard_image or perm_idcard_bulk_reupload %}
-            <button class="btn action-btn btn-red" id="reuploadImageBtnA" title="Reupload images from ZIP">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
+            <button class="btn action-btn btn-amber" id="reuploadImageBtnA" title="Reupload images from ZIP">
+                <i class="fa-solid fa-arrows-rotate"></i>
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
@@ -215,8 +228,8 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_reupload_idcard_image or perm_idcard_bulk_reupload %}
-            <button class="btn action-btn btn-red" id="reuploadImageBtnD" title="Reupload images from ZIP">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
+            <button class="btn action-btn btn-amber" id="reuploadImageBtnD" title="Reupload images from ZIP">
+                <i class="fa-solid fa-arrows-rotate"></i>
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
@@ -268,8 +281,8 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_reupload_idcard_image or perm_idcard_bulk_reupload %}
-            <button class="btn action-btn btn-red" id="reuploadImageBtnP" title="Reupload images from ZIP">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
+            <button class="btn action-btn btn-amber" id="reuploadImageBtnP" title="Reupload images from ZIP">
+                <i class="fa-solid fa-arrows-rotate"></i>
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}

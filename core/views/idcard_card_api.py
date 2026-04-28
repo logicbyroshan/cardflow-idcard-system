@@ -501,8 +501,6 @@ def api_idcard_cards_json(request, table_id):
         if required_perm and not PermissionService.has(request.user, required_perm):
             return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
-    # Pagination — supports cursor-based (preferred) and offset (legacy)
-    cursor = request.GET.get('cursor', '').strip()
     try:
         offset = max(0, int(request.GET.get('offset', 0)))
         limit = min(500, max(1, int(request.GET.get('limit', 100))))
@@ -639,16 +637,10 @@ def api_idcard_cards_json(request, table_id):
 
     total = qs.count()
 
-    # Cursor-based pagination: WHERE id < cursor ORDER BY id DESC LIMIT N
-    # Falls back to offset pagination if cursor not provided (backward compat)
-    if cursor:
-        try:
-            cursor_id = int(cursor)
-            cards = list(qs.filter(id__lt=cursor_id)[:limit + 1])
-        except (ValueError, TypeError):
-            cards = list(qs[offset:offset + limit + 1])
-    else:
-        cards = list(qs[offset:offset + limit + 1])
+    # Use offset pagination for all sortable list queries.
+    # Cursor-based slicing only works when the queryset order matches the
+    # cursor key; name/date sorts need the full ordered queryset preserved.
+    cards = list(qs[offset:offset + limit + 1])
 
     has_more = len(cards) > limit
     if has_more:
@@ -715,8 +707,8 @@ def api_idcard_cards_json(request, table_id):
         )
 
     results = []
-    # sr_no base: for cursor mode, use offset param if provided, otherwise 0
-    sr_base = offset if not cursor else offset
+    # sr_no is based on the current offset slice.
+    sr_base = offset
 
     # For client/client_staff users, expose update metadata only when modifier
     # is client/client_staff; admin/admin_staff updates are hidden.

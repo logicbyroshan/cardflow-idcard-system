@@ -1,10 +1,11 @@
 .office-work-page {
   padding: 0;
   width: 100%;
-  min-height: 100%;
+  height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #f6f9fd 0%, #eef4fb 100%);
+  overflow: hidden;
 }
 
 .office-work-action-bar {
@@ -83,6 +84,45 @@
   background: rgba(var(--primary-rgb), 0.08);
 }
 
+/* Topbar Tabs Styling */
+.topbar-tabs.office-work-tabs {
+  border: 0;
+  background: transparent;
+  margin-right: 15px;
+}
+
+.topbar-tabs .office-tab-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-right: 0;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.topbar-tabs .office-tab-btn:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.topbar-tabs .office-tab-btn:last-child {
+  border-radius: 0 4px 4px 0;
+  border-right: 1px solid #e2e8f0;
+}
+
+.topbar-tabs .office-tab-btn i {
+  font-size: 14px;
+}
+
+.topbar-tabs .office-tab-btn.is-active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.topbar-tabs .office-tab-btn.is-active i {
+  color: white;
+}
+
 .office-work-shell {
   padding: 0;
   background: transparent;
@@ -111,7 +151,7 @@
 .office-work-page .form-select,
 .office-work-page .office-input,
 .office-work-page .form-textarea {
-  border-radius: 4px !important;
+  border-radius: 2px !important;
 }
 
 .office-chat-panel {
@@ -120,8 +160,8 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border-radius: 6px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .office-chat-layout {
@@ -145,9 +185,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 0 14px;
+  height: 50px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+  flex-shrink: 0;
 }
 
 .office-chat-sidebar-head h3 {
@@ -215,7 +257,7 @@
 .office-chat-group-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 999px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -303,12 +345,13 @@
 .office-chat-header {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 12px 14px;
+  padding: 0 14px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
-  min-height: 60px;
+  height: 50px;
+  flex-shrink: 0;
 }
 
 .office-chat-header h3 {
@@ -327,7 +370,7 @@
 .office-chat-active-avatar {
   width: 34px;
   height: 34px;
-  border-radius: 999px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -661,6 +704,7 @@ textarea.office-input {
   border: 1px solid var(--color-slate-200);
   background: var(--color-white);
   padding: 12px;
+  border-radius: 0;
 }
 
 .office-section h3 {
@@ -709,16 +753,20 @@ textarea.office-input {
   min-height: 0;
   padding: 0;
   overflow: hidden;
-  border-radius: 6px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .office-task-board-shell > h3 {
   margin: 0;
-  padding: 10px 12px;
+  padding: 0 12px;
+  height: 50px;
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--color-slate-200);
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
   color: var(--color-white);
+  flex-shrink: 0;
 }
 
 .office-task-board-shell > h3 i {
@@ -738,7 +786,7 @@ textarea.office-input {
 
 .office-kanban-column {
   border: 1px solid var(--color-slate-200);
-  border-radius: 4px;
+  border-radius: 0;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
   min-height: 0;
   height: 100%;
@@ -1559,12 +1607,23 @@ textarea.office-input {
 
 /* --- Lead Management Styles --- */
 .office-section-head {
+  padding: 0 16px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--color-slate-100);
+  border-bottom: 1px solid var(--color-slate-200);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+  margin: -12px -12px 12px -12px;
+}
+
+.office-section-head h3 {
+  margin: 0 !important;
+  color: white !important;
+}
+
+.office-section-head h3 i {
+  color: white !important;
 }
 
 .office-leads-search-row {

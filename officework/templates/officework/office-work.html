@@ -20,29 +20,25 @@
   <span class="breadcrumb-item active">Office Work</span>
 {% endblock %}
 
+{% block topbar_right %}
+<div class="nav-right office-work-nav-right">
+  <div class="office-work-tabs topbar-tabs" role="tablist" aria-label="Office Work tabs">
+    <button type="button" class="office-tab-btn is-active" data-tab="chat" role="tab" aria-selected="true">
+      <i class="fa-solid fa-comments"></i> <span>Chat</span>
+    </button>
+    <button type="button" class="office-tab-btn" data-tab="tasks" role="tab" aria-selected="false">
+      <i class="fa-solid fa-list-check"></i> <span>Tasks</span>
+    </button>
+    <button type="button" class="office-tab-btn" data-tab="leads" role="tab" aria-selected="false">
+      <i class="fa-solid fa-user-tag"></i> <span>Leads</span>
+    </button>
+  </div>
+  {% include 'partials/notification-bell.html' %}
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="main-content office-work-page">
-  <section class="action-bar office-work-action-bar" aria-label="Office Work controls">
-    <div class="action-bar-left">
-      <div class="office-work-heading">
-        <h1 class="office-work-title"><i class="fa-solid fa-briefcase"></i> Office Work</h1>
-        <p class="office-work-subtitle">Admin and Operator collaboration workspace</p>
-      </div>
-    </div>
-    <div class="action-bar-right">
-      <div class="office-work-tabs" role="tablist" aria-label="Office Work tabs">
-        <button type="button" class="office-tab-btn is-active" data-tab="chat" role="tab" aria-selected="true">
-          <i class="fa-solid fa-comments"></i> Chat
-        </button>
-        <button type="button" class="office-tab-btn" data-tab="tasks" role="tab" aria-selected="false">
-          <i class="fa-solid fa-list-check"></i> Tasks
-        </button>
-        <button type="button" class="office-tab-btn" data-tab="leads" role="tab" aria-selected="false">
-          <i class="fa-solid fa-user-tag"></i> Leads
-        </button>
-      </div>
-    </div>
-  </section>
 
   <section class="office-work-shell">
     <div class="office-work-panels">

@@ -98,31 +98,14 @@
       <i class="fa-solid fa-sliders"></i><span>Manage Panel</span>
     </a>
     {% endif %}
-    {% endif %}
-
-    {% if is_super_admin or is_admin_staff %}
-    <!-- Tools  -  Admin & Operator only -->
-    <div class="nav-section">
-      <div class="nav-section-line"></div>
-      <span class="nav-section-title">Tools</span>
-      <div class="nav-section-line"></div>
-    </div>
-    <a href="{% url 'adarsh_cropper' %}" class="{% if active_page == 'adarsh_cropper' %}active{% endif %}">
-      <i class="fa-solid fa-wand-magic-sparkles"></i><span>Adarsh Engine</span>
-    </a>
-    {% endif %}
-
     {% if is_pro_user %}
-    <!-- Pro User tools -->
-    <div class="nav-section">
-      <div class="nav-section-line"></div>
-      <span class="nav-section-title">Pro User</span>
-      <div class="nav-section-line"></div>
-    </div>
     <a href="{% url 'login_as_user' %}" class="{% if active_page == 'impersonate' or active_page == 'pro_user_activity_logs' or active_page == 'pro_user_log_deletion_guard' or active_page == 'pro_user_data_deletion_guard' or active_page == 'pro_user_super_mode' %}active{% endif %}">
-      <i class="fa-solid fa-gem"></i><span>Pro Feature</span>
+      <i class="fa-solid fa-gem"></i><span>Pro Features</span>
     </a>
     {% endif %}
+    {% endif %}
+
+
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-actions">
@@ -132,6 +115,9 @@
       </a>
       {% endif %}
       {% if is_super_admin or is_admin_staff %}
+      <a href="{% url 'adarsh_cropper' %}" class="{% if active_page == 'adarsh_cropper' %}active{% endif %}">
+        <i class="fa-solid fa-wand-magic-sparkles"></i><span>Adarsh Engine</span>
+      </a>
       <a href="{% url 'office_work_page' %}" class="{% if active_page == 'office_work' %}active{% endif %}">
         <i class="fa-solid fa-briefcase"></i><span>Office Work</span>
       </a>
