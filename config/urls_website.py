@@ -9,7 +9,7 @@ For local development (single domain), config/urls.py is used instead.
 """
 from django.conf import settings
 from django.urls import path, include
-from website import views as website_views
+from website import seo
 from core.views.health import health_check
 
 
@@ -33,9 +33,9 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
-    # SEO
-    path('robots.txt', website_views.robots_txt, name='robots_txt'),
-    path('sitemap.xml', website_views.sitemap_view, name='sitemap_view'),
+    # SEO (with error handling and caching)
+    path('robots.txt', seo.robots_txt, name='robots_txt'),
+    path('sitemap.xml', seo.sitemap_xml, name='sitemap_view'),
 
     # Public website at root
     path('', include('website.urls')),

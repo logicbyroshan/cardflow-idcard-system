@@ -1,6 +1,9 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
 from .models import PortfolioCategory, PortfolioItem
+import logging
+
+logger = logging.getLogger(__name__)
 
 class StaticViewSitemap(Sitemap):
     """Sitemap for main navigation pages."""
@@ -29,7 +32,11 @@ class PortfolioCategorySitemap(Sitemap):
     priority = 0.8
 
     def items(self):
-        return PortfolioCategory.objects.filter(is_active=True).order_by('order')
+        try:
+            return PortfolioCategory.objects.filter(is_active=True).order_by('order')
+        except Exception as e:
+            logger.warning(f"Error fetching portfolio categories for sitemap: {e}")
+            return []
 
     def location(self, obj):
         return reverse('website:category_detail', kwargs={'slug': obj.slug})
@@ -43,7 +50,11 @@ class PortfolioItemSitemap(Sitemap):
     priority = 0.9  # Higher priority for individual products
 
     def items(self):
-        return PortfolioItem.objects.filter(is_active=True).select_related('category').order_by('-updated_at')
+        try:
+            return PortfolioItem.objects.filter(is_active=True).select_related('category').order_by('-updated_at')
+        except Exception as e:
+            logger.warning(f"Error fetching portfolio items for sitemap: {e}")
+            return []
 
     def location(self, obj):
         return reverse('website:product_detail', kwargs={'category_slug': obj.category.slug, 'slug': obj.slug})

@@ -329,6 +329,7 @@ class PermissionValidationMiddleware:
         '/favicon.ico',
         '/api/health/',
         '/robots.txt',
+        '/sitemap.xml',
         '/panel-entry/',
     ]
     

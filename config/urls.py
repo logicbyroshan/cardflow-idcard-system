@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include, reverse
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
-from website import views as website_views
+from website import seo
 from core.views.health import health_check
 from core import views as core_views
 
@@ -125,9 +125,9 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
-    # SEO — served at root, only for public website
-    path('robots.txt', website_views.robots_txt, name='robots_txt'),
-    path('sitemap.xml', website_views.sitemap_view, name='sitemap_view'),
+    # SEO — served at root, only for public website (with error handling & caching)
+    path('robots.txt', seo.robots_txt, name='robots_txt'),
+    path('sitemap.xml', seo.sitemap_xml, name='sitemap_view'),
 
     # Django admin
     path('admin/', admin.site.urls),
