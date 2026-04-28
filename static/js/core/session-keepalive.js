@@ -115,7 +115,7 @@
 
     function _handleSessionExpired(reason) {
         if (typeof window.showToast === 'function') {
-            window.showToast('Your session has expired. Redirecting to login...', 'warning', 3000);
+            window.showToast('Your session ended — you may have logged in on another device. Redirecting to login...', 'warning', 3000);
         }
         setTimeout(function () {
             window.location.href = LOGIN_URL;
