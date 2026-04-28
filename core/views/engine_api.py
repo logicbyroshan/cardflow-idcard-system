@@ -22,7 +22,9 @@ import mimetypes
 import os
 import shutil
 import re
+import tempfile
 import time
+import zipfile
 from pathlib import Path
 
 import requests as http_client
@@ -583,6 +585,88 @@ def api_engine_serve_image(request):
     content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
     # Open explicitly so FileResponse works correctly on Windows with BackslashPaths
     response = FileResponse(open(path, 'rb'), content_type=content_type)
+    response.block_size = SuperModeService.download_block_size_bytes(request.user)
+    return response
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  POST  /api/engine/download-zip/
+# ═══════════════════════════════════════════════════════════════════════════
+@login_required
+@require_any_admin
+@require_POST
+def api_engine_download_zip(request):
+    """
+    Build and download a ZIP archive for selected images in a folder.
+
+    Body JSON:
+      {
+        "folder_path": "C:\\path\\to\\cropped",
+        "file_list": ["IMG_001.jpg", "IMG_002.jpg"]
+      }
+    """
+    try:
+        body = json.loads(request.body or '{}')
+    except Exception:
+        return JsonResponse({"success": False, "message": "Invalid JSON payload."}, status=400)
+
+    folder_raw = str((body or {}).get('folder_path') or '').strip()
+    if not folder_raw:
+        return JsonResponse({"success": False, "message": "folder_path is required."}, status=400)
+
+    folder_path = Path(folder_raw).resolve()
+    if not folder_path.is_absolute():
+        logger.warning("Non-absolute path rejected (download-zip): %s", folder_raw)
+        return JsonResponse({"success": False, "message": "Absolute path required."}, status=400)
+
+    access_err = _path_access_error(request, folder_path)
+    if access_err:
+        return access_err
+
+    if not folder_path.is_dir():
+        return JsonResponse({"success": False, "message": "Folder not found."}, status=404)
+
+    requested_files = (body or {}).get('file_list')
+    if not isinstance(requested_files, list):
+        requested_files = []
+
+    requested_names = []
+    seen = set()
+    for raw_name in requested_files:
+        normalized_name = Path(str(raw_name or '')).name.strip()
+        if not normalized_name or normalized_name in seen:
+            continue
+        seen.add(normalized_name)
+        requested_names.append(normalized_name)
+
+    if not requested_names:
+        return JsonResponse({"success": False, "message": "No files selected."}, status=400)
+
+    selected_paths = []
+    for name in requested_names:
+        candidate = (folder_path / name).resolve()
+        if not _is_path_within_root(str(candidate), str(folder_path)):
+            continue
+        if not candidate.is_file():
+            continue
+        if candidate.suffix.lower() not in _ALLOWED_EXTS:
+            continue
+        selected_paths.append(candidate)
+
+    if not selected_paths:
+        return JsonResponse({"success": False, "message": "No valid image files found."}, status=400)
+
+    zip_file_obj = tempfile.TemporaryFile(mode='w+b')
+    with zipfile.ZipFile(zip_file_obj, mode='w', compression=zipfile.ZIP_DEFLATED) as archive:
+        for image_path in selected_paths:
+            archive.write(str(image_path), arcname=image_path.name)
+    zip_file_obj.seek(0)
+
+    ts = time.strftime('%Y%m%d_%H%M%S')
+    folder_label = folder_path.name or 'images'
+    output_name = f"{folder_label}_{ts}.zip"
+
+    response = FileResponse(zip_file_obj, as_attachment=True, filename=output_name, content_type='application/zip')
     response.block_size = SuperModeService.download_block_size_bytes(request.user)
     return response
 

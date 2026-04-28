@@ -485,6 +485,9 @@ def api_idcard_cards_json(request, table_id):
     """
     from django.utils.timezone import localtime, make_aware, is_naive
     from datetime import datetime as dt
+    from django.db.models import Q, Value, IntegerField, Case, When
+    from django.db.models.functions import Coalesce, Lower
+    from django.db.models.fields.json import KeyTextTransform
 
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err:
@@ -512,7 +515,6 @@ def api_idcard_cards_json(request, table_id):
     # Download: most recently downloaded first
     # Pool: most recently pooled first
     # .only() skips columns not needed for virtual table rendering (e.g. original_photo_name)
-    from django.db.models.functions import Coalesce
     _only_fields = (
         'id', 'table_id', 'field_data', 'photo', 'status',
         'created_at', 'updated_at', 'downloaded_at', 'deleted_at',
@@ -577,8 +579,6 @@ def api_idcard_cards_json(request, table_id):
     image_column = request.GET.get('image_column', '').strip()
     image_condition = request.GET.get('image_condition', '').strip()
     if image_column and image_condition in ('complete', 'pending', 'incomplete'):
-        from django.db.models.fields.json import KeyTextTransform
-        from django.db.models import Q
         qs = qs.annotate(_img=KeyTextTransform(image_column, 'field_data'))
         if image_condition == 'complete':
             qs = qs.exclude(_img__isnull=True).exclude(_img='').exclude(_img='NOT_FOUND')
@@ -607,26 +607,23 @@ def api_idcard_cards_json(request, table_id):
             except (ValueError, TypeError):
                 pass
 
-    # Server-side sort override (name A-Z / Z-A, date)
     sort_order = request.GET.get('sort', '').strip().lower()
     if sort_order in ('name-asc', 'name-desc'):
-        from django.db.models.functions import Lower as _Lower
-        from django.db.models import Value as _Val, IntegerField as _IntF, Case as _Case, When as _When
         name_field = IDCardService._get_name_field(table)
         if name_field:
             qs = qs.annotate(
                 _name_raw=KeyTextTransform(name_field, 'field_data'),
-                _name_sort=_Lower(Coalesce(
+                _name_sort=Lower(Coalesce(
                     KeyTextTransform(name_field, 'field_data'),
-                    _Val(''),
+                    Value(''),
                 )),
-                _name_empty=_Case(
-                    _When(
+                _name_empty=Case(
+                    When(
                         Q(_name_raw__isnull=True) | Q(_name_raw=''),
-                        then=_Val(1),
+                        then=Value(1),
                     ),
-                    default=_Val(0),
-                    output_field=_IntF(),
+                    default=Value(0),
+                    output_field=IntegerField(),
                 ),
             )
             if sort_order == 'name-asc':

@@ -1,7 +1,7 @@
 /**
  * Adarsh Cropper  -  Alpine.js Component  v5.0.0
  * ----------------------------------------------
- * Folder-only processing.  No ZIP upload.
+ * Folder-only processing with selected ZIP download from preview.
  *
  * Features:
  *   - Direct engine connection at http://127.0.0.1:4765 (fallback: Django proxy)
@@ -134,6 +134,9 @@ function cropperApp() {
 
     // -- Rename state --
     renameState: {
+      running: false,
+    },
+    downloadState: {
       running: false,
     },
     renameModal: {
@@ -1719,6 +1722,84 @@ function cropperApp() {
       return images
         .filter(function(img) { return self.selection.selected[img.name]; })
         .map(function(img) { return img.name; });
+    },
+
+    async downloadSelectedZip() {
+      var folder = this._getCurrentTabFolder();
+      if (!folder) {
+        if (typeof Toast !== 'undefined') Toast.error('No folder available for download.');
+        return;
+      }
+
+      var selectedFiles = this.getSelectedFiles();
+      if (!selectedFiles.length) {
+        if (typeof Toast !== 'undefined') Toast.error('Select at least one image to download.');
+        return;
+      }
+
+      this.downloadState.running = true;
+
+      try {
+        var csrfToken = '';
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfMeta) {
+          csrfToken = csrfMeta.getAttribute('content');
+        } else {
+          var m = document.cookie.match(/csrftoken=([^;]+)/);
+          if (m) csrfToken = m[1];
+        }
+
+        var resp = await fetch('/api/engine/download-zip/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+          },
+          body: JSON.stringify({
+            folder_path: folder,
+            file_list: selectedFiles,
+          }),
+        });
+
+        if (!resp.ok) {
+          var errMessage = 'Download failed';
+          try {
+            var errData = await resp.json();
+            errMessage = errData.message || errData.error || errMessage;
+          } catch (_) {}
+          throw new Error(errMessage);
+        }
+
+        var blob = await resp.blob();
+        var objectUrl = URL.createObjectURL(blob);
+
+        var filename = 'images.zip';
+        var contentDisposition = resp.headers.get('Content-Disposition') || '';
+        var utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+        var plainMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+        if (utf8Match && utf8Match[1]) {
+          filename = decodeURIComponent(utf8Match[1]);
+        } else if (plainMatch && plainMatch[1]) {
+          filename = plainMatch[1];
+        }
+
+        var anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(objectUrl);
+
+        if (typeof Toast !== 'undefined') {
+          Toast.success('ZIP download started for ' + selectedFiles.length + ' image(s).');
+        }
+      } catch (err) {
+        console.error('[Cropper] ZIP download failed:', err);
+        if (typeof Toast !== 'undefined') Toast.error(err.message || 'Failed to download ZIP');
+      } finally {
+        this.downloadState.running = false;
+      }
     },
 
     /**
