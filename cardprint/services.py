@@ -244,20 +244,14 @@ class GenerateCardService:
             from reportlab.pdfgen import canvas as rl_canvas
 
             style = cls._pdf_style_from_template(template)
-            front_mappings = (template.field_mappings or {}).get('front', {})
-            back_mappings = (template.field_mappings or {}).get('back', {})
             front_elements = cls._template_elements_for_side(template, 'front')
             back_elements = cls._template_elements_for_side(template, 'back')
-            use_template_json = bool(front_elements) or (bool(back_elements) and template.is_two_sided)
-            field_cfg = template.field_config or {}
-            front_allowed = set(field_cfg.get('front_fields') or [])
-            back_allowed = set(field_cfg.get('back_fields') or [])
 
             card_w_mm, card_h_mm = cls._resolve_dimensions_mm(template)
             canvas_metrics = cls._template_canvas_metrics(template, card_w_mm, card_h_mm)
 
-            render_card_w_mm = canvas_metrics['real_width_mm'] if use_template_json else card_w_mm
-            render_card_h_mm = canvas_metrics['real_height_mm'] if use_template_json else card_h_mm
+            render_card_w_mm = canvas_metrics['real_width_mm']
+            render_card_h_mm = canvas_metrics['real_height_mm']
 
             layout = cls._resolve_layout_config(
                 template=template,
@@ -265,14 +259,6 @@ class GenerateCardService:
                 card_h_mm=render_card_h_mm,
                 layout_options=layout_options,
             )
-            if not use_template_json and layout['cards_per_page'] > 1:
-                # Multi-card grid depends on template_json geometry. Keep old mapping path unchanged.
-                layout = cls._resolve_layout_config(
-                    template=template,
-                    card_w_mm=render_card_w_mm,
-                    card_h_mm=render_card_h_mm,
-                    layout_options={'mode': '1'},
-                )
 
             page_w_pt = layout['page_width_mm'] * mm
             page_h_pt = layout['page_height_mm'] * mm
@@ -287,19 +273,37 @@ class GenerateCardService:
             field_type_map = {f['name']: f.get('type', 'text') for f in (table.fields or [])}
 
             if layout['cards_per_page'] <= 1:
-                card_h_pt = render_card_h_mm * mm
                 for request_batch in cls._iter_batches(print_requests, render_batch_size):
                     for pr in request_batch:
                         card = pr.card
                         fd = card.field_data or {}
                         fd_upper = {k.upper(): v for k, v in fd.items()}
 
-                        if use_template_json:
+                        cls._draw_side_from_template_json(
+                            c,
+                            template,
+                            'front',
+                            front_elements,
+                            fd,
+                            fd_upper,
+                            field_type_map,
+                            render_card_w_mm,
+                            render_card_h_mm,
+                            style,
+                            origin_x_pt=0.0,
+                            origin_y_pt=0.0,
+                            slot_w_mm=render_card_w_mm,
+                            slot_h_mm=render_card_h_mm,
+                            canvas_metrics=canvas_metrics,
+                        )
+                        c.showPage()
+
+                        if template.is_two_sided:
                             cls._draw_side_from_template_json(
                                 c,
                                 template,
-                                'front',
-                                front_elements,
+                                'back',
+                                back_elements,
                                 fd,
                                 fd_upper,
                                 field_type_map,
@@ -312,37 +316,6 @@ class GenerateCardService:
                                 slot_h_mm=render_card_h_mm,
                                 canvas_metrics=canvas_metrics,
                             )
-                        else:
-                            cls._draw_side(
-                                c, fd, fd_upper, field_type_map, front_mappings,
-                                card_h_pt, style, front_allowed,
-                            )
-                        c.showPage()
-
-                        if template.is_two_sided:
-                            if use_template_json:
-                                cls._draw_side_from_template_json(
-                                    c,
-                                    template,
-                                    'back',
-                                    back_elements,
-                                    fd,
-                                    fd_upper,
-                                    field_type_map,
-                                    render_card_w_mm,
-                                    render_card_h_mm,
-                                    style,
-                                    origin_x_pt=0.0,
-                                    origin_y_pt=0.0,
-                                    slot_w_mm=render_card_w_mm,
-                                    slot_h_mm=render_card_h_mm,
-                                    canvas_metrics=canvas_metrics,
-                                )
-                            else:
-                                cls._draw_side(
-                                    c, fd, fd_upper, field_type_map, back_mappings,
-                                    card_h_pt, style, back_allowed,
-                                )
                             c.showPage()
             else:
                 slots = cls._layout_slots(layout, render_card_w_mm, render_card_h_mm)
@@ -424,39 +397,7 @@ class GenerateCardService:
         for idx in range(0, len(items), size):
             yield items[idx:idx + size]
 
-    @classmethod
-    def build_job_payload(
-        cls,
-        table_id,
-        template_id,
-        request_ids,
-        requested_by=None,
-        layout_options=None,
-        export_format='pdf',
-        batch_size=None,
-    ):
-        if hasattr(table_id, 'id'):
-            table_id = getattr(table_id, 'id', None)
-        if hasattr(template_id, 'id'):
-            template_id = getattr(template_id, 'id', None)
-        if request_ids and hasattr(request_ids[0], 'id'):
-            request_ids = [getattr(x, 'id', x) for x in request_ids]
 
-        user_id = None
-        if requested_by is not None:
-            user_id = getattr(requested_by, 'id', requested_by)
-
-        return {
-            'queue': 'cardprint-generate',
-            'table_id': int(table_id),
-            'template_id': int(template_id),
-            'request_ids': [int(x) for x in (request_ids or [])],
-            'layout': layout_options if isinstance(layout_options, dict) else None,
-            'format': str(export_format or 'pdf').lower(),
-            'batch_size': int(batch_size) if batch_size else None,
-            'requested_by': int(user_id) if user_id else None,
-            'requested_at': timezone.now().isoformat(),
-        }
 
     @classmethod
     def render_pdf_pages_to_png(cls, pdf_bytes, dpi=220):
@@ -1159,29 +1100,45 @@ class GenerateCardService:
                 int(color_hex[4:6], 16) / 255.0,
             )
 
-            if field_name:
-                label_template = str(item.get('label') or cls._format_field_label(field_name)).strip()
-                has_merge_tokens = bool(cls.MERGE_TOKEN_PATTERN.search(label_template))
-                if has_merge_tokens:
-                    text = cls._render_merge_tokens(label_template, fd, fd_upper, fallback='XXXXX').strip()
-                    if not text:
-                        fallback_value = str(value).strip() if value is not None else ''
-                        text = fallback_value or 'XXXXX'
-                else:
-                    label = cls._render_merge_tokens(label_template, fd, fd_upper, fallback='').strip()
-                    show_label = bool(item.get('showLabel', True))
-                    txt_value = str(value).strip() if value is not None else ''
-                    if not txt_value:
-                        txt_value = 'XXXXX'
-                    if show_label and label:
-                        text = f'{label}: {txt_value}'
-                    else:
-                        text = txt_value
-            else:
-                raw_text = str(item.get('label') or value or '').strip()
-                text = cls._render_merge_tokens(raw_text, fd, fd_upper, fallback='XXXXX').strip()
+            # --- Letter spacing (from editor, in px — convert to pt for PDF) ---
+            try:
+                letter_spacing = float(item.get('letterSpacing') or item.get('letter_spacing') or 0)
+            except (TypeError, ValueError):
+                letter_spacing = 0.0
+            elem_style['letter_spacing'] = letter_spacing
+
+            # --- Mail-merge text resolution (MS Word / CorelDRAW style) ---
+            # Priority: item['text'] → item['label'] (matches frontend draftTextValue)
+            raw_text_content = ''
+            if item.get('text') not in (None, ''):
+                raw_text_content = str(item['text'])
+            elif item.get('label') not in (None, ''):
+                raw_text_content = str(item['label'])
+
+            has_merge_tokens = bool(cls.MERGE_TOKEN_PATTERN.search(raw_text_content))
+
+            if has_merge_tokens:
+                # Text contains {{field_name}} tokens — resolve them like MS Word mail merge.
+                # Each {{token}} is replaced with the corresponding field value from the card data.
+                text = cls._render_merge_tokens(raw_text_content, fd, fd_upper, fallback='').strip()
                 if not text:
-                    continue
+                    text = ''
+            elif field_name:
+                # Element is bound to a field but has no merge tokens.
+                # Use the field value directly (simple single-field binding).
+                field_value = str(value).strip() if value not in (None, '') else ''
+                show_label = bool(item.get('showLabel', True))
+                if show_label and raw_text_content.strip():
+                    # Legacy label+value mode: "Label: Value"
+                    text = f'{raw_text_content.strip()}: {field_value}' if field_value else raw_text_content.strip()
+                else:
+                    text = field_value
+            else:
+                # No field, no tokens — render the static text as-is.
+                text = raw_text_content.strip()
+
+            if not text:
+                continue
 
             cls._draw_text(c, text, rl_x, rl_y, rl_w, rl_h, elem_style)
 
@@ -1239,95 +1196,7 @@ class GenerateCardService:
             logger.error('PDF merge failed: %s', exc, exc_info=True)
             return None, 'Failed to merge data with design PDF'
 
-    @classmethod
-    def _draw_side(
-        cls,
-        c,
-        fd,
-        fd_upper,
-        field_type_map,
-        mappings,
-        card_h_pt,
-        style,
-        allowed_fields=None,
-    ):
-        """Draw all mapped fields onto the current ReportLab canvas page."""
-        from reportlab.lib.units import mm
-        from django.conf import settings
 
-        for field_name, mapping in mappings.items():
-            if allowed_fields and field_name not in allowed_fields:
-                continue
-            value = fd.get(field_name) or fd_upper.get(field_name.upper()) or ''
-            ftype = field_type_map.get(field_name, 'text')
-
-            x_mm = float(mapping.get('x_mm', 0))
-            y_mm = float(mapping.get('y_mm', 0))
-            w_mm = float(mapping.get('w_mm', 20))
-            h_mm = float(mapping.get('h_mm', 10))
-
-            # ReportLab: (0,0) = bottom-left. Our origin: top-left.
-            rl_x = x_mm * mm
-            rl_y = card_h_pt - (y_mm + h_mm) * mm  # bottom-left of box in RL coords
-            rl_w = w_mm * mm
-            rl_h = h_mm * mm
-
-            if cls._is_image_field(ftype, field_name):
-                cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
-            else:
-                render_text = cls._build_render_text_for_mapping(field_name, mapping, value)
-                cls._draw_text(c, render_text, rl_x, rl_y, rl_w, rl_h, style)
-
-    @classmethod
-    def _build_render_text_for_mapping(cls, field_name, mapping, value):
-        label, text_value, show_key = cls._mapping_text_parts(field_name, mapping, value)
-
-        if show_key and label:
-            if not label.endswith(':'):
-                label = f'{label}:'
-            return f'{label}\n{text_value}'
-        return text_value
-
-    @classmethod
-    def _mapping_text_parts(cls, field_name, mapping, value):
-        label = str(mapping.get('label_text') or cls._format_field_label(field_name)).strip()
-        placeholder_raw = mapping.get('placeholder', None)
-        if placeholder_raw is None:
-            placeholder = 'XXXXX'
-        else:
-            placeholder = str(placeholder_raw).strip()
-        show_key_raw = mapping.get('show_key', True)
-        if isinstance(show_key_raw, str):
-            show_key = show_key_raw.strip().lower() not in ('false', '0', 'no')
-        else:
-            show_key = bool(show_key_raw)
-
-        text_value = str(value).strip() if value is not None else ''
-        if not text_value:
-            text_value = placeholder
-        return label, text_value, show_key
-
-    @classmethod
-    def _extract_key_prefix(cls, text):
-        src = str(text or '').strip()
-        if not src:
-            return ''
-        # Entire placeholder/date-mask style text is not a key prefix.
-        if re.fullmatch(r'[xX0-9\-\./_\s]{3,}', src):
-            return ''
-        m = re.match(r'^(.*?(?:[:=-]|\s{2,})\s*)', src)
-        if not m:
-            # Fallback for common key-placeholder style like "Mobile XXXXX".
-            parts = src.split()
-            if len(parts) >= 2:
-                tail = parts[-1]
-                if re.fullmatch(r'[xX*._-]{3,}', tail) or re.fullmatch(r'[xX0-9+\-]{4,}', tail):
-                    return ' '.join(parts[:-1]).strip() + ' '
-            return ''
-        prefix = str(m.group(1) or '').strip()
-        if not prefix:
-            return ''
-        return prefix + (' ' if not prefix.endswith(' ') else '')
 
     @classmethod
     def _format_field_label(cls, field_name):
@@ -1427,7 +1296,7 @@ class GenerateCardService:
 
     @classmethod
     def _draw_text(cls, c, text, x, y, w, h, style):
-        """Draw text inside a bounding box with basic word-wrap."""
+        """Draw text inside a bounding box with word-wrap, alignment, and letter spacing."""
         if not text:
             return
         try:
@@ -1436,9 +1305,10 @@ class GenerateCardService:
             line_height_mult = float(style.get('line_height', 1.3)) if isinstance(style, dict) else 1.3
             align = style.get('align', 'left') if isinstance(style, dict) else 'left'
             color_rgb = style.get('color_rgb', (0, 0, 0)) if isinstance(style, dict) else (0, 0, 0)
+            letter_spacing = float(style.get('letter_spacing', 0)) if isinstance(style, dict) else 0.0
 
             c.saveState()
-            # Clip to box
+            # Clip to bounding box
             path = c.beginPath()
             path.rect(x, y, w, h)
             c.clipPath(path, stroke=0, fill=0)
@@ -1457,36 +1327,46 @@ class GenerateCardService:
 
             line_height = font_size * line_height_mult
             max_text_width = max(1.0, w - 2.0)
-            key_prefix_text = str(style.get('key_prefix_text') or '') if isinstance(style, dict) else ''
-            value_text = style.get('value_text') if isinstance(style, dict) else None
 
-            if key_prefix_text and value_text is not None:
-                prefix_w = c.stringWidth(key_prefix_text, font_name, font_size)
-                first_line_width = max(1.0, max_text_width - prefix_w)
-                value_lines = cls._wrap_text_to_width(c, font_name, font_size, str(value_text), max_text_width, first_line_width)
-                if value_lines:
-                    lines = [key_prefix_text + value_lines[0]] + value_lines[1:]
-                else:
-                    lines = [key_prefix_text.strip()]
-                align = 'left'
+            lines = cls._wrap_text_to_width(c, font_name, font_size, text, max_text_width)
+
+            # Calculate total text block height for vertical centering
+            total_text_height = len(lines) * line_height if lines else 0
+            # Vertically center the text block within the bounding box
+            if total_text_height < h:
+                baseline_y = y + h - ((h - total_text_height) / 2) - font_size
             else:
-                lines = cls._wrap_text_to_width(c, font_name, font_size, text, max_text_width)
+                baseline_y = y + h - font_size
 
-            # Draw lines from top of box downward
-            # In RL, y is from bottom. Top of box = y + h. First baseline just inside top.
-            baseline_y = y + h - font_size
+            def _string_width_with_spacing(line_text):
+                """Calculate effective string width including letter spacing."""
+                base_w = c.stringWidth(line_text, font_name, font_size)
+                if letter_spacing and len(line_text) > 1:
+                    base_w += letter_spacing * (len(line_text) - 1)
+                return base_w
+
+            def _draw_string_with_spacing(draw_x, draw_y, line_text):
+                """Draw a string character-by-character when letter spacing is non-zero."""
+                if not letter_spacing or abs(letter_spacing) < 0.01:
+                    c.drawString(draw_x, draw_y, line_text)
+                    return
+                cursor_x = draw_x
+                for ch in line_text:
+                    c.drawString(cursor_x, draw_y, ch)
+                    cursor_x += c.stringWidth(ch, font_name, font_size) + letter_spacing
+
             for line in lines:
                 if baseline_y < y:
                     break
                 if align == 'right':
-                    text_width = c.stringWidth(line, font_name, font_size)
+                    text_width = _string_width_with_spacing(line)
                     draw_x = max(x + 1, x + w - text_width - 1)
                 elif align == 'center':
-                    text_width = c.stringWidth(line, font_name, font_size)
+                    text_width = _string_width_with_spacing(line)
                     draw_x = x + max(1, (w - text_width) / 2)
                 else:
                     draw_x = x + 1
-                c.drawString(draw_x, baseline_y, line)
+                _draw_string_with_spacing(draw_x, baseline_y, line)
                 baseline_y -= line_height
 
             c.restoreState()

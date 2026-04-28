@@ -75,8 +75,254 @@
     }
     draftRenderRafId = window.requestAnimationFrame(function () {
       draftRenderRafId = 0;
+      // During active drag/resize operations, use fast incremental patch
+      // instead of full DOM rebuild — this is the key CorelDRAW-like behavior.
+      if (isActiveDragOperation() && patchStep2CanvasInPlace()) {
+        return;
+      }
       render();
     });
+  }
+
+  /**
+   * Returns true if the user is currently in an active pointer operation
+   * (drag, resize, guide-drag, text-drag, rect-drag, marquee-select, or pan).
+   * During these operations we want incremental DOM patches, not full rebuilds.
+   */
+  function isActiveDragOperation() {
+    return !!(state.draftDragging
+      || state.draftResizeDragging
+      || state.draftGuideDragging
+      || state.draftTextDrag
+      || state.draftRectDrag
+      || state.draftSelectDrag
+      || state.spacePanState);
+  }
+
+  /**
+   * Fast incremental canvas DOM patch — CorelDRAW-style.
+   * Instead of doing flowRoot.innerHTML (which destroys the entire DOM tree,
+   * resets scroll positions, kills focus, causes flicker), this function:
+   *  1. Updates element positions/sizes by patching style attributes in-place
+   *  2. Updates the insert-guide overlay for text/rect drag
+   *  3. Updates the marquee selection box
+   *  4. Updates the group selection bounding box
+   *  5. Updates axis-lock hint lines
+   * Returns true if the patch was applied successfully, false if a full render is needed.
+   */
+  function patchStep2CanvasInPlace() {
+    if (state.step !== 2) return false;
+    var canvasEl = flowRoot.querySelector('.gc-step2-canvas');
+    if (!canvasEl) return false;
+
+    var metrics = draftCanvasMetrics();
+    var layout = draftCanvasLayoutMetrics(metrics);
+    var selectedIds = selectedDraftElementSet();
+
+    // --- Patch element positions / sizes ---
+    if (state.draftDragging || state.draftResizeDragging) {
+      var orderedElements = sortedDraftElements();
+      orderedElements.forEach(function (item) {
+        if (!item || !isDraftElementVisible(item)) return;
+        var renderSides = draftElementRenderSides(item);
+        renderSides.forEach(function (renderSide) {
+          var sideAttr = renderSide === 'back' ? 'back' : 'front';
+          var domEl = canvasEl.querySelector(
+            '.gc-draft-el[data-el-id="' + item.__id + '"][data-render-side="' + sideAttr + '"]'
+          );
+          if (!domEl) return;
+
+          var sideOffsetUnits = state.isTwoSided && renderSide === 'back' ? layout.cardWidth : 0;
+          var isArtisticGeometry = isArtisticDraftText(item);
+          var visualBounds = isArtisticGeometry ? draftArtisticBounds(item) : draftElementBounds(item);
+          var left = ((Number(visualBounds.x || 0) + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100;
+          var top = (Number(visualBounds.y || 0) / Math.max(1, layout.cardHeight)) * 100;
+          var width = (Number(visualBounds.width || 1) / Math.max(1, layout.totalWidth)) * 100;
+          var height = (Number(visualBounds.height || 1) / Math.max(1, layout.cardHeight)) * 100;
+          width = Math.max(0.8, width);
+          height = Math.max(0.8, height);
+
+          domEl.style.left = left + '%';
+          domEl.style.top = top + '%';
+          domEl.style.width = width + '%';
+          domEl.style.height = height + '%';
+
+          // Update selection/key-object classes
+          var isSelected = isDraftElementSelected(item.__id);
+          domEl.classList.toggle('is-selected', isSelected);
+
+          // Update artistic text core transform if needed
+          if (isArtisticGeometry) {
+            var coreEl = domEl.querySelector('.gc-draft-el-core');
+            if (coreEl) {
+              var scaleTextX = clampDraftScale(item.scaleX);
+              var scaleTextY = clampDraftScale(item.scaleY);
+              var rotation = normalizeDraftAngle(item.rotation);
+              var skewX = normalizeDraftAngle(item.skewX);
+              var skewY = normalizeDraftAngle(item.skewY);
+              var coreOffsetX = Number(visualBounds.coreOffsetX || 0);
+              var coreOffsetY = Number(visualBounds.coreOffsetY || 0);
+              coreEl.style.left = coreOffsetX.toFixed(3) + 'px';
+              coreEl.style.top = coreOffsetY.toFixed(3) + 'px';
+              coreEl.style.transform = 'scale(' + scaleTextX.toFixed(4) + ',' + scaleTextY.toFixed(4) + ') rotate(' + rotation.toFixed(3) + 'deg) skew(' + skewX.toFixed(3) + 'deg,' + skewY.toFixed(3) + 'deg)';
+            }
+          }
+        });
+      });
+
+      // Update group selection bounding box
+      patchGroupSelectionBox(canvasEl, selectedIds, layout);
+    }
+
+    // --- Patch guide positions ---
+    if (state.draftGuideDragging) {
+      patchGuidesInPlace(canvasEl, layout);
+    }
+
+    // --- Patch insert-guide overlay (text/rect drag) ---
+    patchInsertGuide(canvasEl, layout);
+
+    // --- Patch marquee selection box ---
+    patchSelectMarquee(canvasEl, layout);
+
+    // --- Patch axis lock hint ---
+    patchAxisLockHint(canvasEl, layout);
+
+    return true;
+  }
+
+  function patchGroupSelectionBox(canvasEl, selectedIds, layout) {
+    var groupEl = canvasEl.querySelector('.gc-draft-selection-group');
+    if (selectedIds.size <= 1) {
+      if (groupEl) groupEl.style.display = 'none';
+      return;
+    }
+    var activeSide = normalizeDraftEditorSide(state.draftActiveSide);
+    if (!state.isTwoSided) activeSide = 'front';
+    var groupBounds = draftSelectionBounds(selectedIds, activeSide);
+    if (!groupBounds) {
+      if (groupEl) groupEl.style.display = 'none';
+      return;
+    }
+    if (groupEl) {
+      groupEl.style.display = '';
+      var sideOffsetUnits = state.isTwoSided && activeSide === 'back' ? layout.cardWidth : 0;
+      groupEl.style.left = ((Number(groupBounds.x || 0) + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100 + '%';
+      groupEl.style.top = (Number(groupBounds.y || 0) / Math.max(1, layout.cardHeight)) * 100 + '%';
+      groupEl.style.width = Math.max(0.8, (Number(groupBounds.width || 1) / Math.max(1, layout.totalWidth)) * 100) + '%';
+      groupEl.style.height = Math.max(0.8, (Number(groupBounds.height || 1) / Math.max(1, layout.cardHeight)) * 100) + '%';
+    }
+  }
+
+  function patchGuidesInPlace(canvasEl, layout) {
+    var guideLayer = canvasEl.closest('.gc-step2-canvas-wrap');
+    if (!guideLayer) guideLayer = canvasEl.parentElement;
+    var glLayer = guideLayer ? guideLayer.querySelector('.gc-step2-guide-layer') : null;
+    if (!glLayer) return;
+    var guides = draftGuides();
+    var displayInfo = draftCanvasDisplayInfo();
+    var canvasDisplayWidth = Math.max(1, Math.round(Number(displayInfo.widthPx || 1)) * layout.sideCount);
+    var canvasDisplayHeight = Math.max(1, Math.round(Number(displayInfo.heightPx || 1)));
+    var activeSide = normalizeDraftEditorSide(state.draftActiveSide);
+    if (!state.isTwoSided) activeSide = 'front';
+    var sideStart = state.isTwoSided && activeSide === 'back' ? (canvasDisplayWidth / 2) : 0;
+    var sideWidth = state.isTwoSided ? (canvasDisplayWidth / 2) : canvasDisplayWidth;
+
+    guides.forEach(function (guide) {
+      var el = glLayer.querySelector('[data-guide-id="' + guide.id + '"]');
+      if (!el) return;
+      var isVertical = guide.axis === 'x';
+      var ratio = Number(guide.pos || 0) / (isVertical ? Math.max(1, layout.cardWidth) : Math.max(1, layout.cardHeight));
+      var posPx = ratio * (isVertical ? sideWidth : canvasDisplayHeight);
+      if (isVertical) {
+        el.style.left = (sideStart + posPx) + 'px';
+      } else {
+        el.style.top = posPx + 'px';
+      }
+      el.classList.toggle('is-selected', String(guide.id || '') === state.draftSelectedGuideId);
+    });
+  }
+
+  function patchInsertGuide(canvasEl, layout) {
+    var existingGuide = canvasEl.querySelector('.gc-draft-insert-guide');
+    var textDrag = state.draftTextDrag;
+    var rectDrag = state.draftRectDrag;
+    if (!textDrag && !rectDrag) {
+      if (existingGuide) existingGuide.remove();
+      return;
+    }
+    var drag = textDrag || rectDrag;
+    var isRect = !!rectDrag;
+    var box = draftDragBox(
+      Number(drag.startX || 0), Number(drag.startY || 0),
+      Number(drag.currentX || drag.startX || 0), Number(drag.currentY || drag.startY || 0),
+      isRect && !!drag.lockSquare
+    );
+    if (box.width < 2 && box.height < 2) {
+      if (existingGuide) existingGuide.remove();
+      return;
+    }
+    var sideOffsetUnits = state.isTwoSided && normalizeDraftEditorSide(drag.side || state.draftActiveSide) === 'back' ? layout.cardWidth : 0;
+    var left = ((box.x + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100;
+    var top = (box.y / Math.max(1, layout.cardHeight)) * 100;
+    var width = (box.width / Math.max(1, layout.totalWidth)) * 100;
+    var height = (box.height / Math.max(1, layout.cardHeight)) * 100;
+    if (!existingGuide) {
+      existingGuide = document.createElement('div');
+      existingGuide.className = 'gc-draft-insert-guide' + (isRect ? ' is-rect' : '');
+      canvasEl.appendChild(existingGuide);
+    }
+    existingGuide.style.left = left + '%';
+    existingGuide.style.top = top + '%';
+    existingGuide.style.width = width + '%';
+    existingGuide.style.height = height + '%';
+  }
+
+  function patchSelectMarquee(canvasEl, layout) {
+    var existing = canvasEl.querySelector('.gc-draft-insert-guide.is-select');
+    var selectDrag = state.draftSelectDrag;
+    if (!selectDrag) {
+      if (existing) existing.remove();
+      return;
+    }
+    var box = draftDragBox(
+      Number(selectDrag.startX || 0), Number(selectDrag.startY || 0),
+      Number(selectDrag.currentX || selectDrag.startX || 0), Number(selectDrag.currentY || selectDrag.startY || 0),
+      false
+    );
+    if (box.width < 2 && box.height < 2) {
+      if (existing) existing.remove();
+      return;
+    }
+    var sideOffsetUnits = state.isTwoSided && normalizeDraftEditorSide(selectDrag.side || state.draftActiveSide) === 'back' ? layout.cardWidth : 0;
+    var left = ((box.x + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100;
+    var top = (box.y / Math.max(1, layout.cardHeight)) * 100;
+    var width = (box.width / Math.max(1, layout.totalWidth)) * 100;
+    var height = (box.height / Math.max(1, layout.cardHeight)) * 100;
+    if (!existing) {
+      existing = document.createElement('div');
+      existing.className = 'gc-draft-insert-guide is-select';
+      canvasEl.appendChild(existing);
+    }
+    existing.style.left = left + '%';
+    existing.style.top = top + '%';
+    existing.style.width = width + '%';
+    existing.style.height = height + '%';
+  }
+
+  function patchAxisLockHint(canvasEl) {
+    var drag = state.draftDragging;
+    var existingV = canvasEl.querySelector('.gc-draft-axis-lock-hint.is-v');
+    var existingH = canvasEl.querySelector('.gc-draft-axis-lock-hint.is-h');
+    var existingLabel = canvasEl.querySelector('.gc-draft-axis-lock-label');
+    if (!drag || !drag.lockAxis) {
+      if (existingV) existingV.remove();
+      if (existingH) existingH.remove();
+      if (existingLabel) existingLabel.remove();
+      return;
+    }
+    // Axis lock hints are purely informational; skip patching for simplicity—
+    // the full render on mouseup will show them correctly.
   }
 
   function cancelDraftPointerMoveFrame() {
@@ -864,7 +1110,7 @@
       + '.gc-step2-canvas.is-photo-mode{cursor:crosshair;}'
       + '.gc-step2-canvas.is-rect-mode{cursor:crosshair;}'
       + '.gc-step2-canvas-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;font-weight:600;pointer-events:none;padding:10px;text-align:center;}'
-      + '.gc-draft-el{position:absolute;display:flex;align-items:center;justify-content:center;padding:2px 4px;border:1px dashed #2563eb;background:rgba(37,99,235,0.13);color:#1d4ed8;font-size:10px;font-weight:700;text-align:center;line-height:1.2;border-radius:2px;cursor:pointer;overflow:visible;}'
+      + '.gc-draft-el{position:absolute;display:flex;align-items:center;justify-content:center;padding:2px 4px;border:1px dashed #2563eb;background:rgba(37,99,235,0.13);color:#1d4ed8;font-size:10px;font-weight:700;text-align:center;line-height:1.2;border-radius:2px;cursor:pointer;overflow:visible;will-change:left,top,width,height;contain:layout style;}'
       + '.gc-draft-el.gc-draft-el-text{background:transparent;border:1px dashed transparent;color:#0f172a;padding:0;}'
       + '.gc-draft-el.gc-draft-el-text:hover{border-color:transparent;background:transparent;}'
       + '.gc-draft-el.gc-draft-el-artistic{white-space:pre-wrap;align-items:stretch;overflow:visible;}'
@@ -2683,10 +2929,13 @@
       x = nextX;
       y = nextY;
     } else {
-      width = Math.max(minWidth, Math.min(metrics.width, width));
-      height = Math.max(minHeight, Math.min(metrics.height, height));
-      x = Math.max(0, Math.min(metrics.width - width, x));
-      y = Math.max(0, Math.min(metrics.height - height, y));
+      width = Math.max(minWidth, Math.min(metrics.width * 2, width));
+      height = Math.max(minHeight, Math.min(metrics.height * 2, height));
+      // Soft clamp: ensure at least 12px of the element remains visible on the canvas.
+      // This matches CorelDRAW behavior where objects can be dragged partially off-page.
+      var minVisibleNonArt = 12;
+      x = Math.max(-width + minVisibleNonArt, Math.min(metrics.width - minVisibleNonArt, x));
+      y = Math.max(-height + minVisibleNonArt, Math.min(metrics.height - minVisibleNonArt, y));
     }
 
     var side = String(item.side || 'front').toLowerCase();
@@ -5981,10 +6230,10 @@
         var topRaw = (Number(visualBounds.y || 0) / Math.max(1, layout.cardHeight)) * 100;
         var widthRaw = (Number(visualBounds.width || 1) / Math.max(1, layout.totalWidth)) * 100;
         var heightRaw = (Number(visualBounds.height || 1) / Math.max(1, layout.cardHeight)) * 100;
-        var left = isArtisticGeometry ? leftRaw : Math.max(0, Math.min(100, leftRaw));
-        var top = isArtisticGeometry ? topRaw : Math.max(0, Math.min(100, topRaw));
-        var width = isArtisticGeometry ? Math.max(0.8, widthRaw) : Math.max(2, Math.min(100, widthRaw));
-        var height = isArtisticGeometry ? Math.max(0.8, heightRaw) : Math.max(2, Math.min(100, heightRaw));
+        var left = leftRaw;
+        var top = topRaw;
+        var width = Math.max(0.8, widthRaw);
+        var height = Math.max(0.8, heightRaw);
 
         var hasStoredLabel = Object.prototype.hasOwnProperty.call(item, 'label') || Object.prototype.hasOwnProperty.call(item, 'text');
         var label = item.type === 'text'
@@ -7512,6 +7761,12 @@
 
     setStepCounter();
 
+    // Preserve scroll position of the stage content area across full re-renders.
+    // This prevents the jarring scroll-to-top that makes the canvas feel broken.
+    var stageContentEl = flowRoot.querySelector('.gc-step2-stage-content');
+    var savedScrollLeft = stageContentEl ? stageContentEl.scrollLeft : 0;
+    var savedScrollTop = stageContentEl ? stageContentEl.scrollTop : 0;
+
     var panelHtml = '';
     if (state.step === 1) {
       panelHtml = renderStep1();
@@ -7526,6 +7781,15 @@
       + panelHtml
       + (state.loading ? '<div class="gc-loading"><div class="gc-loading-box"><span class="gc-spinner"></span><span>Loading...</span></div></div>' : '')
       + '</div>';
+
+    // Restore scroll position after DOM rebuild.
+    if (state.step === 2) {
+      var newStageContentEl = flowRoot.querySelector('.gc-step2-stage-content');
+      if (newStageContentEl && (savedScrollLeft || savedScrollTop)) {
+        newStageContentEl.scrollLeft = savedScrollLeft;
+        newStageContentEl.scrollTop = savedScrollTop;
+      }
+    }
 
     // Re-run unified-select enhancement after dynamic render so Step 1 selects don't fall back to native full-width popups.
     try {

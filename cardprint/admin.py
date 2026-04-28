@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PrintRequest, CardTemplate, CardTemplateDoc
+from .models import PrintRequest, CardTemplate
 
 
 @admin.register(PrintRequest)
@@ -23,11 +23,3 @@ class CardTemplateAdmin(admin.ModelAdmin):
     raw_id_fields = ('table',)
     readonly_fields = ('created_at', 'updated_at')
 
-
-@admin.register(CardTemplateDoc)
-class CardTemplateDocAdmin(admin.ModelAdmin):
-    list_display = ('id', 'template', 'layout_id', 'name', 'created_by', 'updated_at')
-    list_filter = ('template',)
-    search_fields = ('name', 'layout_id', 'template__table__name')
-    raw_id_fields = ('template', 'created_by')
-    readonly_fields = ('created_at', 'updated_at')

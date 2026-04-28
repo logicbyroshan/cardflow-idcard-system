@@ -531,8 +531,19 @@ class PermissionValidationMiddleware:
             return
         request.session[cls.SESSION_FP_KEY] = cls.build_session_fingerprint(request)
 
+    # Key used to track whether we've already given the session one grace
+    # re-seed after a fingerprint mismatch (browser auto-update, CDN UA
+    # rewrite, etc.).  Cleared on each successful match.
+    SESSION_FP_GRACE_KEY = '_session_fp_grace'
+
     def _validate_session_fingerprint(self, request):
-        """Validate session fingerprint for authenticated requests."""
+        """Validate session fingerprint for authenticated requests.
+
+        Uses a one-strike grace mechanism: the first mismatch re-seeds the
+        fingerprint (handles browser auto-updates, CDN User-Agent rewrites,
+        extension toggles, etc.) instead of immediately force-logging out.
+        Only a second consecutive mismatch triggers force-logout.
+        """
         if not getattr(django_settings, 'SESSION_FINGERPRINT_ENABLED', False):
             return None
 
@@ -544,16 +555,38 @@ class PermissionValidationMiddleware:
 
         if not stored_fp:
             request.session[self.SESSION_FP_KEY] = current_fp
+            request.session.pop(self.SESSION_FP_GRACE_KEY, None)
             return None
 
-        if stored_fp != current_fp:
-            logger.warning(
-                "PermissionValidationMiddleware: session fingerprint mismatch user=%s",
-                getattr(request.user, 'username', '?'),
-            )
-            return self._force_logout(request, 'Session verification failed. Please log in again.')
+        if stored_fp == current_fp:
+            # Match — clear any previous grace flag.
+            request.session.pop(self.SESSION_FP_GRACE_KEY, None)
+            return None
 
-        return None
+        # ── Mismatch detected ──
+        already_graced = request.session.get(self.SESSION_FP_GRACE_KEY)
+
+        if not already_graced:
+            # First mismatch: grant grace — re-seed fingerprint and continue.
+            # This handles transient UA changes (browser updates, CDN rewrites).
+            logger.warning(
+                "PermissionValidationMiddleware: session fingerprint mismatch "
+                "(grace re-seed) user=%s stored=%s current=%s",
+                getattr(request.user, 'username', '?'),
+                stored_fp[:12] if stored_fp else '?',
+                current_fp[:12],
+            )
+            request.session[self.SESSION_FP_KEY] = current_fp
+            request.session[self.SESSION_FP_GRACE_KEY] = True
+            return None
+
+        # Second consecutive mismatch: genuine session hijack concern.
+        logger.warning(
+            "PermissionValidationMiddleware: session fingerprint mismatch "
+            "(post-grace, forcing logout) user=%s",
+            getattr(request.user, 'username', '?'),
+        )
+        return self._force_logout(request, 'Session verification failed. Please log in again.')
 
     def _validation_unavailable_response(self, request):
         """Fail closed when permission validation cannot be completed."""

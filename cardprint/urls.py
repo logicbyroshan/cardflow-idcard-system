@@ -25,7 +25,6 @@ urlpatterns = [
     path('api/table/<int:table_id>/mark-pool/', views.api_print_mark_pool, name='api_print_mark_pool'),
     path('api/table/<int:table_id>/retrieve-generate/', views.api_print_retrieve_generate, name='api_print_retrieve_generate'),
     path('api/table/<int:table_id>/retrieve-finalized/', views.api_print_retrieve_finalized, name='api_print_retrieve_finalized'),
-    path('api/table/<int:table_id>/pool-list/', views.api_print_pool_list, name='api_print_pool_list'),
 
     # ── New Template-Driven API endpoints ──
     path('api/templates/<int:ref_id>/', views.api_templates, name='api_templates'),
