@@ -168,130 +168,117 @@
         <div id="officeTaskModalBackdrop" class="office-task-modal-backdrop" hidden></div>
         <section id="officeTaskModal" class="office-task-modal" role="dialog" aria-modal="true" aria-labelledby="officeTaskFormHeading" hidden>
           <header class="office-task-modal-header">
-            <h3 id="officeTaskFormHeading"><i class="fa-solid fa-plus"></i> Create Card</h3>
+            <h3 id="officeTaskFormHeading"><i class="fa-solid fa-table-cells-large"></i> Task Card</h3>
             <button id="officeTaskModalClose" type="button" class="office-task-modal-close" aria-label="Close task modal">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </header>
           <form id="officeTaskForm" class="office-task-form">
             <input id="officeTaskEditId" type="hidden" value="">
-            <div class="office-task-quick-actions" role="toolbar" aria-label="Task quick actions">
-              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskDescription"><i class="fa-solid fa-plus"></i> Add</button>
-              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskPriority"><i class="fa-solid fa-tag"></i> Labels</button>
-              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskDueDate"><i class="fa-regular fa-calendar"></i> Dates</button>
-              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskChecklistInput"><i class="fa-solid fa-list-check"></i> Checklist</button>
-              <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskCollaborators"><i class="fa-solid fa-users"></i> Members</button>
-            </div>
-
+            
             <div class="office-task-modal-layout">
               <div class="office-task-modal-main">
-                <div>
-                  <label for="officeTaskTitle">Card Title</label>
-                  <input id="officeTaskTitle" class="office-input" type="text" maxlength="180" placeholder="What needs to be done?" required>
-                </div>
-                <div>
-                  <label for="officeTaskDescription">Description</label>
-                  <textarea id="officeTaskDescription" class="office-input" rows="4" placeholder="Add details"></textarea>
-                </div>
-                <div class="office-grid-two">
-                  <div>
-                    <label for="officeTaskPriority">Priority</label>
-                    <select id="officeTaskPriority" class="form-select form-select-sm">
-                      <option value="low">Low</option>
-                      <option value="normal" selected>Normal</option>
-                      <option value="high">High</option>
-                    </select>
+                <input id="officeTaskTitle" class="office-task-title-input" type="text" maxlength="180" placeholder="Card Title" required>
+                
+                <div class="office-task-meta-grid">
+                  <div class="office-task-meta-item">
+                    <label>Priority</label>
+                    <div class="office-task-badge-row">
+                      <select id="officeTaskPriority" class="form-select form-select-sm" style="width: auto;">
+                        <option value="low">Low</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="high">High</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label for="officeTaskDueDate">Due Date</label>
-                    <input id="officeTaskDueDate" class="office-input" type="date">
+                  <div class="office-task-meta-item">
+                    <label>Due Date</label>
+                    <div class="office-task-badge-row">
+                      <input id="officeTaskDueDate" class="office-input" type="date" style="width: auto; padding: 4px 8px; min-height: 32px;">
+                    </div>
                   </div>
-                </div>
-                <div class="office-grid-two">
-                  <div>
-                    <label for="officeTaskStatus">List</label>
-                    <select id="officeTaskStatus" class="form-select form-select-sm">
-                      <option value="todo">To Do</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="done">Done</option>
-                      <option value="pending">Pending</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label for="officeTaskAssignee">Primary Owner</label>
-                    <select id="officeTaskAssignee" class="form-select form-select-sm">
-                      <option value="">Unassigned</option>
-                    </select>
+                  <div class="office-task-meta-item">
+                    <label>Status</label>
+                    <div class="office-task-badge-row">
+                      <select id="officeTaskStatus" class="form-select form-select-sm" style="width: auto;">
+                        <option value="todo">To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done</option>
+                        <option value="pending">Pending</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label for="officeTaskCollaborators">Collaborators</label>
-                  <select id="officeTaskCollaborators" class="form-select form-select-sm" multiple size="5"></select>
-                  <div class="office-field-help">Owner or creator can add multiple people to work in parallel.</div>
-                </div>
-                <div>
-                  <label>Followers</label>
-                  <div id="officeTaskFollowers" class="office-task-followers-strip"></div>
-                </div>
+
+                <section class="office-task-section">
+                  <h4><i class="fa-solid fa-align-left"></i> Description</h4>
+                  <div class="office-task-desc-wrap">
+                    <textarea id="officeTaskDescription" class="office-task-desc-input" placeholder="Add a more detailed description..."></textarea>
+                  </div>
+                </section>
+
                 <section class="office-task-section">
                   <h4><i class="fa-solid fa-list-check"></i> Checklist</h4>
                   <div id="officeTaskChecklistItems" class="office-task-checklist-list"></div>
-                  <div class="office-task-checklist-add-row">
-                    <input id="officeTaskChecklistInput" class="office-input" type="text" maxlength="220" placeholder="Add checklist item">
-                    <select id="officeTaskChecklistAssignee" class="form-select form-select-sm"></select>
-                    <button id="officeTaskChecklistAddBtn" type="button" class="btn btn-sm btn-neutral">
-                      <i class="fa-solid fa-plus"></i>
-                      Add
-                    </button>
+                  <div class="office-task-checklist-add-row" style="margin-top: 12px; display: flex; gap: 8px;">
+                    <input id="officeTaskChecklistInput" class="office-input" type="text" maxlength="220" placeholder="Add checklist item" style="flex: 1;">
+                    <select id="officeTaskChecklistAssignee" class="form-select form-select-sm" style="width: 150px;"></select>
+                    <button id="officeTaskChecklistAddBtn" type="button" class="btn btn-sm btn-neutral">Add</button>
                   </div>
                 </section>
+
                 <section id="officeTaskApprovalBox" class="office-task-approval-box" hidden>
                   <div class="office-task-approval-text" id="officeTaskApprovalText"></div>
-                  <div class="office-task-approval-actions">
-                    <button id="officeTaskApproveBtn" type="button" class="btn btn-sm btn-primary">
-                      <i class="fa-solid fa-check"></i>
-                      Approve Done
-                    </button>
-                    <button id="officeTaskRejectBtn" type="button" class="btn btn-sm btn-warning">
-                      <i class="fa-solid fa-rotate-left"></i>
-                      Send Back
-                    </button>
+                  <div class="office-task-approval-actions" style="margin-top: 12px;">
+                    <button id="officeTaskApproveBtn" type="button" class="btn btn-sm btn-primary">Approve Done</button>
+                    <button id="officeTaskRejectBtn" type="button" class="btn btn-sm btn-warning">Send Back</button>
                   </div>
                 </section>
               </div>
 
               <aside class="office-task-modal-side">
-                <section class="office-task-section office-task-section-activity">
+                <div class="office-task-quick-actions" style="padding: 0; margin-bottom: 24px; flex-direction: column; align-items: stretch;">
+                  <label style="font-size: 0.75rem; font-weight: 700; color: var(--color-slate-500); text-transform: uppercase; margin-bottom: 8px;">Add to card</label>
+                  <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskCollaborators"><i class="fa-solid fa-user-plus"></i> Members</button>
+                  <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskPriority"><i class="fa-solid fa-tag"></i> Labels</button>
+                  <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskChecklistInput"><i class="fa-solid fa-list-check"></i> Checklist</button>
+                  <button type="button" class="office-task-quick-btn" data-task-focus="officeTaskDueDate"><i class="fa-regular fa-calendar"></i> Dates</button>
+                  <button type="button" class="office-task-quick-btn" onclick="document.getElementById('officeTaskCommentFileInput').click()"><i class="fa-solid fa-paperclip"></i> Attachment</button>
+                </div>
+
+                <section class="office-task-section office-task-section-activity" style="border: none; background: transparent; padding: 0;">
                   <div class="office-task-activity-header">
-                    <h4><i class="fa-regular fa-comments"></i> Comments and activity</h4>
+                    <h4><i class="fa-solid fa-list-ul"></i> Activity</h4>
                     <button type="button" class="office-task-activity-details-btn">Show details</button>
                   </div>
-                  <div id="officeTaskCommentsList" class="office-task-comments-list"></div>
-                  <input id="officeTaskCommentFileInput" class="office-task-comment-file-input" type="file">
-                  <div id="officeTaskCommentAttachmentPreview" class="office-task-comment-attachment-preview" hidden>
-                    <span id="officeTaskCommentAttachmentName"></span>
-                    <button type="button" id="officeTaskCommentAttachmentRemove" class="btn btn-sm btn-neutral">
-                      <i class="fa-solid fa-xmark"></i>
-                    </button>
-                  </div>
+                  
                   <div class="office-task-comment-composer">
-                    <textarea id="officeTaskCommentInput" class="office-input" rows="3" placeholder="Write updates, paste links, or paste images/files..."></textarea>
-                    <button id="officeTaskCommentAttachBtn" type="button" class="office-task-comment-composer-btn office-task-comment-composer-btn-attach" title="Attach or paste file">
-                      <i class="fa-solid fa-paperclip"></i>
-                    </button>
-                    <button id="officeTaskCommentSendBtn" type="button" class="office-task-comment-composer-btn office-task-comment-composer-btn-send" title="Send comment">
-                      <i class="fa-solid fa-paper-plane"></i>
-                    </button>
+                    <textarea id="officeTaskCommentInput" rows="1" placeholder="Write a comment..."></textarea>
+                    <div id="officeTaskCommentAttachmentPreview" class="office-task-comment-attachment-preview" hidden style="padding: 8px; font-size: 0.8rem; background: #f4f5f7; border-radius: 4px; margin: 4px 8px;">
+                      <span id="officeTaskCommentAttachmentName"></span>
+                      <button type="button" id="officeTaskCommentAttachmentRemove" class="btn btn-xs btn-neutral" style="padding: 0 4px;"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="office-task-comment-composer-footer">
+                      <button id="officeTaskCommentSendBtn" type="button" class="btn btn-sm btn-primary">Save</button>
+                    </div>
                   </div>
+
+                  <div id="officeTaskCommentsList" class="office-task-comments-list"></div>
+                  <input id="officeTaskCommentFileInput" class="office-task-comment-file-input" type="file" hidden>
                 </section>
-                <section class="office-task-section office-task-section-meta">
-                  <div>
-                    <label>Created By</label>
-                    <div id="officeTaskCreatedBy" class="office-task-readonly">-</div>
+
+                <section class="office-task-section office-task-section-meta" style="border: none; background: transparent; padding: 0; margin-top: auto;">
+                  <div style="margin-bottom: 12px;">
+                    <label>Primary Owner</label>
+                    <select id="officeTaskAssignee" class="form-select form-select-sm"></select>
                   </div>
-                  <div>
-                    <label>Completion Request</label>
-                    <div id="officeTaskCompletionState" class="office-task-readonly">No request yet</div>
+                  <div style="margin-bottom: 12px;">
+                    <label>Collaborators</label>
+                    <select id="officeTaskCollaborators" class="form-select form-select-sm" multiple size="3"></select>
+                  </div>
+                  <div style="margin-bottom: 12px;">
+                    <label>Followers</label>
+                    <div id="officeTaskFollowers" class="office-task-followers-strip" style="background: white;"></div>
                   </div>
                 </section>
               </aside>
@@ -310,8 +297,6 @@
             </div>
           </form>
         </section>
-      </section>
-
       </section>
     </div>
   </section>

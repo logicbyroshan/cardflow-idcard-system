@@ -473,6 +473,10 @@
       html += '<div class="backup-card-actions">';
       html += '<button class="backup-action-btn backup-action-delete-now" onclick="openDeleteNowModal(' + b.id + ')"><i class="fa-solid fa-trash"></i> Delete Now</button>';
       html += '</div>';
+    } else if (b.status === 'pending') {
+      html += '<div class="backup-card-actions">';
+      html += '<a href="/panel/backup/select-clients/?task=' + b.id + '" class="backup-action-btn backup-action-continue"><i class="fa-solid fa-play"></i> Continue Backup</a>';
+      html += '</div>';
     }
 
     html += '</div>'; // card

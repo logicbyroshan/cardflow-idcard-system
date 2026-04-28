@@ -1559,26 +1559,36 @@
     var taskId = Number(item && item.id || 0);
     var comments = state.taskCommentsByTaskId[taskId] || [];
     if (!comments.length) {
-      ui.taskCommentsList.innerHTML = '<div class="office-task-comments-empty">No discussion yet.</div>';
+      ui.taskCommentsList.innerHTML = '<div class="office-task-comments-empty">No activity yet.</div>';
       return;
     }
 
     ui.taskCommentsList.innerHTML = comments.map(function (comment) {
-      var isSelf = Number(comment.sender_id || 0) === Number(cfg.currentUserId || 0);
+      var author = String(comment.sender_name || 'Unknown');
+      var avatar = author.charAt(0).toUpperCase();
+      var time = formatDateTime(comment.created_at);
+      
       return '' +
-        '<article class="office-task-comment-row' + (isSelf ? ' is-self' : '') + '">' +
-        '  <div class="office-task-comment-head">' +
-        '    <span class="office-task-comment-author">' + escapeHtml(comment.sender_name || 'Unknown') + '</span>' +
-        '    <span class="office-task-comment-time">' + escapeHtml(formatDateTime(comment.created_at)) + '</span>' +
-        '  </div>' +
-        (comment.message ? '  <div class="office-task-comment-body">' + escapeHtml(comment.message) + '</div>' : '') +
+        '<article class="office-task-comment-row">' +
+        '  <div class="office-task-comment-avatar">' + escapeHtml(avatar) + '</div>' +
+        '  <div class="office-task-comment-content">' +
+        '    <div class="office-task-comment-head">' +
+        '      <span class="office-task-comment-author">' + escapeHtml(author) + '</span>' +
+        '      <span class="office-task-comment-time">' + escapeHtml(time) + '</span>' +
+        '    </div>' +
+        '    <div class="office-task-comment-body">' +
+        (comment.message ? '      <div class="office-task-comment-text">' + escapeHtml(comment.message) + '</div>' : '') +
         (comment.attachment ? (
-          '  <a class="office-chat-file-link" href="' + escapeHtml(comment.attachment.download_url || '#') + '">' +
-          '    <i class="fa-solid fa-file-arrow-down"></i>' +
-          '    <span>' + escapeHtml(comment.attachment.name || 'Attachment') + '</span>' +
-          '    <span>(' + escapeHtml(formatBytes(comment.attachment.size_bytes || 0)) + ')</span>' +
-          '  </a>'
+          '      <a class="office-chat-file-link" style="margin-top: 8px;" href="' + escapeHtml(comment.attachment.download_url || '#') + '">' +
+          '        <i class="fa-solid fa-paperclip"></i>' +
+          '        <span>' + escapeHtml(comment.attachment.name || 'Attachment') + '</span>' +
+          '      </a>'
         ) : '') +
+        '    </div>' +
+        '    <div class="office-task-comment-footer">' +
+        '      <span class="office-task-comment-action">Reply</span>' +
+        '    </div>' +
+        '  </div>' +
         '</article>';
     }).join('');
     ui.taskCommentsList.scrollTop = ui.taskCommentsList.scrollHeight;
@@ -1685,8 +1695,6 @@
     }
     if (ui.taskTitle) {
       ui.taskTitle.value = String(item.title || '');
-      ui.taskTitle.readOnly = true;
-      ui.taskTitle.classList.add('is-locked');
     }
     if (ui.taskDescription) {
       ui.taskDescription.value = String(item.description || '');
@@ -1761,38 +1769,14 @@
   function renderTaskCard(task) {
     var priority = String(task.priority || 'normal').toLowerCase();
     var priorityMeta = TASK_PRIORITY_META[priority] || TASK_PRIORITY_META.normal;
-    var statusMeta = TASK_STATUS_META[String(task.status || '').toLowerCase()] || TASK_STATUS_META.todo;
-    var description = truncateTaskDescription(task.description || '');
-    var collaborators = Array.isArray(task.collaborator_ids) ? task.collaborator_ids : [];
-    var checklist = Array.isArray(task.checklist_items) ? task.checklist_items : [];
-    var doneChecklistCount = checklist.filter(function (item) {
-      return !!(item && item.is_done);
-    }).length;
-    var approvalLabel = '';
-    if (String(task.status || '') === 'pending') {
-      approvalLabel = '<span class="office-task-chip priority-high">Approval Pending</span>';
-    }
 
     return '' +
       '<article class="office-task-card" draggable="true" data-task-id="' + escapeHtml(task.id) + '">' +
-      '  <div class="office-task-card-head">' +
-      '    <h5 class="office-task-card-title">' + escapeHtml(task.title || 'Untitled Task') + '</h5>' +
+      '  <div class="office-task-card-top">' +
       '    <span class="office-task-chip priority-' + escapeHtml(priority) + '">' + escapeHtml(priorityMeta.label) + '</span>' +
+      '    <button type="button" class="office-task-edit-trigger" title="Edit details"><i class="fa-solid fa-pencil"></i></button>' +
       '  </div>' +
-      (description ? '  <p class="office-task-card-desc">' + escapeHtml(description) + '</p>' : '') +
-      '  <div class="office-task-card-meta">' +
-      '    <span><i class="fa-solid fa-user"></i> ' + escapeHtml(task.assigned_to_name || 'Unassigned') + '</span>' +
-      '    <span><i class="fa-regular fa-calendar"></i> ' + escapeHtml(task.due_date || 'No due date') + '</span>' +
-      '  </div>' +
-      '  <div class="office-task-card-meta">' +
-      '    <span><i class="fa-solid fa-users"></i> ' + escapeHtml(String(collaborators.length)) + ' collaborators</span>' +
-      '    <span><i class="fa-solid fa-list-check"></i> ' + escapeHtml(doneChecklistCount + '/' + checklist.length) + ' checklist</span>' +
-      '  </div>' +
-      '  <div class="office-task-card-footer">' +
-      '    <span class="office-task-chip">' + escapeHtml(statusMeta.label) + '</span>' +
-      (approvalLabel || '') +
-        '    <span class="office-task-card-open-hint">Double-click to edit</span>' +
-      '  </div>' +
+      '  <h5 class="office-task-card-title" title="Click to edit title" data-task-title-id="' + escapeHtml(task.id) + '">' + escapeHtml(task.title || 'Untitled Task') + '</h5>' +
       '</article>';
   }
 
@@ -1843,6 +1827,86 @@
     var input = inline.querySelector('[data-inline-title-input]');
     if (input && typeof input.focus === 'function') {
       input.focus();
+    }
+  }
+
+  function startInlineTaskTitleEdit(node) {
+    var taskId = Number(node.getAttribute('data-task-title-id') || 0);
+    var item = taskById(taskId);
+    if (!item) return;
+
+    var originalValue = node.textContent.trim();
+    node.classList.add('is-editing');
+    node.contentEditable = 'true';
+    node.focus();
+
+    // Select all text
+    var range = document.createRange();
+    range.selectNodeContents(node);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    function finish(save) {
+      node.classList.remove('is-editing');
+      node.contentEditable = 'false';
+      node.removeEventListener('blur', onBlur);
+      node.removeEventListener('keydown', onKey);
+
+      var newValue = node.textContent.trim();
+      if (save && newValue && newValue !== originalValue) {
+        updateTaskTitleInline(taskId, newValue);
+      } else {
+        node.textContent = originalValue;
+      }
+    }
+
+    function onBlur() {
+      finish(true);
+    }
+
+    function onKey(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finish(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(false);
+      }
+    }
+
+    node.addEventListener('blur', onBlur);
+    node.addEventListener('keydown', onKey);
+  }
+
+  async function updateTaskTitleInline(taskId, newTitle) {
+    var item = taskById(taskId);
+    if (!item) return;
+
+    var payload = {
+      title: newTitle,
+      description: item.description || '',
+      status: item.status || 'todo',
+      priority: item.priority || 'normal',
+      assigned_to_id: item.assigned_to_id || '',
+      collaborator_ids: item.collaborator_ids || [],
+      checklist_items: item.checklist_items || [],
+      due_date: item.due_date || '',
+    };
+
+    try {
+      var data = await ApiClient.post(endpoints.taskUpdate.replace('0', taskId), payload);
+      if (data && data.success && data.task) {
+        upsertTaskItem(data.task);
+        renderTaskBoard();
+        notify('Title updated.', 'success');
+      } else {
+        notify((data && data.message) || 'Failed to update title.', 'error');
+        renderTaskBoard();
+      }
+    } catch (error) {
+      notify('Failed to update title.', 'error');
+      renderTaskBoard();
     }
   }
 
@@ -2685,6 +2749,11 @@
     }
 
     if (ui.taskCommentInput) {
+      ui.taskCommentInput.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+      });
+
       ui.taskCommentInput.addEventListener('paste', function (event) {
         if (ui.taskCommentInput.disabled) {
           return;
@@ -2739,9 +2808,25 @@
           return;
         }
 
-        var cancelInlineBtn = event.target.closest('[data-action="cancel-inline-task"]');
         if (cancelInlineBtn) {
           closeInlineTaskCreator();
+          return;
+        }
+
+        var editTrigger = event.target.closest('.office-task-edit-trigger');
+        if (editTrigger) {
+          var card = editTrigger.closest('.office-task-card');
+          var tid = Number(card.getAttribute('data-task-id') || 0);
+          var item = taskById(tid);
+          if (item) {
+            openTaskEditModal(item);
+          }
+          return;
+        }
+
+        var titleNode = event.target.closest('.office-task-card-title');
+        if (titleNode && !titleNode.classList.contains('is-editing')) {
+          startInlineTaskTitleEdit(titleNode);
           return;
         }
 

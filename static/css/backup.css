@@ -703,6 +703,18 @@
 }
 .backup-action-delete-now:hover { background: var(--color-red-50); }
 
+.backup-action-continue {
+  color: var(--color-white) !important;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  text-decoration: none;
+}
+.backup-action-continue:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  opacity: 0.9;
+}
+
 /* No backups */
 .backup-empty-state {
   text-align: center;
