@@ -262,6 +262,8 @@
 /* ─── Client selection page ─── */
 .backup-select-page,
 .backup-select-page .main.backup-main {
+  --backup-accent: var(--color-blue, #2563eb);
+  --backup-accent-dark: var(--color-blue-dark, #1e40af);
   height: 100vh;
   min-height: 0;
 }
@@ -471,22 +473,58 @@
 
 /* Bottom bar */
 .backup-bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: var(--sidebar-width, 220px);
-  right: 0;
-  background: var(--color-white);
-  border-top: 1px solid var(--color-gray-200);
-  padding: 10px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  z-index: 100;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 260px !important;
+  right: 0 !important;
+  height: 70px !important;
+  background: #ffffff !important;
+  border-top: 2px solid #e2e8f0 !important;
+  padding: 0 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  z-index: 99999 !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15) !important;
 }
+
+@media (max-width: 1024px) {
+  .backup-bottom-bar {
+    left: 0 !important;
+  }
+}
+
 .backup-bottom-info {
-  font-size: var(--ui-font-size-md, 13px);
-  font-weight: 600;
-  color: var(--color-slate-700);
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+}
+
+.backup-btn-confirm {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+  transition: all 0.2s ease !important;
+  text-decoration: none !important;
+}
+
+.backup-btn-confirm:hover {
+  background: #1d4ed8 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4) !important;
+}
+
+.backup-btn-confirm i {
+  font-size: 16px !important;
 }
 
 /* Confirm list */
