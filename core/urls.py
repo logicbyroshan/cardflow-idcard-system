@@ -98,6 +98,7 @@ urlpatterns = [
     path('api/engine/page-photo-picker-folder/', views.api_engine_page_photo_picker_folder, name='api_engine_page_photo_picker_folder'),
     path('api/engine/preview/', views.api_engine_preview, name='api_engine_preview'),
     path('api/engine/serve-image/', views.api_engine_serve_image, name='api_engine_serve_image'),
+    path('api/engine/download-zip/', views.api_engine_download_zip, name='api_engine_download_zip'),
     path('api/engine/save-edited/', views.api_engine_save_edited, name='api_engine_save_edited'),
     path('api/engine/delete-image/', views.api_engine_delete_image, name='api_engine_delete_image'),
     path('api/engine/compress-folder/', views.api_engine_compress_folder, name='api_engine_compress_folder'),

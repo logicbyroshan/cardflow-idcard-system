@@ -193,6 +193,7 @@ from .engine_api import (
     api_engine_compress_folder,
     api_engine_preview,
     api_engine_serve_image,
+    api_engine_download_zip,
     api_engine_save_edited,
     api_engine_delete_image,
     api_engine_adjust_image,

@@ -703,6 +703,16 @@
             </label>
           </div>
           <div class="selection-toolbar-right" x-show="selection.count > 0 || selection.all">
+            <button class="btn btn-primary btn-sm" type="button"
+                    @click="downloadSelectedZip()"
+                    :disabled="downloadState.running">
+              <template x-if="!downloadState.running">
+                <span><i class="fa-solid fa-file-zipper"></i> Download ZIP</span>
+              </template>
+              <template x-if="downloadState.running">
+                <span><i class="fa-solid fa-spinner fa-spin"></i> Preparing...</span>
+              </template>
+            </button>
             <button class="btn btn-neutral btn-sm" type="button"
                     @click="openRenameModal()"
                     :disabled="renameState.running">
