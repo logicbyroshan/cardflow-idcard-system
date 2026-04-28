@@ -79,7 +79,6 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={s.headerBtn}><FontAwesome5 name="user" size={14} color="#fff" solid /></TouchableOpacity>
           </View>
         </View>
-        </View>
         {/* Full Search Bar */}
         <TouchableOpacity 
           style={s.searchBar} 

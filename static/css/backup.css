@@ -369,17 +369,23 @@
 }
 
 /* Client cards grid */
-.backup-clients-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-  padding: 16px 18px;
-  /* Reserve space at the bottom so cards aren't hidden behind the fixed bar */
-  padding-bottom: 80px;
+.backup-clients-scroll-area {
   flex: 1;
   min-height: 0;
-  align-content: start;
   overflow-y: auto;
+  padding: 30px;
+  /* Ensure padding for bottom bar */
+  padding-bottom: 100px;
+  background: #f8fafc;
+}
+
+.backup-clients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 25px;
+  width: 100%;
+  max-width: 1400px;
+  padding-bottom: 68px;
 }
 .backup-client-card {
   display: flex;
@@ -475,17 +481,22 @@
 .backup-bottom-bar {
   position: fixed !important;
   bottom: 0 !important;
-  left: 260px !important;
+  left: var(--sidebar-width, 150px) !important;
   right: 0 !important;
-  height: 70px !important;
+  height: 58px !important;
   background: #ffffff !important;
   border-top: 2px solid #e2e8f0 !important;
-  padding: 0 30px !important;
+  padding: 0 20px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   z-index: 99999 !important;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15) !important;
+  transition: left 0.3s ease !important;
+}
+
+body.sidebar-collapsed .backup-bottom-bar {
+  left: 0 !important;
 }
 
 @media (max-width: 1024px) {
@@ -495,7 +506,7 @@
 }
 
 .backup-bottom-info {
-  font-size: 14px !important;
+  font-size: 13px !important;
   font-weight: 700 !important;
   color: #1e293b !important;
 }
@@ -503,13 +514,13 @@
 .backup-btn-confirm {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 10px !important;
+  gap: 8px !important;
   background: #2563eb !important;
   color: #ffffff !important;
   border: none !important;
-  padding: 10px 24px !important;
+  padding: 8px 18px !important;
   border-radius: 8px !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
@@ -524,7 +535,7 @@
 }
 
 .backup-btn-confirm i {
-  font-size: 16px !important;
+  font-size: 14px !important;
 }
 
 /* Confirm list */

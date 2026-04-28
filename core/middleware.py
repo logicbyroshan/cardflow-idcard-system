@@ -686,16 +686,21 @@ class PermissionValidationMiddleware:
                 return self._force_logout(request, 'Your account has been removed.')
             except Exception as exc:
                 logger.error(
-                    "PermissionValidationMiddleware: DB error re-fetching user %s — denying request: %s",
-                    getattr(user, 'username', '?'), exc,
+                    "PVM_DEBUG: DB error re-fetching user %s (ID: %s) — path: %s, role: %s, authenticated: %s, exc: %s",
+                    getattr(user, 'username', '?'), 
+                    getattr(user, 'pk', '?'),
+                    request.path,
+                    getattr(user, 'role', '?'),
+                    user.is_authenticated,
+                    exc,
                 )
                 return self._validation_unavailable_response(request)
         
         # Check if user is still active
         if not fresh_user.is_active:
             logger.warning(
-                "PermissionValidationMiddleware: User %s (ID: %d) is now inactive - forcing logout",
-                user.username, user.pk
+                "PVM_DEBUG: User %s (ID: %d) is now inactive - path: %s",
+                user.username, user.pk, request.path
             )
             return self._force_logout(request, 'Your account has been deactivated.')
         
@@ -706,6 +711,10 @@ class PermissionValidationMiddleware:
             return self._validate_client_staff_access(request, fresh_user)
         
         # super_admin, pro_user and admin_staff pass through
+        # Add a debug log for successful admin validation
+        if fresh_user.role in ['super_admin', 'pro_user', 'admin_staff']:
+             logger.debug("PVM_DEBUG: Admin validation success for %s (role: %s) on %s", fresh_user.username, fresh_user.role, request.path)
+        
         return None
     
     def _validate_client_access(self, request, user):

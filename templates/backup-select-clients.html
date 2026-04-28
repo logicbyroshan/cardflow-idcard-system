@@ -69,36 +69,38 @@
         </button>
       </div>
 
-      <!-- Client cards grid -->
-      <div class="backup-clients-grid" id="clientsGrid">
-        {% for c in clients %}
-        <label class="backup-client-card" data-client-id="{{ c.pk }}">
-          <input type="checkbox" class="backup-client-check" value="{{ c.pk }}">
-          <div class="backup-client-info">
-            <div class="backup-client-name">{{ c.name }}</div>
-            <div class="backup-client-meta">
-              <span><i class="fa-solid fa-table"></i> {{ c.total_tables }} table{{ c.total_tables|pluralize }}</span>
-              <span><i class="fa-solid fa-id-card"></i> {{ c.total_cards }} card{{ c.total_cards|pluralize }}</span>
+      <!-- Client cards grid container (scrollable) -->
+      <div class="backup-clients-scroll-area">
+        <div class="backup-clients-grid" id="clientsGrid">
+          {% for c in clients %}
+          <div class="backup-client-card" data-client-id="{{ c.pk }}" onclick="toggleClientSelection(this)">
+            <input type="checkbox" class="backup-client-check" value="{{ c.pk }}" @click.stop>
+            <div class="backup-client-info">
+              <div class="backup-client-name">{{ c.name }}</div>
+              <div class="backup-client-meta">
+                <span><i class="fa-solid fa-table"></i> {{ c.total_tables }} table{{ c.total_tables|pluralize }}</span>
+                <span><i class="fa-solid fa-id-card"></i> {{ c.total_cards }} card{{ c.total_cards|pluralize }}</span>
+              </div>
+              <div class="backup-client-date">
+                Created {{ c.created_at|date:"d M Y" }}
+              </div>
             </div>
-            <div class="backup-client-date">
-              Created {{ c.created_at|date:"d M Y" }}
-            </div>
+              <span class="backup-client-logo" aria-hidden="true">
+                {% if c.website_logo %}
+                <img src="{{ c.website_logo.url }}" alt="{{ c.name }} logo" loading="lazy" />
+                {% else %}
+                <i class="fa-solid fa-building"></i>
+                {% endif %}
+              </span>
+            <div class="backup-client-check-icon"><i class="fa-solid fa-circle-check"></i></div>
           </div>
-            <span class="backup-client-logo" aria-hidden="true">
-              {% if c.website_logo %}
-              <img src="{{ c.website_logo.url }}" alt="{{ c.name }} logo" loading="lazy" />
-              {% else %}
-              <i class="fa-solid fa-building"></i>
-              {% endif %}
-            </span>
-          <div class="backup-client-check-icon"><i class="fa-solid fa-circle-check"></i></div>
-        </label>
-        {% empty %}
-        <div class="backup-empty">
-          <i class="fa-solid fa-inbox"></i>
-          <p>No active clients found.</p>
+          {% empty %}
+          <div class="backup-empty">
+            <i class="fa-solid fa-inbox"></i>
+            <p>No active clients found.</p>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       </div>
 
       <!-- Selected count + confirm -->
@@ -185,7 +187,19 @@
       }
     }
 
-    // Checkbox change
+    window.toggleClientSelection = function(card) {
+      const cb = card.querySelector('.backup-client-check');
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      if (cb.checked) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+      updateBottomBar();
+    };
+
+    // Checkbox direct change (in case keyboard used)
     document.addEventListener('change', function(e) {
       if (e.target.classList.contains('backup-client-check')) {
         const card = e.target.closest('.backup-client-card');

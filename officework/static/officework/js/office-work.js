@@ -3014,7 +3014,15 @@
         }
       })
       .catch(function(err) {
-        notify('Network error while loading leads', 'error');
+        window.console.error('OFFICE_WORK_DEBUG: Failed to load leads', {
+            status: err.status,
+            message: err.message,
+            data: err.data
+        });
+        var msg = 'Failed to load leads';
+        if (err.status === 403) msg = 'Access denied: You do not have permission to view leads.';
+        else if (err.status === 401) msg = 'Session expired: Please login again.';
+        notify(msg, 'error');
       });
   }
 
