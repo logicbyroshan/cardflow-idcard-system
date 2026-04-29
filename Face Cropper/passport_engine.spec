@@ -40,7 +40,6 @@ hiddenimports = (
         "passport_engine_core.extractor",
         "passport_engine_core.processor",
         "passport_engine_core.page_photo_picker",
-        "passport_engine_core.compressor",
         "passport_engine_core.renamer",
         "passport_engine_core.adjustments",
         "passport_engine_core.validators",

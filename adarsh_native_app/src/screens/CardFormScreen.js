@@ -7,7 +7,8 @@ import Toast from '../components/Toast';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet, apiPostForm } from '../api/client';
-import { colors, gradients, shadows } from '../theme';
+import { colors, gradients, shadows, radius, roleThemes } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 export default function CardFormScreen({ navigation, route }) {
   const { tableId, cardId } = route.params;
@@ -19,6 +20,8 @@ export default function CardFormScreen({ navigation, route }) {
   const [tableName, setTableName] = useState('');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [error, setError] = useState(null);
+  const { user } = useAuth();
+  const theme = roleThemes[user?.role] || roleThemes.default;
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
   const loadData = async () => {
@@ -121,9 +124,9 @@ export default function CardFormScreen({ navigation, route }) {
         {/* Save Button */}
         <View style={s.bottomActions}>
           <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85} style={s.saveBtnWrap}>
-            <LinearGradient colors={gradients.brand} style={s.saveBtn}>
-              {saving && <ActivityIndicator size="small" color="#fff" />}
-              <Text style={s.saveBtnText}>{isEdit ? 'Update Card' : 'Add Card'}</Text>
+            <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.saveBtn}>
+              {saving && <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />}
+              <Text style={s.saveBtnText}>{isEdit ? 'Update Card Data' : 'Save New Card'}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.goBack()} style={s.cancelBtn}>
@@ -140,17 +143,17 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 }, scrollC: { padding: 16, paddingBottom: 40 },
-  noFieldsCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eff6ff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#dbeafe', marginBottom: 16 },
-  noFieldsText: { flex: 1, fontSize: 12, color: '#1d4ed8' },
-  field: { marginBottom: 14 },
-  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: colors.gray500, letterSpacing: 0.8, textTransform: 'uppercase' },
-  mandatoryDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#ef4444' },
-  fieldInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.gray700, ...shadows.sm },
-  bottomActions: { marginTop: 8, gap: 10 },
-  saveBtnWrap: { borderRadius: 20, overflow: 'hidden', ...shadows.md },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 20 },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  cancelBtn: { paddingVertical: 14, backgroundColor: colors.gray100, borderRadius: 20, alignItems: 'center' },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: colors.gray600 },
+  noFieldsCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eff6ff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#dbeafe', marginBottom: 20 },
+  noFieldsText: { flex: 1, fontSize: 13, color: '#1e40af', lineHeight: 18 },
+  field: { marginBottom: 16 },
+  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, paddingLeft: 4 },
+  fieldLabel: { fontSize: 11, fontWeight: '800', color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase' },
+  mandatoryDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#f43f5e' },
+  fieldInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#f1f5f9', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14, fontSize: 14, color: colors.gray800, fontWeight: '600', ...shadows.sm },
+  bottomActions: { marginTop: 12, gap: 12 },
+  saveBtnWrap: { borderRadius: 20, overflow: 'hidden', ...shadows.lg },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18 },
+  saveBtnText: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
+  cancelBtn: { paddingVertical: 16, backgroundColor: '#fff', borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' },
+  cancelBtnText: { fontSize: 14, fontWeight: '700', color: colors.gray500 },
 });

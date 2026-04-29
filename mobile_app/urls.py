@@ -91,4 +91,9 @@ urlpatterns = [
     path('website/', views.website_manage, name='website_manage'),
     path('api/website/portfolio/upload/', views.api_portfolio_upload, name='api_portfolio_upload'),
     path('api/website/portfolio/category/<int:category_id>/items/', views.api_portfolio_category_items, name='api_portfolio_category_items'),
+    
+    # Public Website APIs (for Mobile Landing Page)
+    path('api/pub/website/landing/', views.api_website_landing_data, name='api_website_landing_data'),
+    path('api/pub/website/category/<int:category_id>/products/', views.api_website_category_products, name='api_website_category_products'),
+    path('api/pub/website/contact/', views.api_website_contact_submit, name='api_website_contact_submit'),
 ]

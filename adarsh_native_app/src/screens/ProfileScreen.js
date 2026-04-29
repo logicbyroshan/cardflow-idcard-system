@@ -9,7 +9,7 @@ import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { apiGet, apiPost } from '../api/client';
-import { colors, gradients, typography, spacing, radius, shadows } from '../theme';
+import { colors, gradients, typography, spacing, radius, shadows, roleThemes } from '../theme';
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -18,6 +18,7 @@ export default function ProfileScreen({ navigation }) {
   const [editForm, setEditForm] = useState({ name: user?.name || '', phone: user?.phone || '' });
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [updateStatus, setUpdateStatus] = useState({ loading: false, currentBuild: 'Native', latestVersion: '-', statusText: 'Checking...', statusType: 'info' });
+  const theme = roleThemes[user?.role] || roleThemes.default;
 
   const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
 
@@ -53,10 +54,12 @@ export default function ProfileScreen({ navigation }) {
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
         <View style={s.card}>
-          <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatarSec}>
+          <LinearGradient colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatarSec}>
             <View style={s.avatar}><Text style={s.avatarTxt}>{initials}</Text></View>
             {!editing && <Text style={s.userName}>{user?.name || 'User'}</Text>}
-            <Text style={s.userRole}>{user?.role || 'User'}</Text>
+            <View style={[s.roleBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+              <Text style={s.userRole}>{(user?.role || 'User').replace('_', ' ').toUpperCase()}</Text>
+            </View>
           </LinearGradient>
           {!editing ? (
             <View style={s.details}>
@@ -72,7 +75,7 @@ export default function ProfileScreen({ navigation }) {
               <TextInput style={s.eInput} value={editForm.phone} onChangeText={t => setEditForm(p => ({ ...p, phone: t }))} placeholder="Phone number" placeholderTextColor={colors.gray300} keyboardType="phone-pad" />
               <View style={s.eBtns}>
                 <TouchableOpacity onPress={() => setEditing(false)} style={s.eCancel}><Text style={s.eCancelTxt}>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity onPress={saveProfile} disabled={saving} style={s.eSaveW}><LinearGradient colors={gradients.brand} style={s.eSave}>{saving && <ActivityIndicator size="small" color="#fff" />}<Text style={s.eSaveTxt}>Save</Text></LinearGradient></TouchableOpacity>
+                <TouchableOpacity onPress={saveProfile} disabled={saving} style={s.eSaveW}><LinearGradient colors={theme.gradient} style={s.eSave}>{saving && <ActivityIndicator size="small" color="#fff" />}<Text style={s.eSaveTxt}>Save Changes</Text></LinearGradient></TouchableOpacity>
               </View>
             </View>
           )}
@@ -127,10 +130,11 @@ const s = StyleSheet.create({
   scroll: { flex: 1 }, scrollC: { paddingBottom: 32 },
   card: { marginHorizontal: 16, marginTop: 16, backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   avatarSec: { paddingHorizontal: 24, paddingVertical: 32, alignItems: 'center' },
-  avatar: { width: 80, height: 80, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
-  avatarTxt: { color: '#fff', fontSize: 24, fontWeight: '700' },
-  userName: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  userRole: { color: 'rgba(255,255,255,0.7)', fontSize: 14, marginTop: 2 },
+  avatar: { width: 80, height: 80, borderRadius: radius.xl, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  avatarTxt: { color: '#fff', fontSize: 24, fontWeight: '800' },
+  userName: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 6 },
+  roleBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  userRole: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   details: { padding: 16, gap: 10 },
   editSec: { padding: 16 },
   eLabel: { fontSize: 11, fontWeight: '700', color: colors.gray500, letterSpacing: 0.8 },

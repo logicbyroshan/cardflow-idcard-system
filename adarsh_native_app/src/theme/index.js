@@ -57,16 +57,16 @@ export const colors = {
   info: '#3b82f6',
 
   // Grays — exact Tailwind defaults used in website
-  gray50: '#f9fafb',
-  gray100: '#f3f4f6',
-  gray200: '#e5e7eb',
-  gray300: '#d1d5db',
-  gray400: '#9ca3af',
-  gray500: '#6b7280',
-  gray600: '#4b5563',
-  gray700: '#374151',
-  gray800: '#1f2937',
-  gray900: '#111827',
+  gray50: '#f8fafc',
+  gray100: '#f1f5f9',
+  gray200: '#e2e8f0',
+  gray300: '#cbd5e1',
+  gray400: '#94a3b8',
+  gray500: '#64748b',
+  gray600: '#475569',
+  gray700: '#334155',
+  gray800: '#1e293b',
+  gray900: '#0f172a',
 
   // Indigo accents
   indigo50: '#eef2ff',
@@ -78,8 +78,61 @@ export const colors = {
 
   // Semi-transparent
   overlay: 'rgba(0,0,0,0.35)',
-  glassBg: 'rgba(255,255,255,0.97)',
-  glassBorder: 'rgba(214,231,248,0.96)',
+  // Glass & Transparency (PWA Premium Look)
+  glassBg: 'rgba(255,255,255,0.85)',
+  glassBorder: 'rgba(255,255,255,0.25)',
+  darkGlassBg: 'rgba(15,23,42,0.75)',
+  darkGlassBorder: 'rgba(255,255,255,0.1)',
+  
+  // Status Pills (Glass Variant)
+  pendingGlass: 'rgba(245,158,11,0.08)',
+  verifiedGlass: 'rgba(16,185,129,0.08)',
+  approvedGlass: 'rgba(59,130,246,0.08)',
+  downloadGlass: 'rgba(139,92,246,0.08)',
+  poolGlass: 'rgba(236,72,153,0.08)',
+};
+
+export const roleThemes = {
+  super_admin: {
+    primary: '#f43f5e', // Rose 500
+    secondary: '#e11d48', // Rose 600
+    bgSoft: '#fff1f2',
+    text: '#9f1239',
+    gradient: ['#f43f5e', '#e11d48'],
+    surface: ['#fff1f2', '#ffe4e6'],
+  },
+  admin_staff: {
+    primary: '#8b5cf6', // Violet 500
+    secondary: '#7c3aed', // Violet 600
+    bgSoft: '#f5f3ff',
+    text: '#5b21b6',
+    gradient: ['#8b5cf6', '#7c3aed'],
+    surface: ['#f5f3ff', '#ede9fe'],
+  },
+  client: {
+    primary: '#3b82f6', // Blue 500
+    secondary: '#2563eb', // Blue 600
+    bgSoft: '#eff6ff',
+    text: '#1e40af',
+    gradient: ['#3b82f6', '#2563eb'],
+    surface: ['#eff6ff', '#dbeafe'],
+  },
+  client_staff: {
+    primary: '#10b981', // Emerald 500
+    secondary: '#059669', // Emerald 600
+    bgSoft: '#ecfdf5',
+    text: '#065f46',
+    gradient: ['#10b981', '#059669'],
+    surface: ['#ecfdf5', '#d1fae5'],
+  },
+  default: {
+    primary: colors.brandPrimary,
+    secondary: colors.brandSecondary,
+    bgSoft: colors.indigo50,
+    text: colors.brandSecondaryDark,
+    gradient: [colors.brandPrimary, colors.brandSecondary],
+    surface: ['#f8fafc', '#eff6ff'],
+  },
 };
 
 export const gradients = {

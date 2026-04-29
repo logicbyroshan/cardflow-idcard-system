@@ -5,7 +5,8 @@ import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
-import { colors, shadows } from '../theme';
+import { colors, shadows, radius, roleThemes } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 export default function GroupsScreen({ navigation }) {
   const [groups, setGroups] = useState([]);
@@ -15,6 +16,8 @@ export default function GroupsScreen({ navigation }) {
 
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const { user } = useAuth();
+  const theme = roleThemes[user?.role] || roleThemes.default;
 
   const loadData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -48,7 +51,7 @@ export default function GroupsScreen({ navigation }) {
     return (
       <View style={s.groupCard}>
         <TouchableOpacity style={s.groupHeader} onPress={() => toggleGroup(group.id)} activeOpacity={0.7}>
-          <View style={s.groupIcon}><FontAwesome5 name="layer-group" size={14} color="#8b5cf6" solid /></View>
+          <View style={[s.groupIcon, { backgroundColor: theme.bgSoft }]}><FontAwesome5 name="layer-group" size={14} color={theme.primary} solid /></View>
           <View style={s.groupInfo}>
             <Text style={s.groupName} numberOfLines={1}>{group.name}</Text>
             <Text style={s.groupMeta}>{group.table_count || 0} tables · {group.total_cards || 0} cards</Text>
@@ -56,7 +59,6 @@ export default function GroupsScreen({ navigation }) {
           <View style={s.groupBadges}>
             {group.pending_cards > 0 && <MiniCount count={group.pending_cards} bg="#fef3c7" c="#b45309" />}
             {group.verified_cards > 0 && <MiniCount count={group.verified_cards} bg="#d1fae5" c="#047857" />}
-            {group.approved_cards > 0 && <MiniCount count={group.approved_cards} bg="#e0f2fe" c="#0369a1" />}
           </View>
           <FontAwesome5 name={isExpanded ? 'chevron-up' : 'chevron-down'} size={10} color={colors.gray400} />
         </TouchableOpacity>
@@ -121,26 +123,25 @@ function MiniCount({ count, bg, c }) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
-  groupCard: { backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', ...shadows.sm },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  groupIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#ede9fe', alignItems: 'center', justifyContent: 'center' },
-  groupInfo: { flex: 1, minWidth: 0 },
-  groupName: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
-  groupMeta: { fontSize: 10, color: colors.gray400, marginTop: 2 },
-  groupBadges: { flexDirection: 'row', gap: 4 },
-  miniCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, minWidth: 24, alignItems: 'center' },
+  list: { padding: 16, paddingBottom: 40 },
+  groupCard: { backgroundColor: colors.white, borderRadius: radius.xl, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(226, 232, 240, 0.6)', overflow: 'hidden', ...shadows.sm },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  groupIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  groupInfo: { flex: 1 },
+  groupName: { fontSize: 15, fontWeight: '700', color: colors.gray800 },
+  groupMeta: { fontSize: 11, color: colors.gray500, marginTop: 2 },
+  groupBadges: { flexDirection: 'row', gap: 4, marginRight: 8 },
+  miniCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, minWidth: 20, alignItems: 'center' },
   miniCountText: { fontSize: 10, fontWeight: '800' },
-  tablesList: { borderTopWidth: 1, borderTopColor: '#f1f5f9' },
-  tableRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
-  tableIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(51,183,239,0.08)', alignItems: 'center', justifyContent: 'center' },
-  tableInfo: { flex: 1, minWidth: 0 },
-  tableName: { fontSize: 12, fontWeight: '600', color: colors.gray700 },
+  tablesList: { paddingHorizontal: 16, paddingBottom: 16, backgroundColor: '#f9fafb', borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 10 },
+  tableIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+  tableInfo: { flex: 1 },
+  tableName: { fontSize: 13, fontWeight: '600', color: colors.gray700 },
   tableMeta: { fontSize: 10, color: colors.gray400, marginTop: 1 },
-  tableBadges: { flexDirection: 'row', gap: 4 },
-  emptyTables: { padding: 16, alignItems: 'center' },
-  emptyTablesText: { fontSize: 11, color: colors.gray400 },
+  tableBadges: { flexDirection: 'row', gap: 4, marginRight: 8 },
+  emptyTables: { padding: 20, alignItems: 'center' },
+  emptyTablesText: { fontSize: 12, color: colors.gray400 },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },

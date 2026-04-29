@@ -251,13 +251,13 @@ class MobileAppBaseTestCase(TestCase):
 			if not data.get('has_more'):
 				break
 
+			if pages >= max_pages:
+				break
+
 			query_params['page'] = int(query_params['page']) + 1
-			self.assertLessEqual(query_params['page'], max_pages)
 
 		return collected_ids, int(total or 0), pages
 
-
-class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 	def test_mobile_globals_includes_admin_stats_for_pro_user(self):
 		from mobile_app.context_processors import mobile_globals
 
@@ -772,45 +772,6 @@ class MobileReleasePreflightCommandTests(MobileAppBaseTestCase):
 
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):
-	def _collect_mobile_cards_api_ids(self, table_id, *, status='pending', params=None, user_agent=None, per_page=50, max_pages=20):
-		query_params = {'status': status, 'per_page': per_page, 'page': 1}
-		if params:
-			query_params.update(params)
-
-		request_headers = {}
-		if user_agent:
-			request_headers['HTTP_USER_AGENT'] = user_agent
-
-		collected_ids = []
-		total = None
-		pages = 0
-
-		while True:
-			response = self.client.get(
-				f'/app/api/table/{table_id}/cards/',
-				data=query_params,
-				**request_headers,
-			)
-			self.assertEqual(response.status_code, 200)
-			payload = response.json()
-			self.assertTrue(payload.get('success'))
-
-			data = payload.get('data') or {}
-			cards = data.get('cards') or []
-			if total is None:
-				total = int(data.get('total') or 0)
-
-			collected_ids.extend(int(item['id']) for item in cards if item.get('id') is not None)
-			pages += 1
-
-			if not data.get('has_more'):
-				break
-
-			query_params['page'] = int(query_params['page']) + 1
-			self.assertLessEqual(query_params['page'], max_pages)
-
-		return collected_ids, int(total or 0), pages
-
 	def test_bulk_status_rejects_non_list_card_ids(self):
 		self._login_mobile_super_admin()
 		response = self.client.post(

@@ -294,6 +294,10 @@ class ClientCardService(BaseService):
 
     @classmethod
     def _apply_client_staff_row_scope(cls, user, table, qs):
+        """
+        Apply client_staff row-level filtering based on assigned classes/sections/branches.
+        Supports multiple assignment scopes (OR-ed together).
+        """
         if not PermissionService.is_client_staff(user):
             return qs
 
@@ -304,84 +308,101 @@ class ClientCardService(BaseService):
         if not cls._table_is_assigned_to_staff(staff, table):
             return qs.none()
 
-        allowed_classes, allowed_sections, allowed_branches = cls._table_scope_filters(staff, table)
+        # If we reach here, staff has access to this table.
+        # Now we apply the class/section/branch row-level restrictions.
+        
+        # Multiple scope entries are OR-ed together.
+        # Inside a scope entry, class/section/branch are AND-ed.
+        # If any scope entry is empty (no filters), it grants access to the full table.
+        
+        # 1. Collect all applicable scopes (direct table + parent group)
+        scope_entries = cls._matched_assignment_scopes_for_table(staff, table)
+        
+        # If no explicit assignment_scopes defined, fallback to legacy allowed_* fields
+        if not scope_entries:
+            legacy_classes, legacy_sections, legacy_branches = cls._table_scope_filters(staff, table)
+            if not (legacy_classes or legacy_sections or legacy_branches):
+                # No filters at all = full access to assigned table
+                return qs
+            # Convert legacy into a single scope entry
+            scope_entries = [{
+                'classes': legacy_classes,
+                'sections': legacy_sections,
+                'branches': legacy_branches
+            }]
 
+        # 2. Check if ANY scope entry is unrestricted (empty filters)
+        has_full_access = False
+        for scope in scope_entries:
+            if not (scope.get('classes') or scope.get('sections') or scope.get('branches')):
+                has_full_access = True
+                break
+        
+        if has_full_access:
+            return qs
+
+        # 3. Build OR query for all scope entries
+        from django.db.models import Q
+        from core.utils.field_utils import normalize_class_value, normalize_compact_text_value
+        
         class_field, section_field, branch_field = cls._get_class_section_branch_fields(table)
+        
+        # Annotate with field values for filtering
+        annotations = {}
+        if class_field:
+            annotations['_scope_cls'] = Cast(KeyTextTransform(class_field, 'field_data'), CharField())
+        if section_field:
+            annotations['_scope_sec'] = Cast(KeyTextTransform(section_field, 'field_data'), CharField())
+        if branch_field:
+            annotations['_scope_branch'] = Cast(KeyTextTransform(branch_field, 'field_data'), CharField())
+        
+        if annotations:
+            qs = qs.annotate(**annotations)
 
-        matched_scopes = cls._matched_assignment_scopes_for_table(staff, table)
-        if matched_scopes and (class_field or section_field or branch_field):
-            has_scope_filters = False
-            for scope in matched_scopes:
-                scope_classes = cls._dedupe_scope_values(scope.get('classes') or [])
-                scope_sections = cls._dedupe_scope_values(scope.get('sections') or [])
-                scope_branches = cls._dedupe_scope_values(scope.get('branches') or [])
-                if scope_classes or scope_sections or scope_branches:
-                    has_scope_filters = True
-                    break
+        final_q = Q()
+        for scope in scope_entries:
+            scope_q = Q()
+            
+            # Classes
+            if scope.get('classes') and class_field:
+                allowed = {normalize_class_value(v) for v in scope['classes'] if normalize_class_value(v)}
+                if allowed:
+                    raw_values = list(qs.exclude(_scope_cls='').values_list('_scope_cls', flat=True).distinct())
+                    matching_raw = [raw for raw in raw_values if normalize_class_value(raw) in allowed]
+                    if matching_raw:
+                        scope_q &= Q(_scope_cls__in=matching_raw)
+                    else:
+                        scope_q &= Q(id__isnull=True)
+                else:
+                    scope_q &= Q(id__isnull=True)
 
-            if not has_scope_filters:
-                return qs.none()
+            # Sections
+            if scope.get('sections') and section_field:
+                allowed = {str(s).strip().lower() for s in scope['sections'] if str(s).strip()}
+                if allowed:
+                    scope_q &= Q(_scope_sec__lower__in=allowed)
+                else:
+                    scope_q &= Q(id__isnull=True)
 
-        if allowed_classes:
-            if not class_field:
-                return qs.none()
-            from core.utils.field_utils import normalize_class_value
+            # Branches
+            if scope.get('branches') and branch_field:
+                allowed = {normalize_compact_text_value(v) for v in scope['branches'] if normalize_compact_text_value(v)}
+                if allowed:
+                    raw_values = list(qs.exclude(_scope_branch='').values_list('_scope_branch', flat=True).distinct())
+                    matching_raw = [raw for raw in raw_values if normalize_compact_text_value(raw) in allowed]
+                    if matching_raw:
+                        scope_q &= Q(_scope_branch__in=matching_raw)
+                    else:
+                        scope_q &= Q(id__isnull=True)
+                else:
+                    scope_q &= Q(id__isnull=True)
 
-            qs = qs.annotate(_scope_cls=Cast(KeyTextTransform(class_field, 'field_data'), CharField()))
-            normalized_allowed = {
-                normalize_class_value(value)
-                for value in allowed_classes
-                if normalize_class_value(value)
-            }
-            if not normalized_allowed:
-                return qs.none()
+            final_q |= scope_q
 
-            raw_values = list(
-                qs.exclude(_scope_cls__isnull=True)
-                .exclude(_scope_cls='')
-                .values_list('_scope_cls', flat=True)
-                .distinct()
-            )
-            matching_raw = [raw for raw in raw_values if normalize_class_value(raw) in normalized_allowed]
-            if not matching_raw:
-                return qs.none()
-            qs = qs.filter(_scope_cls__in=matching_raw)
+        if not final_q:
+            return qs.none()
 
-        if allowed_sections:
-            if not section_field:
-                return qs.none()
-            qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField())).filter(_scope_sec__in=allowed_sections)
-
-        if allowed_branches:
-            if not branch_field:
-                return qs.none()
-            from core.utils.field_utils import normalize_compact_text_value
-
-            qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField()))
-            normalized_allowed = {
-                normalize_compact_text_value(value)
-                for value in allowed_branches
-                if normalize_compact_text_value(value)
-            }
-            if not normalized_allowed:
-                return qs.none()
-
-            raw_values = list(
-                qs.exclude(_scope_branch__isnull=True)
-                .exclude(_scope_branch='')
-                .values_list('_scope_branch', flat=True)
-                .distinct()
-            )
-            matching_raw = [
-                raw for raw in raw_values
-                if normalize_compact_text_value(raw) in normalized_allowed
-            ]
-            if not matching_raw:
-                return qs.none()
-
-            qs = qs.filter(_scope_branch__in=matching_raw)
-
-        return qs
+        return qs.filter(final_q)
     
     @classmethod
     def get_tables_for_client(cls, user, client=None) -> ServiceResult:

@@ -4,19 +4,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
 import { colors, gradients, typography, spacing, radius } from '../theme';
 
 export default function TopBar({ title, subtitle, onBack, rightAction, children, showHome = true }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute();
+  const { isAuthenticated } = useAuth();
 
   // Don't show home button on Home screen itself
   const isHome = route.name === 'Home';
   const shouldShowHome = showHome && !isHome && onBack;
 
   const goHome = () => {
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    // If not authenticated, we reset to the Landing page
+    const routeName = isAuthenticated ? 'Home' : 'Landing';
+    navigation.reset({ index: 0, routes: [{ name: routeName }] });
   };
 
   return (

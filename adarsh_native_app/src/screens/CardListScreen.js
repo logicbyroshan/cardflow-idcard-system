@@ -1,40 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import CardItem from '../components/CardItem';
 import TopBar from '../components/TopBar';
 import { CardListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
-import { colors, shadows } from '../theme';
+import { colors, shadows, radius, spacing, typography } from '../theme';
 
-const ITEM_HEIGHT = 72; // approx card height for getItemLayout
+const ITEM_HEIGHT = 86; // approx card height for getItemLayout
 
-const CardItem = React.memo(function CardItem({ item, onPress }) {
-  const fd = item.field_data || {};
-  const name = item.name || fd.NAME || fd.name || fd.Name || `Card #${item.id}`;
-  const rollNo = fd['ROLL NO'] || fd['ROLL_NO'] || fd.roll_no || '';
-  const photoUrl = item.photo_url || '';
-
-  return (
-    <TouchableOpacity style={s.card} activeOpacity={0.7} onPress={onPress}>
-      <View style={s.photoWrap}>
-        {photoUrl ? (
-          <Image source={{ uri: photoUrl }} style={s.photo} />
-        ) : (
-          <View style={s.photoPlaceholder}><FontAwesome5 name="user" size={14} color={colors.gray400} solid /></View>
-        )}
-      </View>
-      <View style={s.info}>
-        <Text style={s.name} numberOfLines={1}>{name}</Text>
-        <View style={s.metaRow}>
-          {!!rollNo && <Text style={s.rollNo}>#{rollNo}</Text>}
-          {!!item.sr_no && <Text style={s.srNo}>SR: {item.sr_no}</Text>}
-        </View>
-      </View>
-      <FontAwesome5 name="chevron-right" size={10} color={colors.gray300} />
-    </TouchableOpacity>
-  );
-});
+// Standalone CardItem is now in components/CardItem.js
 
 const EmptyList = React.memo(function EmptyList({ status }) {
   return (
@@ -144,18 +120,9 @@ export default function CardListScreen({ navigation, route }) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  list: { padding: 16, gap: 8, paddingBottom: 32 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
-  photoWrap: { width: 48, height: 56, borderRadius: 10, overflow: 'hidden', backgroundColor: 'rgba(51,183,239,0.06)', borderWidth: 1, borderColor: '#f1f5f9' },
-  photo: { width: '100%', height: '100%' },
-  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  info: { flex: 1, minWidth: 0 },
-  name: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
-  rollNo: { fontSize: 10, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray500 },
-  srNo: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray400 },
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 13, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray400 },
-  emptySub: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray300, marginTop: 4 },
+  list: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  empty: { padding: 48, alignItems: 'center', justifyContent: 'center' },
+  emptyIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', marginBottom: 16, ...shadows.sm },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.gray800, marginBottom: 4 },
+  emptySub: { fontSize: 13, color: colors.gray400, textAlign: 'center' },
 });

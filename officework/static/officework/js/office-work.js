@@ -459,16 +459,25 @@
     if (messageId > 0 && state.chatNotifiedMessageIds[messageId]) {
       return;
     }
-    if (!shouldShowDesktopChatNotification(message)) {
-      return;
-    }
-    if (!supportsDesktopNotifications() || window.Notification.permission !== 'granted') {
-      return;
-    }
-
     var groupId = Number(message.group_id || 0);
     var title = String(message.sender_name || 'New message');
     var body = chatNotificationBody(message);
+    notify(title + ': ' + body, 'info');
+
+    if (!shouldShowDesktopChatNotification(message)) {
+      if (messageId > 0) {
+        state.chatNotifiedMessageIds[messageId] = true;
+      }
+      return;
+    }
+
+    if (!supportsDesktopNotifications() || window.Notification.permission !== 'granted') {
+      if (messageId > 0) {
+        state.chatNotifiedMessageIds[messageId] = true;
+      }
+      return;
+    }
+
     var targetUrl = buildOfficeWorkUrl('chat', groupId);
 
     try {
@@ -498,6 +507,9 @@
         state.chatNotifiedMessageIds[messageId] = true;
       }
     } catch (error) {
+      if (messageId > 0) {
+        state.chatNotifiedMessageIds[messageId] = true;
+      }
       return;
     }
   }
@@ -2197,6 +2209,7 @@
     clearChatEmptyState();
     appendChatMessage(data.item, { notifyIncoming: false });
     ui.chatList.scrollTop = ui.chatList.scrollHeight;
+    notify('Message sent.', 'success');
     return true;
   }
 
@@ -2312,6 +2325,7 @@
         if (sentBySocket) {
           ui.chatInput.value = '';
           setPendingAttachment(null);
+          notify('Message sent.', 'success');
           return;
         }
 

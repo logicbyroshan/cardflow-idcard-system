@@ -297,36 +297,32 @@
           </form>
         </section>
       </section>
-      <section class="office-panel" data-panel="leads" role="tabpanel" hidden>
-        <section class="office-section">
-          <div class="office-section-head">
-            <h3><i class="fa-solid fa-user-tag"></i> Lead Management</h3>
-            <div class="office-section-actions">
-              <button type="button" id="officeXlsxUploadBtn" class="btn btn-sm btn-neutral">
-                <i class="fa-solid fa-file-excel"></i> Upload Leads (XLSX)
-              </button>
-              <button type="button" id="officeLeadSearchNewBtn" class="btn btn-sm btn-accent">
-                <i class="fa-solid fa-magnifying-glass-location"></i> Search New Clients
-              </button>
-              <button type="button" id="officeLeadTemplateBtn" class="btn btn-sm btn-neutral">
-                <i class="fa-solid fa-message"></i> Message Templates
-              </button>
-              <button type="button" id="officeCreateLeadBtn" class="btn btn-sm btn-primary">
-                <i class="fa-solid fa-plus"></i> Add New Lead
-              </button>
-            </div>
-          </div>
-
-          <div class="office-leads-search-row">
-            <div class="office-search-input-wrap">
+      <section class="office-panel office-leads-panel" data-panel="leads" role="tabpanel" hidden>
+        <section class="office-section office-leads-section" style="display: flex; flex-direction: column; height: 100%; gap: 12px; padding: 12px;">
+          <!-- Top bar with search and action buttons -->
+          <div class="office-leads-top-bar" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div class="office-search-input-wrap" style="flex: 1; min-width: 200px;">
               <i class="fa-solid fa-magnifying-glass"></i>
               <input type="text" id="officeLeadSearch" class="office-input" placeholder="Search leads by name, contact, or location...">
             </div>
+            <button type="button" id="officeXlsxUploadBtn" class="btn btn-sm btn-neutral" title="Upload leads from Excel">
+              <i class="fa-solid fa-file-excel"></i> Upload Leads
+            </button>
+            <button type="button" id="officeLeadSearchNewBtn" class="btn btn-sm btn-accent" title="Find new clients">
+              <i class="fa-solid fa-magnifying-glass-location"></i> Search Clients
+            </button>
+            <button type="button" id="officeLeadTemplateBtn" class="btn btn-sm btn-neutral" title="View message templates">
+              <i class="fa-solid fa-message"></i> Templates
+            </button>
+            <button type="button" id="officeCreateLeadBtn" class="btn btn-sm btn-primary" title="Add a new lead">
+              <i class="fa-solid fa-plus"></i> Add Lead
+            </button>
           </div>
           
-          <div class="table-wrapper">
-            <table id="officeLeadsTable" class="data-table">
-              <thead>
+          <!-- Table container that fills remaining space -->
+          <div class="table-wrapper" style="flex: 1; overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px;">
+            <table id="officeLeadsTable" class="data-table" style="width: 100%; min-height: 100%;">
+              <thead style="position: sticky; top: 0; z-index: 10;">
                 <tr>
                   <th>Customer Name</th>
                   <th>Contact Info</th>
@@ -346,12 +342,25 @@
         {% include 'components/modal-side.html' with
            modal_id="officeLeadModal"
            title="Create New Lead"
-           body_template="officework/modals/lead-body.html"
-           submit_id="officeLeadSubmitBtn"
-           submit_text="Save Lead"
-           cancel_id="officeLeadCancelBtn"
            form_id="officeLeadForm"
+           body_content=body_lead_content
         %}
+        <script>
+          /* Render lead form body into modal */
+          document.addEventListener('DOMContentLoaded', function() {
+            var bodyEl = document.getElementById('officeLeadModal-body');
+            if (bodyEl && !bodyEl.innerHTML.trim()) {
+              bodyEl.innerHTML = `{% include "officework/modals/lead-body.html" %}`;
+            }
+            var footerEl = document.getElementById('officeLeadModal-footer');
+            if (footerEl && !footerEl.innerHTML.trim()) {
+              footerEl.innerHTML = `
+                <button type="button" id="officeLeadCancelBtn" class="btn btn-outline" onclick="window.closeSideModal('officeLeadModal')">Cancel</button>
+                <button type="submit" id="officeLeadSubmitBtn" class="btn btn-primary">Save Lead</button>
+              `;
+            }
+          });
+        </script>
 
         <!-- Message Templates Modal -->
         {% include 'components/center-modal.html' with

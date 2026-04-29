@@ -7,6 +7,7 @@ import { colors } from '../theme';
 
 // Eagerly load auth screens (they're needed immediately)
 import WelcomeScreen from '../screens/WelcomeScreen';
+import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
@@ -29,6 +30,7 @@ const CardListScreen = lazy(() => import('../screens/CardListScreen'));
 const CardFormScreen = lazy(() => import('../screens/CardFormScreen'));
 const CameraScreen = lazy(() => import('../screens/CameraScreen'));
 const ReprintScreen = lazy(() => import('../screens/ReprintScreen'));
+const ProductCategoryDetailScreen = lazy(() => import('../screens/ProductCategoryDetailScreen'));
 
 const Stack = createNativeStackNavigator();
 
@@ -71,6 +73,7 @@ const LazyCardList = withSuspense(CardListScreen);
 const LazyCardForm = withSuspense(CardFormScreen);
 const LazyCamera = withSuspense(CameraScreen);
 const LazyReprint = withSuspense(ReprintScreen);
+const LazyProductCategoryDetail = withSuspense(ProductCategoryDetailScreen);
 
 export default function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -91,10 +94,12 @@ export default function AppNavigator() {
       >
         {!isAuthenticated ? (
           <>
-            <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ animation: 'fade' }} />
+            <Stack.Screen name="Landing" component={LandingScreen} options={{ animation: 'fade' }} />
+            <Stack.Screen name="ProductCategoryDetail" component={LazyProductCategoryDetail} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="NoAccess" component={NoAccessScreen} />
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
           </>
         ) : (
           <>

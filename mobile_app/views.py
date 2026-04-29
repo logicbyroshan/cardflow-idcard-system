@@ -4767,39 +4767,37 @@ def api_notifications_list(request):
 def api_tables_list(request):
     """Return tables with status counts as JSON for native table picker."""
     from idcards.models import IDCardTable, IDCard
-    from django.db.models import Count, Q
-
-    status = request.GET.get('status', 'pending')
-    valid_statuses = ['pending', 'verified', 'approved', 'download', 'pool']
-    if status not in valid_statuses:
-        status = 'pending'
-
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_tables_list(request):
+    """Return list of accessible tables for mobile picker screen."""
     try:
-        ctx = _get_mobile_context(request)
         user = request.user
+        status = (request.GET.get('status') or '').strip().lower()
+        
+        client, _ = _client_ctx(user)
+        if not client:
+            return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
 
-        # Determine accessible tables based on role
-        if ctx.get('is_super_admin'):
-            tables_qs = IDCardTable.objects.select_related('group', 'group__client').all()
-        elif ctx.get('is_client') or ctx.get('is_admin_staff'):
-            client = getattr(user, 'client_profile', None) or getattr(user, 'staff_profile', None)
-            client_obj = getattr(client, 'client', client) if hasattr(client, 'client') else client
-            if client_obj and hasattr(client_obj, 'id'):
-                tables_qs = IDCardTable.objects.select_related('group', 'group__client').filter(
-                    group__client_id=client_obj.id
-                )
-            else:
-                tables_qs = IDCardTable.objects.none()
+        # 1. Get accessible tables
+        from idcards.models import IDCardTable
+        tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
+        
+        if PermissionService.is_client_staff(user):
+            accessible_ids = ClientAccessService.get_accessible_table_ids(user)
+            if accessible_ids is not None:
+                tables_qs = tables_qs.filter(id__in=accessible_ids)
+
+        # 2. Annotate with status count if status is provided
+        if status and status != 'all':
+            tables_qs = tables_qs.annotate(
+                status_count=Count('id_cards', filter=Q(id_cards__status=status))
+            ).filter(status_count__gt=0)
         else:
-            tables_qs = IDCardTable.objects.none()
-
-        # Annotate with status count
-        tables_qs = tables_qs.annotate(
-            status_count=Count('id_cards', filter=Q(id_cards__status=status))
-        ).filter(status_count__gt=0).order_by('name')
+            tables_qs = tables_qs.annotate(status_count=Count('id_cards'))
 
         items = []
-        for t in tables_qs:
+        for t in tables_qs.select_related('group', 'group__client').order_by('name'):
             items.append({
                 'id': t.id,
                 'name': t.name,
@@ -4820,46 +4818,55 @@ def api_groups_list(request):
     """Return groups with tables + status counts as JSON for native groups screen."""
     try:
         user = request.user
-        client, perms = _client_ctx(user)
+        client, _ = _client_ctx(user)
         if not client:
             return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
 
-        tables_qs = IDCardTable.objects.filter(group__client=client).select_related('group')
-
+        # 1. Get accessible tables
+        from idcards.models import IDCardTable, IDCardGroup
+        tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
+        
         if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
-                if assigned_table_ids and assigned_group_ids:
-                    tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-                elif assigned_table_ids:
-                    tables_qs = tables_qs.filter(id__in=assigned_table_ids)
-                elif assigned_group_ids:
-                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+            accessible_ids = ClientAccessService.get_accessible_table_ids(user)
+            if accessible_ids is not None:
+                tables_qs = tables_qs.filter(id__in=accessible_ids)
 
-        scoped_table_ids = tables_qs.values('id')
-        scoped_group_ids = tables_qs.values('group_id')
-
-        groups = IDCardGroup.objects.filter(id__in=scoped_group_ids).annotate(
-            table_count=Count('tables', filter=Q(tables__id__in=scoped_table_ids), distinct=True),
-            total_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids)),
-            pending_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='pending')),
-            verified_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='verified')),
-            approved_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='approved')),
-            download_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='download')),
-        ).order_by('name')
-
-        tables_annotated = tables_qs.annotate(
+        tables_annotated = list(tables_qs.annotate(
             total_cards=Count('id_cards'),
             pending_cards=Count('id_cards', filter=Q(id_cards__status='pending')),
             verified_cards=Count('id_cards', filter=Q(id_cards__status='verified')),
             approved_cards=Count('id_cards', filter=Q(id_cards__status='approved')),
             download_cards=Count('id_cards', filter=Q(id_cards__status='download')),
-        ).order_by('group__name', 'name')
+        ).order_by('name'))
 
-        groups_data = [{'id': g.id, 'name': g.name, 'table_count': g.table_count, 'total_cards': g.total_cards, 'pending_cards': g.pending_cards, 'verified_cards': g.verified_cards, 'approved_cards': g.approved_cards, 'download_cards': g.download_cards} for g in groups]
-        tables_data = [{'id': t.id, 'name': t.name, 'group_id': t.group_id, 'total_cards': t.total_cards, 'pending_cards': t.pending_cards, 'verified_cards': t.verified_cards, 'approved_cards': t.approved_cards, 'download_cards': t.download_cards} for t in tables_annotated]
+        # 2. Get groups that contain at least one accessible table
+        accessible_group_ids = {t.group_id for t in tables_annotated}
+        groups = IDCardGroup.objects.filter(id__in=accessible_group_ids).order_by('name')
+
+        groups_data = []
+        for g in groups:
+            g_tables = [t for t in tables_annotated if t.group_id == g.id]
+            groups_data.append({
+                'id': g.id,
+                'name': g.name,
+                'table_count': len(g_tables),
+                'total_cards': sum(t.total_cards for t in g_tables),
+                'pending_cards': sum(t.pending_cards for t in g_tables),
+                'verified_cards': sum(t.verified_cards for t in g_tables),
+                'approved_cards': sum(t.approved_cards for t in g_tables),
+                'download_cards': sum(t.download_cards for t in g_tables),
+            })
+
+        tables_data = [{
+            'id': t.id,
+            'name': t.name,
+            'group_id': t.group_id,
+            'total_cards': t.total_cards,
+            'pending_cards': t.pending_cards,
+            'verified_cards': t.verified_cards,
+            'approved_cards': t.approved_cards,
+            'download_cards': t.download_cards
+        } for t in tables_annotated]
 
         return JsonResponse({'success': True, 'data': {'groups': groups_data, 'tables': tables_data}})
     except Exception:
@@ -4933,59 +4940,62 @@ def api_dashboard_data(request):
         if not client:
             return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
 
-        tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True)
-
+        # 1. Get accessible tables
+        from idcards.models import IDCardTable
+        tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
+        
         if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
-                if assigned_table_ids and assigned_group_ids:
-                    tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-                elif assigned_table_ids:
-                    tables_qs = tables_qs.filter(id__in=assigned_table_ids)
-                elif assigned_group_ids:
-                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+            accessible_ids = ClientAccessService.get_accessible_table_ids(user)
+            if accessible_ids is not None:
+                tables_qs = tables_qs.filter(id__in=accessible_ids)
 
-        scoped_ids = list(tables_qs.values_list('id', flat=True))
-        cards_qs = IDCard.objects.filter(table_id__in=scoped_ids)
-
-        counts = {}
+        scoped_table_ids = list(tables_qs.values_list('id', flat=True))
+        
+        # 2. Total Counts
+        cards_qs = IDCard.objects.filter(table_id__in=scoped_table_ids)
+        
+        counts = {
+            'client_name': getattr(client, 'business_name', client.name),
+        }
         for row in cards_qs.values('status').annotate(n=Count('id')):
             counts[row['status']] = row['n']
 
-        # Recent activity
+        # 3. Recent activity
         from django.utils.timesince import timesince as _ts
         from django.utils import timezone as _tz
         _now = _tz.now()
-        recent = list(IDCard.objects.filter(table_id__in=scoped_ids).select_related('table').order_by('-updated_at')[:8])
+        recent = list(IDCard.objects.filter(table_id__in=scoped_table_ids).select_related('table').order_by('-updated_at')[:8])
         recent_data = []
         for c in recent:
             fd = c.field_data or {}
-            name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{c.id}'
-            recent_data.append({'name': name, 'status': c.status, 'table_name': c.table.name if c.table else '', 'time_ago': _ts(c.updated_at, _now) if c.updated_at else ''})
-
+            name = fd.get('NAME') or fd.get('Name') or fd.get('name') or f'Card #{c.id}'
+            recent_data.append({
+                'name': name, 
+                'status': c.status, 
+                'table_name': c.table.name if c.table else '', 
+                'time_ago': _ts(c.updated_at, _now) if c.updated_at else ''
+            })
         counts['recent_activity'] = recent_data
 
-        # Tables with counts for Home Screen
+        # 4. Tables with counts
         tables_data = []
         tables_annotated = tables_qs.annotate(
-            p=Count('id_cards', filter=Q(id_cards__status='pending')),
-            v=Count('id_cards', filter=Q(id_cards__status='verified')),
-            a=Count('id_cards', filter=Q(id_cards__status='approved')),
-            d=Count('id_cards', filter=Q(id_cards__status='download')),
-            po=Count('id_cards', filter=Q(id_cards__status='pool')),
+            cnt_p=Count('id_cards', filter=Q(id_cards__status='pending')),
+            cnt_v=Count('id_cards', filter=Q(id_cards__status='verified')),
+            cnt_a=Count('id_cards', filter=Q(id_cards__status='approved')),
+            cnt_d=Count('id_cards', filter=Q(id_cards__status='download')),
+            cnt_po=Count('id_cards', filter=Q(id_cards__status='pool')),
         ).order_by('name')
 
         for t in tables_annotated:
             tables_data.append({
                 'id': t.id,
                 'name': t.name,
-                'pending': t.p,
-                'verified': t.v,
-                'approved': t.a,
-                'download': t.d,
-                'pool': t.po,
+                'p': t.cnt_p,
+                'v': t.cnt_v,
+                'a': t.cnt_a,
+                'd': t.cnt_d,
+                'po': t.cnt_po,
             })
         counts['tables'] = tables_data
 
@@ -5914,3 +5924,163 @@ def api_portfolio_category_items(request, category_id):
     return JsonResponse({'success': True, 'category': {'id': category.id, 'name': category.name}, 'items': items})
 
 
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def api_website_landing_data(request):
+    """
+    Public endpoint for mobile app landing screen.
+    Returns: Hero images, categories, featured products, and trusted clients.
+    """
+    from website.models import HeroImage, PortfolioCategory, PortfolioItem, BusinessDetails
+    from client.models import Client
+    
+    # 1. Hero Images
+    hero_qs = HeroImage.objects.filter(is_active=True).order_by('order', 'pk')
+    hero_images = [
+        {
+            'id': h.id,
+            'image': h.image.url if h.image else '',
+            'title': h.title or '',
+            'subtitle': h.subtitle or '',
+        }
+        for h in hero_qs
+    ]
+
+    # 2. Categories
+    cat_qs = PortfolioCategory.objects.filter(is_active=True).order_by('order')
+    categories = [
+        {
+            'id': c.id,
+            'name': c.name,
+            'slug': c.slug,
+            'icon': c.icon,
+            'description': c.description or '',
+            'cover_image': c.cover_image_url or '',
+            'is_bento': c.is_bento,
+            'bento_size': c.bento_size,
+        }
+        for c in cat_qs
+    ]
+
+    # 3. Featured Products (Interleaved)
+    # We'll take top featured items and interleave them by category
+    featured_qs = PortfolioItem.objects.filter(is_active=True, is_featured=True).select_related('category').order_by('order', '-created_at')[:20]
+    
+    from website.views import _interleave_random_by_category
+    interleaved = _interleave_random_by_category(list(featured_qs))[:8]
+    
+    products = [
+        {
+            'id': p.id,
+            'title': p.title,
+            'image': p.image.url if p.image else '',
+            'category': p.category.name if p.category else 'General',
+            'type': p.item_type,
+        }
+        for p in interleaved
+    ]
+
+    # 4. Trusted Clients
+    client_qs = Client.objects.filter(website_is_visible=True).exclude(website_logo__isnull=True).exclude(website_logo='').order_by('website_display_order', 'name', 'id')[:15]
+    clients = [
+        {
+            'id': cl.id,
+            'name': cl.name,
+            'logo': cl.website_logo.url if cl.website_logo else '',
+        }
+        for cl in client_qs
+    ]
+
+    # 5. Business Details
+    biz = BusinessDetails.objects.first()
+    business = {
+        'site_name': biz.site_name if biz else 'Adarsh ID Cards',
+        'tagline': biz.tagline if biz else '',
+        'address': biz.address if biz else '',
+        'phone': biz.phone1 if biz else '',
+        'email': biz.email if biz else '',
+        'whatsapp': biz.whatsapp_number if biz else '',
+    }
+
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'hero_images': hero_images,
+            'categories': categories,
+            'products': products,
+            'clients': clients,
+            'business': business,
+        }
+    })
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def api_website_category_products(request, category_id):
+    """
+    Public endpoint for fetching products of a specific category.
+    """
+    from website.models import PortfolioItem, PortfolioCategory
+    category = get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
+    
+    products_qs = PortfolioItem.objects.filter(category=category, is_active=True).order_by('order', '-created_at')
+    products = [
+        {
+            'id': p.id,
+            'title': p.title,
+            'image': p.image.url if p.image else '',
+            'description': p.description or '',
+            'type': p.item_type,
+        }
+        for p in products_qs
+    ]
+    
+    return JsonResponse({
+        'success': True,
+        'category': {'id': category.id, 'name': category.name},
+        'products': products
+    })
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_website_contact_submit(request):
+    """
+    Public endpoint for contact form submission from mobile app.
+    """
+    from website.services import ContactSubmissionService
+    from website.views import _sanitize_email_header_value
+    from django.core.validators import validate_email
+    from django.core.exceptions import ValidationError
+
+    try:
+        # Support both JSON and Form Data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        name = str(data.get('name', '')).strip()
+        email = str(data.get('email', '')).strip()
+        phone = str(data.get('phone', '')).strip()
+        subject = _sanitize_email_header_value(data.get('subject', 'Mobile App Enquiry'), max_length=255)
+        message = str(data.get('message', '')).strip()
+
+        if not all([name, email, subject, message]):
+            return JsonResponse({'success': False, 'message': 'Please fill all required fields.'}, status=400)
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            return JsonResponse({'success': False, 'message': 'Invalid email address.'}, status=400)
+
+        ContactSubmissionService.create(
+            name=name,
+            email=email,
+            phone=phone,
+            subject=subject,
+            message=message
+        )
+        return JsonResponse({'success': True, 'message': 'Thank you! We will get back to you soon.'})
+    except Exception as e:
+        logger.error("Mobile website contact failed: %s", e)
+        return JsonResponse({'success': False, 'message': 'Server error. Please try again later.'}, status=500)

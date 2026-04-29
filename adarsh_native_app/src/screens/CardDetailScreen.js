@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, Text, ScrollView, TouchableOpacity, Image, 
+  StyleSheet, Alert, RefreshControl, ActivityIndicator 
+} from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
@@ -7,48 +10,63 @@ import Toast from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
 import { DetailSkeleton } from '../components/Skeleton';
 import { apiGet, apiPost } from '../api/client';
-import { colors, gradients, typography, spacing, radius, shadows } from '../theme';
+import { colors, gradients, typography, spacing, radius, shadows, roleThemes } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 export default function CardDetailScreen({ navigation, route }) {
   const { cardId } = route.params;
+  const { user } = useAuth();
+  const theme = roleThemes[user?.role] || roleThemes.default;
+
   const [card, setCard] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showAllFields, setShowAllFields] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const [error, setError] = useState(null);
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await apiGet(`/app/api/card/${cardId}/detail/`);
-        if (data?.success) setCard(data.data);
-        else showToast(data?.message || 'Card not found', 'error');
-      } catch (e) { showToast('Network error', 'error'); }
-      setLoading(false);
-    })();
-  }, [cardId]);
+  const loadCard = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const { ok, data } = await apiGet(`/app/api/card/${cardId}/detail/`);
+      if (ok && data?.success) {
+        setCard(data.data);
+      } else {
+        setError(data?.message || 'Failed to load card details');
+      }
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
 
-  const setStatus = async (status) => {
-    setShowStatusModal(false);
+  useEffect(() => { loadCard(); }, [cardId]);
+
+  const updateStatus = async (status) => {
+    setUpdating(true);
     try {
       const { data } = await apiPost(`/app/api/card/${cardId}/status/`, { status });
-      showToast(data?.success ? (data.message || 'Status updated!') : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
-      if (data?.success) {
-        setCard(prev => prev ? { ...prev, status, status_display: status.charAt(0).toUpperCase() + status.slice(1) } : prev);
-      }
+      showToast(data?.success ? 'Status updated!' : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
+      if (data?.success) loadCard(true);
     } catch (e) { showToast('Network error', 'error'); }
+    setUpdating(false);
   };
 
   const deleteCard = () => {
-    Alert.alert('Delete Card?', 'Are you sure you want to delete this card?', [
+    Alert.alert('Delete Card?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         try {
           const { data } = await apiPost(`/app/api/card/${cardId}/delete/`, {});
-          showToast(data?.success ? 'Card deleted' : (data?.message || 'Delete failed'), data?.success ? 'success' : 'error');
-          if (data?.success) setTimeout(() => navigation.goBack(), 800);
+          if (data?.success) {
+            showToast('Card deleted', 'success');
+            setTimeout(() => navigation.goBack(), 800);
+          } else showToast(data?.message || 'Delete failed', 'error');
         } catch (e) { showToast('Network error', 'error'); }
       }},
     ]);
@@ -59,211 +77,153 @@ export default function CardDetailScreen({ navigation, route }) {
   );
 
   if (!card) return (
-    <View style={s.root}><TopBar title="Card Detail" onBack={() => navigation.goBack()} /><View style={s.loadWrap}><Text style={s.errText}>Card not found</Text></View></View>
+    <View style={s.root}>
+      <TopBar title="Card Detail" onBack={() => navigation.goBack()} />
+      <View style={s.center}><Text style={s.errText}>{error || 'Card not found'}</Text></TouchableOpacity></View>
+    </View>
   );
 
   const fd = card.field_data || {};
-  const fieldEntries = Object.entries(fd).filter(([_, v]) => v !== null && v !== '');
+  const cardName = card.name || fd.NAME || fd.Name || fd.name || fd.FULL_NAME || fd.full_name || `Card #${card.id}`;
+  const isLocked = ['pool'].includes(card.status) && (user?.role === 'client' || user?.role === 'client_staff');
+
+  const STATUS_OPTIONS = [
+    { key: 'pending', label: 'Pending' },
+    { key: 'verified', label: 'Verified' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'download', label: 'Download' },
+    { key: 'pool', label: 'Pool' },
+  ];
 
   return (
     <View style={s.root}>
-      {/* Header with status badge */}
-      <TopBar 
-        title={card.name || 'Card Detail'} 
-        subtitle={`${card.table_name || ''} - ${card.group_name || ''}`} 
-        onBack={() => navigation.goBack()} 
-        rightAction={{ icon: 'pen', onPress: () => navigation.navigate('CardForm', { tableId: card.table_id, cardId: card.id }) }}
-      />
-
-      <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
-        {/* Hero Card */}
-        <View style={s.heroCard}>
-          <LinearGradient colors={gradients.brand} style={s.heroStrip} />
-          <View style={s.heroInner}>
-            {card.photo_url ? (
-              <Image source={{ uri: card.photo_url }} style={s.heroPhoto} />
-            ) : (
-              <View style={[s.heroPhoto, s.heroPhotoPlaceholder]}><FontAwesome5 name="user" size={28} color={colors.indigo200} solid /></View>
-            )}
-            <View style={s.heroInfo}>
-              <Text style={s.heroName}>{card.name}</Text>
-              {!!card.class_designation && (
-                <View style={s.classBadge}><FontAwesome5 name="graduation-cap" size={8} color="#4f46e5" /><Text style={s.classText}>{card.class_designation}</Text></View>
+      <TopBar title="Card Details" subtitle={cardName} onBack={() => navigation.goBack()} />
+      
+      <ScrollView 
+        style={s.scroll} 
+        contentContainerStyle={s.scrollC} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadCard(true)} tintColor={colors.brandLight} />}
+      >
+        <LinearGradient colors={['#fff', '#f8fafc']} style={s.heroCard}>
+          <View style={s.heroTop}>
+            <View style={s.photoFrame}>
+              {card.photo_url ? (
+                <Image source={{ uri: card.photo_url }} style={s.photo} />
+              ) : (
+                <View style={s.photoPlaceholder}><FontAwesome5 name="user" size={24} color={colors.gray200} solid /></View>
               )}
-              <View style={s.heroMeta}>
-                {!!card.id_number && <MetaItem icon="id-badge" color="#818cf8" text={card.id_number} />}
-                {!!card.contact && <MetaItem icon="phone" color="#34d399" text={card.contact} />}
-                {!!card.dob && <MetaItem icon="calendar" color="#fbbf24" text={card.dob} />}
+            </View>
+            <View style={s.heroInfo}>
+              <Text style={s.cardName}>{cardName}</Text>
+              <Text style={s.tableName}>{card.table_name || 'Unassigned Table'}</Text>
+              <View style={s.statusLine}>
+                <StatusBadge status={card.status} showIcon size="lg" />
+                <View style={s.vLine} />
+                <Text style={s.srNo}>SR: {card.sr_no || '-'}</Text>
               </View>
             </View>
           </View>
-          <View style={s.statusRow}>
-            <StatusBadge status={card.status} size="lg" />
+        </LinearGradient>
+
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <FontAwesome5 name="id-card" size={12} color={colors.gray400} />
+            <Text style={s.sectionTitle}>FIELD DATA</Text>
+          </View>
+          <View style={s.fieldsList}>
+            {Object.entries(fd).map(([key, val], i) => (
+              <View key={key} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
+                <Text style={s.fieldKey}>{key.replace(/_/g, ' ')}</Text>
+                <Text style={s.fieldVal}>{val || '-'}</Text>
+              </View>
+            ))}
+            {Object.keys(fd).length === 0 && (
+              <View style={s.emptyFields}><Text style={s.emptyFieldsText}>No field data available</Text></View>
+            )}
           </View>
         </View>
 
-        {/* Family */}
-        {(card.father_name || card.mother_name) && (
-          <>
-            <Text style={s.secTitle}>FAMILY</Text>
-            <View style={s.familyGrid}>
-              {!!card.father_name && <InfoCard icon="user-tie" color="#3b82f6" bg="#dbeafe" borderColor="#bfdbfe" label="Father" value={card.father_name} />}
-              {!!card.mother_name && <InfoCard icon="user" color="#ec4899" bg="#fce7f3" borderColor="#fbcfe8" label="Mother" value={card.mother_name} />}
-            </View>
-          </>
-        )}
-
-        {/* Details */}
-        {(card.blood_group || card.session || card.address) && (
-          <>
-            <Text style={s.secTitle}>DETAILS</Text>
-            <View style={s.familyGrid}>
-              {!!card.blood_group && <InfoCard icon="tint" color="#ef4444" bg="#fef2f2" borderColor="#fecaca" label="Blood Group" value={card.blood_group} valueLarge />}
-              {!!card.session && <InfoCard icon="calendar-alt" color="#8b5cf6" bg="#ede9fe" borderColor="#ddd6fe" label="Session" value={card.session} />}
-            </View>
-            {!!card.address && (
-              <View style={[s.infoCard, { marginHorizontal: 16, marginTop: 10, borderColor: '#fed7aa' }]}>
-                <View style={s.infoHeader}><View style={[s.infoIcon, { backgroundColor: '#fff7ed' }]}><FontAwesome5 name="map-marker-alt" size={10} color="#f97316" solid /></View><Text style={s.infoLabel}>ADDRESS</Text></View>
-                <Text style={s.infoValue}>{card.address}</Text>
-              </View>
-            )}
-          </>
-        )}
-
-        {/* All Fields Collapsible */}
-        {fieldEntries.length > 0 && (
-          <View style={s.fieldsCard}>
-            <TouchableOpacity onPress={() => setShowAllFields(!showAllFields)} style={s.fieldsHeader} activeOpacity={0.7}>
-              <View style={s.fieldsHeaderLeft}><View style={[s.infoIcon, { backgroundColor: colors.indigo50 }]}><FontAwesome5 name="list-ul" size={10} color={colors.brandLight} solid /></View><Text style={s.fieldsHeaderText}>All Fields</Text></View>
-              <FontAwesome5 name={showAllFields ? 'chevron-up' : 'chevron-down'} size={10} color={colors.gray400} />
-            </TouchableOpacity>
-            {showAllFields && (
-              <View style={s.fieldsBody}>
-                {fieldEntries.map(([key, value]) => (
-                  <View key={key} style={s.fieldRow}>
-                    <Text style={s.fieldKey} numberOfLines={1}>{key}</Text>
-                    <Text style={s.fieldValue} numberOfLines={1}>{String(value)}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Timestamps */}
-        <View style={s.timestampCard}>
-          <View style={s.tsRow}><View style={s.tsLabel}><FontAwesome5 name="calendar-plus" size={10} color={colors.gray400} /><Text style={s.tsLabelText}>Created</Text></View><Text style={s.tsValue}>{card.created_at || '-'}</Text></View>
-          <View style={s.tsRow}><View style={s.tsLabel}><FontAwesome5 name="calendar-check" size={10} color={colors.gray400} /><Text style={s.tsLabelText}>Updated</Text></View><Text style={s.tsValue}>{card.updated_at || '-'}</Text></View>
-        </View>
-
-        {/* Actions */}
         <View style={s.actions}>
-          <TouchableOpacity onPress={() => setShowStatusModal(true)} activeOpacity={0.85} style={s.primaryBtnWrap}>
-            <LinearGradient colors={gradients.brand} style={s.primaryBtn}>
-              <FontAwesome5 name="sync-alt" size={13} color="#fff" /><Text style={s.primaryBtnText}>Change Status</Text>
-            </LinearGradient>
+          {!isLocked && (
+            <TouchableOpacity onPress={() => navigation.navigate('CardForm', { tableId: card.table_id, cardId: card.id })} activeOpacity={0.85} style={s.editBtnWrap}>
+              <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.editBtn}>
+                <FontAwesome5 name="pen" size={12} color="#fff" />
+                <Text style={s.editBtnText}>Edit Information</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {isLocked && (
+            <View style={s.lockedNote}>
+              <FontAwesome5 name="lock" size={12} color={colors.gray400} />
+              <Text style={s.lockedNoteText}>Card is locked (Status: {card.status})</Text>
+            </View>
+          )}
+
+          <View style={s.statusGrid}>
+            {STATUS_OPTIONS.map(opt => (
+              <TouchableOpacity 
+                key={opt.key} 
+                onPress={() => updateStatus(opt.key)} 
+                disabled={updating} 
+                style={s.statusOption}
+              >
+                <StatusBadge status={opt.key} variant={card.status === opt.key ? 'solid' : 'glass'} />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
+            <FontAwesome5 name="trash-alt" size={12} color="#ef4444" />
+            <Text style={s.deleteBtnText}>Delete Card</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={deleteCard} style={s.deleteBtn} activeOpacity={0.7}>
-            <FontAwesome5 name="trash-alt" size={13} color="#ef4444" solid /><Text style={s.deleteBtnText}>Delete Card</Text>
-          </TouchableOpacity>
+        </View>
+
+        <View style={s.timestampRow}>
+          <Text style={s.tsText}>Updated: {card.updated_at || '-'}</Text>
         </View>
       </ScrollView>
-
-      {/* Status Modal */}
-      {showStatusModal && (
-        <View style={s.modalOverlay}>
-          <TouchableOpacity style={s.modalBg} activeOpacity={1} onPress={() => setShowStatusModal(false)} />
-          <View style={s.modalSheet}>
-            <View style={s.modalHandle} />
-            <Text style={s.modalTitle}><FontAwesome5 name="sync-alt" size={10} color={colors.brandLight} />  Change Status</Text>
-            <View style={s.statusGrid}>
-              {[['pending','Pending','clock','#fef3c7','#b45309','#fde68a'],['verified','Verified','check-circle','#d1fae5','#047857','#a7f3d0'],['approved','Approved','check-double','#e0f2fe','#0369a1','#bae6fd'],['download','Download','download','#ede9fe','#7c3aed','#ddd6fe']].map(([st,label,icon,bg,tc,bc]) => (
-                <TouchableOpacity key={st} onPress={() => setStatus(st)} style={[s.statusBtn, { backgroundColor: bg, borderColor: bc }]} activeOpacity={0.7}>
-                  <FontAwesome5 name={icon} size={12} color={tc} solid /><Text style={[s.statusBtnText, { color: tc }]}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={s.cancelBtn}><Text style={s.cancelBtnText}>Cancel</Text></TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({ ...p, visible: false }))} />
-    </View>
-  );
-}
-
-function MetaItem({ icon, color, text }) {
-  return (<View style={s.metaItem}><FontAwesome5 name={icon} size={9} color={color} solid /><Text style={s.metaText}>{text}</Text></View>);
-}
-
-function InfoCard({ icon, color, bg, borderColor, label, value, valueLarge }) {
-  return (
-    <View style={[s.infoCard, { borderColor }]}>
-      <View style={s.infoHeader}><View style={[s.infoIcon, { backgroundColor: bg }]}><FontAwesome5 name={icon} size={10} color={color} solid /></View><Text style={s.infoLabel}>{label.toUpperCase()}</Text></View>
-      <Text style={[s.infoValue, valueLarge && { fontSize: 14, fontWeight: '700', color }]}>{value}</Text>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({...p, visible: false}))} />
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errText: { fontSize: 14, color: colors.gray500 },
-  scroll: { flex: 1 }, scrollC: { paddingBottom: 40 },
-  // Hero
-  heroCard: { marginHorizontal: 16, marginTop: 16, backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: colors.indigo100, ...shadows.sm },
-  heroStrip: { height: 6 },
-  heroInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, padding: 16 },
-  heroPhoto: { width: 80, height: 100, borderRadius: 12, borderWidth: 2, borderColor: colors.indigo100 },
-  heroPhotoPlaceholder: { backgroundColor: colors.indigo50, alignItems: 'center', justifyContent: 'center' },
-  heroInfo: { flex: 1, paddingTop: 4 },
-  heroName: { fontSize: 17, fontWeight: '700', color: colors.gray800, marginBottom: 4 },
-  classBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.indigo50, borderWidth: 1, borderColor: colors.indigo100, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start' },
-  classText: { fontSize: 11, fontWeight: '600', color: '#4f46e5' },
-  heroMeta: { marginTop: 10, gap: 6 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  metaText: { fontSize: 11, fontWeight: '500', color: colors.gray500 },
-  statusRow: { paddingHorizontal: 16, paddingBottom: 12 },
-  // Sections
-  secTitle: { fontSize: 10, fontWeight: '700', color: colors.gray400, letterSpacing: 1.2, marginHorizontal: 20, marginTop: 16, marginBottom: 8 },
-  familyGrid: { flexDirection: 'row', gap: 10, marginHorizontal: 16 },
-  infoCard: { flex: 1, backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, ...shadows.sm },
-  infoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  infoIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  infoLabel: { fontSize: 9, fontWeight: '700', color: colors.gray400, letterSpacing: 0.8 },
-  infoValue: { fontSize: 12, fontWeight: '600', color: colors.gray800 },
-  // Fields
-  fieldsCard: { marginHorizontal: 16, marginTop: 12, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: colors.indigo100, overflow: 'hidden', ...shadows.sm },
-  fieldsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
-  fieldsHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldsHeaderText: { fontSize: 13, fontWeight: '700', color: colors.gray700 },
-  fieldsBody: { borderTopWidth: 1, borderTopColor: '#f1f5f9' },
-  fieldRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
-  fieldKey: { flex: 0.42, fontSize: 11, fontWeight: '600', color: colors.gray400, textTransform: 'uppercase' },
-  fieldValue: { flex: 0.58, fontSize: 11, fontWeight: '600', color: colors.gray700, textAlign: 'right' },
-  // Timestamps
-  timestampCard: { marginHorizontal: 16, marginTop: 12, backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
-  tsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  tsLabel: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  tsLabelText: { fontSize: 11, color: colors.gray400 },
-  tsValue: { fontSize: 11, fontWeight: '600', color: colors.gray600 },
-  // Actions
-  actions: { marginHorizontal: 16, marginTop: 16, gap: 10 },
-  primaryBtnWrap: { borderRadius: 20, overflow: 'hidden', ...shadows.md },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 20 },
-  primaryBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 20 },
-  deleteBtnText: { fontSize: 14, fontWeight: '700', color: '#ef4444' },
-  // Modal
-  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 70 },
-  modalBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 20, ...shadows.xl },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginTop: 12, marginBottom: 8 },
-  modalTitle: { fontSize: 14, fontWeight: '700', color: colors.gray800, paddingHorizontal: 16, marginBottom: 16 },
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 16 },
-  statusBtn: { width: '47%', paddingVertical: 14, borderRadius: 20, borderWidth: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  statusBtnText: { fontSize: 12, fontWeight: '700' },
-  cancelBtn: { marginTop: 12, marginHorizontal: 16, paddingVertical: 12, backgroundColor: colors.gray100, borderRadius: 20, alignItems: 'center' },
-  cancelBtnText: { fontSize: 12, fontWeight: '700', color: colors.gray500 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  scroll: { flex: 1 }, scrollC: { padding: 16, paddingBottom: 40 },
+  heroCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.md, marginBottom: 20 },
+  heroTop: { flexDirection: 'row', gap: 20 },
+  photoFrame: { width: 90, height: 110, borderRadius: 16, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  photo: { width: '100%', height: '100%' },
+  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  heroInfo: { flex: 1, justifyContent: 'center' },
+  cardName: { fontSize: 20, fontWeight: '800', color: colors.gray800 },
+  tableName: { fontSize: 13, color: colors.gray500, marginTop: 4 },
+  statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 12 },
+  vLine: { width: 1, height: 16, backgroundColor: '#e2e8f0' },
+  srNo: { fontSize: 11, fontWeight: '700', color: colors.gray400 },
+  section: { backgroundColor: '#fff', borderRadius: 24, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingBottom: 8 },
+  sectionTitle: { fontSize: 10, fontWeight: '800', color: colors.gray400, letterSpacing: 1.2 },
+  fieldsList: { padding: 8 },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 8, borderTopWidth: 1, borderTopColor: '#f8fafc' },
+  fieldKey: { fontSize: 11, fontWeight: '700', color: colors.gray400, textTransform: 'uppercase' },
+  fieldVal: { fontSize: 13, fontWeight: '600', color: colors.gray700, flex: 1, textAlign: 'right', marginLeft: 20 },
+  emptyFields: { padding: 20, alignItems: 'center' },
+  emptyFieldsText: { fontSize: 12, color: colors.gray400, fontStyle: 'italic' },
+  actions: { gap: 12 },
+  editBtnWrap: { borderRadius: 16, overflow: 'hidden', ...shadows.md },
+  editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
+  editBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  lockedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, backgroundColor: colors.gray100, borderRadius: 16 },
+  lockedNoteText: { fontSize: 12, color: colors.gray500, fontWeight: '600' },
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 },
+  statusOption: { minWidth: '30%' },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, marginTop: 10 },
+  deleteBtnText: { fontSize: 12, color: '#ef4444', fontWeight: '600' },
+  timestampRow: { marginTop: 24, alignItems: 'center' },
+  tsText: { fontSize: 10, color: colors.gray400 },
+  errText: { fontSize: 14, color: colors.error, textAlign: 'center' },
 });

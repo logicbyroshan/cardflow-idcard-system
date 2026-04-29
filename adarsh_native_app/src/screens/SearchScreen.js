@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import CardItem from '../components/CardItem';
 import TopBar from '../components/TopBar';
 import StatusBadge from '../components/StatusBadge';
 import { CardListSkeleton } from '../components/Skeleton';
@@ -48,28 +49,7 @@ export default function SearchScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={s.card}
-      activeOpacity={0.7}
-      onPress={() => navigation.navigate('CardDetail', { cardId: item.id })}
-    >
-      <View style={s.photoWrap}>
-        {item.photo_url ? (
-          <Image source={{ uri: item.photo_url }} style={s.photo} />
-        ) : (
-          <View style={s.photoPlaceholder}><FontAwesome5 name="user" size={14} color={colors.gray400} solid /></View>
-        )}
-      </View>
-      <View style={s.info}>
-        <Text style={s.name} numberOfLines={1}>{item.name}</Text>
-        <View style={s.metaRow}>
-          {!!item.roll_no && <Text style={s.rollNo}>{item.roll_no}</Text>}
-          <Text style={s.tableName}>{item.table_name}</Text>
-          {!!item.client_name && <Text style={s.clientName}>· {item.client_name}</Text>}
-        </View>
-      </View>
-      <StatusBadge status={item.status} />
-    </TouchableOpacity>
+    <CardItem item={item} onPress={() => navigation.navigate('CardDetail', { cardId: item.id })} />
   );
 
   const currentFilter = FILTERS.find(f => f.key === filterType) || FILTERS[0];
@@ -150,33 +130,22 @@ export default function SearchScreen({ navigation }) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  searchRow: { flexDirection: 'row', alignItems: 'center', flex: 1, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  searchIcon: { position: 'absolute', left: 12, zIndex: 1 },
-  searchInput: { flex: 1, paddingLeft: 34, paddingRight: 12, paddingVertical: 10, fontSize: 13, color: '#fff' },
-  filterBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  filterBtnText: { fontSize: 11, fontWeight: '600', color: colors.gray700 },
-  countPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.indigo50, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#e2e8f0' },
-  countText: { fontSize: 11, fontWeight: '600', color: '#4f46e5' },
-  filterDropdown: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.md, marginBottom: 8 },
-  filterItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  filterItemActive: { backgroundColor: 'rgba(51,183,239,0.05)' },
-  filterItemText: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.gray700 },
-  filterItemTextActive: { color: colors.brandLight, fontWeight: '600' },
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
-  photoWrap: { width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(51,183,239,0.06)', borderWidth: 1, borderColor: '#f1f5f9' },
-  photo: { width: '100%', height: '100%' },
-  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  info: { flex: 1, minWidth: 0 },
-  name: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' },
-  rollNo: { fontSize: 10, fontWeight: '500', color: colors.gray500 },
-  tableName: { fontSize: 10, color: colors.gray400 },
-  clientName: { fontSize: 10, color: colors.gray400 },
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
-  emptySub: { fontSize: 11, color: colors.gray300, marginTop: 4 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 16, paddingHorizontal: 14, height: 44, marginTop: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  searchIcon: { marginRight: 10 },
+  searchInput: { flex: 1, color: '#fff', fontSize: 14, height: '100%', paddingVertical: 0, fontWeight: '600' },
+  filterBar: { flexDirection: 'row', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', zIndex: 10, gap: 10 },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#f1f5f9' },
+  filterBtnText: { fontSize: 11, fontWeight: '800', color: colors.gray700, letterSpacing: 0.5 },
+  countPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(51,183,239,0.05)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(51,183,239,0.1)' },
+  countText: { fontSize: 11, fontWeight: '800', color: colors.brandLight },
+  filterDropdown: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.lg, marginBottom: 12, overflow: 'hidden' },
+  filterItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  filterItemActive: { backgroundColor: 'rgba(51,183,239,0.03)' },
+  filterItemText: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.gray500 },
+  filterItemTextActive: { color: colors.brandLight, fontWeight: '800' },
+  list: { padding: 16, paddingBottom: 40 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
+  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 20, ...shadows.sm },
+  emptyTitle: { fontSize: 14, fontWeight: '800', color: colors.gray800 },
+  emptySub: { fontSize: 12, color: colors.gray400, marginTop: 6, textAlign: 'center', paddingHorizontal: 40 },
 });

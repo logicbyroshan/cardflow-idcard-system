@@ -151,7 +151,7 @@
 .office-work-page .form-select,
 .office-work-page .office-input,
 .office-work-page .form-textarea {
-  border-radius: 0 !important;
+  border-radius: 10px !important;
 }
 
 .office-chat-panel {
@@ -232,7 +232,7 @@
 
 .office-chat-group-row {
   border: 1px solid transparent;
-  border-radius: 0 !important;
+  border-radius: 12px !important;
   background: transparent;
   padding: 8px 9px;
   cursor: pointer;
@@ -257,7 +257,7 @@
 .office-chat-group-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 0 !important;
+  border-radius: 12px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -370,7 +370,7 @@
 .office-chat-active-avatar {
   width: 34px;
   height: 34px;
-  border-radius: 0 !important;
+  border-radius: 12px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -552,7 +552,7 @@
   padding: 6px 8px;
   color: var(--color-slate-700);
   font-size: var(--ui-font-size-sm, 12px);
-  border-radius: 0 !important;
+  border-radius: 10px !important;
 }
 
 .office-chat-attachment-preview span {
@@ -868,7 +868,7 @@ textarea.office-input {
 .office-task-card {
   border: 1px solid var(--color-slate-200);
   background: var(--color-white);
-  border-radius: 0 !important;
+  border-radius: 14px !important;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
   padding: 12px;
   display: flex;
@@ -900,7 +900,7 @@ textarea.office-input {
 .office-task-edit-trigger {
   width: 26px;
   height: 26px;
-  border-radius: 0 !important;
+  border-radius: 8px !important;
   border: 0;
   background: var(--color-slate-100);
   color: var(--color-slate-500);
@@ -949,7 +949,7 @@ textarea.office-input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0 !important;
+  border-radius: 999px !important;
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 800;
@@ -1052,7 +1052,7 @@ textarea.office-input {
   width: 100%;
   min-height: 34px;
   border: 1px dashed #9ab9df;
-  border-radius: 0 !important;
+  border-radius: 12px !important;
   background: rgba(255, 255, 255, 0.7);
   color: #23405c;
   font-size: var(--ui-font-size-sm, 12px);
@@ -1086,7 +1086,7 @@ textarea.office-input {
   max-height: calc(100vh - 24px);
   overflow: auto;
   border: 1px solid var(--color-slate-200);
-  border-radius: 0 !important;
+  border-radius: 16px !important;
   background: var(--color-white);
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
   z-index: 1200;
@@ -1097,7 +1097,7 @@ textarea.office-input {
   width: min(1040px, calc(100vw - 28px));
   max-height: calc(100vh - 20px);
   height: auto;
-  border-radius: 0 !important;
+  border-radius: 16px !important;
   background: #f4f5f7;
   box-shadow: 0 20px 80px rgba(0, 0, 0, 0.3);
   overflow: hidden;
@@ -1132,7 +1132,7 @@ textarea.office-input {
   border: none;
   width: 32px;
   height: 32px;
-  border-radius: 0 !important;
+  border-radius: 10px !important;
   color: var(--color-slate-500);
   display: flex;
   align-items: center;
@@ -1188,7 +1188,7 @@ textarea.office-input {
   padding: 4px 8px;
   margin: 0 0 4px -8px;
   width: calc(100% + 16px);
-  border-radius: 0 !important;
+  border-radius: 10px !important;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -1232,7 +1232,7 @@ textarea.office-input {
 .office-task-badge {
   background: #ebecf0;
   padding: 6px 12px;
-  border-radius: 0 !important;
+  border-radius: 999px !important;
   font-size: 0.85rem;
   color: var(--color-slate-700);
   display: inline-flex;
@@ -1279,7 +1279,7 @@ textarea.office-input {
   height: 32px;
   background: var(--brand-gradient);
   color: white;
-  border-radius: 0 !important;
+  border-radius: 10px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1313,7 +1313,7 @@ textarea.office-input {
 .office-task-comment-body {
   background: white;
   padding: 8px 12px;
-  border-radius: 0 !important;
+  border-radius: 12px !important;
   font-size: 0.9rem;
   color: var(--color-slate-800);
   line-height: 1.4;
@@ -1324,7 +1324,7 @@ textarea.office-input {
 .office-task-comment-composer {
   background: white;
   border: 1px solid var(--color-slate-200);
-  border-radius: 0 !important;
+  border-radius: 12px !important;
   padding: 8px;
   margin-bottom: 24px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -1375,7 +1375,7 @@ textarea.office-input {
   gap: 8px;
   border: 1px solid var(--color-slate-200);
   background: var(--color-white);
-  border-radius: 0 !important;
+  border-radius: 10px !important;
   padding: 6px 8px;
   font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-700);
@@ -1385,7 +1385,7 @@ textarea.office-input {
   width: 32px;
   height: 32px;
   border: 1px solid var(--color-slate-200);
-  border-radius: 0 !important;
+  border-radius: 10px !important;
   background: var(--color-white);
   color: var(--color-slate-600);
   cursor: pointer;
@@ -1642,7 +1642,7 @@ textarea.office-input {
 .office-template-placeholder-info {
   background: #f1f5f9;
   padding: 10px 12px;
-  border-radius: 0 !important;
+  border-radius: 12px !important;
   margin-bottom: 12px;
   font-size: 12px;
   color: var(--color-slate-600);
@@ -1652,7 +1652,7 @@ textarea.office-input {
 .office-template-placeholder-info code {
   background: #e2e8f0;
   padding: 2px 4px;
-  border-radius: 0 !important;
+  border-radius: 8px !important;
   color: var(--color-primary);
   font-weight: 700;
 }
@@ -1779,7 +1779,7 @@ textarea.office-input {
 .btn-action {
   width: 34px;
   height: 34px;
-  border-radius: 0 !important;
+  border-radius: 10px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1798,5 +1798,97 @@ textarea.office-input {
 .btn-call:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
 .btn-whatsapp:hover { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
 .btn-mail:hover { background: #fdf2f2; color: #dc2626; border-color: #fecaca; }
+
+/* Leads Panel Layout - Full Height */
+.office-leads-panel {
+  background: linear-gradient(180deg, #f8fbff 0%, #f2f7fd 100%);
+}
+
+.office-leads-section {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  gap: 12px !important;
+}
+
+.office-leads-top-bar {
+  background: var(--color-white);
+  border: 1px solid var(--color-slate-200);
+  border-radius: 12px !important;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.office-leads-top-bar .btn {
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 6px 14px;
+}
+
+.table-wrapper {
+  background: var(--color-white);
+  border: 1px solid var(--color-slate-200);
+  border-radius: 12px !important;
+  overflow: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  flex: 1;
+  min-height: 0;
+}
+
+.data-table {
+  width: 100% !important;
+  border-collapse: collapse;
+  background: var(--color-white);
+}
+
+.data-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(135deg, #f8fbff 0%, #f1f7fd 100%);
+  border-bottom: 2px solid var(--color-slate-200);
+}
+
+.data-table thead th {
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-slate-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #f8fbff 0%, #f1f7fd 100%);
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid var(--color-slate-100);
+  transition: background-color 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(var(--primary-rgb), 0.03);
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.data-table td {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--color-slate-700);
+  vertical-align: middle;
+}
+
+.data-table .text-center {
+  text-align: center;
+}
+
+.data-table .text-center td {
+  text-align: center;
+}
 .btn-edit:hover { background: #faf5ff; color: #9333ea; border-color: #e9d5ff; }
 .btn-delete:hover { background: #fff1f2; color: #e11d48; border-color: #fecdd3; }

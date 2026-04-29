@@ -86,7 +86,7 @@ async function apiFetch(path, options = {}) {
   const headers = {
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
-    'User-Agent': 'AdarshMobileApp/1.0 (Android Native)',
+    'User-Agent': 'AdarshMobileApp/1.1 (Premium Native; Expo)',
     ...(options.headers || {}),
   };
 
