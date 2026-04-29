@@ -66,6 +66,11 @@
     lastChatSyncAtMs: 0,
     chatPollConnectedMs: 12000,
     chatPollDisconnectedMs: 4000,
+      // Backoff/cooldown to avoid tight retry loops when server responds 429
+      chatCooldownUntilMs: 0,
+      chatBackoffFactor: 1,
+      chatBackoffBaseMs: 30000,
+      chatBackoffMaxMs: 300000,
     desktopPermissionBootstrapDone: false,
     leads: [],
     leadsLoaded: false,
@@ -1101,7 +1106,10 @@
       if (!data || !data.success) {
         return;
       }
+      // Successful sync — reset any backoff state
       state.lastChatSyncAtMs = Date.now();
+      state.chatCooldownUntilMs = 0;
+      state.chatBackoffFactor = 1;
 
       var messages = Array.isArray(data.messages) ? data.messages : [];
       if (messages.length === 0) {
@@ -1127,8 +1135,21 @@
       }
       state.chatLoaded = true;
     } catch (error) {
-      if (forceInitial) {
-        notify((error && error.message) || 'Failed to load chat.', 'error');
+      // If server responded with 429, enter an exponential backoff cooldown
+      if (error && error.status === 429) {
+        var now = Date.now();
+        var backoffMs = Math.min((state.chatBackoffBaseMs || 30000) * (state.chatBackoffFactor || 1), (state.chatBackoffMaxMs || 300000));
+        state.chatCooldownUntilMs = now + backoffMs;
+        // increase backoff factor for repeated 429s (cap it)
+        state.chatBackoffFactor = Math.min((state.chatBackoffFactor || 1) * 2, Math.max(1, Math.ceil((state.chatBackoffMaxMs || 300000) / (state.chatBackoffBaseMs || 30000))));
+        try { console.warn('Chat polling backoff due to 429, cooling for ' + backoffMs + 'ms'); } catch (e) {}
+        if (forceInitial) {
+          notify('Chat is temporarily rate-limited. Retrying later.', 'warning');
+        }
+      } else {
+        if (forceInitial) {
+          notify((error && error.message) || 'Failed to load chat.', 'error');
+        }
       }
     } finally {
       state.chatLoadInFlight = false;
@@ -1136,7 +1157,10 @@
         var pendingForceInitial = !!state.chatLoadPendingForceInitial;
         state.chatLoadPending = false;
         state.chatLoadPendingForceInitial = false;
-        loadChat({ forceInitial: pendingForceInitial });
+        // Only honor the pending retry if we're not in an active cooldown window
+        if (Date.now() >= Number(state.chatCooldownUntilMs || 0)) {
+          loadChat({ forceInitial: pendingForceInitial });
+        }
       }
     }
   }
@@ -2033,6 +2057,10 @@
     }
     state.pollTimer = window.setInterval(function () {
       if (!state.activeGroupId) {
+        return;
+      }
+      // If we've entered a cooldown due to server rate limiting, skip polling
+      if (Date.now() < Number(state.chatCooldownUntilMs || 0)) {
         return;
       }
       var nowMs = Date.now();
