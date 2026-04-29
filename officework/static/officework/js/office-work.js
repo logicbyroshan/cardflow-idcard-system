@@ -36,6 +36,12 @@
     }
     officeWorkBoot.started = true;
 
+  if (window._officeWorkInitialized) {
+    try { console.warn('OFFICE_WORK_DEBUG: Already initialized, skipping second initialization.'); } catch (e) {}
+    return;
+  }
+  window._officeWorkInitialized = true;
+
   var state = {
     activeTab: 'chat',
     activeGroupId: 0,
@@ -63,7 +69,8 @@
     chatLoadInFlight: false,
     chatLoadPending: false,
     chatLoadPendingForceInitial: false,
-    lastChatSyncAtMs: Date.now(),
+    lastChatSyncAtMs: 0,
+    realtimeListenerAdded: false,
     chatPollConnectedMs: 60000,
     chatPollDisconnectedMs: 20000,
       // Backoff/cooldown to avoid tight retry loops when server responds 429
@@ -1090,6 +1097,11 @@
     }
 
     var now = Date.now();
+    // Protection: Don't sync if we synced very recently (unless forced)
+    if (!forceInitial && (now - state.lastChatSyncAtMs < 10000)) {
+      return;
+    }
+
     // If we've entered a cooldown due to server rate limiting, respect it
     if (now < Number(state.chatCooldownUntilMs || 0)) {
       return;
@@ -1152,11 +1164,10 @@
         // increase backoff factor for repeated 429s (cap it)
         state.chatBackoffFactor = Math.min((state.chatBackoffFactor || 1) * 2, Math.max(1, Math.ceil((state.chatBackoffMaxMs || 300000) / (state.chatBackoffBaseMs || 30000))));
         try { console.warn('Chat polling backoff due to 429, cooling for ' + backoffMs + 'ms'); } catch (e) {}
-        if (forceInitial) {
-          notify('Chat is temporarily rate-limited. Retrying later.', 'warning');
-        }
+        // Silent backoff - don't show to user
       } else {
-        if (forceInitial) {
+        // Only show fatal errors if NOT a 429 and forceInitial was requested
+        if (forceInitial && error && error.status !== 429 && error.status !== 0) {
           notify((error && error.message) || 'Failed to load chat.', 'error');
         }
       }
@@ -2067,6 +2078,11 @@
       window.clearInterval(state.pollTimer);
     }
     state.pollTimer = window.setInterval(function () {
+      // Don't poll if tab is hidden to save server resources
+      if (document.hidden) {
+        return;
+      }
+      
       if (!state.activeGroupId || state.chatLoadInFlight) {
         return;
       }
@@ -2089,7 +2105,7 @@
           loadTasks();
         }
       }
-    }, 2000);
+    }, 10000);
   }
 
   function handleRealtimePacket(packet) {
@@ -2207,9 +2223,10 @@
   }
 
   function initRealtime() {
-    if (!window.AppRealtimeService || !cfg.realtime || !cfg.realtime.wsPath) {
+    if (!window.AppRealtimeService || !cfg.realtime || !cfg.realtime.wsPath || state.realtimeListenerAdded) {
       return;
     }
+    state.realtimeListenerAdded = true;
 
     window.AppRealtimeService.onMessage(handleRealtimePacket);
     var initialTopics = [currentUserTopic(), currentTasksTopic()].filter(function (topic) {
@@ -3054,12 +3071,15 @@
 
     resetChatState();
 
-    await Promise.all([
-      loadChat({ forceInitial: true }),
-      loadTasks(),
-    ]);
-
-    startChatPolling();
+    // Stagger initial load to prevent thundering herd from multiple tabs
+    var initialDelay = Math.floor(Math.random() * 3000); 
+    setTimeout(async function() {
+      await Promise.all([
+        loadChat({ forceInitial: true }),
+        loadTasks(),
+      ]);
+      startChatPolling();
+    }, initialDelay);
   }
 
   // --- Leads Logic ---
