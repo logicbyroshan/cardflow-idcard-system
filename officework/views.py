@@ -3,12 +3,6 @@
 from core.services.realtime_service import publish_topic_event
 
 from .views_chat import (
-    api_office_work_chat_attachment_download,
-    api_office_work_chat_group_create,
-    api_office_work_chat_group_members_update,
-    api_office_work_chat_groups_list,
-    api_office_work_chat_list,
-    api_office_work_chat_send,
     office_work_page,
 )
 from .views_tasks import (
@@ -31,12 +25,7 @@ from .views_leads import (
 
 __all__ = [
     'office_work_page',
-    'api_office_work_chat_groups_list',
-    'api_office_work_chat_group_create',
-    'api_office_work_chat_group_members_update',
-    'api_office_work_chat_list',
-    'api_office_work_chat_send',
-    'api_office_work_chat_attachment_download',
+
     'api_office_work_tasks_list',
     'api_office_work_task_create',
     'api_office_work_task_update',

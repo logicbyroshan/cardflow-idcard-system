@@ -323,6 +323,26 @@ body.mobile-menu-open {
     border-radius: var(--wa-radius-xl) !important;
 }
 
+/* Category Cover Images (Bento Grid SEO placeholders) */
+.category-cover-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.category-card:hover .category-cover-img {
+    transform: scale(1.08);
+}
+
+.category-slider {
+    position: relative;
+    z-index: 2; /* Stay above cover img for JS slider overlays */
+}
+
 /* Keep tag and filter controls visually stable; no hover jump. */
 .portfolio-filters .filter-tab,
 .filter-tabs .filter-tab,

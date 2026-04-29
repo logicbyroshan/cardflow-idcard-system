@@ -22,92 +22,31 @@
 
 {% block topbar_right %}
 <div class="nav-right office-work-nav-right">
-  <div class="office-work-tabs topbar-tabs" role="tablist" aria-label="Office Work tabs">
-    <button type="button" class="office-tab-btn is-active" data-tab="chat" role="tab" aria-selected="true">
-      <i class="fa-solid fa-comments"></i> <span>Chat</span>
-    </button>
-    <button type="button" class="office-tab-btn" data-tab="tasks" role="tab" aria-selected="false">
-      <i class="fa-solid fa-list-check"></i> <span>Tasks</span>
-    </button>
-    <button type="button" class="office-tab-btn" data-tab="leads" role="tab" aria-selected="false">
-      <i class="fa-solid fa-user-tag"></i> <span>Leads</span>
-    </button>
-  </div>
   {% include 'partials/notification-bell.html' %}
 </div>
 {% endblock %}
 
 {% block content %}
-<div class="main-content office-work-page">
+  <div class="office-work-tabs-wrap">
+    <div class="office-work-tabs panel-tabs" role="tablist" aria-label="Office Work tabs">
+      <button type="button" class="office-tab-btn panel-tab is-active" data-tab="tasks" role="tab" aria-selected="true">
+        <i class="fa-solid fa-list-check"></i> <span>Tasks</span>
+      </button>
+      <button type="button" class="office-tab-btn panel-tab" data-tab="leads" role="tab" aria-selected="false">
+        <i class="fa-solid fa-user-tag"></i> <span>Leads</span>
+      </button>
+    </div>
+  </div>
 
   <section class="office-work-shell">
     <div class="office-work-panels">
-      <section class="office-panel is-active" data-panel="chat" role="tabpanel">
-        <article class="office-chat-panel">
-          <div class="office-chat-layout">
-            <aside class="office-chat-sidebar" aria-label="Team chats and contacts">
-              <div class="office-chat-sidebar-head">
-                <h3><i class="fa-brands fa-whatsapp"></i> Chats</h3>
-                <button
-                  type="button"
-                  id="officeCreateGroupBtn"
-                  class="btn btn-sm btn-neutral"
-                  {% if not can_manage_groups %}disabled{% endif %}
-                  title="Create New Group">
-                  <i class="fa-solid fa-user-group"></i>
-                  Create New Group
-                </button>
-              </div>
-              <div class="office-chat-search-row">
-                <input id="officeChatGroupSearch" type="text" class="office-input" placeholder="Search chats..." aria-label="Search chats">
-              </div>
-              <div class="office-chat-sidebar-title">Chats</div>
-              <div id="officeChatGroupsList" class="office-chat-groups-list" role="listbox" aria-label="Office Work chats"></div>
-            </aside>
-
-            <div class="office-chat-main">
-              <header class="drawer-header office-chat-header">
-                <div class="office-chat-header-main">
-                  <div class="office-chat-active-avatar" id="officeChatActiveAvatar" aria-hidden="true">?</div>
-                  <div class="office-chat-header-copy">
-                    <h3 id="officeChatActiveGroupName">Select a chat</h3>
-                    <span id="officeChatActiveGroupMeta" class="office-chat-group-meta">Pick a user from the right sidebar to start messaging.</span>
-                  </div>
-                </div>
-              </header>
-
-              <div class="client-message-drawer-body office-chat-body">
-                <div class="client-message-thread" id="officeChatList" aria-live="polite">
-                  <div class="client-message-thread-state">Loading messages...</div>
-                </div>
-              </div>
-
-              <form id="officeChatForm" class="drawer-footer client-message-drawer-footer office-chat-form">
-                <input id="officeChatFileInput" type="file" class="office-chat-file-input" tabindex="-1" aria-hidden="true">
-                <div class="office-chat-composer" role="group" aria-label="Message composer">
-                  <textarea id="officeChatInput" class="form-textarea office-input office-chat-input" rows="3" maxlength="4000" placeholder="Type a message..."></textarea>
-                  <button type="button" id="officeChatAttachBtn" class="office-chat-composer-btn office-chat-composer-btn-attach" title="Attach or paste file">
-                    <i class="fa-solid fa-paperclip"></i>
-                  </button>
-                  <button type="submit" class="office-chat-composer-btn office-chat-composer-btn-send" title="Send message">
-                    <i class="fa-solid fa-paper-plane"></i>
-                  </button>
-                </div>
-                <div id="officeChatAttachmentPreview" class="office-chat-attachment-preview" hidden>
-                  <span id="officeChatAttachmentName"></span>
-                  <button type="button" id="officeChatAttachmentRemove" class="btn btn-sm btn-neutral">
-                    <i class="fa-solid fa-xmark"></i>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <section class="office-panel" data-panel="tasks" role="tabpanel" hidden>
+      <section class="office-panel is-active" data-panel="tasks" role="tabpanel">
         <section class="office-section office-task-board-shell">
-          <h3><i class="fa-solid fa-table-columns"></i> Team Board</h3>
+          <header class="office-panel-header">
+            <div class="office-panel-title">
+              <i class="fa-solid fa-table-columns"></i> Team Board
+            </div>
+          </header>
           <div id="officeTaskBoard" class="office-kanban-board" aria-live="polite">
             <article class="office-kanban-column" data-status="todo">
               <header class="office-kanban-column-header">
@@ -298,31 +237,35 @@
         </section>
       </section>
       <section class="office-panel office-leads-panel" data-panel="leads" role="tabpanel" hidden>
-        <section class="office-section office-leads-section" style="display: flex; flex-direction: column; height: 100%; gap: 12px; padding: 12px;">
+        <section class="office-section office-leads-section" style="display: flex; flex-direction: column; height: 100%; gap: 0; padding: 0;">
           <!-- Top bar with search and action buttons -->
-          <div class="office-leads-top-bar" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <div class="office-search-input-wrap" style="flex: 1; min-width: 200px;">
-              <i class="fa-solid fa-magnifying-glass"></i>
-              <input type="text" id="officeLeadSearch" class="office-input" placeholder="Search leads by name, contact, or location...">
+          <div class="office-leads-top-bar action-bar" style="border-top: none;">
+            <div class="action-bar-left">
+              <div class="office-search-input-wrap search-input-wrapper" style="flex: 1; min-width: 280px; max-width: 400px;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="officeLeadSearch" class="office-input" placeholder="Search leads by name, contact, or location...">
+              </div>
             </div>
-            <button type="button" id="officeXlsxUploadBtn" class="btn btn-sm btn-neutral" title="Upload leads from Excel">
-              <i class="fa-solid fa-file-excel"></i> Upload Leads
-            </button>
-            <button type="button" id="officeLeadSearchNewBtn" class="btn btn-sm btn-accent" title="Find new clients">
-              <i class="fa-solid fa-magnifying-glass-location"></i> Search Clients
-            </button>
-            <button type="button" id="officeLeadTemplateBtn" class="btn btn-sm btn-neutral" title="View message templates">
-              <i class="fa-solid fa-message"></i> Templates
-            </button>
-            <button type="button" id="officeCreateLeadBtn" class="btn btn-sm btn-primary" title="Add a new lead">
-              <i class="fa-solid fa-plus"></i> Add Lead
-            </button>
+            <div class="action-bar-right" style="gap: 8px;">
+              <button type="button" id="officeXlsxUploadBtn" class="btn btn-sm btn-neutral" title="Upload leads from Excel">
+                <i class="fa-solid fa-file-excel"></i> <span>Upload</span>
+              </button>
+              <button type="button" id="officeLeadSearchNewBtn" class="btn btn-sm btn-accent" title="Find new clients">
+                <i class="fa-solid fa-magnifying-glass-location"></i> <span>Find Clients</span>
+              </button>
+              <button type="button" id="officeLeadTemplateBtn" class="btn btn-sm btn-neutral" title="View message templates">
+                <i class="fa-solid fa-message"></i> <span>Templates</span>
+              </button>
+              <button type="button" id="officeCreateLeadBtn" class="btn btn-sm btn-primary" title="Add a new lead">
+                <i class="fa-solid fa-plus"></i> <span>Add Lead</span>
+              </button>
+            </div>
           </div>
           
           <!-- Table container that fills remaining space -->
-          <div class="table-wrapper" style="flex: 1; overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px;">
-            <table id="officeLeadsTable" class="data-table" style="width: 100%; min-height: 100%;">
-              <thead style="position: sticky; top: 0; z-index: 10;">
+          <div class="table-wrapper" style="flex: 1; overflow: auto; border: 1px solid #e5e7eb; border-radius: 0;">
+            <table id="officeLeadsTable" class="data-table office-leads-table" style="width: 100%; min-height: 100%;">
+              <thead class="office-table-header-strip" style="position: sticky; top: 0; z-index: 10;">
                 <tr>
                   <th>Customer Name</th>
                   <th>Contact Info</th>
@@ -337,58 +280,40 @@
             </table>
           </div>
         </section>
-
-        <!-- Lead Modal -->
-        {% include 'components/modal-side.html' with
-           modal_id="officeLeadModal"
-           title="Create New Lead"
-           form_id="officeLeadForm"
-           body_content=body_lead_content
-        %}
-        <script>
-          /* Render lead form body into modal */
-          document.addEventListener('DOMContentLoaded', function() {
-            var bodyEl = document.getElementById('officeLeadModal-body');
-            if (bodyEl && !bodyEl.innerHTML.trim()) {
-              bodyEl.innerHTML = `{% include "officework/modals/lead-body.html" %}`;
-            }
-            var footerEl = document.getElementById('officeLeadModal-footer');
-            if (footerEl && !footerEl.innerHTML.trim()) {
-              footerEl.innerHTML = `
-                <button type="button" id="officeLeadCancelBtn" class="btn btn-outline" onclick="window.closeSideModal('officeLeadModal')">Cancel</button>
-                <button type="submit" id="officeLeadSubmitBtn" class="btn btn-primary">Save Lead</button>
-              `;
-            }
-          });
-        </script>
-
-        <!-- Message Templates Modal -->
-        {% include 'components/center-modal.html' with
-           modal_id="officeTemplateModal"
-           title="Message Templates"
-           icon="fa-solid fa-message"
-           body_template="officework/modals/template-body.html"
-        %}
-
-        <!-- Search New Clients Modal -->
-        {% include 'components/center-modal.html' with
-           modal_id="officeSearchClientsModal"
-           title="Search New Clients"
-           icon="fa-solid fa-magnifying-glass-location"
-           body_template="officework/modals/search-clients-body.html"
-        %}
-
-        <!-- XLSX Upload Modal (Optional but good to have standardized) -->
-        {% include 'components/center-modal.html' with
-           modal_id="officeXlsxUploadModal"
-           title="Upload Leads (XLSX)"
-           icon="fa-solid fa-file-excel"
-           body_template="officework/modals/xlsx-body.html"
-        %}
       </section>
     </div>
   </section>
 </div>
+{% endblock %}
+
+{% block modals %}
+  <!-- Lead Modal -->
+  {% include 'components/modal-side.html' with modal_id="officeLeadModal" title="Create New Lead" form_id="officeLeadForm" body_content=body_lead_content %}
+  <script>
+    /* Render lead form body into modal */
+    document.addEventListener('DOMContentLoaded', function() {
+      var bodyEl = document.getElementById('officeLeadModal-body');
+      if (bodyEl && !bodyEl.innerHTML.trim()) {
+        bodyEl.innerHTML = `{% include "officework/modals/lead-body.html" %}`;
+      }
+      var footerEl = document.getElementById('officeLeadModal-footer');
+      if (footerEl && !footerEl.innerHTML.trim()) {
+        footerEl.innerHTML = `
+          <button type="button" id="officeLeadCancelBtn" class="btn btn-outline" onclick="window.closeSideModal('officeLeadModal')">Cancel</button>
+          <button type="submit" id="officeLeadSubmitBtn" class="btn btn-primary">Save Lead</button>
+        `;
+      }
+    });
+  </script>
+
+  <!-- Message Templates Modal -->
+  {% include 'components/center-modal.html' with modal_id="officeTemplateModal" title="Message Templates" icon="fa-solid fa-message" body_template="officework/modals/template-body.html" %}
+
+  <!-- Search New Clients Modal -->
+  {% include 'components/center-modal.html' with modal_id="officeSearchClientsModal" title="Search New Clients" icon="fa-solid fa-magnifying-glass-location" body_template="officework/modals/search-clients-body.html" %}
+
+  <!-- XLSX Upload Modal -->
+  {% include 'components/center-modal.html' with modal_id="officeXlsxUploadModal" title="Upload Leads (XLSX)" icon="fa-solid fa-file-excel" body_template="officework/modals/xlsx-body.html" %}
 {% endblock %}
 
 {% block page_vars %}
@@ -398,16 +323,9 @@ window.OfficeWorkConfig = {
   canManageGroups: {{ can_manage_groups|yesno:'true,false' }},
   realtime: {
     wsPath: "/ws/panel/realtime/",
-    chatTopicPrefix: "officework.chat.group.",
-    userTopicPrefix: "officework.chat.user.",
     taskCommentsBase: "/api/office-work/tasks/",
   },
   endpoints: {
-    chatGroupsList: "{% url 'api_office_work_chat_groups_list' %}",
-    chatGroupCreate: "{% url 'api_office_work_chat_group_create' %}",
-    chatGroupMembersUpdateBase: "/api/office-work/chat/groups/",
-    chatList: "{% url 'api_office_work_chat_list' %}",
-    chatSend: "{% url 'api_office_work_chat_send' %}",
     tasksList: "{% url 'api_office_work_tasks_list' %}",
     taskCreate: "{% url 'api_office_work_task_create' %}",
     taskUpdateBase: "/api/office-work/tasks/",
@@ -423,5 +341,7 @@ window.OfficeWorkConfig = {
 {% endblock %}
 
 {% block extra_js %}
+<script defer src="{% static 'officework/js/tasks.js' %}"></script>
+<script defer src="{% static 'officework/js/leads.js' %}"></script>
 <script defer src="{% static 'officework/js/office-work.js' %}"></script>
 {% endblock %}

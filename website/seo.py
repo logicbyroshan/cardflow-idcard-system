@@ -93,10 +93,10 @@ def _generate_full_sitemap(request):
         for cat in categories:
             try:
                 loc = reverse('website:category_detail', kwargs={'slug': cat.slug})
-                lastmod = cat.updated_at.isoformat() if cat.updated_at else ''
+                lastmod = cat.updated_at.strftime('%Y-%m-%d') if cat.updated_at else ''
                 urls.append(f"""  <url>
     <loc>{site_url}{loc}</loc>
-    <lastmod>{lastmod}</lastmod>
+    {f'<lastmod>{lastmod}</lastmod>' if lastmod else ''}
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>""")
@@ -115,10 +115,10 @@ def _generate_full_sitemap(request):
                     'category_slug': item.category.slug,
                     'slug': item.slug
                 })
-                lastmod = item.updated_at.isoformat() if item.updated_at else ''
+                lastmod = item.updated_at.strftime('%Y-%m-%d') if item.updated_at else ''
                 urls.append(f"""  <url>
     <loc>{site_url}{loc}</loc>
-    <lastmod>{lastmod}</lastmod>
+    {f'<lastmod>{lastmod}</lastmod>' if lastmod else ''}
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>""")

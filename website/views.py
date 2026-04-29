@@ -973,11 +973,15 @@ def category_detail(request, slug):
     # Bento Grid Data (for View Samples modal)
     context = get_common_context()
     context.update(_get_bento_context())
+    # SEO metadata
+    meta_title = category.meta_title or f"{category.name} in Bhopal, MP | Adarsh ID Card Solutions"
+    meta_desc = category.meta_description or f"High-quality {category.name} printing in Bhopal. {category.description[:150] if category.description else 'The best identity solutions in Madhya Pradesh.'} Contact Adarsh Bhopal for bulk orders."
+
     context.update({
         'category': category,
         'items': items,
-        'meta_title': f"{category.name} in Bhopal, MP | Adarsh ID Card Solutions",
-        'meta_description': f"High-quality {category.name} printing in Bhopal. {category.description[:150] if category.description else 'The best identity solutions in Madhya Pradesh.'} Contact Adarsh Bhopal for bulk orders.",
+        'meta_title': meta_title,
+        'meta_description': meta_desc,
         'meta_keywords': f"{category.name}, {category.name} Bhopal, {category.name} printing MP, Adarsh ID Cards products",
         'canonical_url': request.build_absolute_uri(),
         'breadcrumb': [
@@ -995,11 +999,15 @@ def product_detail(request, category_slug, slug):
     related_items = PortfolioItem.objects.filter(category=item.category, is_active=True).exclude(pk=item.pk).order_by('?')[:4]
     
     context = get_common_context()
+    # SEO metadata
+    meta_title = item.meta_title or f"{item.title} - {item.category.name} Bhopal | Adarsh ID Cards MP"
+    meta_desc = item.meta_description or f"Buy premium {item.title} ({item.category.name}) in Bhopal. Custom ID card solutions for schools and organizations across Madhya Pradesh by Adarsh Bhopal."
+
     context.update({
         'item': item,
         'related_items': related_items,
-        'meta_title': f"{item.title} - {item.category.name} Bhopal | Adarsh ID Cards MP",
-        'meta_description': f"Buy premium {item.title} ({item.category.name}) in Bhopal. Custom ID card solutions for schools and organizations across Madhya Pradesh by Adarsh Bhopal.",
+        'meta_title': meta_title,
+        'meta_description': meta_desc,
         'meta_keywords': f"{item.title}, {item.category.name}, {item.title} Bhopal, ID Card printing Bhopal, Adarsh ID Cards",
         'canonical_url': request.build_absolute_uri(),
         'breadcrumb': [
@@ -1016,30 +1024,4 @@ def product_detail(request, category_slug, slug):
     return render(request, 'website/product-detail.html', context)
 
 
-# --- SEO Utility Views ---
-
-def sitemap_view(request):
-    """Dynamic XML sitemap."""
-    sitemaps = {
-        'static': StaticViewSitemap,
-        'categories': PortfolioCategorySitemap,
-        'products': PortfolioItemSitemap,
-    }
-    return sitemap(request, sitemaps=sitemaps)
-
-
-def robots_txt(request):
-    """SEO-optimized robots.txt."""
-    site_url = request.build_absolute_uri('/').rstrip('/')
-    lines = [
-        "User-agent: *",
-        "Allow: /",
-        "",
-        f"Sitemap: {site_url}/sitemap.xml",
-    ]
-    return HttpResponse("\n".join(lines), content_type="text/plain")
-
-
-
-
-
+# Redundant SEO views removed. Centralized in website/seo.py.
