@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, typography, spacing, radius } from '../theme';
 
 const STATUS_STYLES = {
@@ -24,7 +23,7 @@ export default function StatusBadge({ status, count, size = 'md', variant = 'sol
       isGlass && styles.badgeGlass,
       isGlass && { borderColor: style.text + '20' }
     ]}>
-      {showIcon && <FontAwesome5 name={style.icon} size={isLarge ? 12 : 10} color={style.text} style={{ marginRight: 6 }} />}
+      {showIcon && <FontAwesome5 name={style.icon} size={isLarge ? 12 : 9} color={style.text} style={{ marginRight: 6 }} />}
       <Text style={[
         styles.text,
         { color: style.text },
@@ -40,30 +39,30 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 1,
+    paddingVertical: spacing.xs,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 44,
+    minWidth: 42,
   },
   badgeLg: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
-    minWidth: 56,
+    minWidth: 52,
   },
   badgeGlass: {
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   text: {
-    fontSize: 10,
+    fontSize: typography.xxs + 1,
     fontWeight: '800',
-    fontFamily: 'SairaSemiCondensed-Bold',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   textLg: {
-    fontSize: 12,
+    fontSize: typography.sm,
     fontWeight: '800',
   },
 });

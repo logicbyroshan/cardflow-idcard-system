@@ -77,7 +77,14 @@ def _env_float(name: str, default: float, *, minimum: float | None = None, maxim
 # Allowed Hosts
 # In DEBUG mode, default to localhost hosts only. Override via DEBUG_ALLOWED_HOSTS.
 if DEBUG:
-    ALLOWED_HOSTS = ['*']
+    _debug_hosts = os.getenv('DEBUG_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
+    ALLOWED_HOSTS = [
+        host.strip()
+        for host in _debug_hosts.split(',')
+        if host.strip()
+    ]
+    if not ALLOWED_HOSTS:
+        ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 else:
     ALLOWED_HOSTS = [
         host.strip()

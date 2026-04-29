@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl }
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { SettingsSkeleton } from '../components/Skeleton';
-import { useToast } from '../context/ToastContext';
+import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, shadows } from '../theme';
 
@@ -11,7 +11,8 @@ export default function SettingsScreen({ navigation }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const { showToast } = useToast();
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
   const loadSettings = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -20,15 +21,9 @@ export default function SettingsScreen({ navigation }) {
     try {
       const { ok, data: resp } = await apiGet('/app/api/settings/');
       if (ok && resp?.success) setData(resp.data);
-      else {
-        const msg = resp?.message || 'Failed to load settings';
-        if (isRefresh) showToast(msg);
-        else setError(msg);
-      }
+      else setError(resp?.message || 'Failed to load settings');
     } catch (e) {
-      const msg = 'Network connection failed';
-      if (isRefresh) showToast(msg);
-      else setError(msg);
+      setError('Network error - check your connection');
     }
     setLoading(false);
     setRefreshing(false);
@@ -45,6 +40,7 @@ export default function SettingsScreen({ navigation }) {
   return (
     <View style={s.root}>
       <TopBar title="Settings" subtitle="System information & stats" onBack={() => navigation.goBack()} />
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadSettings(true)} />}
       <ScrollView 
         style={s.scroll} 
         contentContainerStyle={s.scrollC} 

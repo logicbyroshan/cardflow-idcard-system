@@ -573,15 +573,6 @@ def _get_system_notifications(user, limit=20, mark_visible_as_read=False):
     return items, unread_count
 
 
-def _abs_url(request, path):
-    """Convert a relative media path to an absolute URI for mobile compatibility."""
-    if not path:
-        return ''
-    if path.startswith(('http://', 'https://')):
-        return path
-    return request.build_absolute_uri(path)
-
-
 def _client_ctx(user):
     """Return (client, permissions_dict) for the current user.
     For admin roles (super_admin/admin_staff) that have no client profile,
@@ -600,33 +591,6 @@ def _client_ctx(user):
             client = Client.objects.filter(id__in=accessible_ids, status='active').first()
     perms = PermissionService.get_permission_context(user)
     return client, perms
-
-
-def _get_role_label(role):
-    """Convert internal role ID to a premium user-facing label."""
-    mapping = {
-        'super_admin': 'Admin',
-        'pro_user': 'Pro User',
-        'admin_staff': 'Operator',
-        'client': 'Client Admin',
-        'client_staff': 'Assistant',
-    }
-    return mapping.get(role, role.replace('_', ' ').title())
-
-
-def _get_mobile_context(request):
-    """Helper to aggregate role and client context for mobile APIs."""
-    user = request.user
-    client, perms = _client_ctx(user)
-    ctx = {
-        'user_role': user.role if hasattr(user, 'role') else '',
-        'client_name': client.name if client else '',
-        'is_super_admin': perms.get('is_super_admin', False),
-        'is_client': perms.get('is_client', False),
-        'is_admin_staff': perms.get('is_admin_staff', False),
-        **perms
-    }
-    return ctx
 
 
 def _mobile_no_client_redirect():
@@ -1273,13 +1237,7 @@ def api_mobile_login(request):
             ip_address=client_ip,
         )
         ActivityService.log_login(request, user)
-        return JsonResponse({
-            'success': True, 
-            'redirect_url': '/app/', 
-            'message': 'Login successful',
-            'role': user.role,
-            'user_name': user.get_full_name() or user.username,
-        })
+        return JsonResponse({'success': True, 'redirect_url': '/app/', 'message': 'Login successful'})
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
     except Exception:
@@ -3401,6 +3359,7 @@ def profile(request):
         'user_email': user.email or '',
         'user_phone': getattr(user, 'phone', '') or '',
         'user_role': {
+            'super_admin': 'Super Admin',
             'admin_staff': 'Admin Staff',
             'client': 'Client Admin',
             'client_staff': 'Client Staff',
@@ -3587,7 +3546,7 @@ def api_upload_photo(request, table_id):
             return JsonResponse({
                 'success': True,
                 'message': 'Photo uploaded',
-                'photo_url': _abs_url(request, photo_url),
+                'photo_url': photo_url,
                 'field_name': preferred_field_name,
             })
 
@@ -3630,7 +3589,7 @@ def api_upload_photo(request, table_id):
         return JsonResponse({
             'success': True,
             'message': 'Photo uploaded',
-            'photo_url': _abs_url(request, get_card_photo_url(card, field_data)),
+            'photo_url': get_card_photo_url(card, field_data),
             'field_name': 'PHOTO',
         })
     except IDCard.DoesNotExist:
@@ -3647,10 +3606,7 @@ def api_card_detail(request, card_id):
     """Get card detail JSON."""
     result = ClientCardService.get_card_detail(request.user, card_id)
     if result.success:
-        data = result.data
-        if 'photo_url' in data:
-            data['photo_url'] = _abs_url(request, data['photo_url'])
-        return JsonResponse({'success': True, 'data': data})
+        return JsonResponse({'success': True, 'data': result.data})
     msg = (result.message or '').lower()
     if 'permission' in msg or 'access denied' in msg or 'access' in msg:
         status_code = 403
@@ -3700,12 +3656,7 @@ def api_cards(request, table_id):
         sort_order=sort_mode,
     )
     if result.success:
-        data = result.data
-        if 'cards' in data:
-            for c in data['cards']:
-                if 'photo_url' in c:
-                    c['photo_url'] = _abs_url(request, c['photo_url'])
-        return JsonResponse({'success': True, 'data': data})
+        return JsonResponse({'success': True, 'data': result.data})
     return JsonResponse({'success': False, 'message': result.message}, status=400)
 
 
@@ -4770,7 +4721,6 @@ def api_profile_data(request):
                 'email': user.email or '',
                 'phone': getattr(user, 'phone', '') or '',
                 'role': ctx.get('user_role', ''),
-                'roleLabel': _get_role_label(ctx.get('user_role', '')),
                 'client_name': ctx.get('client_name', ''),
                 'is_super_admin': ctx.get('is_super_admin', False),
                 'is_client': ctx.get('is_client', False),
@@ -5285,7 +5235,7 @@ def api_search(request):
             'table_name': card.table.name,
             'group_name': getattr(card.table.group, 'name', ''),
             'client_name': getattr(getattr(card.table.group, 'client', None), 'name', ''),
-            'photo_url': _abs_url(request, photo_url),
+            'photo_url': photo_url,
             'table_id': card.table.id,
         })
 

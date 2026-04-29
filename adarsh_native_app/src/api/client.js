@@ -5,7 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
-const BASE_URL = 'https://adarsh-mobile-test.loca.lt';
+const BASE_URL = 'https://panel.adarshbhopal.in';
 
 const STORAGE_KEYS = {
   csrfToken: 'adarsh_csrf_token',

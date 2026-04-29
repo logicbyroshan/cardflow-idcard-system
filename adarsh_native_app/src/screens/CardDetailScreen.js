@@ -103,15 +103,15 @@ export default function CardDetailScreen({ navigation, route }) {
         style={s.scroll} 
         contentContainerStyle={s.scrollC} 
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadCard(true)} tintColor={colors.brandPrimary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadCard(true)} tintColor={colors.brandLight} />}
       >
-        <View style={s.heroCard}>
+        <LinearGradient colors={['#fff', '#f8fafc']} style={s.heroCard}>
           <View style={s.heroTop}>
             <View style={s.photoFrame}>
               {card.photo_url ? (
                 <Image source={{ uri: card.photo_url }} style={s.photo} />
               ) : (
-                <View style={s.photoPlaceholder}><FontAwesome5 name="user" size={32} color={colors.gray200} solid /></View>
+                <View style={s.photoPlaceholder}><FontAwesome5 name="user" size={24} color={colors.gray200} solid /></View>
               )}
             </View>
             <View style={s.heroInfo}>
@@ -124,7 +124,7 @@ export default function CardDetailScreen({ navigation, route }) {
               </View>
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
         <View style={s.section}>
           <View style={s.sectionHeader}>
@@ -192,45 +192,38 @@ export default function CardDetailScreen({ navigation, route }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  scroll: { flex: 1 }, 
-  scrollC: { padding: 20, paddingBottom: 40 },
-  
+  scroll: { flex: 1 }, scrollC: { padding: 16, paddingBottom: 40 },
   heroCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.md, marginBottom: 20 },
   heroTop: { flexDirection: 'row', gap: 20 },
-  photoFrame: { width: 100, height: 125, borderRadius: 16, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  photoFrame: { width: 90, height: 110, borderRadius: 16, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   photo: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   heroInfo: { flex: 1, justifyContent: 'center' },
-  cardName: { fontSize: 22, fontWeight: '800', color: colors.gray800, fontFamily: 'SairaSemiCondensed-Bold' },
-  tableName: { fontSize: 13, color: colors.gray500, marginTop: 4, fontFamily: 'SairaSemiCondensed-Medium' },
-  statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 12 },
+  cardName: { fontSize: 20, fontWeight: '800', color: colors.gray800 },
+  tableName: { fontSize: 13, color: colors.gray500, marginTop: 4 },
+  statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 12 },
   vLine: { width: 1, height: 16, backgroundColor: '#e2e8f0' },
-  srNo: { fontSize: 11, fontWeight: '700', color: colors.gray400, fontFamily: 'SairaSemiCondensed-Bold' },
-  
-  section: { backgroundColor: '#fff', borderRadius: 24, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 24 },
+  srNo: { fontSize: 11, fontWeight: '700', color: colors.gray400 },
+  section: { backgroundColor: '#fff', borderRadius: 24, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingBottom: 8 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.gray400, letterSpacing: 1.5, fontFamily: 'SairaSemiCondensed-Bold' },
+  sectionTitle: { fontSize: 10, fontWeight: '800', color: colors.gray400, letterSpacing: 1.2 },
   fieldsList: { padding: 8 },
-  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: '#f8fafc' },
-  fieldKey: { fontSize: 12, fontWeight: '700', color: colors.gray400, textTransform: 'uppercase', fontFamily: 'SairaSemiCondensed-Bold' },
-  fieldVal: { fontSize: 14, fontWeight: '600', color: colors.gray700, flex: 1, textAlign: 'right', marginLeft: 20, fontFamily: 'SairaSemiCondensed-Medium' },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 8, borderTopWidth: 1, borderTopColor: '#f8fafc' },
+  fieldKey: { fontSize: 11, fontWeight: '700', color: colors.gray400, textTransform: 'uppercase' },
+  fieldVal: { fontSize: 13, fontWeight: '600', color: colors.gray700, flex: 1, textAlign: 'right', marginLeft: 20 },
   emptyFields: { padding: 20, alignItems: 'center' },
-  emptyFieldsText: { fontSize: 13, color: colors.gray400, fontStyle: 'italic', fontFamily: 'SairaSemiCondensed-Regular' },
-  
+  emptyFieldsText: { fontSize: 12, color: colors.gray400, fontStyle: 'italic' },
   actions: { gap: 12 },
-  editBtnWrap: { borderRadius: 20, overflow: 'hidden', ...shadows.lg },
-  editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 18 },
-  editBtnText: { fontSize: 15, fontWeight: '800', color: '#fff', fontFamily: 'SairaSemiCondensed-Bold' },
+  editBtnWrap: { borderRadius: 16, overflow: 'hidden', ...shadows.md },
+  editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
+  editBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
   lockedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, backgroundColor: colors.gray100, borderRadius: 16 },
-  lockedNoteText: { fontSize: 12, color: colors.gray500, fontWeight: '600', fontFamily: 'SairaSemiCondensed-Medium' },
-  
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 12 },
-  statusOption: { minWidth: '30%', marginBottom: 4 },
-  
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, marginTop: 12 },
-  deleteBtnText: { fontSize: 13, color: '#ef4444', fontWeight: '600', fontFamily: 'SairaSemiCondensed-Bold' },
-  
-  timestampRow: { marginTop: 32, alignItems: 'center' },
-  tsText: { fontSize: 11, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Regular' },
-  errText: { fontSize: 15, color: colors.error, textAlign: 'center', fontFamily: 'SairaSemiCondensed-Bold' },
+  lockedNoteText: { fontSize: 12, color: colors.gray500, fontWeight: '600' },
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 },
+  statusOption: { minWidth: '30%' },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, marginTop: 10 },
+  deleteBtnText: { fontSize: 12, color: '#ef4444', fontWeight: '600' },
+  timestampRow: { marginTop: 24, alignItems: 'center' },
+  tsText: { fontSize: 10, color: colors.gray400 },
+  errText: { fontSize: 14, color: colors.error, textAlign: 'center' },
 });
