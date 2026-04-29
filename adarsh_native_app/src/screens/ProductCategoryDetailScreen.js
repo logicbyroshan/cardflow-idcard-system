@@ -14,7 +14,7 @@ const COLUMN_COUNT = 2;
 const ITEM_WIDTH = (width - 40) / COLUMN_COUNT;
 
 export default function ProductCategoryDetailScreen({ navigation, route }) {
-  const { category } = route.params;
+  const category = route?.params?.category || {};
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
@@ -50,7 +50,7 @@ export default function ProductCategoryDetailScreen({ navigation, route }) {
       />
       
       {loading ? (
-        <View style={s.center}><ActivityIndicator size="large" color={colors.brand} /></View>
+        <View style={s.center}><ActivityIndicator size="large" color={colors.brandLight} /></View>
       ) : (
         <FlatList
           data={products}

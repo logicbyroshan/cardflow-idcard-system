@@ -23,7 +23,7 @@ const EmptyList = React.memo(function EmptyList({ status }) {
 });
 
 export default function CardListScreen({ navigation, route }) {
-  const { tableId, status } = route.params;
+  const { tableId, status } = route?.params || {};
   const statusDisplay = useMemo(() => (status || '').charAt(0).toUpperCase() + (status || '').slice(1), [status]);
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);

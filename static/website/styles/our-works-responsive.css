@@ -91,7 +91,8 @@
     }
 
     .portfolio-grid {
-        column-gap: 25px;
+        column-count: 4;
+        column-gap: 20px;
     }
 }
 
@@ -137,7 +138,8 @@
     }
 
     .portfolio-grid {
-        columns: 3 200px;
+        column-count: 3;
+        column-gap: 15px;
     }
 
     .process-connector {
@@ -220,8 +222,8 @@
     }
 
     .portfolio-grid {
-        columns: 2 180px;
-        column-gap: 15px;
+        column-count: 2;
+        column-gap: 12px;
     }
 
     .process-section {
@@ -341,7 +343,7 @@
     }
 
     .portfolio-grid {
-        columns: 2 140px;
+        column-count: 2;
         column-gap: 10px;
     }
 
@@ -527,6 +529,7 @@
     }
 
     .portfolio-grid {
+        column-count: 2;
         column-gap: 8px;
     }
 
@@ -618,7 +621,7 @@
     }
 
     .portfolio-grid {
-        columns: 2;
+        column-count: 2;
         column-gap: 6px;
     }
 

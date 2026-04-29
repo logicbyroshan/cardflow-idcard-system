@@ -525,7 +525,7 @@
             <span class="wa-section-bar-left"><i class="fa-solid fa-share-nodes"></i> Social Links</span>
             {% if is_super_admin or perm_website_edit %}
             <span class="wa-section-bar-actions">
-                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="facebook_url,instagram_url,twitter_url,whatsapp_number">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="facebook_url,instagram_url,linkedin_url,youtube_url">
                     <i class="fa-solid fa-save"></i> Save Changes
                 </button>
             </span>
@@ -543,12 +543,12 @@
         </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
-                <label for="twitter_url"><i class="fa-brands fa-twitter"></i> Twitter / X</label>
-                <input type="url" id="twitter_url" name="twitter_url" value="{{ business.twitter_url|default:'' }}">
+                <label for="linkedin_url"><i class="fa-brands fa-linkedin"></i> LinkedIn</label>
+                <input type="url" id="linkedin_url" name="linkedin_url" value="{{ business.linkedin_url|default:'' }}">
             </div>
             <div class="wa-form-group">
-                <label for="whatsapp_number"><i class="fa-brands fa-whatsapp"></i> WhatsApp</label>
-                <input type="text" id="whatsapp_number" name="whatsapp_number" value="{{ business.whatsapp_number|default:'' }}" placeholder="919876543210">
+                <label for="youtube_url"><i class="fa-brands fa-youtube"></i> YouTube</label>
+                <input type="url" id="youtube_url" name="youtube_url" value="{{ business.youtube_url|default:'' }}">
             </div>
         </div>
 

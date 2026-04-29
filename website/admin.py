@@ -27,7 +27,7 @@ class BusinessDetailsAdmin(admin.ModelAdmin):
             'fields': ('email', ('phone1', 'phone2'), 'address', 'working_hours')
         }),
         ('Social Media', {
-            'fields': ('facebook_url', 'instagram_url', 'twitter_url', 'whatsapp_number'),
+            'fields': ('facebook_url', 'instagram_url', 'linkedin_url', 'youtube_url'),
         }),
         ('Hero Section', {
             'fields': ('hero_title', 'hero_description')

@@ -19,7 +19,6 @@
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:image" content="{% block og_image %}{% if item and item.image %}{{ request.scheme }}://{{ request.get_host }}{{ item.image.url }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}{% endif %}{% endblock %}">
     
-    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }}{% endif %}">
     <meta name="twitter:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description }}{% endif %}">
@@ -75,7 +74,8 @@
           "sameAs": [
             "{{ business.facebook_url }}",
             "{{ business.instagram_url }}",
-            "{{ business.twitter_url }}"
+            "{{ business.linkedin_url }}",
+            "{{ business.youtube_url }}"
           ]
         }
         {% if breadcrumb %},
@@ -133,7 +133,7 @@
                 <div class="logo">
                     <a href="{% url 'website:home' %}" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit;">
                         <div class="logo-box">
-                            <img src="{% static 'website/images/adarsh.png' %}" alt="Adarsh Logo" class="logo-img">
+                            <img src="{% static 'assets/Adarsh 3dN.png' %}" alt="Adarsh Logo" class="logo-img">
                         </div>
                         <span class="logo-text">{{ site_name }}</span>
                     </a>
@@ -175,7 +175,7 @@
                 <div class="footer-section">
                     <div class="footer-brand" aria-label="Brand identity">
                         <span class="footer-brand-logo-box" aria-hidden="true">
-                            <img src="{% static 'website/images/adarsh.png' %}" alt="" class="footer-brand-logo-img">
+                            <img src="{% static 'assets/Adarsh 3dN.png' %}" alt="" class="footer-brand-logo-img">
                         </span>
                         <span class="footer-brand-name">{{ site_name }}</span>
                     </div>
@@ -184,13 +184,16 @@
                         <a href="{{ business.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram" {% if not business.instagram_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-instagram" aria-hidden="true"></i>
                         </a>
-                        <a href="{{ business.twitter_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="YouTube" {% if not business.twitter_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                        <a href="{{ business.youtube_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="YouTube" {% if not business.youtube_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-youtube" aria-hidden="true"></i>
                         </a>
                         <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook" {% if not business.facebook_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-facebook-f" aria-hidden="true"></i>
                         </a>
-                        <a href="{% if business.whatsapp_number %}https://wa.me/{{ business.whatsapp_number|cut:'+'|cut:' '|cut:'-'|cut:'('|cut:')' }}?text={{ 'Hello, I want to know more about your products.'|urlencode }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" {% if not business.whatsapp_number %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                        <a href="{{ business.linkedin_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" {% if not business.linkedin_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fa-brands fa-linkedin-in" aria-hidden="true"></i>
+                        </a>
+                        <a href="{% if business.phone1 %}https://wa.me/{{ business.phone1|cut:'+'|cut:' '|cut:'-'|cut:'('|cut:')' }}?text={{ 'Hello, I want to know more about your products.'|urlencode }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" {% if not business.phone1 %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
                         </a>
                     </div>

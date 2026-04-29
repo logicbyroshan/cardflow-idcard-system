@@ -407,7 +407,7 @@ def home(request):
         image_products_filter = Q(item_type='image') & Q(image__isnull=False) & ~Q(image='')
         home_sections = {
             'trusted_clients': list(
-                PanelClient.objects.filter(website_is_visible=True)
+                PanelClient.objects.all()
                 .exclude(website_logo__isnull=True)
                 .exclude(website_logo='')
                 .only('id', 'name', 'website_logo', 'website_display_order')

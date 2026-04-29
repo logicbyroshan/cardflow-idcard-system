@@ -3,7 +3,7 @@
 <section class="categories-showcase" id="categories">
     <div class="container">
         <h2 class="section-title">Our Product Range</h2>
-        <div class="categories-grid {% if bento_categories|length > 7 %}categories-grid-nine{% else %}categories-grid-seven{% endif %}">
+        <div class="categories-grid mb-5 {% if bento_categories|length > 7 %}categories-grid-nine{% else %}categories-grid-seven{% endif %}">
             {% for cat in bento_categories %}
             <div class="category-card slot-{{ forloop.counter }} {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}" role="button" tabindex="0" aria-label="View samples for {{ cat.name }}">
                 <!-- SEO Link for Indexing -->

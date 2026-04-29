@@ -81,7 +81,7 @@
             <!-- Portfolio Grid -->
             <div class="portfolio-grid" id="portfolioGrid">
                 {% for item in portfolio_items %}
-                <a href="{% url 'website:product_detail' item.category.slug item.slug %}" class="portfolio-item {{ item.orientation|default:'square' }} {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}"
+                <a href="{% url 'website:product_detail' item.category.slug item.slug %}" class="portfolio-item {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}"
                      role="button" tabindex="0" aria-label="{{ item.title }}"
                      {% if item.item_type == 'video' or item.item_type == 'reel' %}
                      data-video-url="{{ item.video_source_url|default:item.video_fallback_url }}"

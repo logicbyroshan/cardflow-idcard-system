@@ -62,6 +62,8 @@ class BusinessDetails(models.Model):
     # Social Media Links
     facebook_url = models.URLField(blank=True, help_text='Facebook page URL')
     instagram_url = models.URLField(blank=True, help_text='Instagram profile URL')
+    linkedin_url = models.URLField(blank=True, help_text='LinkedIn profile URL')
+    youtube_url = models.URLField(blank=True, help_text='YouTube channel URL')
     twitter_url = models.URLField(blank=True, help_text='Twitter/X profile URL')
     whatsapp_number = models.CharField(max_length=20, blank=True, help_text='WhatsApp number with country code e.g. 919876543210')
     

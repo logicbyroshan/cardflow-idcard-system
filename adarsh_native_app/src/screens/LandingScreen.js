@@ -65,7 +65,7 @@ export default function LandingScreen({ navigation }) {
   };
 
   if (loading) return (
-    <View style={s.loading}><ActivityIndicator size="large" color={colors.brand} /></View>
+    <View style={s.loading}><ActivityIndicator size="large" color={colors.brandLight} /></View>
   );
 
   const headerBg = scrollY.interpolate({
@@ -86,7 +86,9 @@ export default function LandingScreen({ navigation }) {
       <Animated.View style={[s.header, { paddingTop: insets.top + 8, backgroundColor: headerBg, borderBottomWidth: headerShadow, borderBottomColor: '#eee' }]}>
         <View style={s.headerInner}>
           <View style={s.logoSide}>
-            <View style={s.logoWrap}><FontAwesome5 name="id-card" size={16} color={colors.brand} solid /></View>
+            <View style={s.logoWrap}>
+              <Image source={require('../../assets/logo.png')} style={s.logoImg} resizeMode="contain" />
+            </View>
             <Text style={s.logoText}>ADARSH</Text>
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('Login')} style={s.loginBtn}>
@@ -252,8 +254,9 @@ const s = StyleSheet.create({
   header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingBottom: 12 },
   headerInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
   logoSide: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadows.sm },
-  logoText: { fontSize: 16, fontWeight: '900', color: colors.brand, letterSpacing: 1 },
+  logoWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadows.sm, overflow: 'hidden' },
+  logoImg: { width: '80%', height: '80%' },
+  logoText: { fontSize: 16, fontWeight: '900', color: colors.brandLight, letterSpacing: 1 },
   loginBtn: { borderRadius: 20, overflow: 'hidden', ...shadows.md },
   loginBtnGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
   loginBtnText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
@@ -272,7 +275,7 @@ const s = StyleSheet.create({
   sectionPadding: { paddingHorizontal: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1e293b', marginBottom: 16 },
-  viewAll: { fontSize: 13, fontWeight: '600', color: colors.brand },
+  viewAll: { fontSize: 13, fontWeight: '600', color: colors.brandLight },
 
   bentoGrid: { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   bentoItem: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#f8fafc' },
@@ -290,7 +293,7 @@ const s = StyleSheet.create({
   productCard: { width: 160, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
   productImg: { width: 160, height: 160, backgroundColor: '#f8fafc' },
   productInfo: { padding: 12 },
-  productCat: { fontSize: 8, fontWeight: '800', color: colors.brand, letterSpacing: 0.8 },
+  productCat: { fontSize: 8, fontWeight: '800', color: colors.brandLight, letterSpacing: 0.8 },
   productName: { fontSize: 13, fontWeight: '700', color: '#1e293b', marginTop: 2 },
 
   clientScroll: { paddingHorizontal: 15, gap: 15, paddingBottom: 10 },

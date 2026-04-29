@@ -11,7 +11,7 @@ import { colors, gradients, shadows, radius, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
 export default function CardFormScreen({ navigation, route }) {
-  const { tableId, cardId } = route.params;
+  const { tableId, cardId } = route?.params || {};
   const isEdit = !!cardId;
   const [fields, setFields] = useState([]);
   const [values, setValues] = useState({});

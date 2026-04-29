@@ -14,7 +14,7 @@ import { colors, gradients, typography, spacing, radius, shadows, roleThemes } f
 import { useAuth } from '../context/AuthContext';
 
 export default function CardDetailScreen({ navigation, route }) {
-  const { cardId } = route.params;
+  const cardId = route?.params?.cardId;
   const { user } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
 
@@ -79,7 +79,7 @@ export default function CardDetailScreen({ navigation, route }) {
   if (!card) return (
     <View style={s.root}>
       <TopBar title="Card Detail" onBack={() => navigation.goBack()} />
-      <View style={s.center}><Text style={s.errText}>{error || 'Card not found'}</Text></TouchableOpacity></View>
+      <View style={s.center}><Text style={s.errText}>{error || 'Card not found'}</Text></View>
     </View>
   );
 

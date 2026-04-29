@@ -222,6 +222,7 @@ a:active {
     overflow: hidden;
     text-overflow: ellipsis;
     border-radius: 4px;
+    aspect-ratio: 1 / 1;
     object-fit: contain;
     display: block;
     opacity: 1 !important;
@@ -234,6 +235,11 @@ a:active {
     animation-delay: 5s;
     animation-iteration-count: 1;
     animation-fill-mode: both;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo:hover .logo-img {
+    transform: perspective(600px) rotateY(360deg) scale(1.1);
 }
 
 /* Repeat the spin every 10 seconds */
@@ -2130,6 +2136,11 @@ a:active {
     height: 28px;
     object-fit: contain;
     display: block;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.footer-brand:hover .footer-brand-logo-img {
+    transform: perspective(600px) rotateY(360deg) scale(1.2);
 }
 
 .footer-brand-name {

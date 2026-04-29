@@ -853,22 +853,24 @@ body.modal-open {
     }
 }
 
-/* Portfolio Grid - Row-wise Grid Layout */
+/* Portfolio Grid - Pinterest/Masonry Layout */
 .portfolio-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
+    display: block;
+    column-count: 4;
+    column-gap: 12px;
 }
 
 .portfolio-item {
-    display: block;
+    display: inline-block;
     width: 100%;
     position: relative;
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
-    border: 2px solid #e2e8f0;
+    border: 1px solid #e2e8f0;
     background: #fff;
+    margin-bottom: 12px;
+    break-inside: avoid;
     transition: all 0.3s ease;
 }
 
@@ -877,12 +879,11 @@ body.modal-open {
     box-shadow: 0 10px 30px rgba(10, 146, 221, 0.15);
 }
 
-/* Define aspect ratios for row-wise grid */
-.portfolio-item.square { aspect-ratio: 1 / 1; }
-.portfolio-item.landscape { aspect-ratio: 3 / 2; }
-.portfolio-item.portrait { aspect-ratio: 3 / 4; }
-.portfolio-item:not(.square):not(.landscape):not(.portrait) {
-    aspect-ratio: 1 / 1;
+/* Aspect ratios removed for masonry layout */
+.portfolio-item.square,
+.portfolio-item.landscape,
+.portfolio-item.portrait { 
+    aspect-ratio: auto; 
 }
 
 .portfolio-image {
@@ -905,16 +906,11 @@ body.modal-open {
     transition: transform 0.5s ease;
 }
 
-/* For items with aspect ratio, use cover */
-.portfolio-item.square .portfolio-image img,
-.portfolio-item.square .portfolio-image video,
-.portfolio-item.landscape .portfolio-image img,
-.portfolio-item.landscape .portfolio-image video,
-.portfolio-item.portrait .portfolio-image img,
-.portfolio-item.portrait .portfolio-image video,
-.portfolio-item.featured .portfolio-image img,
-.portfolio-item.featured .portfolio-image video {
-    object-fit: contain;
+/* For masonry items, use natural height */
+.portfolio-item .portfolio-image img,
+.portfolio-item .portfolio-image video {
+    object-fit: cover;
+    height: auto;
 }
 
 .portfolio-item:hover .portfolio-image img,

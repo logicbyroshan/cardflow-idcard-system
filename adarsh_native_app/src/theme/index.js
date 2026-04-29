@@ -13,6 +13,7 @@ export const colors = {
   brandSecondaryDark: '#5b21b6', // --secondary-dark
 
   // Legacy aliases (used throughout app)
+  brand: '#667eea',
   brandLight: '#667eea',
   brandDark: '#764ba2',
 

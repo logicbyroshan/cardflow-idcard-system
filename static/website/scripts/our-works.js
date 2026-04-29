@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const nextItems = filteredItems.slice(renderedCount, renderedCount + PORTFOLIO_BATCH_SIZE);
             nextItems.forEach((item, index) => {
                 const isPriority = renderedCount + index < PORTFOLIO_BATCH_SIZE;
-                item.style.display = 'block';
+                item.style.display = 'inline-block';
                 hydratePortfolioItemMedia(item, isPriority)
                     .then(() => waitForPortfolioItemMedia(item))
                     .finally(() => {
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderPortfolioBatch();
                 }
             });
-        }, { root: null, rootMargin: '250px 0px 250px 0px', threshold: 0.01 });
+        }, { root: null, rootMargin: '500px 0px 500px 0px', threshold: 0.01 });
         batchObserver.observe(loadSentinel);
     } else {
         window.addEventListener('scroll', () => {

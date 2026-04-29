@@ -12,7 +12,7 @@ import NetworkGuard from './src/components/NetworkGuard';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'SairaSemiCondensed-Regular': require('./assets/fonts/saira-semi-condensed-400.ttf'),
     'SairaSemiCondensed-Medium': require('./assets/fonts/saira-semi-condensed-500.ttf'),
     'SairaSemiCondensed-SemiBold': require('./assets/fonts/saira-semi-condensed-600.ttf'),
@@ -20,27 +20,25 @@ export default function App() {
   });
 
   const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
+    if (fontsLoaded || fontError) {
+      await SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loadingRoot}>
-        <ActivityIndicator size="large" color="#818cf8" />
-      </View>
-    );
+  if (!fontsLoaded && !fontError) {
+    return null;
   }
 
   return (
-    <SafeAreaProvider onLayout={onLayoutRootView}>
-      <AuthProvider>
-        <StatusBar style="light" />
-        <NetworkGuard>
-          <AppNavigator />
-        </NetworkGuard>
-      </AuthProvider>
+    <SafeAreaProvider>
+      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <AuthProvider>
+          <StatusBar style="light" />
+          <NetworkGuard>
+            <AppNavigator />
+          </NetworkGuard>
+        </AuthProvider>
+      </View>
     </SafeAreaProvider>
   );
 }

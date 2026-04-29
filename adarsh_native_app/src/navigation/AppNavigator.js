@@ -14,66 +14,24 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 // Eagerly load HomeScreen (primary authenticated screen)
 import HomeScreen from '../screens/HomeScreen';
 
-// Lazy load all other screens — they load on first navigation
-const ProfileScreen = lazy(() => import('../screens/ProfileScreen'));
-const NotificationsScreen = lazy(() => import('../screens/NotificationsScreen'));
-const TablePickerScreen = lazy(() => import('../screens/TablePickerScreen'));
-const NoAccessScreen = lazy(() => import('../screens/NoAccessScreen'));
-const DesktopRequiredScreen = lazy(() => import('../screens/DesktopRequiredScreen'));
-const SearchScreen = lazy(() => import('../screens/SearchScreen'));
-const CardDetailScreen = lazy(() => import('../screens/CardDetailScreen'));
-const GroupsScreen = lazy(() => import('../screens/GroupsScreen'));
-const StaffManageScreen = lazy(() => import('../screens/StaffManageScreen'));
-const SettingsScreen = lazy(() => import('../screens/SettingsScreen'));
-const ClientsListScreen = lazy(() => import('../screens/ClientsListScreen'));
-const CardListScreen = lazy(() => import('../screens/CardListScreen'));
-const CardFormScreen = lazy(() => import('../screens/CardFormScreen'));
-const CameraScreen = lazy(() => import('../screens/CameraScreen'));
-const ReprintScreen = lazy(() => import('../screens/ReprintScreen'));
-const ProductCategoryDetailScreen = lazy(() => import('../screens/ProductCategoryDetailScreen'));
+import ProfileScreen from '../screens/ProfileScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import TablePickerScreen from '../screens/TablePickerScreen';
+import NoAccessScreen from '../screens/NoAccessScreen';
+import DesktopRequiredScreen from '../screens/DesktopRequiredScreen';
+import SearchScreen from '../screens/SearchScreen';
+import CardDetailScreen from '../screens/CardDetailScreen';
+import GroupsScreen from '../screens/GroupsScreen';
+import StaffManageScreen from '../screens/StaffManageScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import ClientsListScreen from '../screens/ClientsListScreen';
+import CardListScreen from '../screens/CardListScreen';
+import CardFormScreen from '../screens/CardFormScreen';
+import CameraScreen from '../screens/CameraScreen';
+import ReprintScreen from '../screens/ReprintScreen';
+import ProductCategoryDetailScreen from '../screens/ProductCategoryDetailScreen';
 
 const Stack = createNativeStackNavigator();
-
-// Suspense fallback — minimal spinner
-function LazyFallback() {
-  return (
-    <View style={fallbackStyles.root}>
-      <ActivityIndicator size="large" color={colors.brandLight} />
-    </View>
-  );
-}
-const fallbackStyles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surfaceBg, alignItems: 'center', justifyContent: 'center' },
-});
-
-// Wrap lazy screens with Suspense
-function withSuspense(LazyComponent) {
-  return function SuspenseWrapper(props) {
-    return (
-      <Suspense fallback={<LazyFallback />}>
-        <LazyComponent {...props} />
-      </Suspense>
-    );
-  };
-}
-
-// Pre-wrapped lazy screens
-const LazyProfile = withSuspense(ProfileScreen);
-const LazyNotifications = withSuspense(NotificationsScreen);
-const LazyTablePicker = withSuspense(TablePickerScreen);
-const LazyNoAccess = withSuspense(NoAccessScreen);
-const LazyDesktopRequired = withSuspense(DesktopRequiredScreen);
-const LazySearch = withSuspense(SearchScreen);
-const LazyCardDetail = withSuspense(CardDetailScreen);
-const LazyGroups = withSuspense(GroupsScreen);
-const LazyStaffManage = withSuspense(StaffManageScreen);
-const LazySettings = withSuspense(SettingsScreen);
-const LazyClientsList = withSuspense(ClientsListScreen);
-const LazyCardList = withSuspense(CardListScreen);
-const LazyCardForm = withSuspense(CardFormScreen);
-const LazyCamera = withSuspense(CameraScreen);
-const LazyReprint = withSuspense(ReprintScreen);
-const LazyProductCategoryDetail = withSuspense(ProductCategoryDetailScreen);
 
 export default function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -95,7 +53,7 @@ export default function AppNavigator() {
         {!isAuthenticated ? (
           <>
             <Stack.Screen name="Landing" component={LandingScreen} options={{ animation: 'fade' }} />
-            <Stack.Screen name="ProductCategoryDetail" component={LazyProductCategoryDetail} />
+            <Stack.Screen name="ProductCategoryDetail" component={ProductCategoryDetailScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="NoAccess" component={NoAccessScreen} />
@@ -106,25 +64,25 @@ export default function AppNavigator() {
             <Stack.Screen name="Home" component={HomeScreen} options={{ animation: 'fade' }} />
 
             {/* Phase 1 */}
-            <Stack.Screen name="Profile" component={LazyProfile} />
-            <Stack.Screen name="Notifications" component={LazyNotifications} />
-            <Stack.Screen name="TablePicker" component={LazyTablePicker} />
-            <Stack.Screen name="NoAccess" component={LazyNoAccess} />
-            <Stack.Screen name="DesktopRequired" component={LazyDesktopRequired} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="TablePicker" component={TablePickerScreen} />
+            <Stack.Screen name="NoAccess" component={NoAccessScreen} />
+            <Stack.Screen name="DesktopRequired" component={DesktopRequiredScreen} />
 
             {/* Phase 2 */}
-            <Stack.Screen name="Search" component={LazySearch} />
-            <Stack.Screen name="CardDetail" component={LazyCardDetail} />
-            <Stack.Screen name="Groups" component={LazyGroups} />
-            <Stack.Screen name="StaffManage" component={LazyStaffManage} />
-            <Stack.Screen name="Settings" component={LazySettings} />
-            <Stack.Screen name="ClientsList" component={LazyClientsList} />
+            <Stack.Screen name="Search" component={SearchScreen} />
+            <Stack.Screen name="CardDetail" component={CardDetailScreen} />
+            <Stack.Screen name="Groups" component={GroupsScreen} />
+            <Stack.Screen name="StaffManage" component={StaffManageScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="ClientsList" component={ClientsListScreen} />
 
             {/* Phase 3 */}
-            <Stack.Screen name="CardList" component={LazyCardList} />
-            <Stack.Screen name="CardForm" component={LazyCardForm} />
-            <Stack.Screen name="Camera" component={LazyCamera} />
-            <Stack.Screen name="Reprint" component={LazyReprint} />
+            <Stack.Screen name="CardList" component={CardListScreen} />
+            <Stack.Screen name="CardForm" component={CardFormScreen} />
+            <Stack.Screen name="Camera" component={CameraScreen} />
+            <Stack.Screen name="Reprint" component={ReprintScreen} />
           </>
         )}
       </Stack.Navigator>
