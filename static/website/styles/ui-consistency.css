@@ -314,6 +314,7 @@ body.mobile-menu-open {
 .faq-answer,
 .common-card {
     border-radius: var(--wa-card-radius) !important;
+    border: 1px solid var(--wa-border) !important;
 }
 
 .logo-box,
@@ -752,7 +753,7 @@ body.mobile-menu-open {
 
     .hero .hero-content h1 {
         max-width: 100% !important;
-        min-height: 0;
+        min-height: calc(1.15em * 2);
     }
 
     .hero .hero-subtitle {

@@ -215,8 +215,8 @@ a:active {
 }
 
 .logo-img {
-    width: 34px;
-    height: 34px;
+    width: 100%;
+    height: 100%;
     display: block;
     white-space: nowrap;
     overflow: hidden;
@@ -224,13 +224,11 @@ a:active {
     border-radius: 4px;
     aspect-ratio: 1 / 1;
     object-fit: contain;
-    display: block;
     opacity: 1 !important;
     visibility: visible !important;
     flex-shrink: 0;
     margin-left: auto;
-    flex-shrink: 0;
-    padding: 1px;
+    padding: 0;
     animation: logoSpin 1s ease-in-out;
     animation-delay: 5s;
     animation-iteration-count: 1;
@@ -263,6 +261,7 @@ a:active {
     perspective: 600px;
     flex-shrink: 0;
     animation: logoBoxGlow 3s ease-in-out infinite;
+    padding: 0;
 }
 
 .navbar .logo-box {
@@ -2178,7 +2177,7 @@ a:active {
 
 .social-links {
     display: flex;
-    gap: 1rem;
+    gap: 0.65rem;
     margin-top: 1rem;
 }
 
@@ -2186,11 +2185,15 @@ a:active {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
     background: var(--primary-light);
     border-radius: 8px;
     transition: var(--transition);
+}
+
+.social-links a i {
+    font-size: 1.15rem;
 }
 
 .social-links a:hover {
