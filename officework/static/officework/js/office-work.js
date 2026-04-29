@@ -63,9 +63,9 @@
     chatLoadInFlight: false,
     chatLoadPending: false,
     chatLoadPendingForceInitial: false,
-    lastChatSyncAtMs: 0,
-    chatPollConnectedMs: 12000,
-    chatPollDisconnectedMs: 4000,
+    lastChatSyncAtMs: Date.now(),
+    chatPollConnectedMs: 15000,
+    chatPollDisconnectedMs: 6000,
       // Backoff/cooldown to avoid tight retry loops when server responds 429
       chatCooldownUntilMs: 0,
       chatBackoffFactor: 1,
@@ -1087,9 +1087,16 @@
       return;
     }
 
+    var now = Date.now();
+    // If we've entered a cooldown due to server rate limiting, respect it
+    if (now < Number(state.chatCooldownUntilMs || 0)) {
+      return;
+    }
+
     if (state.chatLoadInFlight) {
-      state.chatLoadPending = true;
+      // If a force refresh is requested while one is running, remember to do it after
       if (forceInitial) {
+        state.chatLoadPending = true;
         state.chatLoadPendingForceInitial = true;
       }
       return;
@@ -1153,6 +1160,8 @@
       }
     } finally {
       state.chatLoadInFlight = false;
+      state.lastChatSyncAtMs = Date.now();
+      
       if (state.chatLoadPending) {
         var pendingForceInitial = !!state.chatLoadPendingForceInitial;
         state.chatLoadPending = false;
@@ -2056,14 +2065,14 @@
       window.clearInterval(state.pollTimer);
     }
     state.pollTimer = window.setInterval(function () {
-      if (!state.activeGroupId) {
-        return;
-      }
-      // If we've entered a cooldown due to server rate limiting, skip polling
-      if (Date.now() < Number(state.chatCooldownUntilMs || 0)) {
+      if (!state.activeGroupId || state.chatLoadInFlight) {
         return;
       }
       var nowMs = Date.now();
+      // Respect 429 cooldown
+      if (nowMs < Number(state.chatCooldownUntilMs || 0)) {
+        return;
+      }
       var thresholdMs = state.realtimeConnected ? state.chatPollConnectedMs : state.chatPollDisconnectedMs;
       if ((nowMs - Number(state.lastChatSyncAtMs || 0)) < thresholdMs) {
         return;
