@@ -36,7 +36,6 @@ export default function LoginScreen({ navigation }) {
       if (!result.success) {
         const data = result.data;
 
-        // Session limit — offer force logout
         if (data.session_limit_hit && data.can_force_logout_other) {
           const devices = (data.active_session_devices || [])
             .slice(0, 3)
@@ -67,7 +66,6 @@ export default function LoginScreen({ navigation }) {
           return;
         }
 
-        // No mobile access
         if (data.no_mobile_access) {
           setError('Mobile app access has not been enabled for your account.');
           setLoading(false);
@@ -84,9 +82,9 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2', '#5b21b6']}
-      start={{ x: 0.3, y: 0 }}
-      end={{ x: 0.7, y: 1 }}
+      colors={gradients.brandFull}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
       style={styles.root}
     >
       <KeyboardAvoidingView
@@ -98,26 +96,22 @@ export default function LoginScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
-          {/* Background decorative elements */}
+          {/* Decorative Elements */}
           <View style={[styles.bubble, styles.bubble1]} />
           <View style={[styles.bubble, styles.bubble2]} />
-          <View style={[styles.bubble, styles.bubble3]} />
 
-          {/* Top branding */}
           <View style={styles.brandSection}>
             <View style={styles.appIcon}>
-              <FontAwesome5 name="id-card" size={30} color={colors.white} solid />
+              <FontAwesome5 name="id-card" size={40} color={colors.white} solid />
             </View>
-            <Text style={styles.brandTitle}>Adarsh ID Cards</Text>
+            <Text style={styles.brandTitle}>ADARSH</Text>
             <Text style={styles.brandSubtitle}>Management Portal</Text>
           </View>
 
-          {/* Login Card */}
-          <View style={[styles.card, { paddingBottom: insets.bottom + 28 }]}>
+          <View style={[styles.card, { paddingBottom: insets.bottom + 40 }]}>
             <Text style={styles.cardTitle}>Welcome back</Text>
-            <Text style={styles.cardSubtitle}>Sign in to continue</Text>
+            <Text style={styles.cardSubtitle}>Sign in to your account</Text>
 
-            {/* Error bar */}
             {!!error && (
               <View style={styles.errorBar}>
                 <FontAwesome5 name="exclamation-circle" size={14} color={colors.error} solid />
@@ -125,95 +119,76 @@ export default function LoginScreen({ navigation }) {
               </View>
             )}
 
-            {/* Email */}
             <View style={styles.fieldWrap}>
-              <Text style={styles.label}>EMAIL</Text>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
               <View style={styles.inputWrap}>
-                <FontAwesome5 name="envelope" size={14} color={colors.gray400} solid style={styles.inputIcon} />
+                <FontAwesome5 name="envelope" size={14} color={colors.gray400} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor={colors.gray300}
+                  placeholderTextColor={colors.gray400}
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
-                  autoComplete="email"
                   returnKeyType="next"
                   onSubmitEditing={() => passwordRef.current?.focus()}
                 />
               </View>
             </View>
 
-            {/* Password */}
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>PASSWORD</Text>
               <View style={styles.inputWrap}>
-                <FontAwesome5 name="lock" size={14} color={colors.gray400} solid style={styles.inputIcon} />
+                <FontAwesome5 name="lock" size={14} color={colors.gray400} style={styles.inputIcon} />
                 <TextInput
                   ref={passwordRef}
-                  style={[styles.input, { paddingRight: 48 }]}
-                  placeholder="••••••"
-                  placeholderTextColor={colors.gray300}
+                  style={[styles.input, { paddingRight: 50 }]}
+                  placeholder="••••••••"
+                  placeholderTextColor={colors.gray400}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  autoComplete="current-password"
                   returnKeyType="go"
                   onSubmitEditing={handleLogin}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeBtn}
-                  activeOpacity={0.6}
                 >
-                  <FontAwesome5
-                    name={showPassword ? 'eye-slash' : 'eye'}
-                    size={14}
-                    color={colors.gray400}
-                    solid
-                  />
+                  <FontAwesome5 name={showPassword ? 'eye-slash' : 'eye'} size={14} color={colors.gray400} />
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Submit */}
             <TouchableOpacity
               onPress={handleLogin}
               disabled={loading}
-              activeOpacity={0.85}
-              style={styles.submitBtn}
+              activeOpacity={0.9}
+              style={styles.submitBtnWrap}
             >
               <LinearGradient
-                colors={gradients.brandFull}
+                colors={gradients.brand}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.submitGradient}
+                end={{ x: 1, y: 0 }}
+                style={styles.submitBtn}
               >
-                {loading && <ActivityIndicator size="small" color={colors.white} />}
-                <Text style={styles.submitText}>
-                  {loading ? 'Signing in...' : 'Sign In'}
-                </Text>
+                {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.submitText}>Sign In Now</Text>}
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} activeOpacity={0.7} style={styles.forgotLink}>
-              <Text style={styles.forgotLinkText}>Forgot Password?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotLink}>
+              <Text style={styles.forgotLinkText}>Forgot your password?</Text>
             </TouchableOpacity>
 
-            <Text style={styles.helpText}>
-              Having trouble? Contact your administrator
-            </Text>
+            <View style={styles.helpBox}>
+              <Text style={styles.helpText}>Need help? Contact support</Text>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onHide={() => setToast(prev => ({ ...prev, visible: false }))}
-      />
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({ ...p, visible: false }))} />
     </LinearGradient>
   );
 }
@@ -221,176 +196,30 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-end',
-  },
-
-  // Decorative bubbles
-  bubble: {
-    position: 'absolute',
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-  },
-  bubble1: { width: 220, height: 220, top: -60, right: -60 },
-  bubble2: { width: 140, height: 140, bottom: 180, left: -50 },
-  bubble3: { width: 80, height: 80, top: '40%', right: 20 },
-
-  // Brand section
-  brandSection: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 24,
-    paddingHorizontal: 32,
-  },
-  appIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.xl,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    ...shadows.xl,
-  },
-  brandTitle: {
-    color: colors.white,
-    fontSize: typography.title,
-    fontFamily: 'SairaSemiCondensed-Bold',
-    letterSpacing: -0.5,
-  },
-  brandSubtitle: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: typography.lg,
-    fontFamily: 'SairaSemiCondensed-Regular',
-    marginTop: 4,
-  },
-
-  // Login card
-  card: {
-    backgroundColor: colors.glassBg,
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
-    paddingTop: 28,
-    paddingHorizontal: 24,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    borderBottomWidth: 0,
-    ...shadows.xl,
-  },
-  cardTitle: {
-    color: colors.gray800,
-    fontSize: typography.xxxl,
-    fontFamily: 'SairaSemiCondensed-Bold',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    color: colors.gray400,
-    fontSize: typography.lg,
-    fontFamily: 'SairaSemiCondensed-Regular',
-    marginBottom: 24,
-  },
-
-  // Error
-  errorBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.errorBg,
-    borderWidth: 1,
-    borderColor: colors.errorBorder,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  errorText: {
-    flex: 1,
-    color: colors.error,
-    fontSize: typography.lg,
-  },
-
-  // Form fields
-  fieldWrap: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontSize: typography.xs,
-    fontWeight: typography.semibold,
-    color: colors.gray500,
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  inputWrap: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inputIcon: {
-    position: 'absolute',
-    left: 14,
-    zIndex: 1,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: colors.gray50,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-    borderRadius: radius.md,
-    paddingLeft: 40,
-    paddingRight: 16,
-    paddingVertical: 14,
-    fontSize: typography.base,
-    color: colors.gray800,
-  },
-  eyeBtn: {
-    position: 'absolute',
-    right: 14,
-    padding: 4,
-  },
-
-  // Submit button
-  submitBtn: {
-    marginTop: 8,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    ...shadows.lg,
-  },
-  submitGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: 16,
-    borderRadius: radius.md,
-  },
-  submitText: {
-    color: colors.white,
-    fontSize: typography.xl,
-    fontWeight: typography.bold,
-  },
-
-  helpText: {
-    textAlign: 'center',
-    color: colors.gray400,
-    fontSize: typography.md,
-    fontFamily: 'SairaSemiCondensed-Regular',
-    marginTop: 12,
-  },
-  forgotLink: {
-    alignSelf: 'center',
-    marginTop: 16,
-    paddingVertical: 6,
-  },
-  forgotLinkText: {
-    color: colors.brandDark,
-    fontSize: typography.lg,
-    fontFamily: 'SairaSemiCondensed-SemiBold',
-    textDecorationLine: 'underline',
-  },
+  scrollContent: { flexGrow: 1, justifyContent: 'flex-end' },
+  bubble: { position: 'absolute', borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.1)' },
+  bubble1: { width: 300, height: 300, top: -100, right: -100 },
+  bubble2: { width: 200, height: 200, bottom: 200, left: -50 },
+  brandSection: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
+  appIcon: { width: 100, height: 100, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', ...shadows.xl },
+  brandTitle: { color: '#fff', fontSize: 32, fontWeight: '900', fontFamily: 'SairaSemiCondensed-Bold', letterSpacing: 4, marginTop: 24 },
+  brandSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 16, fontFamily: 'SairaSemiCondensed-Medium', marginTop: 4 },
+  card: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, paddingHorizontal: 32, paddingTop: 40, ...shadows.xl },
+  cardTitle: { fontSize: 28, fontWeight: '800', color: colors.gray800, fontFamily: 'SairaSemiCondensed-Bold' },
+  cardSubtitle: { fontSize: 15, color: colors.gray400, marginTop: 4, marginBottom: 32, fontFamily: 'SairaSemiCondensed-Medium' },
+  errorBar: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff1f2', padding: 16, borderRadius: 16, marginBottom: 24, borderWidth: 1, borderColor: '#ffe4e6' },
+  errorText: { flex: 1, color: '#e11d48', fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium' },
+  fieldWrap: { marginBottom: 20 },
+  label: { fontSize: 11, fontWeight: '800', color: colors.gray400, letterSpacing: 1.5, marginBottom: 8, fontFamily: 'SairaSemiCondensed-Bold' },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9' },
+  inputIcon: { marginLeft: 16 },
+  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 16, fontSize: 15, color: colors.gray800, fontFamily: 'SairaSemiCondensed-Medium' },
+  eyeBtn: { padding: 16 },
+  submitBtnWrap: { marginTop: 12, borderRadius: 16, overflow: 'hidden', ...shadows.lg },
+  submitBtn: { paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
+  submitText: { color: '#fff', fontSize: 16, fontWeight: '800', fontFamily: 'SairaSemiCondensed-Bold' },
+  forgotLink: { alignSelf: 'center', marginTop: 24 },
+  forgotLinkText: { color: colors.brandPrimary, fontSize: 14, fontWeight: '700', fontFamily: 'SairaSemiCondensed-Bold' },
+  helpBox: { marginTop: 32, alignItems: 'center' },
+  helpText: { fontSize: 13, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium' },
 });

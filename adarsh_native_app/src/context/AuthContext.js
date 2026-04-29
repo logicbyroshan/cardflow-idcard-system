@@ -38,6 +38,7 @@ export function AuthProvider({ children }) {
                 email: data.data?.email || parsed.email,
                 phone: data.data?.phone || parsed.phone || '',
                 role: data.data?.role || parsed.role,
+                roleLabel: data.data?.user_role || '', // Pretty label from server
               };
               setUser(refreshed);
               await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshed));

@@ -156,11 +156,11 @@ export const spacing = {
 };
 
 export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 24,
+  sm: 2,
+  md: 4,
+  lg: 6,
+  xl: 8,
+  xxl: 10,
   full: 999,
 };
 
@@ -222,5 +222,32 @@ export const shadows = {
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
+  },
+};
+
+export const common = {
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.gray100,
+    ...shadows.md,
+  },
+  glass: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  button: {
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
 };

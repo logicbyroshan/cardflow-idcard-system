@@ -7,7 +7,7 @@ import Toast from '../components/Toast';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet, apiPost } from '../api/client';
-import { colors, gradients, shadows } from '../theme';
+import { colors, gradients, shadows, spacing, radius, typography } from '../theme';
 
 export default function ClientsListScreen({ navigation }) {
   const [clients, setClients] = useState([]);
@@ -116,7 +116,7 @@ export default function ClientsListScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <View style={s.card}>
       <View style={s.cardTop}>
-        <View style={s.avatar}><FontAwesome5 name="building" size={14} color="#3b82f6" /></View>
+        <View style={s.avatar}><FontAwesome5 name="building" size={16} color={colors.brandPrimary} /></View>
         <View style={s.cardInfo}>
           <Text style={s.name} numberOfLines={1}>{item.name}</Text>
           <Text style={s.email} numberOfLines={1}>{item.email || item.phone || 'No contact'}</Text>
@@ -126,10 +126,18 @@ export default function ClientsListScreen({ navigation }) {
       <View style={s.cardActions}>
         <View style={s.toggleRow}>
           <Text style={s.toggleLabel}>Active</Text>
-          <Switch value={item.is_active} onValueChange={() => toggleClient(item)} trackColor={{ true: colors.brandLight }} thumbColor="#fff" />
+          <Switch 
+            value={item.is_active} 
+            onValueChange={() => toggleClient(item)} 
+            trackColor={{ true: colors.brandPrimary }} 
+            thumbColor="#fff" 
+            style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+          />
         </View>
-        <TouchableOpacity onPress={() => openEdit(item)} style={s.actionBtn}><FontAwesome5 name="pen" size={11} color={colors.brandLight} /></TouchableOpacity>
-        <TouchableOpacity onPress={() => deleteClient(item)} style={s.actionBtn}><FontAwesome5 name="trash-alt" size={11} color="#ef4444" /></TouchableOpacity>
+        <View style={s.btnGroup}>
+          <TouchableOpacity onPress={() => openEdit(item)} style={s.actionBtn}><FontAwesome5 name="pen" size={12} color={colors.brandPrimary} /></TouchableOpacity>
+          <TouchableOpacity onPress={() => deleteClient(item)} style={s.actionBtn}><FontAwesome5 name="trash-alt" size={12} color="#ef4444" /></TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -138,15 +146,16 @@ export default function ClientsListScreen({ navigation }) {
     <View style={s.root}>
       <TopBar title="Clients" subtitle="Manage client accounts" onBack={() => navigation.goBack()} rightAction={{ icon: 'plus', onPress: openCreate }} />
 
-      {/* Search */}
-      <View style={s.searchBar}>
-        <FontAwesome5 name="search" size={12} color={colors.gray400} style={s.searchIcon} />
-        <TextInput style={s.searchInput} value={search} onChangeText={setSearch} placeholder="Search clients..." placeholderTextColor={colors.gray300} />
+      <View style={s.searchBarContainer}>
+        <View style={s.searchBar}>
+          <FontAwesome5 name="search" size={14} color={colors.gray400} style={s.searchIcon} />
+          <TextInput style={s.searchInput} value={search} onChangeText={setSearch} placeholder="Search clients..." placeholderTextColor={colors.gray400} />
+        </View>
       </View>
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadClients(true)} />}
       {loading ? (
-        <ListSkeleton rows={5} />
+        <ListSkeleton rows={6} />
       ) : (
         <FlatList
           data={filtered}
@@ -154,12 +163,16 @@ export default function ClientsListScreen({ navigation }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadClients(true)} tintColor={colors.brandLight} />}
-          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="building" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>{search ? 'No matching clients' : 'No clients found'}</Text></View>}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadClients(true)} tintColor={colors.brandPrimary} />}
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <View style={s.emptyIcon}><FontAwesome5 name="building" size={32} color={colors.gray200} /></View>
+              <Text style={s.emptyTitle}>{search ? 'No matching clients' : 'No clients found'}</Text>
+            </View>
+          }
         />
       )}
 
-      {/* Create/Edit Modal */}
       {showForm && (
         <View style={s.modalOverlay}>
           <TouchableOpacity style={s.modalBg} activeOpacity={1} onPress={() => setShowForm(false)} />
@@ -175,9 +188,8 @@ export default function ClientsListScreen({ navigation }) {
             <View style={s.formBtns}>
               <TouchableOpacity onPress={() => setShowForm(false)} style={s.cancelBtn}><Text style={s.cancelBtnText}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity onPress={saveForm} disabled={saving} style={s.saveBtnWrap}>
-                <LinearGradient colors={gradients.brand} style={s.saveBtn}>
-                  {saving && <ActivityIndicator size="small" color="#fff" />}
-                  <Text style={s.saveBtnText}>{editingId ? 'Update' : 'Create'}</Text>
+                <LinearGradient colors={gradients.brand} start={{x:0, y:0}} end={{x:1, y:0}} style={s.saveBtn}>
+                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveBtnText}>{editingId ? 'Update Client' : 'Create Client'}</Text>}
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -194,46 +206,51 @@ function FormField({ label, value, onChangeText, placeholder, keyboardType, secu
   return (
     <View style={s.field}>
       <Text style={s.fieldLabel}>{label}</Text>
-      <TextInput style={s.fieldInput} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={colors.gray300} keyboardType={keyboardType} secureTextEntry={secureTextEntry} />
+      <TextInput style={s.fieldInput} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={colors.gray400} keyboardType={keyboardType} secureTextEntry={secureTextEntry} />
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 12, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  searchIcon: { position: 'absolute', left: 14, zIndex: 1 },
-  searchInput: { flex: 1, paddingLeft: 38, paddingRight: 14, paddingVertical: 11, fontSize: 13, color: colors.gray700 },
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
-  card: { backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', ...shadows.sm },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  avatar: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  searchBarContainer: { paddingHorizontal: 20, marginTop: 16, marginBottom: 8 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
+  searchIcon: { position: 'absolute', left: 16, zIndex: 1 },
+  searchInput: { flex: 1, paddingLeft: 44, paddingRight: 16, paddingVertical: 14, fontSize: 14, color: colors.gray700, fontFamily: 'SairaSemiCondensed-Medium' },
+  
+  list: { padding: 20, gap: 12, paddingBottom: 40 },
+  card: { backgroundColor: '#fff', borderRadius: 24, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.md },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16 },
+  avatar: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
   cardInfo: { flex: 1, minWidth: 0 },
-  name: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
-  email: { fontSize: 11, color: colors.gray400, marginTop: 1 },
+  name: { fontSize: 15, fontWeight: '700', color: colors.gray800, fontFamily: 'SairaSemiCondensed-Bold' },
+  email: { fontSize: 12, color: colors.gray400, marginTop: 2, fontFamily: 'SairaSemiCondensed-Medium' },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
-  toggleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  toggleLabel: { fontSize: 11, fontWeight: '600', color: colors.gray500 },
-  actionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
-  // Modal
-  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 70 },
-  modalBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 24, ...shadows.xl },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginTop: 12, marginBottom: 8 },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: colors.gray800, paddingHorizontal: 16, marginBottom: 16 },
-  formFields: { paddingHorizontal: 16, gap: 12 },
+  
+  cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f8fafc', paddingHorizontal: 16, paddingVertical: 10, gap: 12 },
+  toggleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  toggleLabel: { fontSize: 12, fontWeight: '600', color: colors.gray500, fontFamily: 'SairaSemiCondensed-Medium' },
+  btnGroup: { flexDirection: 'row', gap: 8 },
+  actionBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+  
+  empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 20, ...shadows.sm },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: colors.gray400, fontFamily: 'SairaSemiCondensed-Bold', textAlign: 'center' },
+  
+  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
+  modalBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  modalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingBottom: 40, ...shadows.xl },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e2e8f0', alignSelf: 'center', marginTop: 14, marginBottom: 12 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.gray800, paddingHorizontal: 24, marginBottom: 24, fontFamily: 'SairaSemiCondensed-Bold' },
+  formFields: { paddingHorizontal: 24, gap: 16 },
   field: {},
-  fieldLabel: { fontSize: 10, fontWeight: '700', color: colors.gray500, letterSpacing: 0.8, marginBottom: 4 },
-  fieldInput: { backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: colors.gray700 },
-  formBtns: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 16 },
-  cancelBtn: { flex: 1, paddingVertical: 14, backgroundColor: colors.gray100, borderRadius: 12, alignItems: 'center' },
-  cancelBtnText: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
-  saveBtnWrap: { flex: 2, borderRadius: 12, overflow: 'hidden' },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14, borderRadius: 12 },
-  saveBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  fieldLabel: { fontSize: 11, fontWeight: '800', color: colors.gray400, letterSpacing: 1.5, marginBottom: 8, fontFamily: 'SairaSemiCondensed-Bold' },
+  fieldInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#f1f5f9', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, fontSize: 14, color: colors.gray800, fontFamily: 'SairaSemiCondensed-Medium' },
+  
+  formBtns: { flexDirection: 'row', gap: 12, paddingHorizontal: 24, marginTop: 32 },
+  cancelBtn: { flex: 1, paddingVertical: 16, backgroundColor: '#f1f5f9', borderRadius: 16, alignItems: 'center' },
+  cancelBtnText: { fontSize: 14, fontWeight: '700', color: colors.gray600, fontFamily: 'SairaSemiCondensed-Bold' },
+  saveBtnWrap: { flex: 2, borderRadius: 16, overflow: 'hidden', ...shadows.md },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
+  saveBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', fontFamily: 'SairaSemiCondensed-Bold' },
 });

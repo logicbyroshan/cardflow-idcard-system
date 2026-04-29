@@ -783,19 +783,28 @@ h2 {
     }
 
     .bento-card-1,
-    .bento-card-4,
-    .bento-card-6 {
+    .bento-card-4 {
         grid-column: span 2;
+    }
+
+    .bento-card-2,
+    .bento-card-3 {
+        grid-column: span 1;
     }
 
     .bento-card {
         padding: 1.8rem;
         border-radius: 16px;
+        min-height: 250px;
     }
 
     .bento-illustration {
         max-width: 110px;
         margin-bottom: 1rem;
+    }
+
+    .bento-card-compact {
+        min-height: 250px;
     }
 
     .bento-card h3 {
@@ -1459,6 +1468,10 @@ h2 {
         flex-direction: row;
         align-items: flex-start;
         gap: 1rem;
+    }
+
+    .bento-card-4 {
+        flex-direction: row-reverse;
     }
 
     .bento-illustration {

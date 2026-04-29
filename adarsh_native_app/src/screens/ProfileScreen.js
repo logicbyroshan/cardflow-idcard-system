@@ -58,14 +58,14 @@ export default function ProfileScreen({ navigation }) {
             <View style={s.avatar}><Text style={s.avatarTxt}>{initials}</Text></View>
             {!editing && <Text style={s.userName}>{user?.name || 'User'}</Text>}
             <View style={[s.roleBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-              <Text style={s.userRole}>{(user?.role || 'User').replace('_', ' ').toUpperCase()}</Text>
+              <Text style={s.userRole}>{user?.roleLabel || (user?.role || 'User').replace('_', ' ').toUpperCase()}</Text>
             </View>
           </LinearGradient>
           {!editing ? (
             <View style={s.details}>
               <InfoRow icon="envelope" c="#3b82f6" bg="#dbeafe" label="Email" value={user?.email || 'Not set'} />
               <InfoRow icon="phone" c="#22c55e" bg="#dcfce7" label="Phone" value={user?.phone || 'Not set'} />
-              <InfoRow icon="shield-alt" c="#8b5cf6" bg="#ede9fe" label="Role" value={user?.role || 'User'} />
+              <InfoRow icon="shield-alt" c="#8b5cf6" bg="#ede9fe" label="Role" value={user?.roleLabel || user?.role || 'User'} />
             </View>
           ) : (
             <View style={s.editSec}>

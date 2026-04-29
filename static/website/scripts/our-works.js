@@ -1382,9 +1382,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /**
  * Initialize Category Card Background Media with Fade Carousel
- * Shows one item at a time (image or video), stays for 3 seconds,
- * then fades to the next. Top 10 media items rotate per card.
+ * Advances the bento cards in a single shared sequence so the
+ * product range rotates card-by-card in order.
  */
+let categoryBackgroundSequenceTimer = null;
+
 function initCategoryBackgrounds() {
     const dataElement = document.getElementById('categoryImagesData');
     if (!dataElement) return;
@@ -1394,7 +1396,7 @@ function initCategoryBackgrounds() {
         const categoryCards = Array.from(document.querySelectorAll('.category-card'));
         if (!categoryCards.length) return;
 
-        function setupCardSlider(card) {
+        function setupCardSlider(card, cardStates) {
             if (!card || card.dataset.sliderInitialized === '1') return;
             const catId = card.dataset.category;
             const mediaItems = Array.isArray(categoryImages[catId]) ? categoryImages[catId] : [];
@@ -1443,11 +1445,17 @@ function initCategoryBackgrounds() {
             const mediaElements = slider.querySelectorAll('.slider-img, .slider-video');
             if (!mediaElements.length) return;
 
-            let currentIndex = 0;
-            let isHoverPaused = false;
-            let isCardVisible = true;
+            const state = {
+                card,
+                mediaElements,
+                currentIndex: 0,
+                isHoverPaused: false,
+                isCardVisible: true,
+            };
+            cardStates.push(state);
 
             function activateMedia(nextIndex) {
+                state.currentIndex = nextIndex;
                 mediaElements.forEach((el, idx) => {
                     const isActive = idx === nextIndex;
                     el.classList.toggle('active', isActive);
@@ -1466,29 +1474,21 @@ function initCategoryBackgrounds() {
                 });
             }
 
-            activateMedia(currentIndex);
-
-            if (mediaElements.length > 1) {
-                setInterval(() => {
-                    if (isHoverPaused || !isCardVisible) return;
-                    currentIndex = (currentIndex + 1) % mediaElements.length;
-                    activateMedia(currentIndex);
-                }, 3200);
-            }
+            activateMedia(0);
 
             card.addEventListener('mouseenter', () => {
-                isHoverPaused = true;
+                state.isHoverPaused = true;
             });
             card.addEventListener('mouseleave', () => {
-                isHoverPaused = false;
+                state.isHoverPaused = false;
             });
 
             if ('IntersectionObserver' in window) {
                 const visibilityObserver = new IntersectionObserver((entries) => {
                     entries.forEach((entry) => {
-                        isCardVisible = entry.isIntersecting;
-                        if (isCardVisible) {
-                            activateMedia(currentIndex);
+                        state.isCardVisible = entry.isIntersecting;
+                        if (state.isCardVisible) {
+                            activateMedia(state.currentIndex);
                         } else {
                             mediaElements.forEach((el) => {
                                 if (el.tagName === 'VIDEO') {
@@ -1501,20 +1501,69 @@ function initCategoryBackgrounds() {
                 }, { root: null, threshold: 0.12 });
                 visibilityObserver.observe(card);
             }
+
+            return state;
+        }
+
+        const cardStates = [];
+
+        categoryCards.forEach((card) => setupCardSlider(card, cardStates));
+
+        if (categoryBackgroundSequenceTimer) {
+            clearInterval(categoryBackgroundSequenceTimer);
+            categoryBackgroundSequenceTimer = null;
+        }
+
+        if (cardStates.length > 0) {
+            let sequenceIndex = 0;
+            categoryBackgroundSequenceTimer = setInterval(() => {
+                if (!cardStates.length) return;
+
+                let attempts = 0;
+                while (attempts < cardStates.length) {
+                    const state = cardStates[sequenceIndex % cardStates.length];
+                    sequenceIndex = (sequenceIndex + 1) % cardStates.length;
+                    attempts += 1;
+
+                    if (!state || state.mediaElements.length < 2 || state.isHoverPaused || !state.isCardVisible) {
+                        continue;
+                    }
+
+                    const nextIndex = (state.currentIndex + 1) % state.mediaElements.length;
+                    state.mediaElements.forEach((el, idx) => {
+                        const isActive = idx === nextIndex;
+                        el.classList.toggle('active', isActive);
+
+                        if (el.tagName === 'VIDEO') {
+                            if (isActive && state.isCardVisible) {
+                                const playPromise = el.play();
+                                if (playPromise && typeof playPromise.catch === 'function') {
+                                    playPromise.catch(() => {});
+                                }
+                            } else {
+                                el.pause();
+                                el.currentTime = 0;
+                            }
+                        }
+                    });
+                    state.currentIndex = nextIndex;
+                    break;
+                }
+            }, 2000);
         }
 
         if ('IntersectionObserver' in window) {
             const setupObserver = new IntersectionObserver((entries, observer) => {
                 entries.forEach((entry) => {
                     if (!entry.isIntersecting) return;
-                    setupCardSlider(entry.target);
+                    setupCardSlider(entry.target, cardStates);
                     observer.unobserve(entry.target);
                 });
             }, { root: null, rootMargin: '220px 0px', threshold: 0.01 });
 
             categoryCards.forEach((card) => setupObserver.observe(card));
         } else {
-            categoryCards.forEach((card) => setupCardSlider(card));
+            categoryCards.forEach((card) => setupCardSlider(card, cardStates));
         }
     } catch (e) {
         console.warn('Could not parse category images data:', e);

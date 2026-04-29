@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from './src/context/AuthContext';
+import { ToastProvider } from './src/context/ToastContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import NetworkGuard from './src/components/NetworkGuard';
 
@@ -33,10 +34,12 @@ export default function App() {
     <SafeAreaProvider>
       <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
         <AuthProvider>
-          <StatusBar style="light" />
-          <NetworkGuard>
-            <AppNavigator />
-          </NetworkGuard>
+          <ToastProvider>
+            <StatusBar style="light" />
+            <NetworkGuard>
+              <AppNavigator />
+            </NetworkGuard>
+          </ToastProvider>
         </AuthProvider>
       </View>
     </SafeAreaProvider>

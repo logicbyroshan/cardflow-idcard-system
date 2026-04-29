@@ -5,7 +5,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { colors, gradients, typography, spacing, radius } from '../theme';
+import { colors, gradients, typography, spacing, radius, shadows } from '../theme';
 
 export default function TopBar({ title, subtitle, onBack, rightAction, children, showHome = true }) {
   const insets = useSafeAreaInsets();
@@ -77,8 +77,11 @@ export default function TopBar({ title, subtitle, onBack, rightAction, children,
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    ...shadows.lg,
   },
   inner: {
     flexDirection: 'row',
@@ -86,9 +89,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   backBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -98,27 +101,29 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.white,
-    fontSize: typography.lg,
+    fontSize: 20,
     fontFamily: 'SairaSemiCondensed-Bold',
+    letterSpacing: 0.5,
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: typography.xs,
-    fontFamily: 'SairaSemiCondensed-Regular',
-    marginTop: 1,
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: 'SairaSemiCondensed-Medium',
+    marginTop: 2,
+    letterSpacing: 0.3,
   },
   homeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rightBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',

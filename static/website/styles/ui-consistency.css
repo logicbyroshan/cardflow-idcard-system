@@ -176,18 +176,17 @@ body.mobile-menu-open {
 .footer-brand-logo-box {
     width: 42px;
     height: 42px;
-    border-radius: 6px;
-    background: linear-gradient(135deg, #fef9c3 0%, #fde68a 50%, #fcd34d 100%);
-    border: none;
-    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.08);
+    border-radius: 14px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
 }
 
 .footer-brand-logo-img {
-    width: 34px;
-    height: 34px;
-    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
     object-fit: contain;
-    padding: 1px;
 }
 
 .footer-brand-name {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Dimensions, Image } from 'react-native';
 
 const { width } = Dimensions.get('window');
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -7,18 +7,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { DashboardSkeleton } from '../components/Skeleton';
 import { ErrorView, ErrorBanner, ERROR_TYPES } from '../components/NetworkGuard';
 import StatusBadge from '../components/StatusBadge';
 import { colors, gradients, shadows, radius, roleThemes } from '../theme';
 
 const STATUS_CONFIG = [
-  { key: 'pending',  label: 'Pending',  icon: 'clock',        bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
-  { key: 'verified', label: 'Verified', icon: 'check-circle', bg: '#d1fae5', text: '#047857', border: '#a7f3d0' },
-  { key: 'approved', label: 'Approved', icon: 'check-double',  bg: '#e0f2fe', text: '#0369a1', border: '#bae6fd' },
-  { key: 'download', label: 'Download', icon: 'download',      bg: '#ede9fe', text: '#7c3aed', border: '#ddd6fe' },
-  { key: 'pool',     label: 'Pool',     icon: 'inbox',         bg: '#fce7f3', text: '#be185d', border: '#fbcfe8' },
-  { key: 'total',    label: 'Total',    icon: 'id-card',       bg: 'rgba(51,183,239,0.1)', text: colors.brandLight, border: 'rgba(51,183,239,0.3)' },
+  { key: 'pending',  label: 'Pending',  icon: 'clock',        bg: colors.pending.bg,  text: colors.pending.text,  border: colors.pending.border },
+  { key: 'verified', label: 'Verified', icon: 'check-circle', bg: colors.verified.bg, text: colors.verified.text, border: colors.verified.border },
+  { key: 'approved', label: 'Approved', icon: 'user-check',   bg: colors.approved.bg, text: colors.approved.text, border: colors.approved.border },
+  { key: 'download', label: 'Download', icon: 'download',     bg: colors.download.bg, text: colors.download.text, border: colors.download.border },
+  { key: 'pool',     label: 'Pool',     icon: 'layer-group',  bg: colors.pool.bg,     text: colors.pool.text,     border: colors.pool.border },
+  { key: 'total',    label: 'Total',    icon: 'id-card',      bg: colors.indigo50,    text: colors.brandPrimary,  border: colors.indigo200 },
 ];
 
 export default function HomeScreen({ navigation }) {
@@ -27,23 +28,27 @@ export default function HomeScreen({ navigation }) {
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  const theme = roleThemes[user?.role] || roleThemes.default;
+  const { showToast } = useToast();
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (isSilent = false) => {
     try {
-      setError(null);
+      if (!isSilent) setError(null);
       const { data } = await apiGet('/app/api/dashboard/');
       if (data?.success) setCounts(data.data || {});
-      else setError('Failed to load dashboard data');
+      else {
+        if (isSilent) showToast('Failed to load dashboard data');
+        else setError('Failed to load dashboard data');
+      }
     } catch (e) {
-      setError(e.message?.includes('Network') ? 'network' : 'server');
+      const msg = e.message?.includes('Network') ? 'Network connection lost' : 'Server is temporarily unavailable';
+      if (isSilent) showToast(msg);
+      else setError(e.message?.includes('Network') ? 'network' : 'server');
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => { (async () => { await loadDashboard(); setLoading(false); })(); }, []);
 
-  const onRefresh = useCallback(async () => { setRefreshing(true); await loadDashboard(); setRefreshing(false); }, [loadDashboard]);
+  const onRefresh = useCallback(async () => { setRefreshing(true); await loadDashboard(true); setRefreshing(false); }, [loadDashboard]);
 
   const totalCards = useMemo(() => STATUS_CONFIG.filter(s => s.key !== 'total').reduce((sum, s) => sum + (counts[s.key] || 0), 0), [counts]);
 
@@ -74,13 +79,24 @@ export default function HomeScreen({ navigation }) {
       {/* Header */}
       <LinearGradient colors={gradients.brandFull} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={s.headerRow}>
-          <View>
-            <Text style={s.greeting}>Welcome back,</Text>
-            <Text style={s.headerTitle}>{user?.name || 'User'}</Text>
+          <View style={s.headerLeft}>
+            <View style={s.avatarContainer}>
+              {user?.profile_image ? (
+                <Image source={{ uri: user.profile_image }} style={s.avatar} />
+              ) : (
+                <View style={[s.avatar, s.avatarPlaceholder]}>
+                  <FontAwesome5 name="user" size={14} color="rgba(255,255,255,0.6)" />
+                </View>
+              )}
+            </View>
+            <View>
+              <Text style={s.greeting}>Welcome back,</Text>
+              <Text style={s.headerTitle}>{user?.name || 'User'}</Text>
+            </View>
           </View>
           <View style={s.headerBtns}>
-            <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={s.headerBtn}><FontAwesome5 name="bell" size={14} color="#fff" solid /></TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={s.headerBtn}><FontAwesome5 name="user" size={14} color="#fff" solid /></TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={s.headerBtn}><FontAwesome5 name="bell" size={16} color="#fff" solid /></TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={s.headerBtn}><FontAwesome5 name="cog" size={16} color="#fff" solid /></TouchableOpacity>
           </View>
         </View>
         <TouchableOpacity 
@@ -88,50 +104,27 @@ export default function HomeScreen({ navigation }) {
           activeOpacity={0.8}
           onPress={() => navigation.navigate('Search')}
         >
-          <FontAwesome5 name="search" size={12} color="rgba(255,255,255,0.6)" />
+          <FontAwesome5 name="search" size={14} color="rgba(255,255,255,0.6)" />
           <Text style={s.searchPlaceholder}>Search for cards, names, numbers...</Text>
         </TouchableOpacity>
       </LinearGradient>
+
       <ScrollView 
         style={s.scroll} 
         contentContainerStyle={s.scrollC} 
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadDashboard(true)} tintColor={colors.brandLight} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadDashboard(true)} tintColor={colors.brandPrimary} />}
       >
-        <LinearGradient colors={theme.surface || ['#fff', '#f8fafc']} style={s.hero}>
-          <View style={s.heroMain}>
-            <View>
-              <Text style={s.welcome}>Welcome back,</Text>
-              <Text style={s.businessName} numberOfLines={1}>{counts.client_name || 'Adarsh User'}</Text>
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={[s.profileBtn, { backgroundColor: theme.primary + '15' }]}>
-              <FontAwesome5 name="user-alt" size={14} color={theme.primary} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={[s.totalCard, { backgroundColor: theme.primary }]}>
-            <LinearGradient colors={[theme.primary, theme.secondary || theme.primary]} start={{x:0, y:0}} end={{x:1, y:1}} style={s.totalCardGrad}>
-              <View style={s.totalInfo}>
-                <Text style={s.totalLabel}>TOTAL ACTIVE CARDS</Text>
-                <Text style={s.totalValue}>{totalCards.toLocaleString()}</Text>
-              </View>
-              <View style={s.totalIconW}>
-                <FontAwesome5 name="id-card" size={28} color="rgba(255,255,255,0.3)" />
-              </View>
-            </LinearGradient>
-          </View>
-        </LinearGradient>
-
-        {error && <ErrorBanner message={error === 'network' ? 'Connection lost' : 'Failed to sync latest data'} onDismiss={() => setError(null)} onRetry={() => loadDashboard(true)} />}
+        <View style={s.hero} />
 
         <View style={s.statusGrid}>
           {STATUS_CONFIG.map(st => {
-            const countValue = counts[st.key] || 0;
+            const countValue = st.key === 'total' ? totalCards : (counts[st.key] || 0);
             return (
               <TouchableOpacity key={st.key} style={[s.statusCard, { borderColor: st.border }]} activeOpacity={0.7}
                 onPress={() => navigation.navigate('TablePicker', { status: st.key })}>
                 <View style={[s.statusIcon, { backgroundColor: st.bg }]}>
-                  <FontAwesome5 name={st.icon} size={14} color={st.text} solid />
+                  <FontAwesome5 name={st.icon} size={16} color={st.text} solid />
                 </View>
                 <Text style={[s.statusCount, { color: st.text }]}>{countValue.toLocaleString()}</Text>
                 <Text style={s.statusLabel}>{st.label}</Text>
@@ -140,10 +133,13 @@ export default function HomeScreen({ navigation }) {
           })}
         </View>
 
-        <View style={s.secHeader}>
-          <Text style={s.secTitle}>MY TABLES</Text>
-          <View style={[s.roleBadge, { backgroundColor: theme.bgSoft }]}>
-            <Text style={[s.roleText, { color: theme.text }]}>{(user?.role || 'User').replace('_', ' ').toUpperCase()}</Text>
+        <View style={s.secHeaderBar}>
+          <View style={s.secHeaderInner}>
+            <Text style={s.secTitle}>MY GROUPS/TABLES</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Tables')} style={s.viewAllBadge}>
+              <Text style={s.secAction}>VIEW ALL</Text>
+              <FontAwesome5 name="chevron-right" size={8} color={theme.primary} style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -153,7 +149,7 @@ export default function HomeScreen({ navigation }) {
               <View key={table.id} style={s.tableCard}>
                 <View style={s.tableHeader}>
                   <View style={[s.tableIconMain, { backgroundColor: theme.bgSoft }]}>
-                    <FontAwesome5 name="table" size={12} color={theme.primary} />
+                    <FontAwesome5 name="table" size={16} color={theme.primary} />
                   </View>
                   <Text style={s.tableListItemName}>{table.name}</Text>
                 </View>
@@ -163,6 +159,7 @@ export default function HomeScreen({ navigation }) {
                     { key: 'v', status: 'verified' },
                     { key: 'a', status: 'approved' },
                     { key: 'd', status: 'download' },
+                    { key: 'po', status: 'pool' },
                   ].map(st => (
                     <TouchableOpacity 
                       key={st.key} 
@@ -179,29 +176,8 @@ export default function HomeScreen({ navigation }) {
             <View style={s.emptyTables}><Text style={s.emptyTablesText}>No tables found</Text></View>
           )}
           
-          <TouchableOpacity style={s.viewAllBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Groups')}>
-            <Text style={s.viewAllBtnText}>View All Groups & Details</Text>
-            <FontAwesome5 name="arrow-right" size={10} color={colors.brandLight} />
-          </TouchableOpacity>
         </View>
 
-        {counts.recent_activity && counts.recent_activity.length > 0 && (
-          <View style={s.recentSection}>
-            <Text style={s.secTitle}>RECENT UPDATES</Text>
-            <View style={s.recentList}>
-              {counts.recent_activity.slice(0, 8).map((act, i) => (
-                <View key={i} style={s.activityRow}>
-                  <View style={s.activityDot} />
-                  <View style={s.activityBody}>
-                    <Text style={s.activityName}>{act.name}</Text>
-                    <Text style={s.activityMeta}>{act.table_name} · {act.time_ago} ago</Text>
-                  </View>
-                  <StatusBadge status={act.status} variant="glass" />
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
       </ScrollView>
     </View>
   );
@@ -209,42 +185,64 @@ export default function HomeScreen({ navigation }) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  scroll: { flex: 1 }, scrollC: { paddingBottom: 40 },
-  hero: { padding: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingBottom: 30, ...shadows.md },
-  heroMain: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  welcome: { fontSize: 13, color: colors.gray500, fontWeight: '500' },
-  businessName: { fontSize: 22, fontWeight: '800', color: colors.gray800, marginTop: 2 },
-  profileBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  totalCard: { borderRadius: 24, overflow: 'hidden', ...shadows.lg },
-  totalCardGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
-  totalLabel: { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1 },
-  totalValue: { fontSize: 32, fontWeight: '900', color: '#fff', marginTop: 4 },
-  totalIconW: { width: 56, height: 56, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: 16, marginTop: -20 },
-  statusCard: { width: (width - 42) / 2, backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, ...shadows.sm },
-  statusIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  statusCount: { fontSize: 20, fontWeight: '800' },
-  statusLabel: { fontSize: 11, fontWeight: '600', color: colors.gray400, marginTop: 2 },
-  secHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 12, marginBottom: 12 },
-  secTitle: { fontSize: 11, fontWeight: '800', color: colors.gray400, letterSpacing: 1.2 },
-  roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  roleText: { fontSize: 9, fontWeight: '800' },
-  tablesContainer: { paddingHorizontal: 16, gap: 12 },
-  tableCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
-  tableHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  tableIconMain: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  tableListItemName: { fontSize: 14, fontWeight: '700', color: colors.gray800 },
-  tableActionsRow: { flexDirection: 'row', gap: 8 },
+  scroll: { flex: 1 }, 
+  scrollC: { paddingBottom: 40 },
+  
+  // Header
+  header: { paddingHorizontal: 20, paddingBottom: 16, ...shadows.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarContainer: { width: 44, height: 44, borderRadius: radius.sm, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)', padding: 2 },
+  avatar: { width: '100%', height: '100%', borderRadius: radius.sm - 2 },
+  avatarPlaceholder: { backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+  greeting: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontFamily: 'SairaSemiCondensed-Medium' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff', fontFamily: 'SairaSemiCondensed-Bold', marginTop: -2 },
+  headerBtns: { flexDirection: 'row', gap: 10 },
+  headerBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.md, gap: 12 },
+  searchPlaceholder: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: 'SairaSemiCondensed-Regular' },
+
+  // Hero Section
+  hero: { paddingTop: 10 },
+  
+  totalLabel: { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, fontFamily: 'SairaSemiCondensed-Bold' },
+  totalValue: { fontSize: 36, fontWeight: '900', color: '#fff', marginTop: 4, fontFamily: 'SairaSemiCondensed-Bold' },
+  totalIconW: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+
+  // Status Grid (3x2)
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 20, marginTop: -10 },
+  statusCard: { width: (width - 56) / 3, backgroundColor: '#fff', borderRadius: radius.md, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
+  statusIcon: { width: 40, height: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  statusCount: { fontSize: 18, fontWeight: '800', fontFamily: 'SairaSemiCondensed-Bold' },
+  statusLabel: { fontSize: 10, fontWeight: '600', color: colors.gray500, marginTop: 2, fontFamily: 'SairaSemiCondensed-Medium', textAlign: 'center' },
+
+  // Sections
+  secHeaderBar: { paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
+  secHeaderInner: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    backgroundColor: '#fff', 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    ...shadows.sm
+  },
+  secTitle: { fontSize: 13, fontWeight: '800', color: colors.gray800, letterSpacing: 0.5, fontFamily: 'SairaSemiCondensed-Bold' },
+  viewAllBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.xs },
+  secAction: { fontSize: 10, fontWeight: '800', color: colors.brandPrimary, fontFamily: 'SairaSemiCondensed-Bold' },
+
+  // Tables
+  tablesContainer: { paddingHorizontal: 20, gap: 12 },
+  tableCard: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 10, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
+  tableHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  tableIconMain: { width: 40, height: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  tableListItemName: { fontSize: 15, fontWeight: '700', color: colors.gray800, fontFamily: 'SairaSemiCondensed-Bold' },
+  tableActionsRow: { flexDirection: 'row', gap: 4 },
   statusPillBtn: { flex: 1 },
-  viewAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#e2e8f0', marginTop: 8 },
-  viewAllBtnText: { fontSize: 12, fontWeight: '700', color: colors.brandLight },
+  
   emptyTables: { padding: 40, alignItems: 'center' },
-  emptyTablesText: { color: colors.gray400, fontSize: 13 },
-  recentSection: { marginTop: 24, paddingHorizontal: 16 },
-  recentList: { backgroundColor: '#fff', borderRadius: 20, padding: 4, marginTop: 12, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
-  activityRow: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
-  activityDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.brandLight },
-  activityBody: { flex: 1 },
-  activityName: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
-  activityMeta: { fontSize: 10, color: colors.gray400, marginTop: 2 },
+  emptyTablesText: { color: colors.gray400, fontSize: 14, fontFamily: 'SairaSemiCondensed-Regular' },
 });
