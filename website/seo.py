@@ -112,7 +112,7 @@ def _generate_full_sitemap(request):
         for item in items:
             try:
                 loc = reverse('website:product_detail', kwargs={
-                    'category_slug': item.category.slug,
+                    'category_slug': item.category.slug if item.category else 'uncategorized',
                     'slug': item.slug
                 })
                 lastmod = item.updated_at.strftime('%Y-%m-%d') if item.updated_at else ''

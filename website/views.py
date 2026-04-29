@@ -1000,8 +1000,9 @@ def product_detail(request, category_slug, slug):
     
     context = get_common_context()
     # SEO metadata
-    meta_title = item.meta_title or f"{item.title} - {item.category.name} Bhopal | Adarsh ID Cards MP"
-    meta_desc = item.meta_description or f"Buy premium {item.title} ({item.category.name}) in Bhopal. Custom ID card solutions for schools and organizations across Madhya Pradesh by Adarsh Bhopal."
+    category_name = item.category.name if item.category else "Custom Products"
+    meta_title = item.meta_title or f"{item.title} - {category_name} Bhopal | Adarsh ID Cards MP"
+    meta_desc = item.meta_description or f"Buy premium {item.title} ({category_name}) in Bhopal. Custom ID card solutions for schools and organizations across Madhya Pradesh by Adarsh Bhopal."
 
     context.update({
         'item': item,
