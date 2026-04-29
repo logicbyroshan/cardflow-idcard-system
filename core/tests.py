@@ -318,7 +318,7 @@ class CropperLatestVersionFallbackTests(TestCase):
         payload = response.json()
         self.assertIn('bootstrap_version', payload)
         self.assertIn('bootstrap_download_url', payload)
-        self.assertEqual(payload['bootstrap_version'], '3.18.0')
+        self.assertEqual(payload['bootstrap_version'], '3.19.0')
         self.assertEqual(payload['bootstrap_download_url'], '/panel/engine/download/')
 
     def test_latest_version_prefers_bootstrap_stream_download_url(self):
@@ -326,8 +326,8 @@ class CropperLatestVersionFallbackTests(TestCase):
 
         CropperRelease.objects.all().delete()
         CropperRelease.objects.create(
-            version='3.18.2',
-            download_url='https://example.test/AdarshEngineSetup-3.18.2.exe',
+            version='3.19.0',
+            download_url='https://example.test/AdarshEngineSetup-3.19.0.exe',
             changelog='Bootstrap installer release',
             is_latest=False,
         )
@@ -343,8 +343,8 @@ class CropperLatestVersionFallbackTests(TestCase):
         payload = response.json()
         self.assertEqual(payload['version'], '9.9.9')
         self.assertEqual(payload['download_url'], '/panel/engine/download/')
-        self.assertEqual(payload['bootstrap_version'], '3.18.0')
-        self.assertEqual(payload['bootstrap_download_url'], 'https://example.test/AdarshEngineSetup-3.18.2.exe')
+        self.assertEqual(payload['bootstrap_version'], '3.19.0')
+        self.assertEqual(payload['bootstrap_download_url'], 'https://example.test/AdarshEngineSetup-3.19.0.exe')
 
 
 class EngineDownloadInstallerGuardTests(TestCase):
@@ -474,7 +474,12 @@ class EngineDownloadSelectionTests(TestCase):
             request = factory.get('/api/engine/download/')
             request.user = self.admin
 
-            with override_settings(MEDIA_ROOT=str(media_root), BASE_DIR=str(tmp_root)):
+            with override_settings(
+                MEDIA_ROOT=str(media_root),
+                BASE_DIR=str(tmp_root),
+                STATICFILES_DIRS=[str(static_root)],
+                STATIC_ROOT=None,
+            ):
                 response = engine_download(request)
                 try:
                     served_bytes = b''.join(response.streaming_content)

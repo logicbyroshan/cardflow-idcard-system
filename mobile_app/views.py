@@ -4766,7 +4766,7 @@ def api_notifications_list(request):
 @require_http_methods(["GET"])
 def api_tables_list(request):
     """Return tables with status counts as JSON for native table picker."""
-    from core.models import Table, IdCard
+    from idcards.models import IDCardTable, IDCard
     from django.db.models import Count, Q
 
     status = request.GET.get('status', 'pending')
@@ -4780,22 +4780,22 @@ def api_tables_list(request):
 
         # Determine accessible tables based on role
         if ctx.get('is_super_admin'):
-            tables_qs = Table.objects.select_related('group', 'group__client').all()
+            tables_qs = IDCardTable.objects.select_related('group', 'group__client').all()
         elif ctx.get('is_client') or ctx.get('is_admin_staff'):
             client = getattr(user, 'client_profile', None) or getattr(user, 'staff_profile', None)
             client_obj = getattr(client, 'client', client) if hasattr(client, 'client') else client
             if client_obj and hasattr(client_obj, 'id'):
-                tables_qs = Table.objects.select_related('group', 'group__client').filter(
+                tables_qs = IDCardTable.objects.select_related('group', 'group__client').filter(
                     group__client_id=client_obj.id
                 )
             else:
-                tables_qs = Table.objects.none()
+                tables_qs = IDCardTable.objects.none()
         else:
-            tables_qs = Table.objects.none()
+            tables_qs = IDCardTable.objects.none()
 
         # Annotate with status count
         tables_qs = tables_qs.annotate(
-            status_count=Count('idcard', filter=Q(idcard__status=status))
+            status_count=Count('id_cards', filter=Q(id_cards__status=status))
         ).filter(status_count__gt=0).order_by('name')
 
         items = []
@@ -4970,11 +4970,11 @@ def api_dashboard_data(request):
         # Tables with counts for Home Screen
         tables_data = []
         tables_annotated = tables_qs.annotate(
-            p=Count('idcard', filter=Q(idcard__status='pending')),
-            v=Count('idcard', filter=Q(idcard__status='verified')),
-            a=Count('idcard', filter=Q(idcard__status='approved')),
-            d=Count('idcard', filter=Q(idcard__status='download')),
-            po=Count('idcard', filter=Q(idcard__status='pool')),
+            p=Count('id_cards', filter=Q(id_cards__status='pending')),
+            v=Count('id_cards', filter=Q(id_cards__status='verified')),
+            a=Count('id_cards', filter=Q(id_cards__status='approved')),
+            d=Count('id_cards', filter=Q(id_cards__status='download')),
+            po=Count('id_cards', filter=Q(id_cards__status='pool')),
         ).order_by('name')
 
         for t in tables_annotated:

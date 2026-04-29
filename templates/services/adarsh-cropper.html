@@ -331,8 +331,8 @@
             Download and install it to enable photo processing.
           </p>
 
-          {# Show Download Installer ONLY when no update is available (first-time install) #}
-          <div class="engine-actions" x-show="!update.available">
+          {# Keep the installer download visible for both bootstrap and upgrade flows. #}
+          <div class="engine-actions">
             <a href="{% url 'engine_download' %}" class="btn btn-primary" download="AdarshEngineSetup.exe">
               <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Installer</span>
             </a>

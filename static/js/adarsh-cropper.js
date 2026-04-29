@@ -399,7 +399,7 @@ function cropperApp() {
       try {
         var data = await ApiClient.get('/api/cropper/latest-version/');
         if (data) {
-          this.update.bootstrapVersion = data.bootstrap_version || this.update.bootstrapVersion || '3.18.0';
+          this.update.bootstrapVersion = data.bootstrap_version || this.update.bootstrapVersion || '3.19.0';
           this.update.bootstrapDownloadUrl = data.bootstrap_download_url || '';
         }
         if (data && data.available) {
@@ -421,7 +421,7 @@ function cropperApp() {
         var data = await ApiClient.get('/api/cropper/latest-version/');
 
         if (data) {
-          this.update.bootstrapVersion = data.bootstrap_version || this.update.bootstrapVersion || '3.18.0';
+          this.update.bootstrapVersion = data.bootstrap_version || this.update.bootstrapVersion || '3.19.0';
           this.update.bootstrapDownloadUrl = data.bootstrap_download_url || '';
         }
 
@@ -480,7 +480,7 @@ function cropperApp() {
 
     needsBootstrapInstaller() {
       var installedVersion = this.engine && this.engine.version ? this.engine.version : '0.0.0';
-      var bootstrapVersion = this.update.bootstrapVersion || '3.18.0';
+      var bootstrapVersion = this.update.bootstrapVersion || '3.19.0';
       return this._semverCompare(installedVersion, bootstrapVersion) < 0;
     },
 
@@ -494,7 +494,7 @@ function cropperApp() {
     async installEngineUpdate() {
       if (this.update.installing) return;
 
-      var bootstrapVersion = this.update.bootstrapVersion || '3.18.0';
+      var bootstrapVersion = this.update.bootstrapVersion || '3.19.0';
 
       // Older engines do not support self-update upload/install.
       if (this.needsBootstrapInstaller()) {

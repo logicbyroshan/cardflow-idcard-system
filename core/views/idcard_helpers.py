@@ -118,14 +118,20 @@ def _table_is_assigned_to_staff(staff, table):
 
 
 def _table_scope_filters_for_staff(staff, table):
-    """Return class/section/branch filters relevant to the current table."""
+    """Return a list of scope groups for the table.
+    
+    Each group: {'classes': [], 'sections': [], 'branches': []}
+    Multiple groups are interpreted as OR-ed filters.
+    Within a group, filters are AND-ed.
+    """
     scopes = getattr(staff, 'assignment_scopes', None)
     if not isinstance(scopes, list) or not scopes:
-        return (
-            _dedupe_scope_values(staff.allowed_classes or []),
-            _dedupe_scope_values(staff.allowed_sections or []),
-            _dedupe_scope_values(staff.allowed_branches or []),
-        )
+        # Fallback to legacy fields (interpreted as a single scope)
+        return [{
+            'classes': _dedupe_scope_values(staff.allowed_classes or []),
+            'sections': _dedupe_scope_values(staff.allowed_sections or []),
+            'branches': _dedupe_scope_values(staff.allowed_branches or []),
+        }]
 
     matched = []
     for scope in scopes:
@@ -144,25 +150,18 @@ def _table_scope_filters_for_staff(staff, table):
             matched.append(scope)
 
     if not matched:
-        return (
-            _dedupe_scope_values(staff.allowed_classes or []),
-            _dedupe_scope_values(staff.allowed_sections or []),
-            _dedupe_scope_values(staff.allowed_branches or []),
-        )
+        # Fallback to legacy fields
+        return [{
+            'classes': _dedupe_scope_values(staff.allowed_classes or []),
+            'sections': _dedupe_scope_values(staff.allowed_sections or []),
+            'branches': _dedupe_scope_values(staff.allowed_branches or []),
+        }]
 
-    classes = []
-    sections = []
-    branches = []
-    for scope in matched:
-        classes.extend(scope.get('classes') or [])
-        sections.extend(scope.get('sections') or [])
-        branches.extend(scope.get('branches') or [])
-
-    return (
-        _dedupe_scope_values(classes),
-        _dedupe_scope_values(sections),
-        _dedupe_scope_values(branches),
-    )
+    return [{
+        'classes': _dedupe_scope_values(s.get('classes') or []),
+        'sections': _dedupe_scope_values(s.get('sections') or []),
+        'branches': _dedupe_scope_values(s.get('branches') or []),
+    } for s in matched]
 
 
 def _safe_error(e, fallback='An error occurred. Please try again.'):
@@ -351,11 +350,10 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     """Apply client_staff-specific row-level scope to an IDCard queryset.
 
     Scope rules:
-    - assigned_groups restrict table/group visibility (empty = all groups)
-    - allowed_classes/allowed_sections/allowed_branches restrict rows when the
-      corresponding field exists in the table
-        - when status_filter='pool', row-level class/section/branch scope is
-            intentionally bypassed so pool visibility is shared across client_staff.
+    - Multiple scope entries are OR-ed together.
+    - Inside a scope entry, class/section/branch are AND-ed.
+    - If a scope entry is empty (no filters), it grants access to the full table.
+    - when status_filter='pool', row-level scope is bypassed (shared visibility).
     """
     if not PermissionService.is_client_staff(user):
         return qs
@@ -367,81 +365,119 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     if not _table_is_assigned_to_staff(staff, table):
         return qs.none()
 
-    allowed_classes, allowed_sections, allowed_branches = _table_scope_filters_for_staff(staff, table)
-
-    if not (allowed_classes or allowed_sections or allowed_branches):
-        return qs.none()
-
     if str(status_filter or '').strip().lower() == 'pool':
         return qs
 
+    scope_groups = _table_scope_filters_for_staff(staff, table)
+    
+    # If ANY scope is empty, the staff has full access to this table
+    has_full_access = any(not (s['classes'] or s['sections'] or s['branches']) for s in scope_groups)
+    if has_full_access:
+        return qs
+
     from django.db.models.fields.json import KeyTextTransform
-    from django.db.models.functions import Cast
-    from django.db.models import CharField
+    from django.db.models.functions import Cast, Coalesce
+    from django.db.models import CharField, Q, Value
+    from core.utils.field_utils import normalize_class_value, normalize_compact_text_value
 
     class_field, section_field, branch_field = _get_class_section_branch_field_names(table)
 
-    if allowed_classes:
-        if not class_field:
-            return qs.none()
-        from core.utils.field_utils import normalize_class_value
+    def _get_case_variants(field_name):
+        if not field_name: return []
+        variants = [field_name]
+        v_low = field_name.lower()
+        v_up = field_name.upper()
+        v_cap = field_name.capitalize()
+        for v in [v_low, v_up, v_cap]:
+            if v not in variants: variants.append(v)
+        return variants
 
-        qs = qs.annotate(_scope_cls=Cast(KeyTextTransform(class_field, 'field_data'), CharField()))
-        normalized_allowed = {
-            normalize_class_value(value)
-            for value in allowed_classes
-            if normalize_class_value(value)
-        }
-        if not normalized_allowed:
-            return qs.none()
-
-        raw_values = list(
-            qs.exclude(_scope_cls__isnull=True)
-            .exclude(_scope_cls='')
-            .values_list('_scope_cls', flat=True)
-            .distinct()
+    # Annotate with case-insensitive variants for robustness
+    annotations = {}
+    if class_field:
+        variants = _get_case_variants(class_field)
+        annotations['_scope_cls'] = Coalesce(
+            *[Cast(KeyTextTransform(v, 'field_data'), CharField()) for v in variants],
+            Value(''),
+            output_field=CharField()
         )
-        matching_raw = [raw for raw in raw_values if normalize_class_value(raw) in normalized_allowed]
-        if not matching_raw:
-            return qs.none()
-        qs = qs.filter(_scope_cls__in=matching_raw)
-
-    if allowed_sections:
-        if not section_field:
-            return qs.none()
-        qs = qs.annotate(_scope_sec=Cast(KeyTextTransform(section_field, 'field_data'), CharField()))
-        qs = qs.filter(_scope_sec__in=allowed_sections)
-
-    if allowed_branches:
-        if not branch_field:
-            return qs.none()
-        from core.utils.field_utils import normalize_compact_text_value
-
-        qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField()))
-        normalized_allowed = {
-            normalize_compact_text_value(value)
-            for value in allowed_branches
-            if normalize_compact_text_value(value)
-        }
-        if not normalized_allowed:
-            return qs.none()
-
-        raw_values = list(
-            qs.exclude(_scope_branch__isnull=True)
-            .exclude(_scope_branch='')
-            .values_list('_scope_branch', flat=True)
-            .distinct()
+    if section_field:
+        variants = _get_case_variants(section_field)
+        annotations['_scope_sec'] = Coalesce(
+            *[Cast(KeyTextTransform(v, 'field_data'), CharField()) for v in variants],
+            Value(''),
+            output_field=CharField()
         )
-        matching_raw = [
-            raw for raw in raw_values
-            if normalize_compact_text_value(raw) in normalized_allowed
-        ]
-        if not matching_raw:
-            return qs.none()
+    if branch_field:
+        variants = _get_case_variants(branch_field)
+        annotations['_scope_branch'] = Coalesce(
+            *[Cast(KeyTextTransform(v, 'field_data'), CharField()) for v in variants],
+            Value(''),
+            output_field=CharField()
+        )
 
-        qs = qs.filter(_scope_branch__in=matching_raw)
+    if annotations:
+        qs = qs.annotate(**annotations)
 
-    return qs
+    final_q = Q()
+
+    for scope in scope_groups:
+        scope_q = Q()
+        
+        # Classes
+        if scope['classes'] and class_field:
+            normalized_allowed = {normalize_class_value(v) for v in scope['classes'] if normalize_class_value(v)}
+            if normalized_allowed:
+                # We still need to find matching raw variants because normalize_class_value is a Python function
+                raw_values = list(
+                    qs.exclude(_scope_cls='').values_list('_scope_cls', flat=True).distinct()
+                )
+                matching_raw = [raw for raw in raw_values if normalize_class_value(raw) in normalized_allowed]
+                if matching_raw:
+                    scope_q &= Q(_scope_cls__in=matching_raw)
+                else:
+                    scope_q &= Q(id__isnull=True) # Forces empty if no match found for this mandatory filter
+            else:
+                scope_q &= Q(id__isnull=True)
+
+        # Sections
+        if scope['sections'] and section_field:
+            allowed_normalized = {str(s).strip().upper() for s in scope['sections'] if str(s).strip()}
+            if allowed_normalized:
+                raw_values = list(
+                    qs.exclude(_scope_sec='').values_list('_scope_sec', flat=True).distinct()
+                )
+                matching_raw = [raw for raw in raw_values if str(raw).strip().upper() in allowed_normalized]
+                if matching_raw:
+                    scope_q &= Q(_scope_sec__in=matching_raw)
+                else:
+                    scope_q &= Q(id__isnull=True)
+            else:
+                scope_q &= Q(id__isnull=True)
+
+        # Branches
+        if scope['branches'] and branch_field:
+            normalized_allowed = {normalize_compact_text_value(v) for v in scope['branches'] if normalize_compact_text_value(v)}
+            if normalized_allowed:
+                raw_values = list(
+                    qs.exclude(_scope_branch='').values_list('_scope_branch', flat=True).distinct()
+                )
+                matching_raw = [raw for raw in raw_values if normalize_compact_text_value(raw) in normalized_allowed]
+                if matching_raw:
+                    scope_q &= Q(_scope_branch__in=matching_raw)
+                else:
+                    scope_q &= Q(id__isnull=True)
+            else:
+                scope_q &= Q(id__isnull=True)
+
+        # OR this scope's requirements to the final Q
+        final_q |= scope_q
+
+    if not final_q:
+        # If we got here and have no Q, it means all scopes were invalid/empty
+        return qs.none()
+
+    return qs.filter(final_q)
 
 
 # ==================== ADMIN STAFF CLIENT SCOPING ====================
