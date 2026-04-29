@@ -5,13 +5,13 @@ window.DashboardPage = window.DashboardPage || {};
 
 document.addEventListener('DOMContentLoaded', function() {
     const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
-    const DASHBOARD_LIVE_REFRESH_MS = 45000;
+    const DASHBOARD_LIVE_REFRESH_MS = 120000;
     // Add ±5s jitter to stagger polling across concurrent users (anti-thundering-herd)
     function jitteredRefreshMs() {
         return DASHBOARD_LIVE_REFRESH_MS + Math.floor(Math.random() * 10000) - 5000;
     }
     const DASHBOARD_PRESENCE_TOPIC = 'dashboard.working';
-    const DASHBOARD_PRESENCE_SYNC_DEBOUNCE_MS = 300;
+    const DASHBOARD_PRESENCE_SYNC_DEBOUNCE_MS = 5000;
     const panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
     function panelUrl(path) {
         if (!path) return path;

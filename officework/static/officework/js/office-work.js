@@ -64,13 +64,15 @@
     chatLoadPending: false,
     chatLoadPendingForceInitial: false,
     lastChatSyncAtMs: Date.now(),
-    chatPollConnectedMs: 15000,
-    chatPollDisconnectedMs: 6000,
+    chatPollConnectedMs: 60000,
+    chatPollDisconnectedMs: 20000,
       // Backoff/cooldown to avoid tight retry loops when server responds 429
       chatCooldownUntilMs: 0,
       chatBackoffFactor: 1,
       chatBackoffBaseMs: 30000,
       chatBackoffMaxMs: 300000,
+    lastTaskSyncAtMs: Date.now(),
+    taskPollDisconnectedMs: 300000,
     desktopPermissionBootstrapDone: false,
     leads: [],
     leadsLoaded: false,
@@ -2078,6 +2080,15 @@
         return;
       }
       loadChat({ forceInitial: false });
+
+      // Fallback task sync only if NOT connected via realtime
+      if (!state.realtimeConnected) {
+        var taskElapsed = nowMs - Number(state.lastTaskSyncAtMs || 0);
+        if (taskElapsed >= state.taskPollDisconnectedMs) {
+          state.lastTaskSyncAtMs = nowMs;
+          loadTasks();
+        }
+      }
     }, 2000);
   }
 

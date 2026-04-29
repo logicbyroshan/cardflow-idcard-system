@@ -1,8 +1,8 @@
 (function () {
     'use strict';
 
-    var HEARTBEAT_MS = 20000;
-    var HEARTBEAT_MOBILE_MS = 60000;
+    var HEARTBEAT_MS = 60000;
+    var HEARTBEAT_MOBILE_MS = 180000;
 
     function panelUrl(path) {
         if (!path) return path;
