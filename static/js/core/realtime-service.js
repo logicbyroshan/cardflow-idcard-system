@@ -36,7 +36,7 @@
     this.wsPath = '/ws/panel/realtime/';
     this.reconnectTimer = null;
     this.reconnectAttempt = 0;
-    this.maxReconnectDelayMs = 12000;
+    this.maxReconnectDelayMs = 300000; // 5 minutes max backoff
     this.explicitlyClosed = false;
     this.desiredTopics = [];
     this.messageListeners = [];

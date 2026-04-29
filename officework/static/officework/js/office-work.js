@@ -37,7 +37,6 @@
     officeWorkBoot.started = true;
 
   if (window._officeWorkInitialized) {
-    try { console.warn('OFFICE_WORK_DEBUG: Already initialized, skipping second initialization.'); } catch (e) {}
     return;
   }
   window._officeWorkInitialized = true;
@@ -71,20 +70,23 @@
     chatLoadPendingForceInitial: false,
     lastChatSyncAtMs: 0,
     realtimeListenerAdded: false,
-    chatPollConnectedMs: 60000,
-    chatPollDisconnectedMs: 20000,
+    chatPollConnectedMs: 120000,
+    chatPollDisconnectedMs: 300000,
       // Backoff/cooldown to avoid tight retry loops when server responds 429
       chatCooldownUntilMs: 0,
       chatBackoffFactor: 1,
-      chatBackoffBaseMs: 30000,
-      chatBackoffMaxMs: 300000,
-    lastTaskSyncAtMs: Date.now(),
+      chatBackoffBaseMs: 120000,
+      chatBackoffMaxMs: 1800000,
+    lastTaskSyncAtMs: 0,
+    lastChatSyncAtMs: 0,
+    realtimeListenerAdded: false,
     taskPollDisconnectedMs: 300000,
     desktopPermissionBootstrapDone: false,
     leads: [],
     leadsLoaded: false,
     leadTemplates: { whatsapp: '', email: '' },
     activeTemplateType: 'whatsapp',
+    lastActivityAtMs: Date.now(),
   };
 
   var ui = {
@@ -1119,7 +1121,7 @@
     state.chatLoadInFlight = true;
 
     var query = forceInitial
-      ? ('?limit=180&group_id=' + encodeURIComponent(state.activeGroupId))
+      ? ('?limit=20&group_id=' + encodeURIComponent(state.activeGroupId))
       : ('?after_id=' + encodeURIComponent(state.chatLastId) + '&group_id=' + encodeURIComponent(state.activeGroupId));
 
     try {
@@ -1159,12 +1161,11 @@
       // If server responded with 429, enter an exponential backoff cooldown
       if (error && error.status === 429) {
         var now = Date.now();
-        var backoffMs = Math.min((state.chatBackoffBaseMs || 30000) * (state.chatBackoffFactor || 1), (state.chatBackoffMaxMs || 300000));
+        var backoffMs = Math.min((state.chatBackoffBaseMs || 60000) * (state.chatBackoffFactor || 1), (state.chatBackoffMaxMs || 1800000));
         state.chatCooldownUntilMs = now + backoffMs;
         // increase backoff factor for repeated 429s (cap it)
-        state.chatBackoffFactor = Math.min((state.chatBackoffFactor || 1) * 2, Math.max(1, Math.ceil((state.chatBackoffMaxMs || 300000) / (state.chatBackoffBaseMs || 30000))));
-        try { console.warn('Chat polling backoff due to 429, cooling for ' + backoffMs + 'ms'); } catch (e) {}
-        // Silent backoff - don't show to user
+        state.chatBackoffFactor = Math.min((state.chatBackoffFactor || 1) * 2, 60);
+        // Silent backoff - don't show to user as requested
       } else {
         // Only show fatal errors if NOT a 429 and forceInitial was requested
         if (forceInitial && error && error.status !== 429 && error.status !== 0) {
@@ -2078,8 +2079,12 @@
       window.clearInterval(state.pollTimer);
     }
     state.pollTimer = window.setInterval(function () {
-      // Don't poll if tab is hidden to save server resources
-      if (document.hidden) {
+      var nowMs = Date.now();
+      
+      // Super Passive Mode:
+      // 1. Don't poll if tab is hidden
+      // 2. Don't poll if user has been inactive for > 10 mins
+      if (document.hidden || (nowMs - state.lastActivityAtMs > 600000)) {
         return;
       }
       
@@ -2105,7 +2110,7 @@
           loadTasks();
         }
       }
-    }, 10000);
+    }, 30000); // Check every 30s instead of 10s
   }
 
   function handleRealtimePacket(packet) {
@@ -3049,6 +3054,13 @@
     bindChatForm();
     bindTaskForm();
     resetTaskEditor();
+    function recordActivity() {
+      state.lastActivityAtMs = Date.now();
+    }
+    document.addEventListener('mousemove', recordActivity, { passive: true });
+    document.addEventListener('keydown', recordActivity, { passive: true });
+    document.addEventListener('touchstart', recordActivity, { passive: true });
+
     setActiveTab(routeIntent.tab || 'chat');
     updateChatCountPill();
     initRealtime();
@@ -3071,9 +3083,12 @@
 
     resetChatState();
 
-    // Stagger initial load to prevent thundering herd from multiple tabs
-    var initialDelay = Math.floor(Math.random() * 3000); 
+    // Stagger initial load even more (0-10 seconds)
+    var initialDelay = Math.floor(Math.random() * 10000); 
     setTimeout(async function() {
+      // ONLY load if window is active to save resources on background tabs
+      if (document.hidden) return;
+      
       await Promise.all([
         loadChat({ forceInitial: true }),
         loadTasks(),
@@ -3097,11 +3112,6 @@
         }
       })
       .catch(function(err) {
-        window.console.error('OFFICE_WORK_DEBUG: Failed to load leads', {
-            status: err.status,
-            message: err.message,
-            data: err.data
-        });
         var msg = 'Failed to load leads';
         if (err.status === 403) msg = 'Access denied: You do not have permission to view leads.';
         else if (err.status === 401) msg = 'Session expired: Please login again.';
