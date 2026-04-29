@@ -17,11 +17,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const configuredPortfolioBatch = Number(pageConfig.portfolioBatchSize);
     const configuredModalBatch = Number(pageConfig.categoryModalBatchSize);
     const PORTFOLIO_BATCH_SIZE = Number.isFinite(configuredPortfolioBatch)
-        ? Math.min(24, Math.max(10, Math.round(configuredPortfolioBatch)))
-        : 12;
+        ? Math.min(50, Math.max(10, Math.round(configuredPortfolioBatch)))
+        : 20;
     const CATEGORY_MODAL_BATCH_SIZE = Number.isFinite(configuredModalBatch)
-        ? Math.min(24, Math.max(10, Math.round(configuredModalBatch)))
-        : 15;
+        ? Math.min(50, Math.max(10, Math.round(configuredModalBatch)))
+        : 20;
     const CATEGORY_ITEMS_API = String(pageConfig.categoryItemsApi || '');
     
     // --- Load Category Background Images ---
@@ -158,20 +158,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setSkeletonVisible(visible) {
-        if (!skeletonWrap) return;
-        skeletonWrap.hidden = !visible;
+        // Skeleton removed per UI update
+        if (skeletonWrap) skeletonWrap.hidden = true;
     }
 
     function setGallerySkeletonVisible(visible) {
-        if (gallerySkeleton) {
-            gallerySkeleton.hidden = !visible;
-        }
-        if (galleryGrid) {
-            galleryGrid.hidden = visible;
-            if (visible) {
-                galleryGrid.classList.remove('media-ready');
-            }
-        }
+        // Skeleton removed per UI update
+        if (gallerySkeleton) gallerySkeleton.hidden = true;
+        if (galleryGrid) galleryGrid.hidden = false;
     }
 
     function applyLazyImageAttrs(img, isPriority) {
@@ -385,9 +379,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateGalleryLoadMoreUi() {
-        const shouldShow = Boolean(currentGalleryHasMore && currentGalleryCategoryId);
-        setGalleryLoadMoreVisible(shouldShow);
-        setGalleryLoadMoreLoading(isGalleryLoadingMore);
+        // Button removed per UI update, infinite scroll used instead
+        setGalleryLoadMoreVisible(false);
     }
 
     function buildFallbackCategoryItems(categoryId, catName) {

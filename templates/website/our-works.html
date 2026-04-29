@@ -54,8 +54,8 @@
     <!-- Full Portfolio (Infinite Grid) -->
     <script id="portfolioPageConfig" type="application/json">
         {
-            "portfolioBatchSize": {{ portfolio_batch_size|default:12 }},
-            "categoryModalBatchSize": {{ category_modal_batch_size|default:15 }},
+            "portfolioBatchSize": {{ portfolio_batch_size|default:20 }},
+            "categoryModalBatchSize": {{ category_modal_batch_size|default:20 }},
             "categoryItemsApi": "{% url 'website:load_more_category_items' %}"
         }
     </script>
@@ -113,16 +113,6 @@
                     <p style="color: var(--color-slate-400); font-size: 1.1rem; margin: 0;">No works uploaded yet.</p>
                 </div>
                 {% endfor %}
-            </div>
-            <div id="portfolioLoadSkeleton" class="portfolio-load-skeleton" hidden aria-hidden="true">
-                <div class="portfolio-skeleton-card skeleton-tall"></div>
-                <div class="portfolio-skeleton-card skeleton-portrait"></div>
-                <div class="portfolio-skeleton-card skeleton-square"></div>
-                <div class="portfolio-skeleton-card skeleton-landscape"></div>
-                <div class="portfolio-skeleton-card skeleton-portrait"></div>
-                <div class="portfolio-skeleton-card skeleton-wide"></div>
-                <div class="portfolio-skeleton-card skeleton-square"></div>
-                <div class="portfolio-skeleton-card skeleton-tall"></div>
             </div>
             <div id="portfolioLoadSentinel" class="portfolio-load-sentinel" aria-hidden="true"></div>
         </div>

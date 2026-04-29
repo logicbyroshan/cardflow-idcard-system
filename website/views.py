@@ -388,81 +388,6 @@ self.addEventListener('fetch', function() {
 # PAGE VIEWS
 # ==========================================
 
-def home(request):
-    """Homepage: Displays a summary of all sections"""
-    context = get_common_context()
-    
-    # Dynamic hero images (cached 60s with versioned key)
-    hero_cache_key = _website_public_cache_key('home_hero_images')
-    hero_images = cache.get(hero_cache_key)
-    if hero_images is None:
-        hero_images = list(HeroImage.objects.filter(is_active=True).order_by('order', 'pk'))
-        cache.set(hero_cache_key, hero_images, 60)
-    context['hero_images'] = hero_images
-    
-    # Website section data (cached 60s with versioned key)
-    home_sections_cache_key = _website_public_cache_key('home_sections')
-    home_sections = cache.get(home_sections_cache_key)
-    if home_sections is None:
-        image_products_filter = Q(item_type='image') & Q(image__isnull=False) & ~Q(image='')
-        home_sections = {
-            'trusted_clients': list(
-                PanelClient.objects.all()
-                .exclude(website_logo__isnull=True)
-                .exclude(website_logo='')
-                .only('id', 'name', 'website_logo', 'website_display_order')
-                .order_by('website_display_order', 'name', 'id')
-            ),
-            'featured_portfolio': list(
-                PortfolioItem.objects
-                .select_related('category')
-                .filter(is_active=True, is_featured=True)
-                .filter(image_products_filter)
-                .order_by('order')
-            ),
-            'recent_portfolio': list(
-                PortfolioItem.objects
-                .select_related('category')
-                .filter(is_active=True)
-                .filter(image_products_filter)
-                .order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]
-            ),
-            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
-        }
-        cache.set(home_sections_cache_key, home_sections, 60)
-    context.update(home_sections)
-
-    # Build a randomized, mixed-category stream for both product rows.
-    featured_products = list(home_sections.get('featured_portfolio') or [])
-    recent_products = list(home_sections.get('recent_portfolio') or [])
-
-    deduped_products = []
-    seen_ids = set()
-    for item in featured_products + recent_products:
-        item_id = getattr(item, 'id', None)
-        key = item_id if item_id is not None else id(item)
-        if key in seen_ids:
-            continue
-        seen_ids.add(key)
-        deduped_products.append(item)
-
-    all_products = _interleave_random_by_category(deduped_products)
-    if all_products:
-        row1_portfolio, row2_portfolio = _build_home_product_rows_by_category(all_products)
-        context['row1_portfolio'] = row1_portfolio
-        context['row2_portfolio'] = row2_portfolio
-    else:
-        context['row1_portfolio'] = []
-        context['row2_portfolio'] = []
-
-    # SEO metadata
-    context.update({
-        'meta_title': f"Adarsh ID Cards Bhopal | Best ID Card & Lanyard Solution in MP",
-        'meta_description': f"Adarsh ID Cards is the leading ID card manufacturer in Bhopal, MP. We specialize in premium Lanyards, PVC ID Cards, and school stationery. Trusted by 1000+ institutions for quality and delivery.",
-        'canonical_url': request.build_absolute_uri(),
-    })
-
-    return render(request, 'website/index.html', context)
 
 
 def _get_bento_context():
@@ -567,7 +492,7 @@ def home(request):
         image_products_filter = Q(item_type='image') & Q(image__isnull=False) & ~Q(image='')
         home_sections = {
             'trusted_clients': list(
-                PanelClient.objects.filter(website_is_visible=True)
+                PanelClient.objects.all()
                 .exclude(website_logo__isnull=True).exclude(website_logo='')
                 .order_by('website_display_order', 'name', 'id')
             ),
