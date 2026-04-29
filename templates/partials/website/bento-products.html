@@ -10,9 +10,12 @@
                 <a href="{% url 'website:category_detail' cat.slug %}" class="category-seo-link" aria-hidden="true" tabindex="-1">{{ cat.name }}</a>
                 
                 <div class="category-bg">
+                    {% if cat.cover_image_url %}
+                        <img src="{{ cat.cover_image_url }}" alt="{{ cat.name }} solutions - Adarsh Bhopal" class="category-cover-img" loading="lazy">
+                    {% endif %}
                     <div class="bg-placeholder"></div>
                     <div class="category-slider" data-cat-id="{{ cat.id }}">
-                        <!-- Images will be injected here by JS -->
+                        <!-- Images will be injected here by JS for high-fidelity slider -->
                     </div>
                 </div>
                 <div class="category-content">

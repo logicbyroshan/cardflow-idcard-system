@@ -1,128 +1,65 @@
+/* === Layout === */
 .office-work-page {
   padding: 0;
   width: 100%;
   height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #f6f9fd 0%, #eef4fb 100%);
+  background: var(--color-gray-50);
   overflow: hidden;
 }
 
-.office-work-action-bar {
-  position: sticky;
-  overflow: hidden;
-  top: 0;
-  z-index: 20;
-  gap: 12px;
-  padding: 8px 12px;
-}
-
-.office-work-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.office-work-title {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--ui-font-size-lg, 15px);
-  font-weight: 700;
-  color: var(--color-slate-900);
-}
-
-.office-work-title i {
-  color: var(--color-primary);
-  font-size: var(--ui-font-size-xl, 16px);
-}
-
-.office-work-subtitle {
-  margin: 0;
-  color: var(--color-slate-500);
-  font-size: var(--ui-font-size-sm, 12px);
-}
-
-.office-work-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-  border: 1px solid var(--color-slate-200);
-  border-radius: 0 !important;
-  overflow: hidden;
+/* === Tabs === */
+.office-work-tabs-wrap {
+  flex-shrink: 0;
   background: var(--color-white);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
-.office-tab-btn {
-  padding: 8px 14px;
+.panel-tabs.office-work-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  background: var(--color-white);
+  border-bottom: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.panel-tabs.office-work-tabs::-webkit-scrollbar { display: none; }
+
+.panel-tab.office-tab-btn {
+  padding: 12px 20px;
   font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-slate-500);
-  background: var(--color-white);
-  border: 0;
-  border-right: 1px solid var(--color-slate-200);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  gap: 8px;
+  transition: all .15s ease;
+  white-space: nowrap;
 }
 
-.office-tab-btn:last-child {
-  border-right: 0;
-}
-
-.office-tab-btn:hover {
+.panel-tab.office-tab-btn:hover {
   color: var(--color-slate-700);
   background: var(--color-gray-50);
 }
 
-.office-tab-btn.is-active {
+.panel-tab.office-tab-btn.is-active {
   color: var(--color-primary);
-  background: rgba(var(--primary-rgb), 0.08);
+  border-bottom-color: var(--color-primary);
+  background: rgba(var(--primary-rgb), 0.06);
 }
 
-/* Topbar Tabs Styling */
-.topbar-tabs.office-work-tabs {
-  border: 0;
-  background: transparent;
-  margin-right: 15px;
-}
-
-.topbar-tabs .office-tab-btn {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-right: 0;
-  padding: 6px 16px;
-  font-size: 13px;
-  color: #64748b;
-}
-
-.topbar-tabs .office-tab-btn:first-child {
-  border-radius: 0 !important;
-}
-
-.topbar-tabs .office-tab-btn:last-child {
-  border-radius: 0 !important;
-  border-right: 1px solid #e2e8f0;
-}
-
-.topbar-tabs .office-tab-btn i {
+.panel-tab.office-tab-btn i {
   font-size: 14px;
 }
 
-.topbar-tabs .office-tab-btn.is-active {
-  background: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-}
-
-.topbar-tabs .office-tab-btn.is-active i {
-  color: white;
-}
-
+/* === Shell === */
 .office-work-shell {
   padding: 0;
   background: transparent;
@@ -140,16 +77,18 @@
 }
 
 .office-panel {
-  display: flex;
+  display: none;
   flex-direction: column;
-  gap: 0;
   flex: 1;
   min-height: 0;
 }
 
+.office-panel.is-active {
+  display: flex;
+}
+
 .office-work-page .btn,
 .office-work-page .form-select,
-.office-work-page .office-input,
 .office-work-page .form-textarea {
   border-radius: 10px !important;
 }
@@ -666,8 +605,41 @@
   text-decoration: none;
 }
 
-.office-chat-file-link:hover {
-  text-decoration: underline;
+/* === Leads Action Bar === */
+.office-leads-section .action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 18px;
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-gray-200);
+  flex-shrink: 0;
+}
+
+.action-bar-left, .action-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.office-leads-section .action-bar .btn {
+  height: 30px;
+  padding: 0 12px;
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 600;
+  border-radius: 6px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.office-leads-section .action-bar .btn i {
+  font-size: 14px;
+}
+
+.office-leads-section .action-bar .btn span {
+  display: inline-block;
 }
 
 .office-task-form {
@@ -680,7 +652,7 @@
   width: 100%;
   min-height: 34px;
   border: 1px solid var(--color-gray-200);
-  border-radius: 0 !important;
+  border-radius: 8px;
   background: var(--color-white);
   color: var(--color-slate-700);
   padding: 6px 10px;
@@ -691,6 +663,52 @@
 textarea.office-input {
   min-height: 84px;
   resize: vertical;
+  border-radius: 8px;
+}
+
+/* Specific Search Wrapper for Leads/Tasks */
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input-wrapper i {
+  position: absolute;
+  left: 14px;
+  color: var(--color-slate-400);
+  font-size: 14px;
+  z-index: 2;
+}
+
+.search-input-wrapper .office-input {
+  height: 42px;
+  padding: 10px 14px 10px 40px;
+  border-radius: 25px !important;
+  border: 1.5px solid var(--color-slate-200);
+  font-size: 14px;
+  background: white;
+}
+
+.search-input-wrapper .office-input:focus {
+  border-color: var(--color-primary);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1);
+}
+
+/* Leads Table Strip */
+.office-table-header-strip tr {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%) !important;
+}
+
+.office-table-header-strip th {
+  color: white !important;
+  border: none !important;
+  padding: 12px 14px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 12px !important;
 }
 
 .office-input:focus {
@@ -700,24 +718,37 @@ textarea.office-input {
 }
 
 .office-section {
-  border: 1px solid var(--color-slate-200);
-  background: var(--color-white);
-  padding: 12px;
-  border-radius: 0 !important;
+  background: transparent;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.office-section h3 {
-  margin: 0 0 10px;
-  display: inline-flex;
+/* Header strip similar to Manage Panel */
+.office-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-gray-200);
+  flex-shrink: 0;
+}
+
+.office-panel-title {
+  font-size: var(--ui-font-size-md, 13px);
+  font-weight: 600;
+  color: var(--color-slate-800);
+  display: flex;
   align-items: center;
   gap: 8px;
-  font-size: var(--ui-font-size-md, 13px);
-  font-weight: 700;
-  color: var(--color-slate-800);
 }
 
-.office-section h3 i {
+.office-panel-title i {
   color: var(--color-primary);
+  font-size: var(--ui-font-size-lg, 15px);
 }
 
 .office-task-form label {
@@ -751,40 +782,29 @@ textarea.office-input {
 }
 
 .office-task-board-shell > h3 {
-  margin: 0;
-  padding: 0 12px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid var(--color-slate-200);
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
-  color: var(--color-white);
-  flex-shrink: 0;
-}
-
-.office-task-board-shell > h3 i {
-  color: var(--color-white);
+  display: none;
 }
 
 .office-kanban-board {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, minmax(260px, 1fr));
   align-items: stretch;
-  gap: 12px;
-  padding: 12px;
+  gap: 16px;
+  padding: 20px;
   overflow: auto;
-  background: linear-gradient(180deg, #f9fcff 0%, #f2f7fd 100%);
+  background: #f1f5f9;
 }
 
 .office-kanban-column {
   border: 1px solid var(--color-slate-200);
-  border-radius: 0 !important;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  border-radius: 8px !important;
+  background: #f8fafc;
   min-height: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .office-kanban-column[data-status="todo"] {
@@ -797,6 +817,18 @@ textarea.office-input {
 
 .office-kanban-column[data-status="done"] {
   border-top: 3px solid #16a34a;
+}
+
+.office-kanban-column[data-status="pending"] {
+  border-top: 3px solid #ef4444;
+}
+
+.office-kanban-column-header {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
 }
 
 .office-kanban-column[data-status="pending"] {
@@ -868,15 +900,20 @@ textarea.office-input {
 .office-task-card {
   border: 1px solid var(--color-slate-200);
   background: var(--color-white);
-  border-radius: 14px !important;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
-  padding: 12px;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   cursor: grab;
   position: relative;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.office-task-card:hover {
+  border-color: var(--color-slate-300);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
 .office-task-card.is-dragging {

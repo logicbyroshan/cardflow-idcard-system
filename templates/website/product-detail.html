@@ -95,7 +95,7 @@
             <div class="product-grid">
                 {% for related in related_items %}
                     <div class="product-card">
-                        <a href="{% url 'website:product_detail' related.category.slug related.slug %}">
+                        <a href="{{ related.get_absolute_url }}">
                             <div class="product-image">
                                 <img src="{{ related.image.url }}" alt="{{ related.title }}" loading="lazy">
                             </div>

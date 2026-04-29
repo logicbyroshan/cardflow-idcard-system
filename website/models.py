@@ -241,6 +241,11 @@ class PortfolioCategory(models.Model):
     )
     order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True, db_index=True)
+    
+    # SEO Meta Tags
+    meta_title = models.CharField(max_length=255, blank=True, help_text='Optional SEO title override')
+    meta_description = models.TextField(blank=True, help_text='Optional SEO description override')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -254,6 +259,10 @@ class PortfolioCategory(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('website:category_detail', kwargs={'slug': self.slug})
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -339,6 +348,10 @@ class PortfolioItem(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
     order = models.IntegerField(default=0)
     
+    # SEO Meta Tags
+    meta_title = models.CharField(max_length=255, blank=True, help_text='Optional SEO title override')
+    meta_description = models.TextField(blank=True, help_text='Optional SEO description override')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -353,6 +366,13 @@ class PortfolioItem(models.Model):
 
     def __str__(self):
         return self.title
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('website:product_detail', kwargs={
+            'category_slug': self.category.slug if self.category else 'uncategorized',
+            'slug': self.slug
+        })
 
     def _needs_portfolio_image_processing(self):
         """Return True when image should run through watermark/WebP pipeline."""

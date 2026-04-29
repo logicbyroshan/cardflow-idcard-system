@@ -81,7 +81,7 @@
             <!-- Portfolio Grid -->
             <div class="portfolio-grid" id="portfolioGrid">
                 {% for item in portfolio_items %}
-                <a href="{% url 'website:product_detail' item.category.slug item.slug %}" class="portfolio-item {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}"
+                <a href="{{ item.get_absolute_url }}" class="portfolio-item {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}"
                      role="button" tabindex="0" aria-label="{{ item.title }}"
                      {% if item.item_type == 'video' or item.item_type == 'reel' %}
                      data-video-url="{{ item.video_source_url|default:item.video_fallback_url }}"
@@ -95,15 +95,15 @@
                     <div class="portfolio-image">
                         {% if item.item_type == 'video' or item.item_type == 'reel' %}
                             {% if item.video_thumbnail_url %}
-                                <img data-src="{{ item.video_thumbnail_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
+                                <img src="{{ item.video_thumbnail_url }}" alt="{{ item.title }} showcase - Adarsh ID Cards Bhopal" loading="lazy" decoding="async">
                             {% else %}
-                                <video class="portfolio-preview-fallback" muted playsinline preload="none" data-preview-primary="{{ item.video_source_url|default:item.video_fallback_url }}" data-preview-fallback="{{ item.video_fallback_url }}" aria-hidden="true"></video>
+                                <video class="portfolio-preview-fallback" muted playsinline preload="none" src="{{ item.video_source_url|default:item.video_fallback_url }}" aria-hidden="true"></video>
                                 <div class="portfolio-video-placeholder is-loading"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
                             {% endif %}
-                            <div class="portfolio-play-icon" role="button" aria-label="Play video inline" tabindex="0"><i class="fa-solid fa-play-circle"></i></div>
+                            <div class="portfolio-play-icon" role="button" aria-label="Play video" tabindex="0"><i class="fa-solid fa-play-circle"></i></div>
                         {% else %}
                             {% if item.image %}
-                                <img data-src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }} - {{ item.category.name }} Printing Madhya Pradesh" loading="lazy" decoding="async">
                             {% endif %}
                         {% endif %}
                     </div>
