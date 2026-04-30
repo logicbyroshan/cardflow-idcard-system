@@ -167,19 +167,12 @@ document.addEventListener('DOMContentLoaded', function() {
         url.searchParams.set('open_client', String(clientId));
         window.history.replaceState({}, '', url);
     };
-});
-</script>
-{% endblock %}
 
-{% block extra_js %}
-<script>
     // Add subtle hover animations and lazy load images
-    document.addEventListener('DOMContentLoaded', function() {
-        const cards = document.querySelectorAll('.client-card');
-        cards.forEach((card, index) => {
-            // Add staggered animation
-            card.style.animationDelay = (index * 50) + 'ms';
-        });
+    cards.forEach((card, index) => {
+        // already set staggered animation above; ensure consistency
+        card.style.animationDelay = card.style.animationDelay || (index * 50) + 'ms';
     });
+});
 </script>
 {% endblock %}
