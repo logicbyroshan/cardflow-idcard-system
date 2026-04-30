@@ -2290,7 +2290,7 @@ h2 {
 
     .logo-item:hover img {
         transform: none;
-        filter: grayscale(100%);
+        filter: none;
     }
 
     .logo-item .school-name {

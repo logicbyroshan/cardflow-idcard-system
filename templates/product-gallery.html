@@ -402,10 +402,11 @@
         <div class="portfolio-image">
           <div class="portfolio-skeleton" aria-hidden="true"></div>
           <img class="js-lazy-image"
-               data-src="{{ item.image.url }}"
-               alt="Product image {{ forloop.counter }}"
-               loading="lazy"
-               decoding="async">
+            src="{{ item.thumb_url }}"
+            data-src="{{ item.image.url }}"
+            alt="Product image {{ forloop.counter }}"
+            loading="lazy"
+            decoding="async">
         </div>
       </article>
       {% endfor %}
@@ -497,7 +498,11 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   var imageObserver = null;
+  var PREFETCH_ON_SCROLL = 24; // number of upcoming items to prefetch on first user scroll
+  var scrolledOnce = false;
+
   if ('IntersectionObserver' in window) {
+    // Increase rootMargin so images are fetched earlier (reduces visible pop-in)
     imageObserver = new IntersectionObserver(function (entries, observer) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) {
@@ -509,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }, {
       root: gridWrap,
-      rootMargin: '320px 0px'
+      rootMargin: '800px 0px'
     });
   }
 
@@ -614,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }, {
       root: gridWrap,
-      rootMargin: '460px 0px'
+      rootMargin: '640px 0px'
     });
     pagingObserver.observe(sentinel);
   } else if (gridWrap && sentinel) {
@@ -631,6 +636,18 @@ document.addEventListener('DOMContentLoaded', function () {
       applyVisibility();
     }, { passive: true });
   }
+
+  // Prefetch next set of images when the user starts interacting (first scroll)
+  gridWrap.addEventListener('scroll', function onFirstScroll() {
+    if (scrolledOnce) return;
+    scrolledOnce = true;
+    var start = visibleCount;
+    var end = Math.min(filteredItems.length, visibleCount + PREFETCH_ON_SCROLL);
+    for (var i = start; i < end; i++) {
+      queueImage(filteredItems[i]);
+    }
+    gridWrap.removeEventListener('scroll', onFirstScroll);
+  }, { passive: true });
 
   updateSearchUi();
   applyFilters();

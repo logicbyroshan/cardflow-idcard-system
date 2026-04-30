@@ -831,7 +831,7 @@ a:active {
     background: transparent;
     border-radius: 0;
     box-shadow: none;
-    padding: 20px 0;
+    padding: 14px 0;
     margin: 0 auto;
     max-width: 1200px;
     width: 100%;
@@ -866,7 +866,7 @@ a:active {
 
 .logos-track {
     display: flex;
-    gap: 20px;
+    gap: 12px;
     animation-name: scroll;
     animation-duration: var(--carousel-duration, 30s);
     animation-timing-function: linear;
@@ -883,35 +883,35 @@ a:active {
     align-items: center;
     justify-content: flex-start;
     flex-shrink: 0;
-    min-width: 130px;
-    height: 88px;
-    padding: 4px 6px;
-    gap: 6px;
+    min-width: 112px;
+    height: 78px;
+    padding: 2px 4px;
+    gap: 4px;
     transition: var(--transition);
 }
 
 .logo-visual {
     width: 100%;
-    height: 56px;
+    height: 46px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .logo-item img {
-    max-width: 100px;
-    max-height: 44px;
+    max-width: 84px;
+    max-height: 36px;
     object-fit: contain;
     filter: none;
     opacity: 1;
-    transition: transform 0.22s ease, filter 0.22s ease, opacity 0.22s ease;
+    transition: transform 0.22s ease, opacity 0.22s ease;
 }
 
 .school-name {
     width: 100%;
-    max-width: 140px;
+    max-width: 120px;
     display: block;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     line-height: 1.1;
     font-weight: 400;
     letter-spacing: 0.01em;
@@ -925,8 +925,8 @@ a:active {
 }
 
 .logo-item:hover img {
-    transform: scale(1.06);
-    filter: saturate(1.25) brightness(1.02);
+    transform: none;
+    filter: none;
 }
 
 @keyframes scroll {
@@ -949,7 +949,7 @@ a:active {
 
 /* Reverse Carousel Styling */
 .logos-carousel-reverse {
-    margin-top: 20px;
+    margin-top: 12px;
 }
 
 .logos-track-reverse {
@@ -2859,8 +2859,8 @@ section {
     transition: transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
 }
 .logo-item:hover img {
-    transform: scale(1.08);
-    filter: grayscale(0%) brightness(1.08);
+    transform: none;
+    filter: none;
 }
 .logo-item:hover .school-name {
     opacity: 1;

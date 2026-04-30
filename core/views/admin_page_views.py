@@ -22,6 +22,8 @@ from idcards.models import IDCardGroup, IDCard, IDCardTable
 from reprintcard.models import ReprintRequest
 from cardprint.models import PrintRequest
 from website.models import PortfolioItem
+from mediafiles.services.image_thumbnail import ThumbnailService
+from django.core.files.storage import default_storage
 from ..models import User, Notification, EmailLog, ActivityLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx
@@ -1344,6 +1346,19 @@ def product_gallery(request):
         'gallery_user_type_label': _GALLERY_TYPE_LABELS.get(gallery_user_type, 'General'),
         'gallery_client_name': getattr(gallery_client, 'name', ''),
     }
+    # Attach a small/fast thumbnail URL for each item to use as the initial src
+    for item in portfolio_items:
+        try:
+            if getattr(item, 'image', None) and getattr(item.image, 'name', None):
+                thumb_path = ThumbnailService.get_thumbnail_path(item.image.name)
+                if thumb_path and default_storage.exists(thumb_path):
+                    item.thumb_url = default_storage.url(thumb_path)
+                else:
+                    item.thumb_url = item.image.url
+            else:
+                item.thumb_url = ''
+        except Exception:
+            item.thumb_url = getattr(item.image, 'url', '') if getattr(item, 'image', None) else ''
     return render(request, 'product-gallery.html', context)
 
 

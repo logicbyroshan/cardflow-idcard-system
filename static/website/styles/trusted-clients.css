@@ -6,7 +6,7 @@
 .page-hero {
     position: relative;
     height: 320px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -97,8 +97,8 @@
 /* Clients Grid */
 .clients-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 18px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
     animation: fadeInUp 0.6s ease-out;
 }
 
@@ -134,9 +134,13 @@
 
 /* Card Cover */
 .card-cover {
-    height: 110px;
+    height: 100px;
     position: relative;
     overflow: hidden;
+}
+
+.card-cover-brand {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
 }
 
 .cover-overlay {
@@ -149,30 +153,30 @@
 /* Logo Container - Overlapping Cover */
 .logo-container {
     position: relative;
-    height: 90px;
+    height: 76px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: -45px;
-    margin-bottom: 12px;
+    margin-top: -36px;
+    margin-bottom: 8px;
     z-index: 10;
 }
 
 .client-logo {
-    width: 96px;
-    height: 96px;
+    width: 82px;
+    height: 82px;
     border-radius: 12px;
     object-fit: contain;
     background: white;
-    padding: 10px;
+    padding: 7px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
     border: 2px solid white;
     transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
 }
 
 .client-card:hover .client-logo {
-    transform: scale(1.06) rotateZ(-1deg);
-    box-shadow: 0 10px 26px rgba(102, 126, 234, 0.18);
+    transform: scale(1.03) rotateZ(-0.5deg);
+    box-shadow: 0 10px 26px rgba(10, 146, 221, 0.16);
 }
 
 .logo-fallback {
@@ -317,28 +321,28 @@
 
     .clients-grid {
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        gap: 24px;
+        gap: 18px;
     }
 
     .card-cover {
-        height: 110px;
+        height: 94px;
     }
 
     .logo-container {
-        margin-top: -55px;
-        height: 110px;
-        margin-bottom: 16px;
+        margin-top: -44px;
+        height: 90px;
+        margin-bottom: 10px;
     }
 
     .client-logo {
-        width: 100px;
-        height: 100px;
+        width: 84px;
+        height: 84px;
     }
 
     .logo-fallback {
-        width: 100px;
-        height: 100px;
-        font-size: 2.5rem;
+        width: 84px;
+        height: 84px;
+        font-size: 2.1rem;
     }
 
     .client-name {
@@ -389,24 +393,24 @@
     }
 
     .card-cover {
-        height: 100px;
+        height: 88px;
     }
 
     .logo-container {
-        margin-top: -50px;
-        height: 100px;
-        margin-bottom: 12px;
+        margin-top: -40px;
+        height: 82px;
+        margin-bottom: 8px;
     }
 
     .client-logo {
-        width: 90px;
-        height: 90px;
+        width: 78px;
+        height: 78px;
     }
 
     .logo-fallback {
-        width: 90px;
-        height: 90px;
-        font-size: 2rem;
+        width: 78px;
+        height: 78px;
+        font-size: 1.9rem;
     }
 
     .card-body {
