@@ -80,16 +80,7 @@ async function saveCookiesFromResponse(response) {
 // ─── Core Fetch Wrapper ─────────────────────────────────────────────────────
 
 async function apiFetch(path, options = {}) {
-  // Ensure path has a trailing slash for Django
-  let normalizedPath = path;
-  if (!normalizedPath.endsWith('/') && !normalizedPath.includes('?')) {
-    normalizedPath += '/';
-  } else if (normalizedPath.includes('?') && !normalizedPath.split('?')[0].endsWith('/')) {
-    const [baseUrl, query] = normalizedPath.split('?');
-    normalizedPath = `${baseUrl}/?${query}`;
-  }
-
-  const url = `${BASE_URL}${normalizedPath}`;
+  const url = `${BASE_URL}${path}`;
   const method = (options.method || 'GET').toUpperCase();
 
   const headers = {
@@ -100,7 +91,7 @@ async function apiFetch(path, options = {}) {
   };
 
   // Attach CSRF for mutations — SKIP for auth paths as they are exempt on backend
-  const isAuth = normalizedPath.includes('/auth/') || normalizedPath.includes('/login');
+  const isAuth = path.includes('/auth/') || path.includes('/login');
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && cachedCsrf && !isAuth) {
     headers['X-CSRFToken'] = cachedCsrf;
   }
@@ -132,59 +123,38 @@ export async function apiGet(path) {
   try {
     const response = await apiFetch(path);
     const text = await response.text();
-    if (!text) return { ok: response.ok, status: response.status, data: {} };
-    
+    let data = {};
     try {
-      const data = JSON.parse(text);
-      return { ok: response.ok, status: response.status, data };
+      data = JSON.parse(text);
     } catch (e) {
-      console.warn(`[API] JSON Parse Error for path: ${path} | Response: ${response.status} - ${text.slice(0, 100)}`);
-      return { ok: false, status: response.status, data: { message: `Server error (${response.status}) - Invalid Response` } };
+      console.warn('[API] JSON Parse Error for path:', path, 'Response:', text.substring(0, 100));
+      return { ok: false, status: response.status, data: { message: 'Invalid server response' } };
     }
+    return { ok: response.ok, status: response.status, data };
   } catch (e) {
-    console.error(`[API] Connection Error for path: ${path}`, e);
-    return { ok: false, status: 0, data: { message: 'Connection failed' } };
+    console.warn('[API] Fetch Error for path:', path, e);
+    return { ok: false, status: 0, data: { message: e.message || 'Network error' } };
   }
 }
 
 export async function apiPost(path, body = {}) {
-  try {
-    const response = await apiFetch(path, { method: 'POST', json: body });
-    const text = await response.text();
-    if (!text) return { ok: response.ok, status: response.status, data: {} };
-
-    try {
-      const data = JSON.parse(text);
-      return { ok: response.ok, status: response.status, data };
-    } catch (e) {
-      console.warn(`[API] JSON Parse Error for path: ${path} | Response: ${response.status} - ${text.slice(0, 100)}`);
-      return { ok: false, status: response.status, data: { message: `Server error (${response.status}) - Invalid Response` } };
-    }
-  } catch (e) {
-    console.error(`[API] Connection Error for path: ${path}`, e);
-    return { ok: false, status: 0, data: { message: 'Connection failed' } };
-  }
+  const response = await apiFetch(path, {
+    method: 'POST',
+    json: body,
+  });
+  const data = await response.json();
+  return { ok: response.ok, status: response.status, data };
 }
 
 export async function apiPostForm(path, formData, extraHeaders = {}) {
-  try {
-    const response = await apiFetch(path, { method: 'POST', body: formData, headers: extraHeaders });
-    const text = await response.text();
-    if (!text) return { ok: response.ok, status: response.status, data: {} };
-
-    try {
-      const data = JSON.parse(text);
-      return { ok: response.ok, status: response.status, data };
-    } catch (e) {
-      console.warn(`[API] JSON Parse Error for path: ${path} | Response: ${response.status} - ${text.slice(0, 100)}`);
-      return { ok: false, status: response.status, data: { message: `Server error (${response.status}) - Invalid Response` } };
-    }
-  } catch (e) {
-    console.error(`[API] Connection Error for path: ${path}`, e);
-    return { ok: false, status: 0, data: { message: 'Connection failed' } };
-  }
+  const response = await apiFetch(path, {
+    method: 'POST',
+    body: formData,
+    headers: extraHeaders,
+  });
+  const data = await response.json();
+  return { ok: response.ok, status: response.status, data };
 }
-
 
 /**
  * Fetches the CSRF token by hitting the login page.
@@ -192,21 +162,13 @@ export async function apiPostForm(path, formData, extraHeaders = {}) {
  */
 export async function fetchInitialCsrf() {
   try {
-    // Only clear auth if we don't have a CSRF token yet, and only AFTER successful fetch
+    // Clear any stale cookies before fetching a fresh token
+    await clearAuth();
     const response = await apiFetch('/app/login/', { method: 'GET' });
     await saveCookiesFromResponse(response);
-    
-    // Only clear stale data after successful response
-    if (cachedCsrf) {
-      // Fresh token obtained, safe to clear old data
-      cachedCookies = '';
-      await AsyncStorage.removeItem(STORAGE_KEYS.cookies);
-    }
     return !!cachedCsrf;
   } catch (e) {
-    // Network error — keep existing cached CSRF/cookies so user can retry
-    console.warn('[API] fetchInitialCsrf error:', e);
-    return !!cachedCsrf;
+    return false;
   }
 }
 
