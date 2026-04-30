@@ -868,7 +868,7 @@ a:active {
     display: flex;
     gap: 50px;
     animation-name: scroll;
-    animation-duration: 30s;
+    animation-duration: var(--carousel-duration, 30s);
     animation-timing-function: linear;
     animation-iteration-count: infinite;
     animation-play-state: running;
@@ -945,6 +945,24 @@ a:active {
     100% {
         transform: translateX(-50%);
     }
+}
+
+@keyframes scroll-reverse {
+    0% {
+        transform: translateX(-50%);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Reverse Carousel Styling */
+.logos-carousel-reverse {
+    margin-top: 20px;
+}
+
+.logos-track-reverse {
+    animation-name: scroll-reverse !important;
 }
 
 /* ===== Why Choose Us Section ===== */

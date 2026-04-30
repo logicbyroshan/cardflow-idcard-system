@@ -27,6 +27,7 @@ urlpatterns = [
     path('why-choose-us/', views.why_choose_us, name='why_choose_us'),
     
     # Linked to testimonials_page in views.py
+    path('trusted-clients/', views.trusted_clients_page, name='trusted_clients'),
     path('testimonials/', views.testimonials_page, name='testimonials'),
 
     # --- Legal Pages ---

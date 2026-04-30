@@ -837,6 +837,22 @@ class IDCardModelTests(TestCase):
         self.assertEqual(card.status, 'pending')
 
 
+class IDCardCardServiceCreateTests(TestCase):
+    def setUp(self):
+        self.user, self.client_obj = _create_client_user()
+        self.group, self.table = _create_table(self.client_obj)
+
+    def test_create_card_converts_bare_photo_name_to_pending(self):
+        result = IDCardCardService.create_card(
+            self.table.id,
+            {'NAME': 'ALICE', 'PHOTO': 'avatar-1.jpg'},
+            uploaded_by=self.user,
+        )
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['card']['field_data']['PHOTO'], 'PENDING:avatar-1.jpg')
+
+
 # ── Workflow Transition Tests ──
 class WorkflowTransitionTests(TestCase):
     def setUp(self):

@@ -724,6 +724,11 @@ class IDCardCardService(BaseService):
 
             # Uppercase text values only — preserve image paths
             field_data = cls.uppercase_field_data_selective(field_data, table.fields)
+            normalized_field_data = {
+                str(k).strip().upper(): v
+                for k, v in field_data.items()
+                if isinstance(k, str)
+            }
 
             # Track saved images for dual-write (Phase 2)
             saved_images = []
@@ -735,6 +740,7 @@ class IDCardCardService(BaseService):
                     if cls.is_image_field(field):
                         field_name = field['name']
                         file_key = f"image_{field_name}"
+                        field_key_upper = str(field_name).strip().upper()
 
                         if file_key in image_files:
                             image_counter += 1
@@ -764,6 +770,44 @@ class IDCardCardService(BaseService):
                                     'field_type': field.get('type', 'photo'),
                                     'original_filename': getattr(uploaded_file, 'name', None)
                                 })
+
+            # Normalize image fields even when the user only typed a filename.
+            for field in table.fields:
+                if not cls.is_image_field(field):
+                    continue
+
+                field_name = field['name']
+                field_key_upper = str(field_name).strip().upper()
+
+                uploaded_file = None
+                if image_files:
+                    uploaded_file = image_files.get(f"image_{field_name}")
+
+                raw_value = field_data.get(field_name)
+                if raw_value is None:
+                    raw_value = normalized_field_data.get(field_key_upper)
+
+                if uploaded_file is None and raw_value is None:
+                    continue
+
+                if uploaded_file is None:
+                    result = ImageService.process_image_field(
+                        field_name=field_name,
+                        new_value=raw_value,
+                        existing_value='',
+                        client=client,
+                        card=None,
+                        uploaded_file=None,
+                        batch_counter=1,
+                        uploaded_by=uploaded_by,
+                    )
+                    if result.success:
+                        for existing_key in [
+                            key for key in list(field_data.keys())
+                            if isinstance(key, str) and str(key).strip().upper() == field_key_upper and key != field_name
+                        ]:
+                            field_data.pop(existing_key, None)
+                        field_data[field_name] = result.data.get('final_value', raw_value)
 
             # Atomic block: card creation + media records together
             with transaction.atomic():

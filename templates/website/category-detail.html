@@ -113,7 +113,12 @@
 <script id="portfolioPageConfig" type="application/json">
     {
         "categoryModalBatchSize": {{ category_modal_batch_size|default:15 }},
-        "categoryItemsApi": "{% url 'website:load_more_category_items' %}"
+        "categoryItemsApi": "{% url 'website:load_more_category_items' %}",
+        "initialCategory": {
+            "id": {{ category.id }},
+            "name": "{{ category.name|escapejs }}",
+            "slug": "{{ category.slug|escapejs }}"
+        }
     }
 </script>
 
@@ -124,7 +129,7 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=157"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=160"></script>
 {% endblock %}
 
 {% block extra_css %}

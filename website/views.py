@@ -672,6 +672,66 @@ def why_choose_us(request):
     return render(request, 'website/why-choose-us.html', context)
 
 
+def trusted_clients_page(request):
+    """Trusted Clients Page: Display all clients with their connection duration"""
+    from django.utils import timezone
+    context = get_common_context()
+    
+    clients_cache_key = _website_public_cache_key('trusted_clients_page')
+    clients_data = cache.get(clients_cache_key)
+    
+    if clients_data is None:
+        now = timezone.now()
+        clients_list = PanelClient.objects.filter(
+            website_is_visible=True,
+            website_logo__isnull=False
+        ).exclude(
+            website_logo=''
+        ).order_by('website_display_order', 'name', 'id')
+        
+        # Prepare client data with duration calculation
+        clients_data = []
+        for client in clients_list:
+            # Calculate duration since client creation
+            duration = now - client.created_at
+            days = duration.days
+            
+            # Calculate years, months, days
+            years = days // 365
+            remaining_days = days % 365
+            months = remaining_days // 30
+            remaining_days = remaining_days % 30
+            
+            # Generate duration badge text
+            if years > 0:
+                if months > 0:
+                    duration_text = f"{years}y {months}m"
+                else:
+                    duration_text = f"{years}y"
+            elif months > 0:
+                duration_text = f"{months}m"
+            else:
+                duration_text = f"{days}d"
+            
+            clients_data.append({
+                'id': client.id,
+                'name': client.name,
+                'logo': client.website_logo,
+                'created_at': client.created_at,
+                'duration_text': duration_text,
+                'years': years,
+            })
+        
+        cache.set(clients_cache_key, clients_data, 300)  # Cache for 5 minutes
+    
+    context.update({
+        'clients': clients_data,
+        'meta_title': f"Our Trusted Clients | Adarsh ID Cards - {len(clients_data)} Partners",
+        'meta_description': "Meet the trusted clients and partners of Adarsh ID Cards. Educational institutions, offices, and organizations across India trust us for quality ID card solutions.",
+        'canonical_url': request.build_absolute_uri(),
+    })
+    return render(request, 'website/trusted-clients.html', context)
+
 def testimonials_page(request):
     """Reviews Page: Text testimonials"""
     context = get_common_context()

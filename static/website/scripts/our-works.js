@@ -899,6 +899,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     checkHashAndOpen();
 
+    const initialCategory = pageConfig.initialCategory;
+    if (initialCategory && initialCategory.id) {
+        window.setTimeout(() => {
+            openCategoryGallery(
+                initialCategory.id,
+                initialCategory.name || 'Items',
+                initialCategory.slug || ''
+            );
+        }, 250);
+    }
+
     // --- 3. Lightbox Functionality (images + videos) ---
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightboxImage');
