@@ -54,8 +54,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (email, password, forceLogoutOther = false) => {
-    // Ensure we have a CSRF token
-    await fetchInitialCsrf();
+    // Ensure we have a CSRF token — this should not destroy existing auth on error
+    const hasCsrf = await fetchInitialCsrf();
+    if (!hasCsrf) {
+      return { success: false, data: { message: 'Security token unavailable - check connection' } };
+    }
 
     const body = { email, password };
     if (forceLogoutOther) body.force_logout_other = true;
@@ -66,7 +69,7 @@ export function AuthProvider({ children }) {
       const userData = {
         email,
         name: data.user_name || data.name || email,
-        role: data.role || '',
+        role: data.data?.role || data.role || '',
         loggedInAt: Date.now(),
       };
       setUser(userData);
@@ -83,8 +86,8 @@ export function AuthProvider({ children }) {
     setUser(null);
     setIsAuthenticated(false);
     try {
-      // Panel subdomain doesn't use /panel/ prefix — it's just /auth/logout/
-      await apiPost('/auth/logout/', {});
+      // Panel subdomain doesn't use /panel/ prefix — it's just /app/api/auth/logout/
+      await apiPost('/app/api/auth/logout/', {});
     } catch (e) {
       // Network failure during logout is fine — session will expire on server
     }
