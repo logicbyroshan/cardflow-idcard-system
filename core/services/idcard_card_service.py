@@ -1097,9 +1097,29 @@ class IDCardCardService(BaseService):
                 field_data = card.field_data or {}
 
                 if isinstance(value, str):
-                    # Only uppercase non-image fields to protect image paths
+                    # If this is an image field, process via ImageService to
+                    # canonicalize paths, convert bare filenames to PENDING:,
+                    # and handle removals. This mirrors update_card behavior.
                     if cls.is_image_field_name_for_table(canonical_field, table.fields):
-                        field_data[canonical_field] = value
+                        existing_value = field_data.get(canonical_field, '')
+                        try:
+                            result = ImageService.process_image_field(
+                                field_name=canonical_field,
+                                new_value=value,
+                                existing_value=existing_value,
+                                client=table.group.client,
+                                card=card,
+                                uploaded_file=None,
+                                batch_counter=1,
+                                uploaded_by=None,
+                            )
+                            if result.success:
+                                field_data[canonical_field] = result.data.get('final_value', value)
+                            else:
+                                # Fallback to raw value if processing failed
+                                field_data[canonical_field] = value
+                        except Exception:
+                            field_data[canonical_field] = value
                     else:
                         field_data[canonical_field] = value.upper()
                 else:
