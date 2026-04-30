@@ -138,37 +138,63 @@ export async function apiGet(path) {
 }
 
 export async function apiPost(path, body = {}) {
-  const response = await apiFetch(path, {
-    method: 'POST',
-    json: body,
-  });
-  const data = await response.json();
-  return { ok: response.ok, status: response.status, data };
+  try {
+    const response = await apiFetch(path, { method: 'POST', json: body });
+    const text = await response.text();
+    if (!text) return { ok: response.ok, status: response.status, data: {} };
+    
+    try {
+      const data = JSON.parse(text);
+      return { ok: response.ok, status: response.status, data };
+    } catch (parseErr) {
+      console.warn(`[API] JSON Parse Error for path: ${path} | Response: ${response.status}`);
+      return { ok: false, status: response.status, data: { message: `Server error (${response.status})` } };
+    }
+  } catch (e) {
+    console.error(`[API] Connection Error for path: ${path}`, e);
+    return { ok: false, status: 0, data: { message: 'Connection failed - check your internet' } };
+  }
 }
 
 export async function apiPostForm(path, formData, extraHeaders = {}) {
-  const response = await apiFetch(path, {
-    method: 'POST',
-    body: formData,
-    headers: extraHeaders,
-  });
-  const data = await response.json();
-  return { ok: response.ok, status: response.status, data };
+  try {
+    const response = await apiFetch(path, { method: 'POST', body: formData, headers: extraHeaders });
+    const text = await response.text();
+    if (!text) return { ok: response.ok, status: response.status, data: {} };
+    
+    try {
+      const data = JSON.parse(text);
+      return { ok: response.ok, status: response.status, data };
+    } catch (parseErr) {
+      console.warn(`[API] JSON Parse Error for path: ${path} | Response: ${response.status}`);
+      return { ok: false, status: response.status, data: { message: `Server error (${response.status})` } };
+    }
+  } catch (e) {
+    console.error(`[API] Connection Error for path: ${path}`, e);
+    return { ok: false, status: 0, data: { message: 'Connection failed' } };
+  }
 }
 
 /**
  * Fetches the CSRF token by hitting the login page.
  * Call this before the first login attempt.
+ * IMPORTANT: Does NOT clear auth if fetch fails - allows retry on network error.
  */
 export async function fetchInitialCsrf() {
   try {
-    // Clear any stale cookies before fetching a fresh token
-    await clearAuth();
     const response = await apiFetch('/app/login/', { method: 'GET' });
     await saveCookiesFromResponse(response);
-    return !!cachedCsrf;
-  } catch (e) {
+    
+    if (cachedCsrf) {
+      console.log('[API] CSRF token obtained successfully');
+      return true;
+    }
+    console.warn('[API] CSRF token not found in response');
     return false;
+  } catch (e) {
+    console.error('[API] fetchInitialCsrf failed:', e.message);
+    // On network error, return what we have cached - don't destroy it
+    return !!cachedCsrf;
   }
 }
 
