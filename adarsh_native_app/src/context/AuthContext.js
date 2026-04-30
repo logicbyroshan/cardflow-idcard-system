@@ -54,37 +54,28 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (email, password, forceLogoutOther = false) => {
-    try {
-      // Ensure we have a CSRF token - this must NOT clear existing auth on network error
-      const hasCsrf = await fetchInitialCsrf();
-      if (!hasCsrf) {
-        return { success: false, data: { message: 'Security token unavailable. Please check your connection and try again.' } };
-      }
+    // Ensure we have a CSRF token
+    await fetchInitialCsrf();
 
-      const body = { email, password };
-      if (forceLogoutOther) body.force_logout_other = true;
+    const body = { email, password };
+    if (forceLogoutOther) body.force_logout_other = true;
 
-      const { ok, data } = await apiPost('/app/api/auth/login/', body);
+    const { ok, data } = await apiPost('/app/api/auth/login/', body);
 
-      if (data.success) {
-        const userData = {
-          email,
-          name: data.user_name || data.name || email,
-          role: data.data?.role || data.role || '',
-          loggedInAt: Date.now(),
-        };
-        setUser(userData);
-        setIsAuthenticated(true);
-        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
-        return { success: true, data };
-      }
-
-      // Login failed - return error but keep credentials
-      return { success: false, data: data || { message: 'Login failed' } };
-    } catch (e) {
-      console.error('[Auth] Login error:', e);
-      return { success: false, data: { message: 'An error occurred. Please try again.' } };
+    if (data.success) {
+      const userData = {
+        email,
+        name: data.user_name || data.name || email,
+        role: data.role || '',
+        loggedInAt: Date.now(),
+      };
+      setUser(userData);
+      setIsAuthenticated(true);
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+      return { success: true, data };
     }
+
+    return { success: false, data };
   }, []);
 
   const logout = useCallback(async () => {
@@ -92,11 +83,10 @@ export function AuthProvider({ children }) {
     setUser(null);
     setIsAuthenticated(false);
     try {
-      // Mobile logout endpoint
-      await apiPost('/app/api/auth/logout/', {});
+      // Panel subdomain doesn't use /panel/ prefix — it's just /auth/logout/
+      await apiPost('/auth/logout/', {});
     } catch (e) {
       // Network failure during logout is fine — session will expire on server
-      console.error('[Auth] Logout error:', e);
     }
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
     await clearAuth();
