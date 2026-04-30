@@ -312,12 +312,15 @@
     }
 
     function refreshInstallBtnState() {
+        if (!installBtn) return;
         if (isNativeShell()) {
             installBtn.classList.add('hidden');
             return;
         }
         installBtn.classList.remove('hidden');
-        installBtnText.textContent = apkDownloadUrl ? 'Download Android App' : 'Download App';
+        if (installBtnText) {
+            installBtnText.textContent = apkDownloadUrl ? 'Download Android App' : 'Download App';
+        }
     }
 
     if ('serviceWorker' in navigator) {
@@ -339,28 +342,30 @@
         });
     }
 
-    installBtn.addEventListener('click', async function () {
-        if (isNativeShell()) {
-            return;
-        }
+    if (installBtn) {
+        installBtn.addEventListener('click', async function () {
+            if (isNativeShell()) {
+                return;
+            }
 
-        if (apkDownloadUrl) {
-            window.location.href = apkDownloadUrl;
-            return;
-        }
+            if (apkDownloadUrl) {
+                window.location.href = apkDownloadUrl;
+                return;
+            }
 
-        if (deferredInstallPrompt) {
-            deferredInstallPrompt.prompt();
-            try { await deferredInstallPrompt.userChoice; } catch (e) {}
-            deferredInstallPrompt = null;
-            refreshInstallBtnState();
-            return;
-        }
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                try { await deferredInstallPrompt.userChoice; } catch (e) {}
+                deferredInstallPrompt = null;
+                refreshInstallBtnState();
+                return;
+            }
 
-        // If browser cannot show install prompt yet, move user to app root.
-        // This lets the browser fulfill install eligibility and show native prompt later.
-        window.location.href = '/app/?install=1';
-    });
+            // If browser cannot show install prompt yet, move user to app root.
+            // This lets the browser fulfill install eligibility and show native prompt later.
+            window.location.href = '/app/?install=1';
+        });
+    }
 
     refreshInstallBtnState();
 
