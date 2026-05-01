@@ -1070,21 +1070,25 @@ a:active {
 .bento-card-1 {
     grid-column: span 2;
     background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #bae6fd;
 }
 
 .bento-card-2 {
     grid-column: span 1;
     background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+    border: 1px solid #fef08a;
 }
 
 .bento-card-3 {
     grid-column: span 1;
     background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1px solid #bbf7d0;
 }
 
 .bento-card-4 {
     grid-column: span 2;
     background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+    border: 1px solid #e9d5ff;
 }
 
 /* Big cards: horizontal layout — text on left, image on right */
