@@ -1118,11 +1118,16 @@ a:active {
     align-items: center;
 }
 
-.bento-card-1 .bento-illustration img,
+.bento-card-1 .bento-illustration img {
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
+}
+
 .bento-card-4 .bento-illustration img {
     width: 100%;
     max-width: 320px;
-    margin: 0 auto;
+    margin-right: auto;
 }
 
 .bento-card-2,
