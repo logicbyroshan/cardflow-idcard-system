@@ -140,21 +140,7 @@
     overflow: hidden;
 }
 
-.promise-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #0a92dd, #667eea);
-    transform: scaleX(0);
-    transition: transform 0.4s ease;
-}
 
-.promise-card:hover::before {
-    transform: scaleX(1);
-}
 
 .promise-card:hover {
     transform: translateY(-10px);
@@ -168,10 +154,7 @@
     box-shadow: 0 20px 46px rgba(16, 15, 87, 0.22);
 }
 
-.promise-card.featured::before {
-    transform: scaleX(1);
-    background: linear-gradient(90deg, #f8d34f, #f39c12);
-}
+
 
 .promise-card.featured .promise-icon {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.12));
