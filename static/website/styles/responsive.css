@@ -293,12 +293,12 @@ h2 {
 
     .logo-item {
         min-width: 140px;
-        height: 96px;
+        height: 110px;
     }
 
     .logo-item img {
         max-width: 110px;
-        max-height: 58px;
+        max-height: 55px;
     }
 
     .school-name {
@@ -739,17 +739,17 @@ h2 {
     }
 
     .logo-item {
-        min-width: 120px;
-        height: 86px;
+        min-width: 130px;
+        height: 100px;
     }
 
     .logo-item img {
-        max-width: 90px;
-        max-height: 48px;
+        max-width: 100px;
+        max-height: 50px;
     }
 
     .school-name {
-        max-width: 112px;
+        max-width: 120px;
         font-size: 0.72rem;
     }
 
@@ -1411,13 +1411,13 @@ h2 {
     }
 
     .logo-item {
-        min-width: 102px;
-        height: 78px;
+        min-width: 120px;
+        height: 90px;
     }
 
     .logo-item img {
-        max-width: 80px;
-        max-height: 42px;
+        max-width: 90px;
+        max-height: 45px;
     }
 
     .school-name {
@@ -2048,13 +2048,13 @@ h2 {
     }
 
     .logo-item {
-        min-width: 90px;
-        height: 72px;
+        min-width: 120px;
+        height: 90px;
     }
 
     .logo-item img {
-        max-width: 70px;
-        max-height: 36px;
+        max-width: 90px;
+        max-height: 45px;
     }
 
     .school-name {

@@ -883,24 +883,24 @@ a:active {
     align-items: center;
     justify-content: flex-start;
     flex-shrink: 0;
-    min-width: 112px;
-    height: 78px;
+    min-width: 140px;
+    height: 110px;
     padding: 2px 4px;
-    gap: 4px;
+    gap: 6px;
     transition: var(--transition);
 }
 
 .logo-visual {
     width: 100%;
-    height: 46px;
+    height: 70px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .logo-item img {
-    max-width: 84px;
-    max-height: 36px;
+    max-width: 110px;
+    max-height: 55px;
     object-fit: contain;
     filter: none;
     opacity: 1;
@@ -909,9 +909,9 @@ a:active {
 
 .school-name {
     width: 100%;
-    max-width: 120px;
+    max-width: 130px;
     display: block;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     line-height: 1.1;
     font-weight: 400;
     letter-spacing: 0.01em;
