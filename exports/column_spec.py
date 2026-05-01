@@ -539,7 +539,7 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
       (r'e?\s*mail|mail\s*id', 'email'),
 
     # ── Address (addr, addrs, adress, adrs, permanent address, residence) ──
-    (r'addr|adre?s|residen|location|locality|village|town|city|distt?|state|province', 'address'),
+    (r'addr|adre?s|residen|location|locality|village|town|city|distt?|state|province|landmark|sector|block|area', 'address'),
     (r'^city$|^town$|^village$|^vill$', 'city'),
     (r'^district$|^dist$|^distt$', 'district'),
     (r'^state$|^province$', 'state'),
