@@ -486,7 +486,7 @@ body:has(.idcard-actions-page) {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
+    gap: 0px;
     width: 100%;
     height: 100%;
 }
@@ -679,8 +679,8 @@ body:has(.idcard-actions-page) {
 
 /* Edit photo button - override for inline-table usage */
 .edit-photo-btn {
-    min-height: 24px;
-    padding: 3px 8px;
+    min-height: 20px;
+    padding: 2px 8px;
     font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     background: transparent;

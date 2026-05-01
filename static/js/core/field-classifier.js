@@ -117,7 +117,7 @@ FC.classify = function (fieldName, fieldType) {
     if (/\bname\b/.test(n))                                                           return 'name';
 
     //  Address 
-    if (/permane?nt?\s*addr|curre?nt?\s*addr|prese?nt?\s*addr|^address$|^addr|^adre?s/.test(n)) return 'address';
+    if (/addr|adre?s|residen|location|locality|village|town|city|distt?|state|province/.test(n)) return 'address';
     if (/^city$|^town$|^village$|^vill$/.test(n))   return 'address_sub';
     if (/^district$|^dist$|^distt$/.test(n))         return 'address_sub';
     if (/^state$|^province$/.test(n))                return 'address_sub';
