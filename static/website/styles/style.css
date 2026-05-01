@@ -2128,7 +2128,7 @@ a:active {
 
 .footer-content {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1.8fr;
+    grid-template-columns: 1.2fr 1fr 1fr 1.5fr;
     gap: 2rem;
     margin-bottom: 2rem;
     position: relative;
