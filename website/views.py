@@ -951,31 +951,8 @@ def submit_contact(request):
 # --- SEO Detail Views ---
 
 def category_detail(request, slug):
-    """List all items in a category with SEO metadata."""
-    category = get_object_or_404(PortfolioCategory, slug=slug, is_active=True)
-    items = PortfolioItem.objects.filter(category=category, is_active=True).order_by('order', '-created_at')
-    
-    # Bento Grid Data (for View Samples modal)
-    context = get_common_context()
-    context.update(_get_bento_context())
-    # SEO metadata
-    meta_title = category.meta_title or f"{category.name} in Bhopal, MP | Adarsh ID Card Solutions"
-    meta_desc = category.meta_description or f"High-quality {category.name} printing in Bhopal. {category.description[:150] if category.description else 'The best identity solutions in Madhya Pradesh.'} Contact Adarsh Bhopal for bulk orders."
-
-    context.update({
-        'category': category,
-        'items': items,
-        'meta_title': meta_title,
-        'meta_description': meta_desc,
-        'meta_keywords': f"{category.name}, {category.name} Bhopal, {category.name} printing MP, Adarsh ID Cards products",
-        'canonical_url': request.build_absolute_uri(),
-        'breadcrumb': [
-            {'name': 'Home', 'url': reverse('website:home')},
-            {'name': 'Our Products', 'url': reverse('website:our_work')},
-            {'name': category.name, 'url': ''},
-        ]
-    })
-    return render(request, 'website/category-detail.html', context)
+    """Redirect to home with hash to trigger category modal instead of showing a separate page."""
+    return redirect(f"{reverse('website:home')}#category={slug}")
 
 
 def product_detail(request, category_slug, slug):

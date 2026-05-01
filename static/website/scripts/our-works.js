@@ -758,8 +758,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const shareBtn = document.getElementById('productGalleryShare');
     if (shareBtn) {
         shareBtn.addEventListener('click', () => {
-            // Use the clean SEO category URL instead of the hash link.
-            const url = window.location.origin + '/products/' + currentGalleryCategorySlug + '/';
+            // Use hash-based URL to trigger modal on homepage instead of separate page.
+            const url = window.location.origin + '/#category=' + currentGalleryCategorySlug;
             navigator.clipboard.writeText(url).then(() => {
                 const icon = shareBtn.querySelector('i');
                 icon.className = 'fas fa-check';
