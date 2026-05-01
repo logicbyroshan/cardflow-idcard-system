@@ -485,7 +485,7 @@
             <span class="wa-section-bar-left"><i class="fa-solid fa-phone"></i> Contact Info</span>
             {% if is_super_admin or perm_website_edit %}
             <span class="wa-section-bar-actions">
-                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="email,phone1,phone2,address,working_hours">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="email,phone1,phone2,address">
                     <i class="fa-solid fa-save"></i> Save Changes
                 </button>
             </span>
@@ -513,12 +513,7 @@
                 <input type="text" id="address" name="address" value="{{ business.address|default:'' }}">
             </div>
         </div>
-        <div class="wa-form-row">
-            <div class="wa-form-group">
-                <label for="working_hours">Working Hours</label>
-                <input type="text" id="working_hours" name="working_hours" value="{{ business.working_hours|default:'' }}" placeholder="Mon-Sat: 9AM - 6PM">
-            </div>
-        </div>
+
 
         <!-- Social Links -->
         <div class="wa-form-group-title wa-section-bar">
@@ -587,18 +582,13 @@
             <span class="wa-section-bar-left"><i class="fa-solid fa-paragraph"></i> Footer & SEO</span>
             {% if is_super_admin or perm_website_edit %}
             <span class="wa-section-bar-actions">
-                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="footer_text,meta_description,meta_keywords">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="meta_description,meta_keywords">
                     <i class="fa-solid fa-save"></i> Save Changes
                 </button>
             </span>
             {% endif %}
         </div>
-        <div class="wa-form-row">
-            <div class="wa-form-group full">
-                <label for="footer_text">Footer Text</label>
-                <input type="text" id="footer_text" name="footer_text" value="{{ business.footer_text|default:'' }}">
-            </div>
-        </div>
+
         <div class="wa-form-row">
             <div class="wa-form-group full">
                 <label for="meta_description">Meta Description</label>

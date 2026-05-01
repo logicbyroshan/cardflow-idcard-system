@@ -25,7 +25,7 @@ from core.services.cache_version_service import CacheVersionService
 
 from .models import (
     BusinessDetails, ContactSubmission, Feature, HeroImage,
-    PortfolioCategory, PortfolioItem, Reel, Testimonial,
+    PortfolioCategory, PortfolioItem, Testimonial,
     WebsiteStatus, FAQ,
 )
 
@@ -231,11 +231,10 @@ class BusinessDetailsService:
     """Manages the singleton BusinessDetails record."""
 
     EDITABLE_FIELDS = [
-        'site_name', 'tagline', 'address', 'phone1', 'phone2', 'email', 'working_hours',
+        'site_name', 'tagline', 'address', 'phone1', 'phone2', 'email',
         'facebook_url', 'instagram_url', 'linkedin_url', 'youtube_url',
-        'twitter_url', 'whatsapp_number',
+        'hero_title', 'hero_description',
         'meta_description', 'meta_keywords',
-        'footer_text',
     ]
 
     @classmethod
@@ -888,99 +887,4 @@ class ContactSubmissionService:
         )
 
 
-# =============================================================================
-# REELS
-# =============================================================================
 
-class ReelService:
-    """CRUD for Reel (short video reels)."""
-
-    @staticmethod
-    def list_all():
-        """Return queryset ordered by position."""
-        return Reel.objects.all().order_by('order', '-created_at')
-
-    @staticmethod
-    def get(pk):
-        """Return a single Reel or raise 404."""
-        return get_object_or_404(Reel, pk=pk)
-
-    @staticmethod
-    def create(*, title='', order=0, is_active=True,
-               video_file=None, thumbnail=None):
-        """Create a Reel. Returns the created instance. No captions."""
-        _validate_video_upload(video_file, 'reel video')
-        _validate_image_upload(thumbnail, 'reel thumbnail')
-        if not title:
-            title = f'Reel {uuid.uuid4().hex[:6].upper()}'
-
-        # Watermark reel thumbnail and compress video to <10 MB
-        if thumbnail:
-            thumbnail = apply_logo_watermark(thumbnail)
-        if video_file:
-            video_file = normalize_portfolio_video_upload(video_file)
-
-        with transaction.atomic():
-            reel = Reel(
-                title=title,
-                description='',  # no captions
-                order=int(order),
-                is_active=is_active,
-            )
-            if video_file:
-                reel.video_file = video_file
-            if thumbnail:
-                reel.thumbnail = thumbnail
-            reel.save()
-        return reel
-
-    @staticmethod
-    def update(pk, *, title=None, order=None, is_active=None,
-               video_file=None, thumbnail=None):
-        """Update a Reel. Only non-None fields are changed."""
-        _validate_video_upload(video_file, 'reel video')
-        _validate_image_upload(thumbnail, 'reel thumbnail')
-
-        # Watermark new thumbnail and compress new video when replacing
-        if thumbnail:
-            thumbnail = apply_logo_watermark(thumbnail)
-        if video_file:
-            video_file = normalize_portfolio_video_upload(video_file)
-
-        with transaction.atomic():
-            reel = get_object_or_404(Reel, pk=pk)
-            if title is not None:
-                reel.title = title
-            if order is not None:
-                reel.order = int(order)
-            if is_active is not None:
-                reel.is_active = _parse_bool(is_active)
-            if video_file:
-                reel.video_file = video_file
-            if thumbnail:
-                reel.thumbnail = thumbnail
-            reel.save()
-        return reel
-
-    @staticmethod
-    def delete(pk):
-        """Delete a Reel by pk."""
-        with transaction.atomic():
-            reel = get_object_or_404(Reel, pk=pk)
-            for field in ('video_file', 'thumbnail'):
-                file_field = getattr(reel, field, None)
-                if file_field:
-                    try:
-                        file_field.delete(save=False)
-                    except Exception:
-                        logger.warning("Failed to delete %s file for Reel %d", field, pk)
-            reel.delete()
-
-    @staticmethod
-    def toggle(pk):
-        """Toggle active/inactive. Returns new is_active value."""
-        with transaction.atomic():
-            reel = get_object_or_404(Reel, pk=pk)
-            reel.is_active = not reel.is_active
-            reel.save()
-        return reel.is_active

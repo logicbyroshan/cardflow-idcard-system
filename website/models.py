@@ -57,15 +57,12 @@ class BusinessDetails(models.Model):
     phone1 = models.CharField(max_length=20, blank=True, help_text='First phone number with country code e.g. 919876543210')
     phone2 = models.CharField(max_length=20, blank=True, help_text='Second phone number with country code e.g. 919876543211')
     email = models.EmailField(blank=True)
-    working_hours = models.CharField(max_length=255, blank=True, help_text='e.g. Mon-Sat: 9AM - 6PM')
     
     # Social Media Links
     facebook_url = models.URLField(blank=True, help_text='Facebook page URL')
     instagram_url = models.URLField(blank=True, help_text='Instagram profile URL')
     linkedin_url = models.URLField(blank=True, help_text='LinkedIn profile URL')
     youtube_url = models.URLField(blank=True, help_text='YouTube channel URL')
-    twitter_url = models.URLField(blank=True, help_text='Twitter/X profile URL')
-    whatsapp_number = models.CharField(max_length=20, blank=True, help_text='WhatsApp number with country code e.g. 919876543210')
     
     # Hero Section
     hero_title = models.CharField(max_length=255, blank=True)
@@ -74,9 +71,6 @@ class BusinessDetails(models.Model):
     # SEO
     meta_description = models.TextField(blank=True)
     meta_keywords = models.CharField(max_length=500, blank=True)
-
-    # Footer
-    footer_text = models.CharField(max_length=500, blank=True, help_text='Custom footer text')
 
     # Status
     is_active = models.BooleanField(default=True, help_text='Active/Inactive toggle for business details')
@@ -557,32 +551,6 @@ class FAQ(models.Model):
 
     def __str__(self):
         return self.question[:50]
-
-
-class Reel(models.Model):
-    """Short video reels for showcasing work"""
-    title = models.CharField(max_length=255)
-    description = models.CharField(max_length=500, blank=True)
-    thumbnail = models.ImageField(upload_to='images/Reels/', null=True, blank=True)
-    video_url = models.URLField(blank=True, help_text='YouTube/Instagram reel URL')
-    video_file = models.FileField(upload_to='videos/Reels/', null=True, blank=True)
-    views_count = models.CharField(max_length=20, default='1K', help_text='e.g. 12.5K')
-    likes_count = models.CharField(max_length=20, default='100', help_text='e.g. 890')
-    order = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Reel'
-        verbose_name_plural = 'Reels'
-        ordering = ['order', '-created_at']
-        indexes = [
-            models.Index(fields=['is_active', 'order']),
-        ]
-
-    def __str__(self):
-        return self.title
 
 
 # ==========================================

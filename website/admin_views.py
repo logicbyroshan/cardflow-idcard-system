@@ -38,7 +38,6 @@ from .models import (
     PortfolioCategory,
     PortfolioItem,
     Testimonial,
-    Reel,
     FAQ,
     ContactSubmission,
     WebsiteStatus,
@@ -51,7 +50,6 @@ from .services import (
     PortfolioItemService,
     PortfolioCategoryService,
     HeroImageService,
-    ReelService,
     ContactSubmissionService,
     _parse_bool,
 )
@@ -1225,119 +1223,26 @@ def api_hero_image_reorder(request):
 
 
 # =============================================================================
-# PAGE VIEW — REELS
+# CONTACT SUBMISSIONS — Page + API
 # =============================================================================
 
-@website_view_required
-def reels_page(request):
-    """Legacy reels page redirects to portfolio where reels are managed as portfolio media."""
-    return redirect('website_admin:portfolio')
 
 
-# =============================================================================
-# API — REELS
-# =============================================================================
-
-@require_GET
-@website_view_required
-def api_reel_list(request):
-    """List all reels."""
-    qs = ReelService.list_all()
-    data = [{
-        'id': r.id,
-        'title': r.title,
-        'thumbnail': r.thumbnail.url if r.thumbnail else None,
-        'video_file': r.video_file.url if r.video_file else None,
-        'video_url': r.video_url or None,
-        'order': r.order,
-        'is_active': r.is_active,
-        'created_at': r.created_at.strftime('%Y-%m-%d'),
-    } for r in qs]
-    return JsonResponse({'success': True, 'reels': data})
 
 
-@require_POST
-@website_add_required
-def api_reel_create(request):
-    """Create a reel."""
-    try:
-        reel = ReelService.create(
-            title=request.POST.get('title', ''),
-            order=int(request.POST.get('order', 0)),
-            is_active=_parse_bool(request.POST.get('is_active', 'true')),
-            video_file=request.FILES.get('video_file'),
-            thumbnail=request.FILES.get('thumbnail'),
-        )
-    except ValidationError as e:
-        return JsonResponse({'success': False, 'message': e.message}, status=400)
-    ActivityService.log_website_update(request, 'reel added')
-    return JsonResponse({'success': True, 'message': 'Reel created', 'id': reel.id})
 
 
-@require_GET
-@website_view_required
-def api_reel_get(request, pk):
-    """Get a single reel."""
-    try:
-        r = ReelService.get(pk)
-    except Exception:
-        return JsonResponse({'success': False, 'message': 'Reel not found'}, status=404)
-    return JsonResponse({
-        'success': True,
-        'reel': {
-            'id': r.id,
-            'title': r.title,
-            'thumbnail': r.thumbnail.url if r.thumbnail else None,
-            'video_file': r.video_file.url if r.video_file else None,
-            'video_url': r.video_url or None,
-            'order': r.order,
-            'is_active': r.is_active,
-        }
-    })
 
 
-@require_POST
-@website_edit_required
-def api_reel_update(request, pk):
-    """Update a reel."""
-    try:
-        ReelService.update(
-            pk,
-            title=request.POST.get('title'),
-            order=request.POST.get('order'),
-            is_active=request.POST.get('is_active'),
-            video_file=request.FILES.get('video_file'),
-            thumbnail=request.FILES.get('thumbnail'),
-        )
-    except ValidationError as e:
-        return JsonResponse({'success': False, 'message': e.message}, status=400)
-    ActivityService.log_website_update(request, 'reel updated')
-    return JsonResponse({'success': True, 'message': 'Reel updated'})
 
 
-@require_POST
-@website_delete_required
-def api_reel_delete(request, pk):
-    """Delete a reel."""
-    try:
-        ReelService.delete(pk)
-        ActivityService.log_website_update(request, 'reel deleted')
-        return JsonResponse({'success': True, 'message': 'Reel deleted'})
-    except Exception as e:
-        logging.getLogger(__name__).exception("Reel delete error: %s", e)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
-@require_POST
-@website_edit_required
-def api_reel_toggle(request, pk):
-    """Toggle reel active/inactive."""
-    try:
-        is_active = ReelService.toggle(pk)
-        return JsonResponse({'success': True, 'is_active': is_active})
-    except Exception as e:
-        logging.getLogger(__name__).exception("Reel toggle error: %s", e)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+
+
+
+
+
 
 
 # =============================================================================

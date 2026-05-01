@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
     BusinessDetails, Feature, HeroImage, PortfolioCategory, PortfolioItem, 
-    Testimonial, ContactSubmission, FAQ, Reel,
+    Testimonial, ContactSubmission, FAQ, 
     WebsiteStatus,
 )
 
@@ -24,7 +24,7 @@ class BusinessDetailsAdmin(admin.ModelAdmin):
             'fields': ('site_name', 'tagline')
         }),
         ('Contact Information', {
-            'fields': ('email', ('phone1', 'phone2'), 'address', 'working_hours')
+            'fields': ('email', ('phone1', 'phone2'), 'address')
         }),
         ('Social Media', {
             'fields': ('facebook_url', 'instagram_url', 'linkedin_url', 'youtube_url'),
@@ -155,21 +155,6 @@ class FAQAdmin(admin.ModelAdmin):
     def question_short(self, obj):
         return obj.question[:60] + '...' if len(obj.question) > 60 else obj.question
     question_short.short_description = 'Question'
-
-
-@admin.register(Reel)
-class ReelAdmin(admin.ModelAdmin):
-    list_display = ('thumbnail_preview', 'title', 'views_count', 'likes_count', 'order', 'is_active')
-    list_editable = ('order', 'is_active')
-    search_fields = ('title', 'description')
-    list_filter = ('is_active',)
-    ordering = ('order',)
-
-    def thumbnail_preview(self, obj):
-        if obj.thumbnail:
-            return format_html('<img src="{}" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px;" />', obj.thumbnail.url)
-        return "No Thumbnail"
-    thumbnail_preview.short_description = 'Preview'
 
 
 # --- New models added in Phase 2 ---

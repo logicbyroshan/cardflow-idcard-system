@@ -30,8 +30,7 @@ from .models import (
     HeroImage,
     PortfolioCategory,
     PortfolioItem, 
-    Testimonial, 
-    Reel
+    Testimonial 
 )
 
 # ==========================================
@@ -43,7 +42,6 @@ CATEGORY_IMAGES_LIMIT = 6
 PORTFOLIO_BATCH_SIZE = 12
 CATEGORY_MODAL_INITIAL_LIMIT = 15
 CATEGORY_MODAL_MAX_LIMIT = 30
-REELS_INITIAL_LIMIT = 10
 BUSINESS_CACHE_TTL = 300  # 5 minutes
 WHY_CHOOSE_US_CACHE_TTL = 300
 WEBSITE_PUBLIC_CACHE_SCOPE = 'public'
@@ -612,40 +610,6 @@ def load_more_category_items(request):
         'total': total,
         'has_more': (offset + limit) < total,
         'next_offset': min(total, offset + limit),
-    })
-
-
-@require_GET
-@rate_limit(max_requests=40, window_seconds=60, key_prefix='public_reels')
-def load_more_reels(request):
-    """API endpoint to load more reels for infinite scroll"""
-    try:
-        offset = max(0, int(request.GET.get('offset', 0)))
-        limit = min(max(1, int(request.GET.get('limit', REELS_INITIAL_LIMIT))), 50)
-    except (ValueError, TypeError):
-        return JsonResponse({'error': 'Invalid parameters'}, status=400)
-
-    reels_qs = Reel.objects.filter(is_active=True).order_by('order')
-    total_reels = reels_qs.count()
-    reels = reels_qs[offset:offset + limit]
-    
-    reels_data = []
-    for reel in reels:
-        reels_data.append({
-            'id': reel.id,
-            'title': reel.title,
-            'description': reel.description or 'Watch our showcase',
-            'thumbnail': reel.thumbnail.url if reel.thumbnail else None,
-            'video_file': reel.video_file.url if reel.video_file else None,
-            'video_url': reel.video_url or None,
-            'views_count': reel.views_count,
-            'likes_count': reel.likes_count,
-        })
-    
-    return JsonResponse({
-        'reels': reels_data,
-        'total': total_reels,
-        'has_more': offset + limit < total_reels,
     })
 
 
