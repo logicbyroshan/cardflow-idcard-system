@@ -1,0 +1,305 @@
+{% load static %}
+<section class="download-app-section" id="download-app">
+    <div class="container">
+        <div class="download-app-wrapper">
+            <div class="download-app-content">
+                <div class="app-badge">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span>Available on Play Store</span>
+                </div>
+                <h2>Manage Everything on the <span class="gradient-text">Go</span></h2>
+                <p>Download our official mobile app to manage your orders, track deliveries, and browse our latest product range directly from your smartphone.</p>
+                
+                <div class="app-features">
+                    <div class="app-feature">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Easy Order Tracking</span>
+                    </div>
+                    <div class="app-feature">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Instant Notifications</span>
+                    </div>
+                    <div class="app-feature">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Seamless Re-ordering</span>
+                    </div>
+                </div>
+
+                <div class="app-buttons">
+                    <a href="#" class="play-store-btn" target="_blank" rel="noopener noreferrer">
+                        <div class="ps-icon">
+                            <i class="fa-brands fa-google-play"></i>
+                        </div>
+                        <div class="ps-text">
+                            <span>GET IT ON</span>
+                            <strong>Google Play</strong>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="download-app-visual">
+                <div class="phone-mockup">
+                    <div class="phone-frame">
+                        <div class="phone-screen">
+                            <div class="app-slider">
+                                <div class="app-track">
+                                    <img src="{% static 'assets/phone-ss/screenshots1.jpg' %}" alt="App Screenshot 1">
+                                    <img src="{% static 'assets/phone-ss/screenshots2.jpg' %}" alt="App Screenshot 2">
+                                    <img src="{% static 'assets/phone-ss/screenshots3.jpg' %}" alt="App Screenshot 3">
+                                    <img src="{% static 'assets/phone-ss/screenshots4.jpg' %}" alt="App Screenshot 4">
+                                    <img src="{% static 'assets/phone-ss/screenshots5.jpg' %}" alt="App Screenshot 5">
+                                    <img src="{% static 'assets/phone-ss/screenshots6.jpg' %}" alt="App Screenshot 6">
+                                    <img src="{% static 'assets/phone-ss/screenshots7.jpg' %}" alt="App Screenshot 7">
+                                    <img src="{% static 'assets/phone-ss/screenshots8.jpg' %}" alt="App Screenshot 8">
+                                    <!-- Duplicate first few for seamlessness -->
+                                    <img src="{% static 'assets/phone-ss/screenshots1.jpg' %}" alt="">
+                                    <img src="{% static 'assets/phone-ss/screenshots2.jpg' %}" alt="">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="phone-speaker"></div>
+                    </div>
+                    <div class="phone-shadow"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+/* Play Store Button */
+.play-store-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #000;
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.play-store-btn:hover {
+    background: #111;
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.ps-icon i {
+    font-size: 2rem;
+    color: #fff;
+}
+
+.ps-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.ps-text span {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.ps-text strong {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+/* Mobile App Section Styles */
+.download-app-section {
+    padding: 100px 0;
+    background: #f8fafc;
+    overflow: hidden;
+    position: relative;
+}
+
+.download-app-section::before {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(10, 146, 221, 0.05) 0%, transparent 70%);
+    top: -200px;
+    right: -200px;
+    z-index: 0;
+}
+
+.download-app-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 60px;
+    position: relative;
+    z-index: 1;
+}
+
+.app-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(10, 146, 221, 0.1);
+    color: #0a92dd;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+}
+
+.download-app-content h2 {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 20px;
+    line-height: 1.2;
+}
+
+.download-app-content p {
+    font-size: 1.15rem;
+    color: #64748b;
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+.app-features {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 40px;
+}
+
+.app-feature {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    color: #475569;
+}
+
+.app-feature i {
+    color: #10b981;
+}
+
+.play-store-btn img {
+    height: 60px;
+    transition: transform 0.3s ease;
+}
+
+.play-store-btn:hover img {
+    transform: scale(1.05);
+}
+
+/* Phone Mockup */
+.phone-mockup {
+    position: relative;
+    width: 300px;
+    margin: 0 auto;
+    perspective: 1000px;
+}
+
+.phone-frame {
+    width: 300px;
+    height: 600px;
+    background: #1e293b;
+    border-radius: 40px;
+    padding: 12px;
+    position: relative;
+    box-shadow: 0 50px 100px -20px rgba(0,0,0,0.25);
+    border: 8px solid #334155;
+}
+
+.phone-screen {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    border-radius: 28px;
+    overflow: hidden;
+    position: relative;
+}
+
+.phone-speaker {
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 6px;
+    background: #0f172a;
+    border-radius: 10px;
+    z-index: 10;
+}
+
+.phone-button {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    border: 2px solid #334155;
+    border-radius: 50%;
+    z-index: 10;
+}
+
+.app-slider {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.app-track {
+    display: flex;
+    height: 100%;
+    animation: appScroll 20s infinite linear;
+}
+
+.app-track img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Ensure full visibility as requested */
+    flex-shrink: 0;
+    background: #fff;
+}
+
+@keyframes appScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-800%); }
+}
+
+.phone-shadow {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 20px;
+    background: rgba(0,0,0,0.1);
+    filter: blur(15px);
+    border-radius: 50%;
+    z-index: -1;
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+    .download-app-wrapper {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 40px;
+    }
+    
+    .app-badge {
+        justify-content: center;
+    }
+    
+    .app-features {
+        justify-items: center;
+    }
+    
+    .download-app-content h2 {
+        font-size: 2.5rem;
+    }
+}
+</style>
