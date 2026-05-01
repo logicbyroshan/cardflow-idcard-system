@@ -1122,7 +1122,7 @@ a:active {
 .bento-card-4 .bento-illustration img {
     width: 100%;
     max-width: 320px;
-    margin-left: auto;
+    margin: 0 auto;
 }
 
 .bento-card-2,
