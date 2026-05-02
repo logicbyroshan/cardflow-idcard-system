@@ -316,7 +316,7 @@ body.mobile-menu-open {
 }
 
 .logo-box,
-.pwa-phone-mockup,
+.download-app-section .download-app-phone .phone-mockup,
 .modal-content,
 .video-modal-content {
     border-radius: var(--wa-radius-xl) !important;
@@ -973,12 +973,12 @@ body.mobile-menu-open {
 
     .hero .hero-subtitle,
     .page-hero .hero-subtitle,
-    .download-app-desc,
+    .download-app-section .download-app-desc,
     .contact-section .section-subtitle {
         font-size: 0.86rem;
     }
 
-    .download-app-title {
+    .download-app-section .download-app-title {
         font-size: 1.45rem;
     }
 
