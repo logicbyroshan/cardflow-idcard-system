@@ -1055,15 +1055,6 @@ h2 {
         font-size: 1rem;
     }
 
-    .pwa-features {
-        gap: 1.2rem;
-    }
-
-    .pwa-phone-mockup {
-        width: 220px;
-        height: 390px;
-    }
-
     .footer-content {
         grid-template-columns: repeat(2, 1fr);
         gap: 2rem;
@@ -1079,58 +1070,6 @@ h2 {
 
     .footer-section h4 {
         font-size: 1rem;
-        margin-bottom: 0.8rem;
-    }
-
-    .footer-section p,
-    .footer-section a,
-    .footer-section ul li {
-        font-size: 0.9rem;
-        margin-bottom: 0.6rem;
-    }
-
-    .social-links {
-        gap: 0.8rem;
-    }
-
-    .social-links a {
-        width: 36px;
-        height: 36px;
-    }
-
-    .footer-bottom {
-        padding-top: 1.2rem;
-        font-size: 0.85rem;
-    }
-}
-
-/* ============================================
-   MOBILE (below 768px)
-   Mobile app-like experience
-============================================ */
-@media (max-width: 767px) {
-    .container {
-        padding: 0 16px;
-    }
-
-    /* Navbar - Mobile */
-    .navbar {
-        padding: 0.7rem 0;
-    }
-
-    .logo {
-        font-size: 1.1rem;
-        gap: 6px;
-    }
-
-    .logo-img {
-        width: 36px;
-        height: 36px;
-        border-radius: 6px;
-        padding: 3px;
-    }
-
-    .logo span {
         font-size: 1rem;
     }
 
@@ -1820,54 +1759,6 @@ h2 {
         margin: 0 auto 1.5rem;
     }
 
-    .pwa-features {
-        justify-content: center;
-        gap: 1rem;
-    }
-
-    .pwa-feature {
-        font-size: 0.85rem;
-    }
-
-    .pwa-feature svg {
-        width: 30px;
-        height: 30px;
-    }
-
-    .pwa-install-btn {
-        padding: 14px 28px;
-        font-size: 0.95rem;
-    }
-
-    .pwa-phone-mockup {
-        width: 200px;
-        height: 350px;
-        border-radius: 28px;
-    }
-
-    .phone-screen {
-        border-radius: 20px;
-    }
-
-    .pwa-action-bar {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .pwa-action-bar-divider {
-        width: 100%;
-        height: 1px;
-    }
-
-    .pwa-action-bar-qr {
-        justify-content: center;
-    }
-
-    .pwa-action-bar-qr img {
-        width: 56px;
-        height: 56px;
-    }
-
     /* Nav button group - Mobile */
     .nav-btn-group {
         flex-direction: column;
@@ -2330,8 +2221,7 @@ h2 {
         border-radius: var(--btn-web-radius, 10px);
     }
 
-    .form-btn,
-    .pwa-install-btn {
+    .form-btn {
         min-height: var(--btn-web-lg-height, 46px);
         padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
         border-radius: 12px;

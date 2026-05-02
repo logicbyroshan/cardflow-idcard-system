@@ -12,6 +12,48 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "git-commit-push",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Set-Location 'c:/Users/roshan/Desktop/Adarsh Admin New'; git add -A; git commit -m 'Remove legacy PWA CSS; scope download-app selectors; rebuild dist assets'; git push"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-commit-push-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d \"c:\\Users\\roshan\\Desktop\\Adarsh Admin New\" && git add -A && git commit -m \"Remove legacy PWA CSS; scope download-app selectors; rebuild dist assets\" && git push"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-commit-push-encoded",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-EncodedCommand",
+				"UwBlAHQALQBMAG8AYwBhAHQAaQBvAG4AIAAnAEMAOgAvAFUAcwBlAHIAcwAvAHIAbwBzAGgAYQBuAC8ARABlAHMAawB0AG8AcAAvAEEAZABhAHIAcwBoACAAQQBkAG0AaQBuACAATgBlAHcAJwA7ACAAZwBpAHQAIABhAGQAZAAgAC0AQQA7ACAAZwBpAHQAIABjAG8AbQBtAGkAdAAgAC0AbQAgACcAUgBlAG0AbwB2AGUAIABsAGUAZwBhAGMAeQAgAFAAVwBBACAAQwBTAFMAOwAgAHMAYwBvAHAAZQAgAGQAbwB3AG4AbABvAGEAZAAtAGEAcABwACAAcwBlAGwAZQBjAHQAbwByAHMAOwAgAHIAZQBiAHUAaQBsAGQAIABkAGkAcwB0ACAAYQBzAHMAZQB0AHMAJwA7ACAAZwBpAHQAIABwAHUAcwBoAA=="
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }

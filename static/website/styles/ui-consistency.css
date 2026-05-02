@@ -79,7 +79,6 @@ h6 {
 .our-works,
 .testimonials,
 .contact-section,
-.download-app-section,
 .key-features,
 .promises-section,
 .trust-section,
@@ -112,18 +111,18 @@ h6 {
 }
 
 /* Guard dark-surface text contrast against global heading color defaults. */
-.hero .hero-content h1,
-.page-hero .hero-content h1,
-.download-app-title,
+hero .hero-content h1,
+page-hero .hero-content h1,
+.download-app-section .download-app-title,
 .product-gallery-header h3,
 .lightbox-caption,
 .footer .footer-section h4 {
     color: #ffffff !important;
 }
 
-.hero .hero-subtitle,
-.page-hero .hero-subtitle,
-.download-app-desc,
+hero .hero-subtitle,
+page-hero .hero-subtitle,
+.download-app-section .download-app-desc,
 .footer .footer-section p,
 .footer .footer-section ul li a {
     color: rgba(255, 255, 255, 0.86);
@@ -439,28 +438,28 @@ body.mobile-menu-open {
         padding-bottom: var(--wa-section-spacing-tablet) !important;
     }
 
-    .download-app-wrap {
+    .download-app-section .download-app-wrap {
         display: grid;
         grid-template-columns: 1fr;
         gap: 2rem;
     }
 
-    .download-app-content {
+    .download-app-section .download-app-content {
         text-align: center;
     }
 
-    .download-app-desc {
+    .download-app-section .download-app-desc {
         margin-left: auto;
         margin-right: auto;
     }
 
-    .download-app-features,
-    .download-app-actions {
+    .download-app-section .download-app-features,
+    .download-app-section .download-app-actions {
         justify-content: center;
         flex-wrap: wrap;
     }
 
-    .download-app-phone .phone-mockup {
+    .download-app-section .download-app-phone .phone-mockup {
         width: 230px;
         height: 455px;
         transform: none;
@@ -478,7 +477,6 @@ body.mobile-menu-open {
     .our-works > .container,
     .testimonials > .container,
     .contact-section > .container,
-    .download-app-section > .container,
     .key-features > .container,
     .promises-section > .container,
     .trust-section > .container,
@@ -569,19 +567,19 @@ body.mobile-menu-open {
         line-height: 1.55;
     }
 
-    .download-app-wrap {
+    .download-app-section .download-app-wrap {
         gap: 1.5rem;
     }
 
-    .download-app-title {
+    .download-app-section .download-app-title {
         font-size: 1.75rem;
     }
 
-    .download-app-desc {
+    .download-app-section .download-app-desc {
         font-size: 0.94rem;
     }
 
-    .download-app-phone .phone-mockup {
+    .download-app-section .download-app-phone .phone-mockup {
         width: 200px;
         height: 390px;
     }
@@ -631,14 +629,14 @@ body.mobile-menu-open {
     .section-header p,
     .hero .hero-subtitle,
     .page-hero .hero-subtitle,
-    .download-app-desc,
+    .download-app-section .download-app-desc,
     .contact-section .section-subtitle {
         font-size: 0.95rem;
         line-height: 1.55;
     }
 
     .hero-buttons,
-    .download-app-actions {
+    .download-app-section .download-app-actions {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0.7rem;
@@ -649,7 +647,7 @@ body.mobile-menu-open {
     }
 
     .hero-buttons .btn,
-    .download-app-actions .download-app-btn {
+    .download-app-section .download-app-actions .download-app-btn {
         width: 100%;
         justify-content: center;
     }
