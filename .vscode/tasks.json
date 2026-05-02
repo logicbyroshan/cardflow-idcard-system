@@ -69,6 +69,21 @@
 			"isBackground": true,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "git-commit-push-homepage-bento",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-EncodedCommand",
+				"UwBlAHQALQBMAG8AYwBhAHQAaQBvAG4AIAAnAEMAOgAvAFUAcwBlAHIAcwAvAHIAbwBzAGgAYQBuAC8ARABlAHMAawB0AG8AcAAvAEEAZABhAHIAcwBoACAAQQBkAG0AaQBuACAATgBlAHcAJwA7ACAAZwBpAHQAIABhAGQAZAAgAC0AQQA7ACAAZwBpAHQAIABjAG8AbQBtAGkAdAAgAC0AbQAgACdMb2FkIG91ci13b3JrcyBzdHlsZXMgb24gaG9tZXBhZ2U7IHJlc3RvcmUgY2F0ZWdvcnkgZ3JpZCc7IGdpdCBwdXNo"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }
