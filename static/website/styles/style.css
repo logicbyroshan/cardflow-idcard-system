@@ -1154,7 +1154,7 @@ a:active {
 .bento-card-4 {
     flex-direction: row;
     align-items: center;
-    gap: 1.25rem;
+    gap: 1rem;
     justify-content: space-between;
 }
 
@@ -1164,31 +1164,34 @@ a:active {
 
 .bento-card-1 .bento-text-content,
 .bento-card-4 .bento-text-content {
-    flex: 0 0 45%;
-    max-width: 45%;
+    flex: 0 0 40%;
+    max-width: 40%;
     min-width: 0;
 }
 
 .bento-card-1 .bento-illustration,
 .bento-card-4 .bento-illustration {
-    flex: 0 0 55%;
-    max-width: 55%;
-    width: 55%;
+    flex: 0 0 60%;
+    max-width: 60%;
+    width: 60%;
     margin-bottom: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0 1.5rem;
+    padding: 0 1rem;
+    align-self: stretch;
 }
 
 .bento-card-1 .bento-illustration img,
 .bento-card-4 .bento-illustration img {
     width: 100%;
+    height: 100%;
     max-width: 100%;
+    max-height: 100%;
     margin: 0;
     border-radius: 18px;
     display: block;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .bento-card-2,
