@@ -371,6 +371,8 @@ export default function StaffManageScreen({ navigation }) {
                       <Text style={[s.checkLabel, selectedGroupIds.includes(g.id) && s.checkLabelActive]} numberOfLines={1}>{g.name}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+
                 <Text style={s.sectionTitle}>Individual Tables (Sections)</Text>
                 <View style={s.checkGrid}>
                   {assignData.tables.map(t => (
