@@ -1,6 +1,6 @@
 {
   "name": "adarsh_native_app",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
