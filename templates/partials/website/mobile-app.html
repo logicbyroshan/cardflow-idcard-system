@@ -78,68 +78,6 @@
 </section>
 
 <style>
-/* Play Store Button */
-.play-store-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 16px;
-    background: linear-gradient(135deg, #000 0%, #1a1a1a 100%);
-    color: #fff;
-    padding: 14px 28px;
-    border-radius: 16px;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    font-weight: 600;
-    position: relative;
-    overflow: hidden;
-}
-
-.play-store-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.play-store-btn:hover::before {
-    left: 100%;
-}
-
-.play-store-btn:hover {
-    background: linear-gradient(135deg, #1a1a1a 0%, #000 100%);
-    transform: translateY(-4px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.4);
-}
-
-.ps-icon i {
-    font-size: 2.2rem;
-    color: #fff;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-}
-
-.ps-text {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.3;
-}
-
-.ps-text span {
-    font-size: 0.75rem;
-    font-weight: 500;
-    opacity: 0.8;
-}
-
-.ps-text strong {
-    font-size: 1.3rem;
-    font-weight: 700;
-}
-/* Mobile App Section Styles */
 .download-app-section {
     padding: 100px 0 120px;
     background: linear-gradient(180deg, #eef6ff 0%, #f8fbff 60%, #ffffff 100%);

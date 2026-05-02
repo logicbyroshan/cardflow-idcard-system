@@ -553,6 +553,29 @@ a:active {
     gap: 0;
 }
 
+/* Homepage visual fixes: ensure CTA sits above decorative layers and bento images scale properly */
+.hero-inner {
+    z-index: 3;
+    position: relative;
+}
+
+.hero-buttons {
+    position: relative;
+    z-index: 4;
+}
+
+.bento-card {
+    background: #ffffff;
+}
+
+.bento-illustration img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+}
+
 /* Hero Content - matching page-hero styles */
 .hero .hero-content {
     text-align: center;
