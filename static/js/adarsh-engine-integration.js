@@ -5,14 +5,121 @@
  * Integrates with the Adarsh Engine image editor to:
  * 1. Save edited images to the server (in /media/edited_images/)
  * 2. Download edited images as a bulk ZIP file
+ * 3. Auto-detect dark images and apply adaptive brightness/contrast
  * 
  * Usage:
  *   AdarshEngineIntegration.saveEditedImage(editId, imageDataUri, filters)
  *   AdarshEngineIntegration.downloadSelectedEdits(editIds)
+ *   AdarshEngineIntegration.autoFixAndDownload(images, filters)
  */
 
 window.AdarshEngineIntegration = window.AdarshEngineIntegration || (function() {
   'use strict';
+  
+  /**
+   * Analyze image brightness and return optimal filter values
+   */
+  function getAdaptiveFilters(imageElement) {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      
+      canvas.width = imageElement.width || imageElement.naturalWidth || 200;
+      canvas.height = imageElement.height || imageElement.naturalHeight || 200;
+      
+      ctx.drawImage(imageElement, 0, 0);
+      
+      // Get pixel data from center region (ignore borders)
+      const imageData = ctx.getImageData(
+        canvas.width * 0.25,
+        canvas.height * 0.25,
+        canvas.width * 0.5,
+        canvas.height * 0.5
+      );
+      
+      const data = imageData.data;
+      let totalBrightness = 0;
+      let pixelCount = 0;
+      
+      // Calculate average brightness (Y = 0.299*R + 0.587*G + 0.114*B)
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+        totalBrightness += brightness;
+        pixelCount++;
+      }
+      
+      const avgBrightness = totalBrightness / pixelCount;
+      
+      // Return adaptive filters based on brightness
+      let brightness = 1.0;
+      let contrast = 1.0;
+      let saturation = 1.0;
+      
+      if (avgBrightness < 80) {
+        // Very dark image
+        brightness = 1.6;
+        contrast = 1.4;
+        saturation = 1.3;
+      } else if (avgBrightness < 120) {
+        // Dark image
+        brightness = 1.4;
+        contrast = 1.3;
+        saturation = 1.2;
+      } else if (avgBrightness < 160) {
+        // Slightly dark
+        brightness = 1.2;
+        contrast = 1.1;
+        saturation = 1.1;
+      } else {
+        // Normal to bright image - light touch
+        brightness = 1.05;
+        contrast = 1.05;
+        saturation = 1.0;
+      }
+      
+      return {
+        brightness: brightness,
+        contrast: contrast,
+        saturation: saturation,
+        detectedBrightness: avgBrightness
+      };
+    } catch (err) {
+      console.warn('Brightness detection failed, using default filters:', err);
+      return {
+        brightness: 1.1,
+        contrast: 1.1,
+        saturation: 1.0,
+        detectedBrightness: 128
+      };
+    }
+  }
+  
+  /**
+   * Apply filters to canvas and return edited base64 image
+   */
+  function applyFiltersToCanvas(imageElement, filters) {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = imageElement.width || imageElement.naturalWidth || 200;
+      canvas.height = imageElement.height || imageElement.naturalHeight || 200;
+      
+      // Apply filters via CSS filter to canvas context
+      const filterString = `brightness(${filters.brightness}) contrast(${filters.contrast}) saturate(${filters.saturation})`;
+      ctx.filter = filterString;
+      
+      ctx.drawImage(imageElement, 0, 0);
+      
+      return canvas.toDataURL('image/png');
+    } catch (err) {
+      console.warn('Canvas filter application failed, returning original:', err);
+      return imageElement.src;
+    }
+  }
   
   // Get CSRF token from page
   function getCsrfToken() {
@@ -196,23 +303,48 @@ window.AdarshEngineIntegration = window.AdarshEngineIntegration || (function() {
     /**
      * Auto-fix and save all images in a batch, then download
      */
-    autoFixAndDownload: function(imageElements, filters) {
+    autoFixAndDownload: function(imageElements, customFilters) {
       /**
        * imageElements: Array of image DOM elements or { id, src, ...}
-       * filters: { brightness, contrast, saturation, ... }
+       * customFilters: Optional custom filter overrides
        */
       return new Promise(function(resolve, reject) {
         const editsMap = {};
         
-        // Prepare all edits
-        imageElements.forEach((img, idx) => {
+        // Prepare all edits with adaptive brightness detection
+        Array.from(imageElements).forEach((img, idx) => {
           const editId = `edit_${idx}`;
-          const src = img.src || img.imageDataUri || '';
           
-          editsMap[editId] = {
-            imageDataUri: src,
-            filters: filters || {}
-          };
+          try {
+            // Detect optimal filters for this image
+            const adaptiveFilters = getAdaptiveFilters(img);
+            
+            // Apply filters to canvas and get edited image
+            const editedDataUri = applyFiltersToCanvas(img, adaptiveFilters);
+            
+            editsMap[editId] = {
+              imageDataUri: editedDataUri,
+              filters: {
+                brightness: adaptiveFilters.brightness,
+                contrast: adaptiveFilters.contrast,
+                saturation: adaptiveFilters.saturation,
+                detectedBrightness: adaptiveFilters.detectedBrightness
+              }
+            };
+            
+            console.log(`[${editId}] Brightness detected: ${Math.round(adaptiveFilters.detectedBrightness)}, Filters: ${JSON.stringify(adaptiveFilters)}`);
+          } catch (err) {
+            console.warn(`Failed to process ${editId}:`, err);
+            // Use original if processing fails
+            editsMap[editId] = {
+              imageDataUri: img.src,
+              filters: {
+                brightness: 1.1,
+                contrast: 1.1,
+                saturation: 1.0
+              }
+            };
+          }
         });
         
         // Save all edits
@@ -223,8 +355,8 @@ window.AdarshEngineIntegration = window.AdarshEngineIntegration || (function() {
               .map(r => r.edit_id);
             
             if (editIds.length > 0) {
-              showToast(`✓ ${editIds.length} images saved`, true);
-              console.log('✓ All images saved, starting download...');
+              showToast(`Brightened and saved ${editIds.length} image${editIds.length !== 1 ? 's' : ''}`, true);
+              console.log('✓ All images auto-fixed and saved, starting download...');
               
               // Start download
               window.AdarshEngineIntegration.downloadEditedImages(editIds);
