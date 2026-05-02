@@ -1164,16 +1164,16 @@ a:active {
 
 .bento-card-1 .bento-text-content,
 .bento-card-4 .bento-text-content {
-    flex: 0 0 40%;
-    max-width: 40%;
+    flex: 0 0 45%;
+    max-width: 45%;
     min-width: 0;
 }
 
 .bento-card-1 .bento-illustration,
 .bento-card-4 .bento-illustration {
-    flex: 0 0 60%;
-    max-width: 60%;
-    width: 60%;
+    flex: 0 0 55%;
+    max-width: 55%;
+    width: 55%;
     margin-bottom: 0;
     display: flex;
     justify-content: center;
