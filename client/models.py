@@ -84,6 +84,8 @@ class Client(models.Model):
         null=True,
         help_text='Logo used on website trusted clients section and client portal UI.',
     )
+    website_logo_cover_color = models.CharField(max_length=16, blank=True, null=True)
+    website_logo_cover_color_dark = models.CharField(max_length=16, blank=True, null=True)
     website_is_visible = models.BooleanField(
         default=True,
         db_index=True,

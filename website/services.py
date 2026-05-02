@@ -88,6 +88,56 @@ def _validate_video_upload(file_obj, label='video'):
     _validate_upload(file_obj, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_UPLOAD_SIZE, label)
 
 
+def _extract_logo_theme_colors(file_obj):
+    """Return a stable pair of hex colors derived from a logo upload."""
+    if file_obj is None:
+        return None, None
+
+    try:
+        from io import BytesIO
+        from PIL import Image
+
+        file_obj.seek(0)
+        data = file_obj.read()
+        file_obj.seek(0)
+
+        image = Image.open(BytesIO(data)).convert('RGBA')
+        width, height = image.size
+        sample = image.resize((min(64, max(1, width)), min(64, max(1, height))))
+        pixels = list(sample.getdata())
+
+        red = green = blue = count = 0
+        for r, g, b, a in pixels:
+            if a < 128:
+                continue
+            if r > 240 and g > 240 and b > 240:
+                continue
+            red += r
+            green += g
+            blue += b
+            count += 1
+
+        if count == 0:
+            red, green, blue = 10, 146, 221
+        else:
+            red //= count
+            green //= count
+            blue //= count
+
+        darker = (
+            max(0, red - 40),
+            max(0, green - 40),
+            max(0, blue - 40),
+        )
+
+        return (
+            f'#{red:02x}{green:02x}{blue:02x}',
+            f'#{darker[0]:02x}{darker[1]:02x}{darker[2]:02x}',
+        )
+    except Exception:
+        return '#0a92dd', '#006da8'
+
+
 def _parse_bool(value, default=False):
     """Canonical boolean parser for POST/JSON values."""
     if value is None:
@@ -298,6 +348,8 @@ class WebsiteClientLogoService:
                 except Exception:
                     logger.warning("Failed deleting previous client logo for client %d", pk)
                 client.website_logo = None
+                client.website_logo_cover_color = None
+                client.website_logo_cover_color_dark = None
                 dirty = True
 
             if logo is not None:
@@ -307,6 +359,9 @@ class WebsiteClientLogoService:
                     except Exception:
                         logger.warning("Failed deleting previous client logo for client %d", pk)
                 client.website_logo = logo
+                cover_color, cover_color_dark = _extract_logo_theme_colors(logo)
+                client.website_logo_cover_color = cover_color
+                client.website_logo_cover_color_dark = cover_color_dark
                 dirty = True
 
             if website_is_visible is not None and client.website_is_visible != bool(website_is_visible):

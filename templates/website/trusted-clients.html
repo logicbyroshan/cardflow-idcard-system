@@ -36,7 +36,7 @@
                 {% for client in clients %}
                 <div class="client-card" data-client-id="{{ client.id }}">
                     <!-- Card Cover (Gradient Background) -->
-                    <div class="card-cover card-cover-brand">
+                    <div class="card-cover card-cover-brand"{% if client.cover_color and client.cover_color_dark %} style="background: linear-gradient(135deg, {{ client.cover_color }} 0%, {{ client.cover_color_dark }} 100%);"{% endif %}>
                         <div class="cover-overlay"></div>
                     </div>
 
@@ -168,63 +168,6 @@ document.addEventListener('DOMContentLoaded', function() {
         url.searchParams.set('open_client', String(clientId));
         window.history.replaceState({}, '', url);
     };
-
-    // Dynamic color extraction for card covers
-    function getAverageColor(imgEl) {
-        try {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            const width = canvas.width = imgEl.naturalWidth || imgEl.offsetWidth || 100;
-            const height = canvas.height = imgEl.naturalHeight || imgEl.offsetHeight || 100;
-
-            context.drawImage(imgEl, 0, 0, width, height);
-
-            const data = context.getImageData(0, 0, width, height).data;
-            let r = 0, g = 0, b = 0, count = 0;
-
-            for (let i = 0; i < data.length; i += 20) { // Skip pixels for performance
-                // Skip transparent or near-white pixels
-                if (data[i+3] < 128) continue;
-                if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) continue;
-                
-                r += data[i];
-                g += data[i+1];
-                b += data[i+2];
-                count++;
-            }
-
-            if (count === 0) return { r: 10, g: 146, b: 221 }; // Fallback blue
-
-            return {
-                r: Math.floor(r / count),
-                g: Math.floor(g / count),
-                b: Math.floor(b / count)
-            };
-        } catch (e) {
-            return { r: 10, g: 146, b: 221 }; // CORS or other issues
-        }
-    }
-
-    cards.forEach(card => {
-        const img = card.querySelector('.client-logo');
-        if (!img) return;
-
-        const updateCover = () => {
-            const color = getAverageColor(img);
-            const cover = card.querySelector('.card-cover');
-            if (cover) {
-                const darker = `rgb(${Math.max(0, color.r - 40)}, ${Math.max(0, color.g - 40)}, ${Math.max(0, color.b - 40)})`;
-                const main = `rgb(${color.r}, ${color.g}, ${color.b})`;
-                cover.style.background = `linear-gradient(135deg, ${main} 0%, ${darker} 100%)`;
-            }
-        };
-
-        if (img.complete) {
-            updateCover();
-        } else {
-            img.addEventListener('load', updateCover);
-        }
-    });
 
     // Add subtle hover animations and lazy load images
     cards.forEach((card, index) => {

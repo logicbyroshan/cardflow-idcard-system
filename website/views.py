@@ -681,6 +681,8 @@ def trusted_clients_page(request):
                 'id': client.id,
                 'name': client.name,
                 'logo': client.website_logo,
+                'cover_color': getattr(client, 'website_logo_cover_color', None),
+                'cover_color_dark': getattr(client, 'website_logo_cover_color_dark', None),
                 'created_at': client.created_at,
                 'duration_text': duration_text,
                 'years': years,
