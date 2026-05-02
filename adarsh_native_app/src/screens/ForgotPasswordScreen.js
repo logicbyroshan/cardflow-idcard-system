@@ -5,7 +5,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from '../components/Toast';
 import { apiPost, fetchInitialCsrf } from '../api/client';
-import { colors, gradients, shadows } from '../theme';
+import { colors, gradients, shadows, radius } from '../theme';
 
 const STEPS = { EMAIL: 'email', OTP: 'otp', RESET: 'reset', DONE: 'done' };
 
@@ -172,29 +172,29 @@ export default function ForgotPasswordScreen({ navigation }) {
 const s = StyleSheet.create({
   root: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'flex-end' },
-  backBtn: { position: 'absolute', top: 16, left: 16, width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  backBtn: { position: 'absolute', top: 16, left: 16, width: 40, height: 40, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
   header: { alignItems: 'center', paddingBottom: 24, paddingHorizontal: 32 },
-  headerIcon: { width: 72, height: 72, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', ...shadows.lg },
+  headerIcon: { width: 72, height: 72, borderRadius: radius.xl, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', ...shadows.lg },
   headerTitle: { fontSize: 22, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
   headerSub: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Regular', color: 'rgba(255,255,255,0.7)', marginTop: 4, textAlign: 'center' },
   stepRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  stepDot: { width: 32, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)' },
+  stepDot: { width: 32, height: 4, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.25)' },
   stepDotActive: { backgroundColor: '#fff', width: 48 },
   stepDotDone: { backgroundColor: 'rgba(255,255,255,0.6)' },
-  card: { backgroundColor: 'rgba(255,255,255,0.97)', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 24, paddingHorizontal: 24, borderWidth: 1, borderColor: 'rgba(214,231,248,0.96)', borderBottomWidth: 0, ...shadows.xl },
-  errorBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
+  card: { backgroundColor: 'rgba(255,255,255,0.97)', borderTopLeftRadius: radius.xxl * 2, borderTopRightRadius: radius.xxl * 2, paddingTop: 24, paddingHorizontal: 24, borderWidth: 1, borderColor: 'rgba(214,231,248,0.96)', borderBottomWidth: 0, ...shadows.xl },
+  errorBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
   errorText: { flex: 1, color: '#ef4444', fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium' },
   label: { fontSize: 10, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray500, letterSpacing: 1, marginBottom: 6 },
   inputWrap: { position: 'relative', flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   inputIcon: { position: 'absolute', left: 14, zIndex: 1 },
-  input: { flex: 1, backgroundColor: colors.gray50, borderWidth: 1, borderColor: colors.gray200, borderRadius: 12, paddingLeft: 40, paddingRight: 16, paddingVertical: 14, fontSize: 14, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray800 },
-  ctaBtnWrap: { marginTop: 12, borderRadius: 20, overflow: 'hidden', ...shadows.lg },
-  ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 20 },
+  input: { flex: 1, backgroundColor: colors.gray50, borderWidth: 1, borderColor: colors.gray200, borderRadius: radius.md, paddingLeft: 40, paddingRight: 16, paddingVertical: 14, fontSize: 14, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray800 },
+  ctaBtnWrap: { marginTop: 12, borderRadius: radius.xl, overflow: 'hidden', ...shadows.lg },
+  ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: radius.xl },
   ctaBtnText: { fontSize: 15, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
   resendBtn: { paddingVertical: 12, alignItems: 'center' },
   resendText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.brandLight, textDecorationLine: 'underline' },
   doneSection: { alignItems: 'center', paddingVertical: 20 },
-  doneBadge: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#d1fae5', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 2, borderColor: '#a7f3d0' },
+  doneBadge: { width: 72, height: 72, borderRadius: radius.full, backgroundColor: '#d1fae5', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 2, borderColor: '#a7f3d0' },
   doneTitle: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 6 },
   doneSub: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray400, textAlign: 'center', marginBottom: 20 },
 });

@@ -7,7 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, typography, spacing, radius } from '../theme';
 
-export default function TopBar({ title, subtitle, onBack, rightAction, children, showHome = true }) {
+export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, onDownload, children, showHome = true }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute();
@@ -46,6 +46,25 @@ export default function TopBar({ title, subtitle, onBack, rightAction, children,
             <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
           )}
         </View>
+        {onAdd && (
+          <TouchableOpacity
+            onPress={onAdd}
+            style={styles.addBtn}
+            activeOpacity={0.7}
+          >
+            <FontAwesome5 name="plus" size={10} color={colors.white} style={{ marginRight: 4 }} />
+            <Text style={styles.addBtnText}>ADD</Text>
+          </TouchableOpacity>
+        )}
+        {onDownload && (
+          <TouchableOpacity
+            onPress={onDownload}
+            style={styles.downloadBtn}
+            activeOpacity={0.7}
+          >
+            <FontAwesome5 name="download" size={13} color={colors.white} />
+          </TouchableOpacity>
+        )}
         {shouldShowHome && (
           <TouchableOpacity
             onPress={goHome}
@@ -78,12 +97,12 @@ export default function TopBar({ title, subtitle, onBack, rightAction, children,
 const styles = StyleSheet.create({
   container: {
     paddingBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
   },
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   backBtn: {
     width: 32,
@@ -99,15 +118,36 @@ const styles = StyleSheet.create({
   title: {
     color: colors.white,
     fontSize: typography.lg,
-    fontFamily: 'SairaSemiCondensed-Bold',
+    fontWeight: '700',
   },
   subtitle: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: typography.xs,
-    fontFamily: 'SairaSemiCondensed-Regular',
     marginTop: 1,
   },
   homeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtnText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  downloadBtn: {
     width: 32,
     height: 32,
     borderRadius: radius.md,

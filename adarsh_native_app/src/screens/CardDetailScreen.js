@@ -9,6 +9,7 @@ import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
 import { DetailSkeleton } from '../components/Skeleton';
+import CardModalForm from '../components/CardModalForm';
 import { apiGet, apiPost } from '../api/client';
 import { colors, gradients, typography, spacing, radius, shadows, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +25,7 @@ export default function CardDetailScreen({ navigation, route }) {
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [error, setError] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
@@ -58,15 +60,15 @@ export default function CardDetailScreen({ navigation, route }) {
   };
 
   const deleteCard = () => {
-    Alert.alert('Delete Card?', 'This cannot be undone.', [
+    Alert.alert('Move to Pool?', 'This will move the card to the pool.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
+      { text: 'Move to Pool', style: 'destructive', onPress: async () => {
         try {
           const { data } = await apiPost(`/app/api/card/${cardId}/delete/`, {});
           if (data?.success) {
-            showToast('Card deleted', 'success');
+            showToast('Moved to pool', 'success');
             setTimeout(() => navigation.goBack(), 800);
-          } else showToast(data?.message || 'Delete failed', 'error');
+          } else showToast(data?.message || 'Move failed', 'error');
         } catch (e) { showToast('Network error', 'error'); }
       }},
     ]);
@@ -108,10 +110,13 @@ export default function CardDetailScreen({ navigation, route }) {
         <LinearGradient colors={['#fff', '#f8fafc']} style={s.heroCard}>
           <View style={s.heroTop}>
             <View style={s.photoFrame}>
-              {card.photo_url ? (
+              {card.photo_url && card.photo_url !== 'NOT_FOUND' ? (
                 <Image source={{ uri: card.photo_url }} style={s.photo} />
               ) : (
-                <View style={s.photoPlaceholder}><FontAwesome5 name="user" size={24} color={colors.gray200} solid /></View>
+                <View style={s.photoPlaceholder}>
+                  <FontAwesome5 name="user-slash" size={24} color="#fca5a5" solid />
+                  <Text style={s.emptyPhotoText}>EMPTY</Text>
+                </View>
               )}
             </View>
             <View style={s.heroInfo}>
@@ -132,21 +137,37 @@ export default function CardDetailScreen({ navigation, route }) {
             <Text style={s.sectionTitle}>FIELD DATA</Text>
           </View>
           <View style={s.fieldsList}>
-            {Object.entries(fd).map(([key, val], i) => (
-              <View key={key} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
-                <Text style={s.fieldKey}>{key.replace(/_/g, ' ')}</Text>
-                <Text style={s.fieldVal}>{val || '-'}</Text>
-              </View>
-            ))}
-            {Object.keys(fd).length === 0 && (
+            {(card.ordered_fields || []).length > 0 ? (
+              card.ordered_fields.map((f, i) => {
+                const val = fd[f.name];
+                const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined';
+                return (
+                  <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
+                    <Text style={s.fieldKey}>{f.name}</Text>
+                    <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                  </View>
+                );
+              })
+            ) : (
+              Object.entries(fd).map(([key, val], i) => {
+                const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined';
+                return (
+                  <View key={key} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
+                    <Text style={s.fieldKey}>{key.replace(/_/g, ' ')}</Text>
+                    <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                  </View>
+                );
+              })
+            )}
+            {Object.keys(fd).length === 0 && !(card.ordered_fields || []).length && (
               <View style={s.emptyFields}><Text style={s.emptyFieldsText}>No field data available</Text></View>
             )}
           </View>
         </View>
 
         <View style={s.actions}>
-          {!isLocked && (
-            <TouchableOpacity onPress={() => navigation.navigate('CardForm', { tableId: card.table_id, cardId: card.id })} activeOpacity={0.85} style={s.editBtnWrap}>
+          {!isLocked && user.permissions?.perm_idcard_edit && (
+            <TouchableOpacity onPress={() => setShowForm(true)} activeOpacity={0.85} style={s.editBtnWrap}>
               <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.editBtn}>
                 <FontAwesome5 name="pen" size={12} color="#fff" />
                 <Text style={s.editBtnText}>Edit Information</Text>
@@ -174,16 +195,25 @@ export default function CardDetailScreen({ navigation, route }) {
             ))}
           </View>
 
-          <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
-            <FontAwesome5 name="trash-alt" size={12} color="#ef4444" />
-            <Text style={s.deleteBtnText}>Delete Card</Text>
-          </TouchableOpacity>
+          {user.permissions?.perm_idcard_delete && (
+            <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
+              <FontAwesome5 name="trash-alt" size={12} color={colors.red} />
+              <Text style={s.deleteBtnText}>Move to Pool</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={s.timestampRow}>
           <Text style={s.tsText}>Updated: {card.updated_at || '-'}</Text>
         </View>
       </ScrollView>
+      <CardModalForm 
+        visible={showForm} 
+        onClose={() => setShowForm(false)} 
+        tableId={card.table_id}
+        cardId={card.id}
+        onSuccess={() => loadCard(true)}
+      />
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({...p, visible: false}))} />
     </View>
   );
@@ -193,31 +223,33 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   scroll: { flex: 1 }, scrollC: { padding: 16, paddingBottom: 40 },
-  heroCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.md, marginBottom: 20 },
+  heroCard: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.md, marginBottom: 20 },
   heroTop: { flexDirection: 'row', gap: 20 },
-  photoFrame: { width: 90, height: 110, borderRadius: 16, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  photoFrame: { width: 90, height: 110, borderRadius: radius.md, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   photo: { width: '100%', height: '100%' },
-  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2' },
+  emptyPhotoText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: '#fca5a5', marginTop: 4 },
   heroInfo: { flex: 1, justifyContent: 'center' },
   cardName: { fontSize: 20, fontWeight: '800', color: colors.gray800 },
   tableName: { fontSize: 13, color: colors.gray500, marginTop: 4 },
   statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 12 },
   vLine: { width: 1, height: 16, backgroundColor: '#e2e8f0' },
   srNo: { fontSize: 11, fontWeight: '700', color: colors.gray400 },
-  section: { backgroundColor: '#fff', borderRadius: 24, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
+  section: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingBottom: 8 },
   sectionTitle: { fontSize: 10, fontWeight: '800', color: colors.gray400, letterSpacing: 1.2 },
   fieldsList: { padding: 8 },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 8, borderTopWidth: 1, borderTopColor: '#f8fafc' },
   fieldKey: { fontSize: 11, fontWeight: '700', color: colors.gray400, textTransform: 'uppercase' },
   fieldVal: { fontSize: 13, fontWeight: '600', color: colors.gray700, flex: 1, textAlign: 'right', marginLeft: 20 },
+  fieldValEmpty: { color: colors.gray300, fontStyle: 'italic', fontSize: 11 },
   emptyFields: { padding: 20, alignItems: 'center' },
   emptyFieldsText: { fontSize: 12, color: colors.gray400, fontStyle: 'italic' },
   actions: { gap: 12 },
-  editBtnWrap: { borderRadius: 16, overflow: 'hidden', ...shadows.md },
+  editBtnWrap: { borderRadius: radius.md, overflow: 'hidden', ...shadows.md },
   editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
   editBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
-  lockedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, backgroundColor: colors.gray100, borderRadius: 16 },
+  lockedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, backgroundColor: colors.gray100, borderRadius: radius.md },
   lockedNoteText: { fontSize: 12, color: colors.gray500, fontWeight: '600' },
   statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 },
   statusOption: { minWidth: '30%' },

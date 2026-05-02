@@ -143,7 +143,7 @@ class PermissionService:
         'perm_manage_panel_email',
         'perm_manage_website_clients',
         'perm_manage_website_portfolio',
-        'perm_manage_client_staff',
+        # 'perm_manage_client_staff' removed to allow client role access
     }
 
     # Sensitive permissions that client_staff can never hold, even if present on Staff model.
@@ -259,9 +259,10 @@ class PermissionService:
     # ==================== PRIMARY API ====================
 
     @classmethod
-    def has(cls, user, perm_key: str, client=None) -> bool:
+    def has(cls, user, perm_key: str, client=None, table=None, **kwargs) -> bool:
         """
         **Single authority** for all permission decisions.
+        Handles both 'client' objects and 'client_id' (int/str) for convenience.
 
         Args:
             user:      User instance (from request.user or model)
@@ -271,16 +272,27 @@ class PermissionService:
 
         Returns:
             True if the user holds the permission, False otherwise.
-
-        Rules:
-            1. Unauthenticated / inactive user → False
-            2. super_admin → always True
-            3. admin_staff → staff profile perm + (if client given) assigned-check
-            4. client → client profile perm + client active
-            5. client_staff → staff perm AND parent client perm + client active
-            6. Unknown perm_key (not a field on the profile) → False + log
         """
-        # --- Defensive: unauthenticated ---
+        try:
+            return cls._has_impl(user, perm_key, client=client, table=table, **kwargs)
+        except Exception as exc:
+            logger.exception("PermissionService.has CRASHED for user %s perm %s: %s", getattr(user, 'pk', 'unknown'), perm_key, exc)
+            # Fail closed on error to prevent unauthorized access
+            return False
+
+    @classmethod
+    def _has_impl(cls, user, perm_key: str, client=None, table=None, **kwargs) -> bool:
+        """Internal implementation of has() with error handling wrapper."""
+        # --- 0. Resolve client object if passed as ID ---
+        client_obj = client
+        if client_obj is not None and isinstance(client_obj, (int, str)):
+            from client.models import Client
+            try:
+                client_obj = Client.objects.get(id=client_obj)
+            except (Client.DoesNotExist, ValueError, TypeError):
+                client_obj = None
+
+        # --- 1. Defensive: unauthenticated ---
         if not user.is_authenticated:
             return False
 
@@ -323,25 +335,40 @@ class PermissionService:
             if not getattr(staff, perm_key, False):
                 return False
             # Scope check: if a client is supplied, staff must be assigned to it
-            if client is not None:
-                client_id = getattr(client, 'id', None)
-                if not client_id:
-                    return False
-                if int(client_id) not in cls.get_accessible_client_ids(user):
+            if client_obj is not None:
+                if client_obj.id not in cls.get_accessible_client_ids(user):
                     return False
             return True
 
         # --- 3. client ---
         if cls.is_client(user):
-            client_profile = getattr(user, 'client_profile', None)
+            client_profile = client_obj or getattr(user, 'client_profile', None)
+
             if not client_profile:
                 logger.warning("PermissionService.has: client user %s has no client_profile", user.pk)
                 return False
+
+            # Security: if client_obj was provided, it MUST match the user's profile
+            if client_obj and client_profile.id != client_obj.id:
+                return False
+
             if client_profile.status != 'active':
                 return False
+
+            # ID card lists, actions, and client management are auto-granted to active clients
+            if (perm_key in cls.IDCARD_LIST_PERMISSIONS or 
+                perm_key in cls.IDCARD_CLIENT_PERMISSIONS or
+                perm_key in cls.IDCARD_ACTION_PERMISSIONS):
+                return True
+
+            # Client role is the owner of their staff members - implicitly grant management access
+            if perm_key == 'perm_manage_client_staff':
+                return True
+
             if not hasattr(client_profile, perm_key):
                 logger.warning("PermissionService.has: unknown perm_key '%s' for client user %s", perm_key, user.pk)
                 return False
+
             return bool(getattr(client_profile, perm_key, False))
 
         # --- 4. client_staff (double-gated) ---
@@ -352,21 +379,35 @@ class PermissionService:
             if not staff:
                 logger.warning("PermissionService.has: client_staff user %s has no staff_profile", user.pk)
                 return False
-            if not staff.client:
+            # Security: if client_obj was provided, it MUST match the staff's client
+            if client_obj and staff.client_id != client_obj.id:
                 return False
+
+            if not staff.client:
+                logger.warning("PermissionService.has: client_staff user %s has no assigned client", user.pk)
+                return False
+
             if staff.client.status != 'active':
                 return False
+            # ID card lists are auto-granted to active client staff (respecting staff-level toggle)
+            if perm_key in cls.IDCARD_LIST_PERMISSIONS:
+                # Staff perm check
+                if hasattr(staff, perm_key):
+                    return bool(getattr(staff, perm_key, False))
+                return True  # fallback: grant if not explicitly blocked on staff
+
             # Staff perm
             if hasattr(staff, perm_key):
                 staff_value = getattr(staff, perm_key, False)
             else:
                 # Perm not on Staff model ⇒ inherit from client only
                 staff_value = True  # no staff gate
+
             # Client perm
             if hasattr(staff.client, perm_key):
                 client_value = getattr(staff.client, perm_key, False)
             else:
-                logger.warning("PermissionService.has: unknown perm_key '%s' for client_staff user %s", perm_key, user.pk)
+                logger.warning("PermissionService.has: unknown perm_key '%s' for client_staff user %s (client %s)", perm_key, user.pk, staff.client_id)
                 return False
             return bool(staff_value and client_value)
 

@@ -1,0 +1,358 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { FontAwesome5 } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { apiGet, apiPostForm } from '../api/client';
+import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import Toast from './Toast';
+
+/**
+ * Bottom-to-top dynamic form drawer for adding/editing cards.
+ */
+export default function CardModalForm({ visible, onClose, tableId, cardId, onSuccess }) {
+  const navigation = useNavigation();
+  const isEdit = !!cardId;
+  const [fields, setFields] = useState([]);
+  const [values, setValues] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [tableName, setTableName] = useState('');
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const [error, setError] = useState(null);
+  
+  // Photo menu state
+  const [photoMenu, setPhotoMenu] = useState({ visible: false, field: null, hasImage: false });
+
+  const { user } = useAuth();
+  const theme = roleThemes[user?.role] || roleThemes.default;
+
+  const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
+
+  const loadData = async () => {
+    if (!visible) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // Load table fields
+      const { ok: fOk, data: fData } = await apiGet(`/app/api/table/${tableId}/filter-options/?status=pending`);
+      if (fOk && fData?.success && fData.data?.fields) {
+        setFields(fData.data.fields);
+      }
+
+      // If editing, load existing card data
+      if (isEdit) {
+        const { ok: cOk, data: cData } = await apiGet(`/app/api/card/${cardId}/detail/`);
+        if (cOk && cData?.success) {
+          setValues(cData.data?.field_data || {});
+          setTableName(cData.data?.table_name || '');
+        } else if (!cOk) {
+          setError('Failed to load card details');
+        }
+      } else {
+        setValues({});
+      }
+    } catch (e) {
+      setError('Network error - check your connection');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, [visible, cardId, tableId]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      
+      // Separate image URIs from regular data
+      const fieldData = { ...values };
+      
+      for (const key in fieldData) {
+        const val = fieldData[key];
+        if (typeof val === 'string' && (val.startsWith('file://') || val.startsWith('content://'))) {
+          // It's a picked local image
+          const filename = val.split('/').pop();
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : `image`;
+          
+          // Use image_ prefix for dynamic fields to match backend expectation
+          const fileKey = (key.toUpperCase() === 'PHOTO') ? 'photo' : `image_${key}`;
+          formData.append(fileKey, { uri: val, name: filename, type });
+          
+          // Remove from field_data JSON so backend doesn't try to parse it as a string
+          delete fieldData[key];
+        }
+      }
+
+      formData.append('field_data', JSON.stringify(fieldData));
+
+      const url = isEdit
+        ? `/app/api/table/${tableId}/card/${cardId}/update/`
+        : `/app/api/table/${tableId}/card/add/`;
+
+      const { data } = await apiPostForm(url, formData);
+      if (data?.success) {
+        showToast(data.message || (isEdit ? 'Updated!' : 'Saved!'), 'success');
+        setTimeout(() => {
+          onSuccess && onSuccess();
+          onClose();
+        }, 800);
+      } else {
+        showToast(data?.message || 'Failed to save', 'error');
+      }
+    } catch (e) { showToast('Network error', 'error'); }
+    setSaving(false);
+  };
+
+  const handlePickFromGallery = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        showToast(`Permission to access gallery was denied`, 'error');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, allowsEditing: true, aspect: [3, 4] });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        setValues(prev => ({ ...prev, [photoMenu.field]: uri }));
+        setPhotoMenu(p => ({ ...p, visible: false }));
+      }
+    } catch (e) {
+      showToast('Error picking image', 'error');
+    }
+  };
+
+  const fieldList = fields.length > 0
+    ? fields.map(f => ({ name: f.name, type: f.type || 'text', mandatory: f.mandatory }))
+    : Object.keys(values).filter(k => typeof values[k] === 'string').map(k => ({ name: k, type: 'text', mandatory: false }));
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={s.overlay}>
+        <TouchableOpacity style={s.dismissSpacer} activeOpacity={1} onPress={onClose} />
+        
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={s.sheetWrap}>
+          <View style={s.sheet}>
+            <View style={s.handle} />
+            
+            <View style={s.header}>
+              <View style={s.titleBox}>
+                <Text style={s.title}>{isEdit ? 'Edit Card Data' : 'Add New Card'}</Text>
+                {tableName && <Text style={s.subtitle}>{tableName}</Text>}
+              </View>
+              <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+                <FontAwesome5 name="times" size={16} color={colors.gray400} />
+              </TouchableOpacity>
+            </View>
+
+            {loading ? (
+              <View style={s.loadingBox}>
+                <ActivityIndicator size="large" color={colors.brandPrimary} />
+                <Text style={s.loadingText}>Loading form fields...</Text>
+              </View>
+            ) : (
+              <>
+                <ScrollView style={s.formScroll} contentContainerStyle={s.formScrollC} keyboardShouldPersistTaps="handled">
+                  {/* Photos Section */}
+                  <View style={s.photoSection}>
+                    <View style={s.photoRow}>
+                      {fieldList.filter(f => {
+                        const t = (f.type || '').toLowerCase();
+                        const n = (f.name || '').toLowerCase();
+                        return t.includes('image') || t.includes('photo') || n.includes('photo') || n.includes('sign') || n.includes('pic');
+                      }).map((field, i) => {
+                        const val = values[field.name];
+                        const hasImage = !!val && val !== 'NOT_FOUND' && !String(val).startsWith('PENDING:');
+                        
+                        return (
+                          <View key={field.name + i} style={s.photoCard}>
+                            <TouchableOpacity 
+                              style={s.photoBox} 
+                              onPress={() => setPhotoMenu({ visible: true, field: field.name, hasImage })}
+                              activeOpacity={0.7}
+                            >
+                              {hasImage ? (
+                                <Image source={{ uri: val }} style={s.photoImg} />
+                              ) : (
+                                <View style={s.photoPlaceholder}>
+                                  <FontAwesome5 name="camera" size={24} color={colors.gray300} />
+                                  <Text style={s.photoLabel}>{field.name}</Text>
+                                </View>
+                              )}
+                              <View style={s.photoEditIcon}>
+                                <FontAwesome5 name={hasImage ? "ellipsis-h" : "plus"} size={10} color="#fff" />
+                              </View>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={s.fieldsWrap}>
+                    {error && (
+                      <View style={s.errorBox}>
+                        <FontAwesome5 name="exclamation-circle" size={12} color="#ef4444" />
+                        <Text style={s.errorText}>{error}</Text>
+                      </View>
+                    )}
+
+                    {fieldList.length === 0 && !loading && (
+                      <View style={s.noFieldsCard}>
+                        <FontAwesome5 name="info-circle" size={14} color={colors.info} />
+                        <Text style={s.noFieldsText}>No field definitions found.</Text>
+                      </View>
+                    )}
+
+                    {fieldList.filter(f => {
+                      const t = (f.type || '').toLowerCase();
+                      const n = (f.name || '').toLowerCase();
+                      const isImg = t.includes('image') || t.includes('photo') || n.includes('photo') || n.includes('sign') || n.includes('pic');
+                      return !isImg;
+                    }).map((field, i) => {
+                      return (
+                        <View key={field.name + i} style={s.field}>
+                          <View style={s.fieldLabelRow}>
+                            <Text style={s.fieldLabel}>{field.name}</Text>
+                            {field.mandatory && <View style={s.mandatoryDot} />}
+                          </View>
+                          <TextInput
+                            style={s.fieldInput}
+                            value={values[field.name] || ''}
+                            onChangeText={t => setValues(prev => ({ ...prev, [field.name]: t }))}
+                            placeholder={`Enter ${field.name.toLowerCase()}`}
+                            placeholderTextColor={colors.gray300}
+                          />
+                        </View>
+                      );
+                    })}
+                    <View style={{ height: 20 }} />
+                  </View>
+                </ScrollView>
+
+                {/* Fixed Footer at bottom of sheet */}
+                <View style={s.footerContainer}>
+                  <View style={s.footer}>
+                    <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
+                      <Text style={s.cancelBtnText}>Discard</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleSave} disabled={saving || fieldList.length === 0} activeOpacity={0.85} style={s.saveBtnWrap}>
+                      <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.saveBtn}>
+                        {saving ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={s.saveBtnText}>{isEdit ? 'Update' : 'Save Entry'}</Text>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({ ...p, visible: false }))} />
+
+      {/* Photo Options Modal */}
+      <Modal visible={photoMenu.visible} transparent animationType="fade" onRequestClose={() => setPhotoMenu(p => ({ ...p, visible: false }))}>
+        <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setPhotoMenu(p => ({ ...p, visible: false }))}>
+          <View style={s.menuContent}>
+            <Text style={s.menuTitle}>Manage {photoMenu.field}</Text>
+            
+            <TouchableOpacity style={s.menuItem} onPress={() => {
+              setPhotoMenu(p => ({ ...p, visible: false }));
+              navigation.navigate('Camera', { 
+                onCapture: (uri) => setValues(prev => ({ ...prev, [photoMenu.field]: uri })) 
+              });
+            }}>
+              <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><FontAwesome5 name="camera" size={14} color="#6366f1" /></View>
+              <Text style={s.menuItemText}>Take New Photo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={s.menuItem} onPress={handlePickFromGallery}>
+              <View style={[s.menuIconBox, { backgroundColor: '#f0fdf4' }]}><FontAwesome5 name="images" size={14} color="#22c55e" /></View>
+              <Text style={s.menuItemText}>Choose from Gallery</Text>
+            </TouchableOpacity>
+
+            {photoMenu.hasImage && (
+              <TouchableOpacity style={s.menuItem} onPress={() => {
+                setValues(prev => ({ ...prev, [photoMenu.field]: null }));
+                setPhotoMenu(p => ({ ...p, visible: false }));
+              }}>
+                <View style={[s.menuIconBox, { backgroundColor: '#fef2f2' }]}><FontAwesome5 name="trash-alt" size={14} color="#ef4444" /></View>
+                <Text style={[s.menuItemText, { color: '#ef4444' }]}>Remove Current Photo</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={s.menuCancel} onPress={() => setPhotoMenu(p => ({ ...p, visible: false }))}>
+              <Text style={s.menuCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </Modal>
+  );
+}
+
+const s = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  dismissSpacer: { flex: 1 },
+  sheetWrap: { width: '100%', height: '90%' },
+  sheet: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, ...shadows.xl, overflow: 'hidden' },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  titleBox: { flex: 1 },
+  title: { fontSize: 18, fontFamily: fontFamily.bold, color: colors.gray800 },
+  subtitle: { fontSize: 11, fontFamily: fontFamily.medium, color: colors.gray400, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  
+  formScroll: { flex: 1 },
+  formScrollC: { padding: 16, paddingBottom: 40 },
+  
+  photoSection: { backgroundColor: '#fcfcfc', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', marginBottom: 16 },
+  photoRow: { flexDirection: 'row', gap: 16, justifyContent: 'center' },
+  photoCard: { alignItems: 'center' },
+  photoBox: { width: 100, height: 110, backgroundColor: '#fff', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', ...shadows.sm },
+  photoImg: { width: '100%', height: '100%', resizeMode: 'cover' },
+  photoPlaceholder: { alignItems: 'center', gap: 6 },
+  photoLabel: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase' },
+  photoEditIcon: { position: 'absolute', bottom: 6, right: 6, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+
+  fieldsWrap: { marginTop: 4 },
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 100 },
+  loadingText: { marginTop: 12, fontSize: 13, color: colors.gray400, fontFamily: fontFamily.medium },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fef2f2', padding: 12, borderRadius: radius.md, marginBottom: 20, borderWidth: 1, borderColor: '#fecaca' },
+  errorText: { fontSize: 12, color: '#991b1b', fontFamily: fontFamily.medium },
+  noFieldsCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#eff6ff', borderRadius: radius.md, padding: 16, borderWidth: 1, borderColor: '#dbeafe', marginBottom: 20 },
+  noFieldsText: { flex: 1, fontSize: 12, color: '#1e40af', fontFamily: fontFamily.medium },
+  field: { marginBottom: 20 },
+  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, paddingLeft: 2 },
+  fieldLabel: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray600, letterSpacing: 0.5, textTransform: 'uppercase' },
+  mandatoryDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#f43f5e' },
+  fieldInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.sm, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.gray900, fontFamily: fontFamily.semibold },
+  
+  footerContainer: { padding: 16, borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fff', paddingBottom: Platform.OS === 'ios' ? 34 : 16 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  saveBtnWrap: { flex: 2, borderRadius: radius.sm, overflow: 'hidden', ...shadows.md },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
+  saveBtnText: { fontSize: 15, fontFamily: fontFamily.bold, color: '#fff' },
+  cancelBtn: { flex: 1, paddingVertical: 16, alignItems: 'center', backgroundColor: colors.gray100, borderRadius: radius.sm },
+  cancelBtnText: { fontSize: 14, fontFamily: fontFamily.semibold, color: colors.gray500 },
+
+  // Menu styles
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end', padding: 16 },
+  menuContent: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 8, ...shadows.xl },
+  menuTitle: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase', textAlign: 'center', paddingVertical: 12, letterSpacing: 1 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: radius.md },
+  menuIconBox: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  menuItemText: { fontSize: 15, fontFamily: fontFamily.bold, color: colors.gray800 },
+  menuCancel: { marginTop: 8, paddingVertical: 16, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  menuCancelText: { fontSize: 15, fontFamily: fontFamily.bold, color: colors.gray400 },
+});

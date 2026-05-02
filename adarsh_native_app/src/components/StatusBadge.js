@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 42,
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   badgeLg: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     minWidth: 52,
   },
   badgeGlass: {

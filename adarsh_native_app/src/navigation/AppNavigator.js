@@ -26,10 +26,12 @@ import StaffManageScreen from '../screens/StaffManageScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ClientsListScreen from '../screens/ClientsListScreen';
 import CardListScreen from '../screens/CardListScreen';
-import CardFormScreen from '../screens/CardFormScreen';
 import CameraScreen from '../screens/CameraScreen';
 import ReprintScreen from '../screens/ReprintScreen';
 import ProductCategoryDetailScreen from '../screens/ProductCategoryDetailScreen';
+import ClientGroupsScreen from '../screens/ClientGroupsScreen';
+import ReprintDetailScreen from '../screens/ReprintDetailScreen';
+import PermissionsScreen from '../screens/PermissionsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -80,9 +82,13 @@ export default function AppNavigator() {
 
             {/* Phase 3 */}
             <Stack.Screen name="CardList" component={CardListScreen} />
-            <Stack.Screen name="CardForm" component={CardFormScreen} />
             <Stack.Screen name="Camera" component={CameraScreen} />
             <Stack.Screen name="Reprint" component={ReprintScreen} />
+
+            {/* Phase 4 — new features */}
+            <Stack.Screen name="ClientGroups" component={ClientGroupsScreen} />
+            <Stack.Screen name="ReprintDetail" component={ReprintDetailScreen} />
+            <Stack.Screen name="Permissions" component={PermissionsScreen} />
           </>
         )}
       </Stack.Navigator>

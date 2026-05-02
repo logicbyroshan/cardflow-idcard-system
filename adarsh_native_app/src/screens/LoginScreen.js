@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   // Decorative bubbles
   bubble: {
     position: 'absolute',
-    borderRadius: 8,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   appIcon: {
     width: 80,
     height: 80,
-    borderRadius: radius.xl,
+    borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -274,8 +274,8 @@ const styles = StyleSheet.create({
   // Login card
   card: {
     backgroundColor: colors.glassBg,
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
     paddingTop: 28,
     paddingHorizontal: 24,
     borderWidth: 1,
@@ -286,13 +286,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.gray800,
     fontSize: typography.xxxl,
-    fontFamily: 'SairaSemiCondensed-Bold',
+    fontWeight: '700',
     marginBottom: 4,
   },
   cardSubtitle: {
     color: colors.gray400,
     fontSize: typography.lg,
-    fontFamily: 'SairaSemiCondensed-Regular',
     marginBottom: 24,
   },
 

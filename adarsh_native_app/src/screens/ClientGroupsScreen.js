@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
@@ -8,14 +8,14 @@ import { apiGet } from '../api/client';
 import { colors, shadows, radius, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
-export default function GroupsScreen({ navigation }) {
-  const [groups, setGroups] = useState([]);
+export default function ClientGroupsScreen({ navigation, route }) {
+  const clientId = route?.params?.clientId;
+  const clientName = route?.params?.clientName || 'Client';
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedGroupId, setExpandedGroupId] = useState(null);
-
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [expandedGroupId, setExpandedGroupId] = useState(null);
   const { user } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
 
@@ -24,12 +24,11 @@ export default function GroupsScreen({ navigation }) {
     else setLoading(true);
     setError(null);
     try {
-      const { ok, data } = await apiGet('/app/api/groups/');
+      const { ok, data } = await apiGet(`/app/api/client/${clientId}/tables/`);
       if (ok && data?.success) {
-        setGroups(data.data?.groups || []);
-        setTables(data.data?.tables || []);
+        setTables(data.data || []);
       } else {
-        setError(data?.message || 'Failed to load groups');
+        setError(data?.message || 'Failed to load client tables');
       }
     } catch (e) {
       setError('Network error - check your connection');
@@ -38,38 +37,51 @@ export default function GroupsScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [clientId]);
 
-  const onRefresh = () => loadData(true);
+  // Group tables by group_name
+  const groupedData = React.useMemo(() => {
+    const groups = {};
+    (tables || []).forEach(t => {
+      const gName = t.group_name || 'Ungrouped';
+      if (!groups[gName]) groups[gName] = { name: gName, tables: [], totalCards: 0, pending: 0, verified: 0, pool: 0 };
+      groups[gName].tables.push(t);
+      groups[gName].totalCards += (t.total_cards || 0);
+      groups[gName].pending += (t.pending_count || 0);
+      groups[gName].verified += (t.verified_count || 0);
+      groups[gName].pool += (t.pool_count || 0);
+    });
+    return Object.values(groups);
+  }, [tables]);
 
-  const toggleGroup = (id) => setExpandedGroupId(prev => prev === id ? null : id);
+  const toggleGroup = (name) => setExpandedGroupId(prev => prev === name ? null : name);
 
   const renderGroup = ({ item: group }) => {
-    const isExpanded = expandedGroupId === group.id;
-    const groupTables = tables.filter(t => t.group_id === group.id);
-
+    const isExpanded = expandedGroupId === group.name;
     return (
       <View style={s.groupCard}>
-        <TouchableOpacity style={s.groupHeader} onPress={() => toggleGroup(group.id)} activeOpacity={0.7}>
-          <View style={[s.groupIcon, { backgroundColor: theme.bgSoft }]}><FontAwesome5 name="layer-group" size={14} color={theme.primary} solid /></View>
+        <TouchableOpacity style={s.groupHeader} onPress={() => toggleGroup(group.name)} activeOpacity={0.7}>
+          <View style={[s.groupIcon, { backgroundColor: theme.bgSoft }]}>
+            <FontAwesome5 name="layer-group" size={14} color={theme.primary} solid />
+          </View>
           <View style={s.groupInfo}>
             <Text style={s.groupName} numberOfLines={1}>{group.name}</Text>
-            <Text style={s.groupMeta}>{group.table_count || 0} tables · {group.total_cards || 0} cards</Text>
+            <Text style={s.groupMeta}>{group.tables.length} tables · {group.totalCards} cards</Text>
           </View>
           <View style={s.groupBadges}>
-            {group.pending_cards > 0 && <MiniCount count={group.pending_cards} bg={colors.pending.bg} c={colors.pending.text} />}
-            {group.verified_cards > 0 && <MiniCount count={group.verified_cards} bg={colors.verified.bg} c={colors.verified.text} />}
-            {group.pool_cards > 0 && <MiniCount count={group.pool_cards} bg={colors.pool.bg} c={colors.pool.text} />}
+            {group.pending > 0 && <MiniCount count={group.pending} bg={colors.pending.bg} c={colors.pending.text} />}
+            {group.verified > 0 && <MiniCount count={group.verified} bg={colors.verified.bg} c={colors.verified.text} />}
+            {group.pool > 0 && <MiniCount count={group.pool} bg={colors.pool.bg} c={colors.pool.text} />}
           </View>
           <FontAwesome5 name={isExpanded ? 'chevron-up' : 'chevron-down'} size={10} color={colors.gray400} />
         </TouchableOpacity>
 
-        {isExpanded && groupTables.length > 0 && (
+        {isExpanded && group.tables.length > 0 && (
           <View style={s.tablesList}>
-            {groupTables.map(table => (
-              <TouchableOpacity 
-                key={table.id} 
-                style={s.tableRow} 
+            {group.tables.map(table => (
+              <TouchableOpacity
+                key={table.id}
+                style={s.tableRow}
                 onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pending' })}
                 activeOpacity={0.7}
               >
@@ -79,11 +91,11 @@ export default function GroupsScreen({ navigation }) {
                   <Text style={s.tableMeta}>{table.total_cards || 0} cards</Text>
                 </View>
                 <View style={s.tableBadges}>
-                  {table.pending_cards > 0 && <MiniCount count={table.pending_cards} bg={colors.pending.bg} c={colors.pending.text} />}
-                  {table.verified_cards > 0 && <MiniCount count={table.verified_cards} bg={colors.verified.bg} c={colors.verified.text} />}
-                  {table.approved_cards > 0 && <MiniCount count={table.approved_cards} bg={colors.approved.bg} c={colors.approved.text} />}
-                  {table.download_cards > 0 && <MiniCount count={table.download_cards} bg={colors.download.bg} c={colors.download.text} />}
-                  {table.pool_cards > 0 && <MiniCount count={table.pool_cards} bg={colors.red} c="#fff" />}
+                  {table.pending_count > 0 && <MiniCount count={table.pending_count} bg={colors.pending.bg} c={colors.pending.text} />}
+                  {table.verified_count > 0 && <MiniCount count={table.verified_count} bg={colors.verified.bg} c={colors.verified.text} />}
+                  {table.approved_count > 0 && <MiniCount count={table.approved_count} bg={colors.approved.bg} c={colors.approved.text} />}
+                  {table.download_count > 0 && <MiniCount count={table.download_count} bg={colors.download.bg} c={colors.download.text} />}
+                  {table.pool_count > 0 && <MiniCount count={table.pool_count} bg={colors.pool.bg} c={colors.pool.text} />}
                 </View>
                 <FontAwesome5 name="chevron-right" size={8} color={colors.gray300} />
               </TouchableOpacity>
@@ -91,7 +103,7 @@ export default function GroupsScreen({ navigation }) {
           </View>
         )}
 
-        {isExpanded && groupTables.length === 0 && (
+        {isExpanded && group.tables.length === 0 && (
           <View style={s.emptyTables}><Text style={s.emptyTablesText}>No tables in this group</Text></View>
         )}
       </View>
@@ -100,19 +112,25 @@ export default function GroupsScreen({ navigation }) {
 
   return (
     <View style={s.root}>
-      <TopBar title="Groups & Tables" subtitle="Manage your groups" onBack={() => navigation.goBack()} />
+      <TopBar title={clientName} subtitle="Groups & Tables" onBack={() => navigation.goBack()} />
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadData(true)} />}
       {loading ? (
         <ListSkeleton rows={5} />
       ) : (
         <FlatList
-          data={groups}
+          data={groupedData}
           renderItem={renderGroup}
-          keyExtractor={item => item.id.toString()}
+          keyExtractor={item => item.name}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}
-          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="layer-group" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No groups found</Text></View>}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={colors.brandLight} />}
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <View style={s.emptyIcon}><FontAwesome5 name="layer-group" size={24} color={colors.gray300} /></View>
+              <Text style={s.emptyTitle}>No groups found</Text>
+              <Text style={s.emptySub}>This client has no tables yet</Text>
+            </View>
+          }
         />
       )}
     </View>
@@ -132,19 +150,20 @@ const s = StyleSheet.create({
   groupInfo: { flex: 1 },
   groupName: { fontSize: 15, fontWeight: '700', color: colors.gray800 },
   groupMeta: { fontSize: 11, color: colors.gray500, marginTop: 2 },
-  groupBadges: { flexDirection: 'row', gap: 4, marginRight: 8 },
-  miniCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.xs, minWidth: 20, alignItems: 'center' },
-  miniCountText: { fontSize: 10, fontWeight: '800' },
   tablesList: { paddingHorizontal: 16, paddingBottom: 16, backgroundColor: '#f9fafb', borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 10 },
   tableIcon: { width: 28, height: 28, borderRadius: radius.sm, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
   tableInfo: { flex: 1 },
   tableName: { fontSize: 13, fontWeight: '600', color: colors.gray700 },
   tableMeta: { fontSize: 10, color: colors.gray400, marginTop: 1 },
-  tableBadges: { flexDirection: 'row', gap: 4, marginRight: 8 },
   emptyTables: { padding: 20, alignItems: 'center' },
   emptyTablesText: { fontSize: 12, color: colors.gray400 },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
+  emptySub: { fontSize: 11, color: colors.gray300, marginTop: 4 },
+  groupBadges: { flexDirection: 'row', gap: 4, marginRight: 8 },
+  tableBadges: { flexDirection: 'row', gap: 4, marginRight: 8 },
+  miniCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.xs, minWidth: 20, alignItems: 'center' },
+  miniCountText: { fontSize: 10, fontWeight: '800' },
 });

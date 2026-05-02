@@ -47,6 +47,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/card/add/', views.api_card_add, name='api_card_add'),
     path('api/table/<int:table_id>/card/<int:card_id>/update/', views.api_card_update, name='api_card_update'),
     path('api/table/<int:table_id>/update-fields/', views.api_table_update_fields, name='api_table_update_fields'),
+    path('api/table/<int:table_id>/download-pdf/', views.api_table_download_pdf, name='api_table_download_pdf'),
 
     # Staff management APIs
     path('api/staff/', views.api_staff_list, name='api_staff_list'),
@@ -54,6 +55,8 @@ urlpatterns = [
     path('api/staff/<int:staff_id>/update/', views.api_staff_update, name='api_staff_update'),
     path('api/staff/<int:staff_id>/toggle/', views.api_staff_toggle, name='api_staff_toggle'),
     path('api/staff/<int:staff_id>/delete/', views.api_staff_delete, name='api_staff_delete'),
+    path('api/staff/<int:staff_id>/assignable-items/', views.api_staff_assignable_items, name='api_staff_assignable_items'),
+    path('api/staff/<int:staff_id>/assign/', views.api_staff_assign, name='api_staff_assign'),
 
     # Profile & Search APIs
     path('api/profile/', views.api_profile_data, name='api_profile_data'),

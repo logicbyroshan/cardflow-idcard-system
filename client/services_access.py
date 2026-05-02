@@ -86,10 +86,42 @@ class ClientAccessService:
 
     @staticmethod
     def _assigned_table_ids_for_access(staff):
-        """Return cached normalized assigned table IDs for client_staff checks."""
+        """Return cached normalized assigned table IDs for client_staff checks.
+        Checks both legacy assigned_table_ids field and new assignment_scopes.
+        """
         cached = getattr(staff, '_cached_assigned_table_ids_for_access', None)
         if cached is not None:
             return cached
+
+        scopes = getattr(staff, 'assignment_scopes', None)
+        if isinstance(scopes, list) and scopes:
+            explicit_table_ids = []
+            seen = set()
+            has_any_valid_scope = False
+
+            for scope in scopes:
+                if not isinstance(scope, dict):
+                    continue
+                stype = str(scope.get('scope_type', '') or '').strip().lower()
+                if stype not in ('group', 'table'):
+                    continue
+                has_any_valid_scope = True
+                if stype != 'table':
+                    continue
+
+                sid = scope.get('scope_id')
+                try:
+                    sid_int = int(str(sid).strip())
+                except (TypeError, ValueError):
+                    continue
+                if sid_int <= 0 or sid_int in seen:
+                    continue
+                seen.add(sid_int)
+                explicit_table_ids.append(sid_int)
+
+            if has_any_valid_scope:
+                setattr(staff, '_cached_assigned_table_ids_for_access', explicit_table_ids)
+                return explicit_table_ids
 
         assigned_table_ids = ClientAccessService._normalize_positive_int_ids(
             staff.assigned_table_ids or []

@@ -58,34 +58,39 @@ export default function SearchScreen({ navigation }) {
     <View style={s.root}>
       <TopBar title="Search" onBack={() => navigation.goBack()}>
         <View style={s.searchRow}>
-          <FontAwesome5 name="search" size={12} color="rgba(255,255,255,0.6)" style={s.searchIcon} />
+          <TouchableOpacity 
+            style={s.leftIconBtn} 
+            onPress={() => setShowFilters(!showFilters)}
+            activeOpacity={0.7}
+          >
+            <FontAwesome5 name="sliders-h" size={14} color="#fff" solid />
+          </TouchableOpacity>
           <TextInput
             style={s.searchInput}
             value={query}
             onChangeText={onChangeText}
-            placeholder="Search by name, roll no, ID..."
+            placeholder="Search cards..."
             placeholderTextColor="rgba(255,255,255,0.5)"
             returnKeyType="search"
             onSubmitEditing={() => doSearch(query, filterType)}
             autoFocus
           />
+          <TouchableOpacity 
+            style={s.rightIconBtn} 
+            onPress={() => doSearch(query, filterType)}
+            activeOpacity={0.7}
+          >
+            <FontAwesome5 name="search" size={14} color="#fff" solid />
+          </TouchableOpacity>
         </View>
       </TopBar>
 
-      {/* Filter bar */}
-      <View style={s.filterBar}>
-        <TouchableOpacity style={s.filterBtn} onPress={() => setShowFilters(!showFilters)} activeOpacity={0.7}>
-          <FontAwesome5 name={currentFilter.icon} size={10} color={colors.brandLight} solid />
-          <Text style={s.filterBtnText}>{currentFilter.label}</Text>
-          <FontAwesome5 name="chevron-down" size={8} color={colors.gray400} />
-        </TouchableOpacity>
-        {query.trim() && !loading && (
-          <View style={s.countPill}>
-            <FontAwesome5 name="list-ul" size={8} color={colors.brandLight} />
-            <Text style={s.countText}>{results.length} result{results.length !== 1 ? 's' : ''}</Text>
-          </View>
-        )}
-      </View>
+      {/* Result count pill (overlay) */}
+      {query.trim() && !loading && (
+        <View style={s.floatingCount}>
+          <Text style={s.countText}>{results.length} results found</Text>
+        </View>
+      )}
 
       {/* Filter dropdown */}
       {showFilters && (
@@ -130,22 +135,20 @@ export default function SearchScreen({ navigation }) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 16, paddingHorizontal: 14, height: 44, marginTop: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, color: '#fff', fontSize: 14, height: '100%', paddingVertical: 0, fontWeight: '600' },
-  filterBar: { flexDirection: 'row', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', zIndex: 10, gap: 10 },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#f1f5f9' },
-  filterBtnText: { fontSize: 11, fontWeight: '800', color: colors.gray700, letterSpacing: 0.5 },
-  countPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(51,183,239,0.05)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(51,183,239,0.1)' },
-  countText: { fontSize: 11, fontWeight: '800', color: colors.brandLight },
-  filterDropdown: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.lg, marginBottom: 12, overflow: 'hidden' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: radius.md, height: 44, marginTop: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
+  leftIconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  searchInput: { flex: 1, color: '#fff', fontSize: 14, height: '100%', paddingHorizontal: 12, fontWeight: '600' },
+  rightIconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  floatingCount: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  countText: { fontSize: 11, fontWeight: '800', color: colors.gray400, textTransform: 'uppercase', letterSpacing: 0.5 },
+  filterDropdown: { position: 'absolute', top: 120, left: 16, right: 16, zIndex: 100, backgroundColor: '#fff', borderRadius: radius.lg, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.lg, overflow: 'hidden' },
   filterItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
   filterItemActive: { backgroundColor: 'rgba(51,183,239,0.03)' },
   filterItemText: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.gray500 },
   filterItemTextActive: { color: colors.brandLight, fontWeight: '800' },
   list: { padding: 16, paddingBottom: 40 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
-  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 20, ...shadows.sm },
-  emptyTitle: { fontSize: 14, fontWeight: '800', color: colors.gray800 },
+  emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 16, ...shadows.sm },
+  emptyTitle: { fontSize: 14, fontWeight: '700', color: colors.gray800 },
   emptySub: { fontSize: 12, color: colors.gray400, marginTop: 6, textAlign: 'center', paddingHorizontal: 40 },
 });

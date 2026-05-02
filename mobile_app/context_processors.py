@@ -104,4 +104,14 @@ def mobile_globals(request):
             ctx.setdefault('admin_table_count',  0)
             ctx.setdefault('admin_total_cards',  0)
 
+    # ── Impersonation state ──────────────────────────────────────────────
+    try:
+        from accounts.services_impersonate import ImpersonateService
+        is_imp = ImpersonateService.is_impersonating(request)
+        ctx['is_impersonating'] = is_imp
+        if is_imp:
+            ctx['impersonation_original_name'] = request.session.get(ImpersonateService.SESSION_NAME_KEY, 'Admin')
+    except Exception:
+        ctx['is_impersonating'] = False
+
     return ctx

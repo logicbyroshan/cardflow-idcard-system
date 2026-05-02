@@ -1,85 +1,294 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, 
+  Dimensions, FlatList, TextInput, ActivityIndicator, Linking 
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, gradients, shadows } from '../theme';
+import { colors, gradients, shadows, radius, spacing, fontFamily } from '../theme';
+import { apiGet, apiPost, BASE_URL } from '../api/client';
+import Toast from '../components/Toast';
+
+const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+  const [activeHero, setActiveHero] = useState(0);
+  const heroRef = useRef(null);
+
+  // Contact Form State
+  const [contact, setContact] = useState({ name: '', email: '', phone: '', message: '' });
+  const [sending, setSending] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+
+  useEffect(() => {
+    loadLandingData();
+  }, []);
+
+  const loadLandingData = async () => {
+    try {
+      const { ok, data } = await apiGet('/app/api/pub/website/landing/');
+      if (ok && data?.success) {
+        setData(data);
+      }
+    } catch (e) {
+      console.log('Landing data err', e);
+    }
+    setLoading(false);
+  };
+
+  const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
+
+  const handleContactSubmit = async () => {
+    if (!contact.name || !contact.email || !contact.message) {
+      showToast('Please fill required fields', 'error');
+      return;
+    }
+    setSending(true);
+    try {
+      const { ok, data } = await apiPost('/app/api/pub/website/contact/', {
+        ...contact,
+        subject: 'Mobile App Landing Enquiry'
+      });
+      if (ok && data?.success) {
+        showToast('Enquiry sent successfully!', 'success');
+        setContact({ name: '', email: '', phone: '', message: '' });
+      } else {
+        showToast(data?.message || 'Failed to send enquiry', 'error');
+      }
+    } catch (e) {
+      showToast('Network error', 'error');
+    }
+    setSending(false);
+  };
+
+  if (loading) {
+    return (
+      <View style={s.loadingRoot}>
+        <ActivityIndicator size="large" color={colors.brandPrimary} />
+      </View>
+    );
+  }
+
+  const renderHeroItem = ({ item }) => (
+    <View style={s.heroItem}>
+      <Image source={{ uri: item.image.startsWith('http') ? item.image : `${BASE_URL}${item.image}` }} style={s.heroImage} />
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={s.heroOverlay}>
+        <Text style={s.heroTitle}>{item.title}</Text>
+        <Text style={s.heroSub}>{item.subtitle}</Text>
+      </LinearGradient>
+    </View>
+  );
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2', '#5b21b6']} start={{ x: 0.3, y: 0 }} end={{ x: 0.7, y: 1 }} style={s.root}>
-      {/* Decorative bubbles */}
-      <View style={[s.bubble, { width: 240, height: 240, top: -80, right: -80 }]} />
-      <View style={[s.bubble, { width: 160, height: 160, bottom: 200, left: -60 }]} />
-      <View style={[s.bubble, { width: 80, height: 80, top: '35%', right: 30 }]} />
-
-      <View style={[s.content, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 30 }]}>
-        {/* Top Section — Logo + Branding */}
-        <View style={s.brandSection}>
-          <View style={s.logoWrap}>
-            <FontAwesome5 name="id-card" size={40} color="#fff" solid />
-          </View>
-          <Text style={s.brandName}>Adarsh ID Cards</Text>
-          <Text style={s.brandTagline}>Smart Card Management System</Text>
-        </View>
-
-        {/* Middle — Feature highlights */}
-        <View style={s.features}>
-          {[
-            { icon: 'shield-alt', label: 'Secure Login', sub: 'Protected authentication' },
-            { icon: 'bolt', label: 'Instant Access', sub: 'Manage cards on the go' },
-            { icon: 'sync-alt', label: 'Real-time Sync', sub: 'Always up to date' },
-          ].map((f, i) => (
-            <View key={i} style={s.featureRow}>
-              <View style={s.featureIcon}><FontAwesome5 name={f.icon} size={14} color="#fff" solid /></View>
-              <View style={s.featureInfo}>
-                <Text style={s.featureLabel}>{f.label}</Text>
-                <Text style={s.featureSub}>{f.sub}</Text>
+    <View style={s.root}>
+      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]}>
+        {/* Header */}
+        <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+          <LinearGradient colors={['rgba(0,0,0,0.6)', 'transparent']} style={StyleSheet.absoluteFill} />
+          <View style={s.headerContent}>
+            <View style={s.logoArea}>
+              <View style={s.logoCircle}>
+                <FontAwesome5 name="id-card" size={20} color="#fff" />
               </View>
+              <Text style={s.logoText}>ADARSH</Text>
             </View>
-          ))}
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={s.headerLoginBtn}>
+              <Text style={s.headerLoginText}>LOGIN</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Bottom — CTA Buttons */}
-        <View style={s.bottomCta}>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.85} style={s.signInBtnWrap}>
-            <View style={s.signInBtn}>
-              <Text style={s.signInText}>Sign In</Text>
-              <FontAwesome5 name="arrow-right" size={13} color={colors.brandDark} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} activeOpacity={0.7}>
-            <Text style={s.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <Text style={s.versionText}>v1.0.0 • Adarsh Bhopal</Text>
+        {/* Hero Slider */}
+        <View style={s.heroWrap}>
+          <FlatList
+            ref={heroRef}
+            data={data?.hero_images || []}
+            renderItem={renderHeroItem}
+            keyExtractor={item => item.id.toString()}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => setActiveHero(Math.round(e.nativeEvent.contentOffset.x / width))}
+          />
+          <View style={s.heroDots}>
+            {(data?.hero_images || []).map((_, i) => (
+              <View key={i} style={[s.heroDot, activeHero === i && s.heroDotActive]} />
+            ))}
+          </View>
         </View>
-      </View>
-    </LinearGradient>
+
+        {/* Product Categories */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Our Product Range</Text>
+            <View style={s.sectionLine} />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.catScroll}>
+            {(data?.categories || []).map(cat => (
+              <TouchableOpacity key={cat.id} style={s.catCard}>
+                <View style={s.catIconWrap}>
+                  <FontAwesome5 name={cat.icon || 'star'} size={18} color={colors.brandPrimary} />
+                </View>
+                <Text style={s.catName}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Featured Products */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Featured Products</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://adarshidcards.com/our-products')}>
+              <Text style={s.viewAll}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.productGrid}>
+            {(data?.products || []).map(prod => (
+              <View key={prod.id} style={s.productCard}>
+                <Image source={{ uri: prod.image.startsWith('http') ? prod.image : `${BASE_URL}${prod.image}` }} style={s.productImg} />
+                {prod.type === 'video' && (
+                  <View style={s.playIconOverlay}>
+                    <FontAwesome5 name="play" size={24} color="#fff" />
+                  </View>
+                )}
+                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={s.productOverlay}>
+                  <Text style={s.productTitle} numberOfLines={1}>{prod.title}</Text>
+                  <Text style={s.productCat}>{prod.category}</Text>
+                </LinearGradient>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Contact Us */}
+        <View style={[s.section, s.contactSection]}>
+          <LinearGradient colors={gradients.brand} style={s.contactCard}>
+            <Text style={s.contactTitle}>Get in Touch</Text>
+            <Text style={s.contactSub}>Have questions? Send us a message and we'll help you out.</Text>
+            
+            <View style={s.form}>
+              <View style={s.inputGroup}>
+                <FontAwesome5 name="user" size={12} color="rgba(255,255,255,0.6)" style={s.inputIcon} />
+                <TextInput 
+                  style={s.input} 
+                  value={contact.name} 
+                  onChangeText={t => setContact(p => ({...p, name: t}))} 
+                  placeholder="Full Name" 
+                  placeholderTextColor="rgba(255,255,255,0.4)" 
+                />
+              </View>
+              <View style={s.inputGroup}>
+                <FontAwesome5 name="envelope" size={12} color="rgba(255,255,255,0.6)" style={s.inputIcon} />
+                <TextInput 
+                  style={s.input} 
+                  value={contact.email} 
+                  onChangeText={t => setContact(p => ({...p, email: t}))} 
+                  placeholder="Email Address" 
+                  placeholderTextColor="rgba(255,255,255,0.4)" 
+                  keyboardType="email-address"
+                />
+              </View>
+              <View style={s.inputGroup}>
+                <FontAwesome5 name="comment-alt" size={12} color="rgba(255,255,255,0.6)" style={s.inputIcon} />
+                <TextInput 
+                  style={[s.input, s.textArea]} 
+                  value={contact.message} 
+                  onChangeText={t => setContact(p => ({...p, message: t}))} 
+                  placeholder="Your Message..." 
+                  placeholderTextColor="rgba(255,255,255,0.4)" 
+                  multiline 
+                  numberOfLines={4}
+                />
+              </View>
+              
+              <TouchableOpacity onPress={handleContactSubmit} disabled={sending} style={s.submitBtn}>
+                {sending ? <ActivityIndicator color={colors.brandPrimary} /> : <Text style={s.submitBtnText}>SEND MESSAGE</Text>}
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Footer */}
+        <View style={s.footer}>
+          <Text style={s.footerBrand}>ADARSH ID CARDS</Text>
+          <Text style={s.footerTag}>Specialist in all types of PVC ID cards printing</Text>
+          <View style={s.socialRow}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://wa.me/91' + data?.business?.whatsapp)} style={s.socialIcon}><FontAwesome5 name="whatsapp" size={16} color={colors.gray400} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => Linking.openURL('https://facebook.com')} style={s.socialIcon}><FontAwesome5 name="facebook" size={16} color={colors.gray400} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => Linking.openURL('https://instagram.com')} style={s.socialIcon}><FontAwesome5 name="instagram" size={16} color={colors.gray400} /></TouchableOpacity>
+          </View>
+          <Text style={s.version}>v1.2.0 • Made with ❤️ in Bhopal</Text>
+        </View>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({...p, visible: false}))} />
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1 },
-  bubble: { position: 'absolute', borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  content: { flex: 1, paddingHorizontal: 28, justifyContent: 'space-between' },
-  brandSection: { alignItems: 'center', paddingTop: 20 },
-  logoWrap: { width: 100, height: 100, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', marginBottom: 16, ...shadows.xl },
-  brandName: { fontSize: 28, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff', letterSpacing: -0.5 },
-  brandTagline: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Regular', color: 'rgba(255,255,255,0.7)', marginTop: 4 },
-  features: { gap: 16 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  featureIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
-  featureInfo: { flex: 1 },
-  featureLabel: { fontSize: 14, fontFamily: 'SairaSemiCondensed-SemiBold', color: '#fff' },
-  featureSub: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Regular', color: 'rgba(255,255,255,0.6)', marginTop: 1 },
-  bottomCta: { alignItems: 'center', gap: 14 },
-  signInBtnWrap: { width: '100%', borderRadius: 20, overflow: 'hidden', ...shadows.lg },
-  signInBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#fff', paddingVertical: 16, borderRadius: 20 },
-  signInText: { fontSize: 16, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandDark },
-  forgotText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: 'rgba(255,255,255,0.8)', textDecorationLine: 'underline' },
-  versionText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Regular', color: 'rgba(255,255,255,0.4)', marginTop: 6 },
+  root: { flex: 1, backgroundColor: '#fff' },
+  loadingRoot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, paddingHorizontal: 20, paddingBottom: 15 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  logoArea: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontSize: 18, fontFamily: fontFamily.bold, color: '#fff', letterSpacing: 1 },
+  headerLoginBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  headerLoginText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  
+  heroWrap: { height: 450, backgroundColor: colors.gray100 },
+  heroItem: { width: width, height: 450 },
+  heroImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 30, paddingTop: 60 },
+  heroTitle: { fontSize: 32, fontFamily: fontFamily.bold, color: '#fff', lineHeight: 38 },
+  heroSub: { fontSize: 16, color: 'rgba(255,255,255,0.8)', marginTop: 8 },
+  heroDots: { position: 'absolute', bottom: 20, left: 30, flexDirection: 'row', gap: 6 },
+  heroDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
+  heroDotActive: { width: 24, backgroundColor: '#fff' },
+
+  section: { marginTop: 30, paddingHorizontal: 20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  sectionTitle: { fontSize: 20, fontFamily: fontFamily.bold, color: colors.gray800 },
+  sectionLine: { flex: 1, height: 2, backgroundColor: colors.gray100, marginLeft: 15 },
+  viewAll: { fontSize: 14, fontWeight: '600', color: colors.brandPrimary },
+
+  catScroll: { gap: 12, paddingRight: 20 },
+  catCard: { width: 100, alignItems: 'center', padding: 12, backgroundColor: colors.gray50, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.gray100 },
+  catIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 8, ...shadows.sm },
+  catName: { fontSize: 11, fontWeight: '700', color: colors.gray600, textAlign: 'center' },
+
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  productCard: { width: (width - 52) / 2, height: 220, borderRadius: radius.lg, overflow: 'hidden', ...shadows.md },
+  productImg: { width: '100%', height: '100%' },
+  playIconOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.2)' },
+  productOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12 },
+  productTitle: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  productCat: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+
+  contactSection: { marginTop: 40 },
+  contactCard: { borderRadius: radius.xl, padding: 25, ...shadows.lg },
+  contactTitle: { fontSize: 24, fontFamily: fontFamily.bold, color: '#fff', textAlign: 'center' },
+  contactSub: { fontSize: 14, color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginTop: 8, marginBottom: 25 },
+  form: { gap: 15 },
+  inputGroup: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md, paddingHorizontal: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, color: '#fff', paddingVertical: 12, fontSize: 14 },
+  textArea: { height: 80, textAlignVertical: 'top', paddingTop: 12 },
+  submitBtn: { backgroundColor: '#fff', borderRadius: radius.md, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
+  submitBtnText: { fontSize: 14, fontWeight: '800', color: colors.brandPrimary, letterSpacing: 1 },
+
+  footer: { marginTop: 50, alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.gray100, paddingTop: 40 },
+  footerBrand: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.gray300, letterSpacing: 2 },
+  footerTag: { fontSize: 11, color: colors.gray400, marginTop: 4 },
+  socialRow: { flexDirection: 'row', gap: 20, marginTop: 25 },
+  socialIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  version: { fontSize: 10, color: colors.gray300, marginTop: 30 },
 });

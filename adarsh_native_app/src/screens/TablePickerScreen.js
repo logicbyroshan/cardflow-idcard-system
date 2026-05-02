@@ -90,11 +90,11 @@ const s = StyleSheet.create({
   list: { padding: 16, gap: 10, paddingBottom: 32 },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 20, padding: 14,
+    backgroundColor: '#fff', borderRadius: radius.lg, padding: 14,
     borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm,
   },
   iconWrap: {
-    width: 44, height: 44, borderRadius: 12,
+    width: 44, height: 44, borderRadius: radius.md,
     backgroundColor: 'rgba(51,183,239,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },
@@ -102,10 +102,10 @@ const s = StyleSheet.create({
   tableName: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
   groupName: { fontSize: 10, color: colors.gray400, marginTop: 2 },
   countBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  countBadge: { minWidth: 42, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  countBadge: { minWidth: 42, height: 28, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   countText: { fontSize: 11, fontWeight: '900' },
   empty: { alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
-  emptyIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
   emptySub: { fontSize: 11, color: colors.gray300, marginTop: 4 },
 });

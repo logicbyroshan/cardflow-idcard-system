@@ -144,11 +144,11 @@ class ClientService(BaseService):
             ServiceResult with client data
         """
         try:
-            name = data.get('name', '').strip()
+            name = str(data.get('name') or '').strip()
             if not name:
                 return ServiceResult(success=False, message='Name is required')
 
-            raw_email = data.get('email', '').strip().lower()
+            raw_email = str(data.get('email') or '').strip().lower()
             email_was_provided = bool(raw_email)
 
             if raw_email:
@@ -180,8 +180,8 @@ class ClientService(BaseService):
             # Password policy:
             # - if custom password is provided, use it
             # - otherwise phone number is required and used as password
-            phone = data.get('phone', '').strip()
-            password = data.get('password', '').strip()
+            phone = str(data.get('phone') or '').strip()
+            password = str(data.get('password') or '').strip()
             if not password:
                 if phone:
                     # Universal password normalization (phone formats -> digits)
@@ -325,7 +325,7 @@ class ClientService(BaseService):
             with transaction.atomic():
                 # Update user fields
                 if data.get('email'):
-                    new_email = data['email'].strip().lower()
+                    new_email = str(data['email'] or '').strip().lower()
                     if new_email != user.email.lower():
                         if User.objects.filter(email__iexact=new_email).exclude(id=user.id).exists():
                             return ServiceResult(success=False, message='A user with this email already exists')

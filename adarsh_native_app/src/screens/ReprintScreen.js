@@ -5,7 +5,7 @@ import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
-import { colors, shadows } from '../theme';
+import { colors, shadows, radius } from '../theme';
 
 export default function ReprintScreen({ navigation, route }) {
   const clientId = route?.params?.clientId;
@@ -49,7 +49,7 @@ export default function ReprintScreen({ navigation, route }) {
       <TouchableOpacity 
         style={s.card} 
         activeOpacity={0.7} 
-        onPress={() => navigation.navigate('CardList', { tableId: item.id, status: 'reprint' })}
+        onPress={() => navigation.navigate('ReprintDetail', { tableId: item.id })}
       >
         <View style={s.cardLeft}>
           <View style={s.tableIcon}><FontAwesome5 name="redo" size={12} color="#f59e0b" /></View>
@@ -119,25 +119,25 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   summaryRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12 },
-  summaryBox: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 10, alignItems: 'center', borderWidth: 1.5, ...shadows.sm },
-  summaryIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  summaryBox: { flex: 1, backgroundColor: '#fff', borderRadius: radius.lg, padding: 12, alignItems: 'center', borderWidth: 1, ...shadows.sm },
+  summaryIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   summaryValue: { fontSize: 18, fontWeight: '800' },
   summaryLabel: { fontSize: 9, fontWeight: '600', color: colors.gray400, marginTop: 1 },
-  tabs: { flexDirection: 'row', marginHorizontal: 16, marginTop: 12, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' },
+  tabs: { flexDirection: 'row', marginHorizontal: 16, marginTop: 12, backgroundColor: '#fff', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
   tabActive: { backgroundColor: 'rgba(51,183,239,0.08)' },
   tabText: { fontSize: 12, fontWeight: '600', color: colors.gray400 },
   tabTextActive: { color: colors.brandLight, fontWeight: '700' },
   list: { padding: 16, gap: 8, paddingBottom: 32 },
-  card: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
+  card: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: radius.lg, padding: 14, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
   cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  tableIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' },
+  tableIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, minWidth: 0 },
   tableName: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
   groupName: { fontSize: 10, color: colors.gray400, marginTop: 2 },
-  countBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, minWidth: 36, alignItems: 'center' },
+  countBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.xs, minWidth: 36, alignItems: 'center' },
   countText: { fontSize: 12, fontWeight: '800', color: '#b45309' },
   empty: { alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
 });

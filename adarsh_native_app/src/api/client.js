@@ -5,7 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
-const BASE_URL = 'https://panel.adarshbhopal.in';
+const BASE_URL = 'https://adarsh-app-2026.loca.lt';
 
 const STORAGE_KEYS = {
   csrfToken: 'adarsh_csrf_token',
@@ -87,12 +87,14 @@ async function apiFetch(path, options = {}) {
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
     'User-Agent': 'AdarshMobileApp/1.1 (Premium Native; Expo)',
+    'Bypass-Tunnel-Reminder': 'true',
     ...(options.headers || {}),
   };
 
-  // Attach CSRF for mutations — SKIP for auth paths as they are exempt on backend
-  const isAuth = path.includes('/auth/') || path.includes('/login');
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && cachedCsrf && !isAuth) {
+  // Always attach CSRF for mutations when available.
+  // The backend CSRF bypass middleware already exempts /app/api/ paths,
+  // but sending it when we have it is strictly safer.
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && cachedCsrf) {
     headers['X-CSRFToken'] = cachedCsrf;
   }
 
@@ -119,41 +121,86 @@ async function apiFetch(path, options = {}) {
   return response;
 }
 
-export async function apiGet(path) {
+export async function apiGet(path, params = null) {
   try {
-    const response = await apiFetch(path);
+    let finalPath = path;
+    if (params && Object.keys(params).length > 0) {
+      const query = Object.entries(params)
+        .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join('&');
+      if (query) {
+        finalPath += (finalPath.includes('?') ? '&' : '?') + query;
+      }
+    }
+
+    const response = await apiFetch(finalPath);
+    const text = await response.text();
+    
+    if (response.status === 503) {
+      return { ok: false, status: 503, data: { success: false, message: 'Server tunnel is currently unavailable. Please try again in a moment.' } };
+    }
+
+    let data = {};
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.warn('[API] JSON Parse Error for path:', finalPath, 'Response:', text.substring(0, 100));
+      return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid server response' : 'Server error (' + response.status + ')' } };
+    }
+    return { ok: response.ok, status: response.status, data };
+  } catch (e) {
+    console.warn('[API] Fetch Error for path:', path, e);
+    return { ok: false, status: 0, data: { success: false, message: e.message?.includes('Network') ? 'Connection failed. Check your internet.' : (e.message || 'Network error') } };
+  }
+}
+
+export async function apiPost(path, body = {}) {
+  try {
+    const response = await apiFetch(path, {
+      method: 'POST',
+      json: body,
+    });
+    const text = await response.text();
+
+    if (response.status === 503) {
+      return { ok: false, status: 503, data: { success: false, message: 'Server tunnel is currently unavailable.' } };
+    }
+
+    let data = {};
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.warn('[API] JSON Parse Error for POST path:', path, 'Response:', text.substring(0, 100));
+      return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid server response' : 'Server error (' + response.status + ')' } };
+    }
+    return { ok: response.ok, status: response.status, data };
+  } catch (e) {
+    console.warn('[API] Fetch Error for POST path:', path, e);
+    return { ok: false, status: 0, data: { success: false, message: e.message || 'Network error' } };
+  }
+}
+
+export async function apiPostForm(path, formData, extraHeaders = {}) {
+  try {
+    const response = await apiFetch(path, {
+      method: 'POST',
+      body: formData,
+      headers: extraHeaders,
+    });
     const text = await response.text();
     let data = {};
     try {
       data = JSON.parse(text);
     } catch (e) {
-      console.warn('[API] JSON Parse Error for path:', path, 'Response:', text.substring(0, 100));
+      console.warn('[API] JSON Parse Error for form POST:', path);
       return { ok: false, status: response.status, data: { message: 'Invalid server response' } };
     }
     return { ok: response.ok, status: response.status, data };
   } catch (e) {
-    console.warn('[API] Fetch Error for path:', path, e);
+    console.warn('[API] Fetch Error for form POST:', path, e);
     return { ok: false, status: 0, data: { message: e.message || 'Network error' } };
   }
-}
-
-export async function apiPost(path, body = {}) {
-  const response = await apiFetch(path, {
-    method: 'POST',
-    json: body,
-  });
-  const data = await response.json();
-  return { ok: response.ok, status: response.status, data };
-}
-
-export async function apiPostForm(path, formData, extraHeaders = {}) {
-  const response = await apiFetch(path, {
-    method: 'POST',
-    body: formData,
-    headers: extraHeaders,
-  });
-  const data = await response.json();
-  return { ok: response.ok, status: response.status, data };
 }
 
 /**

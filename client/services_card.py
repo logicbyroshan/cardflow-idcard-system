@@ -271,9 +271,42 @@ class ClientCardService(BaseService):
 
     @classmethod
     def _assigned_table_ids_for_access(cls, staff) -> List[int]:
+        """Return cached normalized assigned table IDs for client_staff checks.
+        Checks both legacy assigned_table_ids field and new assignment_scopes.
+        """
         cached_table_ids = getattr(staff, '_cached_assigned_table_ids_for_card_scope', None)
         if cached_table_ids is not None:
             return cached_table_ids
+
+        scopes = getattr(staff, 'assignment_scopes', None)
+        if isinstance(scopes, list) and scopes:
+            explicit_table_ids = []
+            seen = set()
+            has_any_valid_scope = False
+
+            for scope in scopes:
+                if not isinstance(scope, dict):
+                    continue
+                stype = str(scope.get('scope_type', '') or '').strip().lower()
+                if stype not in ('group', 'table'):
+                    continue
+                has_any_valid_scope = True
+                if stype != 'table':
+                    continue
+
+                sid = scope.get('scope_id')
+                try:
+                    sid_int = int(str(sid).strip())
+                except (TypeError, ValueError):
+                    continue
+                if sid_int <= 0 or sid_int in seen:
+                    continue
+                seen.add(sid_int)
+                explicit_table_ids.append(sid_int)
+
+            if has_any_valid_scope:
+                setattr(staff, '_cached_assigned_table_ids_for_card_scope', explicit_table_ids)
+                return explicit_table_ids
 
         assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
         setattr(staff, '_cached_assigned_table_ids_for_card_scope', assigned_table_ids)
@@ -515,7 +548,7 @@ class ClientCardService(BaseService):
 
             if status_filter:
                 perm = perm_map.get(status_filter)
-                if perm and not PermissionService.has_permission(user, perm):
+                if perm and not PermissionService.has(user, perm):
                     return ServiceResult(
                         success=False,
                         message=f'No permission to view {status_filter} cards'
@@ -523,7 +556,7 @@ class ClientCardService(BaseService):
 
             allowed_statuses = [
                 status for status, perm_name in perm_map.items()
-                if PermissionService.has_permission(user, perm_name)
+                if PermissionService.has(user, perm_name)
             ]
             if not allowed_statuses:
                 return ServiceResult(success=False, message='No permission to view cards')
@@ -759,7 +792,7 @@ class ClientCardService(BaseService):
             if not client and not PermissionService.is_any_admin(user):
                 return ServiceResult(success=False, message='Client profile not found')
 
-            if not PermissionService.has_permission(user, 'perm_idcard_info'):
+            if not PermissionService.has(user, 'perm_idcard_info'):
                 return ServiceResult(success=False, message='Permission denied')
             
             # Get card

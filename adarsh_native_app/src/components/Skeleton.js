@@ -66,10 +66,9 @@ export const DashboardSkeleton = React.memo(function DashboardSkeleton() {
     <View style={presets.dashWrap}>
       {/* Summary card */}
       <Skeleton width="100%" height={80} radius={20} style={{ marginBottom: 16 }} />
-      {/* Status cards grid */}
       <View style={presets.grid}>
-        {[0, 1, 2, 3, 4].map(i => (
-          <Skeleton key={i} width="47%" height={72} radius={16} />
+        {[0, 1, 2, 3, 4, 5].map(i => (
+          <Skeleton key={i} width="31%" height={80} radius={12} />
         ))}
       </View>
       {/* Quick actions */}
@@ -163,7 +162,7 @@ const presets = StyleSheet.create({
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#f1f5f9' },
   cardInfo: { flex: 1 },
   dashWrap: { padding: 16 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
   detailWrap: { padding: 16 },
   heroRow: { flexDirection: 'row', gap: 16, backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 16 },
   heroInfo: { flex: 1, paddingTop: 4 },

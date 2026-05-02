@@ -1,18 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
+import Toast from '../components/Toast';
 import { SettingsSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
-import { apiGet } from '../api/client';
-import { colors, shadows } from '../theme';
+import { apiGet, apiPost } from '../api/client';
+import { colors, shadows, radius, gradients, spacing } from '../theme';
 
 export default function SettingsScreen({ navigation }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+
+  const [updateStatus, setUpdateStatus] = useState({ 
+    loading: false, 
+    currentBuild: 'React Native', 
+    latestVersion: '-', 
+    statusText: 'Checking...', 
+    statusType: 'info' 
+  });
+
+  const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
 
   const loadSettings = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -29,7 +41,43 @@ export default function SettingsScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  useEffect(() => { loadSettings(); }, []);
+  const checkUpdates = async () => {
+    setUpdateStatus(p => ({ ...p, loading: true }));
+    try {
+      const { data } = await apiGet('/app/api/mobile-shell/config/');
+      const d = data?.success ? data.data : null;
+      setUpdateStatus({
+        loading: false,
+        currentBuild: 'React Native',
+        latestVersion: d?.latest_version || '-',
+        statusText: d?.update_required ? 'Update Required' : d?.update_recommended ? 'Update Available' : 'Up to Date',
+        statusType: d?.update_required || d?.update_recommended ? 'warn' : 'ok'
+      });
+    } catch (e) {
+      setUpdateStatus(p => ({ ...p, loading: false, statusText: 'Unable to Check' }));
+    }
+  };
+
+  useEffect(() => {
+    loadSettings();
+    checkUpdates();
+  }, []);
+
+  const handleDeleteRequest = () => {
+    Alert.alert(
+      'Request Data Deletion',
+      'Are you sure you want to request deletion of all your data? This action will notify the admin team and cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete My Data', style: 'destructive', onPress: async () => {
+          try {
+            const { data } = await apiPost('/app/api/profile/delete-request/', { confirm: true });
+            showToast(data?.success ? (data.message || 'Deletion request submitted') : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
+          } catch (e) { showToast('Network error', 'error'); }
+        }},
+      ]
+    );
+  };
 
   if (loading) return (
     <View style={s.root}><TopBar title="Settings" onBack={() => navigation.goBack()} /><SettingsSkeleton /></View>
@@ -39,80 +87,89 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <View style={s.root}>
-      <TopBar title="Settings" subtitle="System information & stats" onBack={() => navigation.goBack()} />
+      <TopBar title="Settings" subtitle="Support & System Info" onBack={() => navigation.goBack()} />
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadSettings(true)} />}
+      
       <ScrollView 
         style={s.scroll} 
         contentContainerStyle={s.scrollC} 
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadSettings(true)} tintColor={colors.brandLight} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { loadSettings(true); checkUpdates(); }} tintColor={colors.brandLight} />}
       >
 
-        {/* Stats */}
-        <Text style={s.secTitle}>CLIENT STATS</Text>
-        <View style={s.statsGrid}>
-          <StatBox icon="table" color="#667eea" bg="rgba(102,126,234,0.08)" label="Tables" value={d.table_count ?? '-'} />
-          <StatBox icon="layer-group" color="#8b5cf6" bg="#ede9fe" label="Groups" value={d.group_count ?? '-'} />
-          <StatBox icon="id-card" color="#f59e0b" bg="#fef3c7" label="Cards" value={d.total_cards ?? '-'} />
+        {/* Support Chat */}
+        <Text style={s.secTitle}>SUPPORT & CHAT</Text>
+        <TouchableOpacity 
+          style={s.chatCard} 
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Notifications')}
+        >
+          <LinearGradient colors={['#4f46e5', '#3730a3']} style={s.chatGradient}>
+            <View style={s.chatInfo}>
+              <View style={s.chatIconW}><FontAwesome5 name="comments" size={18} color="#fff" /></View>
+              <View>
+                <Text style={s.chatTitle}>Admin Support Chat</Text>
+                <Text style={s.chatSub}>Direct line to the admin team</Text>
+              </View>
+            </View>
+            <FontAwesome5 name="chevron-right" size={14} color="rgba(255,255,255,0.6)" />
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* App Update Status */}
+        <Text style={s.secTitle}>APP UPDATE STATUS</Text>
+        <View style={s.updCard}>
+          <View style={s.updGrid}>
+            <UpdBox label="Current" value={updateStatus.currentBuild} />
+            <UpdBox label="Latest" value={updateStatus.latestVersion} />
+            <UpdBox 
+              label="Status" 
+              value={updateStatus.statusText} 
+              color={updateStatus.statusType === 'ok' ? '#22c55e' : updateStatus.statusType === 'warn' ? '#f59e0b' : '#3b82f6'} 
+            />
+          </View>
+          {updateStatus.loading && <ActivityIndicator size="small" color={colors.brandPrimary} style={{marginTop: 10}} />}
         </View>
 
-        {d.admin_client_count !== undefined && (
-          <>
-            <Text style={s.secTitle}>ADMIN STATS</Text>
-            <View style={s.statsGrid}>
-              <StatBox icon="building" color="#3b82f6" bg="#dbeafe" label="Clients" value={d.admin_client_count ?? '-'} />
-              <StatBox icon="users" color="#10b981" bg="#d1fae5" label="Staff" value={d.admin_staff_count ?? '-'} />
-              <StatBox icon="id-card" color="#ec4899" bg="#fce7f3" label="All Cards" value={d.admin_total_cards ?? '-'} />
+        {/* Data Management */}
+        <Text style={s.secTitle}>DATA MANAGEMENT</Text>
+        <View style={s.dangerCard}>
+          <TouchableOpacity onPress={handleDeleteRequest} style={s.deleteBtn} activeOpacity={0.7}>
+            <View style={s.deleteIconW}><FontAwesome5 name="trash-alt" size={14} color="#ef4444" /></View>
+            <View style={{flex: 1}}>
+              <Text style={s.deleteTitle}>Request Account Deletion</Text>
+              <Text style={s.deleteSub}>Permanently remove your data from our servers</Text>
             </View>
-          </>
-        )}
-
-        {/* Recent Activity Log */}
-        {d.log_activities && d.log_activities.length > 0 && (
-          <>
-            <Text style={s.secTitle}>RECENT ACTIVITY</Text>
-            <View style={s.logsCard}>
-              {d.log_activities.slice(0, 15).map((log, i) => (
-                <View key={i} style={s.logRow}>
-                  <View style={s.logDot} />
-                  <View style={s.logInfo}>
-                    <Text style={s.logName} numberOfLines={1}>{log.name}</Text>
-                    <Text style={s.logMeta}>{log.table_name} · {log.status_display} · {log.updated_at}</Text>
-                  </View>
-                  <StatusPill status={log.status} />
-                </View>
-              ))}
-            </View>
-          </>
-        )}
+            <FontAwesome5 name="arrow-right" size={12} color="#fecaca" />
+          </TouchableOpacity>
+        </View>
 
         {/* System Info */}
-        <Text style={s.secTitle}>SYSTEM INFO</Text>
+        <Text style={s.secTitle}>SYSTEM INFORMATION</Text>
         <View style={s.sysCard}>
-          <InfoRow label="App Version" value={d.app_version || '-'} />
-          <InfoRow label="Django Version" value={d.django_version || '-'} />
-          <InfoRow label="Python Version" value={d.python_version || '-'} />
-          <InfoRow label="Debug Mode" value={d.debug_mode ? 'Enabled' : 'Disabled'} valueColor={d.debug_mode ? '#f59e0b' : '#22c55e'} />
+          <InfoRow label="App Version" value={d.app_version || '1.0.0'} />
+          <InfoRow label="Environment" value={d.debug_mode ? 'Development' : 'Production'} />
+          <InfoRow label="API Status" value="Online" valueColor="#22c55e" />
+          <InfoRow label="Platform" value="Expo / React Native" />
         </View>
+
+        <View style={s.footer}>
+          <Text style={s.footerText}>Adarsh ID Cards · Secure ID Management</Text>
+        </View>
+
       </ScrollView>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({ ...p, visible: false }))} />
     </View>
   );
 }
 
-function StatBox({ icon, color, bg, label, value }) {
+function UpdBox({ label, value, color }) {
   return (
-    <View style={s.statBox}>
-      <View style={[s.statIcon, { backgroundColor: bg }]}><FontAwesome5 name={icon} size={14} color={color} solid /></View>
-      <Text style={s.statValue}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
+    <View style={ub.box}>
+      <Text style={ub.lb}>{label}</Text>
+      <Text style={[ub.val, color && { color }]}>{value}</Text>
     </View>
   );
-}
-
-function StatusPill({ status }) {
-  const MAP = { pending: { bg: '#fef3c7', c: '#b45309' }, verified: { bg: '#d1fae5', c: '#047857' }, approved: { bg: '#e0f2fe', c: '#0369a1' }, download: { bg: '#ede9fe', c: '#7c3aed' }, pool: { bg: '#fce7f3', c: '#be185d' } };
-  const st = MAP[status] || { bg: '#f3f4f6', c: '#6b7280' };
-  return (<View style={[s.pill, { backgroundColor: st.bg }]}><Text style={[s.pillText, { color: st.c }]}>{(status || '').charAt(0).toUpperCase() + (status || '').slice(1)}</Text></View>);
 }
 
 function InfoRow({ label, value, valueColor }) {
@@ -126,24 +183,41 @@ function InfoRow({ label, value, valueColor }) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { flex: 1 }, scrollC: { paddingBottom: 40 },
-  secTitle: { fontSize: 10, fontWeight: '700', color: colors.gray400, letterSpacing: 1.2, marginHorizontal: 20, marginTop: 16, marginBottom: 8 },
-  statsGrid: { flexDirection: 'row', gap: 8, marginHorizontal: 16 },
-  statBox: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  statIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  statValue: { fontSize: 18, fontWeight: '800', color: colors.gray800 },
-  statLabel: { fontSize: 10, fontWeight: '600', color: colors.gray400, marginTop: 2 },
-  logsCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', ...shadows.sm },
-  logRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
-  logDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.brandLight },
-  logInfo: { flex: 1, minWidth: 0 },
-  logName: { fontSize: 12, fontWeight: '600', color: colors.gray800 },
-  logMeta: { fontSize: 10, color: colors.gray400, marginTop: 1 },
-  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  pillText: { fontSize: 9, fontWeight: '700' },
-  sysCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', ...shadows.sm },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
+  scroll: { flex: 1 }, 
+  scrollC: { paddingBottom: 40 },
+  secTitle: { fontSize: 10, fontWeight: '800', color: colors.gray400, letterSpacing: 1.2, marginHorizontal: 20, marginTop: 24, marginBottom: 10, textTransform: 'uppercase' },
+  
+  // Chat Card
+  chatCard: { marginHorizontal: 16, borderRadius: radius.lg, overflow: 'hidden', ...shadows.md },
+  chatGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18 },
+  chatInfo: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  chatIconW: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  chatTitle: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  chatSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+
+  // Update Card
+  updCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  updGrid: { flexDirection: 'row', gap: 10 },
+  
+  // Danger Card
+  dangerCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.lg, borderWidth: 1, borderColor: '#fee2e2', overflow: 'hidden', ...shadows.sm },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 },
+  deleteIconW: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center' },
+  deleteTitle: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
+  deleteSub: { fontSize: 10, color: colors.gray400, marginTop: 2 },
+
+  // System Card
+  sysCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.lg, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', ...shadows.sm },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
   infoLabel: { fontSize: 12, fontWeight: '500', color: colors.gray500 },
   infoValue: { fontSize: 12, fontWeight: '600', color: colors.gray800 },
+
+  footer: { marginTop: 40, alignItems: 'center', paddingBottom: 20 },
+  footerText: { fontSize: 10, color: colors.gray300, fontWeight: '600', letterSpacing: 0.5 },
+});
+
+const ub = StyleSheet.create({
+  box: { flex: 1, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#f1f5f9', borderRadius: radius.md, paddingVertical: 10, alignItems: 'center' },
+  lb: { fontSize: 9, fontWeight: '700', color: colors.gray400, letterSpacing: 0.8, textTransform: 'uppercase' },
+  val: { fontSize: 12, fontWeight: '700', color: colors.gray700, marginTop: 4 },
 });
