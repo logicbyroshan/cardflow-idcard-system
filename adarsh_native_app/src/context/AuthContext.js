@@ -13,7 +13,39 @@ export function AuthProvider({ children }) {
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [originalUser, setOriginalUser] = useState(null);
 
-  // Load stored auth on mount + refresh profile from server
+  const refreshProfile = useCallback(async () => {
+    try {
+      const { ok, status, data } = await apiGet('/app/api/profile/');
+      if (status === 401 || status === 403) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsImpersonating(false);
+        setOriginalUser(null);
+        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+        await clearAuth();
+      } else if (ok && data?.success) {
+        setUser(prev => {
+          if (!prev) return null;
+          const refreshed = {
+            ...prev,
+            name: data.data?.name || prev.name,
+            email: data.data?.email || prev.email,
+            role: data.data?.role || prev.role,
+            client_id: data.data?.client_id || prev.client_id,
+            can_manage_clients: !!data.data?.can_manage_clients,
+            can_manage_staff: !!data.data?.can_manage_staff,
+            permissions: data.data?.permissions || prev.permissions || {},
+          };
+          AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshed));
+          return refreshed;
+        });
+      }
+    } catch (e) {
+      console.log('Profile refresh failed', e);
+    }
+  }, []);
+
+  // Load stored auth on mount + setup foreground sync
   useEffect(() => {
     (async () => {
       try {
@@ -23,7 +55,7 @@ export function AuthProvider({ children }) {
           const parsed = JSON.parse(stored);
           setUser(parsed);
           setIsAuthenticated(true);
-
+          
           // Restore impersonation state
           const impState = await AsyncStorage.getItem('adarsh_impersonate_state');
           if (impState) {
@@ -32,40 +64,22 @@ export function AuthProvider({ children }) {
             setOriginalUser(parsedImp.originalUser || null);
           }
 
-          // Try to refresh user profile from server
-          try {
-            const { ok, status, data } = await apiGet('/app/api/profile/');
-            if (status === 401 || status === 403) {
-              // Session expired — auto logout
-              setUser(null);
-              setIsAuthenticated(false);
-              setIsImpersonating(false);
-              setOriginalUser(null);
-              await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-              await AsyncStorage.removeItem('adarsh_impersonate_state');
-              await clearAuth();
-            } else if (ok && data?.success) {
-              const refreshed = {
-                ...parsed,
-                name: data.data?.name || parsed.name,
-                email: data.data?.email || parsed.email,
-                phone: data.data?.phone || parsed.phone || '',
-                role: data.data?.role || parsed.role,
-                permissions: data.data?.permissions || parsed.permissions || {},
-              };
-              setUser(refreshed);
-              await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshed));
-            }
-          } catch (e) {
-            // Network error — keep cached data
-          }
+          // Initial background sync
+          refreshProfile();
         }
-      } catch (e) {
-        // silent
-      }
+      } catch (e) {}
       setIsLoading(false);
     })();
-  }, []);
+
+    // Foreground sync listener
+    const { AppState } = require('react-native');
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        refreshProfile();
+      }
+    });
+    return () => subscription.remove();
+  }, [refreshProfile]);
 
   const login = useCallback(async (email, password, forceLogoutOther = false) => {
     // Ensure we have a CSRF token
@@ -81,6 +95,9 @@ export function AuthProvider({ children }) {
         email,
         name: data.user_name || data.name || email,
         role: data.role || '',
+        client_id: data.client_id,
+        can_manage_clients: !!data.can_manage_clients,
+        can_manage_staff: !!data.can_manage_staff,
         permissions: data.permissions || {},
         loggedInAt: Date.now(),
       };
@@ -100,20 +117,20 @@ export function AuthProvider({ children }) {
     setIsImpersonating(false);
     setOriginalUser(null);
     try {
-      // Panel subdomain doesn't use /panel/ prefix — it's just /auth/logout/
-      await apiPost('/auth/logout/', {});
+      // Standard logout endpoint
+      await apiPost('/app/api/auth/logout/', {});
     } catch (e) {
       // Network failure during logout is fine — session will expire on server
     }
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
     await AsyncStorage.removeItem('adarsh_impersonate_state');
+    await AsyncStorage.removeItem('adarsh_csrf_token');
+    await AsyncStorage.removeItem('adarsh_cookies');
     await clearAuth();
   }, []);
 
   const checkSession = useCallback(async () => {
     try {
-      // Use profile endpoint — it's accessible to all authenticated roles,
-      // unlike server-info which is super_admin only.
       const { ok, status } = await apiGet('/app/api/profile/');
       if (status === 401 || status === 403) {
         setUser(null);
@@ -209,6 +226,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     checkSession,
+    refreshProfile,
     startImpersonation,
     stopImpersonation,
   };

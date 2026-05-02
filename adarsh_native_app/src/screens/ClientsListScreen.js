@@ -21,6 +21,7 @@ export default function ClientsListScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
+  const [showFilter, setShowFilter] = useState(false);
   
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -35,8 +36,13 @@ export default function ClientsListScreen({ navigation }) {
   const [assignTables, setAssignTables] = useState([]);
   const [loadingAssign, setLoadingAssign] = useState(false);
 
-  // Filter drawer
-  const [showFilter, setShowFilter] = useState(false);
+  // Permissions state
+  const [showPerms, setShowPerms] = useState(false);
+  const [permClientId, setPermClientId] = useState(null);
+  const [permClientName, setPermClientName] = useState('');
+  const [clientPerms, setClientPerms] = useState({});
+  const [loadingPerms, setLoadingPerms] = useState(false);
+  const [savingPerms, setSavingPerms] = useState(false);
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [impersonatingId, setImpersonatingId] = useState(null);
@@ -48,7 +54,7 @@ export default function ClientsListScreen({ navigation }) {
   });
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
-  const isAdmin = ['super_admin', 'admin_staff', 'pro_user'].includes(user?.role);
+  const isAdmin = ['super_admin', 'admin_staff'].includes(user?.role);
 
   const loadClients = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -76,7 +82,51 @@ export default function ClientsListScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  useEffect(() => { loadClients(); }, []);
+  useEffect(() => { 
+    loadClients(); 
+    // Handle "Add Client" from dashboard
+    if (navigation.getState().routes.find(r => r.name === 'ClientsList')?.params?.openForm) {
+      openCreate();
+    }
+  }, []);
+
+  const openPerms = async (client) => {
+    setPermClientId(client.id);
+    setPermClientName(client.name);
+    setLoadingPerms(true);
+    setShowPerms(true);
+    try {
+      const { ok, data } = await apiGet(`/app/api/client/${client.id}/permissions/`);
+      if (ok && data.success) {
+        setClientPerms(data.data || {});
+      } else {
+        showToast('Failed to load permissions', 'error');
+        setShowPerms(false);
+      }
+    } catch (e) {
+      showToast('Network error', 'error');
+      setShowPerms(false);
+    }
+    setLoadingPerms(false);
+  };
+
+  const savePerms = async () => {
+    setSavingPerms(true);
+    try {
+      const { ok, data } = await apiPost(`/app/api/client/${permClientId}/permissions/update/`, {
+        permissions: clientPerms
+      });
+      if (ok && data.success) {
+        showToast('Permissions updated!', 'success');
+        setShowPerms(false);
+      } else {
+        showToast(data?.message || 'Update failed', 'error');
+      }
+    } catch (e) {
+      showToast('Network error', 'error');
+    }
+    setSavingPerms(false);
+  };
 
   const filtered = useMemo(() => {
     return clients.filter(c => {
@@ -241,6 +291,12 @@ export default function ClientsListScreen({ navigation }) {
           </TouchableOpacity>
         )}
         {user?.is_super_admin && (
+          <TouchableOpacity onPress={() => openPerms(item)} style={s.textBtn}>
+            <FontAwesome5 name="shield-alt" size={10} color="#22c55e" style={s.btnIcon} />
+            <Text style={[s.textBtnLabel, { color: '#22c55e' }]}>PERMS</Text>
+          </TouchableOpacity>
+        )}
+        {user?.is_super_admin && (
           <TouchableOpacity onPress={() => deleteClient(item)} style={s.textBtn}>
             <FontAwesome5 name="trash-alt" size={10} color="#ef4444" style={s.btnIcon} />
             <Text style={[s.textBtnLabel, { color: '#ef4444' }]}>DELETE</Text>
@@ -390,6 +446,62 @@ export default function ClientsListScreen({ navigation }) {
         </View>
       </Modal>
 
+      {/* Permissions Toggle Modal */}
+      <Modal visible={showPerms} animationType="slide" transparent onRequestClose={() => setShowPerms(false)}>
+        <View style={s.modalOverlay}>
+          <TouchableOpacity style={s.modalBg} activeOpacity={1} onPress={() => setShowPerms(false)} />
+          <View style={s.modalSheet}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitle}>Permissions: {permClientName}</Text>
+            {loadingPerms ? (
+              <ActivityIndicator style={{ padding: 40 }} color={colors.brandPrimary} />
+            ) : (
+              <ScrollView style={{ paddingHorizontal: 16 }}>
+                <PermToggle 
+                  label="Reprint & History" 
+                  desc="Access to card reprint requests and service history" 
+                  value={clientPerms.perm_idcard_info} 
+                  onToggle={v => setClientPerms(p => ({ ...p, perm_idcard_info: v }))} 
+                />
+                <PermToggle 
+                  label="Data Verification" 
+                  desc="Ability to verify pending ID card records" 
+                  value={clientPerms.perm_idcard_verify} 
+                  onToggle={v => setClientPerms(p => ({ ...p, perm_idcard_verify: v }))} 
+                />
+                <PermToggle 
+                  label="Final Approval" 
+                  desc="Authority to approve records for printing" 
+                  value={clientPerms.perm_idcard_approve} 
+                  onToggle={v => setClientPerms(p => ({ ...p, perm_idcard_approve: v }))} 
+                />
+                <PermToggle 
+                  label="Download Access" 
+                  desc="Permission to download digital copies/Excel" 
+                  value={clientPerms.perm_idcard_download} 
+                  onToggle={v => setClientPerms(p => ({ ...p, perm_idcard_download: v }))} 
+                />
+                <PermToggle 
+                  label="Web Panel Access" 
+                  desc="Visibility of the institutional portfolio panel" 
+                  value={clientPerms.perm_website_view} 
+                  onToggle={v => setClientPerms(p => ({ ...p, perm_website_view: v }))} 
+                />
+              </ScrollView>
+            )}
+            <View style={s.formBtns}>
+              <TouchableOpacity onPress={() => setShowPerms(false)} style={s.cancelBtn}><Text style={s.cancelBtnText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity onPress={savePerms} disabled={savingPerms} style={s.saveBtnWrap}>
+                <LinearGradient colors={gradients.brand} style={s.saveBtn}>
+                  {savingPerms && <ActivityIndicator size="small" color="#fff" />}
+                  <Text style={s.saveBtnText}>Save Changes</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ConfirmModal 
         visible={confirmModal.visible}
         onClose={() => setConfirmModal(p => ({ ...p, visible: false }))}
@@ -401,6 +513,23 @@ export default function ClientsListScreen({ navigation }) {
       />
 
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({ ...p, visible: false }))} />
+    </View>
+  );
+}
+
+function PermToggle({ label, desc, value, onToggle }) {
+  return (
+    <View style={s.permToggleRow}>
+      <View style={{ flex: 1 }}>
+        <Text style={s.permToggleLabel}>{label}</Text>
+        <Text style={s.permToggleDesc}>{desc}</Text>
+      </View>
+      <Switch 
+        value={!!value} 
+        onValueChange={onToggle} 
+        trackColor={{ false: '#e2e8f0', true: colors.brandPrimary + '50' }}
+        thumbColor={value ? colors.brandPrimary : '#94a3b8'}
+      />
     </View>
   );
 }
@@ -421,65 +550,68 @@ const s = StyleSheet.create({
   rightIconBtn: { padding: 8 },
   searchInput: { flex: 1, color: '#fff', fontSize: 13, paddingHorizontal: 8 },
   impBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 10, backgroundColor: '#f59e0b' },
-  impBannerText: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  impBannerText: { fontSize: 11, fontFamily: fontFamily.bold, color: '#fff', letterSpacing: 0.5 },
   list: { padding: 16, gap: 10, paddingBottom: 32 },
   card: { backgroundColor: '#fff', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   avatar: { width: 40, height: 40, borderRadius: radius.xs, backgroundColor: 'rgba(51,183,239,0.08)', alignItems: 'center', justifyContent: 'center' },
   cardInfo: { flex: 1, minWidth: 0 },
-  name: { fontSize: 14, fontWeight: '700', color: colors.gray800 },
-  email: { fontSize: 11, color: colors.gray400, marginTop: 1 },
+  name: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
+  email: { fontSize: 11, color: colors.gray400, marginTop: 1, fontFamily: fontFamily.medium },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm },
   statusDotSmall: { width: 6, height: 6, borderRadius: 3 },
-  statusPillText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  statusPillText: { fontSize: 9, fontFamily: fontFamily.bold, letterSpacing: 0.5 },
   cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
   textBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9' },
   btnIcon: { marginBottom: 1 },
-  textBtnLabel: { fontSize: 10, fontWeight: '800', color: colors.brandPrimary, letterSpacing: 0.5 },
+  textBtnLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.brandPrimary, letterSpacing: 0.5 },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
+  emptyTitle: { fontSize: 13, fontFamily: fontFamily.semibold, color: colors.gray400 },
+  permToggleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  permToggleLabel: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
+  permToggleDesc: { fontSize: 11, color: colors.gray500, marginTop: 2, fontFamily: fontFamily.regular },
   // Filter Drawer
   filterOverlay: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end' },
   filterBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.4)' },
   filterDrawer: { width: width * 0.75, height: '100%', backgroundColor: '#fff', paddingTop: 40 },
   filterHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  filterTitle: { fontSize: 16, fontWeight: '700', color: colors.gray800 },
+  filterTitle: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.gray800 },
   filterClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
   filterContent: { flex: 1, padding: 20 },
-  filterLabel: { fontSize: 10, fontWeight: '900', color: colors.gray400, letterSpacing: 1.2, marginBottom: 12 },
+  filterLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, marginBottom: 12 },
   filterChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.sm, backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0' },
   filterChipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
-  filterChipText: { fontSize: 11, fontWeight: '700', color: colors.gray600 },
+  filterChipText: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray600 },
   filterChipTextActive: { color: '#fff' },
   filterFooter: { flexDirection: 'row', padding: 20, gap: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   resetBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm, backgroundColor: colors.gray100 },
-  resetBtnText: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
+  resetBtnText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray600 },
   applyBtnWrap: { flex: 2, borderRadius: radius.sm, overflow: 'hidden' },
   applyBtn: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
-  applyBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  applyBtnText: { fontSize: 12, fontFamily: fontFamily.bold, color: '#fff' },
   // Modal Sheet
   modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
   modalBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
   modalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 40, ...shadows.xl },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginTop: 12, marginBottom: 8 },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: colors.gray800, paddingHorizontal: 16, marginBottom: 16 },
+  modalTitle: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.gray800, paddingHorizontal: 16, marginBottom: 16 },
   formFields: { paddingHorizontal: 16, gap: 12 },
   field: { marginBottom: 12 },
-  fieldLabel: { fontSize: 10, fontWeight: '700', color: colors.gray500, letterSpacing: 0.8, marginBottom: 4 },
-  fieldInput: { backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: colors.gray700 },
+  fieldLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray500, letterSpacing: 0.8, marginBottom: 4 },
+  fieldInput: { backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: colors.gray700, fontFamily: fontFamily.regular },
   fieldDisabled: { backgroundColor: '#f1f5f9', color: colors.gray400 },
   formBtns: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 16 },
   cancelBtn: { flex: 1, paddingVertical: 14, backgroundColor: colors.gray100, borderRadius: radius.md, alignItems: 'center' },
-  cancelBtnText: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
+  cancelBtnText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray600 },
   saveBtnWrap: { flex: 2, borderRadius: radius.md, overflow: 'hidden' },
   saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14 },
-  saveBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  saveBtnText: { fontSize: 12, fontFamily: fontFamily.bold, color: '#fff' },
   // Assign (Tables)
   assignRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 12 },
   tableIconSmall: { width: 30, height: 30, borderRadius: radius.xs, backgroundColor: 'rgba(51,183,239,0.05)', alignItems: 'center', justifyContent: 'center' },
-  assignTableName: { fontSize: 13, fontWeight: '700', color: colors.gray700 },
-  assignTableMeta: { fontSize: 10, color: colors.gray400, marginTop: 2 },
-  emptyLabel: { fontSize: 12, color: colors.gray400, fontStyle: 'italic', paddingVertical: 20, textAlign: 'center' },
+  assignTableName: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray700 },
+  assignTableMeta: { fontSize: 10, color: colors.gray400, marginTop: 2, fontFamily: fontFamily.medium },
+  emptyLabel: { fontSize: 12, color: colors.gray400, fontStyle: 'italic', paddingVertical: 20, textAlign: 'center', fontFamily: fontFamily.regular },
 });

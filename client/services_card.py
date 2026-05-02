@@ -668,11 +668,30 @@ class ClientCardService(BaseService):
                             cards_query = cards_query.filter(_filter_sec__in=matching_sections)
 
             photo_filter_value = str(photo_filter or '').strip().lower()
-            if photo_filter_value in ('with', 'without'):
+            if photo_filter_value in ('complete', 'pending', 'incomplete', 'with', 'without'):
                 matching_photo_ids: List[int] = []
                 for _card in cards_query.only('id', 'photo', 'field_data').iterator(chunk_size=500):
-                    _has_photo = bool(get_card_photo_url(_card, _card.field_data or {}))
-                    if (photo_filter_value == 'with' and _has_photo) or (photo_filter_value == 'without' and not _has_photo):
+                    fd = _card.field_data or {}
+                    
+                    # 1. Check for valid photo (complete)
+                    has_valid_photo = bool(get_card_photo_url(_card, fd))
+                    
+                    # 2. Check for pending placeholder
+                    is_pending_placeholder = False
+                    for val in fd.values():
+                        if isinstance(val, str) and val.startswith('PENDING:'):
+                            is_pending_placeholder = True
+                            break
+                    
+                    matched = False
+                    if photo_filter_value in ('complete', 'with'):
+                        matched = has_valid_photo
+                    elif photo_filter_value == 'pending':
+                        matched = is_pending_placeholder
+                    elif photo_filter_value in ('incomplete', 'without'):
+                        matched = not has_valid_photo and not is_pending_placeholder
+                    
+                    if matched:
                         matching_photo_ids.append(_card.id)
 
                 if not matching_photo_ids:

@@ -2,15 +2,16 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, shadows, radius, spacing, typography, fontFamily } from '../theme';
+import { BASE_URL } from '../api/client';
 
-const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, onToggleSelect, onEdit, currentStatus, onStatusChange, onPool, onDelete }) {
+const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, onToggleSelect, onEdit, currentStatus, onStatusChange, onPool, onDelete, permissions = {} }) {
+  const [imageErrors, setImageErrors] = React.useState({});
   const fd = item.field_data || {};
-  
   const orderedFields = item.ordered_fields || [];
   let imageFields = [];
   let textFields = [];
 
-  // If we have ordered_fields (from backend schema), use them to show ALL fields even if empty
+  // 1. Process Fields
   if (orderedFields.length > 0) {
     orderedFields.forEach(f => {
       const val = fd[f.name] || '';
@@ -20,21 +21,40 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
         textFields.push({ name: f.name, value: val });
       }
     });
-  } else {
-    // Fallback to what's in field_data
+  } else if (Object.keys(fd).length > 0) {
     Object.entries(fd).forEach(([key, value]) => {
       const k = key.toUpperCase();
       const v = String(value || '');
       const isImageKey = k.includes('PHOTO') || k.includes('SIGN') || k.includes('IMAGE');
       const isImageVal = v.match(/\.(jpg|jpeg|png|webp|gif)$/i) || v.startsWith('http') || v.startsWith('PENDING:') || v === 'NOT_FOUND';
-      
-      if (isImageKey || isImageVal) {
-        imageFields.push({ name: key, value: v });
-      } else {
-        textFields.push({ name: key, value: v });
-      }
+      if (isImageKey || isImageVal) imageFields.push({ name: key, value: v });
+      else textFields.push({ name: key, value: v });
+    });
+  } else {
+    // Root-level fallbacks for search results (when field_data is not available)
+    const commonFields = [
+      { name: 'Name', keys: ['full_name', 'name', 'NAME', 'student_name'] },
+      { name: 'Roll No', keys: ['roll_no', 'ROLL_NO', 'sr_no', 'id_number'] },
+      { name: 'Mobile', keys: ['mobile', 'phone', 'MOBILE', 'PHONE'] },
+      { name: 'Table', keys: ['table_name'] },
+      { name: 'Group', keys: ['group_name'] },
+    ];
+    commonFields.forEach(cf => {
+      const foundKey = cf.keys.find(k => item[k]);
+      if (foundKey) textFields.push({ name: cf.name, value: item[foundKey] });
     });
   }
+
+  // 2. Photo fallback
+  if (imageFields.length === 0 && (item.photo_url || item.photo)) {
+    imageFields.push({ name: 'PHOTO', value: item.photo_url || item.photo });
+  }
+
+  const hasPerm = (key) => {
+    if (!permissions) return false;
+    if (Array.isArray(permissions)) return permissions.includes(key);
+    return !!permissions[key];
+  };
 
   const renderImageStatus = (field) => {
     const val = String(field.value || '');
@@ -47,37 +67,47 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
     let actualImageUrl = null;
     if (isComplete) {
       if (val.startsWith('http')) actualImageUrl = val;
-      else if (isMainPhoto && item.photo_url) actualImageUrl = item.photo_url;
+      else if (val.startsWith('/media/')) actualImageUrl = `${BASE_URL}${val}`;
+      else if (isMainPhoto && item.photo_url) {
+        actualImageUrl = item.photo_url.startsWith('http') ? item.photo_url : `${BASE_URL}${item.photo_url}`;
+      }
       else if (val.startsWith('file://') || val.startsWith('content://')) actualImageUrl = val;
     }
 
-    let bgColor = '#f8fafc';
-    let iconName = 'camera';
-    let iconColor = colors.gray300;
+    const hasError = imageErrors[field.name];
+
+    let bgColor = '#f1f5f9'; // GREY placeholder (default/empty)
+    let iconName = 'user-alt-slash';
+    let iconColor = '#cbd5e1';
 
     if (isPending) {
-      bgColor = '#fff7ed';
+      bgColor = '#fef08a'; // YELLOW placeholder for pending
       iconName = 'clock';
-      iconColor = '#f97316';
+      iconColor = '#ca8a04';
     } else if (isEmpty) {
-      bgColor = '#fef2f2'; // Reddish for missing
-      iconName = 'user-slash';
-      iconColor = '#fca5a5';
-    } else if (isComplete && !actualImageUrl) {
-      bgColor = '#f0fdf4';
-      iconName = 'image';
-      iconColor = '#22c55e';
+      bgColor = '#f1f5f9'; // GREY placeholder
+      iconName = 'user-alt-slash';
+      iconColor = '#cbd5e1';
+    } else if ((isComplete && !actualImageUrl) || hasError) {
+      bgColor = '#fef08a'; // YELLOW placeholder for broken/missing
+      iconName = 'exclamation-triangle';
+      iconColor = '#ca8a04';
     }
 
     return (
       <View key={field.name} style={s.imgBoxWrap}>
-        <View style={[s.imgBox, { backgroundColor: bgColor, borderColor: isEmpty ? '#fecaca' : colors.gray200 }]}>
-          {actualImageUrl ? (
-            <Image source={{ uri: actualImageUrl }} style={s.actualImg} />
+        <View style={[s.imgBox, { backgroundColor: bgColor, borderColor: isEmpty ? '#e2e8f0' : colors.gray200 }]}>
+          {actualImageUrl && !hasError ? (
+            <Image 
+              source={{ uri: actualImageUrl }} 
+              style={s.actualImg} 
+              onError={() => setImageErrors(prev => ({ ...prev, [field.name]: true }))}
+            />
           ) : (
             <View style={s.photoPlaceholderCenter}>
               <FontAwesome5 name={iconName} size={18} color={iconColor} solid />
-              {isEmpty && <Text style={s.emptyPhotoText}>EMPTY</Text>}
+              {isEmpty && <Text style={[s.emptyPhotoText, { color: '#94a3b8' }]}>EMPTY</Text>}
+              {isPending && <Text style={[s.emptyPhotoText, { color: '#ca8a04' }]}>PENDING</Text>}
             </View>
           )}
         </View>
@@ -122,13 +152,13 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
           )}
         </View>
         <View style={s.rightActions}>
-          {onEdit && (
+          {onEdit && hasPerm('perm_idcard_edit') && (
             <TouchableOpacity onPress={onEdit} style={s.editBtnWrap} activeOpacity={0.7}>
               <Text style={s.editBtnText}>Edit</Text>
             </TouchableOpacity>
           )}
 
-          {currentStatus === 'pending' && onStatusChange && (
+          {currentStatus === 'pending' && onStatusChange && hasPerm('perm_idcard_verify') && (
             <TouchableOpacity onPress={() => onStatusChange('verified')} style={s.actionBtnGreen} activeOpacity={0.7}>
               <Text style={s.actionBtnTextGreen}>Verify</Text>
             </TouchableOpacity>
@@ -136,28 +166,32 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
           
           {currentStatus === 'verified' && onStatusChange && (
             <>
-              <TouchableOpacity onPress={() => onStatusChange('approved')} style={s.actionBtnGreen} activeOpacity={0.7}>
-                <Text style={s.actionBtnTextGreen}>Approve</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => onStatusChange('pending')} style={s.actionBtnOrange} activeOpacity={0.7}>
-                <Text style={s.actionBtnTextOrange}>Unverify</Text>
-              </TouchableOpacity>
+              {hasPerm('perm_idcard_approve') && (
+                <TouchableOpacity onPress={() => onStatusChange('approved')} style={s.actionBtnGreen} activeOpacity={0.7}>
+                  <Text style={s.actionBtnTextGreen}>Approve</Text>
+                </TouchableOpacity>
+              )}
+              {hasPerm('perm_idcard_verify') && (
+                <TouchableOpacity onPress={() => onStatusChange('pending')} style={s.actionBtnOrange} activeOpacity={0.7}>
+                  <Text style={s.actionBtnTextOrange}>Unverify</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
 
-          {currentStatus === 'approved' && onStatusChange && (
+          {currentStatus === 'approved' && onStatusChange && hasPerm('perm_idcard_approve') && (
             <TouchableOpacity onPress={() => onStatusChange('verified')} style={s.actionBtnOrange} activeOpacity={0.7}>
               <Text style={s.actionBtnTextOrange}>Unapprove</Text>
             </TouchableOpacity>
           )}
 
-          {currentStatus === 'pool' && onStatusChange && (
+          {currentStatus === 'pool' && onStatusChange && hasPerm('perm_idcard_delete') && (
             <TouchableOpacity onPress={() => onStatusChange('pending')} style={s.actionBtnGreen} activeOpacity={0.7}>
               <Text style={s.actionBtnTextGreen}>Retrieve</Text>
             </TouchableOpacity>
           )}
 
-          {onDelete && (
+          {onDelete && permissions.perm_idcard_delete && (
             <TouchableOpacity onPress={onDelete} style={s.actionBtnRed} activeOpacity={0.7}>
               <Text style={s.actionBtnTextRed}>Delete</Text>
             </TouchableOpacity>
@@ -173,7 +207,7 @@ const s = StyleSheet.create({
     width: '100%',
     backgroundColor: colors.white,
     borderRadius: radius.md,
-    marginBottom: spacing.md,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     overflow: 'hidden',
@@ -186,15 +220,15 @@ const s = StyleSheet.create({
   imagesColumn: {
     flexDirection: 'column',
     alignItems: 'center',
-    paddingTop: spacing.sm,
-    paddingLeft: spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingTop: 8,
+    paddingLeft: 8,
+    paddingBottom: 8,
     width: 68,
   },
   imgBoxWrap: {
     alignItems: 'center',
     width: 56,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   imgBox: {
     width: 52,
@@ -227,8 +261,8 @@ const s = StyleSheet.create({
   fieldsList: {
     flex: 1,
     minWidth: 0,
-    padding: spacing.sm,
-    paddingHorizontal: 10,
+    padding: 8,
+    paddingHorizontal: 8,
     gap: 0,
   },
   fieldRow: {

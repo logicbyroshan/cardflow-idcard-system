@@ -10,9 +10,12 @@ const { width } = Dimensions.get('window');
 /**
  * High-end side filter drawer matching the website's advanced search capabilities.
  */
-export default function FilterDrawer({ visible, onClose, tableId, onApply, currentFilters = {} }) {
+export default function FilterDrawer({ visible, onClose, tableId, status, onApply, currentFilters = {} }) {
+
   const [loading, setLoading] = useState(false);
   const [filterOptions, setFilterOptions] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [sections, setSections] = useState([]);
   const [tempFilters, setTempFilters] = useState(currentFilters);
 
   useEffect(() => {
@@ -26,9 +29,12 @@ export default function FilterDrawer({ visible, onClose, tableId, onApply, curre
     setLoading(true);
     try {
       // The endpoint returns list of fields and their unique values for filtering
-      const { ok, data } = await apiGet(`/app/api/table/${tableId}/filter-options/`);
+      const { ok, data } = await apiGet(`/app/api/table/${tableId}/filter-options/`, { status });
+
       if (ok && data?.success) {
         setFilterOptions(data.data?.fields || []);
+        setClasses(data.data?.classes || []);
+        setSections(data.data?.sections || []);
       }
     } catch (e) { console.log('Filter load err', e); }
     setLoading(false);
@@ -82,16 +88,16 @@ export default function FilterDrawer({ visible, onClose, tableId, onApply, curre
             <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
               {/* Static Filters: Sort & Photo */}
               <View style={s.section}>
-                <Text style={s.sectionTitle}>Sort Order</Text>
+                <Text style={s.sectionTitle}>Advanced Sorting</Text>
                 <View style={s.chipRow}>
                   {[
-                    { label: 'A to Z', val: 'name-asc' },
-                    { label: 'Z to A', val: 'name-desc' },
-                    { label: 'Serial ASC', val: 'sr-asc' },
+                    { label: 'ID (Newest First)', val: 'sr-asc' },
+                    { label: 'Name A to Z', val: 'name-asc' },
+                    { label: 'Name Z to A', val: 'name-desc' },
                   ].map(opt => {
                     const isActive = tempFilters.sort === opt.val;
                     return (
-                      <TouchableOpacity key={opt.val} onPress={() => toggleValue('sort', opt.val)} style={[s.chip, isActive && s.chipActive]}>
+                      <TouchableOpacity key={opt.val} onPress={() => setTempFilters({ ...tempFilters, sort: opt.val })} style={[s.chip, isActive && s.chipActive]}>
                         <Text style={[s.chipText, isActive && s.chipTextActive]}>{opt.label}</Text>
                       </TouchableOpacity>
                     );
@@ -100,21 +106,53 @@ export default function FilterDrawer({ visible, onClose, tableId, onApply, curre
               </View>
 
               <View style={s.section}>
-                <Text style={s.sectionTitle}>Photo Condition</Text>
+                <Text style={s.sectionTitle}>Photos Filter</Text>
                 <View style={s.chipRow}>
                   {[
-                    { label: 'Photo Present', val: 'with' },
-                    { label: 'Photo Missing', val: 'without' },
+                    { label: 'Uploaded Photos', val: 'with' },
+                    { label: 'Missing Photos', val: 'without' },
                   ].map(opt => {
                     const isActive = tempFilters.photo === opt.val;
                     return (
-                      <TouchableOpacity key={opt.val} onPress={() => toggleValue('photo', opt.val)} style={[s.chip, isActive && s.chipActive]}>
+                      <TouchableOpacity key={opt.val} onPress={() => setTempFilters({ ...tempFilters, photo: opt.val })} style={[s.chip, isActive && s.chipActive]}>
                         <Text style={[s.chipText, isActive && s.chipTextActive]}>{opt.label}</Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
               </View>
+              
+              {classes.length > 0 && (
+                <View style={s.section}>
+                  <Text style={s.sectionTitle}>Class</Text>
+                  <View style={s.chipRow}>
+                    {classes.map(cls => {
+                      const isActive = (tempFilters.class || []).includes(cls);
+                      return (
+                        <TouchableOpacity key={cls} onPress={() => toggleValue('class', cls)} style={[s.chip, isActive && s.chipActive]}>
+                          <Text style={[s.chipText, isActive && s.chipTextActive]}>{cls}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {sections.length > 0 && (
+                <View style={s.section}>
+                  <Text style={s.sectionTitle}>Section</Text>
+                  <View style={s.chipRow}>
+                    {sections.map(sec => {
+                      const isActive = (tempFilters.section || []).includes(sec);
+                      return (
+                        <TouchableOpacity key={sec} onPress={() => toggleValue('section', sec)} style={[s.chip, isActive && s.chipActive]}>
+                          <Text style={[s.chipText, isActive && s.chipTextActive]}>{sec}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
 
               {filterOptions.length === 0 && !loading && (
                 <Text style={s.emptyText}>No dynamic fields found.</Text>
@@ -184,7 +222,7 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
   scrollC: { padding: 20 },
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 11, fontWeight: '900', color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 },
+  sectionTitle: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { 
     paddingHorizontal: 12, 
@@ -195,7 +233,7 @@ const s = StyleSheet.create({
     borderColor: '#e2e8f0' 
   },
   chipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
-  chipText: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
+  chipText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray600 },
   chipTextActive: { color: '#fff' },
   emptyText: { fontSize: 13, color: colors.gray400, textAlign: 'center', marginTop: 40 },
   footer: { 

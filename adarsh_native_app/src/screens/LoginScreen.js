@@ -8,7 +8,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
-import { colors, gradients, typography, spacing, radius, shadows } from '../theme';
+import { colors, gradients, typography, spacing, radius, shadows, fontFamily } from '../theme';
 
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -261,13 +261,13 @@ const styles = StyleSheet.create({
   brandTitle: {
     color: colors.white,
     fontSize: typography.title,
-    fontFamily: 'SairaSemiCondensed-Bold',
+    fontFamily: fontFamily.bold,
     letterSpacing: -0.5,
   },
   brandSubtitle: {
     color: 'rgba(255,255,255,0.7)',
     fontSize: typography.lg,
-    fontFamily: 'SairaSemiCondensed-Regular',
+    fontFamily: fontFamily.regular,
     marginTop: 4,
   },
 
@@ -286,12 +286,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.gray800,
     fontSize: typography.xxxl,
-    fontWeight: '700',
+    fontFamily: fontFamily.bold,
     marginBottom: 4,
   },
   cardSubtitle: {
     color: colors.gray400,
     fontSize: typography.lg,
+    fontFamily: fontFamily.regular,
     marginBottom: 24,
   },
 
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.xs,
-    fontWeight: typography.semibold,
+    fontFamily: fontFamily.semibold,
     color: colors.gray500,
     letterSpacing: 1,
     marginBottom: 6,
@@ -346,6 +347,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: typography.base,
     color: colors.gray800,
+    fontFamily: fontFamily.regular,
   },
   eyeBtn: {
     position: 'absolute',
@@ -371,14 +373,14 @@ const styles = StyleSheet.create({
   submitText: {
     color: colors.white,
     fontSize: typography.xl,
-    fontWeight: typography.bold,
+    fontFamily: fontFamily.bold,
   },
 
   helpText: {
     textAlign: 'center',
     color: colors.gray400,
     fontSize: typography.md,
-    fontFamily: 'SairaSemiCondensed-Regular',
+    fontFamily: fontFamily.regular,
     marginTop: 12,
   },
   forgotLink: {

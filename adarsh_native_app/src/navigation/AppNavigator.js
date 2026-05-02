@@ -52,10 +52,11 @@ export default function AppNavigator() {
           contentStyle: { backgroundColor: colors.surfaceBg },
         }}
       >
+        <Stack.Screen name="Landing" component={LandingScreen} options={{ animation: 'fade' }} />
+        <Stack.Screen name="ProductCategoryDetail" component={ProductCategoryDetailScreen} />
+
         {!isAuthenticated ? (
           <>
-            <Stack.Screen name="Landing" component={LandingScreen} options={{ animation: 'fade' }} />
-            <Stack.Screen name="ProductCategoryDetail" component={ProductCategoryDetailScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="NoAccess" component={NoAccessScreen} />

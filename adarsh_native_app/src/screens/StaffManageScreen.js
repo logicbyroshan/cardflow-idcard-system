@@ -227,7 +227,7 @@ export default function StaffManageScreen({ navigation }) {
             <Text style={s.textBtnLabel}>EDIT</Text>
           </TouchableOpacity>
         )}
-        {user?.can_manage_staff && (
+        {user?.can_manage_staff && user?.role !== 'super_admin' && (
           <TouchableOpacity onPress={() => openAssign(item)} style={s.textBtn}>
             <FontAwesome5 name="layer-group" size={10} color="#8b5cf6" style={s.btnIcon} />
             <Text style={[s.textBtnLabel, { color: '#8b5cf6' }]}>ASSIGN</Text>
@@ -454,24 +454,24 @@ const s = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: radius.xs, backgroundColor: 'rgba(51,183,239,0.08)', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 13, fontWeight: '800', color: colors.brandPrimary },
   cardInfo: { flex: 1, minWidth: 0 },
-  name: { fontSize: 14, fontWeight: '700', color: colors.gray800 },
-  email: { fontSize: 11, color: colors.gray400, marginTop: 1 },
+  name: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
+  email: { fontSize: 11, color: colors.gray400, marginTop: 1, fontFamily: fontFamily.medium },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm, alignSelf: 'center' },
   statusDotSmall: { width: 6, height: 6, borderRadius: 3 },
-  statusPillText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  statusPillText: { fontSize: 9, fontFamily: fontFamily.bold, letterSpacing: 0.5 },
   cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
   textBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9' },
   btnIcon: { marginBottom: 1 },
-  textBtnLabel: { fontSize: 10, fontWeight: '800', color: colors.brandPrimary, letterSpacing: 0.5 },
+  textBtnLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.brandPrimary, letterSpacing: 0.5 },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
+  emptyTitle: { fontSize: 13, fontFamily: fontFamily.semibold, color: colors.gray400 },
   // Filter Drawer
   filterOverlay: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end' },
   filterBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.4)' },
   filterDrawer: { width: width * 0.75, height: '100%', backgroundColor: '#fff', paddingTop: 40 },
   filterHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  filterTitle: { fontSize: 16, fontWeight: '700', color: colors.gray800 },
+  filterTitle: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.gray800 },
   filterClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
   filterContent: { flex: 1, padding: 20 },
   filterLabel: { fontSize: 10, fontWeight: '900', color: colors.gray400, letterSpacing: 1.2, marginBottom: 12 },

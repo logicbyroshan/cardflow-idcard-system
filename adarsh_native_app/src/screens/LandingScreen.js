@@ -7,14 +7,16 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, gradients, shadows, radius, typography } from '../theme';
-import { apiGet, apiPost } from '../api/client';
+import { colors, gradients, shadows, radius, typography, fontFamily } from '../theme';
+import { apiGet, apiPost, BASE_URL } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
 
 const { width } = Dimensions.get('window');
 
 export default function LandingScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [activeHero, setActiveHero] = useState(0);
@@ -22,7 +24,6 @@ export default function LandingScreen({ navigation }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
-
   const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -91,10 +92,13 @@ export default function LandingScreen({ navigation }) {
             </View>
             <Text style={s.logoText}>ADARSH</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')} style={s.loginBtn}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate(isAuthenticated ? 'Home' : 'Login')} 
+            style={s.loginBtn}
+          >
             <LinearGradient colors={gradients.brand} start={{x:0, y:0}} end={{x:1, y:0}} style={s.loginBtnGrad}>
-              <Text style={s.loginBtnText}>LOGIN PANEL</Text>
-              <FontAwesome5 name="arrow-right" size={10} color="#fff" />
+              <Text style={s.loginBtnText}>{isAuthenticated ? 'GO TO DASHBOARD' : 'LOGIN PANEL'}</Text>
+              <FontAwesome5 name={isAuthenticated ? 'th-large' : 'arrow-right'} size={10} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -116,7 +120,7 @@ export default function LandingScreen({ navigation }) {
             onMomentumScrollEnd={(e) => setActiveHero(Math.round(e.nativeEvent.contentOffset.x / width))}
             renderItem={({ item }) => (
               <View style={s.heroSlide}>
-                <Image source={{ uri: item.image }} style={s.heroImg} resizeMode="cover" />
+                <Image source={{ uri: item.image?.startsWith('http') ? item.image : `${BASE_URL}${item.image}` }} style={s.heroImg} resizeMode="cover" />
                 <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={s.heroOverlay}>
                   <View style={s.heroContent}>
                     <Text style={s.heroTitle}>{item.title}</Text>
@@ -134,70 +138,118 @@ export default function LandingScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Category Showcase (Bento Grid) */}
-        <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Explore Categories</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Search')} activeOpacity={0.6}>
-              <Text style={s.viewAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={s.bentoGrid}>
-            {data?.categories?.filter(c => c.is_active).slice(0, 6).map((cat, i) => (
-              <TouchableOpacity
-                key={cat.id}
-                activeOpacity={0.9}
+        {/* Quick Category Selector */}
+        <View style={s.quickCatRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.quickCatScroll}>
+            {data?.categories?.map(cat => (
+              <TouchableOpacity 
+                key={cat.id} 
                 onPress={() => navigation.navigate('ProductCategoryDetail', { category: cat })}
-                style={[
-                  s.bentoItem, 
-                  cat.bento_size === 'large' ? s.bentoLarge : cat.bento_size === 'wide' ? s.bentoWide : s.bentoNormal,
-                  { backgroundColor: cat.is_bento ? '#f1f5f9' : '#fff' }
-                ]}
+                style={s.quickCatChip}
               >
-                {cat.cover_image ? (
-                  <Image source={{ uri: cat.cover_image }} style={s.bentoImg} />
-                ) : (
-                  <LinearGradient colors={['#f8fafc', '#e2e8f0']} style={s.bentoImg} />
-                )}
-                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={s.bentoOverlay}>
-                  <View style={s.bentoContent}>
-                    <View style={s.bentoIconWrap}>
-                      <FontAwesome5 name={cat.icon?.replace('fas ', '').replace('fa-', '') || 'layer-group'} size={12} color="#fff" />
-                    </View>
-                    <View>
-                      <Text style={s.bentoText}>{cat.name}</Text>
-                      {cat.bento_size === 'large' && <Text style={s.bentoSubtext} numberOfLines={1}>{cat.description || 'Premium Quality'}</Text>}
-                    </View>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Featured Products Marquee */}
-        <View style={s.section}>
-          <View style={s.sectionPadding}><Text style={s.sectionTitle}>Featured Samples</Text></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.productScroll}>
-            {data?.products?.map(prod => (
-              <TouchableOpacity key={prod.id} style={s.productCard}>
-                <Image source={{ uri: prod.image }} style={s.productImg} />
-                <View style={s.productInfo}>
-                  <Text style={s.productCat}>{prod.category.toUpperCase()}</Text>
-                  <Text style={s.productName} numberOfLines={1}>{prod.title}</Text>
-                </View>
+                <FontAwesome5 name={cat.icon?.replace('fas ', '').replace('fa-', '') || 'tag'} size={10} color={colors.brandLight} />
+                <Text style={s.quickCatText}>{cat.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
+        {/* Why Choose Us Section */}
+        <View style={s.section}>
+          <View style={s.sectionPadding}>
+            <Text style={s.sectionTitle}>Why Choose Adarsh?</Text>
+            <View style={s.benefitsRow}>
+               <BenefitItem icon="shield-alt" title="Secure ID" sub="State of the art security" />
+               <BenefitItem icon="bolt" title="Fast Delivery" sub="Quick turnaround time" />
+               <BenefitItem icon="headset" title="24/7 Support" sub="Always here to help" />
+            </View>
+          </View>
+        </View>
+
+        {/* Featured Products Highlights */}
+        <View style={s.section}>
+          <View style={s.sectionPadding}>
+            <Text style={s.sectionTitle}>Featured Products</Text>
+          </View>
+          <FlatList
+            data={data?.products || []}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.shelfScroll}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={s.featuredProdCard}>
+                <Image source={{ uri: item.image?.startsWith('http') ? item.image : `${BASE_URL}${item.image}` }} style={s.featuredProdImg} />
+                <View style={s.featuredProdInfo}>
+                  <Text style={s.featuredProdTag}>{item.category}</Text>
+                  <Text style={s.featuredProdTitle} numberOfLines={1}>{item.title}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            keyExtractor={item => 'featured-' + item.id}
+          />
+        </View>
+
+        {/* Category Collections */}
+        {data?.categories?.map(cat => (
+          <View key={cat.id} style={s.shelfSection}>
+            <View style={s.shelfHeader}>
+              <View style={s.shelfTitleWrap}>
+                <View style={[s.shelfIcon, { backgroundColor: colors.indigo50 }]}>
+                   <FontAwesome5 name={cat.icon?.replace('fas ', '').replace('fa-', '') || 'layer-group'} size={14} color={colors.brandLight} />
+                </View>
+                <View>
+                  <Text style={s.shelfTitle}>{cat.name}</Text>
+                  <Text style={s.shelfSub}>{cat.preview_products?.length || 0} Samples Available</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('ProductCategoryDetail', { category: cat })} style={s.shelfViewAll}>
+                <Text style={s.viewAllText}>View All</Text>
+                <FontAwesome5 name="chevron-right" size={10} color={colors.brandLight} />
+              </TouchableOpacity>
+            </View>
+
+            {cat.preview_products?.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.shelfScroll}>
+                {cat.preview_products.map(prod => (
+                  <TouchableOpacity 
+                    key={prod.id} 
+                    style={s.shelfCard}
+                    activeOpacity={0.9}
+                  >
+                    <Image source={{ uri: prod.image?.startsWith('http') ? prod.image : `${BASE_URL}${prod.image}` }} style={s.shelfImg} />
+                    <View style={s.shelfInfo}>
+                      <Text style={s.shelfProdName} numberOfLines={1}>{prod.title}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('ProductCategoryDetail', { category: cat })}
+                  style={s.shelfMoreCard}
+                >
+                  <View style={s.shelfMoreCircle}>
+                    <FontAwesome5 name="plus" size={16} color={colors.brandLight} />
+                  </View>
+                  <Text style={s.shelfMoreText}>See More</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            ) : (
+              <View style={s.emptyShelf}>
+                <Text style={s.emptyShelfText}>New collections coming soon</Text>
+              </View>
+            )}
+          </View>
+        ))}
+
         {/* Trusted Clients */}
         <View style={s.section}>
-          <View style={s.sectionPadding}><Text style={s.sectionTitle}>Trusted by 1000+ Institutions</Text></View>
+          <View style={s.sectionPadding}>
+            <Text style={s.sectionTitle}>Trusted by 1000+ Institutions</Text>
+            <Text style={s.sectionSub}>Partnering with leading organizations across the country.</Text>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.clientScroll}>
             {data?.clients?.map(client => (
               <View key={client.id} style={s.clientCard}>
-                <Image source={{ uri: client.logo }} style={s.clientLogo} resizeMode="contain" />
+                <Image source={{ uri: client.logo?.startsWith('http') ? client.logo : `${BASE_URL}${client.logo}` }} style={s.clientLogo} resizeMode="contain" />
               </View>
             ))}
           </ScrollView>
@@ -205,7 +257,7 @@ export default function LandingScreen({ navigation }) {
 
         {/* Contact Form */}
         <View style={s.contactSection}>
-          <LinearGradient colors={['#1e293b', '#0f172a']} style={s.contactCard}>
+          <View style={s.contactCard}>
             <Text style={s.contactTitle}>Quick Enquiry</Text>
             <Text style={s.contactSub}>Have questions? Drop us a message.</Text>
             
@@ -216,19 +268,19 @@ export default function LandingScreen({ navigation }) {
               <LandingInput placeholder="How can we help you?" icon="comment" multiline value={form.message} onChangeText={t => setForm(p => ({...p, message: t}))} />
               
               <TouchableOpacity onPress={handleContact} disabled={submitting} style={s.submitBtn}>
-                <LinearGradient colors={gradients.brand} style={s.submitGrad}>
+                <LinearGradient colors={gradients.brand} style={s.submitGrad} start={{x:0, y:0}} end={{x:1, y:0}}>
                   {submitting ? <ActivityIndicator size="small" color="#fff" /> : <><Text style={s.submitText}>Send Message</Text><FontAwesome5 name="paper-plane" size={12} color="#fff" /></>}
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </LinearGradient>
+          </View>
           
           <View style={s.footer}>
             <Text style={s.footerText}>© 2024 Adarsh Bhopal. All rights reserved.</Text>
             <View style={s.socials}>
-              <FontAwesome5 name="facebook" size={16} color={colors.gray400} />
-              <FontAwesome5 name="instagram" size={16} color={colors.gray400} />
-              <FontAwesome5 name="whatsapp" size={16} color={colors.gray400} />
+              <TouchableOpacity><FontAwesome5 name="facebook" size={18} color={colors.gray400} /></TouchableOpacity>
+              <TouchableOpacity><FontAwesome5 name="instagram" size={18} color={colors.gray400} /></TouchableOpacity>
+              <TouchableOpacity><FontAwesome5 name="whatsapp" size={18} color={colors.gray400} /></TouchableOpacity>
             </View>
           </View>
         </View>
@@ -239,11 +291,21 @@ export default function LandingScreen({ navigation }) {
   );
 }
 
+function BenefitItem({ icon, title, sub }) {
+  return (
+    <View style={s.benefitCard}>
+      <View style={s.benefitIcon}><FontAwesome5 name={icon} size={14} color={colors.brandLight} /></View>
+      <Text style={s.benefitTitle}>{title}</Text>
+      <Text style={s.benefitSub}>{sub}</Text>
+    </View>
+  );
+}
+
 function LandingInput({ icon, ...props }) {
   return (
     <View style={s.inputWrap}>
-      <View style={s.inputIcon}><FontAwesome5 name={icon} size={12} color="rgba(255,255,255,0.4)" /></View>
-      <TextInput {...props} placeholderTextColor="rgba(255,255,255,0.3)" style={[s.input, props.multiline && { height: 80, textAlignVertical: 'top' }]} />
+      <View style={s.inputIcon}><FontAwesome5 name={icon} size={12} color={colors.brandLight} /></View>
+      <TextInput {...props} placeholderTextColor={colors.gray400} style={[s.input, props.multiline && { height: 80, textAlignVertical: 'top' }]} />
     </View>
   );
 }
@@ -256,17 +318,17 @@ const s = StyleSheet.create({
   logoSide: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   logoWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadows.sm, overflow: 'hidden' },
   logoImg: { width: '80%', height: '80%' },
-  logoText: { fontSize: 16, fontWeight: '900', color: colors.brandLight, letterSpacing: 1 },
+  logoText: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.brandLight, letterSpacing: 1 },
   loginBtn: { borderRadius: 20, overflow: 'hidden', ...shadows.md },
   loginBtnGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
-  loginBtnText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  loginBtnText: { fontSize: 10, fontFamily: fontFamily.bold, color: '#fff', letterSpacing: 0.5 },
 
   heroContainer: { height: 450, position: 'relative' },
   heroSlide: { width, height: 450 },
   heroImg: { width: '100%', height: '100%' },
   heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 250, justifyContent: 'flex-end', padding: 24, paddingBottom: 40 },
-  heroTitle: { fontSize: 32, fontWeight: '800', color: '#fff', lineHeight: 38 },
-  heroSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.8)', marginTop: 8 },
+  heroTitle: { fontSize: 32, fontFamily: fontFamily.bold, color: '#fff', lineHeight: 38 },
+  heroSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.8)', marginTop: 8, fontFamily: fontFamily.regular },
   heroDots: { position: 'absolute', bottom: 20, left: 24, flexDirection: 'row', gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.3)' },
   dotActive: { width: 20, backgroundColor: '#fff' },
@@ -274,45 +336,66 @@ const s = StyleSheet.create({
   section: { marginTop: 32 },
   sectionPadding: { paddingHorizontal: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1e293b', marginBottom: 16 },
-  viewAll: { fontSize: 13, fontWeight: '600', color: colors.brandLight },
+  sectionTitle: { fontSize: 18, fontFamily: fontFamily.bold, color: '#1e293b', marginBottom: 16 },
+  sectionSub: { fontSize: 13, color: '#64748b', marginTop: -8, marginBottom: 16, fontFamily: fontFamily.regular },
+  viewAll: { fontSize: 13, fontFamily: fontFamily.semibold, color: colors.brandLight },
 
-  bentoGrid: { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  bentoItem: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#f8fafc' },
-  bentoNormal: { width: (width - 50) / 2, height: 160 },
-  bentoWide: { width: width - 40, height: 120 },
-  bentoLarge: { width: width - 40, height: 200 },
-  bentoImg: { width: '100%', height: '100%' },
-  bentoOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', padding: 14 },
-  bentoContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bentoIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  bentoText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
-  bentoSubtext: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2, fontWeight: '600' },
+  featuredProdCard: { width: 220, backgroundColor: '#fff', borderRadius: 20, marginRight: 15, overflow: 'hidden', ...shadows.md, borderWidth: 1, borderColor: '#f1f5f9' },
+  featuredProdImg: { width: '100%', height: 160, backgroundColor: '#f8fafc' },
+  featuredProdInfo: { padding: 15 },
+  featuredProdTag: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.brandLight, textTransform: 'uppercase', marginBottom: 4 },
+  featuredProdTitle: { fontSize: 14, fontFamily: fontFamily.bold, color: '#1e293b' },
 
-  productScroll: { paddingHorizontal: 15, gap: 12 },
-  productCard: { width: 160, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
-  productImg: { width: 160, height: 160, backgroundColor: '#f8fafc' },
-  productInfo: { padding: 12 },
-  productCat: { fontSize: 8, fontWeight: '800', color: colors.brandLight, letterSpacing: 0.8 },
-  productName: { fontSize: 13, fontWeight: '700', color: '#1e293b', marginTop: 2 },
+  quickCatRow: { marginTop: -25, backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: 20 },
+  quickCatScroll: { paddingHorizontal: 15, gap: 10, paddingBottom: 10 },
+  quickCatChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f1f5f9', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  quickCatText: { fontSize: 11, fontFamily: fontFamily.bold, color: '#475569' },
+
+  shelfSection: { marginTop: 24, paddingVertical: 10 },
+  shelfHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 },
+  shelfTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  shelfIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  shelfTitle: { fontSize: 18, fontFamily: fontFamily.bold, color: '#1e293b' },
+  shelfSub: { fontSize: 10, color: '#94a3b8', marginTop: 1, fontFamily: fontFamily.semibold },
+  shelfViewAll: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  viewAllText: { fontSize: 12, fontFamily: fontFamily.bold, color: colors.brandLight },
+  
+  shelfScroll: { paddingHorizontal: 15, gap: 12, paddingBottom: 10 },
+  shelfCard: { width: 140, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
+  shelfImg: { width: 140, height: 140, backgroundColor: '#f8fafc' },
+  shelfInfo: { padding: 10 },
+  shelfProdName: { fontSize: 12, fontFamily: fontFamily.bold, color: '#1e293b' },
+  
+  shelfMoreCard: { width: 100, height: 180, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  shelfMoreCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
+  shelfMoreText: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.brandLight },
+
+  emptyShelf: { marginHorizontal: 20, padding: 20, backgroundColor: '#f8fafc', borderRadius: 16, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#cbd5e1' },
+  emptyShelfText: { fontSize: 12, color: '#94a3b8', fontFamily: fontFamily.semibold },
 
   clientScroll: { paddingHorizontal: 15, gap: 15, paddingBottom: 10 },
   clientCard: { width: 100, height: 64, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', padding: 12, ...shadows.sm },
   clientLogo: { width: '100%', height: '100%' },
 
   contactSection: { marginTop: 40, paddingHorizontal: 20, paddingBottom: 40 },
-  contactCard: { borderRadius: 24, padding: 24, ...shadows.xl },
-  contactTitle: { fontSize: 24, fontWeight: '800', color: '#fff' },
-  contactSub: { fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 4, marginBottom: 24 },
+  contactCard: { backgroundColor: '#fff', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.xl },
+  contactTitle: { fontSize: 24, fontFamily: fontFamily.bold, color: '#1e293b' },
+  contactSub: { fontSize: 14, color: '#64748b', marginTop: 4, marginBottom: 24, fontFamily: fontFamily.regular },
   form: { gap: 12 },
-  inputWrap: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  inputWrap: { flexDirection: 'row', backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
   inputIcon: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, paddingVertical: 12, paddingRight: 12, color: '#fff', fontSize: 14 },
+  input: { flex: 1, paddingVertical: 12, paddingRight: 12, color: '#1e293b', fontSize: 14, fontFamily: fontFamily.regular },
   submitBtn: { marginTop: 8, borderRadius: 12, overflow: 'hidden' },
   submitGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
-  submitText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  submitText: { fontSize: 14, fontFamily: fontFamily.bold, color: '#fff' },
 
   footer: { marginTop: 40, alignItems: 'center', gap: 16 },
-  footerText: { fontSize: 11, color: colors.gray400 },
+  footerText: { fontSize: 11, color: colors.gray400, fontFamily: fontFamily.regular },
   socials: { flexDirection: 'row', gap: 20 },
+
+  benefitsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 16 },
+  benefitCard: { flex: 1, backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' },
+  benefitIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 10, ...shadows.sm },
+  benefitTitle: { fontSize: 13, fontFamily: fontFamily.bold, color: '#1e293b', textAlign: 'center' },
+  benefitSub: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4, fontFamily: fontFamily.regular },
 });

@@ -37,9 +37,21 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
     setError(null);
     try {
       // Load table fields
-      const { ok: fOk, data: fData } = await apiGet(`/app/api/table/${tableId}/filter-options/?status=pending`);
+      let { ok: fOk, data: fData } = await apiGet(`/app/api/table/${tableId}/filter-options/?status=pending`);
+      
+      // Fallback: If filter-options didn't provide fields, try the table config endpoint
+      if (!fOk || !fData?.data?.fields || fData.data.fields.length === 0) {
+        const { ok: tOk, data: tData } = await apiGet(`/app/api/table/${tableId}/config/`);
+        if (tOk && tData?.success && tData.data?.fields) {
+          fData = tData;
+          fOk = true;
+          if (tData.data.table_name) setTableName(tData.data.table_name);
+        }
+      }
+
       if (fOk && fData?.success && fData.data?.fields) {
         setFields(fData.data.fields);
+        if (fData.data.table_name) setTableName(fData.data.table_name);
       }
 
       // If editing, load existing card data
@@ -72,14 +84,24 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       
       for (const key in fieldData) {
         const val = fieldData[key];
-        if (typeof val === 'string' && (val.startsWith('file://') || val.startsWith('content://'))) {
+        const isLocalUri = typeof val === 'string' && (
+          val.startsWith('file://') || 
+          val.startsWith('content://') || 
+          val.startsWith('/') // Some Android paths
+        );
+
+        if (isLocalUri) {
           // It's a picked local image
-          const filename = val.split('/').pop();
+          let filename = val.split('/').pop() || 'photo.jpg';
           const match = /\.(\w+)$/.exec(filename);
-          const type = match ? `image/${match[1]}` : `image`;
+          let type = match ? `image/${match[1]}` : `image/jpeg`;
+          if (!match) filename += '.jpg';
           
           // Use image_ prefix for dynamic fields to match backend expectation
-          const fileKey = (key.toUpperCase() === 'PHOTO') ? 'photo' : `image_${key}`;
+          // PHOTO is a special field name in some tables, while others use lowercase photo
+          const isMainPhoto = key.toUpperCase() === 'PHOTO' || key.toLowerCase() === 'photo';
+          const fileKey = isMainPhoto ? 'photo' : `image_${key}`;
+          
           formData.append(fileKey, { uri: val, name: filename, type });
           
           // Remove from field_data JSON so backend doesn't try to parse it as a string
@@ -143,8 +165,12 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
             
             <View style={s.header}>
               <View style={s.titleBox}>
-                <Text style={s.title}>{isEdit ? 'Edit Card Data' : 'Add New Card'}</Text>
-                {tableName && <Text style={s.subtitle}>{tableName}</Text>}
+                <Text style={s.title}>{isEdit ? 'Edit Student Card' : 'Add New Student'}</Text>
+                {tableName ? (
+                  <Text style={s.subtitle}>{tableName}</Text>
+                ) : (
+                  <Text style={s.subtitle}>Loading table details...</Text>
+                )}
               </View>
               <TouchableOpacity onPress={onClose} style={s.closeBtn}>
                 <FontAwesome5 name="times" size={16} color={colors.gray400} />

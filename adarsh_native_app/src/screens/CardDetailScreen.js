@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   View, Text, ScrollView, TouchableOpacity, Image, 
   StyleSheet, Alert, RefreshControl, ActivityIndicator 
@@ -11,7 +11,7 @@ import StatusBadge from '../components/StatusBadge';
 import { DetailSkeleton } from '../components/Skeleton';
 import CardModalForm from '../components/CardModalForm';
 import { apiGet, apiPost } from '../api/client';
-import { colors, gradients, typography, spacing, radius, shadows, roleThemes } from '../theme';
+import { colors, radius, shadows, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
 export default function CardDetailScreen({ navigation, route }) {
@@ -89,13 +89,22 @@ export default function CardDetailScreen({ navigation, route }) {
   const cardName = card.name || fd.NAME || fd.Name || fd.name || fd.FULL_NAME || fd.full_name || `Card #${card.id}`;
   const isLocked = ['pool'].includes(card.status) && (user?.role === 'client' || user?.role === 'client_staff');
 
-  const STATUS_OPTIONS = [
-    { key: 'pending', label: 'Pending' },
-    { key: 'verified', label: 'Verified' },
-    { key: 'approved', label: 'Approved' },
-    { key: 'download', label: 'Download' },
-    { key: 'pool', label: 'Pool' },
-  ];
+  const allowedStatuses = useMemo(() => {
+    const perms = user?.permissions || {};
+    return [
+      { key: 'pending', label: 'Pending', perm: 'perm_idcard_pending_list' },
+      { key: 'verified', label: 'Verified', perm: 'perm_idcard_verified_list' },
+      { key: 'approved', label: 'Approved', perm: 'perm_idcard_approved_list' },
+      { key: 'download', label: 'Download', perm: 'perm_idcard_download_list' },
+      { key: 'reprint', label: 'Reprint', perm: 'perm_idcard_reprint_list' },
+      { key: 'pool', label: 'Pool', perm: 'perm_idcard_pool_list' },
+    ].filter(opt => !opt.perm || perms[opt.perm]);
+  }, [user]);
+
+  const photoVal = card.photo_url || '';
+  const isPending = photoVal.includes('PENDING:');
+  const isEmpty = !photoVal || photoVal === 'NOT_FOUND';
+  const isComplete = !isPending && !isEmpty;
 
   return (
     <View style={s.root}>
@@ -109,13 +118,13 @@ export default function CardDetailScreen({ navigation, route }) {
       >
         <LinearGradient colors={['#fff', '#f8fafc']} style={s.heroCard}>
           <View style={s.heroTop}>
-            <View style={s.photoFrame}>
-              {card.photo_url && card.photo_url !== 'NOT_FOUND' ? (
-                <Image source={{ uri: card.photo_url }} style={s.photo} />
+            <View style={[s.photoFrame, isPending && { backgroundColor: '#fef08a' }, isEmpty && { backgroundColor: '#f1f5f9' }]}>
+              {isComplete ? (
+                <Image source={{ uri: card.photo_url.startsWith('http') ? card.photo_url : `${BASE_URL}${card.photo_url}` }} style={s.photo} />
               ) : (
-                <View style={s.photoPlaceholder}>
-                  <FontAwesome5 name="user-slash" size={24} color="#fca5a5" solid />
-                  <Text style={s.emptyPhotoText}>EMPTY</Text>
+                <View style={[s.photoPlaceholder, isPending && { backgroundColor: '#fef08a' }, isEmpty && { backgroundColor: '#f1f5f9' }]}>
+                  <FontAwesome5 name={isPending ? "clock" : "user-slash"} size={24} color={isPending ? "#ca8a04" : "#cbd5e1"} solid />
+                  <Text style={[s.emptyPhotoText, { color: isPending ? "#ca8a04" : "#94a3b8" }]}>{isPending ? 'PENDING' : 'EMPTY'}</Text>
                 </View>
               )}
             </View>
@@ -166,7 +175,7 @@ export default function CardDetailScreen({ navigation, route }) {
         </View>
 
         <View style={s.actions}>
-          {!isLocked && user.permissions?.perm_idcard_edit && (
+          {!isLocked && user?.permissions?.perm_idcard_edit && (
             <TouchableOpacity onPress={() => setShowForm(true)} activeOpacity={0.85} style={s.editBtnWrap}>
               <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.editBtn}>
                 <FontAwesome5 name="pen" size={12} color="#fff" />
@@ -183,7 +192,7 @@ export default function CardDetailScreen({ navigation, route }) {
           )}
 
           <View style={s.statusGrid}>
-            {STATUS_OPTIONS.map(opt => (
+            {allowedStatuses.map(opt => (
               <TouchableOpacity 
                 key={opt.key} 
                 onPress={() => updateStatus(opt.key)} 
@@ -195,7 +204,7 @@ export default function CardDetailScreen({ navigation, route }) {
             ))}
           </View>
 
-          {user.permissions?.perm_idcard_delete && (
+          {user?.permissions?.perm_idcard_delete && (
             <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
               <FontAwesome5 name="trash-alt" size={12} color={colors.red} />
               <Text style={s.deleteBtnText}>Move to Pool</Text>
@@ -228,16 +237,16 @@ const s = StyleSheet.create({
   photoFrame: { width: 90, height: 110, borderRadius: radius.md, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   photo: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2' },
-  emptyPhotoText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: '#fca5a5', marginTop: 4 },
+  emptyPhotoText: { fontSize: 8, fontFamily: fontFamily.bold, color: '#fca5a5', marginTop: 4 },
   heroInfo: { flex: 1, justifyContent: 'center' },
-  cardName: { fontSize: 20, fontWeight: '800', color: colors.gray800 },
-  tableName: { fontSize: 13, color: colors.gray500, marginTop: 4 },
+  cardName: { fontSize: 20, fontFamily: fontFamily.bold, color: colors.gray800 },
+  tableName: { fontSize: 13, color: colors.gray500, marginTop: 4, fontFamily: fontFamily.medium },
   statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 12 },
   vLine: { width: 1, height: 16, backgroundColor: '#e2e8f0' },
-  srNo: { fontSize: 11, fontWeight: '700', color: colors.gray400 },
+  srNo: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray400 },
   section: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingBottom: 8 },
-  sectionTitle: { fontSize: 10, fontWeight: '800', color: colors.gray400, letterSpacing: 1.2 },
+  sectionTitle: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase' },
   fieldsList: { padding: 8 },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 8, borderTopWidth: 1, borderTopColor: '#f8fafc' },
   fieldKey: { fontSize: 11, fontWeight: '700', color: colors.gray400, textTransform: 'uppercase' },

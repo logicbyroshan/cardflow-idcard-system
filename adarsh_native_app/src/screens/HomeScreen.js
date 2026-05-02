@@ -17,9 +17,10 @@ const STATUS_CONFIG = [
   { key: 'approved', label: 'Approved', icon: 'check-double', bg: '#60a5fa', bg2: '#3b82f6', text: '#fff', border: 'transparent' },
   { key: 'download', label: 'Download', icon: 'download',     bg: '#a855f7', bg2: '#7e22ce', text: '#fff', border: 'transparent' },
   { key: 'pool',     label: 'Pool',     icon: 'inbox',        bg: '#ef4444', bg2: '#dc2626', text: '#fff', border: 'transparent' },
+  { key: 'reprint',  label: 'Reprint',  icon: 'redo',         bg: '#f97316', bg2: '#ea580c', text: '#fff', border: 'transparent' },
   { key: 'total',    label: 'Total',    icon: 'id-card',      bg: '#334155', bg2: '#1e293b', text: '#fff', border: 'transparent' },
 ];
-const STATUS_LABELS = { pending: 'Pending', verified: 'Verified', approved: 'Approved', download: 'Download', pool: 'Pool' };
+const STATUS_LABELS = { pending: 'Pending', verified: 'Verified', approved: 'Approved', download: 'Download', pool: 'Pool', reprint: 'Reprint' };
 
 const GRID_PADDING = 16;
 const GRID_GAP = 10;
@@ -55,21 +56,23 @@ export default function HomeScreen({ navigation }) {
       { label: 'Settings', icon: 'cog', color: '#6366f1', bg: '#eef2ff', screen: 'Settings' },
     ];
 
+    const perms = user?.permissions || {};
     const isAdmin = user?.role === 'super_admin' || user?.role === 'admin_staff';
 
-    if (user?.can_manage_staff) {
+    if (user?.can_manage_staff || perms.perm_manage_client_staff || isAdmin) {
       actions.push({ label: 'Assistants', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', screen: 'StaffManage' });
     }
 
-    if (user?.can_manage_clients) {
+    if (user?.can_manage_clients || perms.perm_idcard_client_list || isAdmin) {
       actions.push({ label: 'Clients', icon: 'building', color: '#3b82f6', bg: '#eff6ff', screen: 'ClientsList' });
     }
 
-    if (user.permissions?.perm_idcard_info) {
+    const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list;
+    if (hasReprintPerm || isAdmin) {
       actions.push({ label: 'Reprint', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: counts.client_id || user?.client_id } });
     }
 
-    if (user.permissions?.perm_website_view || isAdmin) {
+    if (perms.perm_permission_list || isAdmin) {
       actions.push({ label: 'Perms', icon: 'shield-alt', color: '#22c55e', bg: '#f0fdf4', screen: 'Permissions' });
     }
 
@@ -100,9 +103,9 @@ export default function HomeScreen({ navigation }) {
       {/* Gradient Header */}
       <LinearGradient colors={gradients.brandFull} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={s.headerRow}>
-          <View style={s.headerLeft}>
+          <TouchableOpacity style={s.headerLeft} onPress={() => navigation.navigate('Landing')} activeOpacity={0.8}>
             <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
-          </View>
+          </TouchableOpacity>
 
           <View style={s.headerCenter}>
             <Text style={s.brandName}>Adarsh ID Cards</Text>
@@ -207,11 +210,11 @@ export default function HomeScreen({ navigation }) {
                     { key: 'v', status: 'verified' },
                     { key: 'a', status: 'approved' },
                     { key: 'd', status: 'download' },
-                    { key: 'pool', status: 'pool' },
+                    { key: 'r', status: 'reprint' },
                   ].map(st => (
                     <TouchableOpacity key={st.key} style={s.pillBtn}
                       onPress={() => navigation.navigate('CardList', { tableId: table.id, status: st.status })}>
-                      <Text style={s.pillLabel}>{STATUS_LABELS[st.status] || st.status.substring(0, 3).toUpperCase()}</Text>
+                      <Text style={s.pillLabel} numberOfLines={1}>{STATUS_LABELS[st.status]?.substring(0, 3).toUpperCase() || ''}</Text>
                       <StatusBadge status={st.status} count={table[st.key] || 0} variant="glass" />
                     </TouchableOpacity>
                   ))}
@@ -226,13 +229,9 @@ export default function HomeScreen({ navigation }) {
         {/* Quick Actions */}
         {quickActions.length > 0 && (
           <>
-            <LinearGradient 
-              colors={gradients.brand} 
-              start={{x:0, y:0}} end={{x:1, y:0}} 
-              style={[s.secHeader, { marginTop: 12 }]}
-            >
-              <Text style={[s.secTitle, { color: '#fff' }]}>QUICK ACTIONS</Text>
-            </LinearGradient>
+            <View style={[s.secHeader, { marginTop: 12 }]}>
+              <Text style={s.secTitle}>QUICK ACTIONS</Text>
+            </View>
             <View style={s.quickActionsWrap}>
               {quickActions.map((act, i) => (
                 <TouchableOpacity 
@@ -241,7 +240,7 @@ export default function HomeScreen({ navigation }) {
                   onPress={() => navigation.navigate(act.screen, act.params)}
                 >
                   <View style={[s.actionIcon, { backgroundColor: act.bg }]}>
-                    <FontAwesome5 name={act.icon} size={14} color={act.color} solid />
+                    <FontAwesome5 name={act.icon} size={18} color={act.color} solid />
                   </View>
                   <Text style={s.actionLabel}>{act.label}</Text>
                 </TouchableOpacity>
@@ -249,51 +248,93 @@ export default function HomeScreen({ navigation }) {
             </View>
           </>
         )}
+
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Global Add Button (FAB) */}
+      {(user?.role === 'super_admin' || user?.permissions?.perm_idcard_add) && (
+        <TouchableOpacity 
+          style={s.fab} 
+          onPress={() => {
+            const tables = counts.tables || [];
+            if (tables.length === 1) {
+              navigation.navigate('CardList', { tableId: tables[0].id, showAdd: true });
+            } else {
+              navigation.navigate('TablePicker', { action: 'add' });
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <LinearGradient colors={gradients.brand} style={s.fabGradient}>
+            <FontAwesome5 name="plus" size={18} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  header: { paddingHorizontal: 16, paddingBottom: 20 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, height: 40 },
-  headerLeft: { width: 50, alignItems: 'flex-start' },
-  logo: { width: 32, height: 32, borderRadius: radius.sm },
+  header: { paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, ...shadows.lg },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  headerLeft: { width: 40 },
   headerCenter: { flex: 1, alignItems: 'center' },
-  brandName: { fontSize: 16, fontFamily: fontFamily.bold, color: '#fff', letterSpacing: 0.3 },
-  headerRight: { width: 50, alignItems: 'flex-end' },
-  profileBtn: { width: 34, height: 34, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  brandName: { fontSize: 20, fontFamily: fontFamily.black, color: '#fff', letterSpacing: 0.5 },
+  headerRight: { width: 40, alignItems: 'flex-end' },
+  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  logo: { width: 32, height: 32, borderRadius: radius.sm },
   headerTitle: { fontSize: 18, fontFamily: fontFamily.bold, color: '#fff' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md, paddingHorizontal: 16, height: 44, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  searchPlaceholder: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontFamily: fontFamily.regular },
+  
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.lg, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  searchPlaceholder: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginLeft: 10, fontFamily: fontFamily.medium },
+
   scroll: { flex: 1 },
-  scrollC: { paddingBottom: 40 },
-  // 3×2 grid — square cards
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: GRID_PADDING, paddingTop: GRID_PADDING, paddingBottom: 0, justifyContent: 'space-between' },
-  statusCard: { width: CARD_SIZE, height: CARD_SIZE, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', borderWidth: 1, ...shadows.sm, marginBottom: GRID_GAP },
-  statusIcon: { width: 36, height: 36, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  statusCount: { fontSize: 20, fontFamily: fontFamily.bold },
-  statusLabel: { fontSize: 11, fontFamily: fontFamily.medium, color: colors.gray400, marginTop: 2 },
-  // Quick Actions
-  quickActionsWrap: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 10, marginBottom: 12 },
-  actionBox: { width: (width - 32 - 30) / 4, backgroundColor: '#fff', borderRadius: radius.sm, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
-  actionIcon: { width: 32, height: 32, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  actionLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray700, textTransform: 'uppercase' },
-  // Section header
-  secHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm, marginHorizontal: 16, marginTop: 4, marginBottom: 12, ...shadows.sm },
-  secTitle: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray700, letterSpacing: 0.8, textTransform: 'uppercase' },
+  scrollC: { padding: 16 },
+
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, marginBottom: 8 },
+  statusCard: { width: '48.5%', aspectRatio: 1.1, borderRadius: radius.xl, padding: 16, justifyContent: 'space-between', ...shadows.md, borderWidth: 1, borderColor: colors.gray100 },
+  statusIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  statusCount: { fontSize: 24, fontFamily: fontFamily.black, color: colors.gray800 },
+  statusLabel: { fontSize: 12, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  secHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.lg, marginBottom: 12, backgroundColor: '#fff', ...shadows.sm },
+  secTitle: { fontSize: 11, fontFamily: fontFamily.black, color: colors.gray400, letterSpacing: 1.5 },
   viewAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  viewAllText: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.brandLight },
-  // Tables
-  tablesWrap: { paddingHorizontal: 16 },
-  tableCard: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 14, borderWidth: 1, borderColor: colors.gray100, ...shadows.sm, marginBottom: 10 },
+  viewAllText: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.brandPrimary },
+
+  tablesWrap: { gap: 10, marginBottom: 8 },
+  tableCard: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 12, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   tableTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  tableIcon: { width: 34, height: 34, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
+  tableIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   tableName: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800, flex: 1 },
-  tablePills: { flexDirection: 'row', gap: 6 },
-  pillBtn: { flex: 1, alignItems: 'center' },
-  pillLabel: { fontSize: 8, fontFamily: fontFamily.bold, color: colors.gray400, marginBottom: 4, textTransform: 'uppercase' },
+  tablePills: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
+  pillBtn: { flex: 1, alignItems: 'center', minWidth: 0 },
+  pillLabel: { fontSize: 7, fontFamily: fontFamily.bold, color: colors.gray400, marginBottom: 4, textTransform: 'uppercase' },
+
+  quickActionsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4 },
+  actionBox: { width: '23%', alignItems: 'center', marginBottom: 16 },
+  actionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  actionLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray700, textAlign: 'center' },
+
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    ...shadows.xl,
+    zIndex: 1000,
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyTables: { padding: 40, alignItems: 'center' },
   emptyText: { color: colors.gray400, fontSize: 13, fontFamily: fontFamily.medium },
 });

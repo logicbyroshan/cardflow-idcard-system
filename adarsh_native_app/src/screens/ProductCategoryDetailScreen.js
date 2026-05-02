@@ -6,7 +6,7 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, shadows, radius } from '../theme';
-import { apiGet } from '../api/client';
+import { apiGet, BASE_URL } from '../api/client';
 import TopBar from '../components/TopBar';
 
 const { width } = Dimensions.get('window');
@@ -33,8 +33,8 @@ export default function ProductCategoryDetailScreen({ navigation, route }) {
   };
 
   const renderProduct = ({ item }) => (
-    <TouchableOpacity activeOpacity={0.9} onPress={() => setSelectedImage(item.image)} style={s.card}>
-      <Image source={{ uri: item.image }} style={s.image} />
+    <TouchableOpacity activeOpacity={0.9} onPress={() => setSelectedImage(item.image?.startsWith('http') ? item.image : `${BASE_URL}${item.image}`)} style={s.card}>
+      <Image source={{ uri: item.image?.startsWith('http') ? item.image : `${BASE_URL}${item.image}` }} style={s.image} />
       <View style={s.info}>
         <Text style={s.title} numberOfLines={1}>{item.title}</Text>
       </View>

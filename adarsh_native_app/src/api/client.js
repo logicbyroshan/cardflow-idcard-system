@@ -5,7 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
-const BASE_URL = 'https://adarsh-app-2026.loca.lt';
+export const BASE_URL = 'https://panel.adarshbhopal.in';
 
 const STORAGE_KEYS = {
   csrfToken: 'adarsh_csrf_token',
@@ -228,5 +228,3 @@ export async function clearAuth() {
     STORAGE_KEYS.cookies,
   ]);
 }
-
-export { BASE_URL };

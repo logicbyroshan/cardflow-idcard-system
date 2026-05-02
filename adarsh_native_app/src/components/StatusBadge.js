@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, typography, spacing, radius } from '../theme';
+import { FontAwesome5 } from '@expo/vector-icons';
+
 
 const STATUS_STYLES = {
   pending:  { bg: colors.pending.bg,  text: colors.pending.text,  glass: colors.pendingGlass,  label: 'Pending', icon: 'clock' },

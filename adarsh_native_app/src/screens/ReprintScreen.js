@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
-import { colors, shadows, radius } from '../theme';
+import { colors, shadows, radius, fontFamily } from '../theme';
 
 export default function ReprintScreen({ navigation, route }) {
-  const clientId = route?.params?.clientId;
+  const { user } = useAuth();
+  const clientId = route?.params?.clientId || user?.client_id;
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('request_list');
@@ -121,23 +123,23 @@ const s = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12 },
   summaryBox: { flex: 1, backgroundColor: '#fff', borderRadius: radius.lg, padding: 12, alignItems: 'center', borderWidth: 1, ...shadows.sm },
   summaryIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  summaryValue: { fontSize: 18, fontWeight: '800' },
-  summaryLabel: { fontSize: 9, fontWeight: '600', color: colors.gray400, marginTop: 1 },
+  summaryValue: { fontSize: 18, fontFamily: fontFamily.bold },
+  summaryLabel: { fontSize: 9, fontFamily: fontFamily.semibold, color: colors.gray400, marginTop: 1 },
   tabs: { flexDirection: 'row', marginHorizontal: 16, marginTop: 12, backgroundColor: '#fff', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
   tabActive: { backgroundColor: 'rgba(51,183,239,0.08)' },
-  tabText: { fontSize: 12, fontWeight: '600', color: colors.gray400 },
-  tabTextActive: { color: colors.brandLight, fontWeight: '700' },
+  tabText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray400 },
+  tabTextActive: { color: colors.brandLight, fontFamily: fontFamily.bold },
   list: { padding: 16, gap: 8, paddingBottom: 32 },
   card: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: radius.lg, padding: 14, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
   cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   tableIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, minWidth: 0 },
-  tableName: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
-  groupName: { fontSize: 10, color: colors.gray400, marginTop: 2 },
+  tableName: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray800 },
+  groupName: { fontSize: 10, color: colors.gray400, marginTop: 2, fontFamily: fontFamily.medium },
   countBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.xs, minWidth: 36, alignItems: 'center' },
-  countText: { fontSize: 12, fontWeight: '800', color: '#b45309' },
+  countText: { fontSize: 12, fontFamily: fontFamily.bold, color: '#b45309' },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
+  emptyTitle: { fontSize: 13, fontFamily: fontFamily.semibold, color: colors.gray400 },
 });

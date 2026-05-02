@@ -5,7 +5,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { colors, gradients, typography, spacing, radius } from '../theme';
+import { colors, gradients, typography, spacing, radius, fontFamily } from '../theme';
 
 export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, onDownload, children, showHome = true }) {
   const insets = useSafeAreaInsets();
@@ -118,11 +118,12 @@ const styles = StyleSheet.create({
   title: {
     color: colors.white,
     fontSize: typography.lg,
-    fontWeight: '700',
+    fontFamily: fontFamily.bold,
   },
   subtitle: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: typography.xs,
+    fontFamily: fontFamily.medium,
     marginTop: 1,
   },
   homeBtn: {
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
   addBtnText: {
     color: colors.white,
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: fontFamily.bold,
   },
   downloadBtn: {
     width: 32,

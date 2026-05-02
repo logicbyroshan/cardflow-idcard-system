@@ -2,18 +2,19 @@
   "expo": {
     "name": "Adarsh ID Cards",
     "slug": "adarsh-final-deploye",
-    "version": "1.0.3",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1e1e2e"
+      "backgroundColor": "#FFB800"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.adarshbhopal.idcards"
+      "bundleIdentifier": "com.adarshid.app",
+      "buildNumber": "12"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +22,8 @@
         "backgroundColor": "#FFB800"
       },
       "edgeToEdgeEnabled": false,
-      "package": "com.adarshbhopal.idcards",
+      "package": "com.adarshid.app",
+      "versionCode": 12,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",

@@ -12,15 +12,8 @@ import AnimatedSplashScreen from './src/screens/AnimatedSplashScreen';
 // Keep splash screen visible while loading fonts
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// ── Force Saira SemiCondensed on ALL Text & TextInput globally ──
+// ── Force Saira SemiCondensed on TextInput ──
 const defaultTextStyle = { fontFamily: 'SairaSemiCondensed-Regular' };
-const oldTextRender = Text.render;
-Text.render = function (...args) {
-  const origin = oldTextRender.call(this, ...args);
-  return React.cloneElement(origin, {
-    style: [defaultTextStyle, origin.props.style],
-  });
-};
 if (TextInput.defaultProps == null) TextInput.defaultProps = {};
 TextInput.defaultProps.style = [defaultTextStyle, TextInput.defaultProps.style];
 

@@ -4,7 +4,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, typography, spacing, radius, shadows } from '../theme';
 
 export default function Toast({ visible, message, type = 'info', duration = 2500, onHide }) {
-  const translateY = useRef(new Animated.Value(-80)).current;
+  const translateY = useRef(new Animated.Value(100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function Toast({ visible, message, type = 'info', duration = 2500
 
       const timer = setTimeout(() => {
         Animated.parallel([
-          Animated.timing(translateY, { toValue: -80, duration: 250, useNativeDriver: true }),
+          Animated.timing(translateY, { toValue: 100, duration: 250, useNativeDriver: true }),
           Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
         ]).start(() => {
           if (onHide) onHide();
@@ -29,9 +29,9 @@ export default function Toast({ visible, message, type = 'info', duration = 2500
 
   if (!visible && !message) return null;
 
-  const bgColor = type === 'success' ? colors.success
-    : type === 'error' ? colors.error
-    : colors.brandLight;
+  const bgColor = type === 'success' ? '#10b981'
+    : type === 'error' ? '#ef4444'
+    : '#6366f1';
 
   const icon = type === 'success' ? 'check-circle'
     : type === 'error' ? 'exclamation-circle'
@@ -44,7 +44,7 @@ export default function Toast({ visible, message, type = 'info', duration = 2500
         { backgroundColor: bgColor, transform: [{ translateY }], opacity },
       ]}
     >
-      <FontAwesome5 name={icon} size={14} color={colors.white} solid />
+      <FontAwesome5 name={icon} size={14} color="#fff" solid />
       <Text style={styles.text} numberOfLines={2}>{message}</Text>
     </Animated.View>
   );
@@ -53,22 +53,22 @@ export default function Toast({ visible, message, type = 'info', duration = 2500
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 50,
-    left: 16,
-    right: 16,
+    bottom: 50,
+    left: 20,
+    right: 20,
     zIndex: 9999,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.xl,
-    ...shadows.lg,
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: radius.lg,
+    ...shadows.xl,
   },
   text: {
     flex: 1,
-    color: colors.white,
-    fontSize: typography.md,
-    fontWeight: typography.semibold,
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: fontFamily.bold,
   },
 });
