@@ -94,6 +94,7 @@ urlpatterns = [
 
     # Engine Proxy APIs (browser → Django → Adarsh Engine, avoids CORS)
     path('api/engine/status/', views.api_engine_status, name='api_engine_status'),
+    path('api/engine/diagnose/', views.api_engine_diagnose, name='api_engine_diagnose'),
     path('api/engine/self-update/', views.api_engine_self_update, name='api_engine_self_update'),
     path('api/engine/process-folder/', views.api_engine_process_folder, name='api_engine_process_folder'),
     path('api/engine/page-photo-picker-folder/', views.api_engine_page_photo_picker_folder, name='api_engine_page_photo_picker_folder'),

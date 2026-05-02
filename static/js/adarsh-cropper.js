@@ -15,8 +15,21 @@
  */
 
 // -- Engine connection constants ------------------------------------------
+// These are set dynamically from the page config or use sensible defaults
 var ENGINE_DIRECT_URL = 'http://127.0.0.1:4765';
 var ENGINE_API_KEY    = 'passport-engine-local-key';
+
+// Load engine config from page if available
+(function() {
+  var configEl = document.getElementById('engineConfig');
+  if (configEl) {
+    try {
+      var config = JSON.parse(configEl.textContent);
+      if (config.ENGINE_BASE_URL) ENGINE_DIRECT_URL = config.ENGINE_BASE_URL;
+      if (config.ENGINE_API_KEY) ENGINE_API_KEY = config.ENGINE_API_KEY;
+    } catch (e) { /* ignore parsing errors */ }
+  }
+})();
 var KEEPALIVE_MS      = 30000;  // poll engine status every 30 s (only when connected)
 
 // Staged-retry schedule: [{ attempts, retryDelayMs, sleepAfterMs | null }]

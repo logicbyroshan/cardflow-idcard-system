@@ -946,6 +946,14 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Engine configuration (read by adarsh-cropper.js) -->
+<script id="engineConfig" type="application/json">
+{
+  "ENGINE_BASE_URL": "{{ engine_base_url }}",
+  "ENGINE_API_KEY": "{{ engine_api_key }}"
+}
+</script>
+
 <script src="{% static 'js/vendor/cropper.min.js' %}"></script>
 <!-- Cropper JS bundle (adarshengine + adarsh-cropper  -  9 files -> 1) -->
 <script src="{% static 'dist/js/cropper.min.js' %}"></script>

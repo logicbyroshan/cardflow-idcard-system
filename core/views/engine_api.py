@@ -297,6 +297,37 @@ def api_engine_status(request):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  GET  /api/engine/diagnose/
+# ═══════════════════════════════════════════════════════════════════════════
+@login_required
+@require_any_admin
+@require_GET
+def api_engine_diagnose(request):
+    """
+    Diagnostic endpoint that tries to detect engine on various ports.
+    Returns: { ports_checked: [...], found: [...], configured: "...", active: "..." }
+    """
+    common_ports = [4765, 5000, 5001, 5765, 3000, 8080]
+    found_ports = []
+    
+    for port in common_ports:
+        test_url = f"http://127.0.0.1:{port}/status"
+        try:
+            r = http_client.get(test_url, timeout=1)
+            if r.ok:
+                found_ports.append({"port": port, "status": r.status_code})
+        except Exception:
+            pass
+    
+    return JsonResponse({
+        "ports_checked": common_ports,
+        "found": found_ports,
+        "configured": ENGINE_BASE,
+        "active": ENGINE_BASE if ENGINE_BASE.endswith(":4765") else "non-standard"
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  POST  /api/engine/process-folder/
 # ═══════════════════════════════════════════════════════════════════════════
 @login_required
