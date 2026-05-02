@@ -348,8 +348,16 @@ function initGlowBorder() {
 // ===== Initialize Everything =====
 document.addEventListener('DOMContentLoaded', () => {
     initHeroSlider();
-    initTypingEffect();
     initMobileMenu();
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(runNonCriticalFeatures, { timeout: 1000 });
+    } else {
+        setTimeout(runNonCriticalFeatures, 1000);
+    }
+});
+
+function runNonCriticalFeatures() {
+    initTypingEffect();
     initScrollEffects();
     createScrollTopButton();
     initPhoneSlideshow();
@@ -357,4 +365,4 @@ document.addEventListener('DOMContentLoaded', () => {
     initAppCtaLink();
     initLogoSpin();
     initGlowBorder();
-});
+}

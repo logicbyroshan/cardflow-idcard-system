@@ -3,8 +3,6 @@
 {% load custom_filters %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=159">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=159">
     <style>
         .lightbox-product-link { color: #fff; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.4); transition: all 0.2s; }
         .lightbox-product-link:hover { color: #0A92DD; border-bottom-color: #0A92DD; }
@@ -29,7 +27,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'website/scripts/our-works.js' %}?v=160"></script>
 <script>
     // AJAX Contact Form Handling
     document.getElementById('contactForm').addEventListener('submit', function(e) {

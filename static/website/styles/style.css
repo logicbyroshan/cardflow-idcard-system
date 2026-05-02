@@ -993,6 +993,10 @@ a:active {
     background: var(--white);
 }
 
+.why-choose-us > .container {
+    padding: 0 60px;
+}
+
 .why-choose-us h2 {
     font-size: 2.5rem;
     text-align: center;
@@ -1078,7 +1082,7 @@ a:active {
     grid-template-columns: repeat(3, 1fr);
     grid-auto-rows: minmax(290px, auto);
     gap: 1.25rem;
-    max-width: 1180px;
+    max-width: 1120px;
     margin: 0 auto;
 }
 
@@ -1127,7 +1131,7 @@ a:active {
 .bento-card-4 {
     flex-direction: row;
     align-items: center;
-    gap: 2rem;
+    gap: 1.25rem;
     justify-content: space-between;
 }
 
@@ -1137,34 +1141,30 @@ a:active {
 
 .bento-card-1 .bento-text-content,
 .bento-card-4 .bento-text-content {
-    flex: 0 0 50%;
-    max-width: 50%;
+    flex: 0 0 55%;
+    max-width: 55%;
     min-width: 0;
 }
 
 .bento-card-1 .bento-illustration,
 .bento-card-4 .bento-illustration {
-    flex: 0 0 50%;
-    max-width: 50%;
-    width: 50%;
+    flex: 0 0 45%;
+    max-width: 45%;
+    width: 45%;
     margin-bottom: 0;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.bento-card-1 .bento-illustration img {
-    width: 100%;
-    max-width: 300px;
-    margin-left: auto;
-    border-radius: 12px;
-}
-
+.bento-card-1 .bento-illustration img,
 .bento-card-4 .bento-illustration img {
     width: 100%;
-    max-width: 300px;
-    margin-right: auto;
-    border-radius: 12px;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 18px;
+    display: block;
+    object-fit: cover;
 }
 
 .bento-card-2,

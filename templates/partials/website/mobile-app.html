@@ -1,9 +1,10 @@
 {% load static %}
 <section class="download-app-section" id="download-app">
     <div class="container">
-        <div class="download-app-wrapper">
-            <div class="download-app-content">
-                <div class="app-badge">
+        <div class="download-app-wrap">
+            <div class="download-app-wrapper">
+                <div class="download-app-content">
+                    <div class="app-badge">
                     <i class="fa-solid fa-mobile-screen-button"></i>
                     <span>Available on Play Store</span>
                 </div>
@@ -44,14 +45,14 @@
                         <div class="phone-screen">
                             <div class="app-slider">
                                 <div class="app-slides">
-                                    <img src="{% static 'assets/phone-ss/screenshots1.webp' %}" alt="App Screenshot 1" class="app-slide active">
-                                    <img src="{% static 'assets/phone-ss/screenshots2.webp' %}" alt="App Screenshot 2" class="app-slide">
-                                    <img src="{% static 'assets/phone-ss/screenshots3.webp' %}" alt="App Screenshot 3" class="app-slide">
-                                    <img src="{% static 'assets/phone-ss/screenshots4.webp' %}" alt="App Screenshot 4" class="app-slide">
-                                    <img src="{% static 'assets/phone-ss/screenshots5.webp' %}" alt="App Screenshot 5" class="app-slide">
-                                    <img src="{% static 'assets/phone-ss/screenshots6.webp' %}" alt="App Screenshot 6" class="app-slide">
-                                    <img src="{% static 'assets/phone-ss/screenshots7.webp' %}" alt="App Screenshot 7" class="app-slide">
-                                    <img src="{% static 'assets/phone-ss/screenshots8.webp' %}" alt="App Screenshot 8" class="app-slide">
+                                    <img src="{% static 'assets/phone-ss/screenshots1.webp' %}" alt="App Screenshot 1" class="app-slide active" width="2064" height="1636" decoding="async">
+                                    <img src="{% static 'assets/phone-ss/screenshots2.webp' %}" alt="App Screenshot 2" class="app-slide" width="2064" height="1636" loading="lazy" decoding="async">
+                                    <img src="{% static 'assets/phone-ss/screenshots3.webp' %}" alt="App Screenshot 3" class="app-slide" width="2064" height="1636" loading="lazy" decoding="async">
+                                    <img src="{% static 'assets/phone-ss/screenshots4.webp' %}" alt="App Screenshot 4" class="app-slide" width="2064" height="1636" loading="lazy" decoding="async">
+                                    <img src="{% static 'assets/phone-ss/screenshots5.webp' %}" alt="App Screenshot 5" class="app-slide" width="2064" height="1636" loading="lazy" decoding="async">
+                                    <img src="{% static 'assets/phone-ss/screenshots6.webp' %}" alt="App Screenshot 6" class="app-slide" width="2064" height="1636" loading="lazy" decoding="async">
+                                    <img src="{% static 'assets/phone-ss/screenshots7.webp' %}" alt="App Screenshot 7" class="app-slide" width="2064" height="1636" loading="lazy" decoding="async">
+                                    <img src="{% static 'assets/phone-ss/screenshots8.webp' %}" alt="App Screenshot 8" class="app-slide" width="2064" height="1636" loading="lazy" decoding="async">
                                 </div>
                                 <div class="app-slider-dots">
                                     <span class="dot active" data-slide="0"></span>
@@ -140,86 +141,152 @@
 }
 /* Mobile App Section Styles */
 .download-app-section {
-    padding: 100px 0;
-    background: #f8fafc;
-    overflow: hidden;
+    padding: 100px 0 120px;
+    background: linear-gradient(180deg, #eef6ff 0%, #f8fbff 60%, #ffffff 100%);
+    overflow: visible;
     position: relative;
 }
 
 .download-app-section::before {
     content: '';
     position: absolute;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(10, 146, 221, 0.05) 0%, transparent 70%);
-    top: -200px;
-    right: -200px;
+    width: 620px;
+    height: 620px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.14) 0%, transparent 65%);
+    top: -260px;
+    right: -180px;
     z-index: 0;
+}
+
+.download-app-section::after {
+    content: '';
+    position: absolute;
+    width: 520px;
+    height: 520px;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 66%);
+    bottom: -240px;
+    left: -220px;
+    z-index: 0;
+}
+
+.download-app-wrap {
+    position: relative;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 40px 36px;
+    background: #ffffff;
+    border-radius: 40px;
+    box-shadow: 0 40px 90px rgba(15, 23, 42, 0.12);
+    overflow: visible;
+    z-index: 1;
 }
 
 .download-app-wrapper {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
     align-items: center;
-    gap: 60px;
+    gap: 48px;
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 .app-badge {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(10, 146, 221, 0.1);
-    color: #0a92dd;
-    padding: 8px 16px;
-    border-radius: 50px;
+    gap: 10px;
+    background: rgba(14, 134, 255, 0.12);
+    color: #0f4fe0;
+    padding: 10px 20px;
+    border-radius: 999px;
     font-size: 0.9rem;
-    font-weight: 600;
-    margin-bottom: 24px;
+    font-weight: 700;
+    margin-bottom: 22px;
+    box-shadow: inset 0 0 0 1px rgba(14, 134, 255, 0.18);
+}
+
+.download-app-content {
+    max-width: 620px;
 }
 
 .download-app-content h2 {
-    font-size: 3rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin-bottom: 20px;
-    line-height: 1.2;
+    font-size: clamp(3rem, 4vw, 4.2rem);
+    font-weight: 900;
+    color: #0f172a;
+    margin-bottom: 22px;
+    line-height: 1.05;
 }
 
 .download-app-content p {
     font-size: 1.15rem;
-    color: #64748b;
-    margin-bottom: 30px;
-    line-height: 1.6;
+    color: #475569;
+    margin-bottom: 36px;
+    line-height: 1.75;
+    max-width: 520px;
 }
 
 .app-features {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 14px;
     margin-bottom: 40px;
 }
 
 .app-feature {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-weight: 500;
+    gap: 12px;
+    font-weight: 600;
     color: #475569;
 }
 
 .app-feature i {
     color: #10b981;
+    font-size: 1rem;
+    width: 24px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.app-buttons {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.play-store-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 0 30px;
+    background: linear-gradient(135deg, #0f4fe0 0%, #10b981 100%);
+    color: #ffffff;
+    border-radius: 18px;
+    font-size: 1rem;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 18px 45px rgba(16, 185, 129, 0.24);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+    text-decoration: none;
+}
+
+.play-store-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 55px rgba(16, 185, 129, 0.28);
+    filter: saturate(1.05);
+}
+
+.play-store-btn i {
+    font-size: 1.2rem;
+}
+
+.play-store-btn span {
+    display: inline-block;
 }
 
 .play-store-btn img {
-    height: 60px;
-    transition: transform 0.3s ease;
-}
-
-.play-store-btn:hover img {
-    transform: scale(1.05);
+    display: none;
 }
 
 /* Phone Mockup */
@@ -386,6 +453,41 @@
     background: rgba(255, 255, 255, 0.7);
 }
 
+.phone-shadow {
+    position: absolute;
+    bottom: -42px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 94%;
+    height: 28px;
+    background: rgba(15, 23, 42, 0.16);
+    filter: blur(22px);
+    border-radius: 50%;
+    z-index: 0;
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+    .download-app-wrapper {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 40px;
+    }
+    
+    .app-badge {
+        justify-content: center;
+    }
+    
+    .app-features {
+        justify-items: center;
+    }
+    
+    .download-app-content h2 {
+        font-size: 2.5rem;
+    }
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const slides = document.querySelectorAll('.app-slide');
@@ -436,38 +538,3 @@ document.addEventListener('DOMContentLoaded', function() {
     startAutoSlide();
 });
 </script>
-
-.phone-shadow {
-    position: absolute;
-    bottom: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80%;
-    height: 20px;
-    background: rgba(0,0,0,0.1);
-    filter: blur(15px);
-    border-radius: 50%;
-    z-index: -1;
-}
-
-/* Responsive */
-@media (max-width: 991px) {
-    .download-app-wrapper {
-        grid-template-columns: 1fr;
-        text-align: center;
-        gap: 40px;
-    }
-    
-    .app-badge {
-        justify-content: center;
-    }
-    
-    .app-features {
-        justify-items: center;
-    }
-    
-    .download-app-content h2 {
-        font-size: 2.5rem;
-    }
-}
-</style>

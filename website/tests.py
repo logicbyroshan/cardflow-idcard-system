@@ -43,7 +43,7 @@ class PortfolioUploadProcessingTests(TestCase):
 		)
 
 		self.assertTrue(item.image.name.lower().endswith('.webp'))
-		self.assertLessEqual(item.image.size, 500 * 1024)
+		self.assertLessEqual(item.image.size, 200 * 1024)
 
 	def test_service_create_processes_portfolio_image_to_webp(self):
 		item = PortfolioItemService.create(
@@ -54,7 +54,7 @@ class PortfolioUploadProcessingTests(TestCase):
 		)
 
 		self.assertTrue(item.image.name.lower().endswith('.webp'))
-		self.assertLessEqual(item.image.size, 500 * 1024)
+		self.assertLessEqual(item.image.size, 200 * 1024)
 
 	def test_service_update_renames_title_when_category_changes(self):
 		item = PortfolioItemService.create(

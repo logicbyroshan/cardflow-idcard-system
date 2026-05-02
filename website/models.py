@@ -411,11 +411,16 @@ class PortfolioItem(models.Model):
 
         if self._needs_portfolio_image_processing():
             from .watermark import process_portfolio_image
-            self.image = process_portfolio_image(self.image)
+            # Ensure portfolio images are compressed to the requested maximum (200KB)
+            self.image = process_portfolio_image(self.image, max_kb=200)
 
         if self._needs_portfolio_video_processing():
             from .video_processing import normalize_portfolio_video_upload
-            self.video_file = normalize_portfolio_video_upload(self.video_file)
+            from .watermark import compress_video_file
+            # First normalize (re-encode) with the existing FFmpeg pipeline,
+            # then enforce maximum compressed size (10 MB).
+            normalized = normalize_portfolio_video_upload(self.video_file)
+            self.video_file = compress_video_file(normalized, max_bytes=10 * 1024 * 1024)
 
         if not self.slug:
             from django.utils.text import slugify
