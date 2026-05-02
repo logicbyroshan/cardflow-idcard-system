@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!helpfulButtons.length || !testimonialGrid) return;
 
         const helpfulUrl = testimonialGrid.dataset.helpfulUrl || '/testimonial-helpful/';
-        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value
+            || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            || '';
 
         helpfulButtons.forEach((btn) => {
             btn.addEventListener('click', async () => {
