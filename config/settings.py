@@ -461,13 +461,23 @@ MEDIA_USE_XACCEL = os.getenv('MEDIA_USE_XACCEL', 'false').strip().lower() in ('1
 # FILE UPLOAD LIMITS
 # =============================================================================
 
-# Max size for non-file POST fields (e.g. JSON card_ids, status flags, text fields).
-# This does NOT limit file uploads — those are controlled by FILE_UPLOAD_MAX_MEMORY_SIZE
-# and streamed/spilled to disk regardless of their size.
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB — POST fields only, not files
+# Max request body size. Keep this comfortably above the portfolio image/video upload
+# paths so normal uploads do not trip Django's request-size guard before parsing.
+DATA_UPLOAD_MAX_MEMORY_SIZE = _env_int(
+    'DATA_UPLOAD_MAX_MEMORY_SIZE',
+    512 * 1024 * 1024,
+    minimum=10 * 1024 * 1024,
+    maximum=2 * 1024 * 1024 * 1024,
+)
 
-# Max size for a single uploaded file kept in memory before spilling to disk (10 MB)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+# Max size for a single uploaded file kept in memory before spilling to disk.
+# Larger portfolio videos will spill to disk and continue processing normally.
+FILE_UPLOAD_MAX_MEMORY_SIZE = _env_int(
+    'FILE_UPLOAD_MAX_MEMORY_SIZE',
+    25 * 1024 * 1024,
+    minimum=1 * 1024 * 1024,
+    maximum=256 * 1024 * 1024,
+)
 
 # Max number of files per upload request.
 # Create-with-XLSX folder uploads can legitimately include thousands of images.

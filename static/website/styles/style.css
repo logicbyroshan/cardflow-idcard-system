@@ -940,7 +940,7 @@ a:active {
     min-width: 140px;
     height: 110px;
     padding: 2px 4px;
-    gap: 6px;
+    gap: 10px;
     transition: var(--transition);
 }
 
@@ -976,6 +976,7 @@ a:active {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top: 2px;
 }
 
 .logo-item:hover img {
