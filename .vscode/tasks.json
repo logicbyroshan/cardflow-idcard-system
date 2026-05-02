@@ -84,6 +84,33 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "git-push-only",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-EncodedCommand",
+				"UwBlAHQALQBMAG8AYwBhAHQAaQBvAG4AIAAnAEMAOgAvAFUAcwBlAHIAcwAvAHIAbwBzAGgAYQBuAC8ARABlAHMAawB0AG8AcAAvAEEAZABhAHIAcwBoACAAQQBkAG0AaQBuACAATgBlAHcAJwA7ACAAZwBpAHQAIABwAHUAcwBoAA=="
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-commit-push-adarsh-engine-fix",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"cd 'c:\\Users\\roshan\\Desktop\\Adarsh Admin New'; git add -A; git commit -m 'Implement Adarsh Engine image persistence: save edits to folder, bulk ZIP download'; git push"
+			]
 		}
 	]
 }
