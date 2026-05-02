@@ -727,7 +727,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Permission label mapping
       var permissionLabels = {
-        'perm_idcard_client_list': 'Manage Client',
+        'perm_idcard_client_list': 'Manage Assistant',
         'perm_idcard_setting_list': 'View Template List',
         'perm_idcard_setting_add': 'Create New Template',
         'perm_idcard_setting_edit': 'Edit Template',
