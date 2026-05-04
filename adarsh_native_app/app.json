@@ -2,28 +2,29 @@
   "expo": {
     "name": "Adarsh ID Cards",
     "slug": "adarsh-final-deploye",
-    "version": "1.0.8",
+    "version": "1.0.39",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFB800"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.adarshid.app",
-      "buildNumber": "13"
+      "buildNumber": "39"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFB800"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": false,
       "package": "com.adarshid.app",
-      "versionCode": 13,
+      "versionCode": 39,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -35,7 +36,8 @@
     },
     "plugins": [
       "expo-font",
-      "expo-system-ui"
+      "expo-system-ui",
+      "expo-asset"
     ],
     "extra": {
       "eas": {

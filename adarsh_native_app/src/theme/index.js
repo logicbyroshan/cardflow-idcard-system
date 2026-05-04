@@ -159,6 +159,8 @@ export const fontFamily = {
   medium: 'SairaSemiCondensed-Medium',
   semibold: 'SairaSemiCondensed-SemiBold',
   bold: 'SairaSemiCondensed-Bold',
+  extrabold: 'SairaSemiCondensed-Bold', // Fallback to Bold
+  black: 'SairaSemiCondensed-Bold',     // Fallback to Bold
 };
 
 export const typography = {

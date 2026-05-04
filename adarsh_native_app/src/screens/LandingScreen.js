@@ -24,6 +24,7 @@ export default function LandingScreen({ navigation }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const [error, setError] = useState(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -42,10 +43,19 @@ export default function LandingScreen({ navigation }) {
   }, [data, activeHero]);
 
   const loadLandingData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const { ok, data: res } = await apiGet('/app/api/pub/website/landing/');
-      if (ok && res.success) setData(res.data);
-    } catch (e) { console.error(e); }
+      if (ok && res.success) {
+        setData(res.data);
+      } else {
+        setError(res.message || 'Failed to load content. Please try again.');
+      }
+    } catch (e) { 
+      setError('Network connection error. Check your internet.');
+      console.error(e); 
+    }
     setLoading(false);
   };
 
@@ -66,7 +76,35 @@ export default function LandingScreen({ navigation }) {
   };
 
   if (loading) return (
-    <View style={s.loading}><ActivityIndicator size="large" color={colors.brandLight} /></View>
+    <View style={s.loading}>
+      <ActivityIndicator size="large" color={colors.brandPrimary} />
+      <Text style={s.loadingText}>Loading v38 Experience...</Text>
+    </View>
+  );
+
+  if (error) return (
+    <View style={s.errorRoot}>
+      <LinearGradient colors={['#fff', '#f8fafc']} style={StyleSheet.absoluteFill} />
+      <View style={s.errorIconCircle}>
+        <FontAwesome5 name="wifi" size={32} color={colors.red} />
+        <View style={s.slash} />
+      </View>
+      <Text style={s.errorTitle}>Connection Issue</Text>
+      <Text style={s.errorMsg}>{error}</Text>
+      <TouchableOpacity onPress={loadLandingData} style={s.retryBtn}>
+        <LinearGradient colors={gradients.brand} style={s.retryBtnGrad} start={{x:0, y:0}} end={{x:1, y:0}}>
+          <FontAwesome5 name="redo" size={12} color="#fff" />
+          <Text style={s.retryBtnText}>TAP TO RETRY</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        onPress={() => navigation.navigate(isAuthenticated ? 'Home' : 'Login')}
+        style={s.errorLoginLink}
+      >
+        <Text style={s.errorLoginLinkText}>Skip to Login Panel</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   const headerBg = scrollY.interpolate({
@@ -398,4 +436,16 @@ const s = StyleSheet.create({
   benefitIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 10, ...shadows.sm },
   benefitTitle: { fontSize: 13, fontFamily: fontFamily.bold, color: '#1e293b', textAlign: 'center' },
   benefitSub: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4, fontFamily: fontFamily.regular },
+
+  loadingText: { marginTop: 16, fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray400, letterSpacing: 1 },
+  errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#fff' },
+  errorIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#fee2e2' },
+  slash: { position: 'absolute', width: 40, height: 2, backgroundColor: colors.red, transform: [{ rotate: '45deg' }] },
+  errorTitle: { fontSize: 24, fontFamily: fontFamily.bold, color: '#1e293b', marginBottom: 8 },
+  errorMsg: { fontSize: 14, fontFamily: fontFamily.regular, color: '#64748b', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  retryBtn: { width: '100%', borderRadius: 12, overflow: 'hidden', ...shadows.lg },
+  retryBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
+  retryBtnText: { fontSize: 14, fontFamily: fontFamily.bold, color: '#fff', letterSpacing: 1 },
+  errorLoginLink: { marginTop: 24, padding: 12 },
+  errorLoginLinkText: { fontSize: 14, fontFamily: fontFamily.semibold, color: colors.brandLight, textDecorationLine: 'underline' },
 });

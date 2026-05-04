@@ -87,7 +87,6 @@ async function apiFetch(path, options = {}) {
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
     'User-Agent': 'AdarshMobileApp/1.1 (Premium Native; Expo)',
-    'Bypass-Tunnel-Reminder': 'true',
     ...(options.headers || {}),
   };
 
@@ -138,7 +137,7 @@ export async function apiGet(path, params = null) {
     const text = await response.text();
     
     if (response.status === 503) {
-      return { ok: false, status: 503, data: { success: false, message: 'Server tunnel is currently unavailable. Please try again in a moment.' } };
+      return { ok: false, status: 503, data: { success: false, message: 'Server is currently unreachable. This may be due to high traffic or maintenance. Please try again later.' } };
     }
 
     let data = {};
@@ -146,12 +145,13 @@ export async function apiGet(path, params = null) {
       data = JSON.parse(text);
     } catch (e) {
       console.warn('[API] JSON Parse Error for path:', finalPath, 'Response:', text.substring(0, 100));
-      return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid server response' : 'Server error (' + response.status + ')' } };
+      return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid server response' : 'Server encountered an issue (' + response.status + ')' } };
     }
     return { ok: response.ok, status: response.status, data };
   } catch (e) {
     console.warn('[API] Fetch Error for path:', path, e);
-    return { ok: false, status: 0, data: { success: false, message: e.message?.includes('Network') ? 'Connection failed. Check your internet.' : (e.message || 'Network error') } };
+    const isNetwork = e.message?.toLowerCase().includes('network') || e.message?.toLowerCase().includes('failed to fetch');
+    return { ok: false, status: 0, data: { success: false, message: isNetwork ? 'Connection failed. Please check your internet and try again.' : (e.message || 'An unexpected error occurred') } };
   }
 }
 
@@ -164,7 +164,7 @@ export async function apiPost(path, body = {}) {
     const text = await response.text();
 
     if (response.status === 503) {
-      return { ok: false, status: 503, data: { success: false, message: 'Server tunnel is currently unavailable.' } };
+      return { ok: false, status: 503, data: { success: false, message: 'Server is currently unavailable. Please try again soon.' } };
     }
 
     let data = {};
@@ -172,12 +172,12 @@ export async function apiPost(path, body = {}) {
       data = JSON.parse(text);
     } catch (e) {
       console.warn('[API] JSON Parse Error for POST path:', path, 'Response:', text.substring(0, 100));
-      return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid server response' : 'Server error (' + response.status + ')' } };
+      return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid response' : 'Server error (' + response.status + ')' } };
     }
     return { ok: response.ok, status: response.status, data };
   } catch (e) {
     console.warn('[API] Fetch Error for POST path:', path, e);
-    return { ok: false, status: 0, data: { success: false, message: e.message || 'Network error' } };
+    return { ok: false, status: 0, data: { success: false, message: 'Network connection error' } };
   }
 }
 

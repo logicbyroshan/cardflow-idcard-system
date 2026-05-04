@@ -44,6 +44,7 @@ from pydantic import BaseModel
 from passport_engine_core import process_zip, process_folder
 from passport_engine_core.page_photo_picker import pick_page_photos_in_folder
 from passport_engine_core.compressor import compress_folder
+from passport_engine_core.processor import set_stop_signal
 from passport_engine_core.config import ENGINE_VERSION
 
 # ── Constants ────────────────────────────────────────────────────────────
@@ -315,6 +316,9 @@ class AdjustImageRequest(BaseModel):
     output_path: str          # Full path to save adjusted image
     black_point: int = 0      # Levels black point (0-254)
     gamma: float = 1.0        # Gamma correction (0.01-3.0)
+    white_point: int = 255    # Levels white point (1-255)
+    vibrance: int = 0         # Vibrance adjustment (-100 to 100)
+    temperature: int = 0      # Temperature adjustment (-100 to 100)
 
 
 class RenamePreviewRequest(BaseModel):
@@ -332,9 +336,6 @@ class RenameExecuteRequest(BaseModel):
     params: dict = {}                     # Operation-specific parameters
     file_list: list[str] | None = None    # Optional specific files
     skip_conflicts: bool = True           # Skip conflicting renames
-    white_point: int = 255    # Levels white point (1-255)
-    vibrance: int = 0         # Vibrance adjustment (-100 to 100)
-    temperature: int = 0      # Temperature adjustment (-100 to 100)
 
 
 def _launch_installer(installer_path: Path, silent: bool = True) -> Path:
@@ -446,6 +447,9 @@ async def process_zip_endpoint(
     Streams the upload to disk in chunks to avoid loading the entire
     file into RAM (supports multi-GB uploads).
     """
+    set_stop_signal(False)  # Reset stop signal for new task
+    logger.info("Received process-zip request: %s", file.filename)
+    
     if not file.filename or not file.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only .zip files are accepted.")
 
@@ -493,7 +497,11 @@ async def process_zip_endpoint(
 
 @app.post("/process-folder")
 async def process_folder_endpoint(body: FolderRequest):
-    """Accept a folder path via JSON, process it, return summary JSON."""
+    """
+    Process an existing local folder through the passport pipeline.
+    """
+    set_stop_signal(False)  # Reset stop signal for new task
+    logger.info("Processing local folder: %s", body.folder_path)
     folder = Path(body.folder_path)
 
     if not folder.exists():
@@ -522,6 +530,7 @@ async def page_photo_picker_folder_endpoint(body: PagePhotoPickerRequest):
 
     Returns summary JSON compatible with the cropper UI result panel.
     """
+    set_stop_signal(False)
     folder = Path(body.folder_path)
     photos_per_page = int(body.photos_per_page)
 
@@ -554,17 +563,17 @@ async def page_photo_picker_folder_endpoint(body: PagePhotoPickerRequest):
 async def compress_folder_endpoint(body: CompressRequest):
     """
     Accept a folder path + target KB via JSON, compress all images in the
-    folder to ≤ target_kb while preserving maximum quality.
-    Returns summary JSON matching the process-folder response shape.
+    folder to meet the target size using binary-search quality optimization.
     """
+    set_stop_signal(False)  # Reset stop signal for new task
+    if body.target_kb <= 0:
+        raise HTTPException(status_code=400, detail="target_kb must be greater than 0.")
     folder = Path(body.folder_path)
 
     if not folder.exists():
         raise HTTPException(status_code=400, detail=f"Path does not exist: {body.folder_path}")
     if not folder.is_dir():
         raise HTTPException(status_code=400, detail=f"Path is not a directory: {body.folder_path}")
-    if body.target_kb <= 0:
-        raise HTTPException(status_code=400, detail="target_kb must be greater than 0.")
 
     try:
         logger.info("Compressing folder: %s (target: %.1f KB)", body.folder_path, body.target_kb)
@@ -688,10 +697,10 @@ async def rename_preview_endpoint(body: RenamePreviewRequest):
 @app.post("/rename-execute")
 async def rename_execute_endpoint(body: RenameExecuteRequest):
     """
-    Execute batch rename operations on files in a folder.
-    
-    Returns summary of renamed, skipped, and failed files.
+    Execute batch renaming on a folder.
     """
+    set_stop_signal(False)  # Reset stop signal for new task
+    logger.info("Executing rename: %s on %s", body.operation, body.folder_path)
     from passport_engine_core.renamer import batch_rename
     
     folder = Path(body.folder_path)
@@ -702,10 +711,6 @@ async def rename_execute_endpoint(body: RenameExecuteRequest):
         raise HTTPException(status_code=400, detail=f"Path is not a folder: {body.folder_path}")
     
     try:
-        logger.info(
-            "Executing batch rename: %s (op=%s, skip_conflicts=%s)",
-            body.folder_path, body.operation, body.skip_conflicts
-        )
         result = batch_rename(
             folder_path=body.folder_path,
             operation=body.operation,
@@ -848,7 +853,18 @@ async def serve_image_endpoint(path: str = Query("", description="Full path to i
     return FileResponse(str(file_path), media_type=content_type)
 
 
-# ── Engine shutdown (browser-triggered) ──────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+#  CONTROL ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════
+
+@app.post("/stop")
+async def stop_endpoint():
+    """
+    Abort the current processing or compression task.
+    """
+    set_stop_signal(True)
+    return {"success": True, "message": "Stop signal sent to engine."}
+
 
 @app.post("/shutdown")
 async def shutdown_endpoint():

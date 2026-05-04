@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -35,64 +35,60 @@ import PermissionsScreen from '../screens/PermissionsScreen';
 
 const Stack = createNativeStackNavigator();
 
+
 export default function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) return null;
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
-          animationDuration: 200,
-          gestureEnabled: true,
-          fullScreenGestureEnabled: true,
-          contentStyle: { backgroundColor: colors.surfaceBg },
-        }}
-      >
-        <Stack.Screen name="Landing" component={LandingScreen} options={{ animation: 'fade' }} />
-        <Stack.Screen name="ProductCategoryDetail" component={ProductCategoryDetailScreen} />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: colors.surfaceBg },
+      }}
+    >
+      <Stack.Screen name="Landing" component={LandingScreen} />
+      <Stack.Screen name="ProductCategoryDetail" component={ProductCategoryDetailScreen} />
 
-        {!isAuthenticated ? (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-            <Stack.Screen name="NoAccess" component={NoAccessScreen} />
-            <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          </>
-        ) : (
-          <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ animation: 'fade' }} />
+      {!isAuthenticated ? (
+        <>
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="AuthNoAccess" component={NoAccessScreen} />
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
+        </>
+      ) : (
+        <>
+          <Stack.Screen name="Home" component={HomeScreen} options={{ animation: 'fade' }} />
 
-            {/* Phase 1 */}
-            <Stack.Screen name="Profile" component={ProfileScreen} />
-            <Stack.Screen name="Notifications" component={NotificationsScreen} />
-            <Stack.Screen name="TablePicker" component={TablePickerScreen} />
-            <Stack.Screen name="NoAccess" component={NoAccessScreen} />
-            <Stack.Screen name="DesktopRequired" component={DesktopRequiredScreen} />
+          {/* Phase 1 */}
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          <Stack.Screen name="TablePicker" component={TablePickerScreen} />
+          <Stack.Screen name="NoAccess" component={NoAccessScreen} />
+          <Stack.Screen name="DesktopRequired" component={DesktopRequiredScreen} />
 
-            {/* Phase 2 */}
-            <Stack.Screen name="Search" component={SearchScreen} />
-            <Stack.Screen name="CardDetail" component={CardDetailScreen} />
-            <Stack.Screen name="Groups" component={GroupsScreen} />
-            <Stack.Screen name="StaffManage" component={StaffManageScreen} />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="ClientsList" component={ClientsListScreen} />
+          {/* Phase 2 */}
+          <Stack.Screen name="Search" component={SearchScreen} />
+          <Stack.Screen name="CardDetail" component={CardDetailScreen} />
+          <Stack.Screen name="Groups" component={GroupsScreen} />
+          <Stack.Screen name="StaffManage" component={StaffManageScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="ClientsList" component={ClientsListScreen} />
 
-            {/* Phase 3 */}
-            <Stack.Screen name="CardList" component={CardListScreen} />
-            <Stack.Screen name="Camera" component={CameraScreen} />
-            <Stack.Screen name="Reprint" component={ReprintScreen} />
+          {/* Phase 3 */}
+          <Stack.Screen name="CardList" component={CardListScreen} />
+          <Stack.Screen name="Camera" component={CameraScreen} />
+          <Stack.Screen name="Reprint" component={ReprintScreen} />
 
-            {/* Phase 4 — new features */}
-            <Stack.Screen name="ClientGroups" component={ClientGroupsScreen} />
-            <Stack.Screen name="ReprintDetail" component={ReprintDetailScreen} />
-            <Stack.Screen name="Permissions" component={PermissionsScreen} />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+          {/* Phase 4 — new features */}
+          <Stack.Screen name="ClientGroups" component={ClientGroupsScreen} />
+          <Stack.Screen name="ReprintDetail" component={ReprintDetailScreen} />
+          <Stack.Screen name="Permissions" component={PermissionsScreen} />
+        </>
+      )}
+    </Stack.Navigator>
   );
 }
