@@ -255,6 +255,10 @@ def process_reupload_images(task):
 
     target_image_fields = requested_target_fields or list(image_field_names)
     
+    if not target_image_fields:
+        task.mark_failed("No valid image fields to process. Check target_field configuration.")
+        return
+    
     # Get cards to process
     card_ids = metadata.get('card_ids', [])
     status_filter = metadata.get('status_filter', '')
