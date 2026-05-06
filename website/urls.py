@@ -1,7 +1,6 @@
 from django.urls import path
 from django.views.generic import RedirectView
 from . import views
-from . import image_edit_api
 
 # Set the app name for namespacing (e.g., {% url 'website:home' %})
 app_name = 'website'
@@ -42,8 +41,4 @@ urlpatterns = [
     # --- API Endpoints ---
     path('api/category-items/', views.load_more_category_items, name='load_more_category_items'),
     
-    # Image Editor API - Adarsh Engine
-    path('api/image-editor/save/', image_edit_api.save_edited_image, name='save_edited_image'),
-    path('api/image-editor/download/', image_edit_api.download_edited_images, name='download_edited_images'),
-    path('api/image-editor/cleanup/', image_edit_api.cleanup_edited_images, name='cleanup_edited_images'),
 ]

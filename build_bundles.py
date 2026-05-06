@@ -91,21 +91,6 @@ JS_BUNDLES = [
             "js/idcard-actions.js",
         ],
     ),
-    # ── Cropper (Adarsh Engine image editor) ──
-    (
-        "cropper.min.js",
-        [
-            "js/adarshengine.js",
-            "js/adarshengine-histogram.js",
-            "js/adarshengine-presets.js",
-            "js/adarshengine-adjust.js",
-            "js/adarshengine-nav.js",
-            "js/adarsh-cropper-utils.js",
-            "js/adarsh-cropper-donut.js",
-            "js/adarsh-cropper-autoadjust.js",
-            "js/adarsh-cropper.js",
-        ],
-    ),
     # ── Manage Client ──
     (
         "manage-client.min.js",
@@ -210,16 +195,6 @@ CSS_BUNDLES = [
             "css/wa-table.css",
             "css/wa-forms.css",
             "css/wa-modals.css",
-        ],
-    ),
-    # ── Cropper CSS ──
-    (
-        "cropper.min.css",
-        [
-            "css/adarsh-cropper.css",
-            "css/adarsh-cropper-preview.css",
-            "css/adarsh-cropper-modals.css",
-            "css/adarshengine.css",
         ],
     ),
 ]

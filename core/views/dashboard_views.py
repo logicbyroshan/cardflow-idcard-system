@@ -351,18 +351,6 @@ def _enrich_recent_activities_for_dashboard(user, activities):
 # ── Services ─────────────────────────────────────────────────────────────
 @login_required
 @require_any_admin
-def adarsh_cropper(request):
-    """Adarsh Cropper service page — admin & admin staff only."""
-    import os
-    
-    context = {
-        'active_page': 'adarsh_cropper',
-        'user_role': get_user_role(request.user),
-        'engine_base_url': os.getenv('ENGINE_BASE_URL', 'http://127.0.0.1:4765'),
-        'engine_api_key': os.getenv('ENGINE_API_KEY', 'passport-engine-local-key'),
-    }
-    return render(request, 'services/adarsh-cropper.html', context)
-
 
 # ── Login As User (Pro User only) ─────────────────────────────────────
 @login_required

@@ -114,11 +114,6 @@
         <i class="fa-solid fa-images"></i><span>Product Gallery</span>
       </a>
       {% endif %}
-      {% if is_super_admin or is_admin_staff %}
-      <a href="{% url 'adarsh_cropper' %}" class="{% if active_page == 'adarsh_cropper' %}active{% endif %}">
-        <i class="fa-solid fa-wand-magic-sparkles"></i><span>Adarsh Engine</span>
-      </a>
-      {% endif %}
       {% if not is_pro_user %}
       <a href="{% url 'tutorial' %}" class="{% if active_page == 'tutorial' %}active{% endif %}">
         <i class="fa-solid fa-book-open"></i><span>Tutorial</span>

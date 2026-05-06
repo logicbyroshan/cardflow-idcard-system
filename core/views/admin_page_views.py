@@ -1016,6 +1016,9 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
                 pass
 
     total_count = id_cards_query.count()
+    # Default counts for all non-client-staff roles.
+    # Client staff get a scoped count set below so the tabs match their row scope.
+    status_counts = IDCardService.get_status_counts(table)
 
     if PermissionService.is_client_staff(request.user):
         scoped_cards_qs = _apply_client_staff_row_scope(
@@ -1046,7 +1049,6 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
             + status_counts.get('approved', 0)
             + status_counts.get('download', 0)
         )
-
 
 
     return {

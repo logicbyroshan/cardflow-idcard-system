@@ -133,22 +133,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # ==================== API COMPATIBILITY (ROOT /api/*) ====================
-    # Keep these aliases so legacy/bundled frontend calls to /api/engine/*
-    # continue to work even though panel routes are namespaced under /panel/.
-    path('api/engine/status/', core_views.api_engine_status, name='api_engine_status_root'),
-    path('api/engine/process-folder/', core_views.api_engine_process_folder, name='api_engine_process_folder_root'),
-    path('api/engine/page-photo-picker-folder/', core_views.api_engine_page_photo_picker_folder, name='api_engine_page_photo_picker_folder_root'),
-    path('api/engine/preview/', core_views.api_engine_preview, name='api_engine_preview_root'),
-    path('api/engine/serve-image/', core_views.api_engine_serve_image, name='api_engine_serve_image_root'),
-    path('api/engine/save-edited/', core_views.api_engine_save_edited, name='api_engine_save_edited_root'),
-    path('api/engine/delete-image/', core_views.api_engine_delete_image, name='api_engine_delete_image_root'),
-    path('api/engine/compress-folder/', core_views.api_engine_compress_folder, name='api_engine_compress_folder_root'),
-    path('api/engine/adjust-image/', core_views.api_engine_adjust_image, name='api_engine_adjust_image_root'),
-    path('api/engine/rename-preview/', core_views.api_engine_rename_preview, name='api_engine_rename_preview_root'),
-    path('api/engine/rename-execute/', core_views.api_engine_rename_execute, name='api_engine_rename_execute_root'),
-    path('api/engine/rename-operations/', core_views.api_engine_rename_operations, name='api_engine_rename_operations_root'),
-    path('api/engine/clients/', core_views.api_engine_clients, name='api_engine_clients_root'),
-    path('api/cropper/latest-version/', core_views.api_cropper_latest_version, name='api_cropper_latest_version_root'),
 
     # ==================== ADMIN PANEL (/panel/) ====================
     # All internal/admin routes live under /panel/

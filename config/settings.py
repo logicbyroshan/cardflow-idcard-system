@@ -378,10 +378,6 @@ CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', True)
 # Alpine full evaluator is required by existing x-show/x-bind expressions
 # that use comparisons and logical operators across desktop/mobile templates.
 CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', True)
-# Adarsh Cropper relies on direct browser calls to the local engine at
-# http://127.0.0.1:4765, including on production panel domains.
-# Keep this enabled by default unless explicitly disabled via env.
-CSP_ALLOW_LOCAL_ENGINE_CONNECT = _env_bool('CSP_ALLOW_LOCAL_ENGINE_CONNECT', True)
 
 # ── Permissions-Policy header ──
 # Restricts browser APIs not needed by this app.

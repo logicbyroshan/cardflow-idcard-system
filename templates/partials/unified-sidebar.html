@@ -108,9 +108,6 @@
         <i class="fa-solid fa-chevron-down sidebar-dropdown-arrow" :class="{ 'rotated': open }"></i>
       </button>
       <div class="sidebar-dropdown-menu" x-show="open" x-collapse x-cloak>
-        <a href="{% url 'adarsh_cropper' %}" class="{% if active_page == 'adarsh_cropper' %}active{% endif %}">
-          <i class="fa-solid fa-crop"></i><span>Adarsh Cropper</span>
-        </a>
       </div>
     </div>
     {% endif %}
