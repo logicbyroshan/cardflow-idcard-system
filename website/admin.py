@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    BusinessDetails, Feature, HeroImage, PortfolioCategory, PortfolioItem, 
+    BusinessDetails, Feature, PortfolioCategory, PortfolioItem, 
     Testimonial, ContactSubmission, FAQ, 
     WebsiteStatus,
 )
@@ -29,13 +29,7 @@ class BusinessDetailsAdmin(admin.ModelAdmin):
         ('Social Media', {
             'fields': ('facebook_url', 'instagram_url', 'linkedin_url', 'youtube_url'),
         }),
-        ('Hero Section', {
-            'fields': ('hero_title', 'hero_description')
-        }),
-        ('SEO Meta Tags', {
-            'classes': ('collapse',),
-            'fields': ('meta_description', 'meta_keywords')
-        }),
+
     )
 
     def has_add_permission(self, request):
@@ -174,14 +168,4 @@ class WebsiteStatusAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(HeroImage)
-class HeroImageAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'order', 'title', 'is_active', 'image_preview_tag', 'created_at')
-    list_display_links = ('pk',)
-    list_editable = ('order', 'is_active')
-    list_filter = ('is_active',)
-    ordering = ('order', 'pk')
 
-    def image_preview_tag(self, obj):
-        return image_preview(obj.image)
-    image_preview_tag.short_description = 'Preview'

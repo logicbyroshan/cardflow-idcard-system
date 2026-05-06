@@ -7,21 +7,21 @@
     
     <!-- SEO Meta Tags -->
     <title>{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }} | {{ business.tagline|default:'Professional ID Card Solutions' }}{% endif %}</title>
-    <meta name="description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description|default:'Professional ID Cards for Schools and Institutions' }}{% endif %}">
-    <meta name="keywords" content="{% if global_keywords %}{{ global_keywords }}{% else %}{{ business.meta_keywords }}{% endif %}">
+    <meta name="description" content="{% if meta_description %}{{ meta_description }}{% else %}Professional ID Card and Lanyard Printing Solutions in Bhopal. Trusted by 1000+ institutions.{% endif %}">
+    <meta name="keywords" content="Adarsh ID Cards, Adarsh Bhopal, ID Card Printing Bhopal, Custom Lanyards Bhopal, School ID Cards MP, Identity Solutions Madhya Pradesh, PVC ID Card Manufacturer, RFID Cards Bhopal, Digital Lanyard Printing, School Stationery Suppliers Bhopal">
     <link rel="canonical" href="{% if canonical_url %}{{ canonical_url }}{% else %}{{ request.build_absolute_uri }}{% endif %}">
     
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="{{ site_name }}">
     <meta property="og:title" content="{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }}{% endif %}">
-    <meta property="og:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description }}{% endif %}">
+    <meta property="og:description" content="{% if meta_description %}{{ meta_description }}{% else %}Professional ID Card Solutions in Bhopal.{% endif %}">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:image" content="{% block og_image %}{% if item and item.image %}{{ request.scheme }}://{{ request.get_host }}{{ item.image.url }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}{% endif %}{% endblock %}">
     
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }}{% endif %}">
-    <meta name="twitter:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description }}{% endif %}">
+    <meta name="twitter:description" content="{% if meta_description %}{{ meta_description }}{% else %}Professional ID Card Solutions in Bhopal.{% endif %}">
     <meta name="twitter:image" content="{% block twitter_image %}{% if item and item.image %}{{ request.scheme }}://{{ request.get_host }}{{ item.image.url }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}{% endif %}{% endblock %}">
     
     <meta name="theme-color" content="#3498db">
@@ -62,12 +62,12 @@
     <!-- CSS Files -->
     <link rel="stylesheet" href="{% static 'website/styles/style.css' %}?v=150">
     <link rel="preload" href="{% static 'website/styles/page-common.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="{% static 'website/styles/responsive.css' %}?v=147" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="{% static 'website/styles/ui-consistency.css' %}?v=147" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="{% static 'website/styles/responsive.css' %}?v=148" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="{% static 'website/styles/ui-consistency.css' %}?v=148" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript>
         <link rel="stylesheet" href="{% static 'website/styles/page-common.css' %}">
-        <link rel="stylesheet" href="{% static 'website/styles/responsive.css' %}?v=147">
-        <link rel="stylesheet" href="{% static 'website/styles/ui-consistency.css' %}?v=147">
+        <link rel="stylesheet" href="{% static 'website/styles/responsive.css' %}?v=148">
+        <link rel="stylesheet" href="{% static 'website/styles/ui-consistency.css' %}?v=148">
     </noscript>
 
     {% block extra_css %}{% endblock %}
@@ -82,7 +82,7 @@
           "@id": "{{ request.scheme }}://{{ request.get_host }}/#website",
           "url": "{{ request.scheme }}://{{ request.get_host }}/",
           "name": "{{ site_name }}",
-          "description": "{{ business.meta_description }}",
+          "description": "{% if meta_description %}{{ meta_description }}{% else %}Professional ID Card Solutions in Bhopal.{% endif %}",
           "publisher": {"@id": "{{ request.scheme }}://{{ request.get_host }}/#organization"}
         },
         {

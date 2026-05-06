@@ -671,6 +671,29 @@ body.mobile-menu-open {
 }
 
 @media (max-width: 999px) {
+    .hamburger {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .hamburger span {
+        display: block;
+        width: 22px;
+        height: 2.5px;
+        background: var(--white);
+        border-radius: 2px;
+        transition: var(--transition);
+    }
+
     .mobile-menu-overlay {
         display: block;
         position: fixed;
@@ -715,6 +738,68 @@ body.mobile-menu-open {
 
     .mobile-menu-close i {
         font-size: 0.95rem;
+    }
+
+    .nav-links,
+    .nav-links.active {
+        display: flex;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .nav-links.active {
+        display: flex;
+    }
+
+    .mobile-menu-close-item {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: auto;
+        border-bottom: none !important;
+        z-index: 2;
+    }
+
+    .nav-links {
+        padding-top: 56px;
+    }
+
+    .contact-section {
+        padding-left: var(--wa-section-gutter-mobile) !important;
+        padding-right: var(--wa-section-gutter-mobile) !important;
+    }
+
+    .contact-wrapper {
+        gap: 1.5rem;
+        max-width: 100%;
+    }
+
+    .contact-form-side {
+        padding: 1.2rem;
+        text-align: center;
+    }
+
+    .contact-info-side {
+        text-align: center;
+    }
+
+    .contact-info-header {
+        text-align: center;
+    }
+
+    .info-box {
+        text-align: center;
+        align-items: center;
+        justify-items: center;
+    }
+
+    .info-content {
+        text-align: center;
     }
 }
 
@@ -826,6 +911,94 @@ body.mobile-menu-open {
     .contact-form-side,
     .info-box {
         box-shadow: 0 8px 22px rgba(16, 15, 87, 0.08);
+    }
+
+    .contact-wrapper {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    .contact-form-side {
+        order: 1;
+        width: 100%;
+        padding: 1.1rem !important;
+    }
+
+    .contact-info-side {
+        order: 2;
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 0.85rem !important;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .info-box {
+        width: 100%;
+        padding: 1rem !important;
+    }
+
+    .extra-categories-bar {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        justify-content: stretch;
+        align-items: stretch;
+    }
+
+    .extra-categories-bar .extra-category-tag {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+    }
+
+    .bento-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.9rem !important;
+    }
+
+    .bento-card-1 {
+        order: 2;
+        flex-direction: column !important;
+    }
+
+    .bento-card-2 {
+        order: 1;
+    }
+
+    .bento-card-4 {
+        order: 3;
+        flex-direction: column-reverse !important;
+    }
+
+    .bento-card-3 {
+        order: 4;
+    }
+
+    .bento-card-1 .bento-text-content,
+    .bento-card-4 .bento-text-content,
+    .bento-card-1 .bento-illustration,
+    .bento-card-4 .bento-illustration {
+        max-width: 100% !important;
+        width: 100% !important;
+        flex: 0 0 auto !important;
+    }
+
+    .bento-card-1 .bento-illustration,
+    .bento-card-4 .bento-illustration {
+        padding: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    .bento-card-1 .bento-illustration img,
+    .bento-card-4 .bento-illustration img {
+        max-height: 240px;
+        object-fit: cover;
     }
 
     .download-app-features {
@@ -1000,6 +1173,18 @@ body.mobile-menu-open {
     .portfolio-skeleton-card {
         margin-bottom: 6px;
     }
+
+    .extra-categories-bar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .extra-categories-bar .extra-category-tag {
+        min-height: 40px;
+        padding-left: 10px;
+        padding-right: 10px;
+        font-size: 0.72rem;
+    }
 }
 
 @media (hover: none) and (pointer: coarse) {
@@ -1024,3 +1209,86 @@ body.mobile-menu-open {
 }
 .category-content, .category-overlay { position: relative; z-index: 2; }
 .explore-btn { z-index: 3; }
+
+/* Ensure cover images respect card border-radius and avoid visible square corners on mobile */
+.category-card .category-cover-img,
+.category-card img,
+.category-bg .category-bg-img,
+.category-slider .slider-img,
+.category-slider .slider-video,
+.category-bg img {
+    border-radius: inherit;
+    -webkit-border-radius: inherit;
+    overflow: hidden;
+}
+
+/* Mobile-specific polish: avoid heavy cropping for small bento illustrations
+   and enforce consistent card padding/border-radius */
+@media (max-width: 767px) {
+    .bento-card-1 .bento-illustration img,
+    .bento-card-4 .bento-illustration img,
+    .bento-illustration img {
+        object-fit: contain !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: 260px !important;
+        display: block;
+    }
+
+    /* Make sure cards actually clip their children and show rounded corners */
+    .category-card,
+    .bento-card,
+    .info-box,
+    .contact-form-side {
+        border-radius: var(--wa-card-radius) !important;
+        overflow: hidden !important;
+    }
+
+    /* Consistent padding for contact form + info boxes on mobile */
+    .contact-form-side,
+    .contact-info-side,
+    .info-box {
+        padding: 1.15rem !important;
+    }
+
+    /* Make the mobile nav a full-screen stacked panel when opened */
+    .nav-links.active {
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding-top: 64px !important;
+        gap: 18px !important;
+        background: linear-gradient(135deg, rgba(16,15,87,0.98) 0%, rgba(10,146,221,0.98) 100%) !important;
+        z-index: 9999 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .nav-links.active a {
+        color: #fff !important;
+        font-size: 1.05rem !important;
+        padding: 8px 12px !important;
+    }
+
+    .nav-links .nav-btn-group {
+        margin-top: 12px !important;
+    }
+
+    .mobile-menu-close-item {
+        z-index: 10010 !important;
+        right: 12px !important;
+        top: 12px !important;
+        position: absolute !important;
+    }
+
+    .mobile-menu-overlay {
+        z-index: 9998 !important;
+    }
+}

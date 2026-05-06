@@ -24,7 +24,7 @@ from client.models import Client as PanelClient
 from core.services.cache_version_service import CacheVersionService
 
 from .models import (
-    BusinessDetails, ContactSubmission, Feature, HeroImage,
+    BusinessDetails, ContactSubmission, Feature,
     PortfolioCategory, PortfolioItem, Testimonial,
     WebsiteStatus, FAQ,
 )
@@ -147,7 +147,6 @@ def _parse_bool(value, default=False):
 
 def _invalidate_public_section_caches():
     """Invalidate public website section caches after content mutations."""
-    cache.delete('home_hero_images')
     cache.delete('home_sections')
     cache.delete('business_details')
     cache.delete('website:why_choose_us:sections')
@@ -283,8 +282,6 @@ class BusinessDetailsService:
     EDITABLE_FIELDS = [
         'site_name', 'tagline', 'address', 'phone1', 'phone2', 'email',
         'facebook_url', 'instagram_url', 'linkedin_url', 'youtube_url',
-        'hero_title', 'hero_description',
-        'meta_description', 'meta_keywords',
     ]
 
     @classmethod
@@ -792,77 +789,7 @@ class PortfolioCategoryService:
 
 
 # =============================================================================
-# HERO IMAGES
-# =============================================================================
 
-class HeroImageService:
-    """CRUD for HeroImage (homepage carousel)."""
-
-    @staticmethod
-    def list_all():
-        """Return queryset ordered by position."""
-        return HeroImage.objects.order_by('order', 'pk')
-
-    @staticmethod
-    def create(*, image, title='', subtitle='', order=0):
-        """Create a HeroImage. Returns the created instance."""
-        _validate_image_upload(image, 'hero image')
-        with transaction.atomic():
-            hero = HeroImage.objects.create(
-                image=image,
-                title=title,
-                subtitle=subtitle,
-                order=int(order),
-                is_active=True,
-            )
-        _invalidate_public_section_caches()
-        return hero
-
-    @staticmethod
-    def update(pk, *, title=None, subtitle=None, order=None,
-               is_active=None, image=None):
-        """Update a HeroImage. Only non-None fields are changed."""
-        _validate_image_upload(image, 'hero image')
-        with transaction.atomic():
-            hero = get_object_or_404(HeroImage, pk=pk)
-            if title is not None:
-                hero.title = title
-            if subtitle is not None:
-                hero.subtitle = subtitle
-            if order is not None:
-                hero.order = int(order)
-            if is_active is not None:
-                hero.is_active = _parse_bool(is_active)
-            if image:
-                hero.image = image
-            hero.save()
-        _invalidate_public_section_caches()
-        return hero
-
-    @staticmethod
-    def delete(pk):
-        """Delete a HeroImage by pk."""
-        with transaction.atomic():
-            hero = get_object_or_404(HeroImage, pk=pk)
-            # Clean up image file from disk
-            if hero.image:
-                try:
-                    hero.image.delete(save=False)
-                except Exception:
-                    logger.warning("Failed to delete image file for HeroImage %d", pk)
-            hero.delete()
-        _invalidate_public_section_caches()
-
-    @staticmethod
-    def reorder(order_list):
-        """
-        Reorder hero images.
-        order_list: list of pk values in desired order.
-        """
-        with transaction.atomic():
-            for idx, pk in enumerate(order_list):
-                HeroImage.objects.filter(pk=pk).update(order=idx + 1)
-        _invalidate_public_section_caches()
 
 
 # =============================================================================

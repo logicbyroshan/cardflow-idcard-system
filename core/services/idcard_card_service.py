@@ -1081,18 +1081,31 @@ class IDCardCardService(BaseService):
                     return ServiceResult(success=False, message='Field name is required!')
 
                 valid_field_map = {}
+                normalized_field_map = {}
                 for table_field in (table.fields or []):
                     if not isinstance(table_field, dict):
                         continue
                     raw_name = str(table_field.get('name', '')).strip()
-                    if raw_name and raw_name.lower() not in valid_field_map:
-                        valid_field_map[raw_name.lower()] = raw_name
+                    if not raw_name:
+                        continue
+
+                    raw_key = raw_name.lower()
+                    normalized_key = cls.normalize_name(raw_name)
+
+                    if raw_key not in valid_field_map:
+                        valid_field_map[raw_key] = raw_name
+                    if normalized_key and normalized_key not in normalized_field_map:
+                        normalized_field_map[normalized_key] = raw_name
 
                 normalized_field = field_name.lower()
-                if normalized_field not in valid_field_map:
-                    return ServiceResult(success=False, message='Invalid field name')
+                normalized_key = cls.normalize_name(field_name)
 
-                canonical_field = valid_field_map[normalized_field]
+                if normalized_field in valid_field_map:
+                    canonical_field = valid_field_map[normalized_field]
+                elif normalized_key in normalized_field_map:
+                    canonical_field = normalized_field_map[normalized_key]
+                else:
+                    return ServiceResult(success=False, message='Invalid field name')
 
                 field_data = card.field_data or {}
 

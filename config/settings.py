@@ -140,7 +140,6 @@ INSTALLED_APPS = [
     'reprintcard',
     'mobile_app',
     'panel',
-    'officework',
     'django.contrib.sitemaps',
     'django.contrib.sites',
 ]

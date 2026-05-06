@@ -34,7 +34,6 @@ from client.models import Client as PanelClient
 from .models import (
     BusinessDetails,
     Feature,
-    HeroImage,
     PortfolioCategory,
     PortfolioItem,
     Testimonial,
@@ -49,7 +48,6 @@ from .services import (
     TestimonialService,
     PortfolioItemService,
     PortfolioCategoryService,
-    HeroImageService,
     ContactSubmissionService,
     _parse_bool,
 )
@@ -257,7 +255,6 @@ def business_details_page(request):
     context = _get_base_context(request, 'business')
     business = BusinessDetails.objects.first()
     context['business'] = business
-    context['hero_images'] = HeroImage.objects.order_by('order', 'pk')
     context['website_status'] = WebsiteStatus.get_status()
     context['website_not_found_mode'] = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
     context['can_publish_website'] = PermissionService.has(request.user, 'perm_website_publish')
@@ -1128,98 +1125,7 @@ def api_portfolio_category_delete(request, pk):
     return JsonResponse({'success': True, 'message': 'Category deleted'})
 
 
-# =============================================================================
-# API — HERO IMAGES
-# =============================================================================
 
-@require_GET
-@website_edit_required
-def api_hero_image_list(request):
-    """GET: return all hero images ordered by position."""
-    images = HeroImageService.list_all()
-    data = [
-        {
-            'id': img.pk,
-            'image_url': img.image.url if img.image else '',
-            'title': img.title,
-            'subtitle': img.subtitle,
-            'order': img.order,
-            'is_active': img.is_active,
-        }
-        for img in images
-    ]
-    return JsonResponse({'success': True, 'images': data})
-
-
-@require_POST
-@website_add_required
-def api_hero_image_create(request):
-    """POST: upload a new hero image."""
-    image_file = request.FILES.get('image')
-    if not image_file:
-        return JsonResponse({'success': False, 'message': 'Image file is required'}, status=400)
-
-    try:
-        hero = HeroImageService.create(
-            image=image_file,
-            title=request.POST.get('title', ''),
-            subtitle=request.POST.get('subtitle', ''),
-            order=int(request.POST.get('order', 0)),
-        )
-    except ValidationError as e:
-        return JsonResponse({'success': False, 'message': e.message}, status=400)
-    ActivityService.log_website_update(request, 'hero image added')
-    return JsonResponse({
-        'success': True,
-        'message': 'Hero image added',
-        'id': hero.pk,
-        'image_url': hero.image.url,
-    })
-
-
-@require_POST
-@website_edit_required
-def api_hero_image_update(request, pk):
-    """POST: update hero image details (replace image optional)."""
-    try:
-        HeroImageService.update(
-            pk,
-            title=request.POST.get('title'),
-            subtitle=request.POST.get('subtitle'),
-            order=request.POST.get('order'),
-            is_active=request.POST.get('is_active'),
-            image=request.FILES.get('image'),
-        )
-    except ValidationError as e:
-        return JsonResponse({'success': False, 'message': e.message}, status=400)
-    ActivityService.log_website_update(request, 'hero image updated')
-    return JsonResponse({'success': True, 'message': 'Hero image updated'})
-
-
-@require_POST
-@website_delete_required
-def api_hero_image_delete(request, pk):
-    """POST: delete a hero image."""
-    try:
-        HeroImageService.delete(pk)
-        ActivityService.log_website_update(request, 'hero image deleted')
-        return JsonResponse({'success': True, 'message': 'Hero image deleted'})
-    except Exception as e:
-        logging.getLogger(__name__).exception("Hero image delete error: %s", e)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
-
-
-@require_POST
-@website_edit_required
-def api_hero_image_reorder(request):
-    """POST: reorder hero images. Body: { "order": [id1, id2, ...] }"""
-    try:
-        data = json.loads(request.body)
-        order_list = data.get('order', [])
-        HeroImageService.reorder(order_list)
-        return JsonResponse({'success': True, 'message': 'Order updated'})
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'success': False, 'message': 'Invalid data'}, status=400)
 
 
 # =============================================================================

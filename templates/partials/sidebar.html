@@ -118,9 +118,6 @@
       <a href="{% url 'adarsh_cropper' %}" class="{% if active_page == 'adarsh_cropper' %}active{% endif %}">
         <i class="fa-solid fa-wand-magic-sparkles"></i><span>Adarsh Engine</span>
       </a>
-      <a href="{% url 'office_work_page' %}" class="{% if active_page == 'office_work' %}active{% endif %}">
-        <i class="fa-solid fa-briefcase"></i><span>Office Work</span>
-      </a>
       {% endif %}
       {% if not is_pro_user %}
       <a href="{% url 'tutorial' %}" class="{% if active_page == 'tutorial' %}active{% endif %}">

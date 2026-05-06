@@ -98,7 +98,7 @@
             {% include 'components/stat-card.html' with icon="fa-solid fa-handshake" value=total_clients label="Client Logos" meta=active_clients|default:0 meta_suffix="visible" color="purple" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
             {% include 'components/stat-card.html' with icon="fa-solid fa-images" value=total_portfolio label="Portfolio Items" meta=active_portfolio|default:0 meta_suffix="active" color="yellow" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
             {% include 'components/stat-card.html' with icon="fa-solid fa-bolt" value=total_features label="Features" color="teal" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" %}
-            {% include 'components/stat-card.html' with icon="fa-solid fa-panorama" value=total_hero_images label="Hero Images" meta=active_hero_images|default:0 meta_suffix="active" color="blue" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
+
             {% include 'components/stat-card.html' with icon="fa-solid fa-tags" value=total_categories label="Categories" meta=bento_categories_count|default:0 meta_suffix="in bento grid" color="orange" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
             {% include 'components/stat-card.html' with icon="fa-solid fa-envelope" value=total_contacts label="Contact Leads" meta=new_contacts|default:0 meta_suffix="new" color="red" card_class="wa-stat-card" icon_class="wa-stat-icon" info_class="wa-stat-info" value_class="wa-stat-value" label_class="wa-stat-label" meta_class="wa-stat-meta" %}
         </div>
@@ -116,10 +116,7 @@
                     <i class="fa-solid fa-building"></i>
                     <span>Edit Business Info</span>
                 </a>
-                <a href="{% url 'website_admin:business' %}#heroImagesGrid" class="wa-quick-link">
-                    <i class="fa-solid fa-panorama"></i>
-                    <span>Manage Hero Images</span>
-                </a>
+
                 <a href="{% url 'website_admin:reviews' %}" class="wa-quick-link">
                     <i class="fa-solid fa-star"></i>
                     <span>Moderate Reviews</span>

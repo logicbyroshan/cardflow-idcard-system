@@ -57,23 +57,8 @@ class RealtimeHubConsumer(AsyncJsonWebsocketConsumer):
         if not user or not user.is_authenticated:
             return []
 
-        topics = [f'officework.chat.user.{int(user.id)}']
-
-        if PermissionService.is_any_admin(user):
-            topics.extend(['officework.tasks', 'officework.share'])
-            try:
-                from officework.models import OfficeWorkChatGroupMember
-
-                group_ids = list(
-                    OfficeWorkChatGroupMember.objects.filter(
-                        user=user,
-                        group__is_active=True,
-                    ).values_list('group_id', flat=True)
-                )
-                topics.extend([f'officework.chat.group.{int(group_id)}' for group_id in group_ids if int(group_id) > 0])
-            except Exception:
-                pass
-
+        topics = []
+        # Add non-officework bootstrap topics here if any
         return topics
 
     async def disconnect(self, close_code):
@@ -108,10 +93,6 @@ class RealtimeHubConsumer(AsyncJsonWebsocketConsumer):
             await self.send_json({'type': 'realtime.unsubscribed', 'topics': unsubscribed})
             return
 
-        if packet_type == 'officework.chat.send':
-            await self._handle_officework_chat_send(content)
-            return
-
         await self.send_json({'type': 'realtime.error', 'message': 'Unsupported realtime packet type.'})
 
     async def realtime_event(self, event):
@@ -121,56 +102,6 @@ class RealtimeHubConsumer(AsyncJsonWebsocketConsumer):
             'event': event.get('event_type') or 'realtime.message',
             'payload': event.get('payload') or {},
             'sent_at': event.get('sent_at'),
-        })
-
-    async def _handle_officework_chat_send(self, content):
-        if not self._allow_in_window(
-            started_at_attr='_chat_send_window_started_at',
-            count_attr='_chat_send_window_count',
-            limit=self.CHAT_SEND_RATE_LIMIT_COUNT,
-            window_seconds=self.CHAT_SEND_RATE_LIMIT_WINDOW_SECONDS,
-        ):
-            await self.send_json({'type': 'realtime.error', 'message': 'Too many chat sends. Slow down.'})
-            return
-
-        message = str((content or {}).get('message') or '').strip()
-        group_id = content.get('group_id')
-
-        if not message:
-            await self.send_json({'type': 'realtime.error', 'message': 'Message is required for websocket send.'})
-            return
-        if len(message) > self.MAX_OFFICEWORK_CHAT_CHARS:
-            await self.send_json({'type': 'realtime.error', 'message': 'Message is too long.'})
-            return
-
-        try:
-            from officework.services_chat import create_office_work_chat_message, resolve_group_for_user
-
-            group = await database_sync_to_async(resolve_group_for_user)(
-                user=self.scope['user'],
-                group_id=group_id,
-            )
-            if group is None:
-                await self.send_json({'type': 'realtime.error', 'message': 'No chat group available.'})
-                return
-
-            item = await database_sync_to_async(create_office_work_chat_message)(
-                sender=self.scope['user'],
-                message_text=message,
-                group=group,
-            )
-        except PermissionDenied:
-            await self.send_json({'type': 'realtime.error', 'message': 'Not allowed to send office chat.'})
-            return
-        except Exception:
-            await self.send_json({'type': 'realtime.error', 'message': 'Failed to send message.'})
-            return
-
-        await self.send_json({
-            'type': 'realtime.ack',
-            'event': 'officework.chat.send',
-            'item_id': item.get('id'),
-            'item': item,
         })
 
     async def _subscribe_topics(self, topics):
@@ -204,34 +135,6 @@ class RealtimeHubConsumer(AsyncJsonWebsocketConsumer):
     @staticmethod
     def _can_access_topic_sync(user, topic: str) -> bool:
         normalized = normalize_topic(topic)
-
-        if normalized in {'officework.tasks', 'officework.share'}:
-            return PermissionService.is_any_admin(user)
-
-        if normalized.startswith('officework.chat.user.'):
-            parts = normalized.split('.')
-            if len(parts) != 4:
-                return False
-            try:
-                target_user_id = int(parts[-1])
-            except (TypeError, ValueError):
-                return False
-            return bool(user and user.is_authenticated and int(user.id) == target_user_id)
-
-        if normalized.startswith('officework.chat.group.'):
-            parts = normalized.split('.')
-            if len(parts) != 4:
-                return False
-            try:
-                group_id = int(parts[-1])
-            except (TypeError, ValueError):
-                return False
-            try:
-                from officework.services_chat import user_can_access_group
-
-                return user_can_access_group(user, group_id)
-            except Exception:
-                return False
 
         if normalized in {'dashboard.live', 'dashboard.working', 'dashboard.assignments'}:
             return PermissionService.is_any_admin(user)

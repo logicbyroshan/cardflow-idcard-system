@@ -64,14 +64,8 @@ class BusinessDetails(models.Model):
     linkedin_url = models.URLField(blank=True, help_text='LinkedIn profile URL')
     youtube_url = models.URLField(blank=True, help_text='YouTube channel URL')
     
-    # Hero Section
-    hero_title = models.CharField(max_length=255, blank=True)
-    hero_description = models.TextField(blank=True)
-    
-    # SEO
-    meta_description = models.TextField(blank=True)
-    meta_keywords = models.CharField(max_length=500, blank=True)
 
+    
     # Status
     is_active = models.BooleanField(default=True, help_text='Active/Inactive toggle for business details')
 
@@ -124,31 +118,7 @@ class BusinessDetails(models.Model):
         return re.sub(r'<(/?\s*\w+)[^>]*>', _replace_tag, value)
 
 
-# ==========================================
-# 1b. HERO IMAGES (Unlimited, Ordered)
-# ==========================================
 
-class HeroImage(models.Model):
-    """
-    Dynamic hero slider images.
-    Replaces the fixed hero_image1–4 fields on BusinessDetails.
-    Supports unlimited images with ordering and per-image captions.
-    """
-    image = models.ImageField(upload_to='images/Hero/', help_text='Slider image')
-    title = models.CharField(max_length=150, blank=True, help_text='Optional card title (e.g. "Premium Quality")')
-    subtitle = models.CharField(max_length=200, blank=True, help_text='Optional card subtitle (e.g. "Trusted by 500+ Schools")')
-    order = models.PositiveIntegerField(default=0, db_index=True, help_text='Display order (lower = first)')
-    is_active = models.BooleanField(default=True, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Hero Image'
-        verbose_name_plural = 'Hero Images'
-        ordering = ['order', 'pk']
-
-    def __str__(self):
-        return f"Hero #{self.order} — {self.title or 'Untitled'}"
 
 
 # ==========================================

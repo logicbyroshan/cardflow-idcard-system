@@ -71,14 +71,7 @@ urlpatterns = [
     path('api/portfolio-categories/<int:pk>/update/', admin_views.api_portfolio_category_update, name='api_portfolio_category_update'),
     path('api/portfolio-categories/<int:pk>/delete/', admin_views.api_portfolio_category_delete, name='api_portfolio_category_delete'),
 
-    # ==========================================================================
-    # API — Hero Images
-    # ==========================================================================
-    path('api/hero-images/', admin_views.api_hero_image_list, name='api_hero_image_list'),
-    path('api/hero-images/create/', admin_views.api_hero_image_create, name='api_hero_image_create'),
-    path('api/hero-images/<int:pk>/update/', admin_views.api_hero_image_update, name='api_hero_image_update'),
-    path('api/hero-images/<int:pk>/delete/', admin_views.api_hero_image_delete, name='api_hero_image_delete'),
-    path('api/hero-images/reorder/', admin_views.api_hero_image_reorder, name='api_hero_image_reorder'),
+
 
 
 

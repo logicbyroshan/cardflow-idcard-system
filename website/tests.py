@@ -372,6 +372,15 @@ class WebsitePwaInstallabilityTests(TestCase):
 		self.assertEqual(payload.get('start_url'), '/')
 		self.assertEqual(payload.get('scope'), '/')
 
+	@override_settings(PANEL_DOMAIN='panel.example.test', ALLOWED_HOSTS=['testserver', 'panel.example.test'])
+	def test_manifest_endpoint_is_exempt_on_panel_host(self):
+		response = self.client.get('/manifest.json', HTTP_HOST='panel.example.test')
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'application/manifest+json')
+		payload = response.json()
+		self.assertEqual(payload.get('name'), 'Adarsh ID Cards Panel')
+
 	def test_service_worker_endpoint_returns_required_headers(self):
 		response = self.client.get(reverse('website:pwa_service_worker'))
 

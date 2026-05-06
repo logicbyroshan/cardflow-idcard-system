@@ -2217,6 +2217,33 @@ class SecurityApiRegressionTests(TestCase):
         self.card_a.refresh_from_db()
         self.assertNotIn('__HACK__', self.card_a.field_data)
 
+    def test_inline_update_field_normalizes_punctuated_scholar_column(self):
+        from idcards.models import IDCard
+
+        user, client_obj = _create_client_user('scholar-client@test.com', 'clientpass1')
+        client_obj.perm_idcard_edit = True
+        client_obj.save(update_fields=['perm_idcard_edit'])
+
+        _, table = _create_table(client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'SCHOLAR NO.', 'type': 'text', 'order': 2},
+        ])
+        card = _create_card(table, field_data={'NAME': 'STUDENT ONE', 'SCHOLAR NO.': '12345'})
+
+        self.client.login(username='scholar-client@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{card.id}/update-field/',
+            data=json.dumps({'field': 'SCHOLAR NO', 'value': '54321'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        card.refresh_from_db()
+        self.assertEqual(card.field_data.get('SCHOLAR NO.'), '54321')
+
     def test_client_toggle_status_denies_manage_client_admin_staff_for_unassigned_client(self):
         self.admin_staff_profile.perm_idcard_client_list = True
         self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])

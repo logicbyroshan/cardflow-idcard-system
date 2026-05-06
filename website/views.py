@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 from .models import (
     BusinessDetails, 
     Feature, 
-    HeroImage,
     PortfolioCategory,
     PortfolioItem, 
     Testimonial 
@@ -92,7 +91,6 @@ def get_common_context():
     return {
         'business': business,
         'site_name': business.site_name if business else 'Adarsh ID Cards',
-        'global_keywords': 'Adarsh ID Cards, Adarsh Bhopal, ID Card Printing Bhopal, Custom Lanyards Bhopal, School ID Cards MP, Identity Solutions Madhya Pradesh, PVC ID Card Manufacturer, RFID Cards Bhopal, Digital Lanyard Printing, School Stationery Suppliers Bhopal',
     }
 
 
@@ -471,14 +469,6 @@ def _get_bento_context():
 def home(request):
     """Homepage: Displays a summary of all sections"""
     context = get_common_context()
-    
-    # Hero images
-    hero_cache_key = _website_public_cache_key('home_hero_images')
-    hero_images = cache.get(hero_cache_key)
-    if hero_images is None:
-        hero_images = list(HeroImage.objects.filter(is_active=True).order_by('order', 'pk'))
-        cache.set(hero_cache_key, hero_images, 60)
-    context['hero_images'] = hero_images
     
     # Bento Grid Data for Home Page
     context.update(_get_bento_context())
