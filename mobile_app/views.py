@@ -3049,8 +3049,8 @@ def reprint_table(request, table_id):
         elif len(rr_ids) > MAX_REPRINT_ACTION_IDS:
             notice = {'message': f'Maximum {MAX_REPRINT_ACTION_IDS} requests can be processed at once.', 'type': 'error'}
         elif post_action == 'send_to_print':
-            from cardprint.services import PrintWorkflowService
-
+            # Cardprint integration removed: simply move eligible requested
+            # rows to confirmed locally (no PrintRequest creation).
             with transaction.atomic():
                 requested_qs = ReprintRequest.objects.select_for_update().filter(
                     id__in=rr_ids,
@@ -3064,21 +3064,17 @@ def reprint_table(request, table_id):
                 if not card_ids:
                     notice = {'message': 'No requested reprint items found.', 'type': 'error'}
                 else:
-                    result = PrintWorkflowService.create_requests(table, card_ids, user)
-                    if not result.success:
-                        notice = {'message': result.message or 'Could not send selected items to generate list.', 'type': 'error'}
-                    else:
-                        moved_count = ReprintRequest.objects.filter(
-                            id__in=eligible_rr_ids,
-                            table=table,
-                            status='requested',
-                            card__status='download',
-                        ).update(status='confirmed')
-                        notice = {
-                            'message': f'{moved_count} request(s) moved to Confirmed List.',
-                            'type': 'success',
-                        }
-                        active_step = 'request_list'
+                    moved_count = ReprintRequest.objects.filter(
+                        id__in=eligible_rr_ids,
+                        table=table,
+                        status='requested',
+                        card__status='download',
+                    ).update(status='confirmed')
+                    notice = {
+                        'message': f'{moved_count} request(s) moved to Confirmed List.',
+                        'type': 'success',
+                    }
+                    active_step = 'request_list'
         elif post_action == 'reject':
             from reprintcard.services import ReprintWorkflowService
 

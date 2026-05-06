@@ -353,7 +353,10 @@ class IDCard(models.Model):
             # GIN index for fast JSON search is added via migration 0024 (PostgreSQL only)
         ]
 
+# Legacy import for reprintcard (Phase 4 Cleanup)
+try:
+    from reprintcard.models import ReprintRequest
+except ImportError:
+    pass
 
-# ReprintRequest has been moved to the 'reprintcard' app.
-# Import kept for backward compatibility.
-from reprintcard.models import ReprintRequest  # noqa: F401
+

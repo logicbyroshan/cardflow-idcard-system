@@ -52,9 +52,8 @@ class WorkflowService:
         'pending':  ['verified', 'pool'],
         'verified': ['approved', 'pending', 'pool'],
         'approved': ['download', 'verified', 'pending', 'pool'],
-        'download': ['approved', 'pending', 'reprint'],
+        'download': ['approved', 'pending'],
         'pool':     ['pending'],
-        'reprint':  ['download'],
     }
 
     VALID_STATUSES = list({s for sources in ALLOWED_TRANSITIONS.values() for s in sources} | set(ALLOWED_TRANSITIONS.keys()))
@@ -75,7 +74,7 @@ class WorkflowService:
     }
 
     # Statuses that are read-only for client/client_staff roles
-    CLIENT_READONLY_STATUSES = frozenset({'approved', 'download', 'reprint'})
+    CLIENT_READONLY_STATUSES = frozenset({'approved', 'download'})
 
     # ── Permission mapping ──────────────────────────────────────────
     # Which permission key is required to move a card INTO this target status.
@@ -86,7 +85,6 @@ class WorkflowService:
         'download': 'perm_idcard_approve',
         'pending':  'perm_idcard_verify',
         'pool':     'perm_idcard_delete',
-        'reprint':  'perm_idcard_reprint_list',
     }
 
     # ── Image field helpers (delegated to BaseService) ──────────────
@@ -634,12 +632,4 @@ class WorkflowService:
         }
 
 
-# ═══════════════════════════════════════════════════════════════════════
-#  ReprintRequest Workflow — MOVED to reprintcard.services
-# ═══════════════════════════════════════════════════════════════════════
-# Lazy backward-compatible re-export (avoids circular import)
-def __getattr__(name):
-    if name == 'ReprintWorkflowService':
-        from reprintcard.services import ReprintWorkflowService
-        return ReprintWorkflowService
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+

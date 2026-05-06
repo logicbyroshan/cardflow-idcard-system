@@ -30,16 +30,15 @@ logger = logging.getLogger(__name__)
 class IDCardCardService(BaseService):
     """Service for individual ID Card operations."""
 
-    VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']
+    VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download']
 
     # Allowed status transitions: key = current status, value = list of valid target statuses
     VALID_TRANSITIONS = {
         'pending':  ['verified', 'pool'],
         'verified': ['approved', 'pending', 'pool'],
         'approved': ['download', 'verified', 'pool'],
-        'download': ['approved', 'reprint'],
+        'download': ['approved'],
         'pool':     ['pending'],
-        'reprint':  ['download'],
     }
 
     # Forward transitions that require all image fields to be present

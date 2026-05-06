@@ -136,7 +136,6 @@ INSTALLED_APPS = [
     'staff',
     'idcards',
     'website',
-    'cardprint',
     'reprintcard',
     'mobile_app',
     'panel',

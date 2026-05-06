@@ -48,14 +48,6 @@
               {% include 'partials/dashboard/recent-activity.html' %}
             </section>
 
-            {% if is_super_admin or is_admin_staff %}
-            <section class="dashboard-snap-panel" data-dashboard-panel="reprint">
-              {% include 'partials/dashboard/reprint-overview-card.html' %}
-            </section>
-
-            <section class="dashboard-snap-panel" data-dashboard-panel="print">
-              {% include 'partials/dashboard/print-overview-card.html' %}
-            </section>
             {% endif %}
           </div>
 

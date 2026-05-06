@@ -46,11 +46,13 @@ urlpatterns = [
     path('api/presence/track/', views.api_presence_track, name='api_presence_track'),
     path('api/presence/live-count/', views.api_live_client_presence, name='api_live_client_presence'),
 
-    # Print & Reprint Overview API (dashboard)
-    path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
+
     
     # Recent Activity API
     path('api/recent-activity/', views.api_recent_activity, name='api_recent_activity'),
+    
+    # Print/Reprint Overview API
+    path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
     
     # Staff Management
     path('manage-staff/', views.manage_staff, name='manage_staff'),

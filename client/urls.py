@@ -43,20 +43,12 @@ urlpatterns = [
     # ID Card Actions (shows cards, status tabs)
     path('table/<int:table_id>/actions/', views.client_idcard_actions, name='idcard_actions'),
     
-    # Reprint Cards (4-step workflow)
-    path('table/<int:table_id>/reprint/', views.client_reprint_cards, name='reprint_cards'),
-
-    # Print Cards (2-step workflow)
-    path('table/<int:table_id>/print/', views.client_print_cards, name='print_cards'),
-    
     # ==========================================================================
     # API ENDPOINTS - Dashboard
     # ==========================================================================
     
     path('api/dashboard/', views.api_dashboard_data, name='api_dashboard'),
     path('api/messages/drawer/', views.api_messages_drawer, name='api_messages_drawer'),
-    path('api/dashboard/reprint-stats/', views.api_reprint_stats, name='api_reprint_stats'),
-    path('api/dashboard/reprint-history/', views.api_reprint_history, name='api_reprint_history'),
     path('api/groups/', views.api_groups_list, name='api_groups'),
     
     # ==========================================================================
