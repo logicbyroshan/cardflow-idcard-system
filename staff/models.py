@@ -92,8 +92,6 @@ class Staff(models.Model):
     perm_idcard_reprint_list = models.BooleanField(default=False)
     perm_reprint_request_list = models.BooleanField(default=False)
     perm_confirmed_list = models.BooleanField(default=False)
-    perm_finalized_list = models.BooleanField(default=False)
-    perm_print_list = models.BooleanField(default=False)
 
     
     # ID Card Action Permissions (work in Pending and Verified lists only)

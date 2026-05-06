@@ -2572,64 +2572,6 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertEqual(allowed.status_code, 200)
 		self.assertTrue(allowed.json()['success'])
 
-	def test_staff_api_list_for_super_admin_includes_permission_flags(self):
-		managed_user = User.objects.create_user(
-			username='mob-admin-perm-list@test.com',
-			email='mob-admin-perm-list@test.com',
-			password='pass1234',
-			role='admin_staff',
-		)
-		managed_staff = Staff.objects.create(
-			user=managed_user,
-			staff_type='admin_staff',
-			perm_mobile_app=True,
-			perm_print_list=True,
-			perm_idcard_bulk_reupload=True,
-		)
-
-		self._login_mobile_super_admin()
-		response = self.client.get('/app/api/staff/')
-		self.assertEqual(response.status_code, 200)
-		payload = response.json()
-		self.assertTrue(payload['success'])
-
-		staff_row = next((item for item in payload['data']['staff'] if item['id'] == managed_staff.id), None)
-		self.assertIsNotNone(staff_row)
-		self.assertTrue(staff_row['perm_print_list'])
-		self.assertTrue(staff_row['perm_idcard_bulk_reupload'])
-
-	def test_staff_api_update_for_super_admin_updates_admin_staff_permissions(self):
-		managed_user = User.objects.create_user(
-			username='mob-admin-perm-update@test.com',
-			email='mob-admin-perm-update@test.com',
-			password='pass1234',
-			role='admin_staff',
-		)
-		managed_staff = Staff.objects.create(
-			user=managed_user,
-			staff_type='admin_staff',
-			perm_mobile_app=True,
-			perm_print_list=False,
-		)
-
-		self._login_mobile_super_admin()
-		response = self.client.post(
-			f'/app/api/staff/{managed_staff.id}/update/',
-			data=json.dumps({
-				'first_name': 'Mobile',
-				'last_name': 'Updated',
-				'perm_print_list': True,
-				'perm_idcard_bulk_reupload': True,
-			}),
-			content_type='application/json',
-		)
-
-		self.assertEqual(response.status_code, 200)
-		self.assertTrue(response.json()['success'])
-		managed_staff.refresh_from_db()
-		self.assertTrue(managed_staff.perm_print_list)
-		self.assertTrue(managed_staff.perm_idcard_bulk_reupload)
-
 	def test_clients_list_status_chips_do_not_use_single_letter_prefixes(self):
 		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'clients_list.html'
 		html = template_path.read_text(encoding='utf-8')
