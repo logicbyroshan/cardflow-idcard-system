@@ -38,19 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (GSP.deleteBtn) GSP.deleteBtn.disabled = !hasSelection;
         if (GSP.toggleStatusBtn) GSP.toggleStatusBtn.disabled = !hasSelection;
 
-        // Print Cards / Reprint Cards buttons
+        // Reprint Cards button
         var isClient = typeof IS_CLIENT_ROLE !== 'undefined' ? IS_CLIENT_ROLE : false;
-        var printCardsBtn = document.getElementById('printCardsBtn');
         var reprintCardsBtn = document.getElementById('reprintCardsBtn');
-        if (printCardsBtn) {
-            printCardsBtn.disabled = !hasSelection;
-            if (hasSelection && GSP.selectedTableId) {
-                var pUrl = isClient
-                    ? '/client/table/' + GSP.selectedTableId + '/print/'
-                    : '/table/' + GSP.selectedTableId + '/print/';
-                printCardsBtn.onclick = function() { window.location.href = pUrl; };
-            }
-        }
         if (reprintCardsBtn) {
             reprintCardsBtn.disabled = !hasSelection;
             if (hasSelection && GSP.selectedTableId) {

@@ -1425,54 +1425,6 @@ class ProtectedMediaAuthorizationTests(TestCase):
                 self.assertEqual(allowed.get('X-Accel-Redirect'), f'/protected-media/{rel_path}')
 
 
-class EnginePathScopeTests(TestCase):
-    def setUp(self):
-        from client.models import Client
-        from staff.models import Staff
-
-        self.super_admin = _create_super_admin('engine-super@test.com', 'adminpass1')
-        self.admin_staff = User.objects.create_user(
-            username='engine-staff@test.com',
-            email='engine-staff@test.com',
-            password='pass1234',
-            role='admin_staff',
-        )
-        self.client_owner = User.objects.create_user(
-            username='engine-client@test.com',
-            email='engine-client@test.com',
-            password='pass1234',
-            role='client',
-        )
-        self.client_obj = Client.objects.create(user=self.client_owner, name='Engine Scoped Client')
-
-        staff = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
-        staff.assigned_clients.add(self.client_obj)
-
-    def test_engine_serve_image_denies_admin_staff_outside_scope(self):
-        with tempfile.TemporaryDirectory() as media_root, tempfile.TemporaryDirectory() as outside_root:
-            outside_file = os.path.join(outside_root, 'outside.jpg')
-            with open(outside_file, 'wb') as fh:
-                fh.write(b'jpg')
-
-            with override_settings(MEDIA_ROOT=media_root):
-                self.client.force_login(self.admin_staff)
-                response = self.client.get('/panel/api/engine/serve-image/', {'path': outside_file})
-                self.assertEqual(response.status_code, 403)
-                response.close()
-
-    def test_engine_serve_image_allows_super_admin_outside_scope(self):
-        with tempfile.TemporaryDirectory() as media_root, tempfile.TemporaryDirectory() as outside_root:
-            outside_file = os.path.join(outside_root, 'outside.jpg')
-            with open(outside_file, 'wb') as fh:
-                fh.write(b'jpg')
-
-            with override_settings(MEDIA_ROOT=media_root):
-                self.client.force_login(self.super_admin)
-                response = self.client.get('/panel/api/engine/serve-image/', {'path': outside_file})
-                self.assertEqual(response.status_code, 200)
-                response.close()
-
-
 class DashboardAndLogsHardeningTests(TestCase):
     def test_dashboard_team_counts_separate_admin_staff_and_client_staff(self):
         from client.models import Client

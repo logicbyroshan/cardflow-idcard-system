@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const recentClientUpdatesActiveBadge = document.getElementById('recentClientUpdatesActiveBadge');
     const recentClientUpdatesAssistantBadge = document.getElementById('recentClientUpdatesAssistantBadge');
     const recentClientUpdatesSortHeaders = Array.from(document.querySelectorAll('th[data-recent-sort-key]'));
-    const printOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="print"][data-overview-sort-key]'));
     const reprintOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="reprint"][data-overview-sort-key]'));
     let recentClientUpdatesLiveFilterMode = '';
     let recentClientUpdatesLiveClientIds = new Set();
@@ -52,17 +51,13 @@ document.addEventListener('DOMContentLoaded', function() {
     let dashboardPresenceSyncTimer = null;
     let removeDashboardRealtimeListener = null;
     let recentClientUpdatesSortKey = '';
-    let printOverviewSortKey = '';
     let reprintOverviewSortKey = '';
-    const printOverviewSearchInput = document.getElementById('printOverviewSearch');
     const reprintOverviewSearchInput = document.getElementById('reprintOverviewSearch');
     const dashboardTabCountRecentClients = document.getElementById('dashboardTabCountRecentClients');
     const dashboardTabCountRecentUpdates = document.getElementById('dashboardTabCountRecentUpdates');
     const dashboardTabCountReprint = document.getElementById('dashboardTabCountReprint');
-    const dashboardTabCountPrint = document.getElementById('dashboardTabCountPrint');
     const isAdminRecentUpdatesContext = !!recentClientUpdatesActiveBadge || !!recentClientUpdatesAssistantBadge;
     const isAdminDashboardContext = isAdminRecentUpdatesContext
-        || !!document.getElementById('printOverviewBody')
         || !!document.getElementById('reprintOverviewBody');
 
     function setDashboardTabCount(element, value) {
@@ -203,18 +198,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function getOverviewSortHeaders(scope) {
-        return scope === 'print' ? printOverviewSortHeaders : reprintOverviewSortHeaders;
+        return reprintOverviewSortHeaders;
     }
 
     function getOverviewSortKey(scope) {
-        return scope === 'print' ? printOverviewSortKey : reprintOverviewSortKey;
+        return reprintOverviewSortKey;
     }
 
     function setOverviewSortKey(scope, nextKey) {
-        if (scope === 'print') {
-            printOverviewSortKey = nextKey;
-            return;
-        }
         reprintOverviewSortKey = nextKey;
     }
 
@@ -238,9 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function applyOverviewSort(scope) {
-        const tbody = scope === 'print'
-            ? document.getElementById('printOverviewBody')
-            : document.getElementById('reprintOverviewBody');
+        const tbody = document.getElementById('reprintOverviewBody');
         if (!tbody) return;
 
         const noResultClass = `${scope}-table-no-search-results`;
@@ -423,10 +412,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function applyOverviewSearch(scope) {
-        const tbody = scope === 'print'
-            ? document.getElementById('printOverviewBody')
-            : document.getElementById('reprintOverviewBody');
-        const inputEl = scope === 'print' ? printOverviewSearchInput : reprintOverviewSearchInput;
+        const tbody = document.getElementById('reprintOverviewBody');
+        const inputEl = reprintOverviewSearchInput;
         if (!tbody) return;
 
         const noResultClass = `${scope}-table-no-search-results`;
@@ -480,36 +467,9 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
-    if (printOverviewSearchInput) {
-        printOverviewSearchInput.addEventListener('input', function() {
-            applyOverviewSearch('print');
-        });
-    }
-
     if (reprintOverviewSearchInput) {
         reprintOverviewSearchInput.addEventListener('input', function() {
             applyOverviewSearch('reprint');
-        });
-    }
-
-    if (printOverviewSortHeaders.length) {
-        printOverviewSortHeaders.forEach((header) => {
-            header.addEventListener('click', function() {
-                const key = header.getAttribute('data-overview-sort-key') || '';
-                if (!key) return;
-
-                const nextKey = printOverviewSortKey === key ? '' : key;
-                setOverviewSortKey('print', nextKey);
-                setOverviewSortUI('print');
-                applyOverviewSort('print');
-                applyOverviewSearch('print');
-            });
-
-            header.addEventListener('keydown', function(event) {
-                if (event.key !== 'Enter' && event.key !== ' ') return;
-                event.preventDefault();
-                header.click();
-            });
         });
     }
 
@@ -534,7 +494,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    setOverviewSortUI('print');
     setOverviewSortUI('reprint');
 
     // ====================
@@ -1468,76 +1427,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // ====================
     // Load Print & Reprint Overview
     // ====================
-    function loadPrintReprintOverview() {
-        const printBody = document.getElementById('printOverviewBody');
+    function loadReprintOverview() {
         const reprintBody = document.getElementById('reprintOverviewBody');
         const reprintTotalBadge = document.getElementById('reprintOverviewTotalRequested');
-        if (!printBody && !reprintBody) return;
+        if (!reprintBody) return;
 
-        setDashboardTabCount(dashboardTabCountPrint, 0);
         setDashboardTabCount(dashboardTabCountReprint, 0);
 
-        setDashboardTableSkeleton(printBody, 3, 3);
         setDashboardTableSkeleton(reprintBody, 3, 3);
         const skeletonStart = Date.now();
 
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-        ApiClient.get(panelUrl('/api/print-reprint-overview/?limit=500'))
+        ApiClient.get(panelUrl('/api/reprint-overview/?limit=500'))
             .then(data => {
                 if (!data.success) throw new Error(data.error || 'Failed');
                 waitForMinDelay(skeletonStart).then(() => {
-                    //  Render Print table
-                    if (printBody) {
-                        const clients = data.print_clients || [];
-                        const totalPrintGenerate = clients.reduce((sum, client) => {
-                            return sum + (Number(client.generate_list) || 0);
-                        }, 0);
-                        setDashboardTabCount(dashboardTabCountPrint, totalPrintGenerate);
-                        if (clients.length > 0) {
-                            printBody.innerHTML = clients.map((client, i) => {
-                                const tables = client.tables || [];
-                                const iBadge = renderDashboardClientStatusBadge(client.status, esc);
-                                const generateList = Number(client.generate_list);
-                                const finalized = Number(client.finalized);
-                                const safeGenerateList = Number.isFinite(generateList) ? generateList : 0;
-                                const safeFinalized = Number.isFinite(finalized) ? finalized : 0;
-                                const subRows = tables.map(t => `
-                                    <tr class="client-sub-row print-expand-group-${i}" style="display:none">
-                                        <td>
-                                            <a href="${panelUrl('/print/table/' + t.id + '/')}" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
-                                        </td>
-                                        <td class="text-center"><a href="${panelUrl('/print/table/' + t.id + '/')}" class="count-badge pending">${t.generate_list}</a></td>
-                                        <td class="text-center"><a href="${panelUrl('/print/table/' + t.id + '/')}" class="count-badge verified">${t.finalized}</a></td>
-                                    </tr>
-                                `).join('');
-                                const hasSingleTable = tables.length === 1;
-                                const directUrl = hasSingleTable ? panelUrl('/print/table/' + tables[0].id + '/') : '';
-                                return `
-                                    <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="print" data-sort-pending="${safeGenerateList}" data-sort-verified="${safeFinalized}" onclick="toggleScopedExpandRow(this)">
-                                        <td>
-                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${iBadge}<span class="client-name-text">${esc(client.name)}</span></a>
-                                        </td>
-                                        <td class="text-center">
-                                            ${directUrl ? `<a href="${directUrl}" class="count-badge pending" onclick="event.stopPropagation()">${client.generate_list}</a>` : `<span class="count-badge pending">${client.generate_list}</span>`}
-                                        </td>
-                                        <td class="text-center">
-                                            ${directUrl ? `<a href="${directUrl}" class="count-badge verified" onclick="event.stopPropagation()">${client.finalized}</a>` : `<span class="count-badge verified">${client.finalized}</span>`}
-                                        </td>
-                                    </tr>
-                                    ${subRows}
-                                `;
-                            }).join('');
-                            setOverviewSortUI('print');
-                            applyOverviewSort('print');
-                            applyOverviewSearch('print');
-                        } else {
-                            printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
-                            setOverviewSortUI('print');
-                            applyOverviewSearch('print');
-                        }
-                    }
-
                     //  Render Reprint table
                     if (reprintBody) {
                         const clients = data.reprint_clients || [];
@@ -1591,18 +1496,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             })
             .catch(err => {
-                console.error('Error loading print/reprint overview:', err);
-                setDashboardTabCount(dashboardTabCountPrint, 0);
+                console.error('Error loading reprint overview:', err);
                 setDashboardTabCount(dashboardTabCountReprint, 0);
                 const errHtml = (cols) => `<tr><td colspan="${cols}" class="text-center" style="padding:40px;color:#dc2626;"><i class="fa-solid fa-exclamation-triangle"></i> Error loading data</td></tr>`;
                 waitForMinDelay(skeletonStart).then(() => {
-                    if (printBody)   printBody.innerHTML = errHtml(3);
                     if (reprintBody) reprintBody.innerHTML = errHtml(3);
                 });
             });
     }
 
     if (isAdminDashboardContext) {
-        loadPrintReprintOverview();
+        loadReprintOverview();
     }
 });

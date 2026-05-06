@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Status Lists
         'perm-idcard-pending-list', 'perm-idcard-verified-list', 'perm-idcard-pool-list',
         'perm-idcard-approved-list', 'perm-idcard-download-list',
-        // Print & Reprint Lists
-        'perm-reprint-request-list', 'perm-confirmed-list', 'perm-print-list', 'perm-finalized-list',
+        // Reprint Lists
+        'perm-reprint-request-list', 'perm-confirmed-list',
         // Actions
         'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete', 'perm-idcard-info',
         'perm-idcard-approve', 'perm-idcard-verify',

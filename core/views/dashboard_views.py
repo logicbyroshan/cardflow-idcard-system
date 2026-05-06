@@ -1,5 +1,5 @@
 """
-Dashboard views — dashboard page, cropper page, and dashboard API endpoints.
+Dashboard views for the panel home and dashboard API endpoints.
 Split from base.py for maintainability.
 """
 import json
@@ -773,11 +773,8 @@ def api_live_client_presence(request):
 
 @require_http_methods(["GET"])
 @api_require_any_admin
-def api_print_reprint_overview(request):
-    """
-    Dashboard API: per-client counts for Card Printing and Card Reprinting stages.
-    Returns expandable table data matching the Recent Client Updates pattern.
-    """
+def api_reprint_overview(request):
+    """Dashboard API: per-client counts for Card Reprinting stages."""
     try:
         # from cardprint.models import PrintRequest  # Removed cardprint module
         from reprintcard.models import ReprintRequest
@@ -803,10 +800,6 @@ def api_print_reprint_overview(request):
 
         reprint_clients_list = list(reprint_clients_qs)
         client_ids = list({c.id for c in reprint_clients_list})
-
-        # ── Print counts per client (STUBBED out since cardprint is removed) ─────
-        print_clients = []
-        # (Previously we calculated print_counts_qs here)
 
         # ── Reprint source counts per client (Download cards only) ─
         reprint_source_qs = IDCard.objects.filter(
@@ -928,12 +921,11 @@ def api_print_reprint_overview(request):
 
         return JsonResponse({
             'success': True,
-            'print_clients': [],  # Empty since cardprint is removed
             'reprint_clients': reprint_clients,
             'reprint_total_requested': reprint_total_requested,
         })
     except Exception as e:
-        logger.exception('api_print_reprint_overview error: %s', e)
+        logger.exception('api_reprint_overview error: %s', e)
         return JsonResponse({
             'success': False,
             'error': 'An error occurred. Please try again.'

@@ -214,7 +214,7 @@ Key infra files:
 | client | Client and client staff operations | Yes |
 | staff | Staff profile and permissions | Yes |
 | idcards | ID card group/table/card data models | Yes |
-| cardprint | Print list to finalized to pool workflow | Uses shared models |
+| cardprint | Shared card rendering helpers used by reprint surfaces | Uses shared models |
 | reprintcard | Requested/confirmed/downloaded/pool reprint workflow | Uses shared models |
 | exports | Export orchestration and output generation | Uses shared models |
 | mediafiles | CardMedia storage and logs | Yes |
@@ -243,12 +243,6 @@ Key infra files:
 pending -> verified -> pool -> approved -> download
 
 Reprint runs as a dedicated path under reprint workflows.
-
-### Print workflow
-
-1. Print List
-2. Finalized
-3. Pool
 
 ### Reprint workflow
 

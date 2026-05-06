@@ -82,7 +82,6 @@ JS_BUNDLES = [
             "js/idcard-actions-modal-delete.js",
             "js/idcard-actions-modal-form-data.js",
             "js/idcard-actions-modal-form-ops.js",
-            "js/image-cropper.js",
             "js/idcard-actions-api-status.js",
             "js/idcard-actions-api-bulk.js",
             "js/idcard-actions-crop.js",

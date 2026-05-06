@@ -169,7 +169,7 @@
     flex: none;
 }
 
-/* Print-Reprint row: same height rules as the main grid */
+/* Reprint row: same height rules as the main grid */
 .dashboard-grid-printreprint {
     display: grid;
     grid-template-columns: 1fr 1fr;

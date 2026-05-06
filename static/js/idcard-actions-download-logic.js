@@ -347,11 +347,11 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
     var lastBackendUpdateAt = pollStartedAt;
     var exportKind = _resolveAsyncExportKind(options, null);
     var estimatedTotalSec = _estimateAsyncExportSeconds(exportKind, options.cardCount || 0);
-    var finalized = false;
+    var done = false;
 
     function finalizeOnce() {
-        if (finalized) return;
-        finalized = true;
+        if (done) return;
+        done = true;
         if (typeof options.onFinalize === 'function') {
             try { options.onFinalize(); } catch (e) { console.error(e); }
         }
@@ -1181,11 +1181,11 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize)
     var _pollStartTime = Date.now();
     // Estimate processing time: ~0.3s per card for PDF, min 10s, max 300s
     var _estSeconds = Math.max(10, Math.min(300, (cardCount || 100) * 0.3));
-    var finalized = false;
+    var done = false;
 
     function finalizeOnce() {
-        if (finalized) return;
-        finalized = true;
+        if (done) return;
+        done = true;
         if (typeof onFinalize === 'function') {
             try { onFinalize(); } catch (e) { console.error(e); }
         }

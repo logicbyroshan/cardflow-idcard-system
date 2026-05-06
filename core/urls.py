@@ -51,8 +51,8 @@ urlpatterns = [
     # Recent Activity API
     path('api/recent-activity/', views.api_recent_activity, name='api_recent_activity'),
     
-    # Print/Reprint Overview API
-    path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
+    # Reprint Overview API
+    path('api/reprint-overview/', views.api_reprint_overview, name='api_reprint_overview'),
     
     # Staff Management
     path('manage-staff/', views.manage_staff, name='manage_staff'),
