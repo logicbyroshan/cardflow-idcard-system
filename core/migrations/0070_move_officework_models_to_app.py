@@ -7,7 +7,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('core', '0069_officeworkchatmessage_officeworksharedfile_and_more'),
-        ('officework', '0001_initial'),
     ]
 
     operations = [
