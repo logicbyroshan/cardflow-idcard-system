@@ -294,11 +294,11 @@ def process_reupload_images(task):
             )
 
         if zip_stats.get('duplicate_path_keys', 0) > 0:
-            task.mark_failed(
-                "ZIP contains duplicate image paths after normalization. "
-                "Please remove duplicate files and retry."
+            logger.warning(
+                "Reupload ZIP has %d duplicate path keys; they will be skipped. "
+                "Processing remaining unique files.",
+                zip_stats.get('duplicate_path_keys', 0),
             )
-            return
 
         preflight = _run_reupload_preflight(
             cards_qs=cards_qs,
