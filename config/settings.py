@@ -4,9 +4,21 @@ from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
 import os
 import dj_database_url
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
+import logging
 from django.urls import resolve, Resolver404
+
+# Sentry imports are optional — import lazily to avoid hard failures when SDK
+# is not installed. The actual import is attempted only if SENTRY_DSN is set.
+_SENTRY_AVAILABLE = False
+try:
+    import sentry_sdk  # type: ignore
+    from sentry_sdk.integrations.django import DjangoIntegration  # type: ignore
+    from sentry_sdk.integrations.logging import LoggingIntegration  # type: ignore
+    _SENTRY_AVAILABLE = True
+except Exception:
+    sentry_sdk = None
+    DjangoIntegration = None
+    LoggingIntegration = None
 
 # Load environment variables from .env file (if exists)
 load_dotenv()
@@ -223,8 +235,21 @@ if SENTRY_DSN:
         except (TypeError, ValueError):
             return float(default)
 
+    def _env_float_optional(name: str):
+        v = os.getenv(name)
+        if v is None or v == '':
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
     SENTRY_TRACES_SAMPLE_RATE = _env_float_safe('SENTRY_TRACES_SAMPLE_RATE', 0.0)
-    SENTRY_SEND_PII = os.getenv('SENTRY_SEND_PII', 'False').strip().lower() in ('1', 'true', 'yes')
+    SENTRY_SEND_PII = os.getenv('SENTRY_SEND_PII', 'True').strip().lower() in ('1', 'true', 'yes')
+    SENTRY_ENABLE_LOGS = os.getenv('SENTRY_ENABLE_LOGS', 'False').strip().lower() in ('1', 'true', 'yes')
+    SENTRY_PROFILES_SAMPLE_RATE = _env_float_optional('SENTRY_PROFILES_SAMPLE_RATE')
+    SENTRY_PROFILE_SESSION_SAMPLE_RATE = _env_float_optional('SENTRY_PROFILE_SESSION_SAMPLE_RATE')
+    SENTRY_PROFILE_LIFECYCLE = os.getenv('SENTRY_PROFILE_LIFECYCLE', '').strip() or None
 
     # Drop events originating from the public website or website management apps
     def _sentry_before_send(event, hint):
@@ -246,14 +271,29 @@ if SENTRY_DSN:
     except Exception:
         SENTRY_RELEASE = None
 
-    sentry_sdk.init(
+    integrations = [DjangoIntegration()]
+    if SENTRY_ENABLE_LOGS:
+        log_integration = LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+        integrations.append(log_integration)
+
+    init_kwargs = dict(
         dsn=SENTRY_DSN,
-        integrations=[DjangoIntegration()],
+        integrations=integrations,
         traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
         send_default_pii=SENTRY_SEND_PII,
         before_send=_sentry_before_send,
         release=SENTRY_RELEASE,
     )
+
+    # Optional profiling options
+    if SENTRY_PROFILES_SAMPLE_RATE is not None:
+        init_kwargs['profiles_sample_rate'] = SENTRY_PROFILES_SAMPLE_RATE
+    if SENTRY_PROFILE_SESSION_SAMPLE_RATE is not None:
+        init_kwargs['profile_session_sample_rate'] = SENTRY_PROFILE_SESSION_SAMPLE_RATE
+    if SENTRY_PROFILE_LIFECYCLE:
+        init_kwargs['profile_lifecycle'] = SENTRY_PROFILE_LIFECYCLE
+
+    sentry_sdk.init(**init_kwargs)
 
 
 # =============================================================================
