@@ -50,6 +50,7 @@ urlpatterns = [
     path('api/dashboard/', views.api_dashboard_data, name='api_dashboard'),
     path('api/messages/drawer/', views.api_messages_drawer, name='api_messages_drawer'),
     path('api/groups/', views.api_groups_list, name='api_groups'),
+    path('api/reprint-history/', views.api_reprint_history, name='api_reprint_history'),
     
     # ==========================================================================
     # API ENDPOINTS - Staff Management
