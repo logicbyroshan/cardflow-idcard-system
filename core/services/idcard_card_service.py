@@ -155,6 +155,22 @@ class IDCardCardService(BaseService):
         return class_field, section_field, course_field, branch_field
 
     @classmethod
+    def normalize_name(cls, name):
+        """Normalize field name by removing punctuation and whitespace.
+        
+        This allows "SCHOLAR NO." to match "SCHOLAR NO" and similar variants.
+        Returns a normalized key (alphanumeric only, uppercase) or empty string if name is empty.
+        
+        Example:
+            normalize_name('SCHOLAR NO.') → 'SCHOLARNNO'
+            normalize_name('SCHOLAR NO') → 'SCHOLARNNO'
+        """
+        if not name:
+            return ''
+        # Remove all non-alphanumeric characters and convert to uppercase
+        return re.sub(r'[^A-Z0-9]+', '', str(name).upper())
+
+    @classmethod
     def _apply_class_filter(cls, qs, class_filter, class_field_name, table_id=None):
         """Apply class filter with canonical normalization.
 
@@ -957,10 +973,39 @@ class IDCardCardService(BaseService):
                     if has_any_field_data:
                         field_data = cls.uppercase_field_data_selective(field_data, table.fields)
 
-                    # Merge text (non-image) fields
+                    # Build field name lookup maps (exact and normalized) to handle punctuation variants
+                    valid_field_map = {}  # lowercase → canonical
+                    normalized_field_map = {}  # normalized (no punct) → canonical
+                    for table_field in (table.fields or []):
+                        if not isinstance(table_field, dict):
+                            continue
+                        raw_name = str(table_field.get('name', '')).strip()
+                        if not raw_name:
+                            continue
+                        raw_key = raw_name.lower()
+                        normalized_key = cls.normalize_name(raw_name)
+                        if raw_key not in valid_field_map:
+                            valid_field_map[raw_key] = raw_name
+                        if normalized_key and normalized_key not in normalized_field_map:
+                            normalized_field_map[normalized_key] = raw_name
+
+                    # Merge text (non-image) fields, normalizing field names to canonical
                     for key, value in field_data.items():
-                        if key not in image_field_names:
-                            existing_data[key] = value
+                        # Try exact match first, then normalized match
+                        canonical_key = None
+                        if key.lower() in valid_field_map:
+                            canonical_key = valid_field_map[key.lower()]
+                        else:
+                            normalized_key = cls.normalize_name(key)
+                            if normalized_key in normalized_field_map:
+                                canonical_key = normalized_field_map[normalized_key]
+                        
+                        # Use canonical key if found, otherwise use original key
+                        if canonical_key is None:
+                            canonical_key = key
+                        
+                        if canonical_key not in image_field_names:
+                            existing_data[canonical_key] = value
 
                     # Process each image field via ImageService.process_image_field
                     image_counter = 0

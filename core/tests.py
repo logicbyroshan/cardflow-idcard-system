@@ -44,6 +44,44 @@ def _create_client_user(email='client@test.com', password='clientpass1'):
     return user, client
 
 
+def _create_table(client_obj, fields=None):
+    """Helper to create a test IDCardTable with a group."""
+    from idcards.models import IDCardGroup, IDCardTable
+    
+    group = IDCardGroup.objects.create(client=client_obj, name='Test Group')
+    
+    if fields is None:
+        fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'text', 'order': 2},
+        ]
+    
+    table = IDCardTable.objects.create(
+        group=group,
+        name='Test Table',
+        fields=fields,
+        is_active=True
+    )
+    
+    return group, table
+
+
+def _create_card(table, field_data=None, status='pending'):
+    """Helper to create a test IDCard."""
+    from idcards.models import IDCard
+    
+    if field_data is None:
+        field_data = {'NAME': 'JOHN DOE'}
+    
+    card = IDCard.objects.create(
+        table=table,
+        field_data=field_data,
+        status=status
+    )
+    
+    return card
+
+
 class EmailProductShowcaseSelectionTests(TestCase):
     def _create_item(self, title, category, *, featured=False, order=0):
         from website.models import PortfolioItem
@@ -1882,8 +1920,9 @@ class SecurityApiRegressionTests(TestCase):
         )
 
         admin_touched_card = self.card_a
+        admin_touched_card.status = 'pending'
         admin_touched_card.modified_by = self.admin_staff.username
-        admin_touched_card.save(update_fields=['modified_by'])
+        admin_touched_card.save(update_fields=['status', 'modified_by'])
 
         client_touched_card = _create_card(
             self.table_a,
