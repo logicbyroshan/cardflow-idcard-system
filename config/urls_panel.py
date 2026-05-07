@@ -160,6 +160,9 @@ urlpatterns = [
     # Django admin
     path('admin/', admin.site.urls),
 
+    # Local-only debug toolbar route for panel subdomain development.
+    path('__debug__/', include('debug_toolbar.urls')),
+
     # ==================== ADMIN PANEL (root — no /panel/ prefix) ==========
     path('', include('core.urls')),
     path('auth/', include('accounts.urls')),

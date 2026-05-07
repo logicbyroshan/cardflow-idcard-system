@@ -326,6 +326,8 @@ class PortfolioItem(models.Model):
         indexes = [
             models.Index(fields=['is_active', 'order']),
             models.Index(fields=['is_active', 'is_featured']),
+            models.Index(fields=['is_active', '-created_at']),
+            models.Index(fields=['category', 'is_active', 'order']),
         ]
 
     def __str__(self):
@@ -384,13 +386,9 @@ class PortfolioItem(models.Model):
             # Ensure portfolio images are compressed to the requested maximum (200KB)
             self.image = process_portfolio_image(self.image, max_kb=200)
 
-        if self._needs_portfolio_video_processing():
-            from .video_processing import normalize_portfolio_video_upload
-            from .watermark import compress_video_file
-            # First normalize (re-encode) with the existing FFmpeg pipeline,
-            # then enforce maximum compressed size (10 MB).
-            normalized = normalize_portfolio_video_upload(self.video_file)
-            self.video_file = compress_video_file(normalized, max_bytes=10 * 1024 * 1024)
+        # Defer heavy video processing to background worker to avoid blocking
+        # request/transaction lifecycle. The background job will normalize,
+        # compress and generate derivatives for the saved file.
 
         if not self.slug:
             from django.utils.text import slugify
@@ -411,8 +409,21 @@ class PortfolioItem(models.Model):
             purge_portfolio_video_derivatives(previous_video_name)
 
         if current_video_name and video_changed:
-            from .video_processing import ensure_portfolio_video_derivatives
-            ensure_portfolio_video_derivatives(current_video_name)
+            # Submit background job to process video (normalize/compress + derivatives)
+            try:
+                from core.services.background_worker import background_worker
+                from .video_processing import process_portfolio_video_file
+                # Fire-and-forget: background_worker.executor handles threads and
+                # closes DB connections in its worker lifecycle. We pass the
+                # relative media path and desired max bytes.
+                background_worker.executor.submit(process_portfolio_video_file, current_video_name, 10 * 1024 * 1024)
+            except Exception:
+                # If background submission fails, fall back to synchronous generation
+                try:
+                    from .video_processing import ensure_portfolio_video_derivatives
+                    ensure_portfolio_video_derivatives(current_video_name)
+                except Exception:
+                    pass
 
     def delete(self, *args, **kwargs):
         old_video_name = self.video_file.name if self.video_file else ''

@@ -132,6 +132,11 @@ urlpatterns = [
     # Django admin
     path('admin/', admin.site.urls),
 
+    # Local-only debug toolbar route.
+    # Debug Toolbar is enabled in DEBUG mode only and helps inspect SQL/query
+    # behavior without affecting production routing.
+    path('__debug__/', include('debug_toolbar.urls')),
+
     # Local-only Sentry test route. Only registered in DEBUG to avoid accidental exposure.
     # Visit /sentry-debug/ in local dev to trigger a test exception (1/0) for verification.
     ]

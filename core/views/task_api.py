@@ -28,6 +28,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Count, Q
 
 from core.models import BackgroundTask
 from idcards.models import IDCardTable
@@ -602,13 +603,13 @@ def api_task_progress_center(request):
         tasks = active_tasks + recent_tasks
         tasks_data = [_serialize_progress_center_task(task, now) for task in tasks]
 
-        stats = {
-            'active': active_qs.count(),
-            'pending': tasks_base.filter(status='pending').count(),
-            'processing': tasks_base.filter(status='processing').count(),
-            'completed_24h': tasks_base.filter(status='completed', completed_at__gte=recent_cutoff).count(),
-            'failed_24h': tasks_base.filter(status='failed', completed_at__gte=recent_cutoff).count(),
-        }
+        stats = tasks_base.aggregate(
+            active=Count('id', filter=Q(status__in=['pending', 'processing'])),
+            pending=Count('id', filter=Q(status='pending')),
+            processing=Count('id', filter=Q(status='processing')),
+            completed_24h=Count('id', filter=Q(status='completed', completed_at__gte=recent_cutoff)),
+            failed_24h=Count('id', filter=Q(status='failed', completed_at__gte=recent_cutoff)),
+        )
 
         return JsonResponse({
             'success': True,

@@ -10,7 +10,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.conf import settings as _s
-from django.db.models import Avg, Case, When, Value, IntegerField, Q, F
+from django.db.models import Avg, Case, When, Value, IntegerField, Q, F, Count
 from django.urls import resolve, Resolver404, reverse
 import logging
 from django.contrib.sitemaps.views import sitemap
@@ -388,17 +388,22 @@ self.addEventListener('fetch', function() {
 
 def _get_bento_context():
     """Helper to get bento categories and their rotating media."""
+    cache_key = _website_public_cache_key('bento_context')
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     # Ensure default categories exist
     if not cache.get('portfolio_defaults_ensured'):
         PortfolioCategory.ensure_defaults()
         cache.set('portfolio_defaults_ensured', True, 3600)
 
-    categories = PortfolioCategory.objects.filter(is_active=True).order_by('order')
-    
+    categories = list(PortfolioCategory.objects.filter(is_active=True).order_by('order'))
+
     _cat_media_map = defaultdict(list)
     _cat_items_initial_map = defaultdict(list)
     _cat_items_total_map = defaultdict(int)
-    
+
     modal_media_filter = (
         (Q(item_type='image') & Q(image__isnull=False) & ~Q(image=''))
         |
@@ -407,13 +412,15 @@ def _get_bento_context():
             & ((Q(video_file__isnull=False) & ~Q(video_file='')) | ~Q(video_url=''))
         )
     )
-    
+
     modal_items_qs = PortfolioItem.objects.filter(
         is_active=True,
         category__isnull=False,
     ).filter(
         modal_media_filter,
-    ).select_related('category').annotate(
+    ).only(
+        'id', 'title', 'item_type', 'orientation', 'image', 'video_file', 'video_url', 'order', 'created_at', 'category_id'
+    ).annotate(
         has_order=Case(
             When(order__gt=0, then=Value(0)),
             default=Value(1),
@@ -445,18 +452,19 @@ def _get_bento_context():
     category_items = {str(cat.id): _cat_items_initial_map.get(str(cat.id), []) for cat in categories}
     category_item_totals = {str(cat.id): _cat_items_total_map.get(str(cat.id), 0) for cat in categories}
 
-    bento_order_case = Case(
-        *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(BENTO_PREFERRED_ORDER)],
-        default=Value(len(BENTO_PREFERRED_ORDER)),
-        output_field=IntegerField(),
-    )
-    bento_categories = categories.filter(
-        (Q(is_bento=True) & ~Q(slug__in=BENTO_FORCE_EXCLUDE_SLUGS))
-        | Q(slug__in=BENTO_FORCE_INCLUDE_SLUGS)
-    ).annotate(_bento_rank=bento_order_case).distinct().order_by('_bento_rank', 'order', 'name')
-    extra_categories = categories.exclude(id__in=bento_categories.values('id'))
+    bento_categories = [
+        cat for cat in categories
+        if ((cat.is_bento and cat.slug not in BENTO_FORCE_EXCLUDE_SLUGS) or cat.slug in BENTO_FORCE_INCLUDE_SLUGS)
+    ]
+    bento_categories.sort(key=lambda cat: (
+        next((idx for idx, slug in enumerate(BENTO_PREFERRED_ORDER) if slug == cat.slug), len(BENTO_PREFERRED_ORDER)),
+        cat.order,
+        cat.name,
+    ))
+    bento_category_ids = {cat.id for cat in bento_categories}
+    extra_categories = [cat for cat in categories if cat.id not in bento_category_ids]
 
-    return {
+    result = {
         'bento_categories': bento_categories,
         'extra_categories': extra_categories,
         'category_images': category_images,
@@ -464,6 +472,8 @@ def _get_bento_context():
         'category_item_totals': category_item_totals,
         'category_modal_batch_size': CATEGORY_MODAL_INITIAL_LIMIT,
     }
+    cache.set(cache_key, result, BUSINESS_CACHE_TTL)
+    return result
 
 
 def home(request):
@@ -490,9 +500,9 @@ def home(request):
             'recent_portfolio': list(
                 PortfolioItem.objects.select_related('category').filter(is_active=True).filter(image_products_filter).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]
             ),
-            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
+            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date', '-created_at')[:HOME_TESTIMONIALS_LIMIT]),
         }
-        cache.set(home_sections_cache_key, home_sections, 60)
+        cache.set(home_sections_cache_key, home_sections, BUSINESS_CACHE_TTL)
     context.update(home_sections)
 
     # ... (row logic)
@@ -702,13 +712,18 @@ def testimonials_page(request):
             Testimonial.objects.filter(reviewer_email__iexact=user_email).order_by('-created_at', '-id')[:10]
         )
     
-    # Calculate stats
-    avg_rating = all_active.aggregate(avg=Avg('rating'))['avg'] or 5.0
+    # Calculate stats with a single grouped aggregate query.
+    testimonial_stats = all_active.aggregate(
+        avg=Avg('rating'),
+        total=Count('id'),
+    )
+    avg_rating = testimonial_stats['avg'] or 5.0
+    total_reviews = testimonial_stats['total'] or 0
     
     context.update({
         'text_testimonials': all_active,
         'avg_rating': round(avg_rating, 1),
-        'total_reviews': all_active.count(),
+        'total_reviews': total_reviews,
         'can_submit_public_review': not TestimonialService.has_public_review(
             reviewer_email=user_email,
             reviewer_ip=review_lookup_ip,

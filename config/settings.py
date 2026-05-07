@@ -159,6 +159,9 @@ INSTALLED_APPS = [
     'django.contrib.sites',
 ]
 
+if DEBUG:
+    INSTALLED_APPS += ['debug_toolbar']
+
 SITE_ID = 1
 
 # Custom User Model - Keep pointing to core.User for database compatibility
@@ -171,6 +174,12 @@ MIDDLEWARE = [
     'core.middleware.SubdomainRoutingMiddleware',
     'core.middleware.MobileAppCSRFBypassMiddleware',
     "django.middleware.security.SecurityMiddleware",
+]
+
+if DEBUG:
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+
+MIDDLEWARE += [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -223,6 +232,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 
+if DEBUG:
+    INTERNAL_IPS = ['127.0.0.1', 'localhost']
+
+    def _debug_toolbar_show_toolbar(request):
+        host = (request.get_host() or '').split(':')[0].lower()
+        remote_addr = (request.META.get('REMOTE_ADDR') or '').strip()
+        return remote_addr in {'127.0.0.1', '::1'} or host in {'127.0.0.1', 'localhost'}
+
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': _debug_toolbar_show_toolbar,
+    }
+
+
 # -----------------
 # Sentry configuration
 # -----------------
@@ -245,7 +267,8 @@ if SENTRY_DSN:
             return None
 
     SENTRY_TRACES_SAMPLE_RATE = _env_float_safe('SENTRY_TRACES_SAMPLE_RATE', 0.0)
-    SENTRY_SEND_PII = os.getenv('SENTRY_SEND_PII', 'True').strip().lower() in ('1', 'true', 'yes')
+    # Do NOT send PII to Sentry by default; make it opt-in via env var.
+    SENTRY_SEND_PII = os.getenv('SENTRY_SEND_PII', 'False').strip().lower() in ('1', 'true', 'yes')
     SENTRY_ENABLE_LOGS = os.getenv('SENTRY_ENABLE_LOGS', 'False').strip().lower() in ('1', 'true', 'yes')
     SENTRY_PROFILES_SAMPLE_RATE = _env_float_optional('SENTRY_PROFILES_SAMPLE_RATE')
     SENTRY_PROFILE_SESSION_SAMPLE_RATE = _env_float_optional('SENTRY_PROFILE_SESSION_SAMPLE_RATE')
@@ -381,9 +404,9 @@ if not DEBUG:
     # HTTPS settings
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('true', '1', 'yes')
     
-    # Cookie security
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Cookie security is enforced later (below) based on DEBUG and an
+    # optional FORCE_SECURE_COOKIES env toggle to avoid forcing secure
+    # cookies in local, HTTP-only development environments.
     
     # HSTS settings
     SECURE_HSTS_SECONDS = 31536000  # 1 year
@@ -397,10 +420,17 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
 # ── Cookie hardening ──
+# Allow forcing secure cookies via env in dev, otherwise enable them
+# automatically only when DEBUG is False (production) or when the explicit
+# toggle `FORCE_SECURE_COOKIES` is set to true. This prevents accidental
+# secure-cookie enforcement when developing over plain HTTP locally.
+FORCE_SECURE_COOKIES = _env_bool('FORCE_SECURE_COOKIES', False)
+SECURE_COOKIES = (not DEBUG) or FORCE_SECURE_COOKIES
+
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
-SESSION_COOKIE_SECURE = True           # Enforce HTTPS
-CSRF_COOKIE_SECURE = True              # Enforce HTTPS
+SESSION_COOKIE_SECURE = SECURE_COOKIES # Enforce HTTPS when appropriate
+CSRF_COOKIE_SECURE = SECURE_COOKIES    # Enforce HTTPS when appropriate
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30   # 30-day sessions
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False # Session persists after browser close
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
