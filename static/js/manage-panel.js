@@ -320,9 +320,18 @@ function _loadInitialManagePanelTabData(tabName) {
     initServerInfoTab();
     return;
   }
+  if (tabName === 'sessions') {
+    initSessionsTab();
+    return;
+  }
   if (tabName === 'maintenance' && typeof loadMaintenanceStatus === 'function') {
     loadMaintenanceStatus();
   }
+}
+
+function initSessionsTab() {
+  const section = document.getElementById('panelSessionsSection');
+  if (!section) return;
 }
 
 /* ============ Init ============ */
