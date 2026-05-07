@@ -707,7 +707,7 @@ body.mobile-menu-open {
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.2s ease;
-        z-index: 998;
+            z-index: 900;
     }
 
     .mobile-menu-overlay.active {

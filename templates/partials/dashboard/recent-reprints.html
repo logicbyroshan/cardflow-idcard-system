@@ -1,0 +1,66 @@
+{% load static %}
+<!-- Recent Reprints - Super Admin view -->
+<div class="dashboard-card">
+  <div class="dashboard-card-header updates-header">
+    <h3><i class="fa-solid fa-print"></i> Recent Reprints</h3>
+    <div class="recent-updates-badge-group">
+      <span class="recent-updates-active-badge" id="recentReprintsActiveBadge" title="Pending reprint requests">
+        Pending: 0
+      </span>
+      <span class="recent-updates-active-badge recent-updates-assistant-badge" id="recentReprintsCompletedBadge" title="Completed reprints today">
+        Completed Today: 0
+      </span>
+    </div>
+    <div class="recent-updates-search-inline">
+      <div class="recent-updates-search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input
+          type="text"
+          id="recentReprintsSearch"
+          class="recent-updates-search-input"
+          placeholder="Search client or table name"
+          autocomplete="off"
+        >
+      </div>
+    </div>
+  </div>
+  <div class="dashboard-card-body tall-body p-0 table-scroll-body">
+    <div class="recent-table-wrapper dashboard-scroll-table-wrapper">
+    <table class="recent-table dashboard-scroll-table recent-table-5col">
+      <thead>
+        <tr>
+          <th scope="col">Client</th>
+          <th scope="col" class="text-center recent-updates-sortable" data-recent-sort-key="pending" aria-sort="none" tabindex="0" title="Sort by pending reprint requests. Click again to clear sorting.">Pending <i class="fa-solid fa-sort recent-sort-icon" aria-hidden="true"></i></th>
+          <th scope="col" class="text-center recent-updates-sortable" data-recent-sort-key="confirmed" aria-sort="none" tabindex="0" title="Sort by confirmed reprints. Click again to clear sorting.">Confirmed <i class="fa-solid fa-sort recent-sort-icon" aria-hidden="true"></i></th>
+          <th scope="col" class="text-center recent-updates-sortable" data-recent-sort-key="today" aria-sort="none" tabindex="0" title="Sort by reprints completed today. Click again to clear sorting.">Today <i class="fa-solid fa-sort recent-sort-icon" aria-hidden="true"></i></th>
+          <th scope="col" class="text-right">Action</th>
+        </tr>
+      </thead>
+      <tbody id="recentReprintsBody">
+        <!-- Will be populated dynamically -->
+        <tr class="dashboard-table-skeleton-row">
+          <td><span class="dash-skeleton dash-skeleton-line" style="width: 78%;"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill" style="width: 60%;"></span></td>
+        </tr>
+        <tr class="dashboard-table-skeleton-row">
+          <td><span class="dash-skeleton dash-skeleton-line" style="width: 66%;"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill" style="width: 60%;"></span></td>
+        </tr>
+        <tr class="dashboard-table-skeleton-row">
+          <td><span class="dash-skeleton dash-skeleton-line" style="width: 72%;"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          <td><span class="dash-skeleton dash-skeleton-pill" style="width: 60%;"></span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
