@@ -135,13 +135,25 @@ urlpatterns = [
     # Local-only debug toolbar route.
     # Debug Toolbar is enabled in DEBUG mode only and helps inspect SQL/query
     # behavior without affecting production routing.
-    path('__debug__/', include('debug_toolbar.urls')),
+    # NOTE: the toolbar package is optional in production. Register its
+    # URLs only when DEBUG is enabled and the package is importable.
 
     # Local-only Sentry test route. Only registered in DEBUG to avoid accidental exposure.
     # Visit /sentry-debug/ in local dev to trigger a test exception (1/0) for verification.
-    ]
+]
 
-if getattr(__import__('django.conf').conf.settings, 'DEBUG', False):
+# Register debug-only routes (debug_toolbar, sentry test) only when DEBUG.
+if getattr(settings, 'DEBUG', False):
+    # Debug toolbar: optional dependency; import only if installed.
+    try:
+        import debug_toolbar  # noqa: F401
+    except Exception:
+        pass
+    else:
+        urlpatterns += [
+            path('__debug__/', include('debug_toolbar.urls')),
+        ]
+
     from django.urls import path as _path
 
     def _trigger_error(request):
