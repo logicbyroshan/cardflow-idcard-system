@@ -1177,20 +1177,6 @@ def group_settings(request, client_id):
     return render(request, 'group-setting.html', context)
 
 
-# Website Management → redirect to new website admin dashboard
-@login_required
-def manage_website(request):
-    """Redirect legacy manage-website URL to new website admin dashboard."""
-    can_access_website = (
-        PermissionService.has(request.user, 'perm_website_view')
-        or PermissionService.has(request.user, 'perm_manage_website_clients')
-        or PermissionService.has(request.user, 'perm_manage_website_portfolio')
-    )
-    if not can_access_website:
-        return redirect('/panel/')
-    return redirect('/panel/website/')
-
-
 # Notifications page, manage_panel, and api_email_logs have moved to the
 # panel app.  Import them here so existing URL patterns continue to resolve.
 from panel.views.manage_panel_views import (  # noqa: F401

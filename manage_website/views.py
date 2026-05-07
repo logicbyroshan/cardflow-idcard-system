@@ -1,8 +1,8 @@
 """
-Website Admin Views
+Manage Website Views
 ===================
 Dashboard + CRUD API for managing public website content.
-Mounted at /panel/website/
+Mounted at /dashboard (on main domain adarshbhopal.in)
 
 Architecture rule: Views are ULTRA-THIN.
   - Validate request (parse POST/FILES/JSON)
@@ -31,7 +31,7 @@ from core.utils.email_utils import (
 )
 from client.models import Client as PanelClient
 
-from .models import (
+from website.models import (
     BusinessDetails,
     Feature,
     PortfolioCategory,
@@ -41,7 +41,7 @@ from .models import (
     ContactSubmission,
     WebsiteStatus,
 )
-from .services import (
+from website.services import (
     WebsiteStatusService,
     BusinessDetailsService,
     WebsiteClientLogoService,
@@ -51,7 +51,7 @@ from .services import (
     ContactSubmissionService,
     _parse_bool,
 )
-from .views import BENTO_FORCE_INCLUDE_SLUGS, BENTO_FORCE_EXCLUDE_SLUGS
+from website.views import BENTO_FORCE_INCLUDE_SLUGS, BENTO_FORCE_EXCLUDE_SLUGS
 
 
 # =============================================================================
@@ -61,7 +61,7 @@ from .views import BENTO_FORCE_INCLUDE_SLUGS, BENTO_FORCE_EXCLUDE_SLUGS
 def _is_ajax_or_api_request(request) -> bool:
     return (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        or request.path.startswith('/panel/website/api/')
+        or request.path.startswith('/dashboard/api/')
     )
 
 
@@ -74,7 +74,7 @@ def _permission_denied_for_website(request, message='Website access denied'):
 def _auth_required_for_website(request):
     if _is_ajax_or_api_request(request):
         return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-    return redirect('/panel/auth/login/')
+    return redirect('/accounts/login/')
 
 
 def _website_permission_required(*permission_names, denied_message='Website access denied'):
@@ -96,11 +96,13 @@ def _website_permission_required(*permission_names, denied_message='Website acce
 
 
 def website_admin_required(view_func):
-    """Require any website area access permission."""
+    """Require admin website access permission."""
     return _website_permission_required(
         'perm_website_view',
-        'perm_manage_website_clients',
-        'perm_manage_website_portfolio',
+        'perm_website_add',
+        'perm_website_edit',
+        'perm_website_delete',
+        'perm_website_publish',
     )(view_func)
 
 
@@ -111,50 +113,32 @@ def website_view_required(view_func):
 
 def website_clients_read_required(view_func):
     """Require Clients tab read access permission."""
-    return _website_permission_required(
-        'perm_website_view',
-        'perm_manage_website_clients',
-    )(view_func)
+    return website_admin_required(view_func)
 
 
 def website_clients_manage_required(view_func):
     """Require Clients tab manage permission."""
-    return _website_permission_required(
-        'perm_website_edit',
-        'perm_manage_website_clients',
-    )(view_func)
+    return _website_permission_required('perm_website_edit')(view_func)
 
 
 def website_portfolio_read_required(view_func):
     """Require Portfolio tab read access permission."""
-    return _website_permission_required(
-        'perm_website_view',
-        'perm_manage_website_portfolio',
-    )(view_func)
+    return website_admin_required(view_func)
 
 
 def website_portfolio_add_required(view_func):
     """Require Portfolio tab create/add permission."""
-    return _website_permission_required(
-        'perm_website_add',
-        'perm_manage_website_portfolio',
-    )(view_func)
+    return _website_permission_required('perm_website_add')(view_func)
 
 
 def website_portfolio_edit_required(view_func):
     """Require Portfolio tab edit/toggle permission."""
-    return _website_permission_required(
-        'perm_website_edit',
-        'perm_manage_website_portfolio',
-    )(view_func)
+    return _website_permission_required('perm_website_edit')(view_func)
 
 
 def website_portfolio_delete_required(view_func):
     """Require Portfolio tab delete permission."""
-    return _website_permission_required(
-        'perm_website_delete',
-        'perm_manage_website_portfolio',
-    )(view_func)
+    return _website_permission_required('perm_website_delete')(view_func)
 
 
 def website_edit_required(view_func):
@@ -241,11 +225,13 @@ def website_dashboard(request):
     """Route Website root to the first allowed tab for this user."""
     user = request.user
     if PermissionService.has(user, 'perm_website_view'):
-        return redirect('website_admin:business')
-    if PermissionService.has(user, 'perm_manage_website_clients'):
-        return redirect('website_admin:clients')
-    if PermissionService.has(user, 'perm_manage_website_portfolio'):
-        return redirect('website_admin:portfolio')
+        return redirect('manage_website:business')
+    if PermissionService.has(user, 'perm_website_add'):
+        return redirect('manage_website:portfolio')
+    if PermissionService.has(user, 'perm_website_edit'):
+        return redirect('manage_website:clients')
+    if PermissionService.has(user, 'perm_website_publish'):
+        return redirect('manage_website:business')
     return redirect('/panel/')
 
 
@@ -1123,32 +1109,6 @@ def api_portfolio_category_delete(request, pk):
     except ValueError as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
     return JsonResponse({'success': True, 'message': 'Category deleted'})
-
-
-
-
-
-# =============================================================================
-# CONTACT SUBMISSIONS — Page + API
-# =============================================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # =============================================================================

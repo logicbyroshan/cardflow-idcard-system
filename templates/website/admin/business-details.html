@@ -650,7 +650,7 @@
 
             toggleWebsiteLiveBtn.disabled = true;
             try {
-                const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
+                const res = await fetch('{% url "manage_website:api_status_toggle" %}', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -679,7 +679,7 @@
         }
 
         try {
-            const res = await fetch('{% url "website_admin:api_business_update" %}', {
+            const res = await fetch('{% url "manage_website:api_business_update" %}', {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
                 body: formData,

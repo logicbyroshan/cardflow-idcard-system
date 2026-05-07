@@ -62,7 +62,6 @@ from .admin_page_views import (                      # noqa: F401
     build_idcard_actions_context,
     idcard_actions,
     group_settings,
-    manage_website,
     notifications_page,
     manage_panel,
     api_email_logs,

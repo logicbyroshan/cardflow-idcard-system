@@ -60,8 +60,6 @@ class StaffService(BaseService):
         'perm_mobile_app',
         # Manage Panel
         'perm_manage_panel_backup', 'perm_manage_panel_email',
-        # Manage Website sections
-        'perm_manage_website_clients', 'perm_manage_website_portfolio',
     ]
     
     @classmethod

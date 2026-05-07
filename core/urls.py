@@ -90,9 +90,6 @@ urlpatterns = [
     path('pro-user/super-mode/', views.pro_user_super_mode_page, name='pro_user_super_mode'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
 
-    # Website Management → redirect to new website admin dashboard
-    path('manage-website/', views.manage_website, name='manage_website'),
-    
     # Manage Panel
     path('manage-panel/', views.manage_panel, name='manage_panel'),
     path('api/email-logs/', views.api_email_logs, name='api_email_logs'),
@@ -256,6 +253,9 @@ urlpatterns = [
     path('api/pro-user/super-mode/users/', views.api_pro_user_super_mode_users, name='api_pro_user_super_mode_users'),
     path('api/pro-user/super-mode/assign/', views.api_pro_user_super_mode_assign, name='api_pro_user_super_mode_assign'),
     path('api/pro-user/super-mode/self/', views.api_pro_user_super_mode_self, name='api_pro_user_super_mode_self'),
+    path('api/pro-user/sessions/revoke/', views.api_pro_user_revoke_sessions, name='api_pro_user_revoke_sessions'),
+    path('api/pro-user/sessions/list/', views.api_pro_user_list_sessions, name='api_pro_user_list_sessions'),
+    path('api/pro-user/sessions/revoke-single/', views.api_pro_user_revoke_session_key, name='api_pro_user_revoke_session_key'),
 
     # Settings/Profile APIs (for all user types)
     path('api/profile/', views.api_get_profile, name='api_get_profile'),

@@ -144,7 +144,10 @@ urlpatterns = [
     path('panel/staff/', include('staff.urls')),
     path('panel/work/', include('idcards.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
-    path('panel/website/', include('website.admin_urls')),
+
+    # ==================== MANAGE WEBSITE (/dashboard) ====================
+    # Website management dashboard on main domain (adarshbhopal.in/dashboard)
+    path('dashboard/', include('manage_website.urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/', include('mobile_app.urls')),

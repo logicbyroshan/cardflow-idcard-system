@@ -112,20 +112,20 @@
                 <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
             </div>
             <div class="wa-quick-links">
-                <a href="{% url 'website_admin:business' %}" class="wa-quick-link">
+                <a href="{% url 'manage_website:business' %}" class="wa-quick-link">
                     <i class="fa-solid fa-building"></i>
                     <span>Edit Business Info</span>
                 </a>
 
-                <a href="{% url 'website_admin:reviews' %}" class="wa-quick-link">
+                <a href="{% url 'manage_website:reviews' %}" class="wa-quick-link">
                     <i class="fa-solid fa-star"></i>
                     <span>Moderate Reviews</span>
                 </a>
-                <a href="{% url 'website_admin:portfolio' %}" class="wa-quick-link">
+                <a href="{% url 'manage_website:portfolio' %}" class="wa-quick-link">
                     <i class="fa-solid fa-images"></i>
                     <span>Update Portfolio</span>
                 </a>
-                <a href="{% url 'website_admin:clients' %}" class="wa-quick-link">
+                <a href="{% url 'manage_website:clients' %}" class="wa-quick-link">
                     <i class="fa-solid fa-handshake"></i>
                     <span>Client Logos</span>
                 </a>
@@ -202,7 +202,7 @@
             const ok = await waConfirm({ title: 'Change Website Status?', text: 'This will toggle your website between live and draft mode.', icon: 'fa-solid fa-globe', confirmLabel: 'Yes, Change', btnClass: 'btn-primary' });
             if (!ok) return;
             try {
-                const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
+                const res = await fetch('{% url "manage_website:api_status_toggle" %}', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
                 });
@@ -233,7 +233,7 @@
             if (!ok) return;
 
             try {
-                const res = await fetch('{% url "website_admin:api_status_not_found" %}', {
+                const res = await fetch('{% url "manage_website:api_status_not_found" %}', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': getCSRFToken(),
@@ -273,7 +273,7 @@
 
             sendProAccessBtn.disabled = true;
             try {
-                const res = await fetch('{% url "website_admin:api_status_pro_access_link" %}', {
+                const res = await fetch('{% url "manage_website:api_status_pro_access_link" %}', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': getCSRFToken(),

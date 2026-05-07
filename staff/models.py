@@ -121,10 +121,6 @@ class Staff(models.Model):
     perm_manage_panel_backup = models.BooleanField(default=False)
     perm_manage_panel_email = models.BooleanField(default=False)
 
-    # Manage Website Section Permissions (admin staff)
-    perm_manage_website_clients = models.BooleanField(default=False)
-    perm_manage_website_portfolio = models.BooleanField(default=False)
-    
     # Website Management Permissions
     perm_website_view = models.BooleanField(default=False)
     perm_website_add = models.BooleanField(default=False)

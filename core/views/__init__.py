@@ -58,7 +58,6 @@ from .base import (
     idcard_group,
     idcard_actions,
     group_settings,
-    manage_website,
     manage_panel,
     api_email_logs,
     api_email_resend,
@@ -202,4 +201,9 @@ from .pro_user_super_mode_api import (
     api_pro_user_super_mode_users,
     api_pro_user_super_mode_assign,
     api_pro_user_super_mode_self,
+)
+from .pro_user_session_api import (
+    api_pro_user_revoke_sessions,
+    api_pro_user_list_sessions,
+    api_pro_user_revoke_session_key,
 )

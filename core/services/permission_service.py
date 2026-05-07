@@ -84,11 +84,6 @@ class PermissionService:
         'perm_manage_panel_email',
     ]
 
-    MANAGE_WEBSITE_SECTION_PERMISSIONS = [
-        'perm_manage_website_clients',
-        'perm_manage_website_portfolio',
-    ]
-
     MOBILE_APP_PERMISSIONS = [
         'perm_mobile_app',
     ]
@@ -106,7 +101,6 @@ class PermissionService:
         + IDCARD_ACTION_PERMISSIONS
         + WEBSITE_PERMISSIONS
         + MANAGE_PANEL_PERMISSIONS
-        + MANAGE_WEBSITE_SECTION_PERMISSIONS
         + MOBILE_APP_PERMISSIONS
         + ACCOUNT_SECURITY_PERMISSIONS
     )
@@ -133,11 +127,9 @@ class PermissionService:
         'perm_website_edit',
         'perm_website_delete',
         'perm_website_publish',
-        # Panel and website section management (admin_staff-only)
+        # Panel management (admin_staff-only)
         'perm_manage_panel_backup',
         'perm_manage_panel_email',
-        'perm_manage_website_clients',
-        'perm_manage_website_portfolio',
         'perm_manage_client_staff',
     }
 
