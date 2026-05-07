@@ -828,16 +828,8 @@ def submit_testimonial(request):
             if not name:
                 name = (request.user.get_full_name() or request.user.username or email).strip()
 
-            if not school:
-                client_profile = getattr(request.user, 'client_profile', None)
-                staff_profile = getattr(request.user, 'staff_profile', None)
-                if client_profile and getattr(client_profile, 'name', ''):
-                    school = str(client_profile.name).strip()
-                elif staff_profile and getattr(staff_profile, 'client', None) and getattr(staff_profile.client, 'name', ''):
-                    school = str(staff_profile.client.name).strip()
-
-        if not all([name, email, school, text]):
-            return JsonResponse({'success': False, 'message': 'All fields are required.'}, status=400)
+        if not all([name, email, text]):
+            return JsonResponse({'success': False, 'message': 'Name, email, and review text are required.'}, status=400)
 
         try:
             validate_email(email)
