@@ -21,6 +21,7 @@ from .views_api import (
     api_dashboard_data,
     api_messages_drawer,
     api_groups_list,
+    api_reprint_history,
     api_staff_list_create,
     api_staff_detail,
     api_staff_toggle_status,
