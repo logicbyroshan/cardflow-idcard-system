@@ -832,6 +832,15 @@ h2 {
         min-height: 250px;
     }
 
+    /* Tablet: Stack large cards vertically with proper image positioning */
+    .bento-card-1 {
+        flex-direction: column;
+    }
+
+    .bento-card-4 {
+        flex-direction: column;
+    }
+
     .bento-illustration {
         max-width: 110px;
         margin-bottom: 1rem;
@@ -1427,12 +1436,12 @@ h2 {
         background: rgba(255, 255, 255, 0.96);
         backdrop-filter: blur(18px);
         box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
-            z-index: 1000;
-        }
+        z-index: 1000;
+    }
 
-        .hamburger {
-            position: relative;
-            z-index: 1001;
+    .hamburger {
+        position: relative;
+        z-index: 1001;
     }
 
     .nav-links a {
