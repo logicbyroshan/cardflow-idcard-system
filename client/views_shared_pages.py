@@ -277,7 +277,7 @@ def client_group_settings(request):
     if is_htmx(request):
         return render(request, 'partials/group-setting/table-container.html', context)
 
-    
+    return render(request, 'group-setting.html', context)
 
 
 
