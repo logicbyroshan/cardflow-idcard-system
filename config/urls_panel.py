@@ -161,7 +161,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Local-only debug toolbar route for panel subdomain development.
-    path('__debug__/', include('debug_toolbar.urls')),
+    # The toolbar package is optional in production, so only register it when
+    # DEBUG is enabled and the package can be imported.
 
     # ==================== ADMIN PANEL (root — no /panel/ prefix) ==========
     path('', include('core.urls')),
@@ -175,6 +176,14 @@ urlpatterns = [
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/', include('mobile_app.urls')),
 ]
+
+if getattr(settings, 'DEBUG', False):
+    try:
+        import debug_toolbar  # noqa: F401
+    except Exception:
+        pass
+    else:
+        urlpatterns.insert(6, path('__debug__/', include('debug_toolbar.urls')))
 
 # Media file serving (with auth for protected dirs)
 urlpatterns += [
