@@ -1013,7 +1013,7 @@ a:active {
 
 /* ===== Why Choose Us Section ===== */
 .why-choose-us {
-    padding: 100px 0;
+    padding: 5px 0;
     background: var(--white);
 }
 
@@ -1374,7 +1374,7 @@ a:active {
 
 /* ===== Our Works Section ===== */
 .our-works {
-    padding: 100px 0;
+    padding: 5px 0;
     background: var(--white);
 }
 
@@ -1471,7 +1471,7 @@ a:active {
 
 /* ===== Testimonials Section ===== */
 .testimonials {
-    padding: 100px 0;
+    padding: 5px 0;
     background: var(--white);
 }
 
@@ -1550,7 +1550,7 @@ a:active {
 
 /* ===== Download App CTA Section ===== */
 .download-app-section {
-    padding: 100px 0;
+    padding: 5px 0;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     overflow: hidden;
     position: relative;
@@ -1929,7 +1929,7 @@ a:active {
 
 /* ===== Contact Section ===== */
 .contact-section {
-    padding: 100px 0;
+    padding: 5px 0;
     background: #f8f9fa;
 }
 

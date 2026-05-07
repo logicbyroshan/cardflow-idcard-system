@@ -368,7 +368,7 @@ body.modal-open {
    CATEGORIES SHOWCASE
 ============================================ */
 .categories-showcase {
-    padding: 80px 0;
+    padding: 5px 0;
     background: linear-gradient(180deg, #ffffff 0%, #eef8ff 50%, #c8e6ff 100%);
 }
 
@@ -776,7 +776,7 @@ body.modal-open {
    PORTFOLIO SECTION
 ============================================ */
 .portfolio-section {
-    padding: 80px 0;
+    padding: 5px 0;
     background: #f8f9fa;
 }
 
@@ -1176,7 +1176,7 @@ body.modal-open {
    PROCESS SECTION
 ============================================ */
 .process-section {
-    padding: 80px 0;
+    padding: 5px 0;
     background: var(--white);
 }
 
