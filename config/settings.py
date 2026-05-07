@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
 import os
 import dj_database_url
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+from django.urls import resolve, Resolver404
 
 # Load environment variables from .env file (if exists)
 load_dotenv()
@@ -206,6 +209,51 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
+
+
+# -----------------
+# Sentry configuration
+# -----------------
+# Only initialize Sentry when a DSN is provided via env; keep disabled by default
+SENTRY_DSN = os.getenv('SENTRY_DSN', '').strip()
+if SENTRY_DSN:
+    def _env_float_safe(name: str, default: float) -> float:
+        try:
+            return float(os.getenv(name, default))
+        except (TypeError, ValueError):
+            return float(default)
+
+    SENTRY_TRACES_SAMPLE_RATE = _env_float_safe('SENTRY_TRACES_SAMPLE_RATE', 0.0)
+    SENTRY_SEND_PII = os.getenv('SENTRY_SEND_PII', 'False').strip().lower() in ('1', 'true', 'yes')
+
+    # Drop events originating from the public website or website management apps
+    def _sentry_before_send(event, hint):
+        request = hint.get('request')
+        if request is not None:
+            try:
+                match = resolve(request.path)
+                view_mod = getattr(match.func, '__module__', '')
+                if view_mod.startswith('website') or view_mod.startswith('manage_website'):
+                    return None
+            except Exception:
+                # If resolution fails, don't block the event
+                pass
+        return event
+
+    try:
+        with open(os.path.join(BASE_DIR, 'VERSION.txt')) as f:
+            SENTRY_RELEASE = f.read().strip()
+    except Exception:
+        SENTRY_RELEASE = None
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        send_default_pii=SENTRY_SEND_PII,
+        before_send=_sentry_before_send,
+        release=SENTRY_RELEASE,
+    )
 
 
 # =============================================================================

@@ -132,6 +132,23 @@ urlpatterns = [
     # Django admin
     path('admin/', admin.site.urls),
 
+    # Local-only Sentry test route. Only registered in DEBUG to avoid accidental exposure.
+    # Visit /sentry-debug/ in local dev to trigger a test exception (1/0) for verification.
+    ]
+
+if getattr(__import__('django.conf').conf.settings, 'DEBUG', False):
+    from django.urls import path as _path
+
+    def _trigger_error(request):
+        division_by_zero = 1 / 0
+
+    urlpatterns += [
+        _path('sentry-debug/', _trigger_error),
+    ]
+
+# re-open urlpatterns list continuation
+urlpatterns += [
+
     # ==================== API COMPATIBILITY (ROOT /api/*) ====================
 
     # ==================== ADMIN PANEL (/panel/) ====================
