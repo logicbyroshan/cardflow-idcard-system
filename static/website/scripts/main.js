@@ -349,6 +349,7 @@ function initGlowBorder() {
 document.addEventListener('DOMContentLoaded', () => {
     initHeroSlider();
     initMobileMenu();
+    initTypingEffect();
     if ('requestIdleCallback' in window) {
         requestIdleCallback(runNonCriticalFeatures, { timeout: 1000 });
     } else {
@@ -357,7 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function runNonCriticalFeatures() {
-    initTypingEffect();
     initScrollEffects();
     createScrollTopButton();
     initPhoneSlideshow();
