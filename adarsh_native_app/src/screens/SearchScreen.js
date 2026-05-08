@@ -151,7 +151,7 @@ const s = StyleSheet.create({
   floatingCount: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   countText: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase', letterSpacing: 0.5 },
   filterDropdown: { position: 'absolute', top: 120, left: 16, right: 16, zIndex: 100, backgroundColor: '#fff', borderRadius: radius.lg, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.lg, overflow: 'hidden' },
-  filterItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  filterItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
   filterItemActive: { backgroundColor: 'rgba(51,183,239,0.03)' },
   filterItemText: { flex: 1, fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray500 },
   filterItemTextActive: { color: colors.brandLight },

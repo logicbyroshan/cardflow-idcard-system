@@ -25,18 +25,18 @@ export function AuthProvider({ children }) {
         await clearAuth();
       } else if (ok && data?.success) {
         setUser(prev => {
-          if (!prev) return null;
+          const base = prev || {};
           const refreshed = {
-            ...prev,
-            name: data.data?.name || prev.name,
-            email: data.data?.email || prev.email,
-            role: data.data?.role || prev.role,
-            client_id: data.data?.client_id || prev.client_id,
-            can_manage_clients: !!data.data?.can_manage_clients,
-            can_manage_staff: !!data.data?.can_manage_staff,
-            permissions: data.data?.permissions || prev.permissions || {},
+            ...base,
+            name: data.data?.name || base.name || '',
+            email: data.data?.email || base.email || '',
+            role: data.data?.role || base.role || '',
+            client_id: data.data?.client_id || base.client_id,
+            can_manage_clients: typeof data.data?.can_manage_clients === 'boolean' ? data.data.can_manage_clients : !!base.can_manage_clients,
+            can_manage_staff: typeof data.data?.can_manage_staff === 'boolean' ? data.data.can_manage_staff : !!base.can_manage_staff,
+            permissions: data.data?.permissions || base.permissions || {},
           };
-          AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshed));
+          AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshed)).catch(() => {});
           return refreshed;
         });
       }

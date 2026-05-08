@@ -92,7 +92,6 @@ const styles = StyleSheet.create({
   buttons: {
     width: '100%',
     marginTop: 20,
-    gap: 10,
   },
   secondaryBtn: {
     width: '100%',

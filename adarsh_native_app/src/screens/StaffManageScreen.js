@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,24 +10,22 @@ import ConfirmModal from '../components/ConfirmModal';
 import { apiGet, apiPost } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const { width } = Dimensions.get('window');
 
 export default function StaffManageScreen({ navigation }) {
   const { user, isImpersonating, stopImpersonation } = useAuth();
   const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
+  const deferredSearch = useDeferredValue(search);
   
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '' });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
 
   // Assignment state
   const [showAssign, setShowAssign] = useState(false);
@@ -49,6 +47,20 @@ export default function StaffManageScreen({ navigation }) {
   });
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
+  const loadStaff = useCallback(async () => {
+    try {
+      const { ok, data } = await apiGet('/app/api/staff/');
+      if (ok && data?.success) {
+        setStaff(data.data?.staff || []);
+      } else {
+        throw new Error(data?.message || 'Failed to load assistants');
+      }
+    } catch (e) {
+      throw new Error('Network error - check your connection');
+    }
+  }, []);
+
+  const { loading, refreshing, error, refresh } = useRefreshableResource(loadStaff, { initialData: [] });
 
   const handleStopImpersonation = async () => {
     const result = await stopImpersonation();
@@ -60,38 +72,18 @@ export default function StaffManageScreen({ navigation }) {
     }
   };
 
-  const loadStaff = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const { ok, data } = await apiGet('/app/api/staff/');
-      if (ok && data?.success) {
-        setStaff(data.data?.staff || []);
-      } else {
-        setError(data?.message || 'Failed to load assistants');
-      }
-    } catch (e) {
-      setError('Network error - check your connection');
-    }
-    setLoading(false);
-    setRefreshing(false);
-  };
-
-  useEffect(() => { loadStaff(); }, []);
-
   const filtered = useMemo(() => {
     return staff.filter(s => {
       const name = (s.name || '').toLowerCase();
       const email = (s.email || '').toLowerCase();
-      const q = search.toLowerCase();
-      const matchesSearch = !search.trim() || name.includes(q) || email.includes(q);
+      const q = deferredSearch.toLowerCase();
+      const matchesSearch = !deferredSearch.trim() || name.includes(q) || email.includes(q);
       const matchesStatus = statusFilter === 'all' || 
         (statusFilter === 'active' && s.is_active) || 
         (statusFilter === 'inactive' && !s.is_active);
       return matchesSearch && matchesStatus;
     });
-  }, [search, statusFilter, staff]);
+  }, [deferredSearch, statusFilter, staff]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -148,7 +140,7 @@ export default function StaffManageScreen({ navigation }) {
       if (ok && data?.success) {
         showToast(data.message || 'Assignments updated', 'success');
         setShowAssign(false);
-        loadStaff();
+        refresh();
       } else {
         showToast(data?.message || 'Failed to update assignments', 'error');
       }
@@ -168,7 +160,7 @@ export default function StaffManageScreen({ navigation }) {
       if (!body.password) delete body.password;
       const { data } = await apiPost(url, body);
       showToast(data?.success ? (data.message || 'Saved!') : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
-      if (data?.success) { setShowForm(false); loadStaff(); }
+      if (data?.success) { setShowForm(false); refresh(); }
     } catch (e) { showToast('Network error', 'error'); }
     setSaving(false);
   };
@@ -177,7 +169,7 @@ export default function StaffManageScreen({ navigation }) {
     try {
       const { data } = await apiPost(`/app/api/staff/${member.id}/toggle/`, {});
       showToast(data?.success ? (data.message || 'Toggled') : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
-      if (data?.success) loadStaff();
+      if (data?.success) refresh();
     } catch (e) { showToast('Network error', 'error'); }
   };
 
@@ -190,13 +182,11 @@ export default function StaffManageScreen({ navigation }) {
       color: '#ef4444',
       onConfirm: async () => {
         setConfirmModal(p => ({ ...p, visible: false }));
-        setLoading(true);
         try {
           const { data } = await apiPost(`/app/api/staff/${item.id}/delete/`, {});
           showToast(data?.message || 'Deleted', data?.success ? 'success' : 'error');
-          if (data?.success) loadStaff(true);
+          if (data?.success) refresh();
         } catch (e) { showToast('Network error', 'error'); }
-        setLoading(false);
       }
     });
   };
@@ -448,19 +438,19 @@ const s = StyleSheet.create({
   leftIconBtn: { padding: 8 },
   rightIconBtn: { padding: 8 },
   searchInput: { flex: 1, color: '#fff', fontSize: 13, paddingHorizontal: 8 },
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
+  list: { padding: 16, paddingBottom: 32 },
   card: { backgroundColor: '#fff', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', padding: 14 },
   avatar: { width: 40, height: 40, borderRadius: radius.xs, backgroundColor: 'rgba(51,183,239,0.08)', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 13, fontWeight: '800', color: colors.brandPrimary },
   cardInfo: { flex: 1, minWidth: 0 },
   name: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
   email: { fontSize: 11, color: colors.gray400, marginTop: 1, fontFamily: fontFamily.medium },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm, alignSelf: 'center' },
+  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm, alignSelf: 'center' },
   statusDotSmall: { width: 6, height: 6, borderRadius: 3 },
   statusPillText: { fontSize: 9, fontFamily: fontFamily.bold, letterSpacing: 0.5 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
-  textBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9' },
+  cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 10 },
+  textBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9' },
   btnIcon: { marginBottom: 1 },
   textBtnLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.brandPrimary, letterSpacing: 0.5 },
   empty: { alignItems: 'center', paddingTop: 80 },
@@ -475,12 +465,12 @@ const s = StyleSheet.create({
   filterClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
   filterContent: { flex: 1, padding: 20 },
   filterLabel: { fontSize: 10, fontWeight: '900', color: colors.gray400, letterSpacing: 1.2, marginBottom: 12 },
-  filterChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filterChips: { flexDirection: 'row', flexWrap: 'wrap' },
   filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.sm, backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0' },
   filterChipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
   filterChipText: { fontSize: 11, fontWeight: '700', color: colors.gray600 },
   filterChipTextActive: { color: '#fff' },
-  filterFooter: { flexDirection: 'row', padding: 20, gap: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  filterFooter: { flexDirection: 'row', padding: 20, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   resetBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm, backgroundColor: colors.gray100 },
   resetBtnText: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
   applyBtnWrap: { flex: 2, borderRadius: radius.sm, overflow: 'hidden' },
@@ -492,23 +482,23 @@ const s = StyleSheet.create({
   modalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 40, ...shadows.xl },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginTop: 12, marginBottom: 8 },
   modalTitle: { fontSize: 16, fontWeight: '700', color: colors.gray800, paddingHorizontal: 16, marginBottom: 16 },
-  formFields: { paddingHorizontal: 16, gap: 12 },
-  formRow: { flexDirection: 'row', gap: 10 },
+  formFields: { paddingHorizontal: 16 },
+  formRow: { flexDirection: 'row' },
   field: { flex: 1 },
   fieldLabel: { fontSize: 10, fontWeight: '700', color: colors.gray500, letterSpacing: 0.8, marginBottom: 4 },
   fieldInput: { backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: colors.gray700 },
   fieldDisabled: { backgroundColor: '#f1f5f9', color: colors.gray400 },
-  formBtns: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 16 },
+  formBtns: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 16 },
   cancelBtn: { flex: 1, paddingVertical: 14, backgroundColor: colors.gray100, borderRadius: radius.md, alignItems: 'center' },
   cancelBtnText: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
   saveBtnWrap: { flex: 2, borderRadius: radius.md, overflow: 'hidden' },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14 },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
   saveBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   // Assign
   assignContainer: { paddingHorizontal: 16, marginBottom: 16 },
   sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.gray400, letterSpacing: 1, marginBottom: 12, marginTop: 8 },
-  checkGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  checkItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.gray50, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1, borderColor: '#e2e8f0', minWidth: '47%' },
+  checkGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
+  checkItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1, borderColor: '#e2e8f0', minWidth: '47%' },
   checkItemActive: { backgroundColor: 'rgba(51,183,239,0.05)', borderColor: colors.brandPrimary },
   checkLabel: { fontSize: 12, color: colors.gray600, flex: 1 },
   checkLabelActive: { color: colors.brandPrimary, fontWeight: '600' },

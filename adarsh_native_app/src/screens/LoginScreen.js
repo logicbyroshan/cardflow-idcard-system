@@ -1,13 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet,
+  KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { colors, gradients, typography, spacing, radius, shadows, fontFamily } from '../theme';
 
 export default function LoginScreen({ navigation }) {
@@ -20,8 +22,6 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'error' });
-  const passwordRef = useRef(null);
-
   const handleLogin = async () => {
     setError('');
     if (!email.trim() || !password) {
@@ -126,80 +126,50 @@ export default function LoginScreen({ navigation }) {
             )}
 
             {/* Email */}
-            <View style={styles.fieldWrap}>
-              <Text style={styles.label}>EMAIL</Text>
-              <View style={styles.inputWrap}>
-                <FontAwesome5 name="envelope" size={14} color={colors.gray400} solid style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="you@example.com"
-                  placeholderTextColor={colors.gray300}
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                />
-              </View>
-            </View>
+            <Input
+              label="EMAIL"
+              leftIcon="envelope"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+              returnKeyType="next"
+              onSubmitEditing={handleLogin}
+            />
 
             {/* Password */}
-            <View style={styles.fieldWrap}>
-              <Text style={styles.label}>PASSWORD</Text>
-              <View style={styles.inputWrap}>
-                <FontAwesome5 name="lock" size={14} color={colors.gray400} solid style={styles.inputIcon} />
-                <TextInput
-                  ref={passwordRef}
-                  style={[styles.input, { paddingRight: 48 }]}
-                  placeholder="••••••"
-                  placeholderTextColor={colors.gray300}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoComplete="current-password"
-                  returnKeyType="go"
-                  onSubmitEditing={handleLogin}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeBtn}
-                  activeOpacity={0.6}
-                >
-                  <FontAwesome5
-                    name={showPassword ? 'eye-slash' : 'eye'}
-                    size={14}
-                    color={colors.gray400}
-                    solid
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+            <Input
+              label="PASSWORD"
+              leftIcon="lock"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••"
+              autoComplete="current-password"
+              secureTextEntry
+              returnKeyType="go"
+              onSubmitEditing={handleLogin}
+            />
 
             {/* Submit */}
-            <TouchableOpacity
+            <Button
               onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.85}
+              loading={loading}
+              fullWidth
               style={styles.submitBtn}
             >
-              <LinearGradient
-                colors={gradients.brandFull}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.submitGradient}
-              >
-                {loading && <ActivityIndicator size="small" color={colors.white} />}
-                <Text style={styles.submitText}>
-                  {loading ? 'Signing in...' : 'Sign In'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              Sign In
+            </Button>
 
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} activeOpacity={0.7} style={styles.forgotLink}>
-              <Text style={styles.forgotLinkText}>Forgot Password?</Text>
-            </TouchableOpacity>
+            <Button
+              variant="ghost"
+              onPress={() => navigation.navigate('ForgotPassword')}
+              style={styles.forgotLink}
+              textStyle={styles.forgotLinkText}
+            >
+              Forgot Password?
+            </Button>
 
             <Text style={styles.helpText}>
               Having trouble? Contact your administrator
@@ -300,7 +270,6 @@ const styles = StyleSheet.create({
   errorBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
     backgroundColor: colors.errorBg,
     borderWidth: 1,
     borderColor: colors.errorBorder,
@@ -315,67 +284,12 @@ const styles = StyleSheet.create({
     fontSize: typography.lg,
   },
 
-  // Form fields
-  fieldWrap: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontSize: typography.xs,
-    fontFamily: fontFamily.semibold,
-    color: colors.gray500,
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  inputWrap: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inputIcon: {
-    position: 'absolute',
-    left: 14,
-    zIndex: 1,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: colors.gray50,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-    borderRadius: radius.md,
-    paddingLeft: 40,
-    paddingRight: 16,
-    paddingVertical: 14,
-    fontSize: typography.base,
-    color: colors.gray800,
-    fontFamily: fontFamily.regular,
-  },
-  eyeBtn: {
-    position: 'absolute',
-    right: 14,
-    padding: 4,
-  },
-
   // Submit button
   submitBtn: {
     marginTop: 8,
     borderRadius: radius.md,
-    overflow: 'hidden',
     ...shadows.lg,
   },
-  submitGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: 16,
-    borderRadius: radius.md,
-  },
-  submitText: {
-    color: colors.white,
-    fontSize: typography.xl,
-    fontFamily: fontFamily.bold,
-  },
-
   helpText: {
     textAlign: 'center',
     color: colors.gray400,
@@ -386,12 +300,9 @@ const styles = StyleSheet.create({
   forgotLink: {
     alignSelf: 'center',
     marginTop: 16,
-    paddingVertical: 6,
   },
   forgotLinkText: {
     color: colors.brandDark,
-    fontSize: typography.lg,
-    fontFamily: 'SairaSemiCondensed-SemiBold',
     textDecorationLine: 'underline',
   },
 });

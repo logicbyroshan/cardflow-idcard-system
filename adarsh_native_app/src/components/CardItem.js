@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, shadows, radius, spacing, typography, fontFamily } from '../theme';
+import { HStack } from './Stack';
 import { BASE_URL } from '../api/client';
 
 const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, onToggleSelect, onEdit, currentStatus, onStatusChange, onPool, onDelete, permissions = {} }) {
@@ -147,11 +148,11 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
               <View style={[s.checkboxSmall, isSelected && s.checkboxCheckedSmall]}>
                 {isSelected && <FontAwesome5 name="check" size={8} color="#fff" />}
               </View>
-              <Text style={s.checkboxLabel}>Select</Text>
+              <Text style={[s.checkboxLabel, { marginLeft: 6 }]}>Select</Text>
             </TouchableOpacity>
           )}
         </View>
-        <View style={s.rightActions}>
+        <HStack spacing={8} style={s.rightActions}>
           {onEdit && hasPerm('perm_idcard_edit') && (
             <TouchableOpacity onPress={onEdit} style={s.editBtnWrap} activeOpacity={0.7}>
               <Text style={s.editBtnText}>Edit</Text>
@@ -196,7 +197,7 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
               <Text style={s.actionBtnTextRed}>Delete</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </HStack>
       </View>
     </View>
   );
@@ -263,7 +264,6 @@ const s = StyleSheet.create({
     minWidth: 0,
     padding: 8,
     paddingHorizontal: 8,
-    gap: 0,
   },
   fieldRow: {
     width: '100%',
@@ -329,7 +329,6 @@ const s = StyleSheet.create({
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     paddingVertical: 4,
   },
   checkboxSmall: {
@@ -354,7 +353,6 @@ const s = StyleSheet.create({
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   editBtnWrap: {
     flexDirection: 'row',

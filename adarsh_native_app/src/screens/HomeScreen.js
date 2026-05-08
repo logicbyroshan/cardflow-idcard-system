@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Dimensions, Image } from 'react-native';
 const { width } = Dimensions.get('window');
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { DashboardSkeleton } from '../components/Skeleton';
 import { ErrorView, ErrorBanner, ERROR_TYPES } from '../components/NetworkGuard';
 import StatusBadge from '../components/StatusBadge';
 import { colors, gradients, shadows, radius, fontFamily, roleThemes } from '../theme';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const STATUS_CONFIG = [
   { key: 'pending',  label: 'Pending',  icon: 'clock',        bg: '#fbbf24', bg2: '#f59e0b', text: '#fff', border: 'transparent' },
@@ -29,25 +30,21 @@ const CARD_SIZE = Math.floor((width - (GRID_PADDING * 2) - (GRID_GAP * 2)) - 2) 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [counts, setCounts] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
   const theme = roleThemes[user?.role] || roleThemes.default;
 
   const loadDashboard = useCallback(async () => {
     try {
-      setError(null);
-      const { data } = await apiGet('/app/api/dashboard/');
-      if (data?.success) setCounts(data.data || {});
-      else setError(data?.message || 'Failed to load dashboard data');
+      const { ok, data } = await apiGet('/app/api/dashboard/');
+      if (!ok || !data?.success) {
+        throw new Error(data?.message || 'Failed to load dashboard data');
+      }
+      return data.data || {};
     } catch (e) {
-      setError(e.message?.includes('Network') ? 'network' : 'server');
+      throw new Error(e.message?.includes('Network') ? 'network' : 'server');
     }
   }, []);
 
-  useEffect(() => { (async () => { await loadDashboard(); setLoading(false); })(); }, []);
-  const onRefresh = useCallback(async () => { setRefreshing(true); await loadDashboard(); setRefreshing(false); }, [loadDashboard]);
+  const { data: counts = {}, loading, refreshing, error, refresh } = useRefreshableResource(loadDashboard, { initialData: {} });
   const totalCards = useMemo(() => STATUS_CONFIG.filter(s => s.key !== 'total').reduce((sum, s) => sum + (counts[s.key] || 0), 0), [counts]);
   
   const quickActions = useMemo(() => {
@@ -93,7 +90,7 @@ export default function HomeScreen({ navigation }) {
       <LinearGradient colors={gradients.brand} style={[s.header, { paddingTop: insets.top + 12 }]}>
         <Text style={s.headerTitle}>Adarsh ID Cards</Text>
       </LinearGradient>
-      <ErrorView type={error === 'network' ? ERROR_TYPES.NETWORK : ERROR_TYPES.SERVER} onRetry={loadDashboard}
+      <ErrorView type={error === 'network' ? ERROR_TYPES.NETWORK : ERROR_TYPES.SERVER} onRetry={refresh}
         message={typeof error === 'string' && error !== 'network' && error !== 'server' ? error : null} />
     </View>
   );
@@ -124,9 +121,9 @@ export default function HomeScreen({ navigation }) {
       </LinearGradient>
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}>
 
-        {error && <ErrorBanner message={error === 'network' ? 'Connection lost' : 'Sync failed'} onDismiss={() => setError(null)} onRetry={loadDashboard} />}
+        {error && <ErrorBanner message={error === 'network' ? 'Connection lost' : 'Sync failed'} onDismiss={refresh} onRetry={refresh} />}
 
         {/* 3×2 Status Grid — square boxes */}
         <View style={s.statusGrid}>
@@ -278,7 +275,7 @@ export default function HomeScreen({ navigation }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   header: { paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, ...shadows.lg },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   headerLeft: { width: 40 },
   headerCenter: { flex: 1, alignItems: 'center' },
   brandName: { fontSize: 20, fontFamily: fontFamily.black, color: '#fff', letterSpacing: 0.5 },
@@ -293,7 +290,7 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
   scrollC: { padding: 16 },
 
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, marginBottom: 8 },
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 8 },
   statusCard: { width: '48.5%', aspectRatio: 1.1, borderRadius: radius.xl, padding: 16, justifyContent: 'space-between', ...shadows.md, borderWidth: 1, borderColor: colors.gray100 },
   statusIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   statusCount: { fontSize: 24, fontFamily: fontFamily.black, color: colors.gray800 },
@@ -301,19 +298,19 @@ const s = StyleSheet.create({
 
   secHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.lg, marginBottom: 12, backgroundColor: '#fff', ...shadows.sm },
   secTitle: { fontSize: 11, fontFamily: fontFamily.black, color: colors.gray400, letterSpacing: 1.5 },
-  viewAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  viewAllBtn: { flexDirection: 'row', alignItems: 'center' },
   viewAllText: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.brandPrimary },
 
-  tablesWrap: { gap: 10, marginBottom: 8 },
+  tablesWrap: { marginBottom: 8 },
   tableCard: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 12, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
-  tableTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  tableTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   tableIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   tableName: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800, flex: 1 },
-  tablePills: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
+  tablePills: { flexDirection: 'row', justifyContent: 'space-between' },
   pillBtn: { flex: 1, alignItems: 'center', minWidth: 0 },
   pillLabel: { fontSize: 7, fontFamily: fontFamily.bold, color: colors.gray400, marginBottom: 4, textTransform: 'uppercase' },
 
-  quickActionsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 4 },
+  quickActionsWrap: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 4 },
   actionBox: { width: '23%', alignItems: 'center', marginBottom: 16 },
   actionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   actionLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray700, textAlign: 'center' },

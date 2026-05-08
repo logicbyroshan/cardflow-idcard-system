@@ -118,16 +118,16 @@ const s = StyleSheet.create({
     lineHeight: 18, 
     marginBottom: 16 
   },
-  statusFlow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  statusFlow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.xs, borderWidth: 1 },
   statusText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   flowArrow: { marginHorizontal: 2 },
-  noteBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.gray50, padding: 10, borderRadius: radius.sm, marginBottom: 24, width: '100%' },
+  noteBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, padding: 10, borderRadius: radius.sm, marginBottom: 24, width: '100%' },
   noteText: { fontSize: 11, color: colors.gray500, flex: 1 },
   footer: { 
     flexDirection: 'row', 
     width: '100%', 
-    gap: 12 
+    
   },
   cancelBtn: { 
     flex: 1, 

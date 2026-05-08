@@ -1,19 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
+import Button from '../components/Button';
 import { SettingsSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet, apiPost } from '../api/client';
 import { colors, shadows, radius, gradients, spacing } from '../theme';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 export default function SettingsScreen({ navigation }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
 
   const [updateStatus, setUpdateStatus] = useState({ 
@@ -26,20 +24,15 @@ export default function SettingsScreen({ navigation }) {
 
   const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
 
-  const loadSettings = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const { ok, data: resp } = await apiGet('/app/api/settings/');
-      if (ok && resp?.success) setData(resp.data);
-      else setError(resp?.message || 'Failed to load settings');
-    } catch (e) {
-      setError('Network error - check your connection');
+  const loadSettings = useCallback(async () => {
+    const { ok, data: resp } = await apiGet('/app/api/settings/');
+    if (!ok || !resp?.success) {
+      throw new Error(resp?.message || 'Failed to load settings');
     }
-    setLoading(false);
-    setRefreshing(false);
-  };
+    return resp.data;
+  }, []);
+
+  const { data, loading, refreshing, error, refresh } = useRefreshableResource(loadSettings);
 
   const checkUpdates = async () => {
     setUpdateStatus(p => ({ ...p, loading: true }));
@@ -59,7 +52,6 @@ export default function SettingsScreen({ navigation }) {
   };
 
   useEffect(() => {
-    loadSettings();
     checkUpdates();
   }, []);
 
@@ -88,13 +80,13 @@ export default function SettingsScreen({ navigation }) {
   return (
     <View style={s.root}>
       <TopBar title="Settings" subtitle="Support & System Info" onBack={() => navigation.goBack()} />
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadSettings(true)} />}
+      {error && <ErrorBanner message={error} onDismiss={() => refresh()} onRetry={() => refresh()} />}
       
       <ScrollView 
         style={s.scroll} 
         contentContainerStyle={s.scrollC} 
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { loadSettings(true); checkUpdates(); }} tintColor={colors.brandLight} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { refresh(); checkUpdates(); }} tintColor={colors.brandLight} />}
       >
 
         {/* Support Chat */}
@@ -134,14 +126,16 @@ export default function SettingsScreen({ navigation }) {
         {/* Data Management */}
         <Text style={s.secTitle}>DATA MANAGEMENT</Text>
         <View style={s.dangerCard}>
-          <TouchableOpacity onPress={handleDeleteRequest} style={s.deleteBtn} activeOpacity={0.7}>
+          <View style={s.deleteRow}>
             <View style={s.deleteIconW}><FontAwesome5 name="trash-alt" size={14} color="#ef4444" /></View>
             <View style={{flex: 1}}>
               <Text style={s.deleteTitle}>Request Account Deletion</Text>
               <Text style={s.deleteSub}>Permanently remove your data from our servers</Text>
             </View>
-            <FontAwesome5 name="arrow-right" size={12} color="#fecaca" />
-          </TouchableOpacity>
+          </View>
+          <Button variant="danger" onPress={handleDeleteRequest} fullWidth style={s.deleteCta}>
+            Request Deletion
+          </Button>
         </View>
 
         {/* System Info */}
@@ -190,18 +184,19 @@ const s = StyleSheet.create({
   // Chat Card
   chatCard: { marginHorizontal: 16, borderRadius: radius.lg, overflow: 'hidden', ...shadows.md },
   chatGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18 },
-  chatInfo: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  chatInfo: { flexDirection: 'row', alignItems: 'center' },
   chatIconW: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   chatTitle: { fontSize: 15, fontWeight: '700', color: '#fff' },
   chatSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
 
   // Update Card
   updCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  updGrid: { flexDirection: 'row', gap: 10 },
+  updGrid: { flexDirection: 'row' },
   
   // Danger Card
   dangerCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.lg, borderWidth: 1, borderColor: '#fee2e2', overflow: 'hidden', ...shadows.sm },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 },
+  deleteRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  deleteCta: { margin: 16, marginTop: 0 },
   deleteIconW: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center' },
   deleteTitle: { fontSize: 13, fontWeight: '700', color: colors.gray800 },
   deleteSub: { fontSize: 10, color: colors.gray400, marginTop: 2 },

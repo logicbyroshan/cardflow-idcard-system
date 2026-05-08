@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator,
+  View, Text, TouchableOpacity, ScrollView,
+  StyleSheet, Alert,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { useAuth } from '../context/AuthContext';
 import { apiPost } from '../api/client';
 import { colors, radius, shadows, roleThemes } from '../theme';
@@ -103,18 +105,15 @@ export default function ProfileScreen({ navigation }) {
             </View>
           ) : (
             <View style={s.editSec}>
-              <Text style={s.eLabel}>FULL NAME</Text>
-              <TextInput style={s.eInput} value={editForm.name} onChangeText={t => setEditForm(p => ({ ...p, name: t }))} placeholder="Your name" placeholderTextColor={colors.gray300} />
-              <Text style={[s.eLabel, { marginTop: 12 }]}>PHONE</Text>
-              <TextInput style={s.eInput} value={editForm.phone} onChangeText={t => setEditForm(p => ({ ...p, phone: t }))} placeholder="Phone number" placeholderTextColor={colors.gray300} keyboardType="phone-pad" />
+              <Input label="FULL NAME" value={editForm.name} onChangeText={t => setEditForm(p => ({ ...p, name: t }))} placeholder="Your name" />
+              <Input label="PHONE" value={editForm.phone} onChangeText={t => setEditForm(p => ({ ...p, phone: t }))} placeholder="Phone number" keyboardType="phone-pad" />
               <View style={s.eBtns}>
-                <TouchableOpacity onPress={() => setEditing(false)} style={s.eCancel}><Text style={s.eCancelTxt}>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity onPress={saveProfile} disabled={saving} style={s.eSaveW}>
-                  <LinearGradient colors={theme.gradient} style={s.eSave}>
-                    {saving && <ActivityIndicator size="small" color="#fff" />}
-                    <Text style={s.eSaveTxt}>Save Changes</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                <Button variant="secondary" onPress={() => setEditing(false)} style={s.eCancel} textStyle={s.eCancelTxt}>
+                  Cancel
+                </Button>
+                <Button onPress={saveProfile} loading={saving} style={s.eSaveW}>
+                  Save Changes
+                </Button>
               </View>
             </View>
           )}
@@ -123,42 +122,13 @@ export default function ProfileScreen({ navigation }) {
         {/* Change Password Form (Directly Visible) */}
         <Text style={s.secTitle}>CHANGE PASSWORD</Text>
         <View style={s.pwdCard}>
-          <Text style={s.eLabel}>CURRENT PASSWORD</Text>
-          <TextInput 
-            style={s.eInput} 
-            value={pwdForm.current} 
-            onChangeText={t => setPwdForm(p => ({ ...p, current: t }))} 
-            secureTextEntry 
-            placeholder="••••••••" 
-            placeholderTextColor={colors.gray300} 
-          />
-          
-          <Text style={[s.eLabel, { marginTop: 12 }]}>NEW PASSWORD</Text>
-          <TextInput 
-            style={s.eInput} 
-            value={pwdForm.new} 
-            onChangeText={t => setPwdForm(p => ({ ...p, new: t }))} 
-            secureTextEntry 
-            placeholder="••••••••" 
-            placeholderTextColor={colors.gray300} 
-          />
-          
-          <Text style={[s.eLabel, { marginTop: 12 }]}>CONFIRM NEW PASSWORD</Text>
-          <TextInput 
-            style={s.eInput} 
-            value={pwdForm.confirm} 
-            onChangeText={t => setPwdForm(p => ({ ...p, confirm: t }))} 
-            secureTextEntry 
-            placeholder="••••••••" 
-            placeholderTextColor={colors.gray300} 
-          />
+          <Input label="CURRENT PASSWORD" value={pwdForm.current} onChangeText={t => setPwdForm(p => ({ ...p, current: t }))} secureTextEntry placeholder="••••••••" />
+          <Input label="NEW PASSWORD" value={pwdForm.new} onChangeText={t => setPwdForm(p => ({ ...p, new: t }))} secureTextEntry placeholder="••••••••" />
+          <Input label="CONFIRM NEW PASSWORD" value={pwdForm.confirm} onChangeText={t => setPwdForm(p => ({ ...p, confirm: t }))} secureTextEntry placeholder="••••••••" />
 
-          <TouchableOpacity onPress={handleUpdatePassword} disabled={pwdSaving} style={s.updatePwdBtnW}>
-            <LinearGradient colors={['#8b5cf6', '#6d28d9']} style={s.eSave}>
-              {pwdSaving && <ActivityIndicator size="small" color="#fff" />}
-              <Text style={s.eSaveTxt}>Update Password</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <Button onPress={handleUpdatePassword} loading={pwdSaving} fullWidth style={s.updatePwdBtnW}>
+            Update Password
+          </Button>
         </View>
 
         {/* Account Settings */}
@@ -204,31 +174,31 @@ const s = StyleSheet.create({
   userName: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 6 },
   roleBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   userRole: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  details: { padding: 16, gap: 10 },
+  details: { padding: 16 },
   editSec: { padding: 16 },
   pwdCard: { marginHorizontal: 16, padding: 16, backgroundColor: '#fff', borderRadius: radius.lg, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   eLabel: { fontSize: 11, fontWeight: '700', color: colors.gray500, letterSpacing: 0.8 },
   eInput: { backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.gray700, marginTop: 6 },
-  eBtns: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  eBtns: { flexDirection: 'row', marginTop: 16 },
   eCancel: { flex: 1, paddingVertical: 14, backgroundColor: colors.gray100, borderRadius: radius.md, alignItems: 'center' },
   eCancelTxt: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
   eSaveW: { flex: 2, borderRadius: radius.md, overflow: 'hidden' },
-  eSave: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14, borderRadius: radius.md },
+  eSave: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: radius.md },
   eSaveTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
   updatePwdBtnW: { marginTop: 20, borderRadius: radius.md, overflow: 'hidden' },
   secTitle: { fontSize: 10, fontWeight: '700', color: colors.gray400, letterSpacing: 1.2, marginHorizontal: 20, marginTop: 24, marginBottom: 8 },
   updCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.lg, paddingHorizontal: 14, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  linkRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   linkIcon: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   linkLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.gray700 },
-  editProfileBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10, paddingVertical: 12, backgroundColor: '#f8fafc', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0' },
+  editProfileBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, paddingVertical: 12, backgroundColor: '#f8fafc', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0' },
   editProfileTxt: { fontSize: 13, fontWeight: '700' },
   footer: { marginTop: 40, alignItems: 'center', paddingBottom: 20 },
   footerText: { fontSize: 10, color: colors.gray300, fontWeight: '600', letterSpacing: 0.5 },
 });
 
 const ir = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.gray50, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: '#f1f5f9' },
+  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: '#f1f5f9' },
   ic: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   lb: { fontSize: 9, fontWeight: '700', color: colors.gray400, letterSpacing: 1, textTransform: 'uppercase' },
   val: { fontSize: 13, fontWeight: '600', color: colors.gray800, marginTop: 1 },

@@ -59,7 +59,6 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: radius.lg,

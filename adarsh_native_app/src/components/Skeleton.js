@@ -158,13 +158,13 @@ const styles = StyleSheet.create({
 });
 
 const presets = StyleSheet.create({
-  listWrap: { padding: 16, gap: 10 },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#f1f5f9' },
+  listWrap: { padding: 16 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#f1f5f9' },
   cardInfo: { flex: 1 },
   dashWrap: { padding: 16 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   detailWrap: { padding: 16 },
-  heroRow: { flexDirection: 'row', gap: 16, backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 16 },
+  heroRow: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 16 },
   heroInfo: { flex: 1, paddingTop: 4 },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
   profileWrap: { padding: 16 },

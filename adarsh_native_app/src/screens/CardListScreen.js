@@ -579,8 +579,8 @@ const s = StyleSheet.create({
   rowLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, width: 60, textTransform: 'uppercase' },
   rowVal: { fontSize: 11, fontFamily: fontFamily.semibold, color: colors.gray600, flex: 1 },
   
-  cardActions: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f8fafc', backgroundColor: '#fafafa', paddingHorizontal: 10, paddingVertical: 8, gap: 8, justifyContent: 'flex-end' },
-  actionBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.sm, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cardActions: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f8fafc', backgroundColor: '#fafafa', paddingHorizontal: 10, paddingVertical: 8, justifyContent: 'flex-end' },
+  actionBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.sm, flexDirection: 'row', alignItems: 'center' },
   actionText: { fontSize: 11, fontFamily: fontFamily.bold, color: '#fff' },
 
   selectIcon: { position: 'absolute', top: 8, right: 8, zIndex: 10 },
@@ -595,11 +595,11 @@ const s = StyleSheet.create({
   selectionInfo: { flex: 1 },
   selectionCount: { fontSize: 14, fontFamily: fontFamily.black, color: '#fff' },
   selectionText: { fontSize: 10, fontFamily: fontFamily.bold, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' },
-  selectionActions: { flexDirection: 'row', gap: 10 },
+  selectionActions: { flexDirection: 'row' },
   selectionBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   
   badgeBarWrap: { marginTop: 12, marginBottom: 12 },
-  badgeBar: { paddingHorizontal: 16, gap: 6 },
+  badgeBar: { paddingHorizontal: 16 },
   badgeBtn: { 
     flexDirection: 'row',
     alignItems: 'center',
@@ -608,7 +608,7 @@ const s = StyleSheet.create({
     borderRadius: radius.sm, 
     borderWidth: 1, 
     borderColor: 'rgba(255,255,255,0.1)',
-    gap: 4
+    
   },
   badgeBtnText: { fontSize: 10, fontFamily: fontFamily.bold, textTransform: 'uppercase' },
   countBadge: {
@@ -640,7 +640,7 @@ const s = StyleSheet.create({
     alignItems: 'center', 
     marginHorizontal: 16, 
     marginBottom: 10, 
-    gap: 8,
+    
     height: 44,
   },
   bulkBtn: { 
@@ -651,7 +651,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)', 
     borderRadius: radius.md, 
     height: '100%',
-    gap: 6,
+    
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
@@ -696,7 +696,7 @@ const s = StyleSheet.create({
   floatingActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    
   },
   fActionBtn: {
     flexDirection: 'row',
@@ -705,7 +705,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radius.md,
-    gap: 8,
+    
   },
   fActionText: {
     color: '#fff',
@@ -714,7 +714,7 @@ const s = StyleSheet.create({
   },
   selectAllRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.gray100, backgroundColor: '#fff' },
   selectAllBtn: { padding: 4 },
-  selectAllContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  selectAllContent: { flexDirection: 'row', alignItems: 'center' },
   checkboxSmall: { width: 14, height: 14, borderRadius: 3, borderWidth: 1, borderColor: colors.gray300, alignItems: 'center', justifyContent: 'center' },
   checkboxCheckedSmall: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
   selectAllText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray600 },

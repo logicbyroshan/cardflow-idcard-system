@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { apiGet, apiPost } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +23,7 @@ export default function ClientsListScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
   const [showFilter, setShowFilter] = useState(false);
+  const deferredSearch = useDeferredValue(search);
   
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -46,8 +48,6 @@ export default function ClientsListScreen({ navigation }) {
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [impersonatingId, setImpersonatingId] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
 
   const [confirmModal, setConfirmModal] = useState({ 
     visible: false, title: '', message: '', icon: '', color: colors.brandPrimary, onConfirm: null 
@@ -56,14 +56,11 @@ export default function ClientsListScreen({ navigation }) {
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
   const isAdmin = ['super_admin', 'admin_staff'].includes(user?.role);
 
-  const loadClients = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
+  const loadClients = useCallback(async () => {
     try {
       const { ok, data } = await apiGet('/app/api/impersonate/users/');
       if (ok && (data?.success || data?.users)) {
-        const cl = (data.data || data.users || []).map(c => ({
+        return (data.data || data.users || []).map(c => ({
           id: c.id, 
           name: c.name || c.full_name || '', 
           email: c.email || '',
@@ -71,19 +68,17 @@ export default function ClientsListScreen({ navigation }) {
           is_active: c.is_active !== false, 
           role: c.role || '',
         }));
-        setClients(cl);
       } else {
-        setError(data?.message || 'Failed to load clients');
+        throw new Error(data?.message || 'Failed to load clients');
       }
     } catch (e) {
-      setError('Network error - check your connection');
+      throw new Error('Network error - check your connection');
     }
-    setLoading(false);
-    setRefreshing(false);
-  };
+  }, []);
+
+  const { data: clients = [], loading, refreshing, error, refresh } = useRefreshableResource(loadClients, { initialData: [] });
 
   useEffect(() => { 
-    loadClients(); 
     // Handle "Add Client" from dashboard
     if (navigation.getState().routes.find(r => r.name === 'ClientsList')?.params?.openForm) {
       openCreate();
@@ -130,9 +125,10 @@ export default function ClientsListScreen({ navigation }) {
 
   const filtered = useMemo(() => {
     return clients.filter(c => {
-      const matchesSearch = !search.trim() || 
-        (c.name || '').toLowerCase().includes(search.toLowerCase()) || 
-        (c.email || '').toLowerCase().includes(search.toLowerCase());
+      const query = deferredSearch.toLowerCase();
+      const matchesSearch = !deferredSearch.trim() || 
+        (c.name || '').toLowerCase().includes(query) || 
+        (c.email || '').toLowerCase().includes(query);
       
       const matchesStatus = statusFilter === 'all' || 
         (statusFilter === 'active' && c.is_active) || 
@@ -140,7 +136,7 @@ export default function ClientsListScreen({ navigation }) {
       
       return matchesSearch && matchesStatus;
     });
-  }, [search, statusFilter, clients]);
+  }, [deferredSearch, statusFilter, clients]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -341,7 +337,7 @@ export default function ClientsListScreen({ navigation }) {
         </TouchableOpacity>
       )}
 
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadClients(true)} />}
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={refresh} />}
       {loading ? (
         <ListSkeleton rows={5} />
       ) : (
@@ -351,7 +347,7 @@ export default function ClientsListScreen({ navigation }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadClients(true)} tintColor={colors.brandLight} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
           ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="building" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>{search ? 'No matching clients' : 'No clients found'}</Text></View>}
         />
       )}
@@ -549,20 +545,20 @@ const s = StyleSheet.create({
   leftIconBtn: { padding: 8 },
   rightIconBtn: { padding: 8 },
   searchInput: { flex: 1, color: '#fff', fontSize: 13, paddingHorizontal: 8 },
-  impBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 10, backgroundColor: '#f59e0b' },
+  impBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, backgroundColor: '#f59e0b' },
   impBannerText: { fontSize: 11, fontFamily: fontFamily.bold, color: '#fff', letterSpacing: 0.5 },
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
+  list: { padding: 16, paddingBottom: 32 },
   card: { backgroundColor: '#fff', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', padding: 14 },
   avatar: { width: 40, height: 40, borderRadius: radius.xs, backgroundColor: 'rgba(51,183,239,0.08)', alignItems: 'center', justifyContent: 'center' },
   cardInfo: { flex: 1, minWidth: 0 },
   name: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
   email: { fontSize: 11, color: colors.gray400, marginTop: 1, fontFamily: fontFamily.medium },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm },
+  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm },
   statusDotSmall: { width: 6, height: 6, borderRadius: 3 },
   statusPillText: { fontSize: 9, fontFamily: fontFamily.bold, letterSpacing: 0.5 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
-  textBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9' },
+  cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 10 },
+  textBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9' },
   btnIcon: { marginBottom: 1 },
   textBtnLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.brandPrimary, letterSpacing: 0.5 },
   empty: { alignItems: 'center', paddingTop: 80 },
@@ -580,12 +576,12 @@ const s = StyleSheet.create({
   filterClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
   filterContent: { flex: 1, padding: 20 },
   filterLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, marginBottom: 12 },
-  filterChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filterChips: { flexDirection: 'row', flexWrap: 'wrap' },
   filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.sm, backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0' },
   filterChipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
   filterChipText: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray600 },
   filterChipTextActive: { color: '#fff' },
-  filterFooter: { flexDirection: 'row', padding: 20, gap: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  filterFooter: { flexDirection: 'row', padding: 20, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   resetBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm, backgroundColor: colors.gray100 },
   resetBtnText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray600 },
   applyBtnWrap: { flex: 2, borderRadius: radius.sm, overflow: 'hidden' },
@@ -597,19 +593,19 @@ const s = StyleSheet.create({
   modalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 40, ...shadows.xl },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginTop: 12, marginBottom: 8 },
   modalTitle: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.gray800, paddingHorizontal: 16, marginBottom: 16 },
-  formFields: { paddingHorizontal: 16, gap: 12 },
+  formFields: { paddingHorizontal: 16 },
   field: { marginBottom: 12 },
   fieldLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray500, letterSpacing: 0.8, marginBottom: 4 },
   fieldInput: { backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: colors.gray700, fontFamily: fontFamily.regular },
   fieldDisabled: { backgroundColor: '#f1f5f9', color: colors.gray400 },
-  formBtns: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 16 },
+  formBtns: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 16 },
   cancelBtn: { flex: 1, paddingVertical: 14, backgroundColor: colors.gray100, borderRadius: radius.md, alignItems: 'center' },
   cancelBtnText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray600 },
   saveBtnWrap: { flex: 2, borderRadius: radius.md, overflow: 'hidden' },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14 },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
   saveBtnText: { fontSize: 12, fontFamily: fontFamily.bold, color: '#fff' },
   // Assign (Tables)
-  assignRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 12 },
+  assignRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   tableIconSmall: { width: 30, height: 30, borderRadius: radius.xs, backgroundColor: 'rgba(51,183,239,0.05)', alignItems: 'center', justifyContent: 'center' },
   assignTableName: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray700 },
   assignTableMeta: { fontSize: 10, color: colors.gray400, marginTop: 2, fontFamily: fontFamily.medium },

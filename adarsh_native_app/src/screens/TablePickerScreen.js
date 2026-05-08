@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { apiGet } from '../api/client';
 import { colors, typography, spacing, radius, shadows } from '../theme';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const STATUS_COLORS = {
   pending: { bg: '#fef3c7', text: '#b45309' },
@@ -16,18 +17,16 @@ const STATUS_COLORS = {
 export default function TablePickerScreen({ navigation, route }) {
   const status = route?.params?.status || 'pending';
   const statusDisplay = status.charAt(0).toUpperCase() + status.slice(1);
-  const [tables, setTables] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await apiGet(`/app/api/tables/?status=${encodeURIComponent(status)}`);
-        if (data?.success) setTables(data.data || []);
-      } catch (e) { /* silent */ }
-      setLoading(false);
-    })();
+  const loadTables = useCallback(async () => {
+    const { data } = await apiGet(`/app/api/tables/?status=${encodeURIComponent(status)}`);
+    if (data?.success) {
+      return data.data || [];
+    }
+    throw new Error('Failed to load tables');
   }, [status]);
+
+  const { data: tables = [], loading } = useRefreshableResource(loadTables, { initialData: [] });
 
   const sc = STATUS_COLORS[status] || STATUS_COLORS.pending;
 
@@ -87,9 +86,9 @@ export default function TablePickerScreen({ navigation, route }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
+  list: { padding: 16, paddingBottom: 32 },
   card: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#fff', borderRadius: radius.lg, padding: 14,
     borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm,
   },
@@ -101,7 +100,7 @@ const s = StyleSheet.create({
   info: { flex: 1, minWidth: 0 },
   tableName: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray800 },
   groupName: { fontSize: 10, color: colors.gray400, marginTop: 2, fontFamily: fontFamily.medium },
-  countBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  countBadgeRow: { flexDirection: 'row', alignItems: 'center' },
   countBadge: { minWidth: 42, height: 28, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   countText: { fontSize: 11, fontFamily: fontFamily.bold },
   empty: { alignItems: 'center', justifyContent: 'center', paddingTop: 80 },

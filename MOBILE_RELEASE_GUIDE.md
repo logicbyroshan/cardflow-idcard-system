@@ -80,11 +80,13 @@ If issues detected:
 
 ## Keystore File Location & Backup
 
-| Purpose | Path |
-|---------|------|
-| Primary | `adarsh_native_app/android/app/release.keystore` |
-| Backup | `adarsh_native_app/android_backup/release.keystore` |
-| Config | `adarsh_native_app/android/keystore.properties` |
+The project uses a secure, local-only layout for signing artifacts. These files MUST NOT be committed to Git.
+
+| Purpose | Path (local, not committed) |
+|---------|----------------------------|
+| Primary keystore | `secrets/keystore/release.keystore` |
+| Upload certificate (PEM) | `secrets/pem/upload_certificate.pem` |
+| Config | `adarsh_native_app/android/keystore.properties` (points to secrets) |
 
 **Keystore Details**:
 - Format: JKS
@@ -92,6 +94,8 @@ If issues detected:
 - Validity: 10,000 days
 - Key Algorithm: RSA 2048-bit
 - SHA1: `2B:42:90:80:77:8A:27:71:3B:5D:0F:22:96:69:AF:8C:AD:05:00:34`
+
+Important: The `secrets/` directory is listed in `.gitignore`. Keep an off-machine backup (external drive or secure cloud key vault) for long-term storage.
 
 ---
 

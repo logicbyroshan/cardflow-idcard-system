@@ -225,7 +225,7 @@ const s = StyleSheet.create({
   camera: { flex: 1 },
   
   topStatus: { position: 'absolute', width: '100%', alignItems: 'center', zIndex: 10 },
-  levelIndicator: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25 },
+  levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25 },
   bgSuccess: { backgroundColor: '#22c55e' },
   bgError: { backgroundColor: '#ef4444' },
   levelText: { color: '#fff', fontSize: 13, fontFamily: fontFamily.bold },
@@ -241,7 +241,7 @@ const s = StyleSheet.create({
     paddingTop: 20,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
-  controlItem: { alignItems: 'center', gap: 8, width: 80 },
+  controlItem: { alignItems: 'center', width: 80 },
   controlIconCircle: { 
     width: 44, 
     height: 44, 
@@ -254,7 +254,7 @@ const s = StyleSheet.create({
   },
   controlLabel: { color: '#fff', fontSize: 10, fontFamily: fontFamily.bold, opacity: 0.8, marginTop: 4 },
   
-  captureBtnMain: { alignItems: 'center', gap: 8 },
+  captureBtnMain: { alignItems: 'center' },
   captureBtnOuter: { 
     width: 72, 
     height: 72, 
@@ -270,9 +270,9 @@ const s = StyleSheet.create({
   fullPreview: { flex: 1, resizeMode: 'cover' },
   reviewOverlay: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(0,0,0,0.85)', padding: 24, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
   reviewTitle: { color: '#fff', fontSize: 20, fontFamily: fontFamily.bold, textAlign: 'center', marginBottom: 20 },
-  reviewActions: { flexDirection: 'row', gap: 16 },
-  retakeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md },
-  confirmBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, backgroundColor: '#22c55e', borderRadius: radius.md },
+  reviewActions: { flexDirection: 'row' },
+  retakeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md },
+  confirmBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: '#22c55e', borderRadius: radius.md },
   btnText: { color: '#fff', fontSize: 15, fontFamily: fontFamily.bold },
   
   errorText: { color: '#fff', marginBottom: 20, fontFamily: fontFamily.medium },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -7,43 +7,42 @@ import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, shadows, radius, fontFamily } from '../theme';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 export default function ReprintScreen({ navigation, route }) {
   const { user } = useAuth();
   const clientId = route?.params?.clientId || user?.client_id;
-  const [tables, setTables] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('request_list');
-  const [totals, setTotals] = useState({ request: 0, confirmed: 0, download: 0 });
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-
-  const loadData = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
+  const loadData = useCallback(async () => {
     try {
-      if (!clientId) { setLoading(false); return; }
+      if (!clientId) {
+        return { tables: [], totals: { request: 0, confirmed: 0, download: 0 } };
+      }
       const { ok, data } = await apiGet(`/app/api/reprint/${clientId}/`);
       if (ok && data?.success) {
-        setTables(data.data?.tables || []);
-        setTotals({
+        return {
+          tables: data.data?.tables || [],
+          totals: {
           request: data.data?.request_total || 0,
           confirmed: data.data?.confirmed_total || 0,
           download: data.data?.download_total || 0,
-        });
+          },
+        };
       } else {
-        setError(data?.message || 'Failed to load reprint data');
+        throw new Error(data?.message || 'Failed to load reprint data');
       }
     } catch (e) {
-      setError('Network error - check your connection');
+      throw new Error('Network error - check your connection');
     }
-    setLoading(false);
-    setRefreshing(false);
-  };
+  }, [clientId]);
 
-  useEffect(() => { loadData(); }, [clientId]);
+  const { data, loading, refreshing, error, refresh } = useRefreshableResource(loadData, {
+    initialData: { tables: [], totals: { request: 0, confirmed: 0, download: 0 } },
+  });
+
+  const tables = data.tables || [];
+  const totals = data.totals || { request: 0, confirmed: 0, download: 0 };
 
   const renderItem = ({ item }) => {
     const count = activeTab === 'request_list' ? item.requested : item.confirmed;
@@ -89,7 +88,7 @@ export default function ReprintScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadData(true)} />}
+      {error && <ErrorBanner message={error} onDismiss={() => {}} onRetry={refresh} />}
       {loading ? (
         <ListSkeleton rows={4} />
       ) : (
@@ -99,7 +98,7 @@ export default function ReprintScreen({ navigation, route }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={colors.brandLight} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
           ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="redo" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No {activeTab === 'request_list' ? 'requested' : 'confirmed'} reprints</Text></View>}
         />
       )}
@@ -120,7 +119,7 @@ function SummaryBox({ icon, color, bg, label, value }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  summaryRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12 },
+  summaryRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12 },
   summaryBox: { flex: 1, backgroundColor: '#fff', borderRadius: radius.lg, padding: 12, alignItems: 'center', borderWidth: 1, ...shadows.sm },
   summaryIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   summaryValue: { fontSize: 18, fontFamily: fontFamily.bold },
@@ -130,9 +129,9 @@ const s = StyleSheet.create({
   tabActive: { backgroundColor: 'rgba(51,183,239,0.08)' },
   tabText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray400 },
   tabTextActive: { color: colors.brandLight, fontFamily: fontFamily.bold },
-  list: { padding: 16, gap: 8, paddingBottom: 32 },
+  list: { padding: 16, paddingBottom: 32 },
   card: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: radius.lg, padding: 14, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
-  cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  cardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   tableIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, minWidth: 0 },
   tableName: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray800 },

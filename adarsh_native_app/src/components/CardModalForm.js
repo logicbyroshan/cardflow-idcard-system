@@ -8,6 +8,7 @@ import { apiGet, apiPostForm } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import Toast from './Toast';
+import { HStack, VStack } from './Stack';
 
 /**
  * Bottom-to-top dynamic form drawer for adding/editing cards.
@@ -187,7 +188,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                 <ScrollView style={s.formScroll} contentContainerStyle={s.formScrollC} keyboardShouldPersistTaps="handled">
                   {/* Photos Section */}
                   <View style={s.photoSection}>
-                    <View style={s.photoRow}>
+                    <HStack spacing={16} style={s.photoRow} justify="center">
                       {fieldList.filter(f => {
                         const t = (f.type || '').toLowerCase();
                         const n = (f.name || '').toLowerCase();
@@ -218,22 +219,22 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                           </View>
                         );
                       })}
-                    </View>
+                    </HStack>
                   </View>
 
                   <View style={s.fieldsWrap}>
                     {error && (
-                      <View style={s.errorBox}>
+                      <HStack spacing={8} style={s.errorBox} align="center">
                         <FontAwesome5 name="exclamation-circle" size={12} color="#ef4444" />
                         <Text style={s.errorText}>{error}</Text>
-                      </View>
+                      </HStack>
                     )}
 
                     {fieldList.length === 0 && !loading && (
-                      <View style={s.noFieldsCard}>
+                      <HStack spacing={12} style={s.noFieldsCard} align="center">
                         <FontAwesome5 name="info-circle" size={14} color={colors.info} />
                         <Text style={s.noFieldsText}>No field definitions found.</Text>
-                      </View>
+                      </HStack>
                     )}
 
                     {fieldList.filter(f => {
@@ -244,10 +245,10 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                     }).map((field, i) => {
                       return (
                         <View key={field.name + i} style={s.field}>
-                          <View style={s.fieldLabelRow}>
+                          <HStack spacing={6} style={s.fieldLabelRow} align="center">
                             <Text style={s.fieldLabel}>{field.name}</Text>
                             {field.mandatory && <View style={s.mandatoryDot} />}
-                          </View>
+                          </HStack>
                           <TextInput
                             style={s.fieldInput}
                             value={values[field.name] || ''}
@@ -264,7 +265,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
 
                 {/* Fixed Footer at bottom of sheet */}
                 <View style={s.footerContainer}>
-                  <View style={s.footer}>
+                  <HStack spacing={12} style={s.footer} align="center">
                     <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
                       <Text style={s.cancelBtnText}>Discard</Text>
                     </TouchableOpacity>
@@ -277,7 +278,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                         )}
                       </LinearGradient>
                     </TouchableOpacity>
-                  </View>
+                  </HStack>
                 </View>
               </>
             )}
@@ -292,29 +293,35 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
           <View style={s.menuContent}>
             <Text style={s.menuTitle}>Manage {photoMenu.field}</Text>
             
-            <TouchableOpacity style={s.menuItem} onPress={() => {
+            <HStack spacing={14} style={s.menuItem} align="center" onStartShouldSetResponder={() => false}>
+              <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
               setPhotoMenu(p => ({ ...p, visible: false }));
               navigation.navigate('Camera', { 
                 onCapture: (uri) => setValues(prev => ({ ...prev, [photoMenu.field]: uri })) 
               });
-            }}>
-              <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><FontAwesome5 name="camera" size={14} color="#6366f1" /></View>
-              <Text style={s.menuItemText}>Take New Photo</Text>
-            </TouchableOpacity>
+              }}>
+                <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><FontAwesome5 name="camera" size={14} color="#6366f1" /></View>
+                <Text style={s.menuItemText}>Take New Photo</Text>
+              </TouchableOpacity>
+            </HStack>
 
-            <TouchableOpacity style={s.menuItem} onPress={handlePickFromGallery}>
-              <View style={[s.menuIconBox, { backgroundColor: '#f0fdf4' }]}><FontAwesome5 name="images" size={14} color="#22c55e" /></View>
-              <Text style={s.menuItemText}>Choose from Gallery</Text>
-            </TouchableOpacity>
+            <HStack spacing={14} style={s.menuItem} align="center">
+              <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={handlePickFromGallery}>
+                <View style={[s.menuIconBox, { backgroundColor: '#f0fdf4' }]}><FontAwesome5 name="images" size={14} color="#22c55e" /></View>
+                <Text style={s.menuItemText}>Choose from Gallery</Text>
+              </TouchableOpacity>
+            </HStack>
 
             {photoMenu.hasImage && (
-              <TouchableOpacity style={s.menuItem} onPress={() => {
-                setValues(prev => ({ ...prev, [photoMenu.field]: null }));
-                setPhotoMenu(p => ({ ...p, visible: false }));
-              }}>
-                <View style={[s.menuIconBox, { backgroundColor: '#fef2f2' }]}><FontAwesome5 name="trash-alt" size={14} color="#ef4444" /></View>
-                <Text style={[s.menuItemText, { color: '#ef4444' }]}>Remove Current Photo</Text>
-              </TouchableOpacity>
+              <HStack spacing={14} style={s.menuItem} align="center">
+                <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
+                  setValues(prev => ({ ...prev, [photoMenu.field]: null }));
+                  setPhotoMenu(p => ({ ...p, visible: false }));
+                }}>
+                  <View style={[s.menuIconBox, { backgroundColor: '#fef2f2' }]}><FontAwesome5 name="trash-alt" size={14} color="#ef4444" /></View>
+                  <Text style={[s.menuItemText, { color: '#ef4444' }]}>Remove Current Photo</Text>
+                </TouchableOpacity>
+              </HStack>
             )}
 
             <TouchableOpacity style={s.menuCancel} onPress={() => setPhotoMenu(p => ({ ...p, visible: false }))}>
@@ -343,29 +350,29 @@ const s = StyleSheet.create({
   formScrollC: { padding: 16, paddingBottom: 40 },
   
   photoSection: { backgroundColor: '#fcfcfc', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', marginBottom: 16 },
-  photoRow: { flexDirection: 'row', gap: 16, justifyContent: 'center' },
+  photoRow: { flexDirection: 'row', justifyContent: 'center' },
   photoCard: { alignItems: 'center' },
   photoBox: { width: 100, height: 110, backgroundColor: '#fff', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', ...shadows.sm },
   photoImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  photoPlaceholder: { alignItems: 'center', gap: 6 },
+  photoPlaceholder: { alignItems: 'center' },
   photoLabel: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase' },
   photoEditIcon: { position: 'absolute', bottom: 6, right: 6, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
 
   fieldsWrap: { marginTop: 4 },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 100 },
   loadingText: { marginTop: 12, fontSize: 13, color: colors.gray400, fontFamily: fontFamily.medium },
-  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fef2f2', padding: 12, borderRadius: radius.md, marginBottom: 20, borderWidth: 1, borderColor: '#fecaca' },
+  errorBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', padding: 12, borderRadius: radius.md, marginBottom: 20, borderWidth: 1, borderColor: '#fecaca' },
   errorText: { fontSize: 12, color: '#991b1b', fontFamily: fontFamily.medium },
-  noFieldsCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#eff6ff', borderRadius: radius.md, padding: 16, borderWidth: 1, borderColor: '#dbeafe', marginBottom: 20 },
+  noFieldsCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', borderRadius: radius.md, padding: 16, borderWidth: 1, borderColor: '#dbeafe', marginBottom: 20 },
   noFieldsText: { flex: 1, fontSize: 12, color: '#1e40af', fontFamily: fontFamily.medium },
   field: { marginBottom: 20 },
-  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, paddingLeft: 2 },
+  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingLeft: 2 },
   fieldLabel: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray600, letterSpacing: 0.5, textTransform: 'uppercase' },
   mandatoryDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#f43f5e' },
   fieldInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.sm, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.gray900, fontFamily: fontFamily.semibold },
   
   footerContainer: { padding: 16, borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fff', paddingBottom: Platform.OS === 'ios' ? 34 : 16 },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  footer: { flexDirection: 'row', alignItems: 'center' },
   saveBtnWrap: { flex: 2, borderRadius: radius.sm, overflow: 'hidden', ...shadows.md },
   saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
   saveBtnText: { fontSize: 15, fontFamily: fontFamily.bold, color: '#fff' },
@@ -376,7 +383,7 @@ const s = StyleSheet.create({
   menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end', padding: 16 },
   menuContent: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 8, ...shadows.xl },
   menuTitle: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase', textAlign: 'center', paddingVertical: 12, letterSpacing: 1 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: radius.md },
+  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: radius.md },
   menuIconBox: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   menuItemText: { fontSize: 15, fontFamily: fontFamily.bold, color: colors.gray800 },
   menuCancel: { marginTop: 8, paddingVertical: 16, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9' },

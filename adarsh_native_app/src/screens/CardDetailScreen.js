@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   View, Text, ScrollView, TouchableOpacity, Image, 
   StyleSheet, Alert, RefreshControl, ActivityIndicator 
@@ -10,51 +10,43 @@ import Toast from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
 import { DetailSkeleton } from '../components/Skeleton';
 import CardModalForm from '../components/CardModalForm';
-import { apiGet, apiPost } from '../api/client';
+import { apiGet, apiPost, BASE_URL } from '../api/client';
 import { colors, radius, shadows, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 export default function CardDetailScreen({ navigation, route }) {
   const cardId = route?.params?.cardId;
   const { user } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
 
-  const [card, setCard] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
-  const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
-  const loadCard = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
+  const loadCard = useCallback(async () => {
     try {
       const { ok, data } = await apiGet(`/app/api/card/${cardId}/detail/`);
       if (ok && data?.success) {
-        setCard(data.data);
+        return data.data;
       } else {
-        setError(data?.message || 'Failed to load card details');
+        throw new Error(data?.message || 'Failed to load card details');
       }
     } catch (e) {
-      setError('Network error - check your connection');
+      throw new Error('Network error - check your connection');
     }
-    setLoading(false);
-    setRefreshing(false);
-  };
+  }, [cardId]);
 
-  useEffect(() => { loadCard(); }, [cardId]);
+  const { data: card, loading, refreshing, error, refresh } = useRefreshableResource(loadCard);
 
   const updateStatus = async (status) => {
     setUpdating(true);
     try {
       const { data } = await apiPost(`/app/api/card/${cardId}/status/`, { status });
       showToast(data?.success ? 'Status updated!' : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
-      if (data?.success) loadCard(true);
+      if (data?.success) refresh();
     } catch (e) { showToast('Network error', 'error'); }
     setUpdating(false);
   };
@@ -114,7 +106,7 @@ export default function CardDetailScreen({ navigation, route }) {
         style={s.scroll} 
         contentContainerStyle={s.scrollC} 
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadCard(true)} tintColor={colors.brandLight} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
       >
         <LinearGradient colors={['#fff', '#f8fafc']} style={s.heroCard}>
           <View style={s.heroTop}>
@@ -233,7 +225,7 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   scroll: { flex: 1 }, scrollC: { padding: 16, paddingBottom: 40 },
   heroCard: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.md, marginBottom: 20 },
-  heroTop: { flexDirection: 'row', gap: 20 },
+  heroTop: { flexDirection: 'row' },
   photoFrame: { width: 90, height: 110, borderRadius: radius.md, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   photo: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2' },
@@ -241,11 +233,11 @@ const s = StyleSheet.create({
   heroInfo: { flex: 1, justifyContent: 'center' },
   cardName: { fontSize: 20, fontFamily: fontFamily.bold, color: colors.gray800 },
   tableName: { fontSize: 13, color: colors.gray500, marginTop: 4, fontFamily: fontFamily.medium },
-  statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 12 },
+  statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
   vLine: { width: 1, height: 16, backgroundColor: '#e2e8f0' },
   srNo: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray400 },
   section: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingBottom: 8 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 8 },
   sectionTitle: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase' },
   fieldsList: { padding: 8 },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 8, borderTopWidth: 1, borderTopColor: '#f8fafc' },
@@ -254,15 +246,15 @@ const s = StyleSheet.create({
   fieldValEmpty: { color: colors.gray300, fontStyle: 'italic', fontSize: 11 },
   emptyFields: { padding: 20, alignItems: 'center' },
   emptyFieldsText: { fontSize: 12, color: colors.gray400, fontStyle: 'italic' },
-  actions: { gap: 12 },
+  actions: { },
   editBtnWrap: { borderRadius: radius.md, overflow: 'hidden', ...shadows.md },
-  editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
+  editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
   editBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
-  lockedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, backgroundColor: colors.gray100, borderRadius: radius.md },
+  lockedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: colors.gray100, borderRadius: radius.md },
   lockedNoteText: { fontSize: 12, color: colors.gray500, fontWeight: '600' },
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 },
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 },
   statusOption: { minWidth: '30%' },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, marginTop: 10 },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, marginTop: 10 },
   deleteBtnText: { fontSize: 12, color: '#ef4444', fontWeight: '600' },
   timestampRow: { marginTop: 24, alignItems: 'center' },
   tsText: { fontSize: 10, color: colors.gray400 },

@@ -3,9 +3,15 @@
  * Manages CSRF tokens, session cookies, and base URL.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
-export const BASE_URL = 'https://panel.adarshbhopal.in';
+// Allow overriding BASE_URL via Expo constants (`expo publish` extra) or global for tests
+export const BASE_URL = (
+  (Constants?.manifest?.extra && Constants.manifest.extra.API_BASE_URL) ||
+  global.__BASE_URL__ ||
+  'https://panel.adarshbhopal.in'
+);
 
 const STORAGE_KEYS = {
   csrfToken: 'adarsh_csrf_token',
@@ -108,14 +114,29 @@ async function apiFetch(path, options = {}) {
     options.body = JSON.stringify(options.json);
   }
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: options.body,
-    credentials: 'include',
-  });
+  // Support timeout via AbortController
+  const timeout = typeof options.timeout === 'number' ? options.timeout : 15000;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
 
-  await saveCookiesFromResponse(response);
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: options.body,
+      credentials: 'include',
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Request timed out');
+    throw e;
+  } finally {
+    clearTimeout(id);
+  }
+
+  // Try to persist cookies/csrf when possible
+  try { await saveCookiesFromResponse(response); } catch (e) { /* non-fatal */ }
 
   return response;
 }
@@ -133,8 +154,22 @@ export async function apiGet(path, params = null) {
       }
     }
 
-    const response = await apiFetch(finalPath);
-    const text = await response.text();
+    // Simple retry for GETs on transient failures
+    let attempt = 0;
+    let response;
+    let text = '';
+    while (attempt < 2) {
+      try {
+        response = await apiFetch(finalPath, { timeout: 15000 });
+        text = await response.text();
+        break;
+      } catch (e) {
+        attempt += 1;
+        if (attempt >= 2) throw e;
+        // small backoff
+        await new Promise(r => setTimeout(r, 300 * attempt));
+      }
+    }
     
     if (response.status === 503) {
       return { ok: false, status: 503, data: { success: false, message: 'Server is currently unreachable. This may be due to high traffic or maintenance. Please try again later.' } };
@@ -147,6 +182,15 @@ export async function apiGet(path, params = null) {
       console.warn('[API] JSON Parse Error for path:', finalPath, 'Response:', text.substring(0, 100));
       return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid server response' : 'Server encountered an issue (' + response.status + ')' } };
     }
+
+    // Fallback: some mobile endpoints may return CSRF/token in JSON for native clients
+    try {
+      const maybeToken = data?.csrftoken || data?.csrf || data?.csrf_token || data?.data?.csrftoken || data?.data?.csrf_token;
+      if (maybeToken) {
+        cachedCsrf = maybeToken;
+        AsyncStorage.setItem(STORAGE_KEYS.csrfToken, cachedCsrf).catch(() => {});
+      }
+    } catch (e) {}
     return { ok: response.ok, status: response.status, data };
   } catch (e) {
     console.warn('[API] Fetch Error for path:', path, e);
@@ -160,6 +204,7 @@ export async function apiPost(path, body = {}) {
     const response = await apiFetch(path, {
       method: 'POST',
       json: body,
+      timeout: 20000,
     });
     const text = await response.text();
 
@@ -174,6 +219,15 @@ export async function apiPost(path, body = {}) {
       console.warn('[API] JSON Parse Error for POST path:', path, 'Response:', text.substring(0, 100));
       return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid response' : 'Server error (' + response.status + ')' } };
     }
+
+    // Fallback: capture CSRF returned in JSON
+    try {
+      const maybeToken = data?.csrftoken || data?.csrf || data?.csrf_token || data?.data?.csrftoken || data?.data?.csrf_token;
+      if (maybeToken) {
+        cachedCsrf = maybeToken;
+        AsyncStorage.setItem(STORAGE_KEYS.csrfToken, cachedCsrf).catch(() => {});
+      }
+    } catch (e) {}
     return { ok: response.ok, status: response.status, data };
   } catch (e) {
     console.warn('[API] Fetch Error for POST path:', path, e);

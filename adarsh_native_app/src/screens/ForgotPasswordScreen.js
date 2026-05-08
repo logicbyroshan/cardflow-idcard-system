@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from '../components/Toast';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { apiPost, fetchInitialCsrf } from '../api/client';
 import { colors, gradients, shadows, radius } from '../theme';
 
@@ -99,55 +101,32 @@ export default function ForgotPasswordScreen({ navigation }) {
 
             {step === STEPS.EMAIL && (
               <>
-                <Text style={s.label}>EMAIL ADDRESS</Text>
-                <View style={s.inputWrap}>
-                  <FontAwesome5 name="envelope" size={13} color={colors.gray400} solid style={s.inputIcon} />
-                  <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={colors.gray300} keyboardType="email-address" autoCapitalize="none" returnKeyType="go" onSubmitEditing={handleSendOtp} />
-                </View>
-                <TouchableOpacity onPress={handleSendOtp} disabled={loading} activeOpacity={0.85} style={s.ctaBtnWrap}>
-                  <LinearGradient colors={gradients.brandFull} style={s.ctaBtn}>
-                    {loading && <ActivityIndicator size="small" color="#fff" />}
-                    <Text style={s.ctaBtnText}>{loading ? 'Sending...' : 'Send OTP'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                <Input label="EMAIL ADDRESS" leftIcon="envelope" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" returnKeyType="go" onSubmitEditing={handleSendOtp} />
+                <Button variant="primary" fullWidth loading={loading} onPress={handleSendOtp} style={s.ctaBtnWrap}>
+                  Send OTP
+                </Button>
               </>
             )}
 
             {step === STEPS.OTP && (
               <>
-                <Text style={s.label}>ENTER OTP</Text>
-                <View style={s.inputWrap}>
-                  <FontAwesome5 name="key" size={13} color={colors.gray400} solid style={s.inputIcon} />
-                  <TextInput style={s.input} value={otp} onChangeText={setOtp} placeholder="Enter 6-digit code" placeholderTextColor={colors.gray300} keyboardType="number-pad" maxLength={6} returnKeyType="go" onSubmitEditing={handleVerifyOtp} />
-                </View>
-                <TouchableOpacity onPress={handleVerifyOtp} disabled={loading} activeOpacity={0.85} style={s.ctaBtnWrap}>
-                  <LinearGradient colors={gradients.brandFull} style={s.ctaBtn}>
-                    {loading && <ActivityIndicator size="small" color="#fff" />}
-                    <Text style={s.ctaBtnText}>{loading ? 'Verifying...' : 'Verify OTP'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSendOtp} style={s.resendBtn}><Text style={s.resendText}>Resend OTP</Text></TouchableOpacity>
+                <Input label="ENTER OTP" leftIcon="key" value={otp} onChangeText={setOtp} placeholder="Enter 6-digit code" keyboardType="number-pad" maxLength={6} returnKeyType="go" onSubmitEditing={handleVerifyOtp} />
+                <Button variant="primary" fullWidth loading={loading} onPress={handleVerifyOtp} style={s.ctaBtnWrap}>
+                  Verify OTP
+                </Button>
+                <Button variant="ghost" onPress={handleSendOtp} style={s.resendBtn} textStyle={s.resendText}>
+                  Resend OTP
+                </Button>
               </>
             )}
 
             {step === STEPS.RESET && (
               <>
-                <Text style={s.label}>NEW PASSWORD</Text>
-                <View style={s.inputWrap}>
-                  <FontAwesome5 name="lock" size={13} color={colors.gray400} solid style={s.inputIcon} />
-                  <TextInput style={s.input} value={newPassword} onChangeText={setNewPassword} placeholder="Min. 8 characters" placeholderTextColor={colors.gray300} secureTextEntry />
-                </View>
-                <Text style={[s.label, { marginTop: 14 }]}>CONFIRM PASSWORD</Text>
-                <View style={s.inputWrap}>
-                  <FontAwesome5 name="lock" size={13} color={colors.gray400} solid style={s.inputIcon} />
-                  <TextInput style={s.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter password" placeholderTextColor={colors.gray300} secureTextEntry returnKeyType="go" onSubmitEditing={handleResetPassword} />
-                </View>
-                <TouchableOpacity onPress={handleResetPassword} disabled={loading} activeOpacity={0.85} style={s.ctaBtnWrap}>
-                  <LinearGradient colors={gradients.brandFull} style={s.ctaBtn}>
-                    {loading && <ActivityIndicator size="small" color="#fff" />}
-                    <Text style={s.ctaBtnText}>{loading ? 'Resetting...' : 'Reset Password'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                <Input label="NEW PASSWORD" leftIcon="lock" value={newPassword} onChangeText={setNewPassword} placeholder="Min. 8 characters" secureTextEntry />
+                <Input label="CONFIRM PASSWORD" leftIcon="lock" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter password" secureTextEntry returnKeyType="go" onSubmitEditing={handleResetPassword} />
+                <Button variant="primary" fullWidth loading={loading} onPress={handleResetPassword} style={s.ctaBtnWrap}>
+                  Reset Password
+                </Button>
               </>
             )}
 
@@ -156,9 +135,9 @@ export default function ForgotPasswordScreen({ navigation }) {
                 <View style={s.doneBadge}><FontAwesome5 name="check" size={24} color="#22c55e" solid /></View>
                 <Text style={s.doneTitle}>Password Reset Successful</Text>
                 <Text style={s.doneSub}>You can now sign in with your new password.</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.85} style={s.ctaBtnWrap}>
-                  <LinearGradient colors={gradients.brandFull} style={s.ctaBtn}><Text style={s.ctaBtnText}>Go to Sign In</Text></LinearGradient>
-                </TouchableOpacity>
+                <Button variant="primary" fullWidth onPress={() => navigation.navigate('Login')} style={s.ctaBtnWrap}>
+                  Go to Sign In
+                </Button>
               </View>
             )}
           </View>
@@ -177,22 +156,20 @@ const s = StyleSheet.create({
   headerIcon: { width: 72, height: 72, borderRadius: radius.xl, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', ...shadows.lg },
   headerTitle: { fontSize: 22, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
   headerSub: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Regular', color: 'rgba(255,255,255,0.7)', marginTop: 4, textAlign: 'center' },
-  stepRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  stepRow: { flexDirection: 'row', marginTop: 16 },
   stepDot: { width: 32, height: 4, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.25)' },
   stepDotActive: { backgroundColor: '#fff', width: 48 },
   stepDotDone: { backgroundColor: 'rgba(255,255,255,0.6)' },
   card: { backgroundColor: 'rgba(255,255,255,0.97)', borderTopLeftRadius: radius.xxl * 2, borderTopRightRadius: radius.xxl * 2, paddingTop: 24, paddingHorizontal: 24, borderWidth: 1, borderColor: 'rgba(214,231,248,0.96)', borderBottomWidth: 0, ...shadows.xl },
-  errorBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
+  errorBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
   errorText: { flex: 1, color: '#ef4444', fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium' },
   label: { fontSize: 10, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray500, letterSpacing: 1, marginBottom: 6 },
   inputWrap: { position: 'relative', flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   inputIcon: { position: 'absolute', left: 14, zIndex: 1 },
   input: { flex: 1, backgroundColor: colors.gray50, borderWidth: 1, borderColor: colors.gray200, borderRadius: radius.md, paddingLeft: 40, paddingRight: 16, paddingVertical: 14, fontSize: 14, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray800 },
   ctaBtnWrap: { marginTop: 12, borderRadius: radius.xl, overflow: 'hidden', ...shadows.lg },
-  ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: radius.xl },
-  ctaBtnText: { fontSize: 15, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
-  resendBtn: { paddingVertical: 12, alignItems: 'center' },
-  resendText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.brandLight, textDecorationLine: 'underline' },
+  resendBtn: { marginTop: 4, alignSelf: 'center' },
+  resendText: { color: colors.brandLight, textDecorationLine: 'underline' },
   doneSection: { alignItems: 'center', paddingVertical: 20 },
   doneBadge: { width: 72, height: 72, borderRadius: radius.full, backgroundColor: '#d1fae5', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 2, borderColor: '#a7f3d0' },
   doneTitle: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 6 },

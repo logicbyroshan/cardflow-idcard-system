@@ -258,3 +258,12 @@ deployment/
 
 # Mobile shell platform output (local generated artifacts)
 mobile_shell_app/
+ 
+# Secure secrets folder for keystore and PEM (local only)
+/secrets/
+
+# Backup and local signing artifacts
+adarsh_native_app/android_backup/
+
+# Upload certificate (PEM)
+upload_certificate.pem

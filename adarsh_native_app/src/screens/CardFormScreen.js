@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,7 @@ import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet, apiPostForm } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 export default function CardFormScreen({ navigation, route }) {
   const { tableId, cardId } = route?.params || {};
@@ -16,17 +17,13 @@ export default function CardFormScreen({ navigation, route }) {
   const [fields, setFields] = useState([]);
   const [values, setValues] = useState({});
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [tableName, setTableName] = useState('');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
-  const [error, setError] = useState(null);
   const { user } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
+  const loadData = useCallback(async () => {
     try {
       // Load table fields
       const { ok: fOk, data: fData } = await apiGet(`/app/api/table/${tableId}/filter-options/?status=pending`);
@@ -41,16 +38,15 @@ export default function CardFormScreen({ navigation, route }) {
           setValues(cData.data?.field_data || {});
           setTableName(cData.data?.table_name || '');
         } else if (!cOk) {
-          setError('Failed to load card details');
+          throw new Error('Failed to load card details');
         }
       }
     } catch (e) {
-      setError('Network error - check your connection');
+      throw new Error('Network error - check your connection');
     }
-    setLoading(false);
-  };
+  }, [tableId, cardId, isEdit]);
 
-  useEffect(() => { loadData(); }, []);
+  const { loading, error, refresh } = useRefreshableResource(loadData);
 
   const handleSave = async () => {
     setSaving(true);
@@ -84,7 +80,7 @@ export default function CardFormScreen({ navigation, route }) {
   return (
     <View style={s.root}>
       <TopBar title={isEdit ? 'Edit Card' : 'Add New Card'} subtitle={tableName || `Table #${tableId}`} onBack={() => navigation.goBack()} />
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={loadData} />}
+      {error && <ErrorBanner message={error} onDismiss={() => {}} onRetry={refresh} />}
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         {fieldList.length === 0 && (
@@ -143,14 +139,14 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 }, scrollC: { padding: 16, paddingBottom: 40 },
-  noFieldsCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eff6ff', borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: '#dbeafe', marginBottom: 20 },
+  noFieldsCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: '#dbeafe', marginBottom: 20 },
   noFieldsText: { flex: 1, fontSize: 13, color: '#1e40af', lineHeight: 18 },
   field: { marginBottom: 16 },
-  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, paddingLeft: 4 },
+  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingLeft: 4 },
   fieldLabel: { fontSize: 11, fontWeight: '800', color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase' },
   mandatoryDot: { width: 5, height: 5, borderRadius: radius.full, backgroundColor: '#f43f5e' },
   fieldInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#f1f5f9', borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 14, fontSize: 14, color: colors.gray800, fontWeight: '600', ...shadows.sm },
-  bottomActions: { marginTop: 12, gap: 12 },
+  bottomActions: { marginTop: 12 },
   saveBtnWrap: { borderRadius: radius.md, overflow: 'hidden', ...shadows.lg },
   saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18 },
   saveBtnText: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },

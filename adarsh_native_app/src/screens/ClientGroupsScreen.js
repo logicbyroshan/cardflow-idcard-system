@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
@@ -7,37 +7,29 @@ import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, shadows, radius, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 export default function ClientGroupsScreen({ navigation, route }) {
   const clientId = route?.params?.clientId;
   const clientName = route?.params?.clientName || 'Client';
-  const [tables, setTables] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
   const [expandedGroupId, setExpandedGroupId] = useState(null);
   const { user } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
 
-  const loadData = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
+  const loadData = useCallback(async () => {
     try {
       const { ok, data } = await apiGet(`/app/api/client/${clientId}/tables/`);
       if (ok && data?.success) {
-        setTables(data.data || []);
+        return data.data || [];
       } else {
-        setError(data?.message || 'Failed to load client tables');
+        throw new Error(data?.message || 'Failed to load client tables');
       }
     } catch (e) {
-      setError('Network error - check your connection');
+      throw new Error('Network error - check your connection');
     }
-    setLoading(false);
-    setRefreshing(false);
-  };
+  }, [clientId]);
 
-  useEffect(() => { loadData(); }, [clientId]);
+  const { data: tables = [], loading, refreshing, error, refresh } = useRefreshableResource(loadData, { initialData: [] });
 
   // Group tables by group_name
   const groupedData = React.useMemo(() => {
@@ -113,7 +105,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
   return (
     <View style={s.root}>
       <TopBar title={clientName} subtitle="Groups & Tables" onBack={() => navigation.goBack()} />
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadData(true)} />}
+      {error && <ErrorBanner message={error} onDismiss={() => {}} onRetry={refresh} />}
       {loading ? (
         <ListSkeleton rows={5} />
       ) : (
@@ -123,7 +115,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
           keyExtractor={item => item.name}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={colors.brandLight} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
           ListEmptyComponent={
             <View style={s.empty}>
               <View style={s.emptyIcon}><FontAwesome5 name="layer-group" size={24} color={colors.gray300} /></View>
@@ -145,13 +137,13 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   list: { padding: 16, paddingBottom: 40 },
   groupCard: { backgroundColor: colors.white, borderRadius: radius.lg, marginBottom: 12, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   groupIcon: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   groupInfo: { flex: 1 },
   groupName: { fontSize: 15, fontWeight: '700', color: colors.gray800 },
   groupMeta: { fontSize: 11, color: colors.gray500, marginTop: 2 },
   tablesList: { paddingHorizontal: 16, paddingBottom: 16, backgroundColor: '#f9fafb', borderTopWidth: 1, borderTopColor: '#f1f5f9' },
-  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 10 },
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   tableIcon: { width: 28, height: 28, borderRadius: radius.sm, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
   tableInfo: { flex: 1 },
   tableName: { fontSize: 13, fontWeight: '600', color: colors.gray700 },
@@ -162,8 +154,8 @@ const s = StyleSheet.create({
   emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   emptyTitle: { fontSize: 13, fontWeight: '600', color: colors.gray400 },
   emptySub: { fontSize: 11, color: colors.gray300, marginTop: 4 },
-  groupBadges: { flexDirection: 'row', gap: 4, marginRight: 8 },
-  tableBadges: { flexDirection: 'row', gap: 4, marginRight: 8 },
+  groupBadges: { flexDirection: 'row', marginRight: 8 },
+  tableBadges: { flexDirection: 'row', marginRight: 8 },
   miniCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.xs, minWidth: 20, alignItems: 'center' },
   miniCountText: { fontSize: 10, fontWeight: '800' },
 });

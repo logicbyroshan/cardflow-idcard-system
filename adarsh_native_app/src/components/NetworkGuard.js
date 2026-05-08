@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   tipCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    
     backgroundColor: 'rgba(245,158,11,0.1)',
     borderWidth: 1,
     borderColor: 'rgba(245,158,11,0.2)',
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    
     backgroundColor: '#22c55e',
     borderRadius: 20,
     paddingHorizontal: 16,
@@ -379,7 +379,7 @@ const ev = StyleSheet.create({
   },
   actions: {
     alignItems: 'center',
-    gap: 12,
+    
   },
   btnWrap: {
     borderRadius: 16,
@@ -389,7 +389,7 @@ const ev = StyleSheet.create({
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
@@ -402,7 +402,6 @@ const ev = StyleSheet.create({
   secondaryBtnWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     paddingHorizontal: 20,
     paddingVertical: 10,
     backgroundColor: colors.gray100,
@@ -419,7 +418,6 @@ const eb = StyleSheet.create({
   root: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     marginHorizontal: 16,
     marginVertical: 8,
     paddingHorizontal: 14,

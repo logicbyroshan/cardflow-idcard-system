@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, TextInput,
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, shadows, fontFamily, gradients } from '../theme';
+import { Wrap, HStack } from './Stack';
 import { apiGet } from '../api/client';
 
 const { width } = Dimensions.get('window');
@@ -89,7 +90,7 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
               {/* Static Filters: Sort & Photo */}
               <View style={s.section}>
                 <Text style={s.sectionTitle}>Advanced Sorting</Text>
-                <View style={s.chipRow}>
+                <Wrap spacing={8} style={s.chipRow}>
                   {[
                     { label: 'ID (Newest First)', val: 'sr-asc' },
                     { label: 'Name A to Z', val: 'name-asc' },
@@ -102,12 +103,12 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+                </Wrap>
               </View>
 
               <View style={s.section}>
                 <Text style={s.sectionTitle}>Photos Filter</Text>
-                <View style={s.chipRow}>
+                <Wrap spacing={8} style={s.chipRow}>
                   {[
                     { label: 'Uploaded Photos', val: 'with' },
                     { label: 'Missing Photos', val: 'without' },
@@ -119,13 +120,13 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+                </Wrap>
               </View>
               
               {classes.length > 0 && (
                 <View style={s.section}>
                   <Text style={s.sectionTitle}>Class</Text>
-                  <View style={s.chipRow}>
+                  <Wrap spacing={8} style={s.chipRow}>
                     {classes.map(cls => {
                       const isActive = (tempFilters.class || []).includes(cls);
                       return (
@@ -134,7 +135,7 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
                         </TouchableOpacity>
                       );
                     })}
-                  </View>
+                  </Wrap>
                 </View>
               )}
 
@@ -161,7 +162,7 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
               {filterOptions.map((f, i) => (
                 <View key={f.name + i} style={s.section}>
                   <Text style={s.sectionTitle}>{f.name}</Text>
-                  <View style={s.chipRow}>
+                  <Wrap spacing={8} style={s.chipRow}>
                     {(f.options || []).map(opt => {
                       const isActive = (tempFilters[f.name] || []).includes(opt);
                       return (
@@ -174,13 +175,13 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
                         </TouchableOpacity>
                       );
                     })}
-                  </View>
+                  </Wrap>
                 </View>
               ))}
             </ScrollView>
           )}
 
-          <View style={s.footer}>
+          <HStack spacing={12} style={s.footer} align="center">
             <TouchableOpacity onPress={clearAll} style={s.clearBtn}>
               <Text style={s.clearText}>Reset</Text>
             </TouchableOpacity>
@@ -189,7 +190,7 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
                 <Text style={s.applyText}>Apply Filters</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+          </HStack>
         </View>
       </View>
     </Modal>
@@ -223,7 +224,7 @@ const s = StyleSheet.create({
   scrollC: { padding: 20 },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
   chip: { 
     paddingHorizontal: 12, 
     paddingVertical: 8, 
@@ -239,7 +240,6 @@ const s = StyleSheet.create({
   footer: { 
     flexDirection: 'row', 
     padding: 20, 
-    gap: 12, 
     borderTopWidth: 1, 
     borderTopColor: '#f1f5f9',
     backgroundColor: '#fff' 

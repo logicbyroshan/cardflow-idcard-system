@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
@@ -8,38 +8,23 @@ import StatusBadge from '../components/StatusBadge';
 import { apiGet } from '../api/client';
 import { colors, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const STATUS_LABELS = { pending: 'Pending', verified: 'Verified', approved: 'Approved', download: 'Download', pool: 'Pool', reprint: 'Reprint' };
 
 export default function GroupsScreen({ navigation }) {
-  const [tables, setTables] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
   const { user } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
 
-  const loadData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const { ok, data } = await apiGet('/app/api/groups/');
-      if (ok && data?.success) {
-        setTables(data.data?.tables || []);
-      } else {
-        setError(data?.message || 'Failed to load tables');
-      }
-    } catch (e) {
-      setError('Network error - check your connection');
+  const loadData = useCallback(async () => {
+    const { ok, data } = await apiGet('/app/api/groups/');
+    if (!ok || !data?.success) {
+      throw new Error(data?.message || 'Failed to load tables');
     }
-    setLoading(false);
-    setRefreshing(false);
+    return data.data?.tables || [];
   }, []);
 
-  useEffect(() => { loadData(); }, []);
-
-  const onRefresh = () => loadData(true);
+  const { data: tables = [], loading, refreshing, error, refresh } = useRefreshableResource(loadData, { initialData: [] });
 
   const renderTable = ({ item: table }) => {
     // API returns keys like pending_cards, verified_cards for groups/tables API
@@ -85,7 +70,7 @@ export default function GroupsScreen({ navigation }) {
   return (
     <View style={s.root}>
       <TopBar title="Groups & Tables" subtitle="Manage your groups" onBack={() => navigation.goBack()} />
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadData(true)} />}
+      {error && <ErrorBanner message={error} onDismiss={() => refresh()} onRetry={() => refresh()} />}
       {loading ? (
         <ListSkeleton rows={5} />
       ) : (
@@ -95,7 +80,7 @@ export default function GroupsScreen({ navigation }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
           ListEmptyComponent={
             <View style={s.empty}>
               <View style={s.emptyIcon}><FontAwesome5 name="table" size={24} color={colors.gray300} /></View>
@@ -113,13 +98,13 @@ const s = StyleSheet.create({
   list: { padding: 16, paddingBottom: 40 },
   
   tableCard: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 14, borderWidth: 1, borderColor: colors.gray100, ...shadows.sm, marginBottom: 10 },
-  tableTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  tableTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   tableIcon: { width: 34, height: 34, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   tableNameWrap: { flex: 1 },
   tableName: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
   groupName: { fontSize: 10, fontFamily: fontFamily.medium, color: colors.gray400, marginTop: 1 },
   
-  tablePills: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
+  tablePills: { flexDirection: 'row', justifyContent: 'space-between' },
   pillBtn: { flex: 1, alignItems: 'center', minWidth: 0 },
   pillLabel: { fontSize: 7, fontFamily: fontFamily.bold, color: colors.gray400, marginBottom: 4, textTransform: 'uppercase' },
   

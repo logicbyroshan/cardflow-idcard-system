@@ -1,36 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, typography, spacing, radius, shadows } from '../theme';
+import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const ICON_MAP = { green: { bg: '#dcfce7', c: '#22c55e' }, blue: { bg: '#dbeafe', c: '#3b82f6' }, purple: { bg: '#ede9fe', c: '#8b5cf6' }, yellow: { bg: '#fef3c7', c: '#f59e0b' }, red: { bg: '#fef2f2', c: '#ef4444' }, orange: { bg: '#ffedd5', c: '#f97316' } };
 
 export default function NotificationsScreen({ navigation }) {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-
-  const loadNotifications = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const { ok, data } = await apiGet('/app/api/notifications/');
-      if (ok && data?.success) setNotifications(data.data || []);
-      else setError(data?.message || 'Failed to load notifications');
-    } catch (e) {
-      setError('Network error - check your connection');
+  const loadNotifications = useCallback(async () => {
+    const { ok, data } = await apiGet('/app/api/notifications/');
+    if (!ok || !data?.success) {
+      throw new Error(data?.message || 'Failed to load notifications');
     }
-    setLoading(false);
-    setRefreshing(false);
-  };
+    return data.data || [];
+  }, []);
 
-  useEffect(() => { loadNotifications(); }, []);
+  const { data: notifications = [], loading, refreshing, error, refresh } = useRefreshableResource(loadNotifications, { initialData: [] });
 
   const renderItem = ({ item }) => {
     const ic = ICON_MAP[item.color] || { bg: '#f3f4f6', c: '#9ca3af' };
@@ -64,7 +52,7 @@ export default function NotificationsScreen({ navigation }) {
   return (
     <View style={s.root}>
       <TopBar title="Notifications" subtitle="Activity & updates" onBack={() => navigation.goBack()} />
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} onRetry={() => loadNotifications(true)} />}
+      {error && <ErrorBanner message={error} onDismiss={() => refresh()} onRetry={() => refresh()} />}
       {loading ? (
         <View style={s.loadingWrap}><ActivityIndicator size="large" color={colors.brandLight} /></View>
       ) : (
@@ -74,7 +62,7 @@ export default function NotificationsScreen({ navigation }) {
           keyExtractor={(item, i) => item.id?.toString() || i.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadNotifications(true)} tintColor={colors.brandLight} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
           ListEmptyComponent={EmptyState}
         />
       )}
@@ -85,10 +73,10 @@ export default function NotificationsScreen({ navigation }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16, gap: 10, paddingBottom: 32 },
+  list: { padding: 16, paddingBottom: 32 },
   card: { backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
   unread: { borderLeftWidth: 3, borderLeftColor: colors.brandPrimary, borderColor: '#f1f5f9' },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
   iconW: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
