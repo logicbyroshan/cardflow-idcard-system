@@ -45,6 +45,10 @@ def _run_callback_with_retry(callback, callback_name, *args, max_attempts=3, bas
 
     for attempt in range(1, max_attempts + 1):
         try:
+            # Ensure database connections are properly set up for background thread
+            # (pytest-django isolation requires this)
+            from django.db import connections
+            connections.ensure_defaults()
             callback(*args)
             return
         except Exception as cb_err:

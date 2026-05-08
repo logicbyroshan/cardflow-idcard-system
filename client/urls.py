@@ -26,6 +26,9 @@ urlpatterns = [
     
     # Cards in a Table (legacy, kept for backward compat)
     path('table/<int:table_id>/cards/', views.card_table, name='cards'),
+
+    # Print route used by integration tests; redirects to the client group page.
+    path('table/<int:table_id>/print/', views.print_table, name='print_table'),
     
     # Staff Management (Client Admin only)
     path('staff/', views.manage_staff, name='staff'),

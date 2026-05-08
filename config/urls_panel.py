@@ -177,7 +177,12 @@ urlpatterns = [
     path('app/', include('mobile_app.urls')),
 ]
 
-if getattr(settings, 'DEBUG', False):
+def _running_tests():
+    return os.getenv('RUNNING_TESTS', '').lower() in ('1', 'true', 'yes', 'on') or any(
+        mod.startswith('_pytest') for mod in sys.modules
+    )
+
+if getattr(settings, 'DEBUG', False) and not _running_tests():
     try:
         import debug_toolbar  # noqa: F401
     except Exception:

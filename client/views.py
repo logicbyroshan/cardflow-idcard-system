@@ -13,6 +13,7 @@ from .views_pages import (
     dashboard,
     card_groups,
     card_table,
+    print_table,
     manage_staff,
     messages,
 )

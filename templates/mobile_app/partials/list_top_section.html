@@ -119,6 +119,25 @@
                       class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-400 rounded-sm border-2 border-white"></span>
             </button>
         </div>
-    </div>
-
 </div>
+
+        {% if list_type == 'download' and can_reprint_request_list or list_type == 'download' and can_reprint_confirmed_list %}
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+            {% if can_reprint_request_list %}
+            <a href="{% url 'mobile_app:reprint_table' table_id=table.id %}?step=request_list"
+                    class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 whitespace-nowrap px-2 py-1 rounded-md border border-sky-200 bg-sky-50 text-sky-700 text-[10px] font-bold leading-none shadow-sm active:scale-95">
+                <span class="uppercase tracking-wide mobile-chip-label">Request</span>
+                <span class="mobile-chip-count">{{ reprint_counts.requested|default:0 }}</span>
+            </a>
+            {% endif %}
+            {% if can_reprint_confirmed_list %}
+            <a href="{% url 'mobile_app:reprint_table' table_id=table.id %}?step=confirmed"
+                    class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 whitespace-nowrap px-2 py-1 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] font-bold leading-none shadow-sm active:scale-95">
+                <span class="uppercase tracking-wide mobile-chip-label">Confirmed</span>
+                <span class="mobile-chip-count">{{ reprint_counts.confirmed|default:0 }}</span>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>

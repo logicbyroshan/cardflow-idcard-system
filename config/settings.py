@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import sys
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
 import os
@@ -58,6 +59,13 @@ def _env_bool(name: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def _running_tests() -> bool:
+    """Detect pytest/test execution early, before conftest can mutate settings."""
+    if _env_bool('RUNNING_TESTS'):
+        return True
+    return any(mod.startswith('_pytest') for mod in sys.modules)
 
 
 def _env_int(name: str, default: int, *, minimum: int | None = None, maximum: int | None = None) -> int:
@@ -159,7 +167,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
 ]
 
-if DEBUG:
+if DEBUG and not _running_tests():
     INSTALLED_APPS += ['debug_toolbar']
 
 SITE_ID = 1
@@ -176,7 +184,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
 ]
 
-if DEBUG:
+if DEBUG and not _running_tests():
     MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
 
 MIDDLEWARE += [

@@ -389,6 +389,10 @@ class PermissionValidationMiddleware:
         if self._is_exempt_url(request):
             return self.get_response(request)
         
+        # Ensure request.user exists (should be set by AuthenticationMiddleware)
+        if not hasattr(request, 'user'):
+            return self.get_response(request)
+        
         # Safety net: redirect unauthenticated users away from panel routes
         if not request.user.is_authenticated:
             if self._is_panel_path(request):

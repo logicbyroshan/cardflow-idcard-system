@@ -360,9 +360,13 @@ class ClientDashboardService(BaseService):
                 if PermissionService.is_client_staff(user):
                     staff = getattr(user, 'staff_profile', None)
 
-                    # Always evaluate all accessible tables. The row-scope helper already
-                    # returns full table rows when no class/section/branch restriction exists.
+                    # Only evaluate tables that have explicit row-level scope for this staff.
+                    # If a staff member has no class/section/branch filters, dashboard
+                    # summary counts should stay at zero even though table access may exist.
                     for table in tables:
+                        table_scope = ClientCardService._table_scope_filters(staff, table)
+                        if not any(table_scope):
+                            continue
                         scoped_qs = ClientCardService._apply_client_staff_row_scope(
                             user,
                             table,
@@ -459,8 +463,11 @@ class ClientDashboardService(BaseService):
 
             if PermissionService.is_client_staff(user):
                 # Same rule as get_dashboard_data(): apply row-scope across every
-                # accessible table to avoid dropping counts to zero for unscoped staff.
+                # accessible table that has explicit row-level filters.
                 for table in accessible_tables:
+                    table_scope = ClientCardService._table_scope_filters(getattr(user, 'staff_profile', None), table)
+                    if not any(table_scope):
+                        continue
                     table_cache_key = cls._group_staff_table_counts_cache_key(
                         user,
                         table.id,

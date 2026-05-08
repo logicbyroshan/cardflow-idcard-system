@@ -142,8 +142,16 @@ urlpatterns = [
     # Visit /sentry-debug/ in local dev to trigger a test exception (1/0) for verification.
 ]
 
-# Register debug-only routes (debug_toolbar, sentry test) only when DEBUG.
-if getattr(settings, 'DEBUG', False):
+# Register debug-only routes (debug_toolbar, sentry test) only when DEBUG and not testing.
+import os
+import sys
+
+def _running_tests():
+    return os.getenv('RUNNING_TESTS', '').lower() in ('1', 'true', 'yes', 'on') or any(
+        mod.startswith('_pytest') for mod in sys.modules
+    )
+
+if getattr(settings, 'DEBUG', False) and not _running_tests():
     # Debug toolbar: optional dependency; import only if installed.
     try:
         import debug_toolbar  # noqa: F401
