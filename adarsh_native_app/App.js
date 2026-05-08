@@ -115,7 +115,7 @@ function AnimatedSplashScreen({ onFinish }) {
         <View style={splash.loaderBar}>
           <Animated.View style={[splash.loaderProgress, { width: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
         </View>
-        <Text style={splash.version}>v38.0.0 • PRODUCTION GRADE</Text>
+        <Text style={splash.version}>v43.0.0 • PRODUCTION GRADE</Text>
       </Animated.View>
     </View>
   );

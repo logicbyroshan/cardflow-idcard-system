@@ -2,7 +2,7 @@
   "expo": {
     "name": "Adarsh ID Cards",
     "slug": "adarsh-final-deploye",
-    "version": "1.0.42",
+    "version": "1.0.43",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.adarshid.app",
-      "buildNumber": "42"
+      "buildNumber": "43"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +24,7 @@
       },
       "edgeToEdgeEnabled": false,
       "package": "com.adarshid.app",
-      "versionCode": 42,
+      "versionCode": 43,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
