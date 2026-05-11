@@ -5877,13 +5877,35 @@ def api_impersonate_users(request):
     # To maintain desktop parity, we remove the strict `perm_mobile_app` restriction.
     mobile_allowed_ids = set(user_ids)
 
+    from idcards.models import IDCard
+    from django.db.models import Count
+
+    # Bulk fetch counts for all mobile-allowed IDs in one query
+    counts_map = {}
+    stats = (
+        IDCard.objects.filter(table__group__client_id__in=mobile_allowed_ids)
+        .values('table__group__client_id', 'status')
+        .annotate(count=Count('id'))
+    )
+    for s in stats:
+        cid = s['table__group__client_id']
+        status = s['status']
+        count = s['count']
+        if cid not in counts_map:
+            counts_map[cid] = {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
+        counts_map[cid]['total'] += count
+        if status in counts_map[cid]:
+            counts_map[cid][status] = count
+
     filtered = []
     for item in users:
         try:
             item_id = int(item.get('id') or 0)
         except (TypeError, ValueError):
             continue
+            
         if item_id in mobile_allowed_ids:
+            item['counts'] = counts_map.get(item_id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
             filtered.append(item)
     return JsonResponse({'success': True, 'users': filtered})
 

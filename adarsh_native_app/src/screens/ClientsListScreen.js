@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions, Linking } from 'react-native';
 import { IconPending, IconVerified, IconApproved, IconDownload, IconPool, IconTotal, IconSearch, IconFilter, IconPlus, IconChevronRight, IconTrash, IconEdit, IconHome, IconList, IconUsers, IconLogout, IconClose, IconCheck, IconProfile } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
@@ -66,6 +66,7 @@ export default function ClientsListScreen({ navigation }) {
           phone: c.phone || '', 
           is_active: c.is_active !== false, 
           role: c.role || '',
+          counts: c.counts || { total: 0, pending: 0, verified: 0, approved: 0, download: 0, pool: 0 }
         }));
       } else {
         throw new Error(data?.message || 'Failed to load clients');
@@ -244,10 +245,16 @@ export default function ClientsListScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <View style={s.card}>
       <View style={s.cardTop}>
-        <View style={s.avatar}><IconUsers size={14} color={colors.brandPrimary} /></View>
         <View style={s.cardInfo}>
           <Text style={s.name} numberOfLines={1}>{item.name}</Text>
-          <Text style={s.email} numberOfLines={1}>{item.email || item.phone || 'No contact'}</Text>
+          <View style={s.badgeRow}>
+            <StatBadge label="TOTAL" count={item.counts.total} theme={colors.total} />
+            <StatBadge label="PENDING" count={item.counts.pending} theme={colors.pending} />
+            <StatBadge label="VERIFIED" count={item.counts.verified} theme={colors.verified} />
+            <StatBadge label="APPROVED" count={item.counts.approved} theme={colors.approved} />
+            <StatBadge label="DOWNLOAD" count={item.counts.download} theme={colors.download} />
+            <StatBadge label="POOL" count={item.counts.pool} theme={colors.pool} />
+          </View>
         </View>
         <TouchableOpacity 
           activeOpacity={0.7}
@@ -291,12 +298,6 @@ export default function ClientsListScreen({ navigation }) {
             <Text style={[s.textBtnLabel, { color: '#22c55e' }]}>PERMS</Text>
           </TouchableOpacity>
         )}
-        {user?.is_super_admin && (
-          <TouchableOpacity onPress={() => deleteClient(item)} style={s.textBtn}>
-            <IconTrash size={10} color="#ef4444" style={[s.btnIcon, { marginRight: 6 }]} />
-            <Text style={[s.textBtnLabel, { color: '#ef4444' }]}>DELETE</Text>
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );
@@ -308,6 +309,7 @@ export default function ClientsListScreen({ navigation }) {
         subtitle="Manage institutions & organizations" 
         onBack={() => navigation.goBack()} 
         rightAction={isAdmin ? { icon: 'plus', onPress: openCreate } : null}
+        secondaryAction={{ icon: 'globe', onPress: () => Linking.openURL('https://www.adarshbhopal.in') }}
       >
         {/* Search Bar (Inside Gradient) */}
         <View style={s.searchRow}>
@@ -538,6 +540,15 @@ function FormField({ label, value, onChangeText, placeholder, keyboardType, secu
   );
 }
 
+function StatBadge({ label, count, theme }) {
+  return (
+    <View style={[s.badge, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+      <Text style={[s.badgeLabel, { color: theme.text }]}>{label}</Text>
+      <Text style={[s.badgeCount, { color: theme.text }]}>{count}</Text>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md, marginHorizontal: 16, marginTop: 12, marginBottom: 8, paddingHorizontal: 10, height: 44 },
@@ -546,18 +557,20 @@ const s = StyleSheet.create({
   searchInput: { flex: 1, color: '#fff', fontSize: 13, paddingHorizontal: 8 },
   impBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, backgroundColor: '#f59e0b' },
   impBannerText: { fontSize: 11, fontFamily: fontFamily.bold, color: '#fff', letterSpacing: 0.5 },
-  list: { padding: 16, paddingBottom: 32 },
-  card: { backgroundColor: '#fff', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
-  cardTop: { flexDirection: 'row', alignItems: 'center', padding: 14 },
-  avatar: { width: 40, height: 40, borderRadius: radius.xs, backgroundColor: 'rgba(51,183,239,0.08)', alignItems: 'center', justifyContent: 'center' },
+  list: { padding: 12, paddingBottom: 32 },
+  card: { backgroundColor: '#fff', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', marginBottom: 12, ...shadows.md },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', padding: 12 },
   cardInfo: { flex: 1, minWidth: 0 },
-  name: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
-  email: { fontSize: 11, color: colors.gray400, marginTop: 1, fontFamily: fontFamily.medium },
-  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm },
-  statusDotSmall: { width: 6, height: 6, borderRadius: 3 },
-  statusPillText: { fontSize: 9, fontFamily: fontFamily.bold, letterSpacing: 0.5 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 10 },
-  textBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, backgroundColor: '#f8fafc', borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9' },
+  name: { fontSize: 15, fontFamily: fontFamily.bold, color: colors.gray800, marginBottom: 8 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  badge: { paddingHorizontal: 6, paddingVertical: 4, borderRadius: radius.sm, borderWidth: 1, alignItems: 'center', minWidth: 48 },
+  badgeLabel: { fontSize: 7, fontFamily: fontFamily.bold, marginBottom: 1 },
+  badgeCount: { fontSize: 12, fontFamily: fontFamily.bold },
+  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm, marginLeft: 8 },
+  statusDotSmall: { width: 5, height: 5, borderRadius: 2.5, marginRight: 4 },
+  statusPillText: { fontSize: 8, fontFamily: fontFamily.bold },
+  cardActions: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 8, gap: 8 },
+  textBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 6, backgroundColor: colors.gray50, borderRadius: radius.sm, borderWidth: 1, borderColor: '#f1f5f9' },
   btnIcon: { marginBottom: 1 },
   textBtnLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.brandPrimary, letterSpacing: 0.5 },
   empty: { alignItems: 'center', paddingTop: 80 },

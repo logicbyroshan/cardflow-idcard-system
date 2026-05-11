@@ -217,9 +217,12 @@ export default function HomeScreen({ navigation }) {
                     </View>
                     <View style={s.clientInfo}>
                       <Text style={s.clientName} numberOfLines={1}>{client.name}</Text>
-                      <Text style={s.clientStats}>
-                        P: {client.pending || 0} | V: {client.verified || 0} | A: {client.approved || 0} | D: {client.download || 0}
-                      </Text>
+                      <View style={s.badgeRow}>
+                        <StatBadge label="P" count={client.pending || 0} theme={colors.pending} />
+                        <StatBadge label="V" count={client.verified || 0} theme={colors.verified} />
+                        <StatBadge label="A" count={client.approved || 0} theme={colors.approved} />
+                        <StatBadge label="D" count={client.download || 0} theme={colors.download} />
+                      </View>
                     </View>
                     <DynamicIcon 
                       name={expandedClient === client.id ? 'chevron-up' : 'chevron-down'} 
@@ -343,6 +346,15 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
+function StatBadge({ label, count, theme }) {
+  return (
+    <View style={[s.badge, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+      <Text style={[s.badgeLabel, { color: theme.text }]}>{label}</Text>
+      <Text style={[s.badgeCount, { color: theme.text }]}>{count}</Text>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   header: { paddingHorizontal: 20, paddingBottom: 16, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, ...shadows.lg },
@@ -410,10 +422,14 @@ const s = StyleSheet.create({
   
   // Client Card (Admin/Operator view)
   clientCard: { backgroundColor: '#fff', borderRadius: radius.lg, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100, marginBottom: 12, overflow: 'hidden' },
-  clientHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, justifyContent: 'space-between' },
-  clientIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  clientHeader: { flexDirection: 'row', alignItems: 'center', padding: 10, justifyContent: 'space-between' },
+  clientIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   clientInfo: { flex: 1, minWidth: 0 },
-  clientName: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
+  clientName: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray800, marginBottom: 4 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  badge: { paddingHorizontal: 4, paddingVertical: 2, borderRadius: radius.xs, borderWidth: 0.5, alignItems: 'center', minWidth: 32 },
+  badgeLabel: { fontSize: 6, fontFamily: fontFamily.bold },
+  badgeCount: { fontSize: 10, fontFamily: fontFamily.bold },
   clientStats: { fontSize: 10, fontFamily: fontFamily.medium, color: colors.gray400, marginTop: 2 },
   
   // Expanded Tables

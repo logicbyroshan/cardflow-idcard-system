@@ -8,7 +8,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, typography, spacing, radius, fontFamily } from '../theme';
 
-export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, onDownload, children, showHome = true }) {
+export default function TopBar({ title, subtitle, onBack, rightAction, secondaryAction, onAdd, onDownload, children, showHome = true }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute();
@@ -75,13 +75,22 @@ export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, on
             <IconHome size={13} color={colors.white} />
           </TouchableOpacity>
         )}
+        {secondaryAction && (
+          <TouchableOpacity
+            onPress={secondaryAction.onPress}
+            style={[styles.rightBtn, { marginRight: 8 }]}
+            activeOpacity={0.7}
+          >
+            <RightIcon iconName={secondaryAction.icon} size={13} color={colors.white} />
+          </TouchableOpacity>
+        )}
         {rightAction && (
           <TouchableOpacity
             onPress={rightAction.onPress}
             style={styles.rightBtn}
             activeOpacity={0.7}
           >
-            <RightIcon iconName={rightAction.icon} size={14} color={colors.white} />
+            <RightIcon iconName={rightAction.icon} size={13} color={colors.white} />
           </TouchableOpacity>
         )}
       </View>
