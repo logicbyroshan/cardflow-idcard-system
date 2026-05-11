@@ -360,73 +360,55 @@ def is_mobile(request):
     ))
 
 
-def require_mobile_client(view_func):
-    """Decorator: login + any valid role + perm_mobile_app + mobile UA.
-    Supports all 4 roles: super_admin, admin_staff, client, client_staff.
-    After login, redirects back to /app/ (PWA) via ?next= parameter.
+def require_mobile_client(view_func=None, allow_public=False):
     """
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        is_api_request = request.path.startswith('/api/mobile/')
-        
-        if not request.user.is_authenticated:
-            if is_api_request:
-                return JsonResponse({
-                    'success': False,
-                    'authenticated': False,
-                    'message': 'Authentication required',
-                }, status=401)
-            return redirect('/app/login/')
+    Decorator for mobile-aware views.
+    - If allow_public=True: Only ensures valid Mobile UA (in production).
+    - If allow_public=False: Also ensures user is authenticated & mobile-auth-ok.
+    Returns 401/403 JSON for API requests; redirects to PWA login for others.
+    """
+    def decorator(f):
+        @wraps(f)
+        def wrapper(request, *args, **kwargs):
+            is_api_request = (request.path or '').startswith('/api/mobile/')
+            ua = request.META.get('HTTP_USER_AGENT', '')
 
-        user = request.user
+            # 1. Enforce Native App User-Agent in production
+            if not getattr(settings, 'DEBUG', False) and 'AdarshMobileApp' not in ua:
+                if is_api_request:
+                    return JsonResponse({'success': False, 'message': 'Invalid client source.'}, status=403)
+                return redirect('/app/no-access/?reason=invalid-source')
 
-        # Mobile app uses its own auth checkpoint inside the same Django session.
-        if not request.session.get('mobile_auth_ok'):
-            if is_api_request:
-                return JsonResponse({
-                    'success': False,
-                    'mobile_auth_required': True,
-                    'message': 'Please sign in from the mobile app login screen.',
-                }, status=401)
-            return redirect('/app/login/')
+            if allow_public:
+                return f(request, *args, **kwargs)
 
-        # Allow all 4 valid roles; reject unknown/empty roles
-        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
-        if not hasattr(user, 'role') or user.role not in valid_roles:
-            auth_logout(request)
-            request.session.pop('mobile_auth_ok', None)
-            if is_api_request:
-                return JsonResponse({'success': False, 'message': 'Invalid account role for mobile app.'}, status=403)
-            return redirect('/app/login/')
+            # 2. Enforce Authentication
+            if not request.user.is_authenticated:
+                if is_api_request:
+                    return JsonResponse({'success': False, 'authenticated': False, 'message': 'Authentication required'}, status=401)
+                return redirect('/app/login/')
 
-        # Enforce perm_mobile_app (super_admin always passes)
-        if not PermissionService.has(user, 'perm_mobile_app'):
-            auth_logout(request)
-            request.session.pop('mobile_auth_ok', None)
-            if is_api_request:
-                return JsonResponse({
-                    'success': False,
-                    'mobile_access_revoked': True,
-                    'message': 'Mobile app access was revoked. Please contact admin.',
-                }, status=403)
-            return redirect('/app/login/?revoked=1')
+            # 3. Enforce Mobile Auth OK (Session flag)
+            if not request.session.get('mobile_auth_ok'):
+                if is_api_request:
+                    return JsonResponse({'success': False, 'mobile_auth_required': True, 'message': 'Session checkpoint required'}, status=401)
+                return redirect('/app/login/')
 
-        # Enforce mobile UA on the server as well (client-side block is not sufficient).
-        # We allow a bypass if the session is already explicitly marked as mobile auth OK.
-        if not is_mobile(request) and not request.session.get('mobile_auth_ok'):
-            if is_api_request:
-                return JsonResponse({
-                    'success': False,
-                    'desktop_blocked': True,
-                    'message': 'Mobile device required for mobile app APIs.',
-                }, status=403)
-            return render(request, 'mobile_app/desktop_required.html', {
-                'status': '',
-                'status_display': 'Mobile App',
-            }, status=403)
+            # 4. Enforce valid roles
+            user = request.user
+            valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
+            if not hasattr(user, 'role') or user.role not in valid_roles:
+                if is_api_request:
+                    return JsonResponse({'success': False, 'message': 'Invalid account role.'}, status=403)
+                return redirect('/app/login/')
 
-        return view_func(request, *args, **kwargs)
-    return wrapper
+            return f(request, *args, **kwargs)
+        return wrapper
+
+    if view_func:
+        return decorator(view_func)
+    return decorator
+
 
 
 def _get_notification_count(user):
@@ -4993,14 +4975,25 @@ def api_tables_list(request):
         user = request.user
         status = (request.GET.get('status') or '').strip().lower()
         
-        client, _ = _client_ctx(user)
-        if not client:
-            return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
-
         # 1. Get accessible tables
         from idcards.models import IDCardTable
-        tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
+        tables_qs = IDCardTable.objects.filter(is_active=True, deleted_by_client=False)
         
+        if not PermissionService.is_super_admin(user):
+            # For non-superadmins, we must restrict by client or assigned IDs
+            if PermissionService.is_admin_staff(user):
+                accessible_client_ids = PermissionService.get_accessible_client_ids(user)
+                if accessible_client_ids:
+                    tables_qs = tables_qs.filter(group__client_id__in=accessible_client_ids)
+                else:
+                    return JsonResponse({'success': True, 'tables': [], 'count': 0})
+            else:
+                # Regular client/client_staff
+                client, _ = _client_ctx(user)
+                if not client:
+                    return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
+                tables_qs = tables_qs.filter(group__client=client)
+
         if PermissionService.is_client_staff(user):
             accessible_ids = ClientAccessService.get_accessible_table_ids(user)
             if accessible_ids is not None:
@@ -5037,14 +5030,25 @@ def api_groups_list(request):
     """Return groups with tables + status counts as JSON for native groups screen."""
     try:
         user = request.user
-        client, _ = _client_ctx(user)
-        if not client:
-            return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
-
         # 1. Get accessible tables
         from idcards.models import IDCardTable, IDCardGroup
-        tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
+        tables_qs = IDCardTable.objects.filter(is_active=True, deleted_by_client=False)
         
+        if not PermissionService.is_super_admin(user):
+            # For non-superadmins, we must restrict by client or assigned IDs
+            if PermissionService.is_admin_staff(user):
+                accessible_client_ids = PermissionService.get_accessible_client_ids(user)
+                if accessible_client_ids:
+                    tables_qs = tables_qs.filter(group__client_id__in=accessible_client_ids)
+                else:
+                    return JsonResponse({'success': True, 'data': {'groups': [], 'tables': []}})
+            else:
+                # Regular client/client_staff
+                client, _ = _client_ctx(user)
+                if not client:
+                    return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
+                tables_qs = tables_qs.filter(group__client=client)
+
         if PermissionService.is_client_staff(user):
             accessible_ids = ClientAccessService.get_accessible_table_ids(user)
             if accessible_ids is not None:
@@ -5348,13 +5352,29 @@ def api_dashboard_data(request):
 @require_mobile_client
 @require_http_methods(["GET"])
 def api_reprint_data(request, client_id):
-    """Return reprint request/confirmed counts per table as JSON."""
+    """Return reprint request/confirmed counts per table as JSON.
+    If client_id is 0 and user is admin, returns global data.
+    """
     try:
         user = request.user
-        if not PermissionService.can_access_client(user, client_id):
-            return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+        is_admin = PermissionService.is_any_admin(user)
+        
+        if client_id == 0:
+            if not is_admin:
+                return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+            # Global view for admin
+            tables_qs = IDCardTable.objects.filter(is_active=True).select_related('group', 'group__client').order_by('group__name', 'name')
+            if PermissionService.is_admin_staff(user):
+                accessible_ids = PermissionService.get_accessible_client_ids(user)
+                if accessible_ids:
+                    tables_qs = tables_qs.filter(group__client_id__in=accessible_ids)
+                else:
+                    return JsonResponse({'success': True, 'data': {'tables': [], 'request_total': 0, 'confirmed_total': 0, 'download_total': 0}})
+        else:
+            if not PermissionService.can_access_client(user, client_id):
+                return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+            tables_qs = IDCardTable.objects.filter(group__client_id=client_id, is_active=True).select_related('group', 'group__client').order_by('group__name', 'name')
 
-        tables_qs = IDCardTable.objects.filter(group__client_id=client_id, is_active=True).select_related('group').order_by('group__name', 'name')
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
@@ -5538,10 +5558,7 @@ def api_profile_delete_request(request):
 def api_search(request):
     """Global search API across all client cards."""
     user = request.user
-    client, _ = _client_ctx(user)
-    if not client:
-        return JsonResponse({'success': False, 'message': 'No client'}, status=400)
-
+    
     query = _sanitize_search_query(request.GET.get('q', ''))
     filter_type = str(request.GET.get('filter', 'all') or 'all').strip().lower()
     if filter_type not in ('all', 'name', 'address', 'mobile'):
@@ -5556,11 +5573,17 @@ def api_search(request):
             'table', 'table__group', 'table__group__client'
         ).order_by('-updated_at')
     elif PermissionService.is_admin_staff(user):
-        accessible_ids = _admin_accessible_client_ids(user)
-        base_qs = IDCard.objects.filter(
-            table__group__client_id__in=accessible_ids,
-        ).select_related('table', 'table__group', 'table__group__client').order_by('-updated_at')
+        accessible_ids = PermissionService.get_accessible_client_ids(user)
+        if accessible_ids:
+            base_qs = IDCard.objects.filter(
+                table__group__client_id__in=accessible_ids,
+            ).select_related('table', 'table__group', 'table__group__client').order_by('-updated_at')
+        else:
+            return JsonResponse({'success': True, 'data': {'results': [], 'count': 0}})
     else:
+        client, _ = _client_ctx(user)
+        if not client:
+            return JsonResponse({'success': False, 'message': 'No client'}, status=400)
         base_qs = IDCard.objects.filter(
             table__group__client=client,
         ).select_related('table', 'table__group').order_by('-updated_at')
@@ -5781,44 +5804,55 @@ def api_mobile_shell_device_summary(request):
     return JsonResponse({'success': True, 'data': summary})
 
 
-@require_mobile_client
+@ensure_csrf_cookie
+@require_mobile_client(allow_public=True)
 @require_http_methods(["GET"])
 def api_server_info(request):
-    """Return lightweight server diagnostics for super/pro users only."""
+    """Return lightweight server diagnostics and seed CSRF cookie.
+    Publicly accessible (protected by UA check) to allow initial handshake.
+    Sensitive diagnostic info is only returned for authenticated admins.
+    """
     user = request.user
-    if not PermissionService.is_super_admin(user):
-        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-
-    import os
-    import platform
-    import socket
-    process_uptime_seconds = max(0, int(time.time() - APP_BOOT_TS))
-
-    # Disk usage info
-    try:
-        import shutil
-        total, used, free = shutil.disk_usage(os.getcwd())
-        disk = {
-            'total': total,
-            'used': used,
-            'free': free,
-            'percent': round(used / total * 100, 1) if total else None,
-        }
-    except Exception as e:
-        disk = None
-
+    
+    # Base info for everyone (seeds CSRF via @ensure_csrf_cookie)
     data = {
-        'hostname': socket.gethostname(),
-        'platform': platform.platform(),
-        'python_version': platform.python_version(),
-        'django_version': __import__('django').get_version(),
-        'environment': 'Development' if settings.DEBUG else 'Production',
-        'process_id': os.getpid(),
-        'cwd': os.getcwd(),
-        'process_uptime_seconds': process_uptime_seconds,
-        'disk': disk,
+        'success': True,
+        'version': getattr(settings, 'APP_VERSION', '1.0.0'),
+        'timestamp': timezone.now().isoformat(),
+        'authenticated': user.is_authenticated,
     }
-    return JsonResponse({'success': True, 'data': data})
+    
+    # Sensitive info for admins only
+    if user.is_authenticated and PermissionService.is_super_admin(user):
+        import os
+        import platform
+        import socket
+        import shutil
+        
+        # Disk usage info
+        disk = None
+        try:
+            total, used, free = shutil.disk_usage(os.getcwd())
+            disk = {
+                'total': total,
+                'used': used,
+                'free': free,
+                'percent': round(used / total * 100, 1) if total else None,
+            }
+        except Exception:
+            pass
+
+        data.update({
+            'hostname': socket.gethostname(),
+            'platform': platform.platform(),
+            'python_version': platform.python_version(),
+            'django_version': __import__('django').get_version(),
+            'environment': 'Development' if settings.DEBUG else 'Production',
+            'uptime': max(0, int(time.time() - APP_BOOT_TS)),
+            'disk': disk,
+        })
+        
+    return JsonResponse(data)
 
 
 @require_mobile_client
