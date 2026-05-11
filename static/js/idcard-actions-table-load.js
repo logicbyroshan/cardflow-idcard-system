@@ -32,7 +32,7 @@ async function loadMoreData() {
     try {
         const url = `/api/table/${_ts.lazyLoadState.tableId}/cards/?${window.IDCardApp._buildFilterParams()}`;
         
-        const data = await ApiClient.get(url);
+        const data = await ApiClient.get(url, { timeout: 120000 });
         
         // Guard against stale responses after a resetAndReload / search change
         if (mySeq !== _ts._loadRequestSeq) return;
@@ -99,6 +99,13 @@ async function loadMoreData() {
         }
         
     } catch (error) {
+        if (mySeq !== _ts._loadRequestSeq) {
+            return;
+        }
+        if (error && (error.code === 'TIMEOUT' || error.name === 'AbortError')) {
+            console.warn('Lazy-load request cancelled or timed out during a reload:', error);
+            return;
+        }
         console.error('Error loading more data:', error);
         if (typeof window.showToast === 'function') window.showToast('Failed to load more data', false);
     } finally {
@@ -253,6 +260,11 @@ async function _sequencedLoadMore() {
 async function resetAndReload() {
     // Bump sequence so any in-flight loadMoreData calls are discarded
     _ts._loadRequestSeq = (_ts._loadRequestSeq || 0) + 1;
+
+    if (_ts._sentinelObserver) {
+        _ts._sentinelObserver.disconnect();
+        _ts._sentinelObserver = null;
+    }
 
     //  Clear selection state so stale "select all" doesn't persist 
     window.IDCardApp.allDbCardIds = null;
