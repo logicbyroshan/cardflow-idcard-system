@@ -301,27 +301,6 @@ export const IconPaperPlane = ({ size = 24, color = "#fff" }) => (
   </Svg>
 );
 
-export const IconClock = ({ size = 24, color = "#fff" }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" />
-    <Path d="M12 6V12L16 14" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-export const IconThumbsUp = ({ size = 24, color = "#fff" }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M14 9V5C14 4.20435 13.6839 3.44129 13.1213 2.87868C12.5587 2.31607 11.7956 2 11 2L7 11V22H18.28C18.7621 22.0008 19.2304 21.8344 19.6015 21.5305C19.9725 21.2266 20.2241 20.8041 20.31 20.33L21.66 12.33C21.7135 12.0401 21.7116 11.7423 21.6544 11.4531C21.5973 11.1639 21.4862 10.8893 21.3276 10.6449C21.1691 10.4005 20.9664 10.1915 20.7309 10.03C20.4955 9.86851 20.2323 9.75787 19.956 9.70422C19.8306 9.68068 19.7032 9.6687 19.5755 9.66838L14 9Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <Path d="M7 11H2V22H7V11Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-export const IconArchive = ({ size = 24, color = "#fff" }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Polyline points="21 8 21 21 3 21 3 8" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <Rect x="1" y="3" width="22" height="5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <Line x1="10" y1="12" x2="14" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
 
 export const IconLightbulb = ({ size = 24, color = "#fff" }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

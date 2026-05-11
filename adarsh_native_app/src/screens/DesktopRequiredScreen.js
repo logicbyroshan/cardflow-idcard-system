@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, gradients, typography, spacing, radius, shadows } from '../theme';
@@ -15,7 +15,7 @@ export default function DesktopRequiredScreen({ navigation, route }) {
       <View style={styles.card}>
         {/* Icon */}
         <View style={styles.iconWrap}>
-          <FontAwesome5 name="desktop" size={24} color="#f59e0b" solid />
+          <DynamicIcon name="desktop" size={24} color="#f59e0b" />
         </View>
 
         <Text style={styles.title}>{statusDisplay} Is Desktop Only</Text>
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: typography.base,
-    fontWeight: typography.semibold,
+    fontFamily: fontFamily.semibold,
     color: colors.gray700,
   },
   primaryBtnWrap: {
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     fontSize: typography.base,
-    fontWeight: typography.bold,
+    fontFamily: fontFamily.bold,
     color: colors.white,
   },
 });
