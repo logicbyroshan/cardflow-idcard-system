@@ -366,9 +366,18 @@ def require_mobile_client(view_func):
     After login, redirects back to /app/ (PWA) via ?next= parameter.
     """
     @wraps(view_func)
-    @login_required(login_url='/app/login/')
     def wrapper(request, *args, **kwargs):
-        is_api_request = request.path.startswith('/app/api/')
+        is_api_request = request.path.startswith('/api/mobile/')
+        
+        if not request.user.is_authenticated:
+            if is_api_request:
+                return JsonResponse({
+                    'success': False,
+                    'authenticated': False,
+                    'message': 'Authentication required',
+                }, status=401)
+            return redirect('/app/login/')
+
         user = request.user
 
         # Mobile app uses its own auth checkpoint inside the same Django session.
