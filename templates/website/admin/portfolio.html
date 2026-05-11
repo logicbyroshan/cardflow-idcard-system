@@ -362,7 +362,7 @@
                     <button class="btn btn-sm portfolio-pane-switch" type="button" onclick="openPortfolioPane('portfolioCategoriesPane')">
                         <i class="fa-solid fa-layer-group"></i> Categories
                     </button>
-                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
+                    {% if is_super_admin or perm_website_add %}
                     <button class="btn btn-secondary" type="button" onclick="openBulkUploadModal()">
                         <i class="fa-solid fa-images"></i> Bulk Upload
                     </button>
@@ -382,7 +382,7 @@
 
             <div class="wa-bulk-action-bar" id="portfolioBulkBar" style="display:none;">
                 <span id="portfolioSelectedCount">0 selected</span>
-                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
+                {% if is_super_admin or perm_website_delete %}
                 <button class="btn btn-danger btn-sm" onclick="bulkDeletePortfolio()"><i class="fa-solid fa-trash"></i> Delete Selected</button>
                 {% endif %}
                 <button class="btn btn-neutral btn-sm" onclick="clearPortfolioSelection()"><i class="fa-solid fa-xmark"></i> Clear</button>
@@ -465,10 +465,10 @@
                                 </span>
                             </td>
                             <td class="wa-actions">
-                                {% if is_super_admin or perm_website_edit or perm_manage_website_portfolio %}
+                                {% if is_super_admin or perm_website_edit %}
                                 <button class="btn btn-icon" title="Edit" onclick="editPortfolio({{ p.id }})"><i class="fa-solid fa-pen"></i></button>
                                 {% endif %}
-                                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
+                                {% if is_super_admin or perm_website_delete %}
                                 <button class="btn btn-icon danger" title="Delete" onclick="deletePortfolio({{ p.id }})"><i class="fa-solid fa-trash"></i></button>
                                 {% endif %}
                             </td>
@@ -538,7 +538,7 @@
                     <button class="btn btn-sm portfolio-pane-switch" type="button" onclick="openPortfolioPane('portfolioItemsPane')">
                         <i class="fa-solid fa-images"></i> Portfolio Items
                     </button>
-                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
+                    {% if is_super_admin or perm_website_add %}
                     <button class="btn btn-primary" type="button" onclick="openCategoryModal()">
                         <i class="fa-solid fa-plus"></i> Add Category
                     </button>
@@ -611,10 +611,10 @@
                             </td>
                             <td class="wa-actions">
                                 {% if not cat.is_default %}
-                                {% if is_super_admin or perm_website_edit or perm_manage_website_portfolio %}
+                                {% if is_super_admin or perm_website_edit %}
                                 <button class="btn btn-icon" title="Edit" onclick="editCategory({{ cat.id }}, '{{ cat.name|escapejs }}', '{{ cat.icon|escapejs }}', '{{ cat.description|escapejs }}', {{ cat.order }}, {{ cat.is_bento|yesno:'true,false' }}, '{{ cat.bento_size|escapejs }}')"><i class="fa-solid fa-pen"></i></button>
                                 {% endif %}
-                                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
+                                {% if is_super_admin or perm_website_delete %}
                                 <button class="btn btn-icon danger" title="Delete" onclick="deleteCategory({{ cat.id }})"><i class="fa-solid fa-trash"></i></button>
                                 {% endif %}
                                 {% endif %}
@@ -851,7 +851,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/portfolio.js' %}?v=139"></script>
+<script src="{% static 'js/website-admin/portfolio.js' %}?v=140"></script>
 <script>
 function switchPortfolioPane(targetId) {
     var panes = document.querySelectorAll('.portfolio-pane');

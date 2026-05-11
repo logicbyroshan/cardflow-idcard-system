@@ -51,17 +51,6 @@
     <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' or active_page == 'idcard_group' or active_page == 'group_settings' %}active{% endif %}">
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>
     </a>
-    {% if is_super_admin or perm_website_view or perm_manage_website_clients or perm_manage_website_portfolio %}
-    <div class="nav-section">
-      <div class="nav-section-line"></div>
-      <span class="nav-section-title">Site Management</span>
-      <div class="nav-section-line"></div>
-    </div>
-    <a href="{% url 'manage_website' %}" class="{% if active_page == 'manage_website' %}active{% endif %}">
-      <i class="fa-solid fa-globe"></i><span>Manage Website</span>
-    </a>
-    {% endif %}
-    
     {% elif is_client %}
     <!-- Client Menu - Permission-controlled -->
     {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_reprint_request_list or perm_confirmed_list %}
@@ -108,9 +97,6 @@
         <i class="fa-solid fa-chevron-down sidebar-dropdown-arrow" :class="{ 'rotated': open }"></i>
       </button>
       <div class="sidebar-dropdown-menu" x-show="open" x-collapse x-cloak>
-        <a href="{% url 'adarsh_cropper' %}" class="{% if active_page == 'adarsh_cropper' %}active{% endif %}">
-          <i class="fa-solid fa-crop"></i><span>Adarsh Cropper</span>
-        </a>
       </div>
     </div>
     {% endif %}

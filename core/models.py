@@ -1026,58 +1026,6 @@ class BackgroundTask(models.Model):
         return count
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  Cropper Auto-Update — Tracks published Face Cropper releases
-# ═══════════════════════════════════════════════════════════════════════════
-
-class CropperRelease(models.Model):
-    """
-    Stores metadata about each published Adarsh Cropper build.
-
-    Created automatically by the GitHub Actions CI/CD workflow via
-    the ``/api/cropper/release-webhook/`` endpoint after a successful
-    build & upload of the installer EXE.
-
-    The admin panel's Cropper page compares the installed engine version
-    against the latest release stored here to show an "Update Available"
-    banner with a download link.
-    """
-
-    version = models.CharField(
-        max_length=30,
-        unique=True,
-        help_text='Semantic version string, e.g. "3.0.1"',
-    )
-    download_url = models.URLField(
-        max_length=500,
-        help_text="Direct URL to the installer EXE (GitHub Release asset or self-hosted).",
-    )
-    changelog = models.TextField(
-        blank=True,
-        default="",
-        help_text="Human-readable changelog / release notes (Markdown OK).",
-    )
-    is_latest = models.BooleanField(
-        default=False,
-        db_index=True,
-        help_text="Only one release should be marked as latest at a time.",
-    )
-    released_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-released_at"]
-        verbose_name = "Cropper Release"
-        verbose_name_plural = "Cropper Releases"
-
-    def __str__(self):
-        tag = " [latest]" if self.is_latest else ""
-        return f"Adarsh Cropper v{self.version}{tag}"
-
-    def save(self, *args, **kwargs):
-        """Ensure only ONE release is marked ``is_latest`` at any time."""
-        if self.is_latest:
-            CropperRelease.objects.filter(is_latest=True).exclude(pk=self.pk).update(is_latest=False)
-        super().save(*args, **kwargs)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

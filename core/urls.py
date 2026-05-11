@@ -46,11 +46,13 @@ urlpatterns = [
     path('api/presence/track/', views.api_presence_track, name='api_presence_track'),
     path('api/presence/live-count/', views.api_live_client_presence, name='api_live_client_presence'),
 
-    # Print & Reprint Overview API (dashboard)
-    path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
+
     
     # Recent Activity API
     path('api/recent-activity/', views.api_recent_activity, name='api_recent_activity'),
+    
+    # Reprint Overview API
+    path('api/reprint-overview/', views.api_reprint_overview, name='api_reprint_overview'),
     
     # Staff Management
     path('manage-staff/', views.manage_staff, name='manage_staff'),
@@ -77,7 +79,6 @@ urlpatterns = [
     # NOTE: Reprint Cards moved to 'reprintcard' app — see config/urls.py
 
     # ==================== SERVICES ==
-    path('services/adarsh-cropper/', views.adarsh_cropper, name='adarsh_cropper'),
 
     # User Options (Pro User only)
     path('login-as-user/', views.login_as_user_page, name='login_as_user'),
@@ -89,44 +90,6 @@ urlpatterns = [
     path('pro-user/super-mode/', views.pro_user_super_mode_page, name='pro_user_super_mode'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
 
-    # Engine installer download (served via Django so headers are correct)
-    path('engine/download/', views.engine_download, name='engine_download'),
-
-    # Engine Proxy APIs (browser → Django → Adarsh Engine, avoids CORS)
-    path('api/engine/status/', views.api_engine_status, name='api_engine_status'),
-    path('api/engine/self-update/', views.api_engine_self_update, name='api_engine_self_update'),
-    path('api/engine/process-folder/', views.api_engine_process_folder, name='api_engine_process_folder'),
-    path('api/engine/page-photo-picker-folder/', views.api_engine_page_photo_picker_folder, name='api_engine_page_photo_picker_folder'),
-    path('api/engine/preview/', views.api_engine_preview, name='api_engine_preview'),
-    path('api/engine/serve-image/', views.api_engine_serve_image, name='api_engine_serve_image'),
-    path('api/engine/download-zip/', views.api_engine_download_zip, name='api_engine_download_zip'),
-    path('api/engine/save-edited/', views.api_engine_save_edited, name='api_engine_save_edited'),
-    path('api/engine/delete-image/', views.api_engine_delete_image, name='api_engine_delete_image'),
-    path('api/engine/compress-folder/', views.api_engine_compress_folder, name='api_engine_compress_folder'),
-    path('api/engine/adjust-image/', views.api_engine_adjust_image, name='api_engine_adjust_image'),
-    path('api/engine/rename-preview/', views.api_engine_rename_preview, name='api_engine_rename_preview'),
-    path('api/engine/rename-execute/', views.api_engine_rename_execute, name='api_engine_rename_execute'),
-    path('api/engine/rename-operations/', views.api_engine_rename_operations, name='api_engine_rename_operations'),
-    path('api/engine/clients/', views.api_engine_clients, name='api_engine_clients'),
-    path('api/engine/stop/', views.api_engine_stop, name='api_engine_stop'),
-    path('api/engine/shutdown/', views.api_engine_shutdown, name='api_engine_shutdown'),
-
-
-    # Crop Selected Images APIs (batch crop workflow)
-    path('api/table/<int:table_id>/cards/prepare-crop/', views.api_prepare_crop, name='api_prepare_crop'),
-    path('api/table/<int:table_id>/cards/process-crop/', views.api_process_crop, name='api_process_crop'),
-    path('api/crop-batch/<str:batch_id>/preview/', views.api_crop_batch_preview, name='api_crop_batch_preview'),
-    path('api/crop-batch/<str:batch_id>/serve-image/', views.api_crop_batch_serve_image, name='api_crop_batch_serve_image'),
-    path('api/table/<int:table_id>/cards/reupload-cropped/', views.api_reupload_cropped, name='api_reupload_cropped'),
-    path('api/crop-batch/<str:batch_id>/cleanup/', views.api_crop_batch_cleanup, name='api_crop_batch_cleanup'),
-
-    # Cropper Auto-Update APIs
-    path('api/cropper/release-webhook/', views.api_cropper_release_webhook, name='api_cropper_release_webhook'),
-    path('api/cropper/latest-version/', views.api_cropper_latest_version, name='api_cropper_latest_version'),
-
-    # Website Management → redirect to new website admin dashboard
-    path('manage-website/', views.manage_website, name='manage_website'),
-    
     # Manage Panel
     path('manage-panel/', views.manage_panel, name='manage_panel'),
     path('api/email-logs/', views.api_email_logs, name='api_email_logs'),
@@ -168,9 +131,6 @@ urlpatterns = [
     path('tutorial/personal-guide/', views.tutorial_personal_guide, name='tutorial_personal_guide'),
     path('tutorial/personal-guide/download/', views.tutorial_personal_guide_download, name='tutorial_personal_guide_download'),
 
-    # Office Work (dedicated app)
-    path('', include('officework.urls')),
-    
     # System Settings
     path('settings/', views.settings, name='settings'),
     
@@ -293,6 +253,9 @@ urlpatterns = [
     path('api/pro-user/super-mode/users/', views.api_pro_user_super_mode_users, name='api_pro_user_super_mode_users'),
     path('api/pro-user/super-mode/assign/', views.api_pro_user_super_mode_assign, name='api_pro_user_super_mode_assign'),
     path('api/pro-user/super-mode/self/', views.api_pro_user_super_mode_self, name='api_pro_user_super_mode_self'),
+    path('api/pro-user/sessions/revoke/', views.api_pro_user_revoke_sessions, name='api_pro_user_revoke_sessions'),
+    path('api/pro-user/sessions/list/', views.api_pro_user_list_sessions, name='api_pro_user_list_sessions'),
+    path('api/pro-user/sessions/revoke-single/', views.api_pro_user_revoke_session_key, name='api_pro_user_revoke_session_key'),
 
     # Settings/Profile APIs (for all user types)
     path('api/profile/', views.api_get_profile, name='api_get_profile'),

@@ -7,6 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('website', '0023_remove_portfoliocategory_meta_description_and_more'),
+        ('sites', '0001_initial'),
     ]
 
     def update_site(apps, schema_editor):

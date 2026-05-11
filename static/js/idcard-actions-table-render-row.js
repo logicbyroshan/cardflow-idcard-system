@@ -168,7 +168,7 @@ function createRowFromCard(card, index) {
             } else {
                 const widthAlignClass = getTdWidthClass(fieldName, fieldType);
                 
-                // Client users on approved/download/reprint: no inline editing
+                // Client users on approved/download: no inline editing
                 const isLockedForClient = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER
                     && typeof CLIENT_READONLY_STATUSES !== 'undefined'
                     && CLIENT_READONLY_STATUSES.indexOf(_ts.lazyLoadState.currentStatus) !== -1);

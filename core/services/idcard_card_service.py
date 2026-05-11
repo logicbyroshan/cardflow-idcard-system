@@ -9,6 +9,7 @@ Part of the IDCardService split. Handles:
   class filtering, and name-field detection.
 """
 import logging
+import os
 import re
 from typing import Dict, Any, List
 
@@ -30,16 +31,15 @@ logger = logging.getLogger(__name__)
 class IDCardCardService(BaseService):
     """Service for individual ID Card operations."""
 
-    VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']
+    VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download']
 
     # Allowed status transitions: key = current status, value = list of valid target statuses
     VALID_TRANSITIONS = {
         'pending':  ['verified', 'pool'],
         'verified': ['approved', 'pending', 'pool'],
         'approved': ['download', 'verified', 'pool'],
-        'download': ['approved', 'reprint'],
+        'download': ['approved'],
         'pool':     ['pending'],
-        'reprint':  ['download'],
     }
 
     # Forward transitions that require all image fields to be present
@@ -154,6 +154,22 @@ class IDCardCardService(BaseService):
                 branch_field = fname
 
         return class_field, section_field, course_field, branch_field
+
+    @classmethod
+    def normalize_name(cls, name):
+        """Normalize field name by removing punctuation and whitespace.
+        
+        This allows "SCHOLAR NO." to match "SCHOLAR NO" and similar variants.
+        Returns a normalized key (alphanumeric only, uppercase) or empty string if name is empty.
+        
+        Example:
+            normalize_name('SCHOLAR NO.') → 'SCHOLARNNO'
+            normalize_name('SCHOLAR NO') → 'SCHOLARNNO'
+        """
+        if not name:
+            return ''
+        # Remove all non-alphanumeric characters and convert to uppercase
+        return re.sub(r'[^A-Z0-9]+', '', str(name).upper())
 
     @classmethod
     def _apply_class_filter(cls, qs, class_filter, class_field_name, table_id=None):
@@ -330,16 +346,27 @@ class IDCardCardService(BaseService):
                 text_qs = text_qs.annotate(**annotations)
             matched_ids.update(text_qs.filter(q).values_list(id_lookup, flat=True))
 
-        if image_fields:
-            candidate_rows = queryset.filter(**{f'{json_field}__icontains': search}).values(id_lookup, json_field)
-            for row in candidate_rows.iterator(chunk_size=500):
-                field_data = row.get(json_field) or {}
-                if not isinstance(field_data, dict):
-                    continue
-                if any(cls.image_filename_contains_query(field_data.get(fname, ''), search) for fname in image_fields):
-                    row_id = row.get(id_lookup)
-                    if row_id is not None:
-                        matched_ids.add(row_id)
+        candidate_rows = queryset.values(id_lookup, json_field)
+        for row in candidate_rows.iterator(chunk_size=500):
+            field_data = row.get(json_field) or {}
+            if not isinstance(field_data, dict):
+                continue
+
+            if image_fields and any(cls.image_filename_contains_query(field_data.get(fname, ''), search) for fname in image_fields):
+                row_id = row.get(id_lookup)
+                if row_id is not None:
+                    matched_ids.add(row_id)
+                continue
+
+            if any(
+                isinstance(value, str)
+                and (('/' in value) or ('\\' in value) or value.startswith('PENDING:'))
+                and cls.image_filename_contains_query(value, search)
+                for value in field_data.values()
+            ):
+                row_id = row.get(id_lookup)
+                if row_id is not None:
+                    matched_ids.add(row_id)
 
         if not matched_ids:
             return queryset.none()
@@ -353,7 +380,16 @@ class IDCardCardService(BaseService):
         """Serialize IDCard to dict"""
         # Strip internal __ref_ keys (used by reupload processor for matching)
         fd = card.field_data or {}
-        public_fd = {k: v for k, v in fd.items() if not k.startswith('__')}
+        public_fd = {}
+        for k, v in fd.items():
+            if isinstance(k, str) and k.startswith('__'):
+                continue
+            if isinstance(k, str) and isinstance(v, str) and cls.is_image_field_by_name(k):
+                value = v.strip()
+                if value and '/' not in value and '\\' not in value and not value.startswith('PENDING:'):
+                    public_fd[k] = f'PENDING:{os.path.basename(value)}'
+                    continue
+            public_fd[k] = v
         data = {
             'id': card.id,
             'table_id': card.table_id,
@@ -724,6 +760,11 @@ class IDCardCardService(BaseService):
 
             # Uppercase text values only — preserve image paths
             field_data = cls.uppercase_field_data_selective(field_data, table.fields)
+            normalized_field_data = {
+                str(k).strip().upper(): v
+                for k, v in field_data.items()
+                if isinstance(k, str)
+            }
 
             # Track saved images for dual-write (Phase 2)
             saved_images = []
@@ -735,6 +776,7 @@ class IDCardCardService(BaseService):
                     if cls.is_image_field(field):
                         field_name = field['name']
                         file_key = f"image_{field_name}"
+                        field_key_upper = str(field_name).strip().upper()
 
                         if file_key in image_files:
                             image_counter += 1
@@ -765,6 +807,58 @@ class IDCardCardService(BaseService):
                                     'original_filename': getattr(uploaded_file, 'name', None)
                                 })
 
+            # Normalize image fields even when the user only typed a filename.
+            for field in table.fields:
+                if not cls.is_image_field(field):
+                    continue
+
+                field_name = field['name']
+                field_key_upper = str(field_name).strip().upper()
+
+                uploaded_file = None
+                if image_files:
+                    uploaded_file = image_files.get(f"image_{field_name}")
+
+                raw_value = field_data.get(field_name)
+                if raw_value is None:
+                    raw_value = normalized_field_data.get(field_key_upper)
+
+                if uploaded_file is None and raw_value is None:
+                    continue
+
+                if uploaded_file is None:
+                    raw_text = str(raw_value or '').strip()
+                    if raw_text and '/' not in raw_text and '\\' not in raw_text and not raw_text.startswith('PENDING:'):
+                        field_data[field_name] = f'PENDING:{os.path.basename(raw_text)}'
+                        continue
+
+                    result = ImageService.process_image_field(
+                        field_name=field_name,
+                        new_value=raw_value,
+                        existing_value='',
+                        client=client,
+                        card=None,
+                        uploaded_file=None,
+                        batch_counter=1,
+                        uploaded_by=uploaded_by,
+                    )
+                    if result.success:
+                        for existing_key in [
+                            key for key in list(field_data.keys())
+                            if isinstance(key, str) and str(key).strip().upper() == field_key_upper and key != field_name
+                        ]:
+                            field_data.pop(existing_key, None)
+                        field_data[field_name] = result.data.get('final_value', raw_value)
+
+            for key in list(field_data.keys()):
+                if not isinstance(key, str):
+                    continue
+                if not cls.is_image_field({'name': key, 'type': 'image'}):
+                    continue
+                value = str(field_data.get(key, '') or '').strip()
+                if value and '/' not in value and '\\' not in value and not value.startswith('PENDING:'):
+                    field_data[key] = f'PENDING:{os.path.basename(value)}'
+
             # Atomic block: card creation + media records together
             with transaction.atomic():
                 from idcards.services_workflow import WorkflowService
@@ -773,6 +867,22 @@ class IDCardCardService(BaseService):
                     field_data=field_data,
                     status=WorkflowService.INITIAL_STATUS
                 )
+
+                normalized_after_create = dict(card.field_data or {})
+                normalized_after_create_changed = False
+                for field in table.fields:
+                    if not cls.is_image_field(field):
+                        continue
+
+                    field_name = field['name']
+                    current_value = str(normalized_after_create.get(field_name, '') or '').strip()
+                    if current_value and '/' not in current_value and '\\' not in current_value and not current_value.startswith('PENDING:'):
+                        normalized_after_create[field_name] = f'PENDING:{os.path.basename(current_value)}'
+                        normalized_after_create_changed = True
+
+                if normalized_after_create_changed:
+                    card.field_data = normalized_after_create
+                    card.save(update_fields=['field_data'])
 
                 # DUAL-WRITE: Create CardMedia records for saved images
                 for img_info in saved_images:
@@ -914,10 +1024,39 @@ class IDCardCardService(BaseService):
                     if has_any_field_data:
                         field_data = cls.uppercase_field_data_selective(field_data, table.fields)
 
-                    # Merge text (non-image) fields
+                    # Build field name lookup maps (exact and normalized) to handle punctuation variants
+                    valid_field_map = {}  # lowercase → canonical
+                    normalized_field_map = {}  # normalized (no punct) → canonical
+                    for table_field in (table.fields or []):
+                        if not isinstance(table_field, dict):
+                            continue
+                        raw_name = str(table_field.get('name', '')).strip()
+                        if not raw_name:
+                            continue
+                        raw_key = raw_name.lower()
+                        normalized_key = cls.normalize_name(raw_name)
+                        if raw_key not in valid_field_map:
+                            valid_field_map[raw_key] = raw_name
+                        if normalized_key and normalized_key not in normalized_field_map:
+                            normalized_field_map[normalized_key] = raw_name
+
+                    # Merge text (non-image) fields, normalizing field names to canonical
                     for key, value in field_data.items():
-                        if key not in image_field_names:
-                            existing_data[key] = value
+                        # Try exact match first, then normalized match
+                        canonical_key = None
+                        if key.lower() in valid_field_map:
+                            canonical_key = valid_field_map[key.lower()]
+                        else:
+                            normalized_key = cls.normalize_name(key)
+                            if normalized_key in normalized_field_map:
+                                canonical_key = normalized_field_map[normalized_key]
+                        
+                        # Use canonical key if found, otherwise use original key
+                        if canonical_key is None:
+                            canonical_key = key
+                        
+                        if canonical_key not in image_field_names:
+                            existing_data[canonical_key] = value
 
                     # Process each image field via ImageService.process_image_field
                     image_counter = 0
@@ -1037,25 +1176,58 @@ class IDCardCardService(BaseService):
                     return ServiceResult(success=False, message='Field name is required!')
 
                 valid_field_map = {}
+                normalized_field_map = {}
                 for table_field in (table.fields or []):
                     if not isinstance(table_field, dict):
                         continue
                     raw_name = str(table_field.get('name', '')).strip()
-                    if raw_name and raw_name.lower() not in valid_field_map:
-                        valid_field_map[raw_name.lower()] = raw_name
+                    if not raw_name:
+                        continue
+
+                    raw_key = raw_name.lower()
+                    normalized_key = cls.normalize_name(raw_name)
+
+                    if raw_key not in valid_field_map:
+                        valid_field_map[raw_key] = raw_name
+                    if normalized_key and normalized_key not in normalized_field_map:
+                        normalized_field_map[normalized_key] = raw_name
 
                 normalized_field = field_name.lower()
-                if normalized_field not in valid_field_map:
-                    return ServiceResult(success=False, message='Invalid field name')
+                normalized_key = cls.normalize_name(field_name)
 
-                canonical_field = valid_field_map[normalized_field]
+                if normalized_field in valid_field_map:
+                    canonical_field = valid_field_map[normalized_field]
+                elif normalized_key in normalized_field_map:
+                    canonical_field = normalized_field_map[normalized_key]
+                else:
+                    return ServiceResult(success=False, message='Invalid field name')
 
                 field_data = card.field_data or {}
 
                 if isinstance(value, str):
-                    # Only uppercase non-image fields to protect image paths
+                    # If this is an image field, process via ImageService to
+                    # canonicalize paths, convert bare filenames to PENDING:,
+                    # and handle removals. This mirrors update_card behavior.
                     if cls.is_image_field_name_for_table(canonical_field, table.fields):
-                        field_data[canonical_field] = value
+                        existing_value = field_data.get(canonical_field, '')
+                        try:
+                            result = ImageService.process_image_field(
+                                field_name=canonical_field,
+                                new_value=value,
+                                existing_value=existing_value,
+                                client=table.group.client,
+                                card=card,
+                                uploaded_file=None,
+                                batch_counter=1,
+                                uploaded_by=None,
+                            )
+                            if result.success:
+                                field_data[canonical_field] = result.data.get('final_value', value)
+                            else:
+                                # Fallback to raw value if processing failed
+                                field_data[canonical_field] = value
+                        except Exception:
+                            field_data[canonical_field] = value
                     else:
                         field_data[canonical_field] = value.upper()
                 else:

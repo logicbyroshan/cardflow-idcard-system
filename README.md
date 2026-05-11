@@ -23,6 +23,43 @@ Current version source of truth:
 - VERSION.txt: v3.19.0
 Last deep README refresh: 2026-04-16
 
+### Trusted Clients — Persistent Logo Cover Colors (2026-05-02)
+
+- Purpose: Prevent the trusted-client card cover from re-deriving the logo color on every page load. The platform now computes a representative theme color once when a client `website_logo` is uploaded and persists that value on the `Client` record. The public trusted-clients pages read and render the stored gradient rather than computing it in the browser each request.
+
+- Files changed:
+  - `client/models.py` — added `website_logo_cover_color` and `website_logo_cover_color_dark` fields to store the primary and darker hex colors.
+  - `website/services.py` — added `_extract_logo_theme_colors()` and now computes and saves the two-color theme pair when a logo is uploaded or replaced.
+  - `website/views.py` — the trusted-clients view now includes the persisted color values in the template context.
+  - `templates/website/trusted-clients.html` — removed the client-side canvas color extraction and now renders a stable `linear-gradient(...)` when persisted colors exist.
+  - `core/migrations/0073_client_website_logo_cover_colors.py` — adds the new fields and backfills existing logos with computed colors as part of the migration.
+
+- Why this change: Runtime canvas-based color extraction caused visual flicker and recomputation on every page load, making the card cover shift from a default blue to logo-derived colors repeatedly. Persisting the computed value keeps UI stable and reduces client-side processing.
+
+- Developer notes / deployment steps:
+  1. Run migrations on your target environment to add the new fields and backfill existing logos:
+
+     ```bash
+     python manage.py migrate
+     ```
+
+  2. Verify the instance checks:
+
+     ```bash
+     python manage.py check
+     ```
+
+  3. If you need to revert the schema change (not recommended for production), migrate the `core` app back to the previous migration (0072):
+
+     ```bash
+     python manage.py migrate core 0072
+     ```
+
+  4. The migration runs a light image pixel sampling of each `website_logo` to compute a representative color. On very large numbers of logos, allow the migration to run with sufficient time and disk I/O; it is safe to run during low-traffic windows.
+
+- Rollout consideration: Because the trusted-clients page now reads colors from the database, newly-uploaded logos will show the correct gradient immediately after upload. Existing cached pages may need their cache invalidated (clear site cache or wait for the cache TTL) to see backfilled colors.
+
+
 ---
 
 ## Table of Contents
@@ -177,7 +214,7 @@ Key infra files:
 | client | Client and client staff operations | Yes |
 | staff | Staff profile and permissions | Yes |
 | idcards | ID card group/table/card data models | Yes |
-| cardprint | Print list to finalized to pool workflow | Uses shared models |
+| cardprint | Shared card rendering helpers used by reprint surfaces | Uses shared models |
 | reprintcard | Requested/confirmed/downloaded/pool reprint workflow | Uses shared models |
 | exports | Export orchestration and output generation | Uses shared models |
 | mediafiles | CardMedia storage and logs | Yes |
@@ -206,12 +243,6 @@ Key infra files:
 pending -> verified -> pool -> approved -> download
 
 Reprint runs as a dedicated path under reprint workflows.
-
-### Print workflow
-
-1. Print List
-2. Finalized
-3. Pool
 
 ### Reprint workflow
 

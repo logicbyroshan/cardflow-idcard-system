@@ -131,6 +131,15 @@ class ImageFieldsMixin:
             )
         
         new_value = str(new_value).strip() if new_value else ''
+
+        # Bare filenames are treated as pending references until they are
+        # replaced with a real media path by the import/upload pipeline.
+        # Guard against double-prefixing when callers accidentally pass
+        # an already-prefixed value like 'PENDING:roll_1.jpg'.
+        if new_value and '/' not in new_value and '\\' not in new_value:
+            if new_value.startswith('PENDING:'):
+                return cls.mark_pending(field_name, new_value[8:])
+            return cls.mark_pending(field_name, os.path.basename(new_value))
         
         # ── CASE 6: PENDING reference ───────────────────────────────
         if new_value.startswith('PENDING:'):

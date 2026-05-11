@@ -153,30 +153,24 @@ def api_dashboard_data(request):
 
 @require_client_user
 @require_http_methods(["GET"])
-def api_reprint_stats(request):
-    """
-    API: Get reprint statistics for the client dashboard section.
-    """
-    result = ClientDashboardService.get_reprint_stats(request.user)
-
-    if result.success:
-        return JsonResponse({'success': True, 'data': result.data})
-
-    return JsonResponse({'success': False, 'message': result.message}, status=400)
-
-
-@require_client_user
-@require_http_methods(["GET"])
 def api_reprint_history(request):
     """
-    API: Get detailed reprint request history for the client dashboard table.
+    API: Return reprint history for the client dashboard.
+
+    This wraps ClientDashboardService.get_reprint_history so templates
+    and client-side code can fetch a single consolidated endpoint.
     """
-    result = ClientDashboardService.get_reprint_history(request.user)
+    try:
+        result = ClientDashboardService.get_reprint_history(request.user)
+        if result.success:
+            return JsonResponse({'success': True, 'data': result.data})
+        return JsonResponse({'success': False, 'message': result.message}, status=400)
+    except Exception as e:
+        logger.exception('api_reprint_history failed: %s', e)
+        return JsonResponse({'success': False, 'message': 'An unexpected error occurred.'}, status=500)
 
-    if result.success:
-        return JsonResponse({'success': True, 'data': result.data})
 
-    return JsonResponse({'success': False, 'message': result.message}, status=400)
+
 
 
 @require_client_user

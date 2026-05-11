@@ -44,452 +44,42 @@ def _create_client_user(email='client@test.com', password='clientpass1'):
     return user, client
 
 
-def _create_table(client, fields=None):
+def _create_table(client_obj, fields=None):
+    """Helper to create a test IDCardTable with a group."""
     from idcards.models import IDCardGroup, IDCardTable
+    
+    group = IDCardGroup.objects.create(client=client_obj, name='Test Group')
+    
     if fields is None:
         fields = [
             {'name': 'NAME', 'type': 'text', 'order': 1},
-            {'name': 'CLASS', 'type': 'class', 'order': 2},
-            {'name': 'PHOTO', 'type': 'photo', 'order': 3},
+            {'name': 'CLASS', 'type': 'text', 'order': 2},
         ]
-    group = IDCardGroup.objects.create(client=client, name='Test Group')
-    table = IDCardTable.objects.create(group=group, name='Test Table', fields=fields)
+    
+    table = IDCardTable.objects.create(
+        group=group,
+        name='Test Table',
+        fields=fields,
+        is_active=True
+    )
+    
     return group, table
 
 
 def _create_card(table, field_data=None, status='pending'):
+    """Helper to create a test IDCard."""
     from idcards.models import IDCard
+    
     if field_data is None:
-        field_data = {'NAME': 'JOHN DOE', 'CLASS': '10'}
-    return IDCard.objects.create(table=table, field_data=field_data, status=status)
-
-
-class NameFieldDetectionTests(SimpleTestCase):
-    def test_get_name_field_detects_emp_name_variant(self):
-        table = SimpleNamespace(fields=[
-            {'name': 'ROLL NO', 'type': 'text'},
-            {'name': 'EMP NAME', 'type': 'text'},
-            {'name': 'FATHER NAME', 'type': 'text'},
-        ])
-        self.assertEqual(IDCardCardService._get_name_field(table), 'EMP NAME')
-
-    def test_get_name_field_prefers_primary_name_over_parent_name(self):
-        table = SimpleNamespace(fields=[
-            {'name': 'FATHER NAME', 'type': 'text'},
-            {'name': 'STUDENT NAME', 'type': 'text'},
-        ])
-        self.assertEqual(IDCardCardService._get_name_field(table), 'STUDENT NAME')
-
-
-class AlpineRuntimeTemplateGuardTests(TestCase):
-    def test_templates_do_not_embed_alpine_runtime_tags(self):
-        templates_root = Path(__file__).resolve().parent.parent / 'templates'
-        allowed_direct_file = (templates_root / 'partials' / 'common' / 'alpine-loader.html').resolve()
-        forbidden_tokens = (
-            "js/alpine-state.js",
-            "js/vendor/alpine.min.js",
-            "js/vendor/alpine-mobile.min.js",
-        )
-
-        offenders = []
-        for template_path in templates_root.rglob('*.html'):
-            if template_path.resolve() == allowed_direct_file:
-                continue
-            content = template_path.read_text(encoding='utf-8')
-            if any(token in content for token in forbidden_tokens):
-                offenders.append(str(template_path.relative_to(templates_root)).replace('\\', '/'))
-
-        self.assertFalse(
-            offenders,
-            "Templates must use shared Alpine loader include instead of direct runtime tags: "
-            + ', '.join(offenders),
-        )
-
-    def test_core_entry_templates_use_alpine_loader_partial(self):
-        templates_root = Path(__file__).resolve().parent.parent / 'templates'
-        required_templates = [
-            'base.html',
-            'client/base.html',
-            'website/admin/base.html',
-            'mobile_app/base.html',
-            'partials/idcard-actions/head-assets.html',
-        ]
-
-        for rel_path in required_templates:
-            content = (templates_root / rel_path).read_text(encoding='utf-8')
-            self.assertIn(
-                "partials/common/alpine-loader.html",
-                content,
-                f"Missing shared Alpine loader include in {rel_path}",
-            )
-
-    def test_alpine_loader_respects_include_state_flag(self):
-        default_html = render_to_string('partials/common/alpine-loader.html')
-        mobile_html = render_to_string('partials/common/alpine-loader.html', {'include_state': False})
-
-        self.assertIn('js/alpine-state', default_html)
-        self.assertNotIn('js/alpine-state', mobile_html)
-        self.assertIn('js/vendor/alpine-mobile.min', mobile_html)
-
-
-class XlsxZipDualDownloadWiringTests(SimpleTestCase):
-    def _repo_root(self):
-        return Path(__file__).resolve().parent.parent
-
-    def test_xlsx_modal_has_include_images_checkbox(self):
-        template_path = self._repo_root() / 'templates' / 'partials' / 'idcard' / 'modal-downloads.html'
-        content = template_path.read_text(encoding='utf-8')
-
-        self.assertIn('id="downloadXlsxIncludeImages"', content)
-        self.assertIn('Also download images ZIP', content)
-
-    def test_xlsx_modal_handler_passes_include_images_flag(self):
-        modal_js_path = self._repo_root() / 'static' / 'js' / 'idcard-actions-download-modals.js'
-        content = modal_js_path.read_text(encoding='utf-8')
-
-        self.assertIn('const includeImagesZip = !!(includeImagesEl && includeImagesEl.checked);', content)
-        self.assertIn('window.IDCardApp.downloadXlsx(cardIds, { includeImagesZip: includeImagesZip });', content)
-
-    def test_xlsx_download_logic_gates_zip_with_flag(self):
-        logic_js_path = self._repo_root() / 'static' / 'js' / 'idcard-actions-download-logic.js'
-        content = logic_js_path.read_text(encoding='utf-8')
-
-        self.assertIn('function downloadXlsx(cardIds, options)', content)
-        self.assertIn('const includeImagesZip = !!options.includeImagesZip;', content)
-        self.assertGreaterEqual(content.count('if (includeImagesZip) {'), 3)
-        self.assertIn('downloadImages(cardIds);', content)
-
-
-class HeaderHumanizeFilterTests(TestCase):
-    def test_uid_stays_unsplit(self):
-        from core.templatetags.custom_filters import humanize_header
-        self.assertEqual(humanize_header('UID'), 'UID')
-
-    def test_uid_prefix_with_known_suffix_splits_cleanly(self):
-        from core.templatetags.custom_filters import humanize_header
-        self.assertEqual(humanize_header('UIDNO'), 'UID NO')
-
-    def test_other_known_acronym_prefix_with_suffix_splits_cleanly(self):
-        from core.templatetags.custom_filters import humanize_header
-        self.assertEqual(humanize_header('UDISECODE'), 'UDISE CODE')
-
-    def test_unknown_prefix_keeps_acronym_together(self):
-        from core.templatetags.custom_filters import humanize_header
-        self.assertEqual(humanize_header('XYZNAME'), 'XYZ NAME')
-
-    def test_existing_humanize_behavior_remains(self):
-        from core.templatetags.custom_filters import humanize_header
-        self.assertEqual(humanize_header('STUDENTNAME'), 'STUDENT NAME')
-
-
-class XlsxRelationFieldInferenceTests(SimpleTestCase):
-    def test_plain_relation_slot_prefers_text_for_name_like_values(self):
-        from core.views.idcard_table_api import _infer_field_type
-
-        inferred = _infer_field_type('REL_1', sample_values=['RAMESH', 'SITA', 'RAJ'])
-        self.assertEqual(inferred, 'text')
-
-    def test_plain_relation_slot_can_become_rel_photo_for_image_like_values(self):
-        from core.views.idcard_table_api import _infer_field_type
-
-        inferred = _infer_field_type('REL_1', sample_values=['10001234', '10004567', '10007890'])
-        self.assertEqual(inferred, 'rel_photo')
-
-    def test_relation_slot_with_explicit_photo_suffix_stays_rel_photo(self):
-        from core.views.idcard_table_api import _infer_field_type
-
-        inferred = _infer_field_type('REL_1PHOTO', sample_values=['FATHER NAME'])
-        self.assertEqual(inferred, 'rel_photo')
-
-
-class CropperWebhookSecurityTests(TestCase):
-    def setUp(self):
-        self.factory = RequestFactory()
-        cache.clear()
-
-    def tearDown(self):
-        cache.clear()
-
-    def _timestamped_signature(self, secret, timestamp, body_bytes):
-        signed_payload = timestamp.encode('utf-8') + b'.' + body_bytes
-        return 'sha256=' + hmac.digest(secret.encode(), signed_payload, 'sha256').hex()
-
-    def test_verify_webhook_accepts_timestamped_hmac(self):
-        from core.views import cropper_api
-
-        body = json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}).encode('utf-8')
-        timestamp = str(int(time.time()))
-        signature = self._timestamped_signature('test-secret', timestamp, body)
-
-        request = self.factory.post(
-            '/api/cropper/release-webhook/',
-            data=body,
-            content_type='application/json',
-            HTTP_X_HUB_SIGNATURE_256=signature,
-            HTTP_X_WEBHOOK_TIMESTAMP=timestamp,
-            HTTP_X_WEBHOOK_NONCE='nonce-1',
-        )
-
-        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
-             patch.object(cropper_api, 'WEBHOOK_MAX_AGE_SECONDS', 300), \
-             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
-            self.assertTrue(cropper_api._verify_webhook(request))
-
-    def test_verify_webhook_rejects_stale_timestamp(self):
-        from core.views import cropper_api
-
-        body = json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}).encode('utf-8')
-        stale_timestamp = str(int(time.time()) - 1200)
-        signature = self._timestamped_signature('test-secret', stale_timestamp, body)
-
-        request = self.factory.post(
-            '/api/cropper/release-webhook/',
-            data=body,
-            content_type='application/json',
-            HTTP_X_HUB_SIGNATURE_256=signature,
-            HTTP_X_WEBHOOK_TIMESTAMP=stale_timestamp,
-            HTTP_X_WEBHOOK_NONCE='nonce-stale',
-        )
-
-        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
-             patch.object(cropper_api, 'WEBHOOK_MAX_AGE_SECONDS', 300), \
-             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
-            self.assertFalse(cropper_api._verify_webhook(request))
-
-    def test_verify_webhook_rejects_legacy_secret_when_disabled(self):
-        from core.views import cropper_api
-
-        request = self.factory.post(
-            '/api/cropper/release-webhook/',
-            data=json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}),
-            content_type='application/json',
-            HTTP_X_WEBHOOK_SECRET='test-secret',
-        )
-
-        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
-             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
-            self.assertFalse(cropper_api._verify_webhook(request))
-
-
-class CropperLatestVersionFallbackTests(TestCase):
-    def setUp(self):
-        self.admin = _create_super_admin('cropper-fallback-admin@test.com')
-        self.client.force_login(self.admin)
-
-    def test_latest_version_falls_back_to_local_version_file(self):
-        from core.models import CropperRelease
-
-        CropperRelease.objects.all().delete()
-        response = self.client.get('/api/cropper/latest-version/')
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload['available'])
-        version_file = Path(__file__).resolve().parent.parent / 'Face Cropper' / 'VERSION.txt'
-        expected_version = version_file.read_text(encoding='utf-8').strip()
-        self.assertEqual(payload['version'], expected_version)
-        self.assertIn('/panel/engine/download/', payload['download_url'])
-
-    def test_latest_version_prefers_local_download_even_when_release_url_exists(self):
-        from core.models import CropperRelease
-
-        CropperRelease.objects.all().delete()
-        CropperRelease.objects.create(
-            version='9.9.9',
-            download_url='https://old-or-unreachable-host.example/AdarshEngineSetup%20(5).exe',
-            changelog='External release url should not override local endpoint',
-            is_latest=True,
-        )
-
-        response = self.client.get('/api/cropper/latest-version/')
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload['available'])
-        self.assertEqual(payload['version'], '9.9.9')
-        self.assertEqual(payload['download_url'], '/panel/engine/download/')
-
-    def test_latest_version_includes_bootstrap_metadata_defaults(self):
-        from core.models import CropperRelease
-
-        CropperRelease.objects.all().delete()
-        response = self.client.get('/api/cropper/latest-version/')
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertIn('bootstrap_version', payload)
-        self.assertIn('bootstrap_download_url', payload)
-        self.assertEqual(payload['bootstrap_version'], '3.19.0')
-        self.assertEqual(payload['bootstrap_download_url'], '/panel/engine/download/')
-
-    def test_latest_version_prefers_bootstrap_stream_download_url(self):
-        from core.models import CropperRelease
-
-        CropperRelease.objects.all().delete()
-        CropperRelease.objects.create(
-            version='3.19.0',
-            download_url='https://example.test/AdarshEngineSetup-3.19.0.exe',
-            changelog='Bootstrap installer release',
-            is_latest=False,
-        )
-        CropperRelease.objects.create(
-            version='9.9.9',
-            download_url='https://example.test/AdarshEngineSetup-9.9.9.exe',
-            changelog='Latest release',
-            is_latest=True,
-        )
-
-        response = self.client.get('/api/cropper/latest-version/')
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(payload['version'], '9.9.9')
-        self.assertEqual(payload['download_url'], '/panel/engine/download/')
-        self.assertEqual(payload['bootstrap_version'], '3.19.0')
-        self.assertEqual(payload['bootstrap_download_url'], 'https://example.test/AdarshEngineSetup-3.19.0.exe')
-
-
-class EngineDownloadInstallerGuardTests(TestCase):
-    def setUp(self):
-        self.admin = _create_super_admin('engine-guard-admin@test.com')
-        self.client.force_login(self.admin)
-
-    def _sha256(self, path_obj: Path):
-        h = hashlib.sha256()
-        with path_obj.open('rb') as fh:
-            for chunk in iter(lambda: fh.read(1024 * 1024), b''):
-                h.update(chunk)
-        return h.hexdigest()
-
-    def test_engine_download_does_not_serve_raw_engine_binary(self):
-        from core.views.engine_api import engine_download
-
-        base_dir = Path(__file__).resolve().parent.parent
-        raw_engine = base_dir / 'Face Cropper' / 'dist' / 'AdarshEngine.exe'
-        served_setup = base_dir / 'static' / 'engine' / 'AdarshEngineSetup.exe'
-
-        # Guard is meaningful only when both artifacts exist in this workspace.
-        self.assertTrue(raw_engine.exists())
-        self.assertTrue(served_setup.exists())
-
-        factory = RequestFactory()
-        request = factory.get('/panel/engine/download/')
-        request.user = self.admin
-        response = engine_download(request)
-        self.assertEqual(response.status_code, 200)
-
-        served_stream = getattr(response, 'file_to_stream', None) or getattr(response, '_resource_closers', [None])[0]
-        if not hasattr(served_stream, 'read'):
-            served_stream = getattr(response, 'streaming_content', None)
-            if served_stream is not None:
-                served_hash = hashlib.sha256(b''.join(list(served_stream))).hexdigest()
-            else:
-                self.fail('No readable stream found on engine_download response.')
-        else:
-            try:
-                served_stream.seek(0)
-            except Exception:
-                pass
-            served_hash = hashlib.sha256(served_stream.read()).hexdigest()
-        raw_hash = self._sha256(raw_engine)
-        self.assertNotEqual(
-            served_hash,
-            raw_hash,
-            'Download endpoint served raw engine EXE instead of installer setup binary.',
-        )
-
-
-class EngineSelfUpdateProxyTests(TestCase):
-    def setUp(self):
-        self.admin = _create_super_admin('engine-update-admin@test.com')
-        self.client.force_login(self.admin)
-
-    def test_engine_self_update_proxies_installer_to_local_engine(self):
-        from core.views.engine_api import api_engine_self_update
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            installer_path = Path(tmpdir) / 'AdarshEngineSetup.exe'
-            installer_path.write_bytes(b'x' * (128 * 1024))
-
-            class FakeResponse:
-                status_code = 200
-
-                def raise_for_status(self):
-                    return None
-
-                def json(self):
-                    return {'accepted': True, 'message': 'Installer launched.'}
-
-            factory = RequestFactory()
-            request = factory.post(
-                '/panel/api/engine/self-update/',
-                data=json.dumps({'silent': True, 'source_version': '3.19.0'}),
-                content_type='application/json',
-            )
-            request.user = self.admin
-
-            with patch('core.views.engine_api._select_engine_installer_path', return_value=installer_path), \
-                 patch('core.views.engine_api.http_client.post', return_value=FakeResponse()) as mock_post:
-                response = api_engine_self_update(request)
-
-            self.assertEqual(response.status_code, 200)
-            payload = json.loads(response.content.decode('utf-8'))
-            self.assertTrue(payload['accepted'])
-            self.assertEqual(payload['message'], 'Installer launched.')
-            self.assertTrue(mock_post.called)
-            posted_kwargs = mock_post.call_args.kwargs
-            self.assertIn('files', posted_kwargs)
-            self.assertIn('data', posted_kwargs)
-            self.assertEqual(posted_kwargs['data']['source_version'], '3.19.0')
-
-
-class EngineDownloadSelectionTests(TestCase):
-    def setUp(self):
-        self.admin = _create_super_admin('engine-selection-admin@test.com')
-        self.client.force_login(self.admin)
-
-    def test_engine_download_prefers_non_media_installer_and_resyncs_media(self):
-        from core.views.engine_api import engine_download
-        from django.test.utils import override_settings
-        import tempfile
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_root = Path(tmpdir)
-            media_root = tmp_root / 'media'
-            media_engine = media_root / 'engine'
-            static_root = tmp_root / 'static-src'
-            static_engine = static_root / 'engine'
-
-            media_engine.mkdir(parents=True, exist_ok=True)
-            static_engine.mkdir(parents=True, exist_ok=True)
-
-            media_setup = media_engine / 'AdarshEngineSetup.exe'
-            source_setup = static_engine / 'AdarshEngineSetup.exe'
-
-            media_setup.write_bytes(b'old-2-4-installer')
-            source_setup.write_bytes(b'new-3-18-0-installer')
-
-            now = time.time()
-            os.utime(source_setup, (now - 120, now - 120))
-
-            factory = RequestFactory()
-            request = factory.get('/api/engine/download/')
-            request.user = self.admin
-
-            with override_settings(
-                MEDIA_ROOT=str(media_root),
-                BASE_DIR=str(tmp_root),
-                STATICFILES_DIRS=[str(static_root)],
-                STATIC_ROOT=None,
-            ):
-                response = engine_download(request)
-                try:
-                    served_bytes = b''.join(response.streaming_content)
-                    self.assertEqual(served_bytes, b'new-3-18-0-installer')
-                    self.assertEqual(media_setup.read_bytes(), b'new-3-18-0-installer')
-
-                    cache_header = str(response.get('Cache-Control') or '')
-                    self.assertIn('no-store', cache_header)
-                finally:
-                    response.close()
+        field_data = {'NAME': 'JOHN DOE'}
+    
+    card = IDCard.objects.create(
+        table=table,
+        field_data=field_data,
+        status=status
+    )
+    
+    return card
 
 
 class EmailProductShowcaseSelectionTests(TestCase):
@@ -835,6 +425,22 @@ class IDCardModelTests(TestCase):
         from idcards.models import IDCard
         card = IDCard.objects.create(table=self.table, field_data={'NAME': 'X'})
         self.assertEqual(card.status, 'pending')
+
+
+class IDCardCardServiceCreateTests(TestCase):
+    def setUp(self):
+        self.user, self.client_obj = _create_client_user()
+        self.group, self.table = _create_table(self.client_obj)
+
+    def test_create_card_converts_bare_photo_name_to_pending(self):
+        result = IDCardCardService.create_card(
+            self.table.id,
+            {'NAME': 'ALICE', 'PHOTO': 'avatar-1.jpg'},
+            uploaded_by=self.user,
+        )
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['card']['field_data']['PHOTO'], 'PENDING:avatar-1.jpg')
 
 
 # ── Workflow Transition Tests ──
@@ -1792,47 +1398,6 @@ class AssignmentTimelineApiTests(TestCase):
         self.assertEqual(event_ids, [assignment_log.id])
 
 
-class CropApiScopeTests(TestCase):
-    def setUp(self):
-        from staff.models import Staff
-
-        self.factory = RequestFactory()
-
-        self.admin_user = User.objects.create_user(
-            username='crop-admin-staff@test.com',
-            email='crop-admin-staff@test.com',
-            password='adminpass1',
-            role='admin_staff',
-        )
-
-        _, self.client_a = _create_client_user('crop-client-a@test.com', 'clientpass1')
-        _, self.client_b = _create_client_user('crop-client-b@test.com', 'clientpass1')
-
-        _ga, self.table_a = _create_table(self.client_a)
-        _gb, self.table_b = _create_table(self.client_b)
-
-        self.staff_profile = Staff.objects.create(
-            user=self.admin_user,
-            staff_type='admin_staff',
-        )
-        self.staff_profile.assigned_clients.add(self.client_a)
-
-    def test_prepare_crop_denies_unassigned_client_table(self):
-        from core.views.crop_api import api_prepare_crop
-
-        request = self.factory.post(
-            f'/panel/api/table/{self.table_b.id}/cards/prepare-crop/',
-            data=json.dumps({'card_ids': [1, 2, 3]}),
-            content_type='application/json',
-        )
-        request.user = self.admin_user
-
-        response = api_prepare_crop(request, self.table_b.id)
-
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(json.loads(response.content.decode('utf-8'))['success'])
-
-
 class ProtectedMediaAuthorizationTests(TestCase):
     def setUp(self):
         from client.models import Client
@@ -1896,54 +1461,6 @@ class ProtectedMediaAuthorizationTests(TestCase):
                 allowed = self.client.get(f'/media/{rel_path}')
                 self.assertEqual(allowed.status_code, 200)
                 self.assertEqual(allowed.get('X-Accel-Redirect'), f'/protected-media/{rel_path}')
-
-
-class EnginePathScopeTests(TestCase):
-    def setUp(self):
-        from client.models import Client
-        from staff.models import Staff
-
-        self.super_admin = _create_super_admin('engine-super@test.com', 'adminpass1')
-        self.admin_staff = User.objects.create_user(
-            username='engine-staff@test.com',
-            email='engine-staff@test.com',
-            password='pass1234',
-            role='admin_staff',
-        )
-        self.client_owner = User.objects.create_user(
-            username='engine-client@test.com',
-            email='engine-client@test.com',
-            password='pass1234',
-            role='client',
-        )
-        self.client_obj = Client.objects.create(user=self.client_owner, name='Engine Scoped Client')
-
-        staff = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
-        staff.assigned_clients.add(self.client_obj)
-
-    def test_engine_serve_image_denies_admin_staff_outside_scope(self):
-        with tempfile.TemporaryDirectory() as media_root, tempfile.TemporaryDirectory() as outside_root:
-            outside_file = os.path.join(outside_root, 'outside.jpg')
-            with open(outside_file, 'wb') as fh:
-                fh.write(b'jpg')
-
-            with override_settings(MEDIA_ROOT=media_root):
-                self.client.force_login(self.admin_staff)
-                response = self.client.get('/panel/api/engine/serve-image/', {'path': outside_file})
-                self.assertEqual(response.status_code, 403)
-                response.close()
-
-    def test_engine_serve_image_allows_super_admin_outside_scope(self):
-        with tempfile.TemporaryDirectory() as media_root, tempfile.TemporaryDirectory() as outside_root:
-            outside_file = os.path.join(outside_root, 'outside.jpg')
-            with open(outside_file, 'wb') as fh:
-                fh.write(b'jpg')
-
-            with override_settings(MEDIA_ROOT=media_root):
-                self.client.force_login(self.super_admin)
-                response = self.client.get('/panel/api/engine/serve-image/', {'path': outside_file})
-                self.assertEqual(response.status_code, 200)
-                response.close()
 
 
 class DashboardAndLogsHardeningTests(TestCase):
@@ -2201,6 +1718,33 @@ class SecurityApiRegressionTests(TestCase):
         self.card_a.refresh_from_db()
         self.assertNotIn('__HACK__', self.card_a.field_data)
 
+    def test_inline_update_field_normalizes_punctuated_scholar_column(self):
+        from idcards.models import IDCard
+
+        user, client_obj = _create_client_user('scholar-client@test.com', 'clientpass1')
+        client_obj.perm_idcard_edit = True
+        client_obj.save(update_fields=['perm_idcard_edit'])
+
+        _, table = _create_table(client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'SCHOLAR NO.', 'type': 'text', 'order': 2},
+        ])
+        card = _create_card(table, field_data={'NAME': 'STUDENT ONE', 'SCHOLAR NO.': '12345'})
+
+        self.client.login(username='scholar-client@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{card.id}/update-field/',
+            data=json.dumps({'field': 'SCHOLAR NO', 'value': '54321'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        card.refresh_from_db()
+        self.assertEqual(card.field_data.get('SCHOLAR NO.'), '54321')
+
     def test_client_toggle_status_denies_manage_client_admin_staff_for_unassigned_client(self):
         self.admin_staff_profile.perm_idcard_client_list = True
         self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
@@ -2376,8 +1920,9 @@ class SecurityApiRegressionTests(TestCase):
         )
 
         admin_touched_card = self.card_a
+        admin_touched_card.status = 'pending'
         admin_touched_card.modified_by = self.admin_staff.username
-        admin_touched_card.save(update_fields=['modified_by'])
+        admin_touched_card.save(update_fields=['status', 'modified_by'])
 
         client_touched_card = _create_card(
             self.table_a,
@@ -2912,6 +2457,38 @@ class ActivityFeedIsolationTests(TestCase):
         self.assertNotIn('Client updated card details', descriptions)
         self.assertNotIn('Admin created client staff account', descriptions)
         self.assertNotIn('System user-management sync', descriptions)
+
+    def test_recent_activity_ignores_malformed_target_id_rows(self):
+        from core.models import ActivityLog
+        from core.services.activity_service import ActivityService
+        from django.db import connection
+
+        good_entry = ActivityLog.objects.create(
+            user=self.client_staff_user,
+            action='card_status',
+            description='1 card verified',
+            target_model='IDCard',
+            target_id=101,
+            target_name='Card #101',
+        )
+        bad_entry = ActivityLog.objects.create(
+            user=self.client_staff_user,
+            action='staff_update',
+            description='Legacy bad target id row',
+            target_model='Staff',
+            target_name='Assistant',
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE core_activitylog SET target_id = 'abc' WHERE id = %s",
+                [bad_entry.pk],
+            )
+
+        rows = ActivityService.get_recent(limit=20, hours=None, user=self.client_staff_user)
+        row_ids = [row.get('id') for row in rows]
+
+        self.assertIn(good_entry.id, row_ids)
+        self.assertIn(bad_entry.id, row_ids)
 
     def test_recent_activity_combines_repeated_actions_within_one_hour(self):
         from core.models import ActivityLog

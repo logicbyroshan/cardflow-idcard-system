@@ -84,6 +84,8 @@ class Client(models.Model):
         null=True,
         help_text='Logo used on website trusted clients section and client portal UI.',
     )
+    website_logo_cover_color = models.CharField(max_length=16, blank=True, null=True)
+    website_logo_cover_color_dark = models.CharField(max_length=16, blank=True, null=True)
     website_is_visible = models.BooleanField(
         default=True,
         db_index=True,
@@ -123,6 +125,7 @@ class Client(models.Model):
     perm_idcard_reprint_list = models.BooleanField(default=False)
     perm_reprint_request_list = models.BooleanField(default=False)
     perm_confirmed_list = models.BooleanField(default=False)
+
     
     # ID Card Action Permissions
     # Note: Actions only work in Pending and Verified lists

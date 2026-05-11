@@ -423,7 +423,7 @@
     bottom: auto;
     right: auto;
     width: auto;
-    min-height: 24px;
+    min-height: 20px;
     background: transparent;
     color: var(--color-blue);
     border: none;
@@ -433,8 +433,8 @@
     cursor: pointer;
     display: block;
     text-align: center;
-    padding: 3px 8px;
-    margin-top: 1px;
+    padding: 2px 8px;
+    margin-top: 0px;
     opacity: 1;
     transform: none;
     transition: color 0.15s ease;

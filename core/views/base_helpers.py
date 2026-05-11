@@ -124,7 +124,7 @@ _STATUS_LIST_PERM = {
     'verified': 'perm_idcard_verified_list',
     'approved': 'perm_idcard_approved_list',
     'download': 'perm_idcard_download_list',
-    'pool': 'perm_idcard_pool_list',
     'reprint': 'perm_idcard_reprint_list',
+    'pool': 'perm_idcard_pool_list',
 }
 _VALID_STATUSES = list(_STATUS_LIST_PERM.keys())

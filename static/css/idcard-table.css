@@ -98,23 +98,20 @@ body:has(.idcard-actions-page) {
     flex-wrap: nowrap;
 }
 
-/* Compact date-time filters: keep Download/Generate/Finalized density aligned */
+/* Compact date-time filters */
 .idcard-actions-page .search-filter-bar #dateTimeFilterGroup,
-.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup,
-.idcard-actions-page .search-filter-bar #finalizedDateTimeFilterGroup {
+.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup {
     gap: 4px;
 }
 
 .idcard-actions-page .search-filter-bar #dateTimeFilterGroup .datetime-label,
-.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .datetime-label,
-.idcard-actions-page .search-filter-bar #finalizedDateTimeFilterGroup .datetime-label {
+.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .datetime-label {
     margin: 0;
     line-height: 1;
 }
 
 .idcard-actions-page .search-filter-bar #dateTimeFilterGroup .datetime-input,
-.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .datetime-input,
-.idcard-actions-page .search-filter-bar #finalizedDateTimeFilterGroup .datetime-input {
+.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .datetime-input {
     min-height: 0 !important;
     height: 26px !important;
     line-height: 26px;
@@ -122,8 +119,7 @@ body:has(.idcard-actions-page) {
 }
 
 .idcard-actions-page .search-filter-bar #dateTimeFilterGroup .btn.btn-sm,
-.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .btn.btn-sm,
-.idcard-actions-page .search-filter-bar #finalizedDateTimeFilterGroup .btn.btn-sm {
+.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .btn.btn-sm {
     min-height: 0 !important;
     height: 26px !important;
     padding: 0 8px !important;
@@ -486,7 +482,7 @@ body:has(.idcard-actions-page) {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
+    gap: 0px;
     width: 100%;
     height: 100%;
 }
@@ -679,8 +675,8 @@ body:has(.idcard-actions-page) {
 
 /* Edit photo button - override for inline-table usage */
 .edit-photo-btn {
-    min-height: 24px;
-    padding: 3px 8px;
+    min-height: 20px;
+    padding: 2px 8px;
     font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     background: transparent;

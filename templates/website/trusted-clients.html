@@ -1,0 +1,179 @@
+{% extends "website/base.html" %}
+{% load static %}
+
+{% block title %}Our Trusted Clients | Adarsh ID Cards{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'website/styles/trusted-clients.css' %}">
+{% endblock %}
+
+{% block content %}
+<main>
+    <!-- Page Header -->
+    <section class="page-hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fa-solid fa-handshake" aria-hidden="true"></i>
+                    <span>Reliable Partnerships</span>
+                </div>
+                <h1>Our <span class="gradient-text">Trusted</span> Clients</h1>
+                <p class="hero-subtitle">Partnerships built on quality, trust, and excellence across India</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trusted Clients Grid -->
+    <section class="trusted-clients-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Meet Our Partners</h2>
+                <p>Over {{ clients|length }} educational institutions, offices, and organizations trust us for their ID card solutions</p>
+            </div>
+
+            {% if clients %}
+            <div class="clients-grid">
+                {% for client in clients %}
+                <div class="client-card" data-client-id="{{ client.id }}">
+                    <!-- Card Cover (Gradient Background) -->
+                    <div class="card-cover card-cover-brand"{% if client.cover_color and client.cover_color_dark %} style="background: linear-gradient(135deg, {{ client.cover_color }} 0%, {{ client.cover_color_dark }} 100%);"{% endif %}>
+                        <div class="cover-overlay"></div>
+                    </div>
+
+                    <!-- Client Logo Container -->
+                    <div class="logo-container">
+                        {% if client.logo %}
+                        <img src="{{ client.logo.url }}" alt="{{ client.name }} logo" class="client-logo">
+                        {% else %}
+                        <div class="logo-fallback">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="card-body">
+                        <h3 class="client-name">{{ client.name }}</h3>
+
+                        <!-- Duration Badge intentionally removed (hidden on this page) -->
+
+                        <!-- Trust Stars -->
+                        <div class="trust-stars">
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fa-solid fa-inbox"></i>
+                <p>No clients to display yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Join Our Growing Family of Trusted Partners</h2>
+                <p>Experience the quality and reliability that over {{ clients|length }} organizations already trust</p>
+                <a href="{% url 'website:panel_entry' %}" class="btn btn-primary btn-lg">
+                    <i class="fa-solid fa-arrow-right"></i> Get Started Today
+                </a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Client Detail Modal -->
+<div id="clientDetailModal" class="client-modal" aria-hidden="true">
+    <div class="client-modal-backdrop" id="clientModalBackdrop"></div>
+    <div class="client-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="clientModalTitle">
+        <button class="client-modal-close" id="clientModalClose" aria-label="Close">&times;</button>
+        <div class="client-modal-content">
+            <div class="modal-body"> <!-- Filled dynamically by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Stagger animations
+    const cards = document.querySelectorAll('.client-card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = (index * 50) + 'ms';
+        card.addEventListener('click', function(e) {
+            // Only handle clicks on the card itself (not links inside)
+            const id = this.dataset.clientId;
+            if (id) openClientModal(id);
+        });
+    });
+
+    // Open modal if URL contains open_client param
+    const params = new URLSearchParams(window.location.search);
+    const openId = params.get('open_client');
+    if (openId) {
+        // wait briefly for DOM to settle
+        setTimeout(() => openClientModal(openId), 150);
+    }
+
+    // Modal controls
+    const modal = document.getElementById('clientDetailModal');
+    const backdrop = document.getElementById('clientModalBackdrop');
+    const closeBtn = document.getElementById('clientModalClose');
+
+    function closeModal() {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        // remove open_client param from URL
+        const url = new URL(window.location);
+        url.searchParams.delete('open_client');
+        window.history.replaceState({}, '', url);
+    }
+
+    backdrop.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+    });
+
+    window.openClientModal = function(clientId) {
+        const card = document.querySelector(`.client-card[data-client-id="${clientId}"]`);
+        if (!card) return;
+        const modalBody = modal.querySelector('.modal-body');
+        // clone the card content to modal
+        modalBody.innerHTML = '';
+        const clone = card.cloneNode(true);
+        clone.classList.add('client-card-modal-copy');
+        // remove animation delay on cloned node
+        clone.style.animationDelay = '';
+        modalBody.appendChild(clone);
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        // set open_client param in URL
+        const url = new URL(window.location);
+        url.searchParams.set('open_client', String(clientId));
+        window.history.replaceState({}, '', url);
+    };
+
+    // Add subtle hover animations and lazy load images
+    cards.forEach((card, index) => {
+        // already set staggered animation above; ensure consistency
+        card.style.animationDelay = card.style.animationDelay || (index * 50) + 'ms';
+    });
+});
+</script>
+{% endblock %}

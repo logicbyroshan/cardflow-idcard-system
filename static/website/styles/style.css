@@ -331,6 +331,37 @@ a:active {
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
+/* Play Store App Link in Navbar */
+.nav-app-link {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3) !important;
+    border: none !important;
+    transition: all 0.3s ease !important;
+    text-decoration: none !important;
+    margin-left: 8px !important;
+}
+
+.nav-app-link:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.4) !important;
+    color: white !important;
+    text-decoration: none !important;
+}
+
+.nav-app-link i {
+    font-size: 1rem !important;
+    color: #a3e635 !important;
+}
+
 .nav-links .btn-cta {
     overflow: hidden;
     display: inline-block;
@@ -520,6 +551,29 @@ a:active {
     align-items: center;
     justify-content: center;
     gap: 0;
+}
+
+/* Homepage visual fixes: ensure CTA sits above decorative layers and bento images scale properly */
+.hero-inner {
+    z-index: 3;
+    position: relative;
+}
+
+.hero-buttons {
+    position: relative;
+    z-index: 4;
+}
+
+.bento-card {
+    background: #ffffff;
+}
+
+.bento-illustration img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
 }
 
 /* Hero Content - matching page-hero styles */
@@ -831,7 +885,7 @@ a:active {
     background: transparent;
     border-radius: 0;
     box-shadow: none;
-    padding: 20px 0;
+    padding: 14px 0;
     margin: 0 auto;
     max-width: 1200px;
     width: 100%;
@@ -866,14 +920,14 @@ a:active {
 
 .logos-track {
     display: flex;
-    gap: 50px;
+    gap: 12px;
     animation-name: scroll;
-    animation-duration: 30s;
+    animation-duration: var(--carousel-duration, 30s);
     animation-timing-function: linear;
     animation-iteration-count: infinite;
     animation-play-state: running;
     animation-fill-mode: forwards;
-    padding: 0 20px;
+    padding: 0 12px;
     will-change: transform;
 }
 
@@ -883,10 +937,10 @@ a:active {
     align-items: center;
     justify-content: flex-start;
     flex-shrink: 0;
-    min-width: 170px;
-    height: 108px;
-    padding: 4px 8px;
-    gap: 8px;
+    min-width: 140px;
+    height: 110px;
+    padding: 2px 4px;
+    gap: 10px;
     transition: var(--transition);
 }
 
@@ -899,43 +953,35 @@ a:active {
 }
 
 .logo-item img {
-    max-width: 130px;
-    max-height: 70px;
+    max-width: 110px;
+    max-height: 55px;
     object-fit: contain;
-    filter: grayscale(100%);
-    opacity: 0.8;
-    transition: var(--transition);
+    filter: none;
+    opacity: 1;
+    transition: transform 0.22s ease, opacity 0.22s ease;
 }
 
 .school-name {
     width: 100%;
-    max-width: 160px;
+    max-width: 130px;
     display: block;
-    font-size: 0.82rem;
-    line-height: 1.2;
-    font-weight: 300;
+    font-size: 0.75rem;
+    line-height: 1.1;
+    font-weight: 400;
     letter-spacing: 0.01em;
-    color: #94a3b8;
-    opacity: 0;
-    transform: translateY(4px);
-    transition: opacity 0.25s ease, transform 0.25s ease, color 0.25s ease;
+    color: #64748b;
+    opacity: 1;
+    transform: none;
+    transition: color 0.18s ease;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    pointer-events: none;
+    margin-top: 2px;
 }
 
 .logo-item:hover img {
-    filter: grayscale(0%);
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-.logo-item:hover .school-name,
-.logo-item:focus-within .school-name {
-    opacity: 1;
-    transform: translateY(0);
-    color: #64748b;
+    transform: none;
+    filter: none;
 }
 
 @keyframes scroll {
@@ -947,10 +993,32 @@ a:active {
     }
 }
 
+@keyframes scroll-reverse {
+    0% {
+        transform: translateX(-50%);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Reverse Carousel Styling */
+.logos-carousel-reverse {
+    margin-top: 12px;
+}
+
+.logos-track-reverse {
+    animation-name: scroll-reverse !important;
+}
+
 /* ===== Why Choose Us Section ===== */
 .why-choose-us {
-    padding: 100px 0;
+    padding: 5px 0;
     background: var(--white);
+}
+
+.why-choose-us > .container {
+    padding: 0 60px;
 }
 
 .why-choose-us h2 {
@@ -1038,7 +1106,7 @@ a:active {
     grid-template-columns: repeat(3, 1fr);
     grid-auto-rows: minmax(290px, auto);
     gap: 1.25rem;
-    max-width: 1180px;
+    max-width: 1120px;
     margin: 0 auto;
 }
 
@@ -1061,21 +1129,25 @@ a:active {
 .bento-card-1 {
     grid-column: span 2;
     background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #bae6fd;
 }
 
 .bento-card-2 {
     grid-column: span 1;
     background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+    border: 1px solid #fef08a;
 }
 
 .bento-card-3 {
     grid-column: span 1;
     background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1px solid #bbf7d0;
 }
 
 .bento-card-4 {
     grid-column: span 2;
     background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+    border: 1px solid #e9d5ff;
 }
 
 /* Big cards: horizontal layout — text on left, image on right */
@@ -1083,7 +1155,7 @@ a:active {
 .bento-card-4 {
     flex-direction: row;
     align-items: center;
-    gap: 2rem;
+    gap: 1rem;
     justify-content: space-between;
 }
 
@@ -1093,27 +1165,34 @@ a:active {
 
 .bento-card-1 .bento-text-content,
 .bento-card-4 .bento-text-content {
-    flex: 0 0 50%;
-    max-width: 50%;
+    flex: 0 0 45%;
+    max-width: 45%;
     min-width: 0;
 }
 
 .bento-card-1 .bento-illustration,
 .bento-card-4 .bento-illustration {
-    flex: 0 0 50%;
-    max-width: 50%;
-    width: 50%;
+    flex: 0 0 55%;
+    max-width: 55%;
+    width: 55%;
     margin-bottom: 0;
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 0 1rem;
+    align-self: stretch;
 }
 
 .bento-card-1 .bento-illustration img,
 .bento-card-4 .bento-illustration img {
     width: 100%;
-    max-width: 320px;
-    margin-left: auto;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0;
+    border-radius: 18px;
+    display: block;
+    object-fit: contain;
 }
 
 .bento-card-2,
@@ -1295,7 +1374,7 @@ a:active {
 
 /* ===== Our Works Section ===== */
 .our-works {
-    padding: 100px 0;
+    padding: 5px 0;
     background: var(--white);
 }
 
@@ -1392,7 +1471,7 @@ a:active {
 
 /* ===== Testimonials Section ===== */
 .testimonials {
-    padding: 100px 0;
+    padding: 5px 0;
     background: var(--white);
 }
 
@@ -1471,7 +1550,7 @@ a:active {
 
 /* ===== Download App CTA Section ===== */
 .download-app-section {
-    padding: 100px 0;
+    padding: 5px 0;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     overflow: hidden;
     position: relative;
@@ -1606,26 +1685,6 @@ a:active {
     overflow: hidden;
     position: relative;
     isolation: isolate;
-}
-
-.download-app-phone .phone-screen::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url('../../assets/wallppapper1.png');
-    background-size: cover;
-    background-position: center;
-    filter: blur(2.5px) brightness(0.78);
-    transform: scale(1.08);
-    z-index: 0;
-}
-
-.download-app-phone .phone-screen::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.18) 0%, rgba(15, 23, 42, 0.42) 100%);
-    z-index: 1;
 }
 
 .download-app-phone .phone-status-bar {
@@ -1870,7 +1929,7 @@ a:active {
 
 /* ===== Contact Section ===== */
 .contact-section {
-    padding: 100px 0;
+    padding: 5px 0;
     background: #f8f9fa;
 }
 
@@ -2110,7 +2169,7 @@ a:active {
 
 .footer-content {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1.8fr;
+    grid-template-columns: 1.2fr 1fr 1fr 1.5fr;
     gap: 2rem;
     margin-bottom: 2rem;
     position: relative;
@@ -2367,302 +2426,6 @@ a:active {
     50% { opacity: 0; }
 }
 
-/* ===== Download Our App Section ===== */
-.download-app-section {
-    padding: 80px 0;
-    background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
-    color: var(--white);
-    position: relative;
-    overflow: hidden;
-}
-
-.download-app-section::before {
-    content: '';
-    position: absolute;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
-    border-radius: 8px;
-    top: -200px;
-    right: -100px;
-    z-index: 0;
-}
-
-.download-app-wrapper {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
-    align-items: center;
-    position: relative;
-    z-index: 1;
-}
-
-.download-app-content h2 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin-bottom: 1rem;
-    color: var(--white);
-}
-
-.download-app-content p {
-    font-size: 1.1rem;
-    color: rgba(255, 255, 255, 0.8);
-    margin-bottom: 2rem;
-    max-width: 500px;
-    line-height: 1.7;
-}
-
-/* PWA Install Button */
-.pwa-install-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    min-height: var(--btn-web-lg-height);
-    padding: var(--btn-web-lg-pad-y) var(--btn-web-lg-pad-x);
-    background: var(--white);
-    color: #100F57;
-    border-radius: 12px;
-    font-size: 1.05rem;
-    font-weight: 700;
-    text-decoration: none;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    font-family: inherit;
-}
-
-.pwa-install-btn svg {
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-}
-
-.pwa-install-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-}
-
-.pwa-install-btn.pwa-installed {
-    background: #27ae60;
-    color: #fff;
-    pointer-events: none;
-}
-
-.pwa-hint {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.55);
-    margin-top: 0.8rem;
-}
-
-/* PWA Features List */
-.pwa-features {
-    display: flex;
-    gap: 2rem;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-}
-
-.pwa-feature {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.95rem;
-    font-weight: 500;
-}
-
-.pwa-feature svg {
-    width: 36px;
-    height: 36px;
-    flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
-    padding: 7px;
-}
-
-/* Phone Mockup Visual */
-.download-app-visual {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.pwa-phone-mockup {
-    width: 260px;
-    height: 460px;
-    background: #1e1e2e;
-    border-radius: 36px;
-    padding: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(255, 255, 255, 0.1);
-    position: relative;
-}
-
-.phone-screen {
-    width: 100%;
-    height: 100%;
-    background: #000;
-    border-radius: 26px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.phone-statusbar {
-    height: 28px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 6px;
-    position: relative;
-    z-index: 2;
-}
-
-.phone-statusbar::before {
-    content: '';
-    width: 14px;
-    height: 14px;
-    background: #1e1e2e;
-    border-radius: 8px;
-    box-shadow: 0 0 0 3px rgba(30, 30, 46, 0.3);
-}
-
-.phone-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    gap: 1rem;
-}
-
-.phone-logo {
-    width: 64px;
-    height: 64px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: white;
-    backdrop-filter: blur(4px);
-}
-
-.phone-logo svg {
-    width: 32px;
-    height: 32px;
-}
-
-.phone-text {
-    text-align: center;
-}
-
-.phone-text h4 {
-    color: white;
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 0.3rem;
-}
-
-.phone-text p {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.75rem;
-    margin: 0;
-}
-
-.phone-dots {
-    display: flex;
-    gap: 6px;
-    margin-top: 0.5rem;
-}
-
-.phone-dots span {
-    width: 8px;
-    height: 8px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.25);
-}
-
-.phone-dots span:first-child {
-    background: rgba(255, 255, 255, 0.7);
-}
-
-/* Phone Mockup Image Slideshow */
-.phone-slideshow {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-}
-
-.phone-slide {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    transition: opacity 0.8s ease;
-}
-
-.phone-slide.active {
-    opacity: 1;
-}
-
-/* CTA Action Bar (Install button + QR) */
-.pwa-action-bar {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    margin-top: 2rem;
-    padding: 1.2rem 1.5rem;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(4px);
-}
-
-.pwa-action-bar .pwa-install-btn {
-    flex-shrink: 0;
-}
-
-.pwa-action-bar-divider {
-    width: 1px;
-    height: 60px;
-    background: rgba(255, 255, 255, 0.15);
-    flex-shrink: 0;
-}
-
-.pwa-action-bar-qr {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.pwa-action-bar-qr img {
-    width: 64px;
-    height: 64px;
-    border-radius: 10px;
-    background: white;
-    padding: 4px;
-    flex-shrink: 0;
-}
-
-.pwa-qr-text {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
-    line-height: 1.4;
-}
-
-.pwa-qr-text strong {
-    display: block;
-    color: rgba(255, 255, 255, 0.95);
-    font-size: 0.9rem;
-    margin-bottom: 2px;
-}
-
 /* ===== Navbar Button Group ===== */
 .nav-btn-group {
     display: flex;
@@ -2850,8 +2613,8 @@ section {
     transition: transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
 }
 .logo-item:hover img {
-    transform: scale(1.08);
-    filter: grayscale(0%) brightness(1.08);
+    transform: none;
+    filter: none;
 }
 .logo-item:hover .school-name {
     opacity: 1;

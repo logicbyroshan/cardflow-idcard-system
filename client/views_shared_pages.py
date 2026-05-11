@@ -44,7 +44,6 @@ def client_idcard_group(request):
         'perm_idcard_setting_list', 'perm_idcard_pending_list',
         'perm_idcard_verified_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_pool_list',
-        'perm_reprint_request_list', 'perm_confirmed_list',
     ]
     has_any_list_perm = any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS)
     
@@ -117,14 +116,13 @@ def client_idcard_group(request):
                 table.pool_count = pool_counts.get(table.id, 0)
                 table.approved_count = counts_by_status.get('approved', 0)
                 table.download_count = counts_by_status.get('download', 0)
-                table.reprint_count = counts_by_status.get('reprint', 0)
+
                 table.total_cards = (
                     table.pending_count
                     + table.verified_count
                     + table.pool_count
                     + table.approved_count
                     + table.download_count
-                    + table.reprint_count
                 )
                 scoped_tables.append(table)
 
@@ -136,7 +134,6 @@ def client_idcard_group(request):
                 pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
                 approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
                 download_count=Count('id_cards', filter=Q(id_cards__status='download')),
-                reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
                 total_cards=Count('id_cards')
             ).order_by('-updated_at')
     else:
@@ -166,11 +163,11 @@ def client_idcard_actions(request, table_id):
     if not client:
         return redirect(reverse('client:dashboard'))
     
-    # Require at least one list permission to access this page
+    # Require at least one list permission
     LIST_PERMISSIONS = [
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_approved_list', 'perm_idcard_download_list',
-        'perm_idcard_pool_list', 'perm_reprint_request_list', 'perm_confirmed_list',
+        'perm_idcard_pool_list',
     ]
     if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):
         return redirect(reverse('client:dashboard'))
@@ -282,290 +279,6 @@ def client_group_settings(request):
 
     return render(request, 'group-setting.html', context)
 
-
-@require_client_user
-def client_reprint_cards(request, table_id):
-    """
-    Reprint Cards page for clients — delegates to the reprintcard app's
-    page view logic but uses client context & permissions.
-    """
-    from reprintcard.models import ReprintRequest
-    
-    user = request.user
-    client = _get_client_for_request(user)
-    if not client:
-        return redirect(reverse('client:dashboard'))
-    
-    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
-    
-    # Verify ownership
-    if not ClientAccessService.can_access_table(user, table):
-        return redirect(reverse('client:idcard_group'))
-    
-    can_request_list = PermissionService.has_permission(user, 'perm_reprint_request_list')
-    can_confirmed_list = PermissionService.has_permission(user, 'perm_confirmed_list')
-    if not (can_request_list or can_confirmed_list):
-        return redirect(reverse('client:idcard_group'))
-    
-    current_step = request.GET.get('step', 'request_list')
-    if current_step not in ('request_list', 'confirmed'):
-        current_step = 'request_list'
-
-    if current_step == 'request_list' and not can_request_list:
-        current_step = 'confirmed'
-    elif current_step == 'confirmed' and not can_confirmed_list:
-        current_step = 'request_list'
-    
-    # Real step counts
-    source_cards_qs = IDCard.objects.filter(table=table, status='download')
-    source_cards_count = source_cards_qs.count()
-    reprint_status_counts = ReprintRequest.objects.filter(
-        table=table,
-        card__status='download',
-    ).aggregate(
-        request_count=Count('id', filter=Q(status='requested')),
-        confirmed_count=Count('id', filter=Q(status='confirmed')),
-    )
-    request_count = int(reprint_status_counts.get('request_count') or 0)
-    confirmed_count = int(reprint_status_counts.get('confirmed_count') or 0)
-    step_counts = {
-        'download_list': source_cards_count,
-        'reprint_list': source_cards_count,
-        'request_list': request_count,
-        'confirmed': confirmed_count,
-    }
-    
-    INITIAL_LOAD_LIMIT = 100
-    
-    from reprintcard.views import _build_ordered_fields
-
-    # Reprint List — source cards limited to Download
-    reprint_items = []
-    reprint_total = source_cards_count
-    if current_step == 'reprint_list':
-        card_qs = source_cards_qs.order_by('-updated_at')
-        card_batch = card_qs[:INITIAL_LOAD_LIMIT]
-        for idx, card in enumerate(card_batch):
-            reprint_items.append({
-                'card_id': card.id,
-                'sr_no': idx + 1,
-                'status': card.status,
-                'get_status_display': card.get_status_display(),
-                'ordered_fields': _build_ordered_fields(card, table),
-                'updated_at': card.updated_at,
-            })
-
-    # Request List — status='requested'
-    request_items = []
-    request_total = request_count
-    if current_step == 'request_list':
-        req_qs = ReprintRequest.objects.filter(
-            table=table,
-            status='requested',
-            card__status='download',
-        ).select_related('card', 'requested_by').order_by('-created_at')
-        req_batch = req_qs[:INITIAL_LOAD_LIMIT]
-        for idx, rr in enumerate(req_batch):
-            req_by = rr.requested_by
-            request_items.append({
-                'rr_id': rr.id,
-                'card_id': rr.card_id,
-                'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
-                'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                'requested_at': rr.created_at,
-                'ordered_fields': _build_ordered_fields(rr.card, table),
-                'updated_at': rr.card.updated_at,
-            })
-
-    # Confirmed List — status='confirmed'
-    confirmed_items = []
-    confirmed_total = confirmed_count
-    if current_step == 'confirmed':
-        cf_qs = ReprintRequest.objects.filter(
-            table=table,
-            status='confirmed',
-            card__status='download',
-        ).select_related('card', 'requested_by').order_by('-updated_at')
-        cf_batch = cf_qs[:INITIAL_LOAD_LIMIT]
-        for idx, rr in enumerate(cf_batch):
-            req_by = rr.requested_by
-            confirmed_items.append({
-                'rr_id': rr.id,
-                'card_id': rr.card_id,
-                'sr_no': idx + 1,
-                'status': rr.card.status,
-                'get_status_display': rr.card.get_status_display(),
-                'reason': rr.reason,
-                'requested_by_name': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                'confirmed_at': rr.updated_at,
-                'ordered_fields': _build_ordered_fields(rr.card, table),
-                'updated_at': rr.card.updated_at,
-            })
-
-    context = {
-        'active_page': 'idcard_group',
-        'user_role': user.get_role_display(),
-        'table': table,
-        'group': table.group,
-        'client': table.group.client,
-        'current_step': current_step,
-        'step_counts': step_counts,
-        'reprint_items': reprint_items,
-        'reprint_total': reprint_total,
-        'reprint_has_more': reprint_total > INITIAL_LOAD_LIMIT,
-        'request_items': request_items,
-        'request_total': request_total,
-        'request_has_more': request_total > INITIAL_LOAD_LIMIT,
-        'confirmed_items': confirmed_items,
-        'confirmed_total': confirmed_total,
-        'confirmed_has_more': confirmed_total > INITIAL_LOAD_LIMIT,
-        'initial_load_limit': INITIAL_LOAD_LIMIT,
-        'can_reprint_request_list': can_request_list,
-        'can_reprint_confirmed_list': can_confirmed_list,
-    }
-    return render(request, 'reprintcard/reprint-cards.html', context)
-
-
-@require_client_user
-def client_print_cards(request, table_id):
-    """
-    Print Cards page for clients — same template as admin cardprint/print-cards.html.
-    """
-    from cardprint.models import PrintRequest, CardTemplate
-    from cardprint.views import (
-        _build_ordered_fields,
-        _filter_ordered_fields_by_names,
-        _get_selected_generate_field_names,
-        _promote_legacy_print_list,
-    )
-
-    user = request.user
-    client = _get_client_for_request(user)
-    if not client:
-        return redirect(reverse('client:dashboard'))
-
-    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
-
-    # Verify ownership
-    if not ClientAccessService.can_access_table(user, table):
-        return redirect(reverse('client:idcard_group'))
-
-    can_print_list = PermissionService.has_permission(user, 'perm_print_list')
-    can_finalized_list = PermissionService.has_permission(user, 'perm_finalized_list')
-    if not (can_print_list or can_finalized_list):
-        return redirect(reverse('client:idcard_group'))
-
-    _promote_legacy_print_list(table)
-
-    current_step = request.GET.get('step', 'generate_list')
-    if current_step not in ('generate_list', 'finalized'):
-        current_step = 'generate_list'
-
-    # Step counts
-    from django.db.models import Count as AggCount
-    step_counts_raw = PrintRequest.objects.filter(table=table).aggregate(
-        gl=AggCount('id', filter=Q(status='generate_list')),
-        fn=AggCount('id', filter=Q(status='finalized')),
-    )
-    step_counts = {
-        'generate_list': step_counts_raw['gl'],
-        'finalized': step_counts_raw['fn'],
-    }
-    approved_count = IDCard.objects.filter(table=table, status='approved').count()
-
-    INITIAL_LOAD_LIMIT = 100
-
-    generate_items = []
-    finalized_items = []
-    generate_total = int(step_counts_raw.get('gl') or 0)
-    finalized_total = int(step_counts_raw.get('fn') or 0)
-
-    template_obj = CardTemplate.objects.filter(table=table).first()
-    selected_generate_field_names = _get_selected_generate_field_names(table, template_obj)
-
-    if current_step == 'generate_list':
-        base_qs = PrintRequest.objects.filter(table=table, status='generate_list')
-        pr_batch = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:INITIAL_LOAD_LIMIT]
-        for idx, pr in enumerate(pr_batch):
-            card = pr.card
-            fd = card.field_data or {}
-            fd_upper = {k.upper(): v for k, v in fd.items()}
-            ordered_fields = _build_ordered_fields(table, fd, fd_upper)
-            ordered_fields = _filter_ordered_fields_by_names(ordered_fields, selected_generate_field_names)
-            req_by = pr.requested_by
-            generate_items.append({
-                'pr_id': pr.id,
-                'card_id': card.id,
-                'sr_no': idx + 1,
-                'status': card.status,
-                'status_display': card.get_status_display(),
-                'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
-                'moved_at': localtime(pr.updated_at).strftime('%d %b %Y %H:%M'),
-                'ordered_fields': ordered_fields,
-            })
-
-    if current_step == 'finalized':
-        base_qs = PrintRequest.objects.filter(table=table, status='finalized')
-        pr_batch = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:INITIAL_LOAD_LIMIT]
-        for idx, pr in enumerate(pr_batch):
-            card = pr.card
-            fd = card.field_data or {}
-            fd_upper = {k.upper(): v for k, v in fd.items()}
-            ordered_fields = _build_ordered_fields(table, fd, fd_upper)
-            req_by = pr.requested_by
-            finalized_items.append({
-                'pr_id': pr.id,
-                'card_id': card.id,
-                'sr_no': idx + 1,
-                'status': card.status,
-                'status_display': card.get_status_display(),
-                'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
-                'finalized_at': localtime(pr.updated_at).strftime('%d %b %Y %H:%M'),
-                'ordered_fields': ordered_fields,
-            })
-
-    field_config = template_obj.field_config if template_obj else {}
-    front_pdf_url = template_obj.front_pdf.url if template_obj and template_obj.front_pdf else ''
-    back_pdf_url = template_obj.back_pdf.url if template_obj and template_obj.back_pdf else ''
-    template_data = {
-        'is_two_sided': template_obj.is_two_sided if template_obj else False,
-        'field_mappings': template_obj.field_mappings if template_obj else {'front': {}, 'back': {}},
-        'font_size': template_obj.font_size if template_obj else 8,
-        'font_family': template_obj.font_family if template_obj else 'Helvetica-Bold',
-    }
-
-    context = {
-        'active_page': 'idcard_group',
-        'user_role': user.get_role_display(),
-        'table': table,
-        'group': table.group,
-        'client': table.group.client,
-        'current_step': current_step,
-        'step_counts': step_counts,
-        'approved_count': approved_count,
-        'generate_items': generate_items,
-        'finalized_items': finalized_items,
-        'generate_total': generate_total,
-        'generate_has_more': generate_total > len(generate_items),
-        'generate_display_fields': [
-            f for f in (table.fields or [])
-            if f.get('name') in set(selected_generate_field_names)
-        ],
-        'finalized_total': finalized_total,
-        'finalized_has_more': finalized_total > len(finalized_items),
-        'table_fields_json': json.dumps(table.fields if table.fields else []),
-        'field_config_json': json.dumps(field_config),
-        'has_template_front_pdf': bool(template_obj and template_obj.front_pdf),
-        'has_template_back_pdf': bool(template_obj and template_obj.back_pdf),
-        'template_data_json': json.dumps(template_data),
-        'front_pdf_url': front_pdf_url,
-        'back_pdf_url': back_pdf_url,
-        'initial_load_limit': INITIAL_LOAD_LIMIT,
-    }
-    return render(request, 'cardprint/print-cards.html', context)
 
 
 # =============================================================================

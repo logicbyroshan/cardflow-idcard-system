@@ -19,20 +19,20 @@ from client.models import Client
 from staff.models import Staff
 from accounts.services import AuthService
 from idcards.models import IDCardGroup, IDCard, IDCardTable
-from reprintcard.models import ReprintRequest
-from cardprint.models import PrintRequest
 from website.models import PortfolioItem
+from mediafiles.services.image_thumbnail import ThumbnailService
+from django.core.files.storage import default_storage
 from ..models import User, Notification, EmailLog, ActivityLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,
+    require_super_admin,
 )
 from .base_helpers import (
     get_user_role,
     get_page_range,
-    super_admin_required,
     _STATUS_LIST_PERM,
     _VALID_STATUSES,
 )
@@ -301,7 +301,7 @@ def _build_personal_guide_text(share_url):
         "5) Teacher ke liye nayi user ID bana kar use sub-staff role diya ja sakta hai.",
         "6) Role-based permission se har user ko sirf zaruri access diya ja sakta hai.",
         "7) Pool List se galat approve/verified record ko Retrieve karke wapas Pending me bheja ja sakta hai.",
-        "8) Reprint workflow se genuine correction cases handle karna easy hota hai.",
+
         "9) Export/download flow me final files ko standard naam se archive kar sakte hain.",
         "10) Notifications aur activity tracking se team handover clear rehta hai.",
         "11) Google Chrome par panel login ke baad app install option bhi available hota hai.",
@@ -350,7 +350,7 @@ def _build_personal_guide_text(share_url):
 
 
 # Staff Management
-@super_admin_required
+@require_super_admin
 def manage_staff(request):
     """View to manage admin staff — supports HTMX partial responses."""
     DEFAULT_PER_PAGE = 25
@@ -791,7 +791,7 @@ def api_client_staff_assignment_timeline(request, staff_id):
     })
 
 
-@super_admin_required
+@require_super_admin
 @require_http_methods(['GET'])
 def api_staff_login_history(request, staff_id):
     """Return login/logout timeline for a single admin staff (operator)."""
@@ -836,7 +836,7 @@ def api_staff_login_history(request, staff_id):
     })
 
 
-@super_admin_required
+@require_super_admin
 @require_http_methods(['GET'])
 def api_staff_assignment_timeline(request, staff_id):
     """Return assignment-change timeline for a single admin staff (operator)."""
@@ -895,7 +895,7 @@ def idcard_group(request, client_id):
         pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
         approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
         download_count=Count('id_cards', filter=Q(id_cards__status='download')),
-        reprint_count=Count('id_cards', filter=Q(id_cards__status='reprint')),
+
         total_cards=Count('id_cards')
     ).order_by('-updated_at')
 
@@ -1016,6 +1016,9 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
                 pass
 
     total_count = id_cards_query.count()
+    # Default counts for all non-client-staff roles.
+    # Client staff get a scoped count set below so the tabs match their row scope.
+    status_counts = IDCardService.get_status_counts(table)
 
     if PermissionService.is_client_staff(request.user):
         scoped_cards_qs = _apply_client_staff_row_scope(
@@ -1029,7 +1032,6 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
             'pool': 0,
             'approved': 0,
             'download': 0,
-            'reprint': 0,
             'total': 0,
         }
         for row in scoped_cards_qs.values('status').annotate(count=Count('id')):
@@ -1046,59 +1048,8 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
             + status_counts.get('pool', 0)
             + status_counts.get('approved', 0)
             + status_counts.get('download', 0)
-            + status_counts.get('reprint', 0)
         )
 
-        reprint_counts = {
-            'request_list': ReprintRequest.objects.filter(
-                table=table,
-                status='requested',
-                card__status='download',
-                card_id__in=scoped_cards_qs.values('id'),
-            ).count(),
-            'confirmed': ReprintRequest.objects.filter(
-                table=table,
-                status='confirmed',
-                card__status='download',
-                card_id__in=scoped_cards_qs.values('id'),
-            ).count(),
-        }
-        print_counts = {
-            'generate_list': PrintRequest.objects.filter(
-                table=table,
-                status='generate_list',
-                card_id__in=scoped_cards_qs.values('id'),
-            ).count(),
-            'finalized': PrintRequest.objects.filter(
-                table=table,
-                status='finalized',
-                card_id__in=scoped_cards_qs.values('id'),
-            ).count(),
-        }
-    else:
-        status_counts = IDCardService.get_status_counts(table)
-        reprint_counts = {
-            'request_list': ReprintRequest.objects.filter(
-                table=table,
-                status='requested',
-                card__status='download',
-            ).count(),
-            'confirmed': ReprintRequest.objects.filter(
-                table=table,
-                status='confirmed',
-                card__status='download',
-            ).count(),
-        }
-        print_counts = {
-            'generate_list': PrintRequest.objects.filter(
-                table=table,
-                status='generate_list',
-            ).count(),
-            'finalized': PrintRequest.objects.filter(
-                table=table,
-                status='finalized',
-            ).count(),
-        }
 
     return {
         'active_page': active_page,
@@ -1109,8 +1060,7 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
         'id_cards': [],
         'current_status': status_filter,
         'status_counts': status_counts,
-        'reprint_counts': reprint_counts,
-        'print_counts': print_counts,
+
         'total_count': total_count,
         'has_more': True,
         'initial_load_limit': per_page,
@@ -1227,20 +1177,6 @@ def group_settings(request, client_id):
     return render(request, 'group-setting.html', context)
 
 
-# Website Management → redirect to new website admin dashboard
-@login_required
-def manage_website(request):
-    """Redirect legacy manage-website URL to new website admin dashboard."""
-    can_access_website = (
-        PermissionService.has(request.user, 'perm_website_view')
-        or PermissionService.has(request.user, 'perm_manage_website_clients')
-        or PermissionService.has(request.user, 'perm_manage_website_portfolio')
-    )
-    if not can_access_website:
-        return redirect('/panel/')
-    return redirect('/panel/website/')
-
-
 # Notifications page, manage_panel, and api_email_logs have moved to the
 # panel app.  Import them here so existing URL patterns continue to resolve.
 from panel.views.manage_panel_views import (  # noqa: F401
@@ -1344,6 +1280,19 @@ def product_gallery(request):
         'gallery_user_type_label': _GALLERY_TYPE_LABELS.get(gallery_user_type, 'General'),
         'gallery_client_name': getattr(gallery_client, 'name', ''),
     }
+    # Attach a small/fast thumbnail URL for each item to use as the initial src
+    for item in portfolio_items:
+        try:
+            if getattr(item, 'image', None) and getattr(item.image, 'name', None):
+                thumb_path = ThumbnailService.get_thumbnail_path(item.image.name)
+                if thumb_path and default_storage.exists(thumb_path):
+                    item.thumb_url = default_storage.url(thumb_path)
+                else:
+                    item.thumb_url = item.image.url
+            else:
+                item.thumb_url = ''
+        except Exception:
+            item.thumb_url = getattr(item.image, 'url', '') if getattr(item, 'image', None) else ''
     return render(request, 'product-gallery.html', context)
 
 

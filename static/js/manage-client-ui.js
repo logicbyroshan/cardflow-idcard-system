@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'perm_idcard_download_image_rename_mode': 'Download Images Rename Mode',
             'perm_idcard_download_image_generate_mode': 'Download Images Generate Mode',
             'perm_idcard_upgrade_all': 'Batch Class Upgrade',
-            'perm_mobile_app': 'Mobile App Access', 'perm_idcard_client_list': 'Manage Client'
+            'perm_mobile_app': 'Mobile App Access', 'perm_idcard_client_list': 'Manage Assistant'
           };
           var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
           NS.permissionFields.forEach(function(field) {

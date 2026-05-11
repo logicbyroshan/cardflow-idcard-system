@@ -7,21 +7,21 @@
     
     <!-- SEO Meta Tags -->
     <title>{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }} | {{ business.tagline|default:'Professional ID Card Solutions' }}{% endif %}</title>
-    <meta name="description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description|default:'Professional ID Cards for Schools and Institutions' }}{% endif %}">
-    <meta name="keywords" content="{% if global_keywords %}{{ global_keywords }}{% else %}{{ business.meta_keywords }}{% endif %}">
+    <meta name="description" content="{% if meta_description %}{{ meta_description }}{% else %}Professional ID Card and Lanyard Printing Solutions in Bhopal. Trusted by 1000+ institutions.{% endif %}">
+    <meta name="keywords" content="Adarsh ID Cards, Adarsh Bhopal, ID Card Printing Bhopal, Custom Lanyards Bhopal, School ID Cards MP, Identity Solutions Madhya Pradesh, PVC ID Card Manufacturer, RFID Cards Bhopal, Digital Lanyard Printing, School Stationery Suppliers Bhopal">
     <link rel="canonical" href="{% if canonical_url %}{{ canonical_url }}{% else %}{{ request.build_absolute_uri }}{% endif %}">
     
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="{{ site_name }}">
     <meta property="og:title" content="{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }}{% endif %}">
-    <meta property="og:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description }}{% endif %}">
+    <meta property="og:description" content="{% if meta_description %}{{ meta_description }}{% else %}Professional ID Card Solutions in Bhopal.{% endif %}">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:image" content="{% block og_image %}{% if item and item.image %}{{ request.scheme }}://{{ request.get_host }}{{ item.image.url }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}{% endif %}{% endblock %}">
     
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% if meta_title %}{{ meta_title }}{% else %}{{ site_name }}{% endif %}">
-    <meta name="twitter:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ business.meta_description }}{% endif %}">
+    <meta name="twitter:description" content="{% if meta_description %}{{ meta_description }}{% else %}Professional ID Card Solutions in Bhopal.{% endif %}">
     <meta name="twitter:image" content="{% block twitter_image %}{% if item and item.image %}{{ request.scheme }}://{{ request.get_host }}{{ item.image.url }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'website/images/adarsh.png' %}{% endif %}{% endblock %}">
     
     <meta name="theme-color" content="#3498db">
@@ -34,12 +34,41 @@
     <!-- Fonts & Icons -->
     <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-    
+
+    <!-- Critical above-the-fold hero CSS -->
+    <style>
+        body { margin: 0; font-family: 'Saira Semi Condensed', 'Segoe UI', Arial, sans-serif; color: #0f172a; background: #fff; }
+        .hero { background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%); min-height: clamp(480px, 66vh, 760px); width: 100%; margin-left: 0; color: #ffffff; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: clamp(90px, 10vh, 120px) 20px clamp(36px, 6vh, 56px); }
+        .hero::before, .hero::after { content: ''; position: absolute; border-radius: 8px; z-index: 0; filter: blur(50px); }
+        .hero::before { width: 800px; height: 800px; background: radial-gradient(circle, rgba(10,146,221,0.6) 0%, rgba(10,146,221,0.3) 30%, rgba(10,146,221,0.1) 60%, transparent 100%); top: -300px; right: -200px; }
+        .hero::after { width: 600px; height: 600px; background: radial-gradient(circle, rgba(10,146,221,0.5) 0%, rgba(10,146,221,0.25) 30%, rgba(10,146,221,0.05) 60%, transparent 100%); bottom: 50px; left: -150px; }
+        .hero-inner { position: relative; z-index: 1; padding: 0 20px; max-width: 1200px; width: 100%; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .hero .hero-content { text-align: center; color: #fff; max-width: min(920px,100%); margin: 0 auto; }
+        .hero .hero-badge { display: inline-flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 8px 18px; border-radius: 50px; margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.2); }
+        .hero .hero-badge i { color: #f1c40f; font-size: 1.2rem; }
+        .hero .hero-badge span { font-size: 0.95rem; font-weight: 500; letter-spacing: 0.5px; color: #fff; }
+        .hero .hero-content h1 { font-size: clamp(2.1rem, 4.8vw, 3.5rem); font-weight: 800; margin: 0 auto 20px; line-height: 1.15; max-width: 22ch; display: block; text-align: center; }
+        .hero .gradient-text { background: linear-gradient(135deg, #0a92dd, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero .hero-subtitle { font-size: 1.2rem; color: rgba(255,255,255,0.85); max-width: 700px; margin: 0 auto 30px; line-height: 1.7; }
+        .hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .hero-buttons .btn { min-height: 38px; padding: 10px 20px; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; white-space: nowrap; display: inline-flex; align-items: center; gap: 10px; position: relative; overflow: hidden; text-decoration: none; border: none; }
+        .hero-buttons .btn-primary { background: linear-gradient(135deg, #0a92dd 0%, #667eea 100%); color: #fff; box-shadow: 0 8px 25px rgba(10,146,221,0.35); }
+        .hero-buttons .btn-secondary { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.18); }
+        .typing-wrapper { display: inline-block; }
+        .typing-cursor { display: inline-block; width: 2px; background: #fff; margin-left: 2px; animation: blink 1.1s infinite; }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
+
     <!-- CSS Files -->
-    <link rel="stylesheet" href="{% static 'website/styles/style.css' %}?v=147">
-    <link rel="stylesheet" href="{% static 'website/styles/page-common.css' %}">
-    <link rel="stylesheet" href="{% static 'website/styles/responsive.css' %}?v=147">
-    <link rel="stylesheet" href="{% static 'website/styles/ui-consistency.css' %}?v=147">
+    <link rel="stylesheet" href="{% static 'website/styles/style.css' %}?v=150">
+    <link rel="preload" href="{% static 'website/styles/page-common.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="{% static 'website/styles/responsive.css' %}?v=148" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="{% static 'website/styles/ui-consistency.css' %}?v=148" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+        <link rel="stylesheet" href="{% static 'website/styles/page-common.css' %}">
+        <link rel="stylesheet" href="{% static 'website/styles/responsive.css' %}?v=148">
+        <link rel="stylesheet" href="{% static 'website/styles/ui-consistency.css' %}?v=148">
+    </noscript>
 
     {% block extra_css %}{% endblock %}
 
@@ -53,7 +82,7 @@
           "@id": "{{ request.scheme }}://{{ request.get_host }}/#website",
           "url": "{{ request.scheme }}://{{ request.get_host }}/",
           "name": "{{ site_name }}",
-          "description": "{{ business.meta_description }}",
+          "description": "{% if meta_description %}{{ meta_description }}{% else %}Professional ID Card Solutions in Bhopal.{% endif %}",
           "publisher": {"@id": "{{ request.scheme }}://{{ request.get_host }}/#organization"}
         },
         {
@@ -147,6 +176,7 @@
                     <li><a href="{% url 'website:home' %}">Home</a></li>
                     <li><a href="{% url 'website:our_work' %}">Our Products</a></li>
                     <li><a href="{% url 'website:why_choose_us' %}">Why Choose Us</a></li>
+                    <li><a href="{% url 'website:trusted_clients' %}">Trusted Clients</a></li>
                     <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                     <li class="nav-btn-group">
                         <a href="{% url 'website:panel_entry' %}" class="btn-cta btn-login"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Panel</a>

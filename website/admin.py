@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    BusinessDetails, Feature, HeroImage, PortfolioCategory, PortfolioItem, 
-    Testimonial, ContactSubmission, FAQ, Reel,
+    BusinessDetails, Feature, PortfolioCategory, PortfolioItem, 
+    Testimonial, ContactSubmission, FAQ, 
     WebsiteStatus,
 )
 
@@ -24,18 +24,12 @@ class BusinessDetailsAdmin(admin.ModelAdmin):
             'fields': ('site_name', 'tagline')
         }),
         ('Contact Information', {
-            'fields': ('email', ('phone1', 'phone2'), 'address', 'working_hours')
+            'fields': ('email', ('phone1', 'phone2'), 'address')
         }),
         ('Social Media', {
             'fields': ('facebook_url', 'instagram_url', 'linkedin_url', 'youtube_url'),
         }),
-        ('Hero Section', {
-            'fields': ('hero_title', 'hero_description')
-        }),
-        ('SEO Meta Tags', {
-            'classes': ('collapse',),
-            'fields': ('meta_description', 'meta_keywords')
-        }),
+
     )
 
     def has_add_permission(self, request):
@@ -157,21 +151,6 @@ class FAQAdmin(admin.ModelAdmin):
     question_short.short_description = 'Question'
 
 
-@admin.register(Reel)
-class ReelAdmin(admin.ModelAdmin):
-    list_display = ('thumbnail_preview', 'title', 'views_count', 'likes_count', 'order', 'is_active')
-    list_editable = ('order', 'is_active')
-    search_fields = ('title', 'description')
-    list_filter = ('is_active',)
-    ordering = ('order',)
-
-    def thumbnail_preview(self, obj):
-        if obj.thumbnail:
-            return format_html('<img src="{}" style="width: 60px; height: 80px; object-fit: cover; border-radius: 8px;" />', obj.thumbnail.url)
-        return "No Thumbnail"
-    thumbnail_preview.short_description = 'Preview'
-
-
 # --- New models added in Phase 2 ---
 
 @admin.register(WebsiteStatus)
@@ -189,14 +168,4 @@ class WebsiteStatusAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(HeroImage)
-class HeroImageAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'order', 'title', 'is_active', 'image_preview_tag', 'created_at')
-    list_display_links = ('pk',)
-    list_editable = ('order', 'is_active')
-    list_filter = ('is_active',)
-    ordering = ('order', 'pk')
 
-    def image_preview_tag(self, obj):
-        return image_preview(obj.image)
-    image_preview_tag.short_description = 'Preview'

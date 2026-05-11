@@ -18,6 +18,7 @@ SEO: This entire domain is blocked from indexing via:
 For local development (single domain), config/urls.py is used instead.
 """
 import os
+import sys
 
 from django.contrib import admin
 from django.urls import path, include
@@ -34,7 +35,7 @@ from website import views as website_views
 def panel_robots_txt(request):
     """Allow ALL crawlers to index the panel subdomain as per user request."""
     return HttpResponse(
-        "User-agent: *\nAllow: /\n",
+        "User-agent: *\nDisallow: /\n",
         content_type="text/plain",
     )
 
@@ -160,6 +161,10 @@ urlpatterns = [
     # Django admin
     path('admin/', admin.site.urls),
 
+    # Local-only debug toolbar route for panel subdomain development.
+    # The toolbar package is optional in production, so only register it when
+    # DEBUG is enabled and the package can be imported.
+
     # ==================== ADMIN PANEL (root — no /panel/ prefix) ==========
     path('', include('core.urls')),
     path('auth/', include('accounts.urls')),
@@ -168,8 +173,6 @@ urlpatterns = [
     path('images/', include('mediafiles.urls')),
     path('staff/', include('staff.urls')),
     path('work/', include('idcards.urls')),
-    path('website/', include('website.admin_urls')),
-    path('print/', include('cardprint.urls')),
     path('reprint/', include('reprintcard.urls')),
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/', include('mobile_app.urls')),
@@ -177,6 +180,19 @@ urlpatterns = [
     # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
     path('api/mobile/', include('mobile_api.urls')),
 ]
+
+def _running_tests():
+    return os.getenv('RUNNING_TESTS', '').lower() in ('1', 'true', 'yes', 'on') or any(
+        mod.startswith('_pytest') for mod in sys.modules
+    )
+
+if getattr(settings, 'DEBUG', False) and not _running_tests():
+    try:
+        import debug_toolbar  # noqa: F401
+    except Exception:
+        pass
+    else:
+        urlpatterns.insert(6, path('__debug__/', include('debug_toolbar.urls')))
 
 # Media file serving (with auth for protected dirs)
 urlpatterns += [

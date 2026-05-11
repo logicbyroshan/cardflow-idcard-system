@@ -22,6 +22,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import connection
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
@@ -795,14 +796,12 @@ def api_monitoring_data(request):
     now = timezone.now()
     since_24h = now - timedelta(hours=24)
 
-    active_tasks = BackgroundTask.objects.filter(status__in=['pending', 'processing']).count()
-    pending_tasks = BackgroundTask.objects.filter(status='pending').count()
-    completed_24h = BackgroundTask.objects.filter(
-        status='completed', completed_at__gte=since_24h
-    ).count()
-    failed_24h = BackgroundTask.objects.filter(
-        status='failed', completed_at__gte=since_24h
-    ).count()
+    task_stats = BackgroundTask.objects.aggregate(
+        active_tasks=Count('id', filter=Q(status__in=['pending', 'processing'])),
+        pending_tasks=Count('id', filter=Q(status='pending')),
+        completed_24h=Count('id', filter=Q(status='completed', completed_at__gte=since_24h)),
+        failed_24h=Count('id', filter=Q(status='failed', completed_at__gte=since_24h)),
+    )
 
     recent_qs = (
         BackgroundTask.objects
@@ -884,10 +883,10 @@ def api_monitoring_data(request):
     return JsonResponse({
         'success': True,
         'stats': {
-            'active_tasks': active_tasks,
-            'pending_tasks': pending_tasks,
-            'completed_24h': completed_24h,
-            'failed_24h': failed_24h,
+            'active_tasks': task_stats['active_tasks'],
+            'pending_tasks': task_stats['pending_tasks'],
+            'completed_24h': task_stats['completed_24h'],
+            'failed_24h': task_stats['failed_24h'],
         },
         'recent_tasks': recent_tasks,
         'backup_tasks': backup_tasks,

@@ -57,27 +57,15 @@ class BusinessDetails(models.Model):
     phone1 = models.CharField(max_length=20, blank=True, help_text='First phone number with country code e.g. 919876543210')
     phone2 = models.CharField(max_length=20, blank=True, help_text='Second phone number with country code e.g. 919876543211')
     email = models.EmailField(blank=True)
-    working_hours = models.CharField(max_length=255, blank=True, help_text='e.g. Mon-Sat: 9AM - 6PM')
     
     # Social Media Links
     facebook_url = models.URLField(blank=True, help_text='Facebook page URL')
     instagram_url = models.URLField(blank=True, help_text='Instagram profile URL')
     linkedin_url = models.URLField(blank=True, help_text='LinkedIn profile URL')
     youtube_url = models.URLField(blank=True, help_text='YouTube channel URL')
-    twitter_url = models.URLField(blank=True, help_text='Twitter/X profile URL')
-    whatsapp_number = models.CharField(max_length=20, blank=True, help_text='WhatsApp number with country code e.g. 919876543210')
     
-    # Hero Section
-    hero_title = models.CharField(max_length=255, blank=True)
-    hero_description = models.TextField(blank=True)
+
     
-    # SEO
-    meta_description = models.TextField(blank=True)
-    meta_keywords = models.CharField(max_length=500, blank=True)
-
-    # Footer
-    footer_text = models.CharField(max_length=500, blank=True, help_text='Custom footer text')
-
     # Status
     is_active = models.BooleanField(default=True, help_text='Active/Inactive toggle for business details')
 
@@ -130,31 +118,7 @@ class BusinessDetails(models.Model):
         return re.sub(r'<(/?\s*\w+)[^>]*>', _replace_tag, value)
 
 
-# ==========================================
-# 1b. HERO IMAGES (Unlimited, Ordered)
-# ==========================================
 
-class HeroImage(models.Model):
-    """
-    Dynamic hero slider images.
-    Replaces the fixed hero_image1–4 fields on BusinessDetails.
-    Supports unlimited images with ordering and per-image captions.
-    """
-    image = models.ImageField(upload_to='images/Hero/', help_text='Slider image')
-    title = models.CharField(max_length=150, blank=True, help_text='Optional card title (e.g. "Premium Quality")')
-    subtitle = models.CharField(max_length=200, blank=True, help_text='Optional card subtitle (e.g. "Trusted by 500+ Schools")')
-    order = models.PositiveIntegerField(default=0, db_index=True, help_text='Display order (lower = first)')
-    is_active = models.BooleanField(default=True, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Hero Image'
-        verbose_name_plural = 'Hero Images'
-        ordering = ['order', 'pk']
-
-    def __str__(self):
-        return f"Hero #{self.order} — {self.title or 'Untitled'}"
 
 
 # ==========================================
@@ -362,6 +326,8 @@ class PortfolioItem(models.Model):
         indexes = [
             models.Index(fields=['is_active', 'order']),
             models.Index(fields=['is_active', 'is_featured']),
+            models.Index(fields=['is_active', '-created_at']),
+            models.Index(fields=['category', 'is_active', 'order']),
         ]
 
     def __str__(self):
@@ -417,11 +383,12 @@ class PortfolioItem(models.Model):
 
         if self._needs_portfolio_image_processing():
             from .watermark import process_portfolio_image
+            # Ensure portfolio images are compressed to the requested maximum (200KB)
             self.image = process_portfolio_image(self.image)
 
-        if self._needs_portfolio_video_processing():
-            from .video_processing import normalize_portfolio_video_upload
-            self.video_file = normalize_portfolio_video_upload(self.video_file)
+        # Defer heavy video processing to background worker to avoid blocking
+        # request/transaction lifecycle. The background job will normalize,
+        # compress and generate derivatives for the saved file.
 
         if not self.slug:
             from django.utils.text import slugify
@@ -442,8 +409,21 @@ class PortfolioItem(models.Model):
             purge_portfolio_video_derivatives(previous_video_name)
 
         if current_video_name and video_changed:
-            from .video_processing import ensure_portfolio_video_derivatives
-            ensure_portfolio_video_derivatives(current_video_name)
+            # Submit background job to process video (normalize/compress + derivatives)
+            try:
+                from core.services.background_worker import background_worker
+                from .video_processing import process_portfolio_video_file
+                # Fire-and-forget: background_worker.executor handles threads and
+                # closes DB connections in its worker lifecycle. We pass the
+                # relative media path and desired max bytes.
+                background_worker.executor.submit(process_portfolio_video_file, current_video_name, 10 * 1024 * 1024)
+            except Exception:
+                # If background submission fails, fall back to synchronous generation
+                try:
+                    from .video_processing import ensure_portfolio_video_derivatives
+                    ensure_portfolio_video_derivatives(current_video_name)
+                except Exception:
+                    pass
 
     def delete(self, *args, **kwargs):
         old_video_name = self.video_file.name if self.video_file else ''
@@ -557,32 +537,6 @@ class FAQ(models.Model):
 
     def __str__(self):
         return self.question[:50]
-
-
-class Reel(models.Model):
-    """Short video reels for showcasing work"""
-    title = models.CharField(max_length=255)
-    description = models.CharField(max_length=500, blank=True)
-    thumbnail = models.ImageField(upload_to='images/Reels/', null=True, blank=True)
-    video_url = models.URLField(blank=True, help_text='YouTube/Instagram reel URL')
-    video_file = models.FileField(upload_to='videos/Reels/', null=True, blank=True)
-    views_count = models.CharField(max_length=20, default='1K', help_text='e.g. 12.5K')
-    likes_count = models.CharField(max_length=20, default='100', help_text='e.g. 890')
-    order = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Reel'
-        verbose_name_plural = 'Reels'
-        ordering = ['order', '-created_at']
-        indexes = [
-            models.Index(fields=['is_active', 'order']),
-        ]
-
-    def __str__(self):
-        return self.title
 
 
 # ==========================================

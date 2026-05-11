@@ -398,3 +398,70 @@ def purge_portfolio_video_derivatives(video_rel_path: str) -> None:
 
     if stream_dir_abs and os.path.isdir(stream_dir_abs):
         shutil.rmtree(stream_dir_abs, ignore_errors=True)
+
+
+def process_portfolio_video_file(video_rel_path: str, max_bytes: int = 10 * 1024 * 1024) -> None:
+    """
+    Background-friendly entry point to normalize/compress a saved portfolio video
+    file and generate its derivatives (thumbnail + HLS segments).
+
+    This function is safe to call from a background thread/process — it works
+    with on-disk files under MEDIA_ROOT and does not rely on request state.
+    """
+    try:
+        # Lazy imports to avoid pulling heavy libs into request cycle
+        from django.core.files.base import ContentFile
+        from .watermark import compress_video_file
+        # Read input file from MEDIA_ROOT
+        normalized = _normalize_media_relpath(video_rel_path)
+        if not normalized:
+            return
+        input_abs = _media_abs_path(normalized)
+        if not input_abs or not os.path.exists(input_abs):
+            return
+
+        # Read bytes from disk
+        try:
+            with open(input_abs, 'rb') as f:
+                original_bytes = f.read()
+        except Exception:
+            return
+
+        # Wrap as ContentFile for existing helpers
+        content = ContentFile(original_bytes, name=os.path.basename(normalized))
+
+        # Normalize (re-encode) if ffmpeg is available
+        try:
+            processed = normalize_portfolio_video_upload(content)
+        except Exception:
+            processed = content
+
+        # Compress to target size
+        try:
+            compressed = compress_video_file(processed, max_bytes=max_bytes)
+        except Exception:
+            compressed = processed
+
+        # If compressed differs from original, atomically replace on-disk file
+        try:
+            # Write to temp file then rename
+            with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(input_abs)) as tmpf:
+                tmpf.write(compressed.read() if hasattr(compressed, 'read') else compressed)
+                tmp_path = tmpf.name
+            os.replace(tmp_path, input_abs)
+        except Exception:
+            # Best-effort: leave original file intact
+            try:
+                if 'tmp_path' in locals() and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            except Exception:
+                pass
+
+        # Ensure derivatives (thumbnail + HLS)
+        try:
+            ensure_portfolio_video_derivatives(normalized, force=False)
+        except Exception:
+            logger.exception('process_portfolio_video_file: derivatives generation failed for %s', normalized)
+
+    except Exception:
+        logger.exception('process_portfolio_video_file failed for %s', video_rel_path)

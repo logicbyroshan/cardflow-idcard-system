@@ -136,6 +136,10 @@ class MobileAppBaseTestCase(TestCase):
 		# Keep test client aligned with mobile-only server-side gating.
 		self.client.defaults['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Mobile Safari/537.36'
 
+		# Clear rate limiter cache to avoid 429 errors across tests
+		from django.core.cache import cache
+		cache.clear()
+
 		# Class-level fixtures can be mutated by tests; refresh to stable DB state each run.
 		for attr in (
 			'super_admin',
@@ -192,6 +196,9 @@ class MobileAppBaseTestCase(TestCase):
 		self._set_mobile_auth_checkpoint()
 
 	def _create_authenticated_session_for_user(self, user, *, surface='desktop', mobile_auth_ok=False, browser_fp=''):
+		from django.utils import timezone
+		from accounts.models import UserDeviceSession
+		
 		session = SessionStore()
 		session['_auth_user_id'] = str(user.pk)
 		session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
@@ -202,6 +209,16 @@ class MobileAppBaseTestCase(TestCase):
 		if mobile_auth_ok or surface == 'mobile':
 			session['mobile_auth_ok'] = True
 		session.save()
+		
+		# Register session in UserDeviceSession so signal handler can enforce limits
+		device_type = 'mobile' if surface == 'mobile' else 'web'
+		UserDeviceSession.objects.create(
+			user=user,
+			session_key=session.session_key,
+			device_type=device_type,
+			last_active=timezone.now(),
+		)
+		
 		return session.session_key
 
 	def _enable_mobile_photo_edit_for_all_roles(self):
@@ -2571,64 +2588,6 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		allowed = self.client.get('/app/api/staff/')
 		self.assertEqual(allowed.status_code, 200)
 		self.assertTrue(allowed.json()['success'])
-
-	def test_staff_api_list_for_super_admin_includes_permission_flags(self):
-		managed_user = User.objects.create_user(
-			username='mob-admin-perm-list@test.com',
-			email='mob-admin-perm-list@test.com',
-			password='pass1234',
-			role='admin_staff',
-		)
-		managed_staff = Staff.objects.create(
-			user=managed_user,
-			staff_type='admin_staff',
-			perm_mobile_app=True,
-			perm_print_list=True,
-			perm_idcard_bulk_reupload=True,
-		)
-
-		self._login_mobile_super_admin()
-		response = self.client.get('/app/api/staff/')
-		self.assertEqual(response.status_code, 200)
-		payload = response.json()
-		self.assertTrue(payload['success'])
-
-		staff_row = next((item for item in payload['data']['staff'] if item['id'] == managed_staff.id), None)
-		self.assertIsNotNone(staff_row)
-		self.assertTrue(staff_row['perm_print_list'])
-		self.assertTrue(staff_row['perm_idcard_bulk_reupload'])
-
-	def test_staff_api_update_for_super_admin_updates_admin_staff_permissions(self):
-		managed_user = User.objects.create_user(
-			username='mob-admin-perm-update@test.com',
-			email='mob-admin-perm-update@test.com',
-			password='pass1234',
-			role='admin_staff',
-		)
-		managed_staff = Staff.objects.create(
-			user=managed_user,
-			staff_type='admin_staff',
-			perm_mobile_app=True,
-			perm_print_list=False,
-		)
-
-		self._login_mobile_super_admin()
-		response = self.client.post(
-			f'/app/api/staff/{managed_staff.id}/update/',
-			data=json.dumps({
-				'first_name': 'Mobile',
-				'last_name': 'Updated',
-				'perm_print_list': True,
-				'perm_idcard_bulk_reupload': True,
-			}),
-			content_type='application/json',
-		)
-
-		self.assertEqual(response.status_code, 200)
-		self.assertTrue(response.json()['success'])
-		managed_staff.refresh_from_db()
-		self.assertTrue(managed_staff.perm_print_list)
-		self.assertTrue(managed_staff.perm_idcard_bulk_reupload)
 
 	def test_clients_list_status_chips_do_not_use_single_letter_prefixes(self):
 		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'clients_list.html'

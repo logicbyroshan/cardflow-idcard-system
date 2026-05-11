@@ -239,18 +239,8 @@ function initClassSectionFilters(cfg) {
   }
 
   function classOptionLabel(opt) {
-    if (opt && typeof opt === 'object') return formatFilterDisplayLabel(opt.display || opt.value || '');
-    return formatFilterDisplayLabel(opt || '');
-  }
-
-  function formatFilterDisplayLabel(value) {
-    var raw = String(value == null ? '' : value).trim();
-    if (!raw) return '';
-    if (/[A-Z]/.test(raw)) return raw;
-    return raw.replace(/[A-Za-z]+/g, function(token) {
-      if (token.length <= 3) return token.toUpperCase();
-      return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
-    });
+    if (opt && typeof opt === 'object') return String(opt.display || opt.value || '').trim();
+    return String(opt || '').trim();
   }
 
   function updateClearButton() {
@@ -303,8 +293,7 @@ function initClassSectionFilters(cfg) {
       sectionOptions.innerHTML = '<div class="dropdown-option" data-value="">All Sections</div>' +
         filteredSection.map(function(v) {
           var s = String(v);
-          var label = formatFilterDisplayLabel(s);
-          return '<div class="dropdown-option" data-value="' + escapeHtml(s) + '">' + escapeHtml(label) + '</div>';
+          return '<div class="dropdown-option" data-value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</div>';
         }).join('');
     }
 
@@ -322,7 +311,7 @@ function initClassSectionFilters(cfg) {
       }
     }
     if (sectionText) {
-      sectionText.textContent = currentSection ? formatFilterDisplayLabel(currentSection) : 'All Sections';
+      sectionText.textContent = currentSection || 'All Sections';
     }
 
     markSelected(classOptions, currentClass);

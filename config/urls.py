@@ -132,23 +132,49 @@ urlpatterns = [
     # Django admin
     path('admin/', admin.site.urls),
 
+    # Local-only debug toolbar route.
+    # Debug Toolbar is enabled in DEBUG mode only and helps inspect SQL/query
+    # behavior without affecting production routing.
+    # NOTE: the toolbar package is optional in production. Register its
+    # URLs only when DEBUG is enabled and the package is importable.
+
+    # Local-only Sentry test route. Only registered in DEBUG to avoid accidental exposure.
+    # Visit /sentry-debug/ in local dev to trigger a test exception (1/0) for verification.
+]
+
+# Register debug-only routes (debug_toolbar, sentry test) only when DEBUG and not testing.
+import os
+import sys
+
+def _running_tests():
+    return os.getenv('RUNNING_TESTS', '').lower() in ('1', 'true', 'yes', 'on') or any(
+        mod.startswith('_pytest') for mod in sys.modules
+    )
+
+if getattr(settings, 'DEBUG', False) and not _running_tests():
+    # Debug toolbar: optional dependency; import only if installed.
+    try:
+        import debug_toolbar  # noqa: F401
+    except Exception:
+        pass
+    else:
+        urlpatterns += [
+            path('__debug__/', include('debug_toolbar.urls')),
+        ]
+
+    from django.urls import path as _path
+
+    def _trigger_error(request):
+        division_by_zero = 1 / 0
+
+    urlpatterns += [
+        _path('sentry-debug/', _trigger_error),
+    ]
+
+# re-open urlpatterns list continuation
+urlpatterns += [
+
     # ==================== API COMPATIBILITY (ROOT /api/*) ====================
-    # Keep these aliases so legacy/bundled frontend calls to /api/engine/*
-    # continue to work even though panel routes are namespaced under /panel/.
-    path('api/engine/status/', core_views.api_engine_status, name='api_engine_status_root'),
-    path('api/engine/process-folder/', core_views.api_engine_process_folder, name='api_engine_process_folder_root'),
-    path('api/engine/page-photo-picker-folder/', core_views.api_engine_page_photo_picker_folder, name='api_engine_page_photo_picker_folder_root'),
-    path('api/engine/preview/', core_views.api_engine_preview, name='api_engine_preview_root'),
-    path('api/engine/serve-image/', core_views.api_engine_serve_image, name='api_engine_serve_image_root'),
-    path('api/engine/save-edited/', core_views.api_engine_save_edited, name='api_engine_save_edited_root'),
-    path('api/engine/delete-image/', core_views.api_engine_delete_image, name='api_engine_delete_image_root'),
-    path('api/engine/compress-folder/', core_views.api_engine_compress_folder, name='api_engine_compress_folder_root'),
-    path('api/engine/adjust-image/', core_views.api_engine_adjust_image, name='api_engine_adjust_image_root'),
-    path('api/engine/rename-preview/', core_views.api_engine_rename_preview, name='api_engine_rename_preview_root'),
-    path('api/engine/rename-execute/', core_views.api_engine_rename_execute, name='api_engine_rename_execute_root'),
-    path('api/engine/rename-operations/', core_views.api_engine_rename_operations, name='api_engine_rename_operations_root'),
-    path('api/engine/clients/', core_views.api_engine_clients, name='api_engine_clients_root'),
-    path('api/cropper/latest-version/', core_views.api_cropper_latest_version, name='api_cropper_latest_version_root'),
 
     # ==================== ADMIN PANEL (/panel/) ====================
     # All internal/admin routes live under /panel/
@@ -159,9 +185,11 @@ urlpatterns = [
     path('panel/images/', include('mediafiles.urls')),
     path('panel/staff/', include('staff.urls')),
     path('panel/work/', include('idcards.urls')),
-    path('panel/print/', include('cardprint.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
-    path('panel/website/', include('website.admin_urls')),
+
+    # ==================== MANAGE WEBSITE (/dashboard) ====================
+    # Website management dashboard on main domain (adarshbhopal.in/dashboard)
+    path('dashboard/', include('manage_website.urls')),
 
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/', include('mobile_app.urls')),

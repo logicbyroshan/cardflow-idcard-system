@@ -295,7 +295,7 @@
                         </div>
                     </td>
                     <td>
-                        {% if is_super_admin or perm_website_edit or perm_manage_website_clients %}
+                        {% if is_super_admin or perm_website_edit %}
                         <input
                             type="number"
                             min="0"
@@ -310,7 +310,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if is_super_admin or perm_website_edit or perm_manage_website_clients %}
+                        {% if is_super_admin or perm_website_edit %}
                         <select
                             class="form-select form-select-sm client-visibility-select status-{% if c.website_is_visible %}visible{% else %}hidden{% endif %}"
                             onchange="setClientWebsiteVisibility({{ c.id }}, this.value, this)">
@@ -331,7 +331,7 @@
                                 {% endif %}
                             </div>
                             <div class="client-logo-action-buttons">
-                                {% if is_super_admin or perm_website_edit or perm_manage_website_clients %}
+                                {% if is_super_admin or perm_website_edit %}
                                     {% if c.website_logo %}
                                     <button class="btn btn-sm btn-outline-primary" type="button" onclick="openUploadClientLogo({{ c.id }})">
                                         <i class="fa-solid fa-upload"></i> Upload New

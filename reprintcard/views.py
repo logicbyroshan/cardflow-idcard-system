@@ -1027,28 +1027,24 @@ def api_reprint_send_to_print(request, table_id):
             status=400,
         )
 
-    # Import PrintWorkflowService to create print requests
-    from cardprint.services import PrintWorkflowService
-
-    result = PrintWorkflowService.create_requests(table, card_ids, request.user)
-
-    if not result.success:
-        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
-
-    # Always move eligible rows from requested -> confirmed, even when
-    # print rows were skipped because they already existed in generate_list.
-    moved_count = ReprintRequest.objects.filter(
+    # Cardprint integration removed: move eligible requested rows to
+    # confirmed locally without creating PrintRequest entries.
+    moved_rows = list(ReprintRequest.objects.filter(
         id__in=eligible_rr_ids,
         table=table,
         status='requested',
         card__status='download',
-    ).update(status='confirmed')
+    ).values_list('id', 'card_id'))
 
-    if moved_count:
-        for card_id in card_ids:
+    moved_ids = [r[0] for r in moved_rows]
+    moved_card_ids = [r[1] for r in moved_rows]
+
+    if moved_ids:
+        ReprintRequest.objects.filter(id__in=moved_ids).update(status='confirmed')
+        for card_id in moved_card_ids:
             ActivityService.log(
                 'reprint_status',
-                'Reprint sent to print list and moved to confirmed',
+                'Reprint moved to confirmed (print disabled)',
                 user=request.user,
                 target_model='IDCard',
                 target_id=card_id,
@@ -1057,10 +1053,9 @@ def api_reprint_send_to_print(request, table_id):
 
     return JsonResponse({
         'status': 'ok',
-        'message': f"{moved_count} request(s) moved to Confirmed List"
-                   + (f" ({result.data['created']} added to generate list" + (f", {result.data['skipped']} already in generate list" if result.data['skipped'] else '') + ")" if (result.data['created'] or result.data['skipped']) else ''),
-        'created': result.data['created'],
-        'skipped': result.data['skipped'],
-        'moved': moved_count,
-        'moved_ids': eligible_rr_ids,
+        'message': f"{len(moved_ids)} request(s) moved to Confirmed List",
+        'created': 0,
+        'skipped': 0,
+        'moved': len(moved_ids),
+        'moved_ids': moved_ids,
     })

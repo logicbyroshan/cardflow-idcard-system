@@ -24,8 +24,8 @@ from client.models import Client as PanelClient
 from core.services.cache_version_service import CacheVersionService
 
 from .models import (
-    BusinessDetails, ContactSubmission, Feature, HeroImage,
-    PortfolioCategory, PortfolioItem, Reel, Testimonial,
+    BusinessDetails, ContactSubmission, Feature,
+    PortfolioCategory, PortfolioItem, Testimonial,
     WebsiteStatus, FAQ,
 )
 
@@ -88,6 +88,56 @@ def _validate_video_upload(file_obj, label='video'):
     _validate_upload(file_obj, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_UPLOAD_SIZE, label)
 
 
+def _extract_logo_theme_colors(file_obj):
+    """Return a stable pair of hex colors derived from a logo upload."""
+    if file_obj is None:
+        return None, None
+
+    try:
+        from io import BytesIO
+        from PIL import Image
+
+        file_obj.seek(0)
+        data = file_obj.read()
+        file_obj.seek(0)
+
+        image = Image.open(BytesIO(data)).convert('RGBA')
+        width, height = image.size
+        sample = image.resize((min(64, max(1, width)), min(64, max(1, height))))
+        pixels = list(sample.getdata())
+
+        red = green = blue = count = 0
+        for r, g, b, a in pixels:
+            if a < 128:
+                continue
+            if r > 240 and g > 240 and b > 240:
+                continue
+            red += r
+            green += g
+            blue += b
+            count += 1
+
+        if count == 0:
+            red, green, blue = 10, 146, 221
+        else:
+            red //= count
+            green //= count
+            blue //= count
+
+        darker = (
+            max(0, red - 40),
+            max(0, green - 40),
+            max(0, blue - 40),
+        )
+
+        return (
+            f'#{red:02x}{green:02x}{blue:02x}',
+            f'#{darker[0]:02x}{darker[1]:02x}{darker[2]:02x}',
+        )
+    except Exception:
+        return '#0a92dd', '#006da8'
+
+
 def _parse_bool(value, default=False):
     """Canonical boolean parser for POST/JSON values."""
     if value is None:
@@ -97,7 +147,6 @@ def _parse_bool(value, default=False):
 
 def _invalidate_public_section_caches():
     """Invalidate public website section caches after content mutations."""
-    cache.delete('home_hero_images')
     cache.delete('home_sections')
     cache.delete('business_details')
     cache.delete('website:why_choose_us:sections')
@@ -231,11 +280,8 @@ class BusinessDetailsService:
     """Manages the singleton BusinessDetails record."""
 
     EDITABLE_FIELDS = [
-        'site_name', 'tagline', 'address', 'phone1', 'phone2', 'email', 'working_hours',
+        'site_name', 'tagline', 'address', 'phone1', 'phone2', 'email',
         'facebook_url', 'instagram_url', 'linkedin_url', 'youtube_url',
-        'twitter_url', 'whatsapp_number',
-        'meta_description', 'meta_keywords',
-        'footer_text',
     ]
 
     @classmethod
@@ -299,6 +345,8 @@ class WebsiteClientLogoService:
                 except Exception:
                     logger.warning("Failed deleting previous client logo for client %d", pk)
                 client.website_logo = None
+                client.website_logo_cover_color = None
+                client.website_logo_cover_color_dark = None
                 dirty = True
 
             if logo is not None:
@@ -308,6 +356,9 @@ class WebsiteClientLogoService:
                     except Exception:
                         logger.warning("Failed deleting previous client logo for client %d", pk)
                 client.website_logo = logo
+                cover_color, cover_color_dark = _extract_logo_theme_colors(logo)
+                client.website_logo_cover_color = cover_color
+                client.website_logo_cover_color_dark = cover_color_dark
                 dirty = True
 
             if website_is_visible is not None and client.website_is_visible != bool(website_is_visible):
@@ -738,77 +789,7 @@ class PortfolioCategoryService:
 
 
 # =============================================================================
-# HERO IMAGES
-# =============================================================================
 
-class HeroImageService:
-    """CRUD for HeroImage (homepage carousel)."""
-
-    @staticmethod
-    def list_all():
-        """Return queryset ordered by position."""
-        return HeroImage.objects.order_by('order', 'pk')
-
-    @staticmethod
-    def create(*, image, title='', subtitle='', order=0):
-        """Create a HeroImage. Returns the created instance."""
-        _validate_image_upload(image, 'hero image')
-        with transaction.atomic():
-            hero = HeroImage.objects.create(
-                image=image,
-                title=title,
-                subtitle=subtitle,
-                order=int(order),
-                is_active=True,
-            )
-        _invalidate_public_section_caches()
-        return hero
-
-    @staticmethod
-    def update(pk, *, title=None, subtitle=None, order=None,
-               is_active=None, image=None):
-        """Update a HeroImage. Only non-None fields are changed."""
-        _validate_image_upload(image, 'hero image')
-        with transaction.atomic():
-            hero = get_object_or_404(HeroImage, pk=pk)
-            if title is not None:
-                hero.title = title
-            if subtitle is not None:
-                hero.subtitle = subtitle
-            if order is not None:
-                hero.order = int(order)
-            if is_active is not None:
-                hero.is_active = _parse_bool(is_active)
-            if image:
-                hero.image = image
-            hero.save()
-        _invalidate_public_section_caches()
-        return hero
-
-    @staticmethod
-    def delete(pk):
-        """Delete a HeroImage by pk."""
-        with transaction.atomic():
-            hero = get_object_or_404(HeroImage, pk=pk)
-            # Clean up image file from disk
-            if hero.image:
-                try:
-                    hero.image.delete(save=False)
-                except Exception:
-                    logger.warning("Failed to delete image file for HeroImage %d", pk)
-            hero.delete()
-        _invalidate_public_section_caches()
-
-    @staticmethod
-    def reorder(order_list):
-        """
-        Reorder hero images.
-        order_list: list of pk values in desired order.
-        """
-        with transaction.atomic():
-            for idx, pk in enumerate(order_list):
-                HeroImage.objects.filter(pk=pk).update(order=idx + 1)
-        _invalidate_public_section_caches()
 
 
 # =============================================================================
@@ -888,99 +869,4 @@ class ContactSubmissionService:
         )
 
 
-# =============================================================================
-# REELS
-# =============================================================================
 
-class ReelService:
-    """CRUD for Reel (short video reels)."""
-
-    @staticmethod
-    def list_all():
-        """Return queryset ordered by position."""
-        return Reel.objects.all().order_by('order', '-created_at')
-
-    @staticmethod
-    def get(pk):
-        """Return a single Reel or raise 404."""
-        return get_object_or_404(Reel, pk=pk)
-
-    @staticmethod
-    def create(*, title='', order=0, is_active=True,
-               video_file=None, thumbnail=None):
-        """Create a Reel. Returns the created instance. No captions."""
-        _validate_video_upload(video_file, 'reel video')
-        _validate_image_upload(thumbnail, 'reel thumbnail')
-        if not title:
-            title = f'Reel {uuid.uuid4().hex[:6].upper()}'
-
-        # Watermark reel thumbnail and compress video to <10 MB
-        if thumbnail:
-            thumbnail = apply_logo_watermark(thumbnail)
-        if video_file:
-            video_file = normalize_portfolio_video_upload(video_file)
-
-        with transaction.atomic():
-            reel = Reel(
-                title=title,
-                description='',  # no captions
-                order=int(order),
-                is_active=is_active,
-            )
-            if video_file:
-                reel.video_file = video_file
-            if thumbnail:
-                reel.thumbnail = thumbnail
-            reel.save()
-        return reel
-
-    @staticmethod
-    def update(pk, *, title=None, order=None, is_active=None,
-               video_file=None, thumbnail=None):
-        """Update a Reel. Only non-None fields are changed."""
-        _validate_video_upload(video_file, 'reel video')
-        _validate_image_upload(thumbnail, 'reel thumbnail')
-
-        # Watermark new thumbnail and compress new video when replacing
-        if thumbnail:
-            thumbnail = apply_logo_watermark(thumbnail)
-        if video_file:
-            video_file = normalize_portfolio_video_upload(video_file)
-
-        with transaction.atomic():
-            reel = get_object_or_404(Reel, pk=pk)
-            if title is not None:
-                reel.title = title
-            if order is not None:
-                reel.order = int(order)
-            if is_active is not None:
-                reel.is_active = _parse_bool(is_active)
-            if video_file:
-                reel.video_file = video_file
-            if thumbnail:
-                reel.thumbnail = thumbnail
-            reel.save()
-        return reel
-
-    @staticmethod
-    def delete(pk):
-        """Delete a Reel by pk."""
-        with transaction.atomic():
-            reel = get_object_or_404(Reel, pk=pk)
-            for field in ('video_file', 'thumbnail'):
-                file_field = getattr(reel, field, None)
-                if file_field:
-                    try:
-                        file_field.delete(save=False)
-                    except Exception:
-                        logger.warning("Failed to delete %s file for Reel %d", field, pk)
-            reel.delete()
-
-    @staticmethod
-    def toggle(pk):
-        """Toggle active/inactive. Returns new is_active value."""
-        with transaction.atomic():
-            reel = get_object_or_404(Reel, pk=pk)
-            reel.is_active = not reel.is_active
-            reel.save()
-        return reel.is_active

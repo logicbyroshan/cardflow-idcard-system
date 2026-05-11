@@ -167,6 +167,10 @@
         const id = document.getElementById('portfolioId').value;
         const fd = new FormData(this);
         const url = id ? `${BASE}/portfolio/${id}/update/` : `${BASE}/portfolio/create/`;
+        const imageInput = document.getElementById('pf_image');
+        const videoInput = document.getElementById('pf_video_file');
+        const imageFile = imageInput && imageInput.files && imageInput.files[0] ? imageInput.files[0] : null;
+        const videoFile = videoInput && videoInput.files && videoInput.files[0] ? videoInput.files[0] : null;
 
         const selectedType = itemTypeField ? (itemTypeField.value || 'image') : 'image';
         fd.set('item_type', selectedType);
@@ -174,8 +178,24 @@
         fd.set('is_featured', document.getElementById('pf_featured').checked ? 'true' : 'false');
 
         if (selectedType === 'image') {
+            if (!imageFile) {
+                showToast('Please select an image file.', 'error');
+                return;
+            }
             fd.set('video_url', '');
             fd.delete('video_file');
+        } else if (!videoFile) {
+            showToast('Please select a video file for Video or Reel items.', 'error');
+            return;
+        }
+
+        if (selectedType === 'image' && imageFile && imageFile.size > 10 * 1024 * 1024) {
+            showToast('Image is too large. Maximum size is 10 MB.', 'error');
+            return;
+        }
+        if (selectedType !== 'image' && videoFile && videoFile.size > 100 * 1024 * 1024) {
+            showToast('Video is too large. Maximum size is 100 MB.', 'error');
+            return;
         }
 
         ApiClient.upload(url, fd)
@@ -183,7 +203,13 @@
                 if (d.success) { showToast(d.message, 'success'); location.reload(); }
                 else showToast(d.message || 'Error', 'error');
             })
-            .catch(() => showToast('Network error', 'error'));
+            .catch(err => {
+                if (err && err.status === 413) {
+                    showToast('Upload blocked by the server size limit. Increase request body/upload limits.', 'error');
+                    return;
+                }
+                showToast('Network error', 'error');
+            });
     });
 
     /* DELETE / TOGGLE */

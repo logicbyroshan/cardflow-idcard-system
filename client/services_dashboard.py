@@ -14,6 +14,7 @@ from core.services.session_revalidation import get_user_revalidation_marker
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCardTable, IDCard
+from reprintcard.models import ReprintRequest
 from core.services.base import BaseService, ServiceResult
 from core.services.permission_service import PermissionService
 
@@ -88,24 +89,27 @@ class ClientDashboardService(BaseService):
         lower = value.lower()
         if lower.startswith('http://') or lower.startswith('https://'):
             return value
-        if lower.startswith('/media/'):
-            return value
-        if lower.startswith('/mediafiles/'):
-            return '/media/' + value.lstrip('/')
-        if lower.startswith('media/') or lower.startswith('mediafiles/'):
-            if lower.startswith('media/'):
-                return '/' + value
-            return '/media/' + value
 
         mediafiles_marker = '/mediafiles/'
         media_marker = '/media/'
+
         mediafiles_idx = lower.find(mediafiles_marker)
         if mediafiles_idx >= 0:
             return '/media/mediafiles/' + value[mediafiles_idx + len(mediafiles_marker):].lstrip('/')
 
         media_idx = lower.find(media_marker)
         if media_idx >= 0:
-            return '/media/' + value[media_idx + len(media_marker):].lstrip('/')
+            remainder = value[media_idx + len(media_marker):].lstrip('/')
+            if remainder.lower().startswith('mediafiles/'):
+                return '/media/' + remainder
+            return '/media/' + remainder
+
+        if lower.startswith('/mediafiles/'):
+            return '/media/' + value.lstrip('/')
+        if lower.startswith('mediafiles/'):
+            return '/media/' + value.lstrip('/')
+        if lower.startswith('media/'):
+            return '/' + value
 
         return '/media/' + value.lstrip('/')
 
@@ -140,7 +144,6 @@ class ClientDashboardService(BaseService):
             'pool': 0,
             'approved': 0,
             'download': 0,
-            'reprint': 0,
         }
 
     @staticmethod
@@ -189,6 +192,139 @@ class ClientDashboardService(BaseService):
                 counts[status] += int(count or 0)
 
     @classmethod
+    def _build_reprint_history_item(cls, request_obj) -> dict:
+        card = getattr(request_obj, 'card', None)
+        table = getattr(request_obj, 'table', None)
+        field_data = card.field_data if card and isinstance(getattr(card, 'field_data', None), dict) else {}
+
+        photo_url = ''
+        try:
+            from mediafiles.services.image_service import ImageService
+
+            table_fields = getattr(table, 'fields', None) if table else None
+            field_names = []
+            if isinstance(table_fields, list):
+                for field in table_fields:
+                    if isinstance(field, dict):
+                        field_name = str(field.get('name', '') or '').strip()
+                        if field_name:
+                            field_names.append(field_name)
+                    elif isinstance(field, str) and field.strip():
+                        field_names.append(field.strip())
+
+            candidate_names = []
+            for field_name in field_names:
+                lowered = field_name.lower()
+                if 'photo' in lowered or 'image' in lowered or 'avatar' in lowered:
+                    candidate_names.append(field_name)
+            if not candidate_names:
+                candidate_names = field_names
+
+            for field_name in candidate_names:
+                try:
+                    path = ImageService.get_image_path_for_export(card, field_name)
+                except Exception:
+                    path = None
+                if path:
+                    photo_url = cls._to_dashboard_photo_url(path)
+                    break
+        except Exception:
+            logger.debug('Reprint photo resolution failed for request_id=%s', getattr(request_obj, 'id', None), exc_info=True)
+
+        if not photo_url and card:
+            try:
+                from mediafiles.utils import get_card_photo_url
+
+                photo_url = cls._to_dashboard_photo_url(get_card_photo_url(card, field_data) or '')
+            except Exception:
+                photo_url = ''
+
+        details_bits = []
+        if card:
+            details_bits.append(f'Card #{card.id}')
+        if table and getattr(table, 'name', ''):
+            details_bits.append(str(table.name).strip())
+
+        if not details_bits:
+            details_bits.append('Reprint request')
+
+        return {
+            'id': request_obj.id,
+            'status': request_obj.status,
+            'status_display': request_obj.get_status_display(),
+            'card_id': getattr(card, 'id', None),
+            'table_id': getattr(table, 'id', None),
+            'table_name': getattr(table, 'name', '') or '',
+            'details': ' - '.join(details_bits),
+            'photo_url': photo_url,
+            'created_at': request_obj.created_at.isoformat() if request_obj.created_at else None,
+            'updated_at': request_obj.updated_at.isoformat() if request_obj.updated_at else None,
+        }
+
+    @classmethod
+    def get_reprint_history(cls, user) -> ServiceResult:
+        """Return the client's reprint request history."""
+        try:
+            client = ClientAccessService.get_client_for_user(user)
+            if not client:
+                return ServiceResult(success=False, message='Client profile not found')
+
+            reprint_qs = (
+                ReprintRequest.objects
+                .select_related('card', 'table', 'table__group')
+                .filter(table__group__client=client)
+                .order_by('-created_at', '-id')
+            )
+
+            items = [cls._build_reprint_history_item(req) for req in reprint_qs]
+            stats = reprint_qs.aggregate(
+                reprint_requested=Count('id', filter=Q(status='requested')),
+                reprint_confirmed=Count('id', filter=Q(status='confirmed')),
+                reprint_total=Count('id'),
+            )
+
+            return ServiceResult(
+                success=True,
+                data={
+                    'items': items,
+                    'total_count': stats['reprint_total'] or 0,
+                    'reprint_requested': stats['reprint_requested'] or 0,
+                    'reprint_confirmed': stats['reprint_confirmed'] or 0,
+                    'reprint_total': stats['reprint_total'] or 0,
+                },
+            )
+        except Exception as e:
+            return cls._unexpected_error_result('get_reprint_history', e)
+
+    @classmethod
+    def get_reprint_stats(cls, user) -> ServiceResult:
+        """Return the client's reprint counts for dashboard summaries."""
+        try:
+            client = ClientAccessService.get_client_for_user(user)
+            if not client:
+                return ServiceResult(success=False, message='Client profile not found')
+
+            counts = (
+                ReprintRequest.objects
+                .filter(table__group__client=client)
+                .aggregate(
+                    reprint_requested=Count('id', filter=Q(status='requested')),
+                    reprint_confirmed=Count('id', filter=Q(status='confirmed')),
+                    reprint_total=Count('id'),
+                )
+            )
+            return ServiceResult(
+                success=True,
+                data={
+                    'reprint_requested': counts['reprint_requested'] or 0,
+                    'reprint_confirmed': counts['reprint_confirmed'] or 0,
+                    'reprint_total': counts['reprint_total'] or 0,
+                },
+            )
+        except Exception as e:
+            return cls._unexpected_error_result('get_reprint_stats', e)
+
+    @classmethod
     def get_dashboard_data(cls, user, client=None) -> ServiceResult:
         """
         Get dashboard summary data for a client user.
@@ -224,9 +360,13 @@ class ClientDashboardService(BaseService):
                 if PermissionService.is_client_staff(user):
                     staff = getattr(user, 'staff_profile', None)
 
-                    # Always evaluate all accessible tables. The row-scope helper already
-                    # returns full table rows when no class/section/branch restriction exists.
+                    # Only evaluate tables that have explicit row-level scope for this staff.
+                    # If a staff member has no class/section/branch filters, dashboard
+                    # summary counts should stay at zero even though table access may exist.
                     for table in tables:
+                        table_scope = ClientCardService._table_scope_filters(staff, table)
+                        if not any(table_scope):
+                            continue
                         scoped_qs = ClientCardService._apply_client_staff_row_scope(
                             user,
                             table,
@@ -257,7 +397,17 @@ class ClientDashboardService(BaseService):
             ).count()
             
             # Use centralized role-aware activity feed so legacy per-card logs are merged.
-            recent_activity = ActivityService.get_recent(limit=6, hours=None, user=user)
+            # Keep dashboard counts resilient if the activity feed hits a malformed row.
+            try:
+                recent_activity = ActivityService.get_recent(limit=6, hours=None, user=user)
+            except Exception as activity_exc:
+                logger.warning(
+                    'ClientDashboardService.get_dashboard_data: recent activity load failed for user_id=%s role=%s: %s',
+                    user.pk,
+                    getattr(user, 'role', 'unknown'),
+                    activity_exc,
+                )
+                recent_activity = []
             
             return ServiceResult(
                 success=True,
@@ -323,8 +473,11 @@ class ClientDashboardService(BaseService):
 
             if PermissionService.is_client_staff(user):
                 # Same rule as get_dashboard_data(): apply row-scope across every
-                # accessible table to avoid dropping counts to zero for unscoped staff.
+                # accessible table that has explicit row-level filters.
                 for table in accessible_tables:
+                    table_scope = ClientCardService._table_scope_filters(getattr(user, 'staff_profile', None), table)
+                    if not any(table_scope):
+                        continue
                     table_cache_key = cls._group_staff_table_counts_cache_key(
                         user,
                         table.id,
@@ -402,7 +555,6 @@ class ClientDashboardService(BaseService):
                     'pool': counts.get('pool', 0),
                     'approved': counts.get('approved', 0),
                     'download': counts.get('download', 0),
-                    'reprint': counts.get('reprint', 0),
                     'tables': tables_data,
                 })
 
@@ -411,298 +563,3 @@ class ClientDashboardService(BaseService):
             
         except Exception as e:
             return cls._unexpected_error_result('get_groups_with_counts', e)
-
-    @classmethod
-    def get_reprint_stats(cls, user, client=None) -> ServiceResult:
-        """
-        Get reprint statistics for the client dashboard.
-        
-        Returns:
-        - total_cards: Total ID cards across all tables
-        - reprint_count: Total reprint requests (requested + confirmed + downloaded)
-        - recent_reprints: Last 10 reprint requests with card details
-        """
-        try:
-            from reprintcard.models import ReprintRequest
-
-            if not client:
-                client = ClientAccessService.get_client_for_user(user)
-            if not client:
-                return ServiceResult(success=False, message='Client profile not found')
-
-            tables = IDCardTable.objects.filter(
-                group__client=client,
-                deleted_by_client=False,
-            ).only('id')
-
-            total_cards = IDCard.objects.filter(table__in=tables).count()
-
-            # Reprint counts for dashboard visibility.
-            reprint_qs = ReprintRequest.objects.filter(table__in=tables)
-            status_counts = reprint_qs.aggregate(
-                requested=Count('id', filter=Q(status='requested')),
-                confirmed=Count('id', filter=Q(status='confirmed')),
-                downloaded=Count('id', filter=Q(status='downloaded')),
-            )
-            reprint_requested = status_counts.get('requested', 0) or 0
-            reprint_confirmed = status_counts.get('confirmed', 0) or 0
-            reprint_downloaded = status_counts.get('downloaded', 0) or 0
-            reprint_total = reprint_requested + reprint_confirmed + reprint_downloaded
-
-            # Recent reprints (latest 10)
-            recent_qs = (
-                reprint_qs
-                .filter(status__in=['requested', 'confirmed', 'downloaded'])
-                .select_related('card', 'table', 'requested_by')
-                .only(
-                    'id', 'card_id', 'table_id', 'status', 'reason', 'created_at',
-                    'card__field_data', 'table__name',
-                    'requested_by__first_name', 'requested_by__last_name', 'requested_by__username',
-                )
-                .order_by('-created_at')[:10]
-            )
-            recent_reprints = []
-            for rr in recent_qs:
-                fd = rr.card.field_data or {}
-                # Try to get a display name from common field keys
-                display_name = ''
-                for key in ('Name', 'name', 'STUDENT NAME', 'EMPLOYEE NAME', 'Student Name'):
-                    if fd.get(key):
-                        display_name = fd[key]
-                        break
-                if not display_name:
-                    # Fallback: first non-empty text field
-                    for v in fd.values():
-                        if isinstance(v, str) and v and not v.startswith(('PENDING:', '/')):
-                            display_name = v
-                            break
-
-                req_by = rr.requested_by
-                recent_reprints.append({
-                    'rr_id': rr.id,
-                    'card_id': rr.card_id,
-                    'display_name': display_name or f'Card #{rr.card_id}',
-                    'table_name': rr.table.name,
-                    'status': rr.status,
-                    'status_display': rr.get_status_display(),
-                    'reason': rr.reason or '',
-                    'requested_by': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                    'created_at': localtime(rr.created_at).strftime('%d %b %Y, %H:%M'),
-                })
-
-            return ServiceResult(
-                success=True,
-                data={
-                    'total_cards': total_cards,
-                    'reprint_total': reprint_total,
-                    'reprint_requested': reprint_requested,
-                    'reprint_confirmed': reprint_confirmed,
-                    'reprint_downloaded': reprint_downloaded,
-                    'recent_reprints': recent_reprints,
-                },
-            )
-        except Exception as e:
-            return cls._unexpected_error_result('get_reprint_stats', e)
-
-    @classmethod
-    def get_reprint_history(cls, user, client=None, limit=50) -> ServiceResult:
-        """
-        Get detailed reprint request history for the client dashboard table.
-        Returns card details (first few text fields + photo) for each reprint request.
-        """
-        try:
-            from reprintcard.models import ReprintRequest
-            from mediafiles.services import ImageService
-
-            if not client:
-                client = ClientAccessService.get_client_for_user(user)
-            if not client:
-                return ServiceResult(success=False, message='Client profile not found')
-
-            tables = IDCardTable.objects.filter(
-                group__client=client,
-                deleted_by_client=False,
-            ).only('id', 'fields')
-
-            reprint_qs = (
-                ReprintRequest.objects.filter(table__in=tables)
-                .select_related('card', 'table', 'requested_by')
-                .only(
-                    'id', 'card_id', 'table_id', 'status', 'reason', 'created_at',
-                    'card__field_data', 'table__name',
-                    'requested_by__first_name', 'requested_by__last_name', 'requested_by__username',
-                )
-                .order_by('-created_at')[:limit]
-            )
-
-            # Build table fields lookup
-            table_fields_map = {}
-            for t in tables:
-                table_fields_map[t.id] = t.fields or []
-
-            def _norm_key(value):
-                return ''.join(ch for ch in str(value or '').upper() if ch.isalnum())
-
-            def _field_value_for_name(field_data, field_name):
-                if not isinstance(field_data, dict):
-                    return ''
-
-                if field_name in field_data:
-                    return field_data.get(field_name, '')
-
-                target_upper = str(field_name or '').upper().strip()
-                if target_upper:
-                    for k, v in field_data.items():
-                        if str(k or '').upper().strip() == target_upper:
-                            return v
-
-                target_norm = _norm_key(field_name)
-                if target_norm:
-                    for k, v in field_data.items():
-                        if _norm_key(k) == target_norm:
-                            return v
-
-                return ''
-
-            def _looks_like_image_field(field_type, field_name):
-                ft = str(field_type or '').strip().lower()
-                fn = str(field_name or '').strip().lower()
-                if ft in ('image', 'photo', 'file'):
-                    return True
-                if 'designation' in fn:
-                    return False
-                return (
-                    ('image' in ft) or ('photo' in ft) or ('file' in ft) or ('upload' in ft) or
-                    ('photo' in fn) or ('image' in fn) or ('picture' in fn) or ('pic' in fn) or
-                    ('signature' in fn) or ('barcode' in fn) or ('qr' in fn)
-                )
-
-            def _resolve_photo_url(card, field_data, field_name):
-                if not isinstance(field_data, dict):
-                    return ''
-
-                ordered_candidates = []
-                seen = set()
-
-                def _push_candidate(name):
-                    key = str(name or '').strip()
-                    if not key:
-                        return
-                    marker = key.upper()
-                    if marker in seen:
-                        return
-                    seen.add(marker)
-                    ordered_candidates.append(key)
-
-                _push_candidate(field_name)
-
-                matched_key = None
-                target_norm = _norm_key(field_name)
-                if target_norm:
-                    for k in field_data.keys():
-                        if _norm_key(k) == target_norm:
-                            matched_key = str(k)
-                            break
-                _push_candidate(matched_key)
-
-                for key in ordered_candidates:
-                    try:
-                        img_path = ImageService.get_image_path_for_export(
-                            card,
-                            key,
-                            prefer_thumbnail=True,
-                            fallback_to_field_data=True,
-                        )
-                        if img_path:
-                            return cls._to_dashboard_photo_url(img_path)
-                    except Exception:
-                        logger.warning('Reprint history image resolution failed card_id=%s field=%s', getattr(card, 'id', None), key)
-
-                    raw_val = _field_value_for_name(field_data, key)
-                    raw_text = str(raw_val or '').strip()
-                    if raw_text and raw_text != 'NOT_FOUND' and not raw_text.startswith('PENDING:'):
-                        return cls._to_dashboard_photo_url(raw_text)
-
-                return ''
-
-            items = []
-            total_count = ReprintRequest.objects.filter(table__in=tables).count()
-
-            for rr in reprint_qs:
-                try:
-                    fd = rr.card.field_data if isinstance(rr.card.field_data, dict) else {}
-                except Exception:
-                    fd = {}
-
-                raw_fields = table_fields_map.get(rr.table_id, [])
-                if isinstance(raw_fields, list):
-                    fields = [f for f in raw_fields if isinstance(f, dict)]
-                elif isinstance(raw_fields, dict):
-                    fields = [raw_fields]
-                else:
-                    fields = []
-
-                # Collect first few text field values for display
-                detail_parts = []
-                photo_url = ''
-                for f in fields:
-                    fn = str(f.get('name', '') or '')
-                    ft = str(f.get('type', 'text') or 'text')
-                    val = _field_value_for_name(fd, fn)
-                    if _looks_like_image_field(ft, fn):
-                        if not photo_url:
-                            photo_url = _resolve_photo_url(rr.card, fd, fn)
-                        continue
-                    val_text = str(val or '').strip()
-                    if val_text and not val_text.startswith(('PENDING:', '/')):
-                        detail_parts.append(val_text)
-                    if len(detail_parts) >= 4:
-                        break
-
-                if not photo_url and isinstance(fd, dict):
-                    key_by_upper = {str(k or '').strip().upper(): k for k in fd.keys()}
-                    for fallback_name in (
-                        'PHOTO', 'STUDENT PHOTO', 'IMAGE', 'PICTURE', 'PIC',
-                        'F PHOTO', 'M PHOTO', 'FATHER PHOTO', 'MOTHER PHOTO',
-                        'SIGN', 'SIGN.', 'SIGNATURE',
-                    ):
-                        source_key = key_by_upper.get(fallback_name) or fallback_name
-                        photo_url = _resolve_photo_url(rr.card, fd, source_key)
-                        if photo_url:
-                            break
-
-                if not photo_url and isinstance(fd, dict):
-                    for candidate_key, candidate_val in fd.items():
-                        candidate_name = str(candidate_key or '')
-                        if not cls.is_image_field_by_name(candidate_name):
-                            continue
-                        candidate_text = str(candidate_val or '').strip()
-                        if not candidate_text or candidate_text == 'NOT_FOUND' or candidate_text.startswith('PENDING:'):
-                            continue
-                        photo_url = cls._to_dashboard_photo_url(candidate_text)
-                        if photo_url:
-                            break
-
-                req_by = rr.requested_by
-                items.append({
-                    'rr_id': rr.id,
-                    'card_id': rr.card_id,
-                    'details': ' | '.join(detail_parts) if detail_parts else f'Card #{rr.card_id}',
-                    'photo_url': photo_url,
-                    'table_name': rr.table.name,
-                    'status': rr.status,
-                    'status_display': rr.get_status_display(),
-                    'reason': rr.reason or '',
-                    'requested_by': (req_by.get_full_name() or req_by.username) if req_by else 'System',
-                    'created_at': localtime(rr.created_at).strftime('%d %b %Y, %H:%M'),
-                })
-
-            return ServiceResult(
-                success=True,
-                data={
-                    'items': items,
-                    'total_count': total_count,
-                },
-            )
-        except Exception as e:
-            return cls._unexpected_error_result('get_reprint_history', e)

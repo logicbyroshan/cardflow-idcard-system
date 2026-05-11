@@ -27,6 +27,7 @@ urlpatterns = [
     path('why-choose-us/', views.why_choose_us, name='why_choose_us'),
     
     # Linked to testimonials_page in views.py
+    path('trusted-clients/', views.trusted_clients_page, name='trusted_clients'),
     path('testimonials/', views.testimonials_page, name='testimonials'),
 
     # --- Legal Pages ---
@@ -38,6 +39,6 @@ urlpatterns = [
     path('testimonial-helpful/', views.mark_testimonial_helpful, name='mark_testimonial_helpful'),
     
     # --- API Endpoints ---
-    path('api/reels/', views.load_more_reels, name='load_more_reels'),
     path('api/category-items/', views.load_more_category_items, name='load_more_category_items'),
+    
 ]

@@ -8,14 +8,10 @@
                 <span>20+ Years of Trust</span>
             </div>
             <h1>
-                {% if business.hero_title %}
-                    {{ business.hero_title|safe_html }}
-                {% else %}
-                    <span class="typing-wrapper">
-                        <span id="typingLine"></span>
-                        <span class="sr-only" style="display:none;">Premium ID Card and Lanyard Printing Solutions in Bhopal</span>
-                    </span>
-                {% endif %}
+                <span class="typing-wrapper">
+                    <span id="typingLine">Premium ID Cards for Your School</span>
+                    <span class="sr-only" style="display:none;">Premium ID Card and Lanyard Printing Solutions in Bhopal</span>
+                </span>
             </h1>
             <p class="hero-subtitle">
                 {{ business.hero_description|default:"Create stunning, secure, and professional ID cards that represent your school or organization with excellence." }}

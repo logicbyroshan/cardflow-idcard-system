@@ -13,16 +13,16 @@ from .views_pages import (
     dashboard,
     card_groups,
     card_table,
+    print_table,
     manage_staff,
     messages,
 )
 
 from .views_api import (
     api_dashboard_data,
-    api_reprint_stats,
-    api_reprint_history,
     api_messages_drawer,
     api_groups_list,
+    api_reprint_history,
     api_staff_list_create,
     api_staff_detail,
     api_staff_toggle_status,
@@ -41,7 +41,5 @@ from .views_shared_pages import (
     client_idcard_group,
     client_idcard_actions,
     client_group_settings,
-    client_reprint_cards,
-    client_print_cards,
     client_api_create_table_from_xlsx,
 )

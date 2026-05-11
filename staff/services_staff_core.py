@@ -44,7 +44,7 @@ class StaffService(BaseService):
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_reprint_list',
         # Print & Reprint Lists
-        'perm_reprint_request_list', 'perm_confirmed_list', 'perm_print_list', 'perm_finalized_list',
+        'perm_reprint_request_list', 'perm_confirmed_list',
         # ID Card Actions (work in Pending and Verified lists only)
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
         'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
@@ -60,8 +60,6 @@ class StaffService(BaseService):
         'perm_mobile_app',
         # Manage Panel
         'perm_manage_panel_backup', 'perm_manage_panel_email',
-        # Manage Website sections
-        'perm_manage_website_clients', 'perm_manage_website_portfolio',
     ]
     
     @classmethod

@@ -31,12 +31,14 @@ from .services import (
     AdminStaffCreationService,
     AdminStaffPermissionService,
     ClientScopingService,
-    require_shop_owner,
-    require_admin_staff_or_owner,
     check_client_access,
     check_permission,
 
     ADMIN_STAFF_PERMISSIONS,
+)
+from core.services.permission_service import (
+    require_super_admin,
+    require_any_admin,
 )
 
 
@@ -61,7 +63,7 @@ def _parse_json_object(request):
 # =============================================================================
 
 @login_required
-@require_shop_owner
+@require_super_admin
 def staff_management_page(request):
     """
     Admin Staff management page for Super Admin.
@@ -77,7 +79,7 @@ def staff_management_page(request):
 # =============================================================================
 
 @login_required
-@require_shop_owner
+@require_super_admin
 @require_http_methods(['GET', 'POST'])
 def api_admin_staff_list_create(request):
     """
@@ -122,7 +124,7 @@ def api_admin_staff_list_create(request):
 
 
 @login_required
-@require_shop_owner
+@require_super_admin
 @require_http_methods(['GET', 'PUT', 'DELETE'])
 def api_admin_staff_detail(request, staff_id):
     """
@@ -183,7 +185,7 @@ def api_admin_staff_detail(request, staff_id):
 
 
 @login_required
-@require_shop_owner
+@require_super_admin
 @require_http_methods(['POST'])
 def api_admin_staff_toggle_status(request, staff_id):
     """Toggle admin staff active/inactive status."""
@@ -212,7 +214,7 @@ def api_admin_staff_toggle_status(request, staff_id):
 
 
 @login_required
-@require_shop_owner
+@require_super_admin
 @require_http_methods(['POST'])
 def api_admin_staff_reset_password(request, staff_id):
     """Reset admin staff password and send email."""
@@ -247,7 +249,7 @@ def api_admin_staff_reset_password(request, staff_id):
 # =============================================================================
 
 @login_required
-@require_shop_owner
+@require_super_admin
 @require_http_methods(['GET'])
 def api_available_permissions(request):
     """Get list of permissions that can be assigned to admin staff."""
@@ -259,7 +261,7 @@ def api_available_permissions(request):
 
 
 @login_required
-@require_shop_owner
+@require_super_admin
 @require_http_methods(['GET'])
 def api_available_clients(request):
     """Get list of all clients for assignment to admin staff (includes inactive)."""
@@ -275,7 +277,7 @@ def api_available_clients(request):
 # =============================================================================
 
 @login_required
-@require_admin_staff_or_owner
+@require_any_admin
 @require_http_methods(['GET'])
 def api_my_permissions(request):
     """Get current user's permissions (for admin staff dashboard)."""
@@ -296,7 +298,7 @@ def api_my_permissions(request):
 
 
 @login_required
-@require_admin_staff_or_owner
+@require_any_admin
 @require_http_methods(['GET'])
 def api_my_clients(request):
     """Get clients accessible to the current admin staff user."""
@@ -313,7 +315,7 @@ def api_my_clients(request):
 # =============================================================================
 
 @login_required
-@require_admin_staff_or_owner
+@require_any_admin
 @check_permission('can_view_clients')
 @require_http_methods(['GET'])
 def api_scoped_clients(request):
@@ -339,7 +341,7 @@ def api_scoped_clients(request):
 
 
 @login_required
-@require_admin_staff_or_owner
+@require_any_admin
 @check_permission('can_view_idcard_data')
 @check_client_access('client_id')
 @require_http_methods(['GET'])
@@ -363,7 +365,7 @@ def api_client_idcard_groups(request, client_id):
 # =============================================================================
 
 @login_required
-@require_admin_staff_or_owner
+@require_any_admin
 def staff_dashboard(request):
     """
     Admin Staff dashboard with scoped data.

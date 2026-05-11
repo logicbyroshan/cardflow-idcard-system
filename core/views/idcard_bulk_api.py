@@ -790,10 +790,10 @@ def api_idcard_reupload_images(request, table_id):
             return JsonResponse({'success': False, 'message': 'Error reading ZIP file. Please check the file and try again.'}, status=400)
 
         if duplicate_name_keys > 0:
-            return JsonResponse({
-                'success': False,
-                'message': 'ZIP contains duplicate image names for exact matching. Please keep one file per image name and retry.'
-            }, status=400)
+            logger.warning(
+                "Reupload ZIP has %d duplicate image names; they will be skipped. Processing remaining unique files.",
+                duplicate_name_keys,
+            )
         
         if not zip_photos_store or len(zip_photos_store) == 0:
             return JsonResponse({'success': False, 'message': 'No valid images found in ZIP file!'}, status=400)
@@ -935,6 +935,7 @@ def api_idcard_reupload_images(request, table_id):
             'updated_count': updated_count,
             'matched_count': matched_count,
             'zip_images_count': len(zip_photos_store),
+            'duplicates_skipped': duplicate_name_keys,
         }
         
         if errors:

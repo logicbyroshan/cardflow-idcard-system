@@ -485,7 +485,7 @@
             <span class="wa-section-bar-left"><i class="fa-solid fa-phone"></i> Contact Info</span>
             {% if is_super_admin or perm_website_edit %}
             <span class="wa-section-bar-actions">
-                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="email,phone1,phone2,address,working_hours">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="email,phone1,phone2,address">
                     <i class="fa-solid fa-save"></i> Save Changes
                 </button>
             </span>
@@ -513,12 +513,7 @@
                 <input type="text" id="address" name="address" value="{{ business.address|default:'' }}">
             </div>
         </div>
-        <div class="wa-form-row">
-            <div class="wa-form-group">
-                <label for="working_hours">Working Hours</label>
-                <input type="text" id="working_hours" name="working_hours" value="{{ business.working_hours|default:'' }}" placeholder="Mon-Sat: 9AM - 6PM">
-            </div>
-        </div>
+
 
         <!-- Social Links -->
         <div class="wa-form-group-title wa-section-bar">
@@ -552,65 +547,6 @@
             </div>
         </div>
 
-        <!-- Dynamic Hero Images Manager -->
-        <div class="wa-form-group-title wa-section-bar">
-            <span class="wa-section-bar-left"><i class="fa-solid fa-images"></i> Hero Slider Images</span>
-            <span class="wa-section-bar-actions">
-                <button type="button" class="btn btn-primary btn-sm wa-inline-action" id="addHeroImageBtn">
-                    <i class="fa-solid fa-plus"></i> Add Image
-                </button>
-            </span>
-        </div>
-        <div id="heroImagesGrid" class="wa-form-row wa-form-images">
-            {% for hero in hero_images %}
-            <div class="wa-form-group hero-image-card" data-id="{{ hero.pk }}">
-                <div class="wa-img-preview relative">
-                    <img src="{{ hero.image.url }}" alt="{{ hero.title|default:'Hero' }}" loading="lazy" decoding="async">
-                    <span class="hero-order-badge" title="Display order">{{ hero.order }}</span>
-                    {% if not hero.is_active %}
-                    <span class="hero-inactive-badge">Inactive</span>
-                    {% endif %}
-                    <button type="button" class="hero-remove-btn hero-delete-btn" title="Remove image">&times;</button>
-                </div>
-            </div>
-            {% empty %}
-            <div class="wa-form-group" id="noHeroImagesMsg">
-                <p class="text-gray-400">No hero images yet. Click "Add Image" to upload one.</p>
-            </div>
-            {% endfor %}
-        </div>
-        <!-- Hidden file input for new hero image uploads -->
-        <input type="file" id="heroImageFileInput" accept="image/*" class="hidden">
-
-        <!-- Footer & SEO -->
-        <div class="wa-form-group-title wa-section-bar">
-            <span class="wa-section-bar-left"><i class="fa-solid fa-paragraph"></i> Footer & SEO</span>
-            {% if is_super_admin or perm_website_edit %}
-            <span class="wa-section-bar-actions">
-                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="footer_text,meta_description,meta_keywords">
-                    <i class="fa-solid fa-save"></i> Save Changes
-                </button>
-            </span>
-            {% endif %}
-        </div>
-        <div class="wa-form-row">
-            <div class="wa-form-group full">
-                <label for="footer_text">Footer Text</label>
-                <input type="text" id="footer_text" name="footer_text" value="{{ business.footer_text|default:'' }}">
-            </div>
-        </div>
-        <div class="wa-form-row">
-            <div class="wa-form-group full">
-                <label for="meta_description">Meta Description</label>
-                <textarea id="meta_description" name="meta_description" rows="2">{{ business.meta_description|default:'' }}</textarea>
-            </div>
-        </div>
-        <div class="wa-form-row">
-            <div class="wa-form-group full">
-                <label for="meta_keywords">Meta Keywords</label>
-                <input type="text" id="meta_keywords" name="meta_keywords" value="{{ business.meta_keywords|default:'' }}">
-            </div>
-        </div>
 
         <!-- Active Toggle -->
         <div class="wa-form-group-title wa-section-bar">
@@ -714,7 +650,7 @@
 
             toggleWebsiteLiveBtn.disabled = true;
             try {
-                const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
+                const res = await fetch('{% url "manage_website:api_status_toggle" %}', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -743,7 +679,7 @@
         }
 
         try {
-            const res = await fetch('{% url "website_admin:api_business_update" %}', {
+            const res = await fetch('{% url "manage_website:api_business_update" %}', {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
                 body: formData,
@@ -814,102 +750,5 @@
 
 })();
 
-// ===== Hero Images Manager =====
-(function() {
-    const grid = document.getElementById('heroImagesGrid');
-    const addBtn = document.getElementById('addHeroImageBtn');
-    const fileInput = document.getElementById('heroImageFileInput');
-    if (!grid || !addBtn) return;
-
-    const CSRF = getCSRFToken();
-    const API_BASE = '{% url "website_admin:api_hero_image_list" %}';
-
-    // Add image
-    addBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async function() {
-        if (!this.files.length) return;
-        const fd = new FormData();
-        fd.append('image', this.files[0]);
-        fd.append('title', '');
-        fd.append('subtitle', '');
-        fd.append('order', grid.querySelectorAll('.hero-image-card').length + 1);
-        try {
-            const res = await fetch('{% url "website_admin:api_hero_image_create" %}', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': CSRF },
-                body: fd,
-            });
-            const data = await res.json();
-            if (data.success) {
-                showToast('Hero image added', 'success');
-                location.reload();
-            } else {
-                showToast(data.message || 'Error', 'error');
-            }
-        } catch(err) { showToast('Network error', 'error'); }
-        this.value = '';
-    });
-
-    // Delegate events on grid
-    grid.addEventListener('click', async function(e) {
-        const card = e.target.closest('.hero-image-card');
-        if (!card) return;
-        const id = card.dataset.id;
-
-        // Delete
-        if (e.target.closest('.hero-delete-btn')) {
-            const ok = await waConfirm({ title: 'Delete Hero Image?', text: 'This image will be permanently removed.', icon: 'fa-solid fa-trash' });
-            if (!ok) return;
-            try {
-                const res = await fetch(`/website/api/hero-images/${id}/delete/`, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': CSRF },
-                });
-                const data = await res.json();
-                if (data.success) { card.remove(); showToast('Deleted', 'success'); }
-                else showToast(data.message, 'error');
-            } catch(err) { showToast('Network error', 'error'); }
-            return;
-        }
-
-        // Toggle active
-        if (e.target.closest('.hero-toggle-btn')) {
-            const isActive = !card.querySelector('.hero-inactive-badge');
-            const fd = new FormData();
-            fd.append('is_active', isActive ? 'false' : 'true');
-            try {
-                const res = await fetch(`/website/api/hero-images/${id}/update/`, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': CSRF },
-                    body: fd,
-                });
-                const data = await res.json();
-                if (data.success) { showToast('Toggled', 'success'); location.reload(); }
-                else showToast(data.message, 'error');
-            } catch(err) { showToast('Network error', 'error'); }
-            return;
-        }
-
-        // Edit (save title + subtitle)
-        if (e.target.closest('.hero-edit-btn')) {
-            const title = card.querySelector('.hero-title-input').value;
-            const subtitle = card.querySelector('.hero-subtitle-input').value;
-            const fd = new FormData();
-            fd.append('title', title);
-            fd.append('subtitle', subtitle);
-            try {
-                const res = await fetch(`/website/api/hero-images/${id}/update/`, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': CSRF },
-                    body: fd,
-                });
-                const data = await res.json();
-                if (data.success) showToast('Updated', 'success');
-                else showToast(data.message, 'error');
-            } catch(err) { showToast('Network error', 'error'); }
-            return;
-        }
-    });
-})();
 </script>
 {% endblock %}

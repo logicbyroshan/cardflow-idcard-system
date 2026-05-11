@@ -240,7 +240,7 @@ def apply_logo_watermark(file_obj):
 
 # ── Image compression pipeline ───────────────────────────────────────────────
 
-def process_portfolio_image(file_obj, max_kb: int = 500) -> ContentFile:
+def process_portfolio_image(file_obj, max_kb: int = 200) -> ContentFile:
     """
     Full processing pipeline for portfolio images:
       1. Apply text watermark (brand protection — full diagonal tile)

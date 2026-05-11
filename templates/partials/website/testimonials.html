@@ -1,39 +1,54 @@
 {% load static %}
 <!-- Testimonials Section -->
 {% if testimonials %}
-<section class="testimonials" id="testimonials">
+<section class="testimonials-grid-section" id="testimonials">
     <div class="container">
-        <h2 class="section-title">Customer Reviews</h2>
-        <div class="testimonials-grid">
+        <div class="section-header">
+            <span class="section-badge">Client Stories</span>
+            <h2>Words of <span class="highlight">Appreciation</span></h2>
+        </div>
+
+        <div class="testimonials-section-actions">
+            <a class="btn btn-primary testimonials-section-review-btn" href="{% url 'website:testimonials' %}?review=open" aria-label="Open the testimonials page and write a review">
+                <i class="fa-solid fa-pen-fancy"></i>
+                Add Your Testimonial
+            </a>
+        </div>
+
+        <div class="testimonials-masonry" id="testimonialGrid" data-helpful-url="{% url 'website:mark_testimonial_helpful' %}">
             {% for testimonial in testimonials %}
-                <div class="testimonial-card">
-                    <div class="stars" aria-label="Rated {{ testimonial.rating }} out of 5">
-                        {% for i in "12345"|make_list %}
-                            {% if forloop.counter <= testimonial.rating %}
-                                <i class="fa-solid fa-star" aria-hidden="true"></i>
+                <div class="testimonial-card"{% if testimonial.tag %} data-category="{{ testimonial.tag|lower }}"{% endif %}>
+                    <div class="card-header">
+                        <div class="reviewer-avatar">
+                            {% if testimonial.reviewer_avatar %}
+                                <img src="{{ testimonial.reviewer_avatar.url }}" alt="{{ testimonial.reviewer_name }}" loading="lazy" decoding="async">
+                            {% else %}
+                                <div class="avatar-letter avatar-letter-{% cycle '1' '2' '3' '4' '5' %}">{{ testimonial.reviewer_name|default:'U'|slice:':1'|upper }}</div>
                             {% endif %}
-                        {% endfor %}
-                    </div>
-                    <p>"{{ testimonial.text|truncatechars:150 }}"</p>
-                    <div class="testimonial-author">
-                        {% if testimonial.reviewer_avatar %}
-                            <img src="{{ testimonial.reviewer_avatar.url }}" alt="{{ testimonial.reviewer_name }}" loading="lazy" decoding="async">
-                        {% else %}
-                            <div class="avatar-3d avatar-3d-{% cycle '1' '2' '3' '4' '5' %}">
-                                <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                    <circle cx="40" cy="30" r="16" fill="currentColor" opacity="0.9"/>
-                                    <circle cx="34" cy="27" r="2.5" fill="#fff"/>
-                                    <circle cx="46" cy="27" r="2.5" fill="#fff"/>
-                                    <path d="M35 34 Q40 39 45 34" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
-                                    <path d="M40 46 C20 46 15 65 15 75 L65 75 C65 65 60 46 40 46Z" fill="currentColor" opacity="0.7"/>
-                                </svg>
-                            </div>
-                        {% endif %}
-                        <div>
+                        </div>
+                        <div class="reviewer-info">
                             <h4>{{ testimonial.reviewer_name }}</h4>
-                            <p>{{ testimonial.reviewer_title }} - {{ testimonial.reviewer_school }}</p>
+                            <span>{% if testimonial.reviewer_title %}{{ testimonial.reviewer_title }}{% endif %}{% if testimonial.reviewer_school %}{% if testimonial.reviewer_title %}, {% endif %}{{ testimonial.reviewer_school }}{% elif not testimonial.reviewer_title %}Individual Review{% endif %}</span>
+                        </div>
+                        <div class="card-rating">
+                            <i class="fa-solid fa-star"></i>
+                            <span>{{ testimonial.rating|floatformat:1 }}</span>
                         </div>
                     </div>
+
+                    <div class="card-content">
+                        <p>{{ testimonial.text|linebreaksbr }}</p>
+                    </div>
+
+                    <div class="card-footer">
+                        <span class="review-date"><i class="fa-regular fa-calendar-days"></i> {{ testimonial.review_date|date:'M Y' }}</span>
+                        <button type="button" class="helpful-btn" data-id="{{ testimonial.id }}" aria-label="Mark review by {{ testimonial.reviewer_name }} as helpful">
+                            <i class="fa-regular fa-thumbs-up"></i>
+                            <span class="helpful-label">Helpful</span>
+                            <span class="helpful-count">{{ testimonial.helpful_count }}</span>
+                        </button>
+                    </div>
+                    {% if testimonial.tag %}<div class="card-tag">{{ testimonial.tag }}</div>{% endif %}
                 </div>
             {% endfor %}
         </div>

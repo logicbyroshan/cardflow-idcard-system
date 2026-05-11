@@ -255,6 +255,10 @@ def process_reupload_images(task):
 
     target_image_fields = requested_target_fields or list(image_field_names)
     
+    if not target_image_fields:
+        task.mark_failed("No valid image fields to process. Check target_field configuration.")
+        return
+    
     # Get cards to process
     card_ids = metadata.get('card_ids', [])
     status_filter = metadata.get('status_filter', '')
@@ -294,11 +298,11 @@ def process_reupload_images(task):
             )
 
         if zip_stats.get('duplicate_path_keys', 0) > 0:
-            task.mark_failed(
-                "ZIP contains duplicate image paths after normalization. "
-                "Please remove duplicate files and retry."
+            logger.warning(
+                "Reupload ZIP has %d duplicate path keys; they will be skipped. "
+                "Processing remaining unique files.",
+                zip_stats.get('duplicate_path_keys', 0),
             )
-            return
 
         preflight = _run_reupload_preflight(
             cards_qs=cards_qs,
@@ -446,7 +450,9 @@ def process_reupload_images(task):
                 logger.error("Error processing card %d: %s", card.pk, card_err)
             
             # Flush bulk updates + CardMedia + progress every FLUSH_EVERY cards
-            if (idx + 1) % FLUSH_EVERY == 0 or idx == total_cards - 1:
+            # Use only modulo check; avoid `idx == total_cards - 1` which can fail
+            # if iterator returns fewer rows than total_cards (e.g., cards deleted mid-iteration)
+            if (idx + 1) % FLUSH_EVERY == 0:
                 _flush_batch(
                     pending_updates, pending_media_deletes,
                     pending_media_creates,
@@ -472,6 +478,8 @@ def process_reupload_images(task):
 
         # Build result
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"
+        if zip_stats.get('duplicate_name_keys', 0) > 0 or zip_stats.get('duplicate_path_keys', 0) > 0:
+            result_msg += f" (skipped {zip_stats.get('duplicate_name_keys', 0) + zip_stats.get('duplicate_path_keys', 0)} duplicates)"
 
         # Store results in metadata (with retry)
         task.metadata['result'] = {
@@ -479,6 +487,8 @@ def process_reupload_images(task):
             'matched_count': matched_count,
             'unchanged_count': unchanged_count,
             'zip_images_count': zip_image_total,
+            'duplicates_skipped_stems': zip_stats.get('duplicate_name_keys', 0),
+            'duplicates_skipped_paths': zip_stats.get('duplicate_path_keys', 0),
             'preflight': preflight,
             'error_count': len(errors),
             'errors': errors[:10] if errors else []
@@ -530,7 +540,7 @@ def _flush_batch(
         from mediafiles.models import CardMedia
 
         with transaction.atomic():
-            # 1. Bulk-update IDCard field_data
+            # 1. Bulk-update IDCard field_data FIRST (safest operation)
             if pending_updates:
                 _now = _tz.now()
                 for _c in pending_updates:
@@ -539,15 +549,8 @@ def _flush_batch(
                     pending_updates, ['field_data', 'updated_at'], batch_size=100
                 )
 
-            # 2. Batch-delete old CardMedia
-            if pending_media_deletes:
-                from django.db.models import Q
-                q = Q()
-                for card_pk, field_name in pending_media_deletes:
-                    q |= Q(card_id=card_pk, field_name=field_name)
-                CardMedia.objects.filter(q).delete()
-
-            # 3. Batch-create new CardMedia
+            # 2. Batch-create NEW CardMedia BEFORE deleting old
+            # (preserves old records until new ones safely in DB)
             if pending_media_creates:
                 objs = []
                 for item in pending_media_creates:
@@ -559,6 +562,20 @@ def _flush_batch(
                         field_name=item['field_name'],
                     ))
                 CardMedia.objects.bulk_create(objs, batch_size=100)
+
+            # 3. NOW delete old CardMedia (only after new ones safely created)
+            if pending_media_deletes:
+                from django.db.models import Q
+                q = Q()
+                for card_pk, field_name in pending_media_deletes:
+                    q |= Q(card_id=card_pk, field_name=field_name)
+                deleted_count, _ = CardMedia.objects.filter(q).delete()
+                if deleted_count != len(pending_media_deletes):
+                    logger.warning(
+                        "CardMedia delete count mismatch: expected %d, deleted %d. "
+                        "Possible orphaned records.",
+                        len(pending_media_deletes), deleted_count
+                    )
 
     try:
         _db_retry(_do_flush)

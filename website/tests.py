@@ -43,7 +43,7 @@ class PortfolioUploadProcessingTests(TestCase):
 		)
 
 		self.assertTrue(item.image.name.lower().endswith('.webp'))
-		self.assertLessEqual(item.image.size, 500 * 1024)
+		self.assertLessEqual(item.image.size, 200 * 1024)
 
 	def test_service_create_processes_portfolio_image_to_webp(self):
 		item = PortfolioItemService.create(
@@ -54,7 +54,7 @@ class PortfolioUploadProcessingTests(TestCase):
 		)
 
 		self.assertTrue(item.image.name.lower().endswith('.webp'))
-		self.assertLessEqual(item.image.size, 500 * 1024)
+		self.assertLessEqual(item.image.size, 200 * 1024)
 
 	def test_service_update_renames_title_when_category_changes(self):
 		item = PortfolioItemService.create(
@@ -371,6 +371,15 @@ class WebsitePwaInstallabilityTests(TestCase):
 		self.assertEqual(payload.get('name'), 'Adarsh ID Cards Panel')
 		self.assertEqual(payload.get('start_url'), '/')
 		self.assertEqual(payload.get('scope'), '/')
+
+	@override_settings(PANEL_DOMAIN='panel.example.test', ALLOWED_HOSTS=['testserver', 'panel.example.test'])
+	def test_manifest_endpoint_is_exempt_on_panel_host(self):
+		response = self.client.get('/manifest.json', HTTP_HOST='panel.example.test')
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'application/manifest+json')
+		payload = response.json()
+		self.assertEqual(payload.get('name'), 'Adarsh ID Cards Panel')
 
 	def test_service_worker_endpoint_returns_required_headers(self):
 		response = self.client.get(reverse('website:pwa_service_worker'))

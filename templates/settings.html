@@ -258,6 +258,33 @@
           </div>
         </div>
 
+        <!-- Admin Section - Website Management -->
+        {% if is_super_admin or is_admin_staff %}
+        <div class="settings-section">
+          <div class="section-header">
+            <div class="section-icon admin">
+              <i class="fa-solid fa-globe"></i>
+            </div>
+            <div class="section-title">
+              <h3>Website Management</h3>
+              <p>Manage your public website content and settings</p>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>Website Dashboard</h4>
+                <p>Access the complete website management dashboard where you can manage business details, client logos, portfolio, testimonials, and contacts.</p>
+              </div>
+              <a href="/dashboard/" class="btn btn-primary btn-sm" style="align-self: center;">
+                <i class="fa-solid fa-arrow-right"></i>
+                Open Dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
       </div>
     </div>
   </main>

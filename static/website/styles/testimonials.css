@@ -2,7 +2,7 @@
 
 /* ===== VIDEO TESTIMONIALS ===== */
 .video-testimonials {
-    padding: 100px 20px;
+    padding: 5px 20px;
     background: #fff;
 }
 
@@ -190,6 +190,26 @@
     background: linear-gradient(135deg, #0a92dd, #667eea);
     border-color: transparent;
     color: #fff;
+}
+
+.testimonials-section-actions {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 32px;
+}
+
+.testimonials-section-review-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 999px;
+    text-decoration: none;
+    box-shadow: 0 12px 25px rgba(10, 146, 221, 0.18);
+}
+
+.testimonials-section-review-btn i {
+    font-size: 0.95rem;
 }
 
 .testimonials-masonry {
@@ -794,6 +814,14 @@
     font-weight: 600;
     color: #1a365d;
     margin-bottom: 8px;
+}
+
+.form-note {
+    display: block;
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.8rem;
+    line-height: 1.4;
 }
 
 .form-group input,

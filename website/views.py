@@ -10,7 +10,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.conf import settings as _s
-from django.db.models import Avg, Case, When, Value, IntegerField, Q, F
+from django.db.models import Avg, Case, When, Value, IntegerField, Q, F, Count
 from django.urls import resolve, Resolver404, reverse
 import logging
 from django.contrib.sitemaps.views import sitemap
@@ -27,11 +27,9 @@ logger = logging.getLogger(__name__)
 from .models import (
     BusinessDetails, 
     Feature, 
-    HeroImage,
     PortfolioCategory,
     PortfolioItem, 
-    Testimonial, 
-    Reel
+    Testimonial 
 )
 
 # ==========================================
@@ -43,7 +41,6 @@ CATEGORY_IMAGES_LIMIT = 6
 PORTFOLIO_BATCH_SIZE = 12
 CATEGORY_MODAL_INITIAL_LIMIT = 15
 CATEGORY_MODAL_MAX_LIMIT = 30
-REELS_INITIAL_LIMIT = 10
 BUSINESS_CACHE_TTL = 300  # 5 minutes
 WHY_CHOOSE_US_CACHE_TTL = 300
 WEBSITE_PUBLIC_CACHE_SCOPE = 'public'
@@ -94,7 +91,6 @@ def get_common_context():
     return {
         'business': business,
         'site_name': business.site_name if business else 'Adarsh ID Cards',
-        'global_keywords': 'Adarsh ID Cards, Adarsh Bhopal, ID Card Printing Bhopal, Custom Lanyards Bhopal, School ID Cards MP, Identity Solutions Madhya Pradesh, PVC ID Card Manufacturer, RFID Cards Bhopal, Digital Lanyard Printing, School Stationery Suppliers Bhopal',
     }
 
 
@@ -392,17 +388,22 @@ self.addEventListener('fetch', function() {
 
 def _get_bento_context():
     """Helper to get bento categories and their rotating media."""
+    cache_key = _website_public_cache_key('bento_context')
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     # Ensure default categories exist
     if not cache.get('portfolio_defaults_ensured'):
         PortfolioCategory.ensure_defaults()
         cache.set('portfolio_defaults_ensured', True, 3600)
 
-    categories = PortfolioCategory.objects.filter(is_active=True).order_by('order')
-    
+    categories = list(PortfolioCategory.objects.filter(is_active=True).order_by('order'))
+
     _cat_media_map = defaultdict(list)
     _cat_items_initial_map = defaultdict(list)
     _cat_items_total_map = defaultdict(int)
-    
+
     modal_media_filter = (
         (Q(item_type='image') & Q(image__isnull=False) & ~Q(image=''))
         |
@@ -411,13 +412,15 @@ def _get_bento_context():
             & ((Q(video_file__isnull=False) & ~Q(video_file='')) | ~Q(video_url=''))
         )
     )
-    
+
     modal_items_qs = PortfolioItem.objects.filter(
         is_active=True,
         category__isnull=False,
     ).filter(
         modal_media_filter,
-    ).select_related('category').annotate(
+    ).only(
+        'id', 'title', 'item_type', 'orientation', 'image', 'video_file', 'video_url', 'order', 'created_at', 'category_id'
+    ).annotate(
         has_order=Case(
             When(order__gt=0, then=Value(0)),
             default=Value(1),
@@ -449,18 +452,19 @@ def _get_bento_context():
     category_items = {str(cat.id): _cat_items_initial_map.get(str(cat.id), []) for cat in categories}
     category_item_totals = {str(cat.id): _cat_items_total_map.get(str(cat.id), 0) for cat in categories}
 
-    bento_order_case = Case(
-        *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(BENTO_PREFERRED_ORDER)],
-        default=Value(len(BENTO_PREFERRED_ORDER)),
-        output_field=IntegerField(),
-    )
-    bento_categories = categories.filter(
-        (Q(is_bento=True) & ~Q(slug__in=BENTO_FORCE_EXCLUDE_SLUGS))
-        | Q(slug__in=BENTO_FORCE_INCLUDE_SLUGS)
-    ).annotate(_bento_rank=bento_order_case).distinct().order_by('_bento_rank', 'order', 'name')
-    extra_categories = categories.exclude(id__in=bento_categories.values('id'))
+    bento_categories = [
+        cat for cat in categories
+        if ((cat.is_bento and cat.slug not in BENTO_FORCE_EXCLUDE_SLUGS) or cat.slug in BENTO_FORCE_INCLUDE_SLUGS)
+    ]
+    bento_categories.sort(key=lambda cat: (
+        next((idx for idx, slug in enumerate(BENTO_PREFERRED_ORDER) if slug == cat.slug), len(BENTO_PREFERRED_ORDER)),
+        cat.order,
+        cat.name,
+    ))
+    bento_category_ids = {cat.id for cat in bento_categories}
+    extra_categories = [cat for cat in categories if cat.id not in bento_category_ids]
 
-    return {
+    result = {
         'bento_categories': bento_categories,
         'extra_categories': extra_categories,
         'category_images': category_images,
@@ -468,19 +472,13 @@ def _get_bento_context():
         'category_item_totals': category_item_totals,
         'category_modal_batch_size': CATEGORY_MODAL_INITIAL_LIMIT,
     }
+    cache.set(cache_key, result, BUSINESS_CACHE_TTL)
+    return result
 
 
 def home(request):
     """Homepage: Displays a summary of all sections"""
     context = get_common_context()
-    
-    # Hero images
-    hero_cache_key = _website_public_cache_key('home_hero_images')
-    hero_images = cache.get(hero_cache_key)
-    if hero_images is None:
-        hero_images = list(HeroImage.objects.filter(is_active=True).order_by('order', 'pk'))
-        cache.set(hero_cache_key, hero_images, 60)
-    context['hero_images'] = hero_images
     
     # Bento Grid Data for Home Page
     context.update(_get_bento_context())
@@ -502,9 +500,9 @@ def home(request):
             'recent_portfolio': list(
                 PortfolioItem.objects.select_related('category').filter(is_active=True).filter(image_products_filter).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]
             ),
-            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
+            'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date', '-created_at')[:HOME_TESTIMONIALS_LIMIT]),
         }
-        cache.set(home_sections_cache_key, home_sections, 60)
+        cache.set(home_sections_cache_key, home_sections, BUSINESS_CACHE_TTL)
     context.update(home_sections)
 
     # ... (row logic)
@@ -615,40 +613,6 @@ def load_more_category_items(request):
     })
 
 
-@require_GET
-@rate_limit(max_requests=40, window_seconds=60, key_prefix='public_reels')
-def load_more_reels(request):
-    """API endpoint to load more reels for infinite scroll"""
-    try:
-        offset = max(0, int(request.GET.get('offset', 0)))
-        limit = min(max(1, int(request.GET.get('limit', REELS_INITIAL_LIMIT))), 50)
-    except (ValueError, TypeError):
-        return JsonResponse({'error': 'Invalid parameters'}, status=400)
-
-    reels_qs = Reel.objects.filter(is_active=True).order_by('order')
-    total_reels = reels_qs.count()
-    reels = reels_qs[offset:offset + limit]
-    
-    reels_data = []
-    for reel in reels:
-        reels_data.append({
-            'id': reel.id,
-            'title': reel.title,
-            'description': reel.description or 'Watch our showcase',
-            'thumbnail': reel.thumbnail.url if reel.thumbnail else None,
-            'video_file': reel.video_file.url if reel.video_file else None,
-            'video_url': reel.video_url or None,
-            'views_count': reel.views_count,
-            'likes_count': reel.likes_count,
-        })
-    
-    return JsonResponse({
-        'reels': reels_data,
-        'total': total_reels,
-        'has_more': offset + limit < total_reels,
-    })
-
-
 def why_choose_us(request):
     """About/Features Page"""
     context = get_common_context()
@@ -672,6 +636,68 @@ def why_choose_us(request):
     return render(request, 'website/why-choose-us.html', context)
 
 
+def trusted_clients_page(request):
+    """Trusted Clients Page: Display all clients with their connection duration"""
+    from django.utils import timezone
+    context = get_common_context()
+    
+    clients_cache_key = _website_public_cache_key('trusted_clients_page')
+    clients_data = cache.get(clients_cache_key)
+    
+    if clients_data is None:
+        now = timezone.now()
+        clients_list = PanelClient.objects.filter(
+            website_is_visible=True,
+            website_logo__isnull=False
+        ).exclude(
+            website_logo=''
+        ).order_by('website_display_order', 'name', 'id')
+        
+        # Prepare client data with duration calculation
+        clients_data = []
+        for client in clients_list:
+            # Calculate duration since client creation
+            duration = now - client.created_at
+            days = duration.days
+            
+            # Calculate years, months, days
+            years = days // 365
+            remaining_days = days % 365
+            months = remaining_days // 30
+            remaining_days = remaining_days % 30
+            
+            # Generate duration badge text
+            if years > 0:
+                if months > 0:
+                    duration_text = f"{years}y {months}m"
+                else:
+                    duration_text = f"{years}y"
+            elif months > 0:
+                duration_text = f"{months}m"
+            else:
+                duration_text = f"{days}d"
+            
+            clients_data.append({
+                'id': client.id,
+                'name': client.name,
+                'logo': client.website_logo,
+                'cover_color': getattr(client, 'website_logo_cover_color', None),
+                'cover_color_dark': getattr(client, 'website_logo_cover_color_dark', None),
+                'created_at': client.created_at,
+                'duration_text': duration_text,
+                'years': years,
+            })
+        
+        cache.set(clients_cache_key, clients_data, 300)  # Cache for 5 minutes
+    
+    context.update({
+        'clients': clients_data,
+        'meta_title': f"Our Trusted Clients | Adarsh ID Cards - {len(clients_data)} Partners",
+        'meta_description': "Meet the trusted clients and partners of Adarsh ID Cards. Educational institutions, offices, and organizations across India trust us for quality ID card solutions.",
+        'canonical_url': request.build_absolute_uri(),
+    })
+    return render(request, 'website/trusted-clients.html', context)
+
 def testimonials_page(request):
     """Reviews Page: Text testimonials"""
     context = get_common_context()
@@ -686,13 +712,18 @@ def testimonials_page(request):
             Testimonial.objects.filter(reviewer_email__iexact=user_email).order_by('-created_at', '-id')[:10]
         )
     
-    # Calculate stats
-    avg_rating = all_active.aggregate(avg=Avg('rating'))['avg'] or 5.0
+    # Calculate stats with a single grouped aggregate query.
+    testimonial_stats = all_active.aggregate(
+        avg=Avg('rating'),
+        total=Count('id'),
+    )
+    avg_rating = testimonial_stats['avg'] or 5.0
+    total_reviews = testimonial_stats['total'] or 0
     
     context.update({
         'text_testimonials': all_active,
         'avg_rating': round(avg_rating, 1),
-        'total_reviews': all_active.count(),
+        'total_reviews': total_reviews,
         'can_submit_public_review': not TestimonialService.has_public_review(
             reviewer_email=user_email,
             reviewer_ip=review_lookup_ip,
@@ -797,16 +828,8 @@ def submit_testimonial(request):
             if not name:
                 name = (request.user.get_full_name() or request.user.username or email).strip()
 
-            if not school:
-                client_profile = getattr(request.user, 'client_profile', None)
-                staff_profile = getattr(request.user, 'staff_profile', None)
-                if client_profile and getattr(client_profile, 'name', ''):
-                    school = str(client_profile.name).strip()
-                elif staff_profile and getattr(staff_profile, 'client', None) and getattr(staff_profile.client, 'name', ''):
-                    school = str(staff_profile.client.name).strip()
-
-        if not all([name, email, school, text]):
-            return JsonResponse({'success': False, 'message': 'All fields are required.'}, status=400)
+        if not all([name, email, text]):
+            return JsonResponse({'success': False, 'message': 'Name, email, and review text are required.'}, status=400)
 
         try:
             validate_email(email)
@@ -891,31 +914,8 @@ def submit_contact(request):
 # --- SEO Detail Views ---
 
 def category_detail(request, slug):
-    """List all items in a category with SEO metadata."""
-    category = get_object_or_404(PortfolioCategory, slug=slug, is_active=True)
-    items = PortfolioItem.objects.filter(category=category, is_active=True).order_by('order', '-created_at')
-    
-    # Bento Grid Data (for View Samples modal)
-    context = get_common_context()
-    context.update(_get_bento_context())
-    # SEO metadata
-    meta_title = category.meta_title or f"{category.name} in Bhopal, MP | Adarsh ID Card Solutions"
-    meta_desc = category.meta_description or f"High-quality {category.name} printing in Bhopal. {category.description[:150] if category.description else 'The best identity solutions in Madhya Pradesh.'} Contact Adarsh Bhopal for bulk orders."
-
-    context.update({
-        'category': category,
-        'items': items,
-        'meta_title': meta_title,
-        'meta_description': meta_desc,
-        'meta_keywords': f"{category.name}, {category.name} Bhopal, {category.name} printing MP, Adarsh ID Cards products",
-        'canonical_url': request.build_absolute_uri(),
-        'breadcrumb': [
-            {'name': 'Home', 'url': reverse('website:home')},
-            {'name': 'Our Products', 'url': reverse('website:our_work')},
-            {'name': category.name, 'url': ''},
-        ]
-    })
-    return render(request, 'website/category-detail.html', context)
+    """Redirect to home with hash to trigger category modal instead of showing a separate page."""
+    return redirect(f"{reverse('website:home')}#category={slug}")
 
 
 def product_detail(request, category_slug, slug):

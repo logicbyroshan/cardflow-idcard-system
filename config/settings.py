@@ -1,9 +1,25 @@
 
 from pathlib import Path
+import sys
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
 import os
 import dj_database_url
+import logging
+from django.urls import resolve, Resolver404
+
+# Sentry imports are optional — import lazily to avoid hard failures when SDK
+# is not installed. The actual import is attempted only if SENTRY_DSN is set.
+_SENTRY_AVAILABLE = False
+try:
+    import sentry_sdk  # type: ignore
+    from sentry_sdk.integrations.django import DjangoIntegration  # type: ignore
+    from sentry_sdk.integrations.logging import LoggingIntegration  # type: ignore
+    _SENTRY_AVAILABLE = True
+except Exception:
+    sentry_sdk = None
+    DjangoIntegration = None
+    LoggingIntegration = None
 
 # Load environment variables from .env file (if exists)
 load_dotenv()
@@ -43,6 +59,13 @@ def _env_bool(name: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def _running_tests() -> bool:
+    """Detect pytest/test execution early, before conftest can mutate settings."""
+    if _env_bool('RUNNING_TESTS'):
+        return True
+    return any(mod.startswith('_pytest') for mod in sys.modules)
 
 
 def _env_int(name: str, default: int, *, minimum: int | None = None, maximum: int | None = None) -> int:
@@ -136,7 +159,7 @@ INSTALLED_APPS = [
     'staff',
     'idcards',
     'website',
-    'cardprint',
+    'manage_website',
     'reprintcard',
     'mobile_app',
     'panel',
@@ -145,6 +168,9 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',
     'django.contrib.sites',
 ]
+
+if DEBUG and not _running_tests():
+    INSTALLED_APPS += ['debug_toolbar']
 
 SITE_ID = 1
 
@@ -158,6 +184,12 @@ MIDDLEWARE = [
     'core.middleware.SubdomainRoutingMiddleware',
     'core.middleware.MobileAppCSRFBypassMiddleware',
     "django.middleware.security.SecurityMiddleware",
+]
+
+if DEBUG and not _running_tests():
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+
+MIDDLEWARE += [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -208,6 +240,93 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
+
+
+if DEBUG:
+    INTERNAL_IPS = ['127.0.0.1', 'localhost']
+
+    def _debug_toolbar_show_toolbar(request):
+        host = (request.get_host() or '').split(':')[0].lower()
+        remote_addr = (request.META.get('REMOTE_ADDR') or '').strip()
+        return remote_addr in {'127.0.0.1', '::1'} or host in {'127.0.0.1', 'localhost'}
+
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': _debug_toolbar_show_toolbar,
+    }
+
+
+# -----------------
+# Sentry configuration
+# -----------------
+# Only initialize Sentry when a DSN is provided via env; keep disabled by default
+SENTRY_DSN = os.getenv('SENTRY_DSN', '').strip()
+if SENTRY_DSN:
+    def _env_float_safe(name: str, default: float) -> float:
+        try:
+            return float(os.getenv(name, default))
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _env_float_optional(name: str):
+        v = os.getenv(name)
+        if v is None or v == '':
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    SENTRY_TRACES_SAMPLE_RATE = _env_float_safe('SENTRY_TRACES_SAMPLE_RATE', 0.0)
+    # Do NOT send PII to Sentry by default; make it opt-in via env var.
+    SENTRY_SEND_PII = os.getenv('SENTRY_SEND_PII', 'False').strip().lower() in ('1', 'true', 'yes')
+    SENTRY_ENABLE_LOGS = os.getenv('SENTRY_ENABLE_LOGS', 'False').strip().lower() in ('1', 'true', 'yes')
+    SENTRY_PROFILES_SAMPLE_RATE = _env_float_optional('SENTRY_PROFILES_SAMPLE_RATE')
+    SENTRY_PROFILE_SESSION_SAMPLE_RATE = _env_float_optional('SENTRY_PROFILE_SESSION_SAMPLE_RATE')
+    SENTRY_PROFILE_LIFECYCLE = os.getenv('SENTRY_PROFILE_LIFECYCLE', '').strip() or None
+
+    # Drop events originating from the public website or website management apps
+    def _sentry_before_send(event, hint):
+        request = hint.get('request')
+        if request is not None:
+            try:
+                match = resolve(request.path)
+                view_mod = getattr(match.func, '__module__', '')
+                if view_mod.startswith('website') or view_mod.startswith('manage_website'):
+                    return None
+            except Exception:
+                # If resolution fails, don't block the event
+                pass
+        return event
+
+    try:
+        with open(os.path.join(BASE_DIR, 'VERSION.txt')) as f:
+            SENTRY_RELEASE = f.read().strip()
+    except Exception:
+        SENTRY_RELEASE = None
+
+    integrations = [DjangoIntegration()]
+    if SENTRY_ENABLE_LOGS:
+        log_integration = LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+        integrations.append(log_integration)
+
+    init_kwargs = dict(
+        dsn=SENTRY_DSN,
+        integrations=integrations,
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        send_default_pii=SENTRY_SEND_PII,
+        before_send=_sentry_before_send,
+        release=SENTRY_RELEASE,
+    )
+
+    # Optional profiling options
+    if SENTRY_PROFILES_SAMPLE_RATE is not None:
+        init_kwargs['profiles_sample_rate'] = SENTRY_PROFILES_SAMPLE_RATE
+    if SENTRY_PROFILE_SESSION_SAMPLE_RATE is not None:
+        init_kwargs['profile_session_sample_rate'] = SENTRY_PROFILE_SESSION_SAMPLE_RATE
+    if SENTRY_PROFILE_LIFECYCLE:
+        init_kwargs['profile_lifecycle'] = SENTRY_PROFILE_LIFECYCLE
+
+    sentry_sdk.init(**init_kwargs)
 
 
 # =============================================================================
@@ -295,9 +414,9 @@ if not DEBUG:
     # HTTPS settings
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('true', '1', 'yes')
     
-    # Cookie security
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Cookie security is enforced later (below) based on DEBUG and an
+    # optional FORCE_SECURE_COOKIES env toggle to avoid forcing secure
+    # cookies in local, HTTP-only development environments.
     
     # HSTS settings
     SECURE_HSTS_SECONDS = 31536000  # 1 year
@@ -311,10 +430,17 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
 # ── Cookie hardening ──
+# Allow forcing secure cookies via env in dev, otherwise enable them
+# automatically only when DEBUG is False (production) or when the explicit
+# toggle `FORCE_SECURE_COOKIES` is set to true. This prevents accidental
+# secure-cookie enforcement when developing over plain HTTP locally.
+FORCE_SECURE_COOKIES = _env_bool('FORCE_SECURE_COOKIES', False)
+SECURE_COOKIES = (not DEBUG) or FORCE_SECURE_COOKIES
+
 SESSION_COOKIE_HTTPONLY = True          # JS cannot read session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'        # CSRF mitigation
-SESSION_COOKIE_SECURE = True           # Enforce HTTPS
-CSRF_COOKIE_SECURE = True              # Enforce HTTPS
+SESSION_COOKIE_SECURE = SECURE_COOKIES # Enforce HTTPS when appropriate
+CSRF_COOKIE_SECURE = SECURE_COOKIES    # Enforce HTTPS when appropriate
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30   # 30-day sessions
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False # Session persists after browser close
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
@@ -381,10 +507,6 @@ CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', True)
 # Alpine full evaluator is required by existing x-show/x-bind expressions
 # that use comparisons and logical operators across desktop/mobile templates.
 CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', True)
-# Adarsh Cropper relies on direct browser calls to the local engine at
-# http://127.0.0.1:4765, including on production panel domains.
-# Keep this enabled by default unless explicitly disabled via env.
-CSP_ALLOW_LOCAL_ENGINE_CONNECT = _env_bool('CSP_ALLOW_LOCAL_ENGINE_CONNECT', True)
 
 # ── Permissions-Policy header ──
 # Restricts browser APIs not needed by this app.
@@ -462,13 +584,23 @@ MEDIA_USE_XACCEL = os.getenv('MEDIA_USE_XACCEL', 'false').strip().lower() in ('1
 # FILE UPLOAD LIMITS
 # =============================================================================
 
-# Max size for non-file POST fields (e.g. JSON card_ids, status flags, text fields).
-# This does NOT limit file uploads — those are controlled by FILE_UPLOAD_MAX_MEMORY_SIZE
-# and streamed/spilled to disk regardless of their size.
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB — POST fields only, not files
+# Max request body size. Keep this comfortably above the portfolio image/video upload
+# paths so normal uploads do not trip Django's request-size guard before parsing.
+DATA_UPLOAD_MAX_MEMORY_SIZE = _env_int(
+    'DATA_UPLOAD_MAX_MEMORY_SIZE',
+    512 * 1024 * 1024,
+    minimum=10 * 1024 * 1024,
+    maximum=2 * 1024 * 1024 * 1024,
+)
 
-# Max size for a single uploaded file kept in memory before spilling to disk (10 MB)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+# Max size for a single uploaded file kept in memory before spilling to disk.
+# Larger portfolio videos will spill to disk and continue processing normally.
+FILE_UPLOAD_MAX_MEMORY_SIZE = _env_int(
+    'FILE_UPLOAD_MAX_MEMORY_SIZE',
+    25 * 1024 * 1024,
+    minimum=1 * 1024 * 1024,
+    maximum=256 * 1024 * 1024,
+)
 
 # Max number of files per upload request.
 # Create-with-XLSX folder uploads can legitimately include thousands of images.

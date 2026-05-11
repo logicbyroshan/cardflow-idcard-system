@@ -90,12 +90,9 @@ class Staff(models.Model):
     perm_idcard_approved_list = models.BooleanField(default=False)
     perm_idcard_download_list = models.BooleanField(default=False)
     perm_idcard_reprint_list = models.BooleanField(default=False)
-    
-    # Print & Reprint List Permissions
-    perm_reprint_request_list = models.BooleanField(default=False)  # Request List (Reprint)
-    perm_confirmed_list = models.BooleanField(default=False)   # Confirmed List (Reprint)
-    perm_print_list = models.BooleanField(default=False)        # Print List
-    perm_finalized_list = models.BooleanField(default=False)    # Finalized List (Print Cards)
+    perm_reprint_request_list = models.BooleanField(default=False)
+    perm_confirmed_list = models.BooleanField(default=False)
+
     
     # ID Card Action Permissions (work in Pending and Verified lists only)
     perm_idcard_add = models.BooleanField(default=False)
@@ -124,10 +121,6 @@ class Staff(models.Model):
     perm_manage_panel_backup = models.BooleanField(default=False)
     perm_manage_panel_email = models.BooleanField(default=False)
 
-    # Manage Website Section Permissions (admin staff)
-    perm_manage_website_clients = models.BooleanField(default=False)
-    perm_manage_website_portfolio = models.BooleanField(default=False)
-    
     # Website Management Permissions
     perm_website_view = models.BooleanField(default=False)
     perm_website_add = models.BooleanField(default=False)

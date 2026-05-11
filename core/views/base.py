@@ -28,9 +28,8 @@ from .base_helpers import (                          # noqa: F401
     logger,
 )
 
-# ── Dashboard & cropper views ──────────────────────────────────────────
+# ── Dashboard views ─────────────────────────────────────────────────────
 from .dashboard_views import (                       # noqa: F401
-    adarsh_cropper,
     login_as_user_page,
     pro_user_log_deletion_guard_page,
     pro_user_data_deletion_guard_page,
@@ -42,7 +41,7 @@ from .dashboard_views import (                       # noqa: F401
     api_live_client_presence,
     api_dashboard_card_stats,
     api_recent_client_updates,
-    api_print_reprint_overview,
+    api_reprint_overview,
     api_recent_activity,
     api_global_search,
 )
@@ -63,7 +62,6 @@ from .admin_page_views import (                      # noqa: F401
     build_idcard_actions_context,
     idcard_actions,
     group_settings,
-    manage_website,
     notifications_page,
     manage_panel,
     api_email_logs,

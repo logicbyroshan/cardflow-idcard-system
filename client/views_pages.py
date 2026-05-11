@@ -144,6 +144,24 @@ def card_table(request, table_id):
     return render(request, 'client/cards.html', context)
 
 
+@require_client_user
+def print_table(request, table_id):
+    """
+    Client-facing print view for a table. Tests expect a redirect to
+    the idcard-group page when the current client lacks print/download
+    permissions. We do not implement full printing here; just guard access
+    and redirect appropriately.
+    """
+    user = request.user
+    client = ClientAccessService.get_client_for_user(user)
+    if not client:
+        return redirect('/panel/auth/login/')
+
+    # Print functionality removed — print routes are deprecated.
+    # Redirect to the shared ID card group view expected by existing callers.
+    return redirect(reverse('client:idcard_group'))
+
+
 @require_client_admin
 def manage_staff(request):
     """

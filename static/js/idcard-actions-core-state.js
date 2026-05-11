@@ -109,7 +109,7 @@ var _cachedDeletePermanentBtn = null;
 
 function _cacheToolbarButtons() {
     _cachedSingleBtns = document.querySelectorAll('[id^="editBtn"], [id^="viewBtn"]');
-    _cachedMultiBtns  = document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="disapproveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"], #downloadCardBtn, #printSelectedBtn');
+    _cachedMultiBtns  = document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="disapproveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"], #downloadCardBtn');
     _cachedAddBtn = document.getElementById('addBtn');
     _cachedUploadXlsxBtn = document.getElementById('uploadXlsxBtn');
     _cachedDeletePermanentBtn = document.getElementById('deletePermanentBtnP');

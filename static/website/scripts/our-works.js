@@ -758,8 +758,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const shareBtn = document.getElementById('productGalleryShare');
     if (shareBtn) {
         shareBtn.addEventListener('click', () => {
-            // Use the clean SEO category URL instead of the hash link.
-            const url = window.location.origin + '/products/' + currentGalleryCategorySlug + '/';
+            // Use hash-based URL to trigger modal on homepage instead of separate page.
+            const url = window.location.origin + '/#category=' + currentGalleryCategorySlug;
             navigator.clipboard.writeText(url).then(() => {
                 const icon = shareBtn.querySelector('i');
                 icon.className = 'fas fa-check';
@@ -898,6 +898,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     checkHashAndOpen();
+
+    const initialCategory = pageConfig.initialCategory;
+    if (initialCategory && initialCategory.id) {
+        window.setTimeout(() => {
+            openCategoryGallery(
+                initialCategory.id,
+                initialCategory.name || 'Items',
+                initialCategory.slug || ''
+            );
+        }, 250);
+    }
 
     // --- 3. Lightbox Functionality (images + videos) ---
     const lightbox = document.getElementById('lightbox');

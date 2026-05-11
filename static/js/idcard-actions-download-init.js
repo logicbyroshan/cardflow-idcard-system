@@ -596,9 +596,6 @@ function initDownloadModule() {
     window.IDCardApp.initDownloadDocxHandlers();
     window.IDCardApp.initDownloadXlsxHandlers();
     window.IDCardApp.initDownloadPdfHandlers();
-    if (typeof window.IDCardApp.initReprintPickerHandlers === 'function') {
-        window.IDCardApp.initReprintPickerHandlers();
-    }
     initReuploadHandlers();
 }
 
