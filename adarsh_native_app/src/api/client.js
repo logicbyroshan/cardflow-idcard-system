@@ -9,9 +9,8 @@ import Constants from 'expo-constants';
 // Allow overriding BASE_URL via Expo constants (`expo publish` extra) or global for tests
 export const BASE_URL = (
   process.env.EXPO_PUBLIC_API_URL ||
-  (Constants?.manifest?.extra && Constants.manifest.extra.API_BASE_URL) ||
-  global.__BASE_URL__ ||
-  'https://panel.adarshbhopal.in'
+  (Constants?.expoConfig?.extra && Constants.expoConfig.extra.API_BASE_URL) ||
+  'https://www.adarshbhopal.in'
 );
 
 const STORAGE_KEYS = {

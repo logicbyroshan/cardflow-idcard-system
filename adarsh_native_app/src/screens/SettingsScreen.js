@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Alert } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -98,13 +98,13 @@ export default function SettingsScreen({ navigation }) {
         >
           <LinearGradient colors={['#4f46e5', '#3730a3']} style={s.chatGradient}>
             <View style={s.chatInfo}>
-              <View style={s.chatIconW}><FontAwesome5 name="comments" size={18} color="#fff" /></View>
+              <View style={s.chatIconW}><DynamicIcon name="comments" size={18} color="#fff" /></View>
               <View>
                 <Text style={s.chatTitle}>Admin Support Chat</Text>
                 <Text style={s.chatSub}>Direct line to the admin team</Text>
               </View>
             </View>
-            <FontAwesome5 name="chevron-right" size={14} color="rgba(255,255,255,0.6)" />
+            <DynamicIcon name="chevron-right" size={14} color="rgba(255,255,255,0.6)" />
           </LinearGradient>
         </TouchableOpacity>
 
@@ -127,7 +127,7 @@ export default function SettingsScreen({ navigation }) {
         <Text style={s.secTitle}>DATA MANAGEMENT</Text>
         <View style={s.dangerCard}>
           <View style={s.deleteRow}>
-            <View style={s.deleteIconW}><FontAwesome5 name="trash-alt" size={14} color="#ef4444" /></View>
+            <View style={s.deleteIconW}><DynamicIcon name="trash-alt" size={14} color="#ef4444" /></View>
             <View style={{flex: 1}}>
               <Text style={s.deleteTitle}>Request Account Deletion</Text>
               <Text style={s.deleteSub}>Permanently remove your data from our servers</Text>

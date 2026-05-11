@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
@@ -54,7 +54,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
       <View style={s.groupCard}>
         <TouchableOpacity style={s.groupHeader} onPress={() => toggleGroup(group.name)} activeOpacity={0.7}>
           <View style={[s.groupIcon, { backgroundColor: theme.bgSoft }]}>
-            <FontAwesome5 name="layer-group" size={14} color={theme.primary} solid />
+            <DynamicIcon name="layer-group" size={14} color={theme.primary} />
           </View>
           <View style={s.groupInfo}>
             <Text style={s.groupName} numberOfLines={1}>{group.name}</Text>
@@ -65,7 +65,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
             {group.verified > 0 && <MiniCount count={group.verified} bg={colors.verified.bg} c={colors.verified.text} />}
             {group.pool > 0 && <MiniCount count={group.pool} bg={colors.pool.bg} c={colors.pool.text} />}
           </View>
-          <FontAwesome5 name={isExpanded ? 'chevron-up' : 'chevron-down'} size={10} color={colors.gray400} />
+          <DynamicIcon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={10} color={colors.gray400} />
         </TouchableOpacity>
 
         {isExpanded && group.tables.length > 0 && (
@@ -77,7 +77,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
                 onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pending' })}
                 activeOpacity={0.7}
               >
-                <View style={s.tableIcon}><FontAwesome5 name="table" size={10} color={colors.brandLight} /></View>
+                <View style={s.tableIcon}><DynamicIcon name="table" size={10} color={colors.brandLight} /></View>
                 <View style={s.tableInfo}>
                   <Text style={s.tableName} numberOfLines={1}>{table.name}</Text>
                   <Text style={s.tableMeta}>{table.total_cards || 0} cards</Text>
@@ -89,7 +89,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
                   {table.download_count > 0 && <MiniCount count={table.download_count} bg={colors.download.bg} c={colors.download.text} />}
                   {table.pool_count > 0 && <MiniCount count={table.pool_count} bg={colors.pool.bg} c={colors.pool.text} />}
                 </View>
-                <FontAwesome5 name="chevron-right" size={8} color={colors.gray300} />
+                <DynamicIcon name="chevron-right" size={8} color={colors.gray300} />
               </TouchableOpacity>
             ))}
           </View>
@@ -118,7 +118,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
           ListEmptyComponent={
             <View style={s.empty}>
-              <View style={s.emptyIcon}><FontAwesome5 name="layer-group" size={24} color={colors.gray300} /></View>
+              <View style={s.emptyIcon}><DynamicIcon name="layer-group" size={24} color={colors.gray300} /></View>
               <Text style={s.emptyTitle}>No groups found</Text>
               <Text style={s.emptySub}>This client has no tables yet</Text>
             </View>

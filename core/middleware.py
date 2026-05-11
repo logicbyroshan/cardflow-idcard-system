@@ -259,6 +259,7 @@ class PanelEntryGateMiddleware:
         '/favicon.ico',
         '/robots.txt',
         '/api/health/',
+        '/api/mobile/',
         '/__debug__/',
     )
     EXEMPT_PATHS = {
@@ -383,6 +384,7 @@ class PermissionValidationMiddleware:
         '/admin/',
         '/favicon.ico',
         '/api/health/',
+        '/api/mobile/',
         '/robots.txt',
         '/sitemap.xml',
         '/panel-entry/',

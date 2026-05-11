@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from './Icons';
 import { colors, gradients, radius, shadows, fontFamily, typography } from '../theme';
 
 const Button = React.memo(function Button({
@@ -25,9 +25,23 @@ const Button = React.memo(function Button({
   const content = (
     <View style={[styles.content, contentStyle]}>
       {loading ? <ActivityIndicator size="small" color={variant === 'primary' ? colors.white : colors.brandPrimary} style={{ marginRight: 10 }} /> : null}
-      {!loading && icon ? <FontAwesome5 name={icon} size={size === 'lg' ? 14 : 12} color={variant === 'primary' ? colors.white : colors.brandPrimary} style={[styles.leftIcon, { marginRight: 10 }]} /> : null}
+      {!loading && icon ? (
+        <DynamicIcon 
+          name={icon} 
+          size={size === 'lg' ? 16 : 14} 
+          color={variant === 'primary' ? colors.white : colors.brandPrimary} 
+          style={styles.leftIcon} 
+        />
+      ) : null}
       <Text style={[styles.text, styles[`${variant}Text`], textStyle]}>{children}</Text>
-      {!loading && iconRight ? <FontAwesome5 name={iconRight} size={size === 'lg' ? 14 : 12} color={variant === 'primary' ? colors.white : colors.brandPrimary} style={[styles.rightIcon, { marginLeft: 10 }]} /> : null}
+      {!loading && iconRight ? (
+        <DynamicIcon 
+          name={iconRight} 
+          size={size === 'lg' ? 16 : 14} 
+          color={variant === 'primary' ? colors.white : colors.brandPrimary} 
+          style={styles.rightIcon} 
+        />
+      ) : null}
     </View>
   );
 

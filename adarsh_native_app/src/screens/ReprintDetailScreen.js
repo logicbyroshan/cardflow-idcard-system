@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ActivityIndicator, RefreshControl, Alert } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -98,7 +98,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
             {photoUrl ? (
               <Image source={{ uri: photoUrl }} style={s.photo} />
             ) : (
-              <View style={s.photoPlaceholder}><FontAwesome5 name="user" size={14} color={colors.gray300} solid /></View>
+              <View style={s.photoPlaceholder}><DynamicIcon name="user" size={14} color={colors.gray300} /></View>
             )}
           </View>
           <View style={s.cardInfo}>
@@ -108,7 +108,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
               <StatusBadge status="reprint" size="sm" />
             </View>
           </View>
-          <FontAwesome5 name="chevron-right" size={10} color={colors.gray300} />
+          <DynamicIcon name="chevron-right" size={10} color={colors.gray300} />
         </TouchableOpacity>
 
         <View style={s.cardActions}>
@@ -121,7 +121,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
                 onPress={() => changeCardStatus(item.id, 'verified', 'Verify')}
                 activeOpacity={0.7}
               >
-                <FontAwesome5 name="check" size={10} color="#047857" />
+                <DynamicIcon name="check" size={10} color="#047857" />
                 <Text style={[s.actionText, { color: '#047857' }]}>Verify</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -129,7 +129,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
                 onPress={() => changeCardStatus(item.id, 'approved', 'Approve')}
                 activeOpacity={0.7}
               >
-                <FontAwesome5 name="thumbs-up" size={10} color="#2563eb" />
+                <DynamicIcon name="thumbs-up" size={10} color="#2563eb" />
                 <Text style={[s.actionText, { color: '#2563eb' }]}>Approve</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -137,7 +137,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
                 onPress={() => changeCardStatus(item.id, 'pending', 'Reset')}
                 activeOpacity={0.7}
               >
-                <FontAwesome5 name="undo" size={10} color="#b45309" />
+                <DynamicIcon name="undo" size={10} color="#b45309" />
                 <Text style={[s.actionText, { color: '#b45309' }]}>Reset</Text>
               </TouchableOpacity>
             </>
@@ -166,7 +166,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
           ListFooterComponent={loadingMore ? <ActivityIndicator style={{ padding: 16 }} color={colors.brandLight} /> : null}
           ListEmptyComponent={
             <View style={s.empty}>
-              <View style={s.emptyIcon}><FontAwesome5 name="redo" size={24} color={colors.gray300} /></View>
+              <View style={s.emptyIcon}><DynamicIcon name="redo" size={24} color={colors.gray300} /></View>
               <Text style={s.emptyTitle}>No reprint cards</Text>
               <Text style={s.emptySub}>All reprint requests have been processed</Text>
             </View>

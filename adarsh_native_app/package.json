@@ -1,6 +1,6 @@
 {
   "name": "adarsh_native_app",
-  "version": "1.0.42",
+  "version": "1.0.46",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -9,7 +9,6 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@expo/vector-icons": "^14.0.3",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/netinfo": "11.4.1",
     "@react-navigation/native": "^7.0.0",
@@ -17,6 +16,7 @@
     "expo": "~52.0.30",
     "expo-asset": "~11.0.5",
     "expo-camera": "~16.0.14",
+    "expo-face-detector": "^13.0.2",
     "expo-font": "~13.0.3",
     "expo-image-picker": "~16.0.5",
     "expo-linear-gradient": "~14.0.1",

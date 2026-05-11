@@ -4,8 +4,7 @@ import {
   StyleSheet, Alert, RefreshControl, ActivityIndicator 
 } from 'react-native';
 import { Linking } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { DynamicIcon, IconClock, IconWarning, IconList, IconEdit, IconDownload, IconTrash, IconLock, IconFilter, IconCheck, IconThumbsUp } from '../components/Icons';
+import { DynamicIcon, IconClock, IconWarning, IconList, IconEdit, IconDownload, IconTrash, IconLock, IconFilter, IconCheck, IconThumbsUp, IconPool } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';

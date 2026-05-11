@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { IconSearch, IconFilter, IconCheck, IconProfile, IconMail, IconPhone } from '../components/Icons';
 import CardItem from '../components/CardItem';
 import TopBar from '../components/TopBar';

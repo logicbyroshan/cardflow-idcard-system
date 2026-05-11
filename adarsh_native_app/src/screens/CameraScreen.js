@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Dim
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { Accelerometer } from 'expo-sensors';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 let FaceDetector = null;
@@ -97,7 +97,7 @@ export default function CameraScreen({ navigation, route }) {
   if (!permission.granted) {
     return (
       <View style={s.center}>
-        <FontAwesome5 name="camera-retro" size={48} color={colors.gray600} style={{ marginBottom: 20 }} />
+        <DynamicIcon name="camera-retro" size={48} color={colors.gray600} style={{ marginBottom: 20 }} />
         <Text style={s.errorText}>Camera permission is required</Text>
         <TouchableOpacity style={s.grantBtn} onPress={requestPermission}>
           <Text style={s.grantBtnText}>Enable Camera</Text>
@@ -142,11 +142,11 @@ export default function CameraScreen({ navigation, route }) {
            <Text style={s.reviewTitle}>Confirm Photo</Text>
            <View style={s.reviewActions}>
               <TouchableOpacity style={s.retakeBtn} onPress={() => setPhoto(null)}>
-                <FontAwesome5 name="redo" size={16} color="#fff" />
+                <DynamicIcon name="redo" size={16} color="#fff" />
                 <Text style={s.btnText}>Retake</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm}>
-                <FontAwesome5 name="check" size={16} color="#fff" />
+                <DynamicIcon name="check" size={16} color="#fff" />
                 <Text style={s.btnText}>Use Photo</Text>
               </TouchableOpacity>
            </View>
@@ -160,7 +160,7 @@ export default function CameraScreen({ navigation, route }) {
       <StatusBar hidden />
       <View style={[s.topStatus, { top: insets.top + 10 }]}>
         <View style={[s.levelIndicator, isReady ? s.bgSuccess : s.bgError]}>
-          <FontAwesome5 name={isReady ? "check-circle" : "exclamation-triangle"} size={14} color="#fff" />
+          <DynamicIcon name={isReady ? "check-circle" : "exclamation-triangle"} size={14} color="#fff" />
           <Text style={s.levelText}>
             {!isLevel ? "Adjust Phone Angle" : 
              (hasNativeFace && !faceData.detected) ? "No Face Detected" :
@@ -192,7 +192,7 @@ export default function CameraScreen({ navigation, route }) {
       <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15 }]}>
         <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
           <View style={s.controlIconCircle}>
-            <FontAwesome5 name="sync-alt" size={18} color="#fff" />
+            <DynamicIcon name="sync-alt" size={18} color="#fff" />
           </View>
           <Text style={s.controlLabel}>Flip</Text>
         </TouchableOpacity>
@@ -206,7 +206,7 @@ export default function CameraScreen({ navigation, route }) {
 
         <TouchableOpacity style={s.controlItem} onPress={() => navigation.goBack()}>
           <View style={s.controlIconCircle}>
-            <FontAwesome5 name="times" size={18} color="#fff" />
+            <DynamicIcon name="times" size={18} color="#fff" />
           </View>
           <Text style={s.controlLabel}>Cancel</Text>
         </TouchableOpacity>

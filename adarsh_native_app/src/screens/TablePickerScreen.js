@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { apiGet } from '../api/client';

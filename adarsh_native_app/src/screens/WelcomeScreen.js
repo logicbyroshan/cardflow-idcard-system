@@ -55,9 +55,7 @@ export default function WelcomeScreen({ navigation }) {
 
   const loadLandingData = async () => {
     try {
-      const { ok, data } = await apiGet(
-        "https://adarshbhopal.in/api/mobile/pub/website/landing/",
-      );
+      const { ok, data } = await apiGet('/api/mobile/pub/website/landing/');
       if (ok && data?.success) {
         setData(data);
       }
@@ -77,9 +75,7 @@ export default function WelcomeScreen({ navigation }) {
     }
     setSending(true);
     try {
-      const { ok, data } = await apiPost(
-        "https://adarshbhopal.in/api/mobile/pub/website/contact/",
-        {
+      const { ok, data } = await apiPost('/api/mobile/pub/website/contact/', {
           ...contact,
           subject: "Mobile App Landing Enquiry",
         },

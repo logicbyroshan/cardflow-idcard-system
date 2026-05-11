@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, TextInput, ActivityIndicator, TouchableWithoutFeedback, Dimensions } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from './Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, shadows, fontFamily, gradients } from '../theme';
 import { Wrap, HStack } from './Stack';
@@ -77,7 +77,7 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
               <Text style={s.subtitle}>Refine your card results</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-              <FontAwesome5 name="times" size={16} color={colors.gray400} />
+              <DynamicIcon name="times" size={16} color={colors.gray400} />
             </TouchableOpacity>
           </View>
 

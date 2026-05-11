@@ -97,8 +97,8 @@ android {
         applicationId 'com.adarshid.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 45
-        versionName "1.0.45"
+        versionCode 46
+        versionName "1.0.46"
     }
     signingConfigs {
         debug {
@@ -194,4 +194,4 @@ dependencies {
     }
 }
 
-apply from: "../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/fonts.gradle"
+// apply from: "../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/fonts.gradle"

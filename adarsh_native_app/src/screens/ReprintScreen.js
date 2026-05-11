@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
@@ -53,7 +53,7 @@ export default function ReprintScreen({ navigation, route }) {
         onPress={() => navigation.navigate('ReprintDetail', { tableId: item.id })}
       >
         <View style={s.cardLeft}>
-          <View style={s.tableIcon}><FontAwesome5 name="redo" size={12} color="#f59e0b" /></View>
+          <View style={s.tableIcon}><DynamicIcon name="redo" size={12} color="#f59e0b" /></View>
           <View style={s.info}>
             <Text style={s.tableName} numberOfLines={1}>{item.name}</Text>
             <Text style={s.groupName}>{item.group_name}</Text>
@@ -62,7 +62,7 @@ export default function ReprintScreen({ navigation, route }) {
         <View style={s.countBadge}>
           <Text style={s.countText}>{count}</Text>
         </View>
-        <FontAwesome5 name="chevron-right" size={10} color={colors.gray300} style={{ marginLeft: 8 }} />
+        <DynamicIcon name="chevron-right" size={10} color={colors.gray300} style={{ marginLeft: 8 }} />
       </TouchableOpacity>
     );
   };
@@ -99,7 +99,7 @@ export default function ReprintScreen({ navigation, route }) {
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
-          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="redo" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No {activeTab === 'request_list' ? 'requested' : 'confirmed'} reprints</Text></View>}
+          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><DynamicIcon name="redo" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No {activeTab === 'request_list' ? 'requested' : 'confirmed'} reprints</Text></View>}
         />
       )}
     </View>
@@ -109,7 +109,7 @@ export default function ReprintScreen({ navigation, route }) {
 function SummaryBox({ icon, color, bg, label, value }) {
   return (
     <View style={[s.summaryBox, { borderColor: bg }]}>
-      <View style={[s.summaryIcon, { backgroundColor: bg }]}><FontAwesome5 name={icon} size={12} color={color} solid /></View>
+      <View style={[s.summaryIcon, { backgroundColor: bg }]}><DynamicIcon name={icon} size={12} color={color} /></View>
       <Text style={[s.summaryValue, { color }]}>{value}</Text>
       <Text style={s.summaryLabel}>{label}</Text>
     </View>

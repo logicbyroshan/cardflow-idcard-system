@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, TouchableWithoutFeedback } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { DynamicIcon, IconWarning, IconArrowRight, IconClock, IconTrash, IconCheck, IconUsers, IconList } from './Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, shadows, fontFamily } from '../theme';

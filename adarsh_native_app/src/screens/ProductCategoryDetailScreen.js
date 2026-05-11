@@ -10,7 +10,7 @@ import {
   Dimensions,
   Modal,
 } from "react-native";
-import { FontAwesome5 } from "@expo/vector-icons";
+import { DynamicIcon } from "../components/Icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, shadows, radius } from "../theme";
 import { apiGet, BASE_URL } from "../api/client";
@@ -28,7 +28,7 @@ export default function ProductCategoryDetailScreen({ navigation, route }) {
 
   const loadProducts = useCallback(async () => {
     const { ok, data } = await apiGet(
-      `https://adarshbhopal.in/api/mobile/pub/website/category/${category.id}/products/`,
+      `/api/mobile/pub/website/category/${category.id}/products/`,
     );
     if (ok && data.success) {
       return data.products || [];
@@ -91,7 +91,7 @@ export default function ProductCategoryDetailScreen({ navigation, route }) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={s.empty}>
-              <FontAwesome5 name="ghost" size={40} color="#cbd5e1" />
+              <DynamicIcon name="ghost" size={40} color="#cbd5e1" />
               <Text style={s.emptyText}>
                 No samples found for this category
               </Text>
@@ -107,7 +107,7 @@ export default function ProductCategoryDetailScreen({ navigation, route }) {
             style={s.modalClose}
             onPress={() => setSelectedImage(null)}
           >
-            <FontAwesome5 name="times" size={24} color="#fff" />
+            <DynamicIcon name="times" size={24} color="#fff" />
           </TouchableOpacity>
           <Image
             source={{ uri: selectedImage }}

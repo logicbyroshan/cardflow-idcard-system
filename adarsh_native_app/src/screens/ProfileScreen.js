@@ -3,7 +3,6 @@ import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, Alert,
 } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { IconProfile, IconEdit, IconLogout, IconChevronRight, IconMail, IconPhone } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';

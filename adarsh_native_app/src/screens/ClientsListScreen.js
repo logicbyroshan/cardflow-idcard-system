@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { IconPending, IconVerified, IconApproved, IconDownload, IconPool, IconTotal, IconSearch, IconFilter, IconPlus, IconChevronRight, IconTrash, IconEdit, IconHome, IconList, IconUsers, IconLogout, IconClose, IconCheck, IconProfile } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';

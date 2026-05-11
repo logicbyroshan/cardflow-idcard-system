@@ -51,9 +51,7 @@ export default function LandingScreen({ navigation }) {
 
   const loadLandingData = useCallback(async () => {
     try {
-      const { ok, data: res } = await apiGet(
-        "https://adarshbhopal.in/api/mobile/pub/website/landing/",
-      );
+      const { ok, data: res } = await apiGet('/api/mobile/pub/website/landing/');
       if (ok && res.success) return res.data;
       throw new Error(
         res.message || "Failed to load content. Please try again.",
@@ -93,10 +91,7 @@ export default function LandingScreen({ navigation }) {
     }
     setSubmitting(true);
     try {
-      const { data: res } = await apiPost(
-        "https://adarshbhopal.in/api/mobile/pub/website/contact/",
-        form,
-      );
+      const { data: res } = await apiPost('/api/mobile/pub/website/contact/', form);
       setToast({
         visible: true,
         message: res.message || "Sent successfully",

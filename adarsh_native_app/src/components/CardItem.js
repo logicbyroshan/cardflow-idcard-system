@@ -77,6 +77,7 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
 
     const hasError = imageErrors[field.name];
 
+    let bgColor, iconName, iconColor;
     if (isPending) {
       bgColor = '#fef08a'; // YELLOW placeholder for pending
       iconName = 'clock';

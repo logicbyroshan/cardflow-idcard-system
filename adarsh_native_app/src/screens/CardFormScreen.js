@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -85,7 +85,7 @@ export default function CardFormScreen({ navigation, route }) {
 
         {fieldList.length === 0 && (
           <View style={s.noFieldsCard}>
-            <FontAwesome5 name="info-circle" size={14} color={colors.info} />
+            <DynamicIcon name="info-circle" size={14} color={colors.info} />
             <Text style={s.noFieldsText}>No field definitions found for this table. Define fields in the desktop panel first.</Text>
           </View>
         )}

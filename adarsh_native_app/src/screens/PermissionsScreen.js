@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking, Platform } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -95,7 +95,7 @@ export default function PermissionsScreen({ navigation }) {
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
         {/* Header Info */}
         <View style={s.infoCard}>
-          <View style={s.infoIcon}><FontAwesome5 name="shield-alt" size={16} color={colors.brandPrimary} /></View>
+          <View style={s.infoIcon}><DynamicIcon name="shield-alt" size={16} color={colors.brandPrimary} /></View>
           <Text style={s.infoText}>
             These permissions are needed for the app to function properly. You can grant or revoke them at any time.
           </Text>
@@ -108,7 +108,7 @@ export default function PermissionsScreen({ navigation }) {
             <View key={item.key} style={s.permCard}>
               <View style={s.permTop}>
                 <View style={[s.permIcon, { backgroundColor: item.iconBg }]}>
-                  <FontAwesome5 name={item.icon} size={16} color={item.iconColor} solid />
+                  <DynamicIcon name={item.icon} size={16} color={item.iconColor} />
                 </View>
                 <View style={s.permInfo}>
                   <Text style={s.permTitle}>{item.title}</Text>
@@ -117,7 +117,7 @@ export default function PermissionsScreen({ navigation }) {
               </View>
               <View style={s.permBottom}>
                 <View style={[s.statusBadge, { backgroundColor: sc.bg }]}>
-                  <FontAwesome5 name={sc.icon} size={10} color={sc.color} solid />
+                  <DynamicIcon name={sc.icon} size={10} color={sc.color} />
                   <Text style={[s.statusLabel, { color: sc.color }]}>{sc.label}</Text>
                 </View>
                 {item.status !== 'granted' && (
@@ -134,9 +134,9 @@ export default function PermissionsScreen({ navigation }) {
 
         {/* Open Settings */}
         <TouchableOpacity onPress={openAppSettings} style={s.settingsBtn} activeOpacity={0.7}>
-          <FontAwesome5 name="cog" size={14} color={colors.gray500} />
+          <DynamicIcon name="cog" size={14} color={colors.gray500} />
           <Text style={s.settingsBtnText}>Open System Settings</Text>
-          <FontAwesome5 name="external-link-alt" size={10} color={colors.gray400} />
+          <DynamicIcon name="external-link-alt" size={10} color={colors.gray400} />
         </TouchableOpacity>
 
         <Text style={s.hint}>

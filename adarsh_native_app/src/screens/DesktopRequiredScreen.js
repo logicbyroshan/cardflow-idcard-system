@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native'
 import { DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, gradients, typography, spacing, radius, shadows } from '../theme';
+import { colors, gradients, typography, spacing, radius, shadows, fontFamily } from '../theme';
 import { BASE_URL } from '../api/client';
 
 export default function DesktopRequiredScreen({ navigation, route }) {

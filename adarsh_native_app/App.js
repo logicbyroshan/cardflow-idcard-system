@@ -1,15 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { 
-  FontAwesome5, 
-  MaterialCommunityIcons, 
-  Ionicons, 
-  Feather, 
-  Entypo, 
-  AntDesign, 
-  SimpleLineIcons,
-  Octicons
-} from '@expo/vector-icons';
-import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox, ActivityIndicator } from 'react-native';
 LogBox.ignoreAllLogs();
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -31,25 +21,18 @@ export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     'SairaSemiCondensed-Regular': require('./assets/fonts/SairaSemiCondensed-Regular.ttf'),
     'SairaSemiCondensed-Medium': require('./assets/fonts/SairaSemiCondensed-Medium.ttf'),
-    'SairaSemiCondensed-SemiBold': require('./assets/fonts/SairaSemiCondensed-SemiBold.ttf'),
+    'SairaSemiCondensed-SemiBold': require('./assets/fonts/SairaSemiCondensed-Bold.ttf'),
     'SairaSemiCondensed-Bold': require('./assets/fonts/SairaSemiCondensed-Bold.ttf'),
-    ...FontAwesome5.font,
-    ...MaterialCommunityIcons.font,
-    ...Ionicons.font,
-    ...Feather.font,
-    ...Entypo.font,
-    ...AntDesign.font,
-    ...SimpleLineIcons.font,
-    ...Octicons.font,
   });
 
   useEffect(() => {
     async function prepare() {
       try {
         Appearance.setColorScheme('light');
-        await SplashScreen.preventAutoHideAsync();
+        await SplashScreen.preventAutoHideAsync().catch(() => {});
+        console.log('[App] Initialized Native Splash');
       } catch (e) {
-        console.warn(e);
+        console.warn('[App] Splash init err', e);
       }
     }
     prepare();
@@ -57,45 +40,49 @@ export default function App() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      if (fontError) console.log('[App] Font Error:', fontError);
-      console.log('[App] Fonts Loaded:', fontsLoaded);
-      
+      console.log('[App] Fonts loaded status:', { fontsLoaded, fontError });
       setAppReady(true);
-      // Wait a tiny bit before hiding native splash to ensure JS is ready
-      const t = setTimeout(() => {
+      // Fallback: hide splash after a delay even if onLayout doesn't fire
+      setTimeout(() => {
         SplashScreen.hideAsync().catch(() => {});
-      }, 200);
-      return () => clearTimeout(t);
+      }, 500);
     }
   }, [fontsLoaded, fontError]);
 
-  // Fail-safe timer (5 seconds max splash)
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (!appReady) {
-        console.log('[App] Splash Timeout — Forcing Ready');
-        setAppReady(true);
-      }
-    }, 5000);
-    return () => clearTimeout(t);
+
+  const onLayoutRootView = useCallback(async () => {
+    if (appReady) {
+      console.log('[App] Hiding Splash via onLayout');
+      await SplashScreen.hideAsync().catch(() => {});
+    }
   }, [appReady]);
 
-  if (!appReady) return null;
-
+  // If fonts are not loaded, we still want to render the SafeAreaProvider and a basic loading view
+  // so that the JS engine stays alive and can eventually trigger the hide.
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-      <ErrorBoundary>
-        <View style={{ flex: 1, backgroundColor: colors.brandPrimary }}>
-          <AuthProvider>
-            <StatusBar style="light" />
-            <NetworkGuard>
-              <NavigationContainer>
-                <AppNavigator />
-              </NavigationContainer>
-            </NetworkGuard>
-          </AuthProvider>
-        </View>
-      </ErrorBoundary>
+      <View style={{ flex: 1, backgroundColor: colors.brandPrimary }} onLayout={onLayoutRootView}>
+        <ErrorBoundary>
+          {!appReady ? (
+            <View style={splash.container}>
+              <View style={splash.content}>
+                <Image source={require('./assets/logo.png')} style={{ width: 100, height: 100 }} resizeMode="contain" />
+                <Text style={splash.title}>ADARSH</Text>
+                <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
+              </View>
+            </View>
+          ) : (
+            <AuthProvider>
+              <StatusBar style="light" />
+              <NetworkGuard>
+                <NavigationContainer>
+                  <AppNavigator />
+                </NavigationContainer>
+              </NetworkGuard>
+            </AuthProvider>
+          )}
+        </ErrorBoundary>
+      </View>
     </SafeAreaProvider>
   );
 }

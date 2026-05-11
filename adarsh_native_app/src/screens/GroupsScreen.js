@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
@@ -41,7 +41,7 @@ export default function GroupsScreen({ navigation }) {
       <View style={s.tableCard}>
         <View style={s.tableTop}>
           <View style={[s.tableIcon, { backgroundColor: theme.bgSoft }]}>
-            <FontAwesome5 name="table" size={13} color={theme.primary} />
+            <DynamicIcon name="table" size={13} color={theme.primary} />
           </View>
           <View style={s.tableNameWrap}>
             <Text style={s.tableName} numberOfLines={1}>{table.name}</Text>
@@ -83,7 +83,7 @@ export default function GroupsScreen({ navigation }) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
           ListEmptyComponent={
             <View style={s.empty}>
-              <View style={s.emptyIcon}><FontAwesome5 name="table" size={24} color={colors.gray300} /></View>
+              <View style={s.emptyIcon}><DynamicIcon name="table" size={24} color={colors.gray300} /></View>
               <Text style={s.emptyTitle}>No tables found</Text>
             </View>
           }

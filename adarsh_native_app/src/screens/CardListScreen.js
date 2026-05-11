@@ -566,14 +566,11 @@ const s = StyleSheet.create({
   selectIcon: { position: 'absolute', top: 8, right: 8, zIndex: 10 },
   selectedCard: { borderColor: colors.brandPrimary, borderWidth: 1.5, backgroundColor: '#fdf4ff' },
 
-  empty: { padding: 80, alignItems: 'center' },
   emptyText: { marginTop: 12, color: colors.gray400, fontSize: 14, fontFamily: fontFamily.medium },
 
   // Floating Selection Bar
   selectionBar: { position: 'absolute', bottom: 30, left: 16, right: 16, height: 65, borderRadius: radius.lg, overflow: 'hidden', ...shadows.xl },
   selectionBarBlur: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
-  selectionInfo: { flex: 1 },
-  selectionCount: { fontSize: 14, fontFamily: fontFamily.black, color: '#fff' },
   selectionText: { fontSize: 10, fontFamily: fontFamily.bold, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' },
   selectionActions: { flexDirection: 'row' },
   selectionBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },

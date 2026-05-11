@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from '../components/Toast';
 import Button from '../components/Button';
@@ -77,12 +77,12 @@ export default function ForgotPasswordScreen({ navigation }) {
         <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top }]} keyboardShouldPersistTaps="handled" bounces={false}>
           {/* Back */}
           <TouchableOpacity onPress={() => step === STEPS.EMAIL || step === STEPS.DONE ? navigation.goBack() : setStep(step === STEPS.RESET ? STEPS.OTP : STEPS.EMAIL)} style={s.backBtn} activeOpacity={0.7}>
-            <FontAwesome5 name="arrow-left" size={14} color="#fff" />
+            <DynamicIcon name="arrow-left" size={14} color="#fff" />
           </TouchableOpacity>
 
           {/* Header */}
           <View style={s.header}>
-            <View style={s.headerIcon}><FontAwesome5 name={cfg.icon} size={28} color="#fff" solid /></View>
+            <View style={s.headerIcon}><DynamicIcon name={cfg.icon} size={28} color="#fff" /></View>
             <Text style={s.headerTitle}>{cfg.title}</Text>
             <Text style={s.headerSub}>{cfg.subtitle}</Text>
             {/* Step Indicator */}
@@ -96,7 +96,7 @@ export default function ForgotPasswordScreen({ navigation }) {
           {/* Card */}
           <View style={[s.card, { paddingBottom: insets.bottom + 28 }]}>
             {!!error && (
-              <View style={s.errorBar}><FontAwesome5 name="exclamation-circle" size={13} color="#ef4444" solid /><Text style={s.errorText}>{error}</Text></View>
+              <View style={s.errorBar}><DynamicIcon name="exclamation-circle" size={13} color="#ef4444" /><Text style={s.errorText}>{error}</Text></View>
             )}
 
             {step === STEPS.EMAIL && (
@@ -132,7 +132,7 @@ export default function ForgotPasswordScreen({ navigation }) {
 
             {step === STEPS.DONE && (
               <View style={s.doneSection}>
-                <View style={s.doneBadge}><FontAwesome5 name="check" size={24} color="#22c55e" solid /></View>
+                <View style={s.doneBadge}><DynamicIcon name="check" size={24} color="#22c55e" /></View>
                 <Text style={s.doneTitle}>Password Reset Successful</Text>
                 <Text style={s.doneSub}>You can now sign in with your new password.</Text>
                 <Button variant="primary" fullWidth onPress={() => navigation.navigate('Login')} style={s.ctaBtnWrap}>

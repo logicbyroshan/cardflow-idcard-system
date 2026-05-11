@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from './Icons';
 import { colors, typography, spacing, radius, shadows, fontFamily } from '../theme';
 
 export default function Toast({ visible, message, type = 'info', duration = 2500, onHide }) {
@@ -44,7 +44,7 @@ export default function Toast({ visible, message, type = 'info', duration = 2500
         { backgroundColor: bgColor, transform: [{ translateY }], opacity },
       ]}
     >
-      <FontAwesome5 name={icon} size={14} color="#fff" solid />
+      <DynamicIcon name={icon} size={16} color="#fff" />
       <Text style={styles.text} numberOfLines={2}>{message}</Text>
     </Animated.View>
   );
