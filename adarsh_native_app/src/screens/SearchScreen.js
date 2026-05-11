@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconSearch, IconFilter, IconCheck, IconProfile, IconMail, IconPhone } from '../components/Icons';
 import CardItem from '../components/CardItem';
 import TopBar from '../components/TopBar';
 import StatusBadge from '../components/StatusBadge';
@@ -72,7 +73,7 @@ export default function SearchScreen({ navigation }) {
             onPress={() => setShowFilters(!showFilters)}
             activeOpacity={0.7}
           >
-            <FontAwesome5 name="sliders-h" size={14} color="#fff" solid />
+            <IconFilter size={14} color="#fff" />
           </TouchableOpacity>
           <TextInput
             style={s.searchInput}
@@ -89,7 +90,7 @@ export default function SearchScreen({ navigation }) {
             onPress={() => doSearch(query, filterType)}
             activeOpacity={0.7}
           >
-            <FontAwesome5 name="search" size={14} color="#fff" solid />
+            <IconSearch size={14} color="#fff" />
           </TouchableOpacity>
         </View>
       </TopBar>
@@ -111,9 +112,9 @@ export default function SearchScreen({ navigation }) {
               onPress={() => onFilterChange(f.key)}
               activeOpacity={0.7}
             >
-              <FontAwesome5 name={f.icon} size={11} color={filterType === f.key ? colors.brandLight : colors.gray500} solid />
+              <IconSearch size={11} color={filterType === f.key ? colors.brandLight : colors.gray500} />
               <Text style={[s.filterItemText, filterType === f.key && s.filterItemTextActive]}>{f.label}</Text>
-              {filterType === f.key && <FontAwesome5 name="check" size={10} color={colors.brandLight} />}
+              {filterType === f.key && <IconCheck size={10} color={colors.brandLight} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -131,7 +132,7 @@ export default function SearchScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={s.empty}>
-              <View style={s.emptyIcon}><FontAwesome5 name="search" size={24} color={colors.gray300} /></View>
+              <View style={s.emptyIcon}><IconSearch size={24} color={colors.gray300} /></View>
               <Text style={s.emptyTitle}>{query.trim() ? 'No results found' : 'Search for cards'}</Text>
               <Text style={s.emptySub}>{query.trim() ? 'Try a different search term' : 'Type a name, roll number, or ID'}</Text>
             </View>

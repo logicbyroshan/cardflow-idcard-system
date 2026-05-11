@@ -8,6 +8,7 @@ import Constants from 'expo-constants';
 // ─── Configuration ───────────────────────────────────────────────────────────
 // Allow overriding BASE_URL via Expo constants (`expo publish` extra) or global for tests
 export const BASE_URL = (
+  process.env.EXPO_PUBLIC_API_URL ||
   (Constants?.manifest?.extra && Constants.manifest.extra.API_BASE_URL) ||
   global.__BASE_URL__ ||
   'https://panel.adarshbhopal.in'
@@ -86,7 +87,7 @@ async function saveCookiesFromResponse(response) {
 // ─── Core Fetch Wrapper ─────────────────────────────────────────────────────
 
 async function apiFetch(path, options = {}) {
-  const url = `${BASE_URL}${path}`;
+  const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
   const method = (options.method || 'GET').toUpperCase();
 
   const headers = {
@@ -265,7 +266,7 @@ export async function fetchInitialCsrf() {
   try {
     // Clear any stale cookies before fetching a fresh token
     await clearAuth();
-    const response = await apiFetch('/app/login/', { method: 'GET' });
+    const response = await apiFetch('/api/mobile/server-info/', { method: 'GET' });
     await saveCookiesFromResponse(response);
     return !!cachedCsrf;
   } catch (e) {

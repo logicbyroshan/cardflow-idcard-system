@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, TouchableWithoutFeedback } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconWarning, IconArrowRight, IconClock, IconTrash, IconCheck, IconUsers, IconList } from './Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, shadows, fontFamily } from '../theme';
 
@@ -28,7 +29,7 @@ export default function ConfirmModal({
         
         <View style={s.content}>
           <View style={[s.iconCircle, { backgroundColor: `${confirmColor}15`, borderColor: `${confirmColor}30` }]}>
-            <FontAwesome5 name={icon} size={28} color={confirmColor} />
+            <ModalIcon name={icon} size={28} color={confirmColor} />
           </View>
           
           <Text style={s.title}>{title}</Text>
@@ -41,7 +42,7 @@ export default function ConfirmModal({
                   <Text style={[s.statusText, { color: '#f59e0b' }]}>{statusFrom.toUpperCase()}</Text>
                 </View>
               )}
-              <FontAwesome5 name="arrow-right" size={10} color={colors.gray300} style={s.flowArrow} />
+                <IconArrowRight size={10} color={colors.gray300} style={s.flowArrow} />
               {statusTo && (
                 <View style={[s.statusBadge, { backgroundColor: `${confirmColor}15`, borderColor: `${confirmColor}30` }]}>
                   <Text style={[s.statusText, { color: confirmColor }]}>{statusTo.toUpperCase()}</Text>
@@ -52,7 +53,7 @@ export default function ConfirmModal({
 
           {note && (
             <View style={s.noteBox}>
-              <FontAwesome5 name={noteIcon} size={10} color={colors.gray400} />
+              <IconClock size={10} color={colors.gray400} />
               <Text style={s.noteText}>{note}</Text>
             </View>
           )}
@@ -158,3 +159,11 @@ const s = StyleSheet.create({
     color: '#fff' 
   }
 });
+
+function ModalIcon({ name, size, color }) {
+  if (name === 'trash-alt' || name === 'trash') return <IconTrash size={size} color={color} />;
+  if (name === 'user-secret' || name === 'users' || name === 'user-minus') return <IconUsers size={size} color={color} />;
+  if (name === 'check' || name === 'check-circle' || name === 'shield-alt') return <IconCheck size={size} color={color} />;
+  if (name === 'layer-group') return <IconList size={size} color={color} />;
+  return <IconWarning size={size} color={color} />; // Fallback
+}

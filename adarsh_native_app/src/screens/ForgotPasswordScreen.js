@@ -7,7 +7,7 @@ import Toast from '../components/Toast';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { apiPost, fetchInitialCsrf } from '../api/client';
-import { colors, gradients, shadows, radius } from '../theme';
+import { colors, gradients, shadows, radius, fontFamily } from '../theme';
 
 const STEPS = { EMAIL: 'email', OTP: 'otp', RESET: 'reset', DONE: 'done' };
 

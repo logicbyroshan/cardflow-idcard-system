@@ -4,6 +4,7 @@ import {
   StyleSheet, Alert,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconProfile, IconEdit, IconLogout, IconChevronRight, IconMail, IconPhone } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -14,7 +15,7 @@ import { apiPost } from '../api/client';
 import { colors, radius, shadows, roleThemes } from '../theme';
 
 export default function ProfileScreen({ navigation }) {
-  const { user, logout } = useAuth();
+  const { user, refreshProfile, logout } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ name: user?.name || '', phone: user?.phone || '' });
@@ -22,6 +23,18 @@ export default function ProfileScreen({ navigation }) {
   // Password Change State
   const [pwdSaving, setPwdSaving] = useState(false);
   const [pwdForm, setPwdForm] = useState({ current: '', new: '', confirm: '' });
+
+  // Fetch latest data on mount
+  React.useEffect(() => {
+    refreshProfile();
+  }, []);
+
+  // Keep form in sync with refreshed user
+  React.useEffect(() => {
+    if (user && !editing) {
+      setEditForm({ name: user.name || '', phone: user.phone || '' });
+    }
+  }, [user, editing]);
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const theme = roleThemes[user?.role] || roleThemes.default;
@@ -32,7 +45,7 @@ export default function ProfileScreen({ navigation }) {
     if (!editForm.name.trim()) { showToast('Name is required', 'error'); return; }
     setSaving(true);
     try {
-      const { data } = await apiPost('/app/api/profile/update/', { name: editForm.name.trim(), phone: editForm.phone.trim() });
+      const { data } = await apiPost('/api/mobile/profile/update/', { name: editForm.name.trim(), phone: editForm.phone.trim() });
       showToast(data.success ? (data.message || 'Profile updated!') : (data.message || 'Update failed'), data.success ? 'success' : 'error');
       if (data.success) setEditing(false);
     } catch (e) { showToast('Network error', 'error'); }
@@ -55,7 +68,7 @@ export default function ProfileScreen({ navigation }) {
 
     setPwdSaving(true);
     try {
-      const { data } = await apiPost('/app/api/profile/change-password/', {
+      const { data } = await apiPost('/api/mobile/profile/change-password/', {
         current_password: pwdForm.current,
         new_password: pwdForm.new
       });
@@ -86,7 +99,10 @@ export default function ProfileScreen({ navigation }) {
             <View style={s.avatar}><Text style={s.avatarTxt}>{initials}</Text></View>
             {!editing && <Text style={s.userName}>{user?.name || 'User'}</Text>}
             <View style={[s.roleBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-              <Text style={s.userRole}>{(user?.role || 'User').replace('_', ' ').toUpperCase()}</Text>
+              <Text style={s.userRole}>
+                {user?.role === 'pro_user' ? 'PRO USER' : 
+                 (user?.role || 'User').replace('_', ' ').toUpperCase()}
+              </Text>
             </View>
           </LinearGradient>
 
@@ -99,7 +115,7 @@ export default function ProfileScreen({ navigation }) {
                 style={s.editProfileBtn} 
                 onPress={() => { setEditing(true); setEditForm({ name: user?.name || '', phone: user?.phone || '' }); }}
               >
-                <FontAwesome5 name="pen" size={12} color={theme.gradient[0]} />
+                <IconEdit size={12} color={theme.gradient[0]} style={{ marginRight: 8 }} />
                 <Text style={[s.editProfileTxt, { color: theme.gradient[0] }]}>Edit Profile Info</Text>
               </TouchableOpacity>
             </View>
@@ -135,9 +151,9 @@ export default function ProfileScreen({ navigation }) {
         <Text style={s.secTitle}>ACCOUNT SETTINGS</Text>
         <View style={s.updCard}>
           <TouchableOpacity onPress={handleLogout} style={[s.linkRow, { borderBottomWidth: 0 }]} activeOpacity={0.6}>
-            <View style={[s.linkIcon, { backgroundColor: '#fee2e2' }]}><FontAwesome5 name="sign-out-alt" size={12} color="#ef4444" solid /></View>
+            <View style={[s.linkIcon, { backgroundColor: '#fee2e2' }]}><IconLogout size={12} color="#ef4444" /></View>
             <Text style={[s.linkLabel, { color: '#ef4444' }]}>Sign Out</Text>
-            <FontAwesome5 name="chevron-right" size={10} color={colors.gray300} />
+            <IconChevronRight size={10} color={colors.gray300} />
           </TouchableOpacity>
         </View>
 
@@ -154,7 +170,9 @@ export default function ProfileScreen({ navigation }) {
 function InfoRow({ icon, c, bg, label, value }) {
   return (
     <View style={ir.row}>
-      <View style={[ir.ic, { backgroundColor: bg }]}><FontAwesome5 name={icon} size={12} color={c} solid /></View>
+      <View style={[ir.ic, { backgroundColor: bg }]}>
+        {icon === 'envelope' ? <IconMail size={12} color={c} /> : <IconPhone size={12} color={c} />}
+      </View>
       <View>
         <Text style={ir.lb}>{label}</Text>
         <Text style={ir.val}>{value}</Text>
@@ -189,7 +207,7 @@ const s = StyleSheet.create({
   secTitle: { fontSize: 10, fontWeight: '700', color: colors.gray400, letterSpacing: 1.2, marginHorizontal: 20, marginTop: 24, marginBottom: 8 },
   updCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.lg, paddingHorizontal: 14, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   linkRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  linkIcon: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  linkIcon: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   linkLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.gray700 },
   editProfileBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, paddingVertical: 12, backgroundColor: '#f8fafc', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0' },
   editProfileTxt: { fontSize: 13, fontWeight: '700' },
@@ -199,7 +217,7 @@ const s = StyleSheet.create({
 
 const ir = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: '#f1f5f9' },
-  ic: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  ic: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   lb: { fontSize: 9, fontWeight: '700', color: colors.gray400, letterSpacing: 1, textTransform: 'uppercase' },
   val: { fontSize: 13, fontWeight: '600', color: colors.gray800, marginTop: 1 },
 });

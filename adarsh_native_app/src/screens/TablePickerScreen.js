@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator }
 import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { apiGet } from '../api/client';
-import { colors, typography, spacing, radius, shadows } from '../theme';
+import { colors, typography, spacing, radius, shadows, fontFamily } from '../theme';
 import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const STATUS_COLORS = {

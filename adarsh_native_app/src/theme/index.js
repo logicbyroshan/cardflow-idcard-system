@@ -117,6 +117,12 @@ export const roleThemes = {
     gradient: ['#3b82f6', '#2563eb'],
     surface: ['#eff6ff', '#dbeafe'],
   },
+  pro_user: {
+    primary: '#3b82f6', secondary: '#2563eb',
+    bgSoft: '#eff6ff', text: '#1e40af',
+    gradient: ['#3b82f6', '#2563eb'],
+    surface: ['#eff6ff', '#dbeafe'],
+  },
   client_staff: {
     primary: '#10b981', secondary: '#059669',
     bgSoft: '#ecfdf5', text: '#065f46',

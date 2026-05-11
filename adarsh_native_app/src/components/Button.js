@@ -24,10 +24,10 @@ const Button = React.memo(function Button({
 
   const content = (
     <View style={[styles.content, contentStyle]}>
-      {loading ? <ActivityIndicator size="small" color={variant === 'primary' ? colors.white : colors.brandPrimary} /> : null}
-      {!loading && icon ? <FontAwesome5 name={icon} size={size === 'lg' ? 14 : 12} color={variant === 'primary' ? colors.white : colors.brandPrimary} style={styles.leftIcon} /> : null}
+      {loading ? <ActivityIndicator size="small" color={variant === 'primary' ? colors.white : colors.brandPrimary} style={{ marginRight: 10 }} /> : null}
+      {!loading && icon ? <FontAwesome5 name={icon} size={size === 'lg' ? 14 : 12} color={variant === 'primary' ? colors.white : colors.brandPrimary} style={[styles.leftIcon, { marginRight: 10 }]} /> : null}
       <Text style={[styles.text, styles[`${variant}Text`], textStyle]}>{children}</Text>
-      {!loading && iconRight ? <FontAwesome5 name={iconRight} size={size === 'lg' ? 14 : 12} color={variant === 'primary' ? colors.white : colors.brandPrimary} style={styles.rightIcon} /> : null}
+      {!loading && iconRight ? <FontAwesome5 name={iconRight} size={size === 'lg' ? 14 : 12} color={variant === 'primary' ? colors.white : colors.brandPrimary} style={[styles.rightIcon, { marginLeft: 10 }]} /> : null}
     </View>
   );
 

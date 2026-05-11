@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconArrowLeft, IconHome, IconDownload, IconPlus, IconSearch, IconFilter, IconList, IconUsers, IconSettings } from './Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -37,7 +38,7 @@ export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, on
             style={styles.backBtn}
             activeOpacity={0.7}
           >
-            <FontAwesome5 name="arrow-left" size={14} color={colors.white} />
+            <IconArrowLeft size={14} color={colors.white} />
           </TouchableOpacity>
         )}
         <View style={styles.titleWrap}>
@@ -52,7 +53,7 @@ export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, on
             style={styles.addBtn}
             activeOpacity={0.7}
           >
-            <FontAwesome5 name="plus" size={10} color={colors.white} style={{ marginRight: 4 }} />
+            <IconPlus size={10} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.addBtnText}>ADD</Text>
           </TouchableOpacity>
         )}
@@ -62,7 +63,7 @@ export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, on
             style={styles.downloadBtn}
             activeOpacity={0.7}
           >
-            <FontAwesome5 name="download" size={13} color={colors.white} />
+            <IconDownload size={13} color={colors.white} />
           </TouchableOpacity>
         )}
         {shouldShowHome && (
@@ -71,7 +72,7 @@ export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, on
             style={styles.homeBtn}
             activeOpacity={0.7}
           >
-            <FontAwesome5 name="home" size={13} color={colors.white} solid />
+            <IconHome size={13} color={colors.white} />
           </TouchableOpacity>
         )}
         {rightAction && (
@@ -80,12 +81,7 @@ export default function TopBar({ title, subtitle, onBack, rightAction, onAdd, on
             style={styles.rightBtn}
             activeOpacity={0.7}
           >
-            <FontAwesome5
-              name={rightAction.icon}
-              size={14}
-              color={colors.white}
-              solid={rightAction.solid !== false}
-            />
+            <RightIcon iconName={rightAction.icon} size={14} color={colors.white} />
           </TouchableOpacity>
         )}
       </View>
@@ -164,3 +160,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+function RightIcon({ iconName, size, color }) {
+  if (iconName === 'plus') return <IconPlus size={size} color={color} />;
+  if (iconName === 'search') return <IconSearch size={size} color={color} />;
+  if (iconName === 'filter') return <IconFilter size={size} color={color} />;
+  if (iconName === 'settings') return <IconSettings size={size} color={color} />;
+  return <IconPlus size={size} color={color} />; // Fallback
+}

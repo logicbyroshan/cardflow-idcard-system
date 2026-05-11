@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { colors, typography, spacing, radius, shadows } from '../theme';
+import { colors, typography, spacing, radius, shadows, fontFamily } from '../theme';
 
 export default function Toast({ visible, message, type = 'info', duration = 2500, onHide }) {
   const translateY = useRef(new Animated.Value(100)).current;

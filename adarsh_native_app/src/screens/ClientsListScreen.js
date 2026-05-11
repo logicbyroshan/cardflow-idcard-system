@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconPending, IconVerified, IconApproved, IconDownload, IconPool, IconTotal, IconSearch, IconFilter, IconPlus, IconChevronRight, IconTrash, IconEdit, IconHome, IconList, IconUsers, IconLogout, IconClose, IconCheck, IconProfile } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -18,8 +19,7 @@ export default function ClientsListScreen({ navigation }) {
   const { user, isImpersonating, startImpersonation, stopImpersonation } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
 
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
   const [showFilter, setShowFilter] = useState(false);
@@ -54,11 +54,11 @@ export default function ClientsListScreen({ navigation }) {
   });
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
-  const isAdmin = ['super_admin', 'admin_staff'].includes(user?.role);
+  const isAdmin = !!user?.isAdmin;
 
   const loadClients = useCallback(async () => {
     try {
-      const { ok, data } = await apiGet('/app/api/impersonate/users/');
+      const { ok, data } = await apiGet('/api/mobile/impersonate/users/');
       if (ok && (data?.success || data?.users)) {
         return (data.data || data.users || []).map(c => ({
           id: c.id, 
@@ -76,7 +76,7 @@ export default function ClientsListScreen({ navigation }) {
     }
   }, []);
 
-  const { data: clients = [], loading, refreshing, error, refresh } = useRefreshableResource(loadClients, { initialData: [] });
+  const { data: clients = [], loading, refreshing, error, setError, refresh } = useRefreshableResource(loadClients, { initialData: [] });
 
   useEffect(() => { 
     // Handle "Add Client" from dashboard
@@ -162,7 +162,7 @@ export default function ClientsListScreen({ navigation }) {
     if (!editingId && !form.email.trim()) { showToast('Email is required', 'error'); return; }
     setSaving(true);
     try {
-      const url = editingId ? `/app/api/client/${editingId}/update/` : '/app/api/client/create/';
+      const url = editingId ? `/app/api/client/${editingId}/update/` : '/api/mobile/client/create/';
       const body = { ...form };
       if (!body.password) delete body.password;
       const { data } = await apiPost(url, body);
@@ -245,7 +245,7 @@ export default function ClientsListScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <View style={s.card}>
       <View style={s.cardTop}>
-        <View style={s.avatar}><FontAwesome5 name="building" size={14} color={colors.brandPrimary} /></View>
+        <View style={s.avatar}><IconUsers size={14} color={colors.brandPrimary} /></View>
         <View style={s.cardInfo}>
           <Text style={s.name} numberOfLines={1}>{item.name}</Text>
           <Text style={s.email} numberOfLines={1}>{item.email || item.phone || 'No contact'}</Text>
@@ -268,7 +268,7 @@ export default function ClientsListScreen({ navigation }) {
               <ActivityIndicator size="small" color={colors.brandPrimary} />
             ) : (
               <>
-                <FontAwesome5 name="user-secret" size={10} color="#0ea5e9" style={s.btnIcon} />
+                <IconUsers size={10} color="#0ea5e9" style={[s.btnIcon, { marginRight: 6 }]} />
                 <Text style={[s.textBtnLabel, { color: '#0ea5e9' }]}>SWITCH</Text>
               </>
             )}
@@ -276,25 +276,25 @@ export default function ClientsListScreen({ navigation }) {
         )}
         {user?.can_manage_staff && (
           <TouchableOpacity onPress={() => openAssign(item)} style={s.textBtn}>
-            <FontAwesome5 name="layer-group" size={10} color="#8b5cf6" style={s.btnIcon} />
+            <IconList size={10} color="#8b5cf6" style={[s.btnIcon, { marginRight: 6 }]} />
             <Text style={[s.textBtnLabel, { color: '#8b5cf6' }]}>TABLES</Text>
           </TouchableOpacity>
         )}
-        {user?.can_manage_clients && (
+        {isAdmin && (
           <TouchableOpacity onPress={() => openEdit(item)} style={s.textBtn}>
-            <FontAwesome5 name="pen" size={10} color={colors.brandPrimary} style={s.btnIcon} />
+            <IconEdit size={10} color={colors.brandPrimary} style={[s.btnIcon, { marginRight: 6 }]} />
             <Text style={s.textBtnLabel}>EDIT</Text>
           </TouchableOpacity>
         )}
         {user?.is_super_admin && (
           <TouchableOpacity onPress={() => openPerms(item)} style={s.textBtn}>
-            <FontAwesome5 name="shield-alt" size={10} color="#22c55e" style={s.btnIcon} />
+            <IconCheck size={10} color="#22c55e" style={[s.btnIcon, { marginRight: 6 }]} />
             <Text style={[s.textBtnLabel, { color: '#22c55e' }]}>PERMS</Text>
           </TouchableOpacity>
         )}
         {user?.is_super_admin && (
           <TouchableOpacity onPress={() => deleteClient(item)} style={s.textBtn}>
-            <FontAwesome5 name="trash-alt" size={10} color="#ef4444" style={s.btnIcon} />
+            <IconTrash size={10} color="#ef4444" style={[s.btnIcon, { marginRight: 6 }]} />
             <Text style={[s.textBtnLabel, { color: '#ef4444' }]}>DELETE</Text>
           </TouchableOpacity>
         )}
@@ -308,12 +308,12 @@ export default function ClientsListScreen({ navigation }) {
         title="Client Management" 
         subtitle="Manage institutions & organizations" 
         onBack={() => navigation.goBack()} 
-        rightAction={user?.can_manage_clients ? { icon: 'plus', onPress: openCreate } : null}
+        rightAction={isAdmin ? { icon: 'plus', onPress: openCreate } : null}
       >
         {/* Search Bar (Inside Gradient) */}
         <View style={s.searchRow}>
           <TouchableOpacity style={s.leftIconBtn} onPress={() => setShowFilter(true)} activeOpacity={0.7}>
-            <FontAwesome5 name="filter" size={12} color="#fff" />
+            <IconFilter size={12} color="#fff" />
           </TouchableOpacity>
           <TextInput
             style={s.searchInput}
@@ -323,7 +323,7 @@ export default function ClientsListScreen({ navigation }) {
             placeholderTextColor="rgba(255,255,255,0.5)"
           />
           <View style={s.rightIconBtn}>
-            <FontAwesome5 name="search" size={12} color="#fff" />
+            <IconSearch size={12} color="#fff" />
           </View>
         </View>
       </TopBar>
@@ -331,9 +331,9 @@ export default function ClientsListScreen({ navigation }) {
       {/* Impersonation Banner */}
       {isImpersonating && (
         <TouchableOpacity onPress={handleStopImpersonation} style={s.impBanner} activeOpacity={0.8}>
-          <FontAwesome5 name="user-secret" size={14} color="#fff" />
+          <IconUsers size={14} color="#fff" />
           <Text style={s.impBannerText}>Impersonating · Tap to return</Text>
-          <FontAwesome5 name="times" size={12} color="#fff" />
+          <IconClose size={12} color="#fff" />
         </TouchableOpacity>
       )}
 
@@ -348,7 +348,7 @@ export default function ClientsListScreen({ navigation }) {
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
-          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="building" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>{search ? 'No matching clients' : 'No clients found'}</Text></View>}
+          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><IconUsers size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>{search ? 'No matching clients' : 'No clients found'}</Text></View>}
         />
       )}
 
@@ -359,7 +359,7 @@ export default function ClientsListScreen({ navigation }) {
           <View style={s.filterDrawer}>
             <View style={s.filterHeader}>
               <Text style={s.filterTitle}>Filter Clients</Text>
-              <TouchableOpacity onPress={() => setShowFilter(false)} style={s.filterClose}><FontAwesome5 name="times" size={16} color={colors.gray400} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowFilter(false)} style={s.filterClose}><IconClose size={16} color={colors.gray400} /></TouchableOpacity>
             </View>
             <ScrollView style={s.filterContent}>
               <Text style={s.filterLabel}>CLIENT STATUS</Text>
@@ -425,12 +425,12 @@ export default function ClientsListScreen({ navigation }) {
                     style={s.assignRow}
                     onPress={() => { setShowAssign(false); navigation.navigate('CardList', { tableId: table.id, status: 'pending' }); }}
                   >
-                    <View style={s.tableIconSmall}><FontAwesome5 name="table" size={10} color={colors.brandPrimary} /></View>
+                    <View style={s.tableIconSmall}><IconList size={10} color={colors.brandPrimary} /></View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.assignTableName}>{table.name}</Text>
                       <Text style={s.assignTableMeta}>{table.pending_count || 0} pending · {table.group_name || 'No Group'}</Text>
                     </View>
-                    <FontAwesome5 name="chevron-right" size={10} color={colors.gray300} />
+                    <IconChevronRight size={10} color={colors.gray300} />
                   </TouchableOpacity>
                 ))}
               </ScrollView>

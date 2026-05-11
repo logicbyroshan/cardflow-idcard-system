@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0074_alter_user_role_guestassignment'),
+        ('core', '0072_remove_user_is_temp_password_and_more'),
     ]
 
     operations = [

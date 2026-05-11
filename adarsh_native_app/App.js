@@ -1,5 +1,7 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions } from 'react-native';
+import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox } from 'react-native';
+LogBox.ignoreAllLogs();
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -10,23 +12,26 @@ import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import NetworkGuard from './src/components/NetworkGuard';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { colors } from './src/theme';
 
 const { width, height } = Dimensions.get('window');
 
 export default function App() {
   const [appReady, setAppReady] = useState(false);
-  const [splashDone, setSplashDone] = useState(false);
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'SairaSemiCondensed-Regular': require('./assets/fonts/SairaSemiCondensed-Regular.ttf'),
     'SairaSemiCondensed-Medium': require('./assets/fonts/SairaSemiCondensed-Medium.ttf'),
     'SairaSemiCondensed-SemiBold': require('./assets/fonts/SairaSemiCondensed-SemiBold.ttf'),
     'SairaSemiCondensed-Bold': require('./assets/fonts/SairaSemiCondensed-Bold.ttf'),
+    ...FontAwesome5.font,
+    ...MaterialCommunityIcons.font,
   });
 
   useEffect(() => {
     async function prepare() {
       try {
+        Appearance.setColorScheme('light');
         await SplashScreen.preventAutoHideAsync();
       } catch (e) {
         console.warn(e);
@@ -36,32 +41,43 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontError) {
+      if (fontError) console.log('[App] Font Error:', fontError);
+      console.log('[App] Fonts Loaded:', fontsLoaded);
+      
       setAppReady(true);
       // Wait a tiny bit before hiding native splash to ensure JS is ready
-      setTimeout(() => {
+      const t = setTimeout(() => {
         SplashScreen.hideAsync().catch(() => {});
       }, 200);
+      return () => clearTimeout(t);
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
+
+  // Fail-safe timer (5 seconds max splash)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!appReady) {
+        console.log('[App] Splash Timeout — Forcing Ready');
+        setAppReady(true);
+      }
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [appReady]);
 
   if (!appReady) return null;
 
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <ErrorBoundary>
-        <View style={{ flex: 1, backgroundColor: '#667eea' }}>
+        <View style={{ flex: 1, backgroundColor: colors.brandPrimary }}>
           <AuthProvider>
             <StatusBar style="light" />
-            {!splashDone ? (
-              <AnimatedSplashScreen onFinish={() => setSplashDone(true)} />
-            ) : (
-              <NetworkGuard>
-                <NavigationContainer>
-                  <AppNavigator />
-                </NavigationContainer>
-              </NetworkGuard>
-            )}
+            <NetworkGuard>
+              <NavigationContainer>
+                <AppNavigator />
+              </NavigationContainer>
+            </NetworkGuard>
           </AuthProvider>
         </View>
       </ErrorBoundary>
@@ -69,57 +85,7 @@ export default function App() {
   );
 }
 
-function AnimatedSplashScreen({ onFinish }) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
-  const logoScale = useRef(new Animated.Value(0.8)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 20, useNativeDriver: true }),
-      Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 30, useNativeDriver: true }),
-    ]).start();
-
-    const timer = setTimeout(() => {
-      Animated.timing(fadeAnim, { toValue: 0, duration: 600, useNativeDriver: true }).start(onFinish);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  return (
-    <View style={splash.container}>
-      <LinearGradient 
-        colors={['#0f172a', '#1e293b', '#334155']} 
-        style={StyleSheet.absoluteFill} 
-        start={{ x: 0, y: 0 }} 
-        end={{ x: 1, y: 1 }} 
-      />
-      
-      <Animated.View style={[splash.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-        <Animated.View style={[splash.logoGlow, { transform: [{ scale: logoScale }] }]}>
-          <Image 
-            source={require('./assets/logo.png')} 
-            style={splash.logo} 
-            resizeMode="contain" 
-          />
-        </Animated.View>
-        
-        <Text style={splash.title}>ADARSH</Text>
-        <View style={splash.line} />
-        <Text style={splash.subtitle}>PREMIUM PRINTING HUB</Text>
-      </Animated.View>
-
-      <Animated.View style={[splash.footer, { opacity: fadeAnim }]}>
-        <View style={splash.loaderBar}>
-          <Animated.View style={[splash.loaderProgress, { width: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
-        </View>
-        <Text style={splash.version}>v43.0.0 • PRODUCTION GRADE</Text>
-      </Animated.View>
-    </View>
-  );
-}
+// Removed AnimatedSplashScreen as it was causing hangs on some devices
 
 const splash = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center' },

@@ -6,6 +6,7 @@ import {
   Linking
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconPending, IconVerified, IconApproved, IconDownload, IconPool, IconTotal, IconSearch, IconFilter, IconPlus, IconChevronRight, IconTrash, IconEdit, IconHome, IconList } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import CardItem from '../components/CardItem';
 import TopBar from '../components/TopBar';
@@ -32,7 +33,7 @@ const STATUS_OPTIONS = [
 const EmptyList = React.memo(function EmptyList({ status }) {
   return (
     <View style={s.empty}>
-      <View style={s.emptyIcon}><FontAwesome5 name="id-card" size={24} color={colors.gray300} /></View>
+      <View style={s.emptyIcon}><IconList size={24} color={colors.gray300} /></View>
       <Text style={s.emptyTitle}>No {status} cards</Text>
       <Text style={s.emptySub}>Cards will appear here when available</Text>
     </View>
@@ -55,7 +56,7 @@ export default function CardListScreen({ navigation, route }) {
         pool: 'perm_idcard_pool_list',
         reprint: 'perm_idcard_reprint_list'
       }[opt.key];
-      return (user?.role === 'super_admin') || !p || perms[p];
+      return (user?.isSuperAdmin) || !p || perms[p];
     });
   }, [user]);
 
@@ -112,7 +113,7 @@ export default function CardListScreen({ navigation, route }) {
 
   const loadTableCounts = useCallback(async () => {
     try {
-      const { data } = await apiGet('/app/api/dashboard/');
+      const { data } = await apiGet('/api/mobile/dashboard/');
       if (data?.success && data.data?.tables) {
         const t = data.data.tables.find(tbl => String(tbl.id) === String(tableId));
         if (t) {
@@ -399,7 +400,7 @@ export default function CardListScreen({ navigation, route }) {
         {/* Search Bar (Inside Gradient) */}
         <View style={s.searchRow}>
           <TouchableOpacity style={s.leftIconBtn} onPress={() => setShowFilterDrawer(true)} activeOpacity={0.7}>
-            <FontAwesome5 name="filter" size={14} color="#fff" />
+            <IconFilter size={14} color="#fff" />
           </TouchableOpacity>
           <TextInput
             style={s.searchInput}
@@ -411,7 +412,7 @@ export default function CardListScreen({ navigation, route }) {
             onSubmitEditing={() => { setPage(1); loadCards(1); }}
           />
           <TouchableOpacity style={s.rightIconBtn} onPress={() => { setPage(1); loadCards(1); }} activeOpacity={0.7}>
-            <FontAwesome5 name="search" size={14} color="#fff" />
+            <IconSearch size={14} color="#fff" />
           </TouchableOpacity>
         </View>
       </TopBar>
@@ -475,7 +476,7 @@ export default function CardListScreen({ navigation, route }) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.floatingActions}>
               {currentStatus === 'pending' && user?.permissions?.perm_idcard_verify && (
                 <TouchableOpacity onPress={() => handleBulkStatus('verified')} disabled={bulkLoading} style={s.fActionBtn}>
-                  <FontAwesome5 name="check" size={13} color="#fff" />
+                  <IconCheck size={13} color="#fff" style={{ marginRight: 6 }} />
                   <Text style={s.fActionText}>Verify</Text>
                 </TouchableOpacity>
               )}
@@ -483,13 +484,13 @@ export default function CardListScreen({ navigation, route }) {
                 <>
                   {user?.permissions?.perm_idcard_approve && (
                     <TouchableOpacity onPress={() => handleBulkStatus('approved')} disabled={bulkLoading} style={s.fActionBtn}>
-                      <FontAwesome5 name="thumbs-up" size={13} color="#fff" />
+                      <IconVerified size={13} color="#fff" style={{ marginRight: 6 }} />
                       <Text style={s.fActionText}>Approve</Text>
                     </TouchableOpacity>
                   )}
                   {user?.permissions?.perm_idcard_verify && (
                     <TouchableOpacity onPress={() => handleBulkStatus('pending')} disabled={bulkLoading} style={s.fActionBtn}>
-                      <FontAwesome5 name="undo" size={13} color="#fff" />
+                      <IconPending size={13} color="#fff" style={{ marginRight: 6 }} />
                       <Text style={s.fActionText}>Unverify</Text>
                     </TouchableOpacity>
                   )}
@@ -497,24 +498,24 @@ export default function CardListScreen({ navigation, route }) {
               )}
               {currentStatus === 'approved' && user?.permissions?.perm_idcard_approve && (
                 <TouchableOpacity onPress={() => handleBulkStatus('verified')} disabled={bulkLoading} style={s.fActionBtn}>
-                  <FontAwesome5 name="undo" size={13} color="#fff" />
+                  <IconPending size={13} color="#fff" style={{ marginRight: 6 }} />
                   <Text style={s.fActionText}>Unapprove</Text>
                 </TouchableOpacity>
               )}
               {currentStatus === 'pool' && user?.permissions?.perm_idcard_delete && (
                 <TouchableOpacity onPress={() => handleBulkStatus('pending')} disabled={bulkLoading} style={s.fActionBtn}>
-                  <FontAwesome5 name="redo" size={13} color="#fff" />
+                  <IconPending size={13} color="#fff" style={{ marginRight: 6 }} />
                   <Text style={s.fActionText}>Restore</Text>
                 </TouchableOpacity>
               )}
               {currentStatus !== 'pool' && user?.permissions?.perm_idcard_delete && (
                 <TouchableOpacity onPress={() => handleBulkStatus('pool')} disabled={bulkLoading} style={[s.fActionBtn, { backgroundColor: 'rgba(239, 68, 68, 0.4)' }]}>
-                  <FontAwesome5 name="trash-alt" size={13} color="#fff" />
+                  <IconTrash size={13} color="#fff" style={{ marginRight: 6 }} />
                   <Text style={s.fActionText}>Delete</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={handleDownloadPDF} style={s.fActionBtn}>
-                <FontAwesome5 name="download" size={13} color="#fff" />
+                <IconDownload size={13} color="#fff" style={{ marginRight: 6 }} />
                 <Text style={s.fActionText}>Export</Text>
               </TouchableOpacity>
             </ScrollView>

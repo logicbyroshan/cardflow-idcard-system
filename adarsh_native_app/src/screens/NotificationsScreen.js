@@ -4,14 +4,14 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
-import { colors, typography, spacing, radius, shadows } from '../theme';
+import { colors, typography, spacing, radius, shadows, fontFamily } from '../theme';
 import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const ICON_MAP = { green: { bg: '#dcfce7', c: '#22c55e' }, blue: { bg: '#dbeafe', c: '#3b82f6' }, purple: { bg: '#ede9fe', c: '#8b5cf6' }, yellow: { bg: '#fef3c7', c: '#f59e0b' }, red: { bg: '#fef2f2', c: '#ef4444' }, orange: { bg: '#ffedd5', c: '#f97316' } };
 
 export default function NotificationsScreen({ navigation }) {
   const loadNotifications = useCallback(async () => {
-    const { ok, data } = await apiGet('/app/api/notifications/');
+    const { ok, data } = await apiGet('/api/mobile/notifications/');
     if (!ok || !data?.success) {
       throw new Error(data?.message || 'Failed to load notifications');
     }

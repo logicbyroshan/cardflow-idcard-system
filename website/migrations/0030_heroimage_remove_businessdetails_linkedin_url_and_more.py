@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('website', '0029_delete_heroimage_and_more'),
+        ('website', '0027_portfoliocategory_meta_description_and_more'),
     ]
 
     operations = [

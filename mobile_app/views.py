@@ -5149,97 +5149,188 @@ def api_settings_data(request):
 @require_mobile_client
 @require_http_methods(["GET"])
 def api_dashboard_data(request):
-    """Return dashboard status counts as JSON for native home screen."""
+    """Return dashboard status counts as JSON for native home screen.
+    
+    For admin/operator: Returns clients list with nested tables.
+    For client/assistant: Returns single client with tables.
+    """
     try:
         user = request.user
-        client, _ = _client_ctx(user)
-        if not client:
-            return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
-
-        # 1. Check cache first
         from django.core.cache import cache
         from core.services.cache_version_service import CacheVersionService
+        from core.services.activity_service import ActivityService
+        from client.models import Client
         
+        is_admin = PermissionService.is_super_admin(user) or PermissionService.is_admin_staff(user)
         is_staff = PermissionService.is_client_staff(user)
-        # Use a distinct cache key for staff vs client admin since staff see scoped data
-        cache_key = f"mob_dash_{client.id}_{user.id}" if is_staff else f"mob_dash_{client.id}"
-        cache_version = CacheVersionService.get('client_dash_counts', f'client:{client.id}')
-        full_cache_key = f"{cache_key}_v{cache_version}"
         
-        cached_data = cache.get(full_cache_key)
-        if cached_data:
-            return JsonResponse({'success': True, 'data': cached_data})
-
-        # 2. Get accessible tables
-        from idcards.models import IDCardTable
-        tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
+        # Recent Activity (Always included for all roles)
+        recent_activity = ActivityService.get_recent(limit=8, user=user)
         
-        if is_staff:
-            accessible_ids = ClientAccessService.get_accessible_table_ids(user)
-            if accessible_ids is not None:
-                tables_qs = tables_qs.filter(id__in=accessible_ids)
-
-        scoped_table_ids = list(tables_qs.values_list('id', flat=True))
+        if is_admin:
+            # ADMIN/OPERATOR: Return clients with nested tables
+            cache_key = f"mob_dash_admin_{user.id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                cached_data['recent_activity'] = recent_activity
+                return JsonResponse({'success': True, 'data': cached_data})
+            
+            # Get accessible clients
+            if PermissionService.is_super_admin(user):
+                # Super admins see EVERYTHING (active or not) to match website truth
+                clients_qs = Client.objects.all()
+            else:  # admin_staff
+                accessible_ids = PermissionService.get_accessible_client_ids(user) or []
+                clients_qs = Client.objects.filter(id__in=accessible_ids)
+            
+            # --- Efficient Global Counts ---
+            card_qs = IDCard.objects.all()
+            if not PermissionService.is_super_admin(user):
+                card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
+            
+            global_counts_agg = card_qs.aggregate(
+                total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
+                pending=Count('id', filter=Q(status='pending')),
+                verified=Count('id', filter=Q(status='verified')),
+                approved=Count('id', filter=Q(status='approved')),
+                download=Count('id', filter=Q(status='download')),
+                pool=Count('id', filter=Q(status='pool')),
+            )
+            global_counts = {
+                'pending': global_counts_agg.get('pending', 0),
+                'verified': global_counts_agg.get('verified', 0),
+                'approved': global_counts_agg.get('approved', 0),
+                'download': global_counts_agg.get('download', 0),
+                'pool': global_counts_agg.get('pool', 0),
+                'total': global_counts_agg.get('total', 0)
+            }
+            
+            clients_data = []
+            
+            # Order clients identically to the dashboard: latest approved cards first, then latest created.
+            ordered_clients = clients_qs.annotate(
+                latest_approved=Max(
+                    'id_card_groups__tables__id_cards__updated_at',
+                    filter=Q(id_card_groups__tables__id_cards__status='approved')
+                )
+            ).order_by(
+                F('latest_approved').desc(nulls_last=True),
+                F('created_at').desc(nulls_last=True),
+                F('id').desc(),
+            )[:50]
+            
+            for client in ordered_clients:
+                tables_qs = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
+                if not PermissionService.is_super_admin(user):
+                    tables_qs = tables_qs.filter(is_active=True)
+                
+                table_ids = list(tables_qs.values_list('id', flat=True))
+                
+                client_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
+                if table_ids:
+                    status_agg = IDCard.objects.filter(table_id__in=table_ids).values('status').annotate(n=Count('id'))
+                    for row in status_agg:
+                        st = row['status']
+                        if st in client_counts:
+                            client_counts[st] = row['n']
+                
+                tables_data = []
+                # For nested list, only show active tables to keep it clean
+                for t in tables_qs.filter(is_active=True)[:10]:
+                    tables_data.append({
+                        'id': t.id,
+                        'name': t.name,
+                        'p': IDCard.objects.filter(table=t, status='pending').count(),
+                        'v': IDCard.objects.filter(table=t, status='verified').count(),
+                    })
+                
+                clients_data.append({
+                    'id': client.id,
+                    'name': getattr(client, 'business_name', client.name),
+                    'pending': client_counts['pending'],
+                    'verified': client_counts['verified'],
+                    'approved': client_counts['approved'],
+                    'download': client_counts['download'],
+                    'pool': client_counts['pool'],
+                    'tables': tables_data,
+                })
+            
+            counts = {
+                **global_counts,
+                'recent_clients': clients_data,
+                'recent_activity': recent_activity,
+                'is_admin': True
+            }
+            
+            cache.set(cache_key, counts, timeout=600) # shorter timeout for admin
+            return JsonResponse({'success': True, 'data': counts})
         
-        # 3. Total Counts
-        cards_qs = IDCard.objects.filter(table_id__in=scoped_table_ids)
-        
-        counts = {
-            'client_id': client.id,
-            'client_name': getattr(client, 'business_name', client.name),
-        }
-        for row in cards_qs.values('status').annotate(n=Count('id')):
-            status_val = row['status']
-            counts[status_val] = row['n']
-            # Ensure 'reprint' is explicitly handled if it exists
-            if status_val == 'reprint':
-                counts['reprint'] = row['n']
-
-        # 3. Recent activity
-        from django.utils.timesince import timesince as _ts
-        from django.utils import timezone as _tz
-        _now = _tz.now()
-        recent = list(IDCard.objects.filter(table_id__in=scoped_table_ids).select_related('table').order_by('-updated_at')[:8])
-        recent_data = []
-        for c in recent:
-            fd = c.field_data or {}
-            name = fd.get('NAME') or fd.get('Name') or fd.get('name') or f'Card #{c.id}'
-            recent_data.append({
-                'name': name, 
-                'status': c.status, 
-                'table_name': c.table.name if c.table else '', 
-                'time_ago': _ts(c.updated_at, _now) if c.updated_at else ''
-            })
-        counts['recent_activity'] = recent_data
-
-        # 4. Tables with counts
-        tables_data = []
-        tables_annotated = tables_qs.annotate(
-            cnt_p=Count('id_cards', filter=Q(id_cards__status='pending')),
-            cnt_v=Count('id_cards', filter=Q(id_cards__status='verified')),
-            cnt_a=Count('id_cards', filter=Q(id_cards__status='approved')),
-            cnt_d=Count('id_cards', filter=Q(id_cards__status='download')),
-            cnt_po=Count('id_cards', filter=Q(id_cards__status='pool')),
-            cnt_r=Count('id_cards', filter=Q(id_cards__status='reprint')),
-        ).order_by('name')
-
-        for t in tables_annotated:
-            tables_data.append({
-                'id': t.id,
-                'name': t.name,
-                'p': t.cnt_p,
-                'v': t.cnt_v,
-                'a': t.cnt_a,
-                'd': t.cnt_d,
-                'po': t.cnt_po,
-                'r': t.cnt_r,
-            })
-        counts['tables'] = tables_data
-
-        # Save to cache (cache for 1 hour, it will be invalidated via cache_version naturally)
-        cache.set(full_cache_key, counts, timeout=3600)
-
-        return JsonResponse({'success': True, 'data': counts})
+        else:
+            # CLIENT/ASSISTANT: Return single client with tables
+            client, _ = _client_ctx(user)
+            if not client:
+                return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
+            
+            cache_key = f"mob_dash_{client.id}_{user.id}" if is_staff else f"mob_dash_{client.id}"
+            cache_version = CacheVersionService.get('client_dash_counts', f'client:{client.id}')
+            full_cache_key = f"{cache_key}_v{cache_version}"
+            
+            cached_data = cache.get(full_cache_key)
+            if cached_data:
+                cached_data['recent_activity'] = recent_activity
+                return JsonResponse({'success': True, 'data': cached_data})
+            
+            # Get accessible tables
+            tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
+            if is_staff:
+                accessible_ids = ClientAccessService.get_accessible_table_ids(user)
+                if accessible_ids is not None:
+                    tables_qs = tables_qs.filter(id__in=accessible_ids)
+            
+            scoped_table_ids = list(tables_qs.values_list('id', flat=True))
+            
+            # Total Counts
+            cards_qs = IDCard.objects.filter(table_id__in=scoped_table_ids)
+            counts = {
+                'client_id': client.id,
+                'client_name': getattr(client, 'business_name', client.name),
+                'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0, 'total': 0
+            }
+            for row in cards_qs.values('status').annotate(n=Count('id')):
+                status_val = row['status']
+                if status_val in counts:
+                    counts[status_val] = row['n']
+            
+            # TOTAL definition (match website): Excludes pool
+            counts['total'] = counts['pending'] + counts['verified'] + counts['approved'] + counts['download']
+            
+            # Tables with counts
+            tables_data = []
+            tables_annotated = tables_qs.annotate(
+                cnt_p=Count('id_cards', filter=Q(id_cards__status='pending')),
+                cnt_v=Count('id_cards', filter=Q(id_cards__status='verified')),
+                cnt_a=Count('id_cards', filter=Q(id_cards__status='approved')),
+                cnt_d=Count('id_cards', filter=Q(id_cards__status='download')),
+                cnt_po=Count('id_cards', filter=Q(id_cards__status='pool')),
+            ).order_by('name')
+            
+            for t in tables_annotated:
+                tables_data.append({
+                    'id': t.id,
+                    'name': t.name,
+                    'p': t.cnt_p,
+                    'v': t.cnt_v,
+                    'a': t.cnt_a,
+                    'd': t.cnt_d,
+                    'po': t.cnt_po,
+                })
+            counts['tables'] = tables_data
+            counts['recent_activity'] = recent_activity
+            
+            # Save to cache
+            cache.set(full_cache_key, counts, timeout=3600)
+            return JsonResponse({'success': True, 'data': counts})
+            
     except Exception:
         logger.exception('api_dashboard_data error')
         return JsonResponse({'success': False, 'message': 'Unable to load dashboard.'}, status=500)

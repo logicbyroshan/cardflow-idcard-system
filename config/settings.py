@@ -141,6 +141,7 @@ INSTALLED_APPS = [
     'mobile_app',
     'panel',
     'officework',
+    'mobile_api',
     'django.contrib.sitemaps',
     'django.contrib.sites',
 ]

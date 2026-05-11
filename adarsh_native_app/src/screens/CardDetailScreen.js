@@ -3,7 +3,9 @@ import {
   View, Text, ScrollView, TouchableOpacity, Image, 
   StyleSheet, Alert, RefreshControl, ActivityIndicator 
 } from 'react-native';
+import { Linking } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconClock, IconWarning, IconList, IconEdit, IconDownload, IconTrash, IconLock, IconFilter, IconCheck, IconThumbsUp } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -66,6 +68,14 @@ export default function CardDetailScreen({ navigation, route }) {
     ]);
   };
 
+    const downloadCard = async () => {
+      try {
+        const url = `${BASE_URL}/app/api/card/${cardId}/download-pdf/`;
+        Linking.openURL(url);
+      } catch (e) {
+        showToast('Could not download card', 'error');
+      }
+    };
   if (loading) return (
     <View style={s.root}><TopBar title="Card Detail" onBack={() => navigation.goBack()} /><DetailSkeleton /></View>
   );
@@ -79,7 +89,7 @@ export default function CardDetailScreen({ navigation, route }) {
 
   const fd = card.field_data || {};
   const cardName = card.name || fd.NAME || fd.Name || fd.name || fd.FULL_NAME || fd.full_name || `Card #${card.id}`;
-  const isLocked = ['pool'].includes(card.status) && (user?.role === 'client' || user?.role === 'client_staff');
+  const isLocked = ['pool'].includes(card.status) && (user?.isClient || user?.isAssistant);
 
   const allowedStatuses = useMemo(() => {
     const perms = user?.permissions || {};
@@ -115,7 +125,7 @@ export default function CardDetailScreen({ navigation, route }) {
                 <Image source={{ uri: card.photo_url.startsWith('http') ? card.photo_url : `${BASE_URL}${card.photo_url}` }} style={s.photo} />
               ) : (
                 <View style={[s.photoPlaceholder, isPending && { backgroundColor: '#fef08a' }, isEmpty && { backgroundColor: '#f1f5f9' }]}>
-                  <FontAwesome5 name={isPending ? "clock" : "user-slash"} size={24} color={isPending ? "#ca8a04" : "#cbd5e1"} solid />
+                  <IconClock size={24} color={isPending ? "#ca8a04" : "#cbd5e1"} />
                   <Text style={[s.emptyPhotoText, { color: isPending ? "#ca8a04" : "#94a3b8" }]}>{isPending ? 'PENDING' : 'EMPTY'}</Text>
                 </View>
               )}
@@ -134,7 +144,7 @@ export default function CardDetailScreen({ navigation, route }) {
 
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <FontAwesome5 name="id-card" size={12} color={colors.gray400} />
+            <IconList size={12} color={colors.gray400} />
             <Text style={s.sectionTitle}>FIELD DATA</Text>
           </View>
           <View style={s.fieldsList}>
@@ -170,7 +180,7 @@ export default function CardDetailScreen({ navigation, route }) {
           {!isLocked && user?.permissions?.perm_idcard_edit && (
             <TouchableOpacity onPress={() => setShowForm(true)} activeOpacity={0.85} style={s.editBtnWrap}>
               <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.editBtn}>
-                <FontAwesome5 name="pen" size={12} color="#fff" />
+                <IconEdit size={12} color="#fff" />
                 <Text style={s.editBtnText}>Edit Information</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -178,7 +188,7 @@ export default function CardDetailScreen({ navigation, route }) {
 
           {isLocked && (
             <View style={s.lockedNote}>
-              <FontAwesome5 name="lock" size={12} color={colors.gray400} />
+              <IconLock size={12} color={colors.gray400} />
               <Text style={s.lockedNoteText}>Card is locked (Status: {card.status})</Text>
             </View>
           )}
@@ -198,12 +208,65 @@ export default function CardDetailScreen({ navigation, route }) {
 
           {user?.permissions?.perm_idcard_delete && (
             <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
-              <FontAwesome5 name="trash-alt" size={12} color={colors.red} />
+              <IconTrash size={12} color={colors.red} />
               <Text style={s.deleteBtnText}>Move to Pool</Text>
             </TouchableOpacity>
           )}
         </View>
 
+          <View style={s.section}>
+            <View style={s.sectionHeader}>
+              <IconFilter size={12} color={colors.gray400} />
+              <Text style={s.sectionTitle}>CHANGE STATUS</Text>
+            </View>
+            <View style={s.statusButtonsWrap}>
+              {allowedStatuses.map((opt, idx) => (
+                <TouchableOpacity 
+                  key={opt.key} 
+                  onPress={() => updateStatus(opt.key)} 
+                  disabled={updating} 
+                  activeOpacity={0.75}
+                  style={[
+                    s.statusBtn,
+                    card.status === opt.key && s.statusBtnActive,
+                    { backgroundColor: card.status === opt.key ? opt.perm?.split('_').pop() === 'list' ? colors.brandPrimary : colors.brandPrimary : '#f8fafc', borderColor: card.status === opt.key ? colors.brandPrimary : colors.gray100 }
+                  ]}
+                >
+                  <DetailStatusIcon status={opt.key} size={11} color={card.status === opt.key ? '#fff' : colors.gray600} />
+                  <Text style={[s.statusBtnText, card.status === opt.key && s.statusBtnTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={s.actionButtonsRow}>
+            {!isLocked && user?.permissions?.perm_idcard_edit && (
+              <TouchableOpacity onPress={() => setShowForm(true)} activeOpacity={0.85} style={s.actionBtnHalf}>
+                <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.actionBtnGradient}>
+                  <IconEdit size={14} color="#fff" />
+                  <Text style={s.actionBtnText}>Edit</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          
+            {user?.permissions?.perm_idcard_download_list && (
+              <TouchableOpacity onPress={downloadCard} activeOpacity={0.85} style={s.actionBtnHalf}>
+                <LinearGradient colors={['#7c3aed', '#6d28d9']} start={{x:0, y:0}} end={{x:1, y:0}} style={s.actionBtnGradient}>
+                  <IconDownload size={14} color="#fff" />
+                  <Text style={s.actionBtnText}>Download</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {user?.permissions?.perm_idcard_delete && (
+              <TouchableOpacity onPress={deleteCard} activeOpacity={0.85} style={s.actionBtnFull}>
+                <View style={s.deleteActionBtn}>
+                  <IconTrash size={14} color={colors.red} />
+                  <Text style={s.deleteActionBtnText}>Move to Pool</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
         <View style={s.timestampRow}>
           <Text style={s.tsText}>Updated: {card.updated_at || '-'}</Text>
         </View>
@@ -259,4 +322,29 @@ const s = StyleSheet.create({
   timestampRow: { marginTop: 24, alignItems: 'center' },
   tsText: { fontSize: 10, color: colors.gray400 },
   errText: { fontSize: 14, color: colors.error, textAlign: 'center' },
+
+    // Status buttons grid styling
+    statusButtonsWrap: { padding: 12, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+    statusBtn: { flex: 1, minWidth: '30%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: radius.md, borderWidth: 1, gap: 6 },
+    statusBtnActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+    statusBtnText: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray600, textAlign: 'center' },
+    statusBtnTextActive: { color: '#fff' },
+  
+    // Bottom action buttons
+    actionButtonsRow: { flexDirection: 'row', gap: 12, marginBottom: 20, marginTop: 16 },
+    actionBtnHalf: { flex: 1, borderRadius: radius.md, overflow: 'hidden', ...shadows.md },
+    actionBtnFull: { width: '100%', borderRadius: radius.md, overflow: 'hidden', marginTop: 12 },
+    actionBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 8 },
+    actionBtnText: { fontSize: 13, fontFamily: fontFamily.bold, color: '#fff' },
+    deleteActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderWidth: 1.5, borderColor: colors.red, borderRadius: radius.md, backgroundColor: 'rgba(239, 68, 68, 0.05)' },
+    deleteActionBtnText: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.red, marginLeft: 8 },
 });
+
+function DetailStatusIcon({ status, size, color }) {
+  if (status === 'pending') return <IconClock size={size} color={color} />;
+  if (status === 'verified') return <IconCheck size={size} color={color} />;
+  if (status === 'approved') return <IconThumbsUp size={size} color={color} />;
+  if (status === 'download') return <IconDownload size={size} color={color} />;
+  if (status === 'reprint') return <IconClock size={size} color={color} />; // Fallback
+  return <IconPool size={size} color={color} />;
+}

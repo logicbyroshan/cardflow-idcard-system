@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconPending, IconVerified, IconApproved, IconDownload, IconPool, IconTotal, IconSearch, IconFilter, IconPlus, IconChevronRight, IconTrash, IconEdit, IconHome, IconList, IconUsers, IconLogout, IconClose, IconCheck, IconProfile } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -49,7 +50,7 @@ export default function StaffManageScreen({ navigation }) {
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
   const loadStaff = useCallback(async () => {
     try {
-      const { ok, data } = await apiGet('/app/api/staff/');
+      const { ok, data } = await apiGet('/api/mobile/staff/');
       if (ok && data?.success) {
         setStaff(data.data?.staff || []);
       } else {
@@ -60,7 +61,7 @@ export default function StaffManageScreen({ navigation }) {
     }
   }, []);
 
-  const { loading, refreshing, error, refresh } = useRefreshableResource(loadStaff, { initialData: [] });
+  const { loading, refreshing, error, setError, refresh } = useRefreshableResource(loadStaff, { initialData: [] });
 
   const handleStopImpersonation = async () => {
     const result = await stopImpersonation();
@@ -155,7 +156,7 @@ export default function StaffManageScreen({ navigation }) {
     if (!editingId && !form.email.trim()) { showToast('Email is required', 'error'); return; }
     setSaving(true);
     try {
-      const url = editingId ? `/app/api/staff/${editingId}/update/` : '/app/api/staff/create/';
+      const url = editingId ? `/app/api/staff/${editingId}/update/` : '/api/mobile/staff/create/';
       const body = { ...form };
       if (!body.password) delete body.password;
       const { data } = await apiPost(url, body);
@@ -213,19 +214,19 @@ export default function StaffManageScreen({ navigation }) {
       <View style={s.cardActions}>
         {user?.can_manage_staff && (
           <TouchableOpacity onPress={() => openEdit(item)} style={s.textBtn}>
-            <FontAwesome5 name="pen" size={10} color={colors.brandPrimary} style={s.btnIcon} />
+            <IconEdit size={10} color={colors.brandPrimary} style={s.btnIcon} />
             <Text style={s.textBtnLabel}>EDIT</Text>
           </TouchableOpacity>
         )}
-        {user?.can_manage_staff && user?.role !== 'super_admin' && (
+        {user?.can_manage_staff && !user?.isSuperAdmin && (
           <TouchableOpacity onPress={() => openAssign(item)} style={s.textBtn}>
-            <FontAwesome5 name="layer-group" size={10} color="#8b5cf6" style={s.btnIcon} />
+            <IconList size={10} color="#8b5cf6" style={s.btnIcon} />
             <Text style={[s.textBtnLabel, { color: '#8b5cf6' }]}>ASSIGN</Text>
           </TouchableOpacity>
         )}
         {user?.can_manage_staff && (
           <TouchableOpacity onPress={() => deleteMember(item)} style={s.textBtn}>
-            <FontAwesome5 name="trash-alt" size={10} color="#ef4444" style={s.btnIcon} />
+            <IconTrash size={10} color="#ef4444" style={s.btnIcon} />
             <Text style={[s.textBtnLabel, { color: '#ef4444' }]}>DELETE</Text>
           </TouchableOpacity>
         )}
@@ -233,18 +234,22 @@ export default function StaffManageScreen({ navigation }) {
     </View>
   );
 
+  const isSuperAdmin = !!user?.isSuperAdmin;
+  const screenTitle = isSuperAdmin ? "Operator Management" : "My Staff Management";
+  const screenSubtitle = isSuperAdmin ? "Manage operators & administrators" : "Manage your assistants";
+
   return (
     <View style={s.root}>
       <TopBar 
-        title="Assistant Management" 
-        subtitle="Manage operators & assistants" 
+        title={screenTitle} 
+        subtitle={screenSubtitle} 
         onBack={() => navigation.goBack()} 
         rightAction={user?.can_manage_staff ? { icon: 'plus', onPress: openCreate } : null}
       >
         {/* Search Bar (Inside Gradient) */}
         <View style={s.searchRow}>
           <TouchableOpacity style={s.leftIconBtn} onPress={() => setShowFilter(true)} activeOpacity={0.7}>
-            <FontAwesome5 name="filter" size={12} color="#fff" />
+            <IconFilter size={12} color="#fff" />
           </TouchableOpacity>
           <TextInput
             style={s.searchInput}
@@ -254,7 +259,7 @@ export default function StaffManageScreen({ navigation }) {
             placeholderTextColor="rgba(255,255,255,0.5)"
           />
           <View style={s.rightIconBtn}>
-            <FontAwesome5 name="search" size={12} color="#fff" />
+            <IconSearch size={12} color="#fff" />
           </View>
         </View>
       </TopBar>
@@ -262,9 +267,9 @@ export default function StaffManageScreen({ navigation }) {
       {/* Impersonation Banner */}
       {isImpersonating && (
         <TouchableOpacity onPress={handleStopImpersonation} style={s.impBanner} activeOpacity={0.8}>
-          <FontAwesome5 name="user-secret" size={14} color="#fff" />
+          <IconUsers size={14} color="#fff" />
           <Text style={s.impBannerText}>Impersonating · Tap to return</Text>
-          <FontAwesome5 name="times" size={12} color="#fff" />
+          <IconClose size={12} color="#fff" />
         </TouchableOpacity>
       )}
 
@@ -279,7 +284,7 @@ export default function StaffManageScreen({ navigation }) {
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadStaff(true)} tintColor={colors.brandLight} />}
-          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><FontAwesome5 name="users" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No assistants found</Text></View>}
+          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><IconUsers size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No assistants found</Text></View>}
         />
       )}
 
@@ -290,7 +295,7 @@ export default function StaffManageScreen({ navigation }) {
           <View style={s.filterDrawer}>
             <View style={s.filterHeader}>
               <Text style={s.filterTitle}>Filter Assistants</Text>
-              <TouchableOpacity onPress={() => setShowFilter(false)} style={s.filterClose}><FontAwesome5 name="times" size={16} color={colors.gray400} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowFilter(false)} style={s.filterClose}><IconClose size={16} color={colors.gray400} /></TouchableOpacity>
             </View>
             <ScrollView style={s.filterContent}>
               <Text style={s.filterLabel}>ASSISTANT STATUS</Text>
@@ -318,7 +323,7 @@ export default function StaffManageScreen({ navigation }) {
           <TouchableOpacity style={s.modalBg} activeOpacity={1} onPress={() => setShowForm(false)} />
           <View style={s.modalSheet}>
             <View style={s.modalHandle} />
-            <Text style={s.modalTitle}>{editingId ? 'Edit Assistant' : 'Add New Assistant'}</Text>
+            <Text style={s.modalTitle}>{editingId ? (isSuperAdmin ? 'Edit Operator' : 'Edit Assistant') : (isSuperAdmin ? 'Add Operator' : 'Add Assistant')}</Text>
             <ScrollView style={s.formFields} keyboardShouldPersistTaps="handled">
               <View style={s.formRow}>
                 <FormField label="FIRST NAME" value={form.first_name} onChangeText={t => setForm(p => ({ ...p, first_name: t }))} placeholder="First name" />
@@ -357,7 +362,7 @@ export default function StaffManageScreen({ navigation }) {
                 <View style={s.checkGrid}>
                   {assignData.groups.map(g => (
                     <TouchableOpacity key={g.id} style={[s.checkItem, selectedGroupIds.includes(g.id) && s.checkItemActive]} onPress={() => toggleGroupSelection(g.id)}>
-                      <FontAwesome5 name={selectedGroupIds.includes(g.id) ? "check-square" : "square"} size={14} color={selectedGroupIds.includes(g.id) ? colors.brandPrimary : colors.gray300} />
+                      {selectedGroupIds.includes(g.id) ? <IconCheck size={14} color={colors.brandPrimary} /> : <View style={{ width: 14, height: 14, borderWidth: 1, borderColor: colors.gray300, borderRadius: 2 }} />}
                       <Text style={[s.checkLabel, selectedGroupIds.includes(g.id) && s.checkLabelActive]} numberOfLines={1}>{g.name}</Text>
                     </TouchableOpacity>
                   ))}
@@ -367,7 +372,7 @@ export default function StaffManageScreen({ navigation }) {
                 <View style={s.checkGrid}>
                   {assignData.tables.map(t => (
                     <TouchableOpacity key={t.id} style={[s.checkItem, selectedTableIds.includes(t.id) && s.checkItemActive]} onPress={() => toggleTableSelection(t.id)}>
-                      <FontAwesome5 name={selectedTableIds.includes(t.id) ? "check-square" : "square"} size={14} color={selectedTableIds.includes(t.id) ? colors.brandPrimary : colors.gray300} />
+                      {selectedTableIds.includes(t.id) ? <IconCheck size={14} color={colors.brandPrimary} /> : <View style={{ width: 14, height: 14, borderWidth: 1, borderColor: colors.gray300, borderRadius: 2 }} />}
                       <Text style={[s.checkLabel, selectedTableIds.includes(t.id) && s.checkLabelActive]} numberOfLines={1}>{t.name}</Text>
                     </TouchableOpacity>
                   ))}

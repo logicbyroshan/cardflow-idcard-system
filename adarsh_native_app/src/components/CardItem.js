@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { IconClock, IconWarning, IconCheck } from './Icons';
 import { colors, shadows, radius, spacing, typography, fontFamily } from '../theme';
 import { HStack } from './Stack';
 import { BASE_URL } from '../api/client';
@@ -106,7 +107,7 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
             />
           ) : (
             <View style={s.photoPlaceholderCenter}>
-              <FontAwesome5 name={iconName} size={18} color={iconColor} solid />
+              <IconClock size={18} color={iconColor} />
               {isEmpty && <Text style={[s.emptyPhotoText, { color: '#94a3b8' }]}>EMPTY</Text>}
               {isPending && <Text style={[s.emptyPhotoText, { color: '#ca8a04' }]}>PENDING</Text>}
             </View>
@@ -146,7 +147,7 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
           {showCheckbox && (
             <TouchableOpacity style={s.checkboxRow} onPress={onToggleSelect} activeOpacity={0.7}>
               <View style={[s.checkboxSmall, isSelected && s.checkboxCheckedSmall]}>
-                {isSelected && <FontAwesome5 name="check" size={8} color="#fff" />}
+                {isSelected && <IconCheck size={8} color="#fff" />}
               </View>
               <Text style={[s.checkboxLabel, { marginLeft: 6 }]}>Select</Text>
             </TouchableOpacity>

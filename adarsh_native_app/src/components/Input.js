@@ -23,7 +23,7 @@ export default function Input({
     <View style={[styles.wrap, containerStyle]}>
       {label ? <Text style={[styles.label, labelStyle]}>{label}</Text> : null}
       <View style={[styles.field, error && styles.fieldError, style]}>
-        {leftIcon ? <FontAwesome5 name={leftIcon} size={12} color={colors.gray400} style={styles.leftIcon} /> : null}
+        {leftIcon ? <FontAwesome5 name={leftIcon} size={12} color={colors.gray400} style={[styles.leftIcon, { marginRight: 10 }]} /> : null}
         <TextInput
           style={[styles.input, leftIcon && styles.inputWithLeft, showToggle && styles.inputWithRight, inputStyle]}
           placeholderTextColor={colors.gray300}

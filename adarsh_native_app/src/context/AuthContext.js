@@ -6,6 +6,19 @@ const AuthContext = createContext(null);
 
 const AUTH_STORAGE_KEY = 'adarsh_auth_state';
 
+const enrichUser = (userObj) => {
+  if (!userObj) return null;
+  const r = userObj.role || '';
+  return {
+    ...userObj,
+    isSuperAdmin: ['super_admin', 'pro_user'].includes(r),
+    isOperator: r === 'admin_staff',
+    isAdmin: ['super_admin', 'pro_user', 'admin_staff'].includes(r),
+    isClient: r === 'client',
+    isAssistant: r === 'client_staff',
+  };
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -15,7 +28,7 @@ export function AuthProvider({ children }) {
 
   const refreshProfile = useCallback(async () => {
     try {
-      const { ok, status, data } = await apiGet('/app/api/profile/');
+      const { ok, status, data } = await apiGet('/api/mobile/profile/');
       if (status === 401 || status === 403) {
         setUser(null);
         setIsAuthenticated(false);
@@ -26,16 +39,18 @@ export function AuthProvider({ children }) {
       } else if (ok && data?.success) {
         setUser(prev => {
           const base = prev || {};
-          const refreshed = {
+          const role = data.data?.role || base.role || '';
+          const refreshed = enrichUser({
             ...base,
             name: data.data?.name || base.name || '',
             email: data.data?.email || base.email || '',
-            role: data.data?.role || base.role || '',
+            phone: data.data?.phone || base.phone || '',
+            role: role,
             client_id: data.data?.client_id || base.client_id,
             can_manage_clients: typeof data.data?.can_manage_clients === 'boolean' ? data.data.can_manage_clients : !!base.can_manage_clients,
             can_manage_staff: typeof data.data?.can_manage_staff === 'boolean' ? data.data.can_manage_staff : !!base.can_manage_staff,
             permissions: data.data?.permissions || base.permissions || {},
-          };
+          });
           AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshed)).catch(() => {});
           return refreshed;
         });
@@ -52,7 +67,7 @@ export function AuthProvider({ children }) {
         await loadStoredAuth();
         const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
         if (stored) {
-          const parsed = JSON.parse(stored);
+          const parsed = enrichUser(JSON.parse(stored));
           setUser(parsed);
           setIsAuthenticated(true);
           
@@ -88,19 +103,20 @@ export function AuthProvider({ children }) {
     const body = { email, password };
     if (forceLogoutOther) body.force_logout_other = true;
 
-    const { ok, data } = await apiPost('/app/api/auth/login/', body);
+    const { ok, data } = await apiPost('/api/mobile/auth/login/', body);
 
     if (data.success) {
-      const userData = {
+      const userData = enrichUser({
         email,
         name: data.user_name || data.name || email,
         role: data.role || '',
         client_id: data.client_id,
+        phone: data.phone || '',
         can_manage_clients: !!data.can_manage_clients,
         can_manage_staff: !!data.can_manage_staff,
         permissions: data.permissions || {},
         loggedInAt: Date.now(),
-      };
+      });
       setUser(userData);
       setIsAuthenticated(true);
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
@@ -118,7 +134,7 @@ export function AuthProvider({ children }) {
     setOriginalUser(null);
     try {
       // Standard logout endpoint
-      await apiPost('/app/api/auth/logout/', {});
+      await apiPost('/api/mobile/auth/logout/', {});
     } catch (e) {
       // Network failure during logout is fine — session will expire on server
     }
@@ -131,7 +147,7 @@ export function AuthProvider({ children }) {
 
   const checkSession = useCallback(async () => {
     try {
-      const { ok, status } = await apiGet('/app/api/profile/');
+      const { ok, status } = await apiGet('/api/mobile/profile/');
       if (status === 401 || status === 403) {
         setUser(null);
         setIsAuthenticated(false);
@@ -150,7 +166,7 @@ export function AuthProvider({ children }) {
 
   const startImpersonation = useCallback(async (userId) => {
     try {
-      const { data } = await apiPost('/app/api/impersonate/start/', { user_id: userId });
+      const { data } = await apiPost('/api/mobile/impersonate/start/', { user_id: userId });
       if (data?.success) {
         // Save original user before switching
         const currentUser = user;
@@ -159,16 +175,16 @@ export function AuthProvider({ children }) {
         await AsyncStorage.setItem('adarsh_impersonate_state', JSON.stringify({ originalUser: currentUser }));
 
         // Refresh profile to get impersonated user's data
-        const { ok, data: profileData } = await apiGet('/app/api/profile/');
+        const { ok, data: profileData } = await apiGet('/api/mobile/profile/');
         if (ok && profileData?.success) {
-          const impUser = {
+          const impUser = enrichUser({
             email: profileData.data?.email || '',
             name: profileData.data?.name || data.user_name || '',
             role: profileData.data?.role || data.role || '',
             permissions: profileData.data?.permissions || {},
             phone: profileData.data?.phone || '',
             loggedInAt: Date.now(),
-          };
+          });
           setUser(impUser);
           await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(impUser));
         }
@@ -182,22 +198,22 @@ export function AuthProvider({ children }) {
 
   const stopImpersonation = useCallback(async () => {
     try {
-      const { data } = await apiPost('/app/api/impersonate/stop/', {});
+      const { data } = await apiPost('/api/mobile/impersonate/stop/', {});
       if (data?.success) {
         setIsImpersonating(false);
         await AsyncStorage.removeItem('adarsh_impersonate_state');
 
         // Refresh profile to get original user's data
-        const { ok, data: profileData } = await apiGet('/app/api/profile/');
+        const { ok, data: profileData } = await apiGet('/api/mobile/profile/');
         if (ok && profileData?.success) {
-          const restoredUser = {
+          const restoredUser = enrichUser({
             email: profileData.data?.email || originalUser?.email || '',
             name: profileData.data?.name || originalUser?.name || '',
             role: profileData.data?.role || originalUser?.role || '',
             permissions: profileData.data?.permissions || originalUser?.permissions || {},
             phone: profileData.data?.phone || originalUser?.phone || '',
             loggedInAt: Date.now(),
-          };
+          });
           setUser(restoredUser);
           setOriginalUser(null);
           await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(restoredUser));

@@ -17,7 +17,7 @@ export default function GroupsScreen({ navigation }) {
   const theme = roleThemes[user?.role] || roleThemes.default;
 
   const loadData = useCallback(async () => {
-    const { ok, data } = await apiGet('/app/api/groups/');
+    const { ok, data } = await apiGet('/api/mobile/groups/');
     if (!ok || !data?.success) {
       throw new Error(data?.message || 'Failed to load tables');
     }

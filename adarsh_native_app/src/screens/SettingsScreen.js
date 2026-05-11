@@ -25,7 +25,7 @@ export default function SettingsScreen({ navigation }) {
   const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
 
   const loadSettings = useCallback(async () => {
-    const { ok, data: resp } = await apiGet('/app/api/settings/');
+    const { ok, data: resp } = await apiGet('/api/mobile/settings/');
     if (!ok || !resp?.success) {
       throw new Error(resp?.message || 'Failed to load settings');
     }
@@ -37,7 +37,7 @@ export default function SettingsScreen({ navigation }) {
   const checkUpdates = async () => {
     setUpdateStatus(p => ({ ...p, loading: true }));
     try {
-      const { data } = await apiGet('/app/api/mobile-shell/config/');
+      const { data } = await apiGet('/api/mobile/mobile-shell/config/');
       const d = data?.success ? data.data : null;
       setUpdateStatus({
         loading: false,
@@ -63,7 +63,7 @@ export default function SettingsScreen({ navigation }) {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete My Data', style: 'destructive', onPress: async () => {
           try {
-            const { data } = await apiPost('/app/api/profile/delete-request/', { confirm: true });
+            const { data } = await apiPost('/api/mobile/profile/delete-request/', { confirm: true });
             showToast(data?.success ? (data.message || 'Deletion request submitted') : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
           } catch (e) { showToast('Network error', 'error'); }
         }},
