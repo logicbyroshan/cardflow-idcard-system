@@ -271,9 +271,42 @@ class ClientCardService(BaseService):
 
     @classmethod
     def _assigned_table_ids_for_access(cls, staff) -> List[int]:
+        """Return cached normalized assigned table IDs for client_staff checks.
+        Checks both legacy assigned_table_ids field and new assignment_scopes.
+        """
         cached_table_ids = getattr(staff, '_cached_assigned_table_ids_for_card_scope', None)
         if cached_table_ids is not None:
             return cached_table_ids
+
+        scopes = getattr(staff, 'assignment_scopes', None)
+        if isinstance(scopes, list) and scopes:
+            explicit_table_ids = []
+            seen = set()
+            has_any_valid_scope = False
+
+            for scope in scopes:
+                if not isinstance(scope, dict):
+                    continue
+                stype = str(scope.get('scope_type', '') or '').strip().lower()
+                if stype not in ('group', 'table'):
+                    continue
+                has_any_valid_scope = True
+                if stype != 'table':
+                    continue
+
+                sid = scope.get('scope_id')
+                try:
+                    sid_int = int(str(sid).strip())
+                except (TypeError, ValueError):
+                    continue
+                if sid_int <= 0 or sid_int in seen:
+                    continue
+                seen.add(sid_int)
+                explicit_table_ids.append(sid_int)
+
+            if has_any_valid_scope:
+                setattr(staff, '_cached_assigned_table_ids_for_card_scope', explicit_table_ids)
+                return explicit_table_ids
 
         assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
         setattr(staff, '_cached_assigned_table_ids_for_card_scope', assigned_table_ids)
@@ -517,7 +550,7 @@ class ClientCardService(BaseService):
 
             if status_filter:
                 perm = perm_map.get(status_filter)
-                if perm and not PermissionService.has_permission(user, perm):
+                if perm and not PermissionService.has(user, perm):
                     return ServiceResult(
                         success=False,
                         message=f'No permission to view {status_filter} cards'
@@ -525,7 +558,7 @@ class ClientCardService(BaseService):
 
             allowed_statuses = [
                 status for status, perm_name in perm_map.items()
-                if PermissionService.has_permission(user, perm_name)
+                if PermissionService.has(user, perm_name)
             ]
             if not allowed_statuses:
                 return ServiceResult(success=False, message='No permission to view cards')
@@ -637,11 +670,30 @@ class ClientCardService(BaseService):
                             cards_query = cards_query.filter(_filter_sec__in=matching_sections)
 
             photo_filter_value = str(photo_filter or '').strip().lower()
-            if photo_filter_value in ('with', 'without'):
+            if photo_filter_value in ('complete', 'pending', 'incomplete', 'with', 'without'):
                 matching_photo_ids: List[int] = []
                 for _card in cards_query.only('id', 'photo', 'field_data').iterator(chunk_size=500):
-                    _has_photo = bool(get_card_photo_url(_card, _card.field_data or {}))
-                    if (photo_filter_value == 'with' and _has_photo) or (photo_filter_value == 'without' and not _has_photo):
+                    fd = _card.field_data or {}
+                    
+                    # 1. Check for valid photo (complete)
+                    has_valid_photo = bool(get_card_photo_url(_card, fd))
+                    
+                    # 2. Check for pending placeholder
+                    is_pending_placeholder = False
+                    for val in fd.values():
+                        if isinstance(val, str) and val.startswith('PENDING:'):
+                            is_pending_placeholder = True
+                            break
+                    
+                    matched = False
+                    if photo_filter_value in ('complete', 'with'):
+                        matched = has_valid_photo
+                    elif photo_filter_value == 'pending':
+                        matched = is_pending_placeholder
+                    elif photo_filter_value in ('incomplete', 'without'):
+                        matched = not has_valid_photo and not is_pending_placeholder
+                    
+                    if matched:
                         matching_photo_ids.append(_card.id)
 
                 if not matching_photo_ids:
@@ -753,7 +805,7 @@ class ClientCardService(BaseService):
             if not client and not PermissionService.is_any_admin(user):
                 return ServiceResult(success=False, message='Client profile not found')
 
-            if not PermissionService.has_permission(user, 'perm_idcard_info'):
+            if not PermissionService.has(user, 'perm_idcard_info'):
                 return ServiceResult(success=False, message='Permission denied')
             
             # Get card

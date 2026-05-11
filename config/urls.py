@@ -194,6 +194,9 @@ urlpatterns += [
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/', include('mobile_app.urls')),
 
+    # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
+    path('api/mobile/', include('mobile_api.urls')),
+
     # ==================== PUBLIC WEBSITE (/) ====================
     # Public-facing website at root — must be LAST to avoid catching /panel/ routes
     path('', include('website.urls')),

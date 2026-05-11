@@ -64,7 +64,7 @@ class MobileAppCSRFBypassMiddleware:
         # This covers:
         # - /api/auth/* (Main panel APIs)
         # - /app/api/auth/* (Mobile/PWA specific APIs)
-        auth_patterns = ['/api/auth/', '/app/api/', '/auth/login', '/auth/logout']
+        auth_patterns = ['/api/auth/', '/app/api/', '/api/mobile/', '/auth/login', '/auth/logout']
         
         if any(p in path for p in auth_patterns) or any(p in path_info for p in auth_patterns):
             # This is a Django internal flag that CsrfViewMiddleware respects.
@@ -259,6 +259,7 @@ class PanelEntryGateMiddleware:
         '/favicon.ico',
         '/robots.txt',
         '/api/health/',
+        '/api/mobile/',
         '/__debug__/',
     )
     EXEMPT_PATHS = {
@@ -370,6 +371,8 @@ class PermissionValidationMiddleware:
         'manifest.json',
         'sw.js',
         'app/api/auth/',
+        'api/mobile/auth/',
+        'api/mobile/server-info/',
         'inactive/',
         'maintenance/',
     ]
@@ -381,6 +384,7 @@ class PermissionValidationMiddleware:
         '/admin/',
         '/favicon.ico',
         '/api/health/',
+        '/api/mobile/',
         '/robots.txt',
         '/sitemap.xml',
         '/panel-entry/',

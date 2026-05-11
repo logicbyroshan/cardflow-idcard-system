@@ -64,6 +64,7 @@ cover/
 
 # Django stuff:
 *.log
+django_logs.txt
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -257,3 +258,12 @@ deployment/
 
 # Mobile shell platform output (local generated artifacts)
 mobile_shell_app/
+ 
+# Secure secrets folder for keystore and PEM (local only)
+/secrets/
+
+# Backup and local signing artifacts
+adarsh_native_app/android_backup/
+
+# Upload certificate (PEM)
+upload_certificate.pem

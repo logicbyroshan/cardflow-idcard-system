@@ -54,6 +54,7 @@ class WorkflowService:
         'approved': ['download', 'verified', 'pending', 'pool'],
         'download': ['approved', 'pending'],
         'pool':     ['pending'],
+        'reprint':  ['download', 'verified', 'approved', 'pending'],
     }
 
     VALID_STATUSES = list({s for sources in ALLOWED_TRANSITIONS.values() for s in sources} | set(ALLOWED_TRANSITIONS.keys()))

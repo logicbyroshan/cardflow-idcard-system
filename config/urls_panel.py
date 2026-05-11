@@ -176,6 +176,9 @@ urlpatterns = [
     path('reprint/', include('reprintcard.urls')),
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/', include('mobile_app.urls')),
+    
+    # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
+    path('api/mobile/', include('mobile_api.urls')),
 ]
 
 def _running_tests():

@@ -39,6 +39,9 @@ urlpatterns = [
 
     # Public website at root
     path('', include('website.urls')),
+
+    # Native Mobile API (exposed on website domain to bypass panel gates)
+    path('api/mobile/', include('mobile_api.urls')),
 ]
 
 # Media — only public directories (portfolio/hero images)

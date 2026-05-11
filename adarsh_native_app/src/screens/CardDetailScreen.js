@@ -1,0 +1,349 @@
+import React, { useState, useMemo, useCallback } from 'react';
+import { 
+  View, Text, ScrollView, TouchableOpacity, Image, 
+  StyleSheet, Alert, RefreshControl, ActivityIndicator 
+} from 'react-native';
+import { Linking } from 'react-native';
+import { DynamicIcon, IconClock, IconWarning, IconList, IconEdit, IconDownload, IconTrash, IconLock, IconFilter, IconCheck, IconThumbsUp, IconPool } from '../components/Icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import TopBar from '../components/TopBar';
+import Toast from '../components/Toast';
+import StatusBadge from '../components/StatusBadge';
+import { DetailSkeleton } from '../components/Skeleton';
+import CardModalForm from '../components/CardModalForm';
+import { apiGet, apiPost, BASE_URL } from '../api/client';
+import { colors, radius, shadows, roleThemes, fontFamily } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import useRefreshableResource from '../hooks/useRefreshableResource';
+
+export default function CardDetailScreen({ navigation, route }) {
+  const cardId = route?.params?.cardId;
+  const { user } = useAuth();
+  const theme = roleThemes[user?.role] || roleThemes.default;
+
+  const [updating, setUpdating] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const [showForm, setShowForm] = useState(false);
+
+  const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
+
+  const loadCard = useCallback(async () => {
+    try {
+      const { ok, data } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
+      if (ok && data?.success) {
+        return data.data;
+      } else {
+        throw new Error(data?.message || 'Failed to load card details');
+      }
+    } catch (e) {
+      throw new Error('Network error - check your connection');
+    }
+  }, [cardId]);
+
+  const { data: card, loading, refreshing, error, refresh } = useRefreshableResource(loadCard);
+
+  const updateStatus = async (status) => {
+    setUpdating(true);
+    try {
+      const { data } = await apiPost(`/api/mobile/card/${cardId}/status/`, { status });
+      showToast(data?.success ? 'Status updated!' : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
+      if (data?.success) refresh();
+    } catch (e) { showToast('Network error', 'error'); }
+    setUpdating(false);
+  };
+
+  const deleteCard = () => {
+    Alert.alert('Move to Pool?', 'This will move the card to the pool.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Move to Pool', style: 'destructive', onPress: async () => {
+        try {
+          const { data } = await apiPost(`/api/mobile/card/${cardId}/delete/`, {});
+          if (data?.success) {
+            showToast('Moved to pool', 'success');
+            setTimeout(() => navigation.goBack(), 800);
+          } else showToast(data?.message || 'Move failed', 'error');
+        } catch (e) { showToast('Network error', 'error'); }
+      }},
+    ]);
+  };
+
+    const downloadCard = async () => {
+      try {
+        const url = `${BASE_URL}/api/mobile/card/${cardId}/download-pdf/`;
+        Linking.openURL(url);
+      } catch (e) {
+        showToast('Could not download card', 'error');
+      }
+    };
+  if (loading) return (
+    <View style={s.root}><TopBar title="Card Detail" onBack={() => navigation.goBack()} /><DetailSkeleton /></View>
+  );
+
+  if (!card) return (
+    <View style={s.root}>
+      <TopBar title="Card Detail" onBack={() => navigation.goBack()} />
+      <View style={s.center}><Text style={s.errText}>{error || 'Card not found'}</Text></View>
+    </View>
+  );
+
+  const fd = card.field_data || {};
+  const cardName = card.name || fd.NAME || fd.Name || fd.name || fd.FULL_NAME || fd.full_name || `Card #${card.id}`;
+  const isLocked = ['pool'].includes(card.status) && (user?.isClient || user?.isAssistant);
+
+  const allowedStatuses = useMemo(() => {
+    const perms = user?.permissions || {};
+    return [
+      { key: 'pending', label: 'Pending', perm: 'perm_idcard_pending_list' },
+      { key: 'verified', label: 'Verified', perm: 'perm_idcard_verified_list' },
+      { key: 'approved', label: 'Approved', perm: 'perm_idcard_approved_list' },
+      { key: 'download', label: 'Download', perm: 'perm_idcard_download_list' },
+      { key: 'reprint', label: 'Reprint', perm: 'perm_idcard_reprint_list' },
+      { key: 'pool', label: 'Pool', perm: 'perm_idcard_pool_list' },
+    ].filter(opt => !opt.perm || perms[opt.perm]);
+  }, [user]);
+
+  const photoVal = card.photo_url || '';
+  const isPending = photoVal.includes('PENDING:');
+  const isEmpty = !photoVal || photoVal === 'NOT_FOUND';
+  const isComplete = !isPending && !isEmpty;
+
+  return (
+    <View style={s.root}>
+      <TopBar title="Card Details" subtitle={cardName} onBack={() => navigation.goBack()} />
+      
+      <ScrollView 
+        style={s.scroll} 
+        contentContainerStyle={s.scrollC} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
+      >
+        <LinearGradient colors={['#fff', '#f8fafc']} style={s.heroCard}>
+          <View style={s.heroTop}>
+            <View style={[s.photoFrame, isPending && { backgroundColor: '#fef08a' }, isEmpty && { backgroundColor: '#f1f5f9' }]}>
+              {isComplete ? (
+                <Image source={{ uri: card.photo_url.startsWith('http') ? card.photo_url : `${BASE_URL}${card.photo_url}` }} style={s.photo} />
+              ) : (
+                <View style={[s.photoPlaceholder, isPending && { backgroundColor: '#fef08a' }, isEmpty && { backgroundColor: '#f1f5f9' }]}>
+                  <DynamicIcon name={isPending ? 'clock' : 'user-alt-slash'} size={24} color={isPending ? "#ca8a04" : "#cbd5e1"} />
+                  <Text style={[s.emptyPhotoText, { color: isPending ? "#ca8a04" : "#94a3b8" }]}>{isPending ? 'PENDING' : 'EMPTY'}</Text>
+                </View>
+              )}
+            </View>
+            <View style={s.heroInfo}>
+              <Text style={s.cardName}>{cardName}</Text>
+              <Text style={s.tableName}>{card.table_name || 'Unassigned Table'}</Text>
+              <View style={s.statusLine}>
+                <StatusBadge status={card.status} showIcon size="lg" />
+                <View style={s.vLine} />
+                <Text style={s.srNo}>SR: {card.sr_no || '-'}</Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <IconList size={12} color={colors.gray400} />
+            <Text style={s.sectionTitle}>FIELD DATA</Text>
+          </View>
+          <View style={s.fieldsList}>
+            {(card.ordered_fields || []).length > 0 ? (
+              card.ordered_fields.map((f, i) => {
+                const val = fd[f.name];
+                const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined';
+                return (
+                  <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
+                    <Text style={s.fieldKey}>{f.name}</Text>
+                    <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                  </View>
+                );
+              })
+            ) : (
+              Object.entries(fd).map(([key, val], i) => {
+                const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined';
+                return (
+                  <View key={key} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
+                    <Text style={s.fieldKey}>{key.replace(/_/g, ' ')}</Text>
+                    <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                  </View>
+                );
+              })
+            )}
+            {Object.keys(fd).length === 0 && !(card.ordered_fields || []).length && (
+              <View style={s.emptyFields}><Text style={s.emptyFieldsText}>No field data available</Text></View>
+            )}
+          </View>
+        </View>
+
+        <View style={s.actions}>
+          {!isLocked && user?.permissions?.perm_idcard_edit && (
+            <TouchableOpacity onPress={() => setShowForm(true)} activeOpacity={0.85} style={s.editBtnWrap}>
+              <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.editBtn}>
+                <IconEdit size={12} color="#fff" />
+                <Text style={s.editBtnText}>Edit Information</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {isLocked && (
+            <View style={s.lockedNote}>
+              <IconLock size={12} color={colors.gray400} />
+              <Text style={s.lockedNoteText}>Card is locked (Status: {card.status})</Text>
+            </View>
+          )}
+
+          <View style={s.statusGrid}>
+            {allowedStatuses.map(opt => (
+              <TouchableOpacity 
+                key={opt.key} 
+                onPress={() => updateStatus(opt.key)} 
+                disabled={updating} 
+                style={s.statusOption}
+              >
+                <StatusBadge status={opt.key} variant={card.status === opt.key ? 'solid' : 'glass'} />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {user?.permissions?.perm_idcard_delete && (
+            <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
+              <IconTrash size={12} color={colors.red} />
+              <Text style={s.deleteBtnText}>Move to Pool</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+          <View style={s.section}>
+            <View style={s.sectionHeader}>
+              <IconFilter size={12} color={colors.gray400} />
+              <Text style={s.sectionTitle}>CHANGE STATUS</Text>
+            </View>
+            <View style={s.statusButtonsWrap}>
+              {allowedStatuses.map((opt, idx) => (
+                <TouchableOpacity 
+                  key={opt.key} 
+                  onPress={() => updateStatus(opt.key)} 
+                  disabled={updating} 
+                  activeOpacity={0.75}
+                  style={[
+                    s.statusBtn,
+                    card.status === opt.key && s.statusBtnActive,
+                    { backgroundColor: card.status === opt.key ? opt.perm?.split('_').pop() === 'list' ? colors.brandPrimary : colors.brandPrimary : '#f8fafc', borderColor: card.status === opt.key ? colors.brandPrimary : colors.gray100 }
+                  ]}
+                >
+                  <DetailStatusIcon status={opt.key} size={11} color={card.status === opt.key ? '#fff' : colors.gray600} />
+                  <Text style={[s.statusBtnText, card.status === opt.key && s.statusBtnTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={s.actionButtonsRow}>
+            {!isLocked && user?.permissions?.perm_idcard_edit && (
+              <TouchableOpacity onPress={() => setShowForm(true)} activeOpacity={0.85} style={s.actionBtnHalf}>
+                <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.actionBtnGradient}>
+                  <IconEdit size={14} color="#fff" />
+                  <Text style={s.actionBtnText}>Edit</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          
+            {user?.permissions?.perm_idcard_download_list && (
+              <TouchableOpacity onPress={downloadCard} activeOpacity={0.85} style={s.actionBtnHalf}>
+                <LinearGradient colors={['#7c3aed', '#6d28d9']} start={{x:0, y:0}} end={{x:1, y:0}} style={s.actionBtnGradient}>
+                  <IconDownload size={14} color="#fff" />
+                  <Text style={s.actionBtnText}>Download</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {user?.permissions?.perm_idcard_delete && (
+              <TouchableOpacity onPress={deleteCard} activeOpacity={0.85} style={s.actionBtnFull}>
+                <View style={s.deleteActionBtn}>
+                  <IconTrash size={14} color={colors.red} />
+                  <Text style={s.deleteActionBtnText}>Move to Pool</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        <View style={s.timestampRow}>
+          <Text style={s.tsText}>Updated: {card.updated_at || '-'}</Text>
+        </View>
+      </ScrollView>
+      <CardModalForm 
+        visible={showForm} 
+        onClose={() => setShowForm(false)} 
+        tableId={card.table_id}
+        cardId={card.id}
+        onSuccess={() => loadCard(true)}
+      />
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({...p, visible: false}))} />
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.surfaceBg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  scroll: { flex: 1 }, scrollC: { padding: 16, paddingBottom: 40 },
+  heroCard: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.md, marginBottom: 20 },
+  heroTop: { flexDirection: 'row' },
+  photoFrame: { width: 90, height: 110, borderRadius: radius.md, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  photo: { width: '100%', height: '100%' },
+  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2' },
+  emptyPhotoText: { fontSize: 8, fontFamily: fontFamily.bold, color: '#fca5a5', marginTop: 4 },
+  heroInfo: { flex: 1, justifyContent: 'center' },
+  cardName: { fontSize: 20, fontFamily: fontFamily.bold, color: colors.gray800 },
+  tableName: { fontSize: 13, color: colors.gray500, marginTop: 4, fontFamily: fontFamily.medium },
+  statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
+  vLine: { width: 1, height: 16, backgroundColor: '#e2e8f0' },
+  srNo: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray400 },
+  section: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 8 },
+  sectionTitle: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase' },
+  fieldsList: { padding: 8 },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 8, borderTopWidth: 1, borderTopColor: '#f8fafc' },
+  fieldKey: { fontSize: 11, fontWeight: '700', color: colors.gray400, textTransform: 'uppercase' },
+  fieldVal: { fontSize: 13, fontWeight: '600', color: colors.gray700, flex: 1, textAlign: 'right', marginLeft: 20 },
+  fieldValEmpty: { color: colors.gray300, fontStyle: 'italic', fontSize: 11 },
+  emptyFields: { padding: 20, alignItems: 'center' },
+  emptyFieldsText: { fontSize: 12, color: colors.gray400, fontStyle: 'italic' },
+  actions: { },
+  editBtnWrap: { borderRadius: radius.md, overflow: 'hidden', ...shadows.md },
+  editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
+  editBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  lockedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: colors.gray100, borderRadius: radius.md },
+  lockedNoteText: { fontSize: 12, color: colors.gray500, fontWeight: '600' },
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 },
+  statusOption: { minWidth: '30%' },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, marginTop: 10 },
+  deleteBtnText: { fontSize: 12, color: '#ef4444', fontWeight: '600' },
+  timestampRow: { marginTop: 24, alignItems: 'center' },
+  tsText: { fontSize: 10, color: colors.gray400 },
+  errText: { fontSize: 14, color: colors.error, textAlign: 'center' },
+
+    // Status buttons grid styling
+    statusButtonsWrap: { padding: 12, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+    statusBtn: { flex: 1, minWidth: '30%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: radius.md, borderWidth: 1, gap: 6 },
+    statusBtnActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+    statusBtnText: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray600, textAlign: 'center' },
+    statusBtnTextActive: { color: '#fff' },
+  
+    // Bottom action buttons
+    actionButtonsRow: { flexDirection: 'row', gap: 12, marginBottom: 20, marginTop: 16 },
+    actionBtnHalf: { flex: 1, borderRadius: radius.md, overflow: 'hidden', ...shadows.md },
+    actionBtnFull: { width: '100%', borderRadius: radius.md, overflow: 'hidden', marginTop: 12 },
+    actionBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 8 },
+    actionBtnText: { fontSize: 13, fontFamily: fontFamily.bold, color: '#fff' },
+    deleteActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderWidth: 1.5, borderColor: colors.red, borderRadius: radius.md, backgroundColor: 'rgba(239, 68, 68, 0.05)' },
+    deleteActionBtnText: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.red, marginLeft: 8 },
+});
+
+function DetailStatusIcon({ status, size, color }) {
+  if (status === 'pending') return <IconClock size={size} color={color} />;
+  if (status === 'verified') return <IconCheck size={size} color={color} />;
+  if (status === 'approved') return <IconThumbsUp size={size} color={color} />;
+  if (status === 'download') return <IconDownload size={size} color={color} />;
+  if (status === 'reprint') return <IconClock size={size} color={color} />; // Fallback
+  return <IconPool size={size} color={color} />;
+}

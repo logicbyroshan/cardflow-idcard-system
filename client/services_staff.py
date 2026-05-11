@@ -295,7 +295,7 @@ class ClientStaffService(BaseService):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Check permission
-            if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
+            if not PermissionService.has(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
 
             staff_only_fields = [
@@ -328,6 +328,7 @@ class ClientStaffService(BaseService):
                 assigned_group_ids = [group.id for group in staff.assigned_groups.all()]
                 item = {
                     'id': staff.id,
+                    'user_id': staff.user.id,
                     'name': staff.user.get_full_name() or staff.user.username,
                     'email': cls._public_email(staff.user.email),
                     'phone': staff.user.phone or '',
@@ -374,7 +375,7 @@ class ClientStaffService(BaseService):
                 return ServiceResult(success=False, message='Client profile not found')
 
             # Match the same gate as list/create/update/delete staff operations.
-            if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
+            if not PermissionService.has(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
             
             # Get staff and verify ownership
@@ -448,15 +449,15 @@ class ClientStaffService(BaseService):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Check permission
-            if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
+            if not PermissionService.has(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
 
             # Parse name - handle both formats: {name} or {first_name, last_name}
-            first_name = data.get('first_name', '').strip()
-            last_name = data.get('last_name', '').strip()
+            first_name = str(data.get('first_name') or '').strip()
+            last_name = str(data.get('last_name') or '').strip()
             if not first_name:
                 # Fallback to parsing 'name' field
-                name = data.get('name', '').strip()
+                name = str(data.get('name') or '').strip()
                 name_parts = name.split() if name else []
                 first_name = name_parts[0] if name_parts else ''
                 last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
@@ -465,7 +466,7 @@ class ClientStaffService(BaseService):
             if not display_name:
                 return ServiceResult(success=False, message='Name is required')
 
-            raw_email = data.get('email', '').strip().lower()
+            raw_email = str(data.get('email') or '').strip().lower()
             if raw_email:
                 # Check for duplicate email
                 if User.objects.filter(email__iexact=raw_email).exists():
@@ -493,8 +494,8 @@ class ClientStaffService(BaseService):
             # Password policy:
             # - if custom password is provided, use it
             # - otherwise phone number is required and used as password
-            phone = data.get('phone', '').strip()
-            password = data.get('password', '').strip()
+            phone = str(data.get('phone') or '').strip()
+            password = str(data.get('password') or '').strip()
             used_phone_as_password = False
             if not password:
                 if phone:
@@ -737,7 +738,7 @@ class ClientStaffService(BaseService):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Check permission
-            if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
+            if not PermissionService.has(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
             
             with transaction.atomic():
@@ -774,12 +775,12 @@ class ClientStaffService(BaseService):
 
                 # Update user fields - handle both name formats
                 if 'first_name' in data:
-                    staff_user.first_name = data['first_name'].strip()
+                    staff_user.first_name = str(data['first_name'] or '').strip()
                 if 'last_name' in data:
-                    staff_user.last_name = data['last_name'].strip()
+                    staff_user.last_name = str(data['last_name'] or '').strip()
 
                 # Also handle combined 'name' field
-                name = data.get('name', '').strip()
+                name = str(data.get('name') or '').strip()
                 if name and 'first_name' not in data:
                     name_parts = name.split()
                     staff_user.first_name = name_parts[0] if name_parts else ''
@@ -904,7 +905,7 @@ class ClientStaffService(BaseService):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Check permission
-            if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
+            if not PermissionService.has(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
             
             with transaction.atomic():
@@ -937,7 +938,7 @@ class ClientStaffService(BaseService):
                 return ServiceResult(success=False, message='Client profile not found')
             
             # Check permission
-            if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
+            if not PermissionService.has(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
             
             # Get staff and verify ownership
@@ -972,7 +973,7 @@ class ClientStaffService(BaseService):
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
 
-            if not PermissionService.has_permission(user, 'perm_set_temp_password'):
+            if not PermissionService.has(user, 'perm_set_temp_password'):
                 return ServiceResult(success=False, message='Permission denied')
 
             staff = Staff.objects.filter(
