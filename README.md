@@ -20,7 +20,7 @@ Live domains:
 
 Current version source of truth:
 
-- VERSION.txt: v3.19.0
+- VERSION.txt: v3.20.0
 Last deep README refresh: 2026-04-16
 
 ### Trusted Clients — Persistent Logo Cover Colors (2026-05-02)
@@ -127,6 +127,13 @@ This section summarizes important recent platform-level updates now live on main
 - Windows-safe CSS build flow with rollback protection in build-css.bat.
 - Bundled JS/CSS dist build integrated into the same build flow.
 - Better guardrails around missing static marker tokens during CSS builds.
+
+### 6) Mobile Icon Standardization & Performance Stabilization (2026-05-11)
+
+- **Eliminated Android Startup Crashes**: Fully migrated the icon infrastructure from `@expo/vector-icons` (FontAwesome5/Material) to a centralized SVG-based `DynamicIcon` system. This resolves the `ReferenceError: Property 'fontFamily' doesn't exist` crashes on Android devices.
+- **Improved Cold Boot Times**: Removed font-loading dependencies during the application initialization phase, speeding up startup on mid-range and premium devices.
+- **Global UI Coverage**: Updated Home, Login, Welcome, Landing, and Card List screens to use 100% SVG iconography, ensuring visual parity and reliability across all user roles.
+- **Production Build v1.0.44**: Incremented mobile versioning and configured official production signing keys for Play Store rollout.
 
 ---
 
