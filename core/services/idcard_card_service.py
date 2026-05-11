@@ -933,7 +933,7 @@ class IDCardCardService(BaseService):
             return ServiceResult(
                 success=True,
                 message='ID Card created successfully!',
-                data={'card': cls.serialize_card(card)}
+                data={'card': cls.serialize_card(card, sr_no=1, table_fields=table.fields)}
             )
 
         except Exception as e:

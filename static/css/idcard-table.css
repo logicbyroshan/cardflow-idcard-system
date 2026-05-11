@@ -276,6 +276,19 @@ body:has(.idcard-actions-page) {
     }
 }
 
+/* Transport/Route columns — enable word wrapping */
+.idcard-table td[data-field-name*="transport"],
+.idcard-table td[data-field-name*="route"],
+.idcard-table td[data-field-name*="TRANSPORT"],
+.idcard-table td[data-field-name*="ROUTE"] {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    hyphens: auto;
+    min-width: 60px;
+}
+
 /* Image field cells - percentage with min-width */
 .idcard-table td.dynamic-field.image-field {
     text-align: center;
@@ -394,6 +407,9 @@ body:has(.idcard-actions-page) {
     width: 50px;
     min-width: 50px;
     max-width: 55px;
+    border: 1px solid var(--color-gray-200) !important;
+    border-bottom: 1px solid var(--color-gray-200) !important;
+    border-right: 1px solid var(--color-gray-200) !important;
 }
 
 /* Ensure image-field overrides left-aligned dynamic-field */

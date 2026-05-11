@@ -49,13 +49,48 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card added successfully!');
             IDCardApp.closeSideModal();
-            // Refresh table in-place instead of full page reload
-            if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
-                window.IDCardApp.refreshCardTable();
-            } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
-                window.IDCardPage.navigateStatusNoReload('pending');
-            } else {
-                console.warn('create card fallback skipped: no refresh bridge available');
+            
+            // Try to prepend new card to table without full refresh
+            var handled = false;
+            
+            // First try: prepend to table (new implementation)
+            if (window.IDCardApp && typeof window.IDCardApp.prependCardRowToTable === 'function' && data.card) {
+                try {
+                    window.IDCardApp.prependCardRowToTable(data.card);
+                    handled = true;
+                    console.log('Card prepended successfully');
+                } catch (err) {
+                    console.error('prependCardRowToTable failed:', err);
+                    handled = false;
+                }
+            }
+            
+            // Fallback 1: full table refresh
+            if (!handled && window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                try {
+                    window.IDCardApp.refreshCardTable();
+                    handled = true;
+                    console.log('Card table refreshed');
+                } catch (err) {
+                    console.error('refreshCardTable failed:', err);
+                    handled = false;
+                }
+            }
+            
+            // Fallback 2: navigate to status
+            if (!handled && window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                try {
+                    window.IDCardPage.navigateStatusNoReload('pending');
+                    handled = true;
+                    console.log('Navigated to pending');
+                } catch (err) {
+                    console.error('navigateStatusNoReload failed:', err);
+                    handled = false;
+                }
+            }
+            
+            if (!handled) {
+                console.error('All card refresh methods failed');
             }
         } else {
             if (typeof showToast === 'function') showToast(data.message || 'Error adding card', false);

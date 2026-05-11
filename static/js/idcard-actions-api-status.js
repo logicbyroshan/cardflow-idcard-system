@@ -19,6 +19,101 @@ function reindexVisibleSrNumbers() {
     });
 }
 
+/**
+ * Prepend a newly created card row to the table without full refresh.
+ * Updates SR numbers and internal state to match verify/delete/pool behavior.
+ * @param {Object} cardData - Card data from API (with id, field_data, ordered_fields, sr_no, etc.)
+ */
+function prependCardRowToTable(cardData) {
+    if (!cardData || !cardData.id) {
+        console.error('prependCardRowToTable: invalid card data', cardData);
+        return;
+    }
+
+    try {
+        var tableBody = document.getElementById('cardsTableBody');
+        if (!tableBody) {
+            console.error('prependCardRowToTable: cardsTableBody not found');
+            return;
+        }
+
+        // Create the row DOM element using the same function as table rendering
+        var newRow = null;
+        if (typeof IDCardApp._createRowFromCard === 'function') {
+            newRow = IDCardApp._createRowFromCard(cardData);
+        } else {
+            console.error('prependCardRowToTable: _createRowFromCard not available on IDCardApp');
+            console.error('Available on IDCardApp:', Object.keys(IDCardApp).filter(k => k.includes('create') || k.includes('row') || k.includes('render')));
+            return;
+        }
+
+        if (!newRow) {
+            console.error('prependCardRowToTable: failed to create row');
+            return;
+        }
+
+        // Set initial state for animation
+        newRow.style.opacity = '0';
+        newRow.style.transform = 'translateY(-10px)';
+
+        // Prepend to table body
+        tableBody.insertBefore(newRow, tableBody.firstChild);
+
+        // Animate in
+        requestAnimationFrame(function() {
+            newRow.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            newRow.style.opacity = '1';
+            newRow.style.transform = 'translateY(0)';
+        });
+
+        // Update internal state arrays if using table state module
+        var _ts = IDCardApp._ts;
+        if (_ts) {
+            // Add to allRows and filteredRows (new rows should always be visible)
+            if (Array.isArray(_ts.allRows)) {
+                _ts.allRows.unshift(newRow);
+            }
+            if (Array.isArray(_ts.filteredRows)) {
+                _ts.filteredRows.unshift(newRow);
+            }
+
+            // Track in loaded IDs
+            if (_ts._loadedCardIds && typeof _ts._loadedCardIds.add === 'function') {
+                _ts._loadedCardIds.add(Number(cardData.id));
+            }
+
+            // Update lazy load counters
+            if (_ts.lazyLoadState) {
+                if (typeof _ts.lazyLoadState.loadedCount === 'number') {
+                    _ts.lazyLoadState.loadedCount++;
+                }
+                if (typeof _ts.lazyLoadState.totalCount === 'number') {
+                    _ts.lazyLoadState.totalCount++;
+                }
+            }
+        }
+
+        // Re-index SR numbers for all visible rows
+        reindexVisibleSrNumbers();
+
+        // Update button states and counts
+        if (typeof IDCardApp.updateButtonStates === 'function') {
+            IDCardApp.updateButtonStates();
+        }
+        refreshStatusCounts();
+
+        // Dispatch custom event for listeners
+        document.dispatchEvent(new CustomEvent('idcard:card-added', {
+            detail: { cardId: cardData.id, card: cardData }
+        }));
+
+        console.log('prependCardRowToTable: successfully added card', cardData.id);
+
+    } catch (err) {
+        console.error('prependCardRowToTable error:', err);
+    }
+}
+
 // ==========================================
 // HTMX TABLE REFRESH HELPER
 // ==========================================
@@ -570,6 +665,7 @@ IDCardApp.removeCardRow = removeCardRow;
 IDCardApp.removeCardRows = removeCardRows;
 IDCardApp.refreshStatusCounts = refreshStatusCounts;
 IDCardApp.reindexVisibleSrNumbers = reindexVisibleSrNumbers;
+IDCardApp.prependCardRowToTable = prependCardRowToTable;
 IDCardApp.showWorkflowConfirm = showWorkflowConfirm;
 IDCardApp.extractRetrieveClassChangeDetails = _extractRetrieveClassChangeDetails;
 IDCardApp.promptRetrieveClassAndConfirm = promptRetrieveClassAndConfirm;
