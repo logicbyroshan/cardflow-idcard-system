@@ -873,6 +873,8 @@ class PdfExporter:
                 spec = get_column_spec(name, ftype)
                 col_cfg_idx = field_idx + 1  # +1 because configs[0] = Sr No
                 is_nowrap = column_configs[col_cfg_idx].get('nowrap', False) if column_configs and col_cfg_idx < len(column_configs) else False
+                if column_category == 'bus_route':
+                    is_nowrap = False
 
                 is_email_cell = (column_category == 'email')
                 is_phone_cell = (column_category == 'mobile')
