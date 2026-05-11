@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, TouchableWithoutFeedback } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { IconWarning, IconArrowRight, IconClock, IconTrash, IconCheck, IconUsers, IconList } from './Icons';
+import { DynamicIcon, IconWarning, IconArrowRight, IconClock, IconTrash, IconCheck, IconUsers, IconList } from './Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, shadows, fontFamily } from '../theme';
 
@@ -161,9 +161,5 @@ const s = StyleSheet.create({
 });
 
 function ModalIcon({ name, size, color }) {
-  if (name === 'trash-alt' || name === 'trash') return <IconTrash size={size} color={color} />;
-  if (name === 'user-secret' || name === 'users' || name === 'user-minus') return <IconUsers size={size} color={color} />;
-  if (name === 'check' || name === 'check-circle' || name === 'shield-alt') return <IconCheck size={size} color={color} />;
-  if (name === 'layer-group') return <IconList size={size} color={color} />;
-  return <IconWarning size={size} color={color} />; // Fallback
+  return <DynamicIcon name={name} size={size} color={color} />;
 }

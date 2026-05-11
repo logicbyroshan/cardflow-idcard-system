@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { 
-  View, Text, FlatList, TouchableOpacity, Image, StyleSheet, 
-  ActivityIndicator, RefreshControl, Alert, TextInput, ScrollView, Modal,
+  View, Text, FlatList, TouchableOpacity, StyleSheet, 
+  ActivityIndicator, RefreshControl, TextInput, ScrollView,
   Linking
 } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { IconPending, IconVerified, IconApproved, IconDownload, IconPool, IconTotal, IconSearch, IconFilter, IconPlus, IconChevronRight, IconTrash, IconEdit, IconHome, IconList } from '../components/Icons';
+import { DynamicIcon, IconPending, IconVerified, IconApproved, IconDownload, IconSearch, IconFilter, IconTrash, IconList, IconCheck } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import CardItem from '../components/CardItem';
 import TopBar from '../components/TopBar';
@@ -17,7 +16,7 @@ import CardModalForm from '../components/CardModalForm';
 import ConfirmModal from '../components/ConfirmModal';
 import FilterDrawer from '../components/FilterDrawer';
 import { apiGet, apiPost, BASE_URL } from '../api/client';
-import { colors, gradients, shadows, radius, spacing, typography, roleThemes, fontFamily } from '../theme';
+import { colors, gradients, shadows, radius, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
 const ITEM_HEIGHT = 86;
@@ -43,7 +42,6 @@ const EmptyList = React.memo(function EmptyList({ status }) {
 export default function CardListScreen({ navigation, route }) {
   const { tableId, status: initialStatus } = route?.params || {};
   const { user } = useAuth();
-  const theme = roleThemes[user?.role] || roleThemes.default;
 
   const allowedStatuses = useMemo(() => {
     const perms = user?.permissions || {};
@@ -74,8 +72,6 @@ export default function CardListScreen({ navigation, route }) {
     }
   }, [initialStatus]);
 
-  const statusDisplay = useMemo(() => (currentStatus || '').charAt(0).toUpperCase() + (currentStatus || '').slice(1), [currentStatus]);
-
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -86,29 +82,24 @@ export default function CardListScreen({ navigation, route }) {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
 
-  // Bulk select state
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [selectAllLoading, setSelectAllLoading] = useState(false);
 
-  // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState({});
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Form Modal state
   const [showForm, setShowForm] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
 
-  // Confirm Modal state
   const [confirmModal, setConfirmModal] = useState({ 
     visible: false, title: '', message: '', icon: '', color: colors.brandPrimary, onConfirm: null,
     statusFrom: '', statusTo: '', note: ''
   });
 
-  // Table counts state
   const [tableCounts, setTableCounts] = useState({ pending: 0, verified: 0, approved: 0, download: 0, pool: 0, reprint: 0 });
 
   const loadTableCounts = useCallback(async () => {
@@ -145,7 +136,7 @@ export default function CardListScreen({ navigation, route }) {
         search: query,
         ...activeFilters
       };
-      const { ok, data } = await apiGet(`/app/api/table/${tableId}/cards/`, params);
+      const { ok, data } = await apiGet(`/api/mobile/table/${tableId}/cards/`, params);
       if (ok && data?.success) {
         const newCards = data.data?.cards || [];
         setCards(prev => append ? [...prev, ...newCards] : newCards);
@@ -201,7 +192,7 @@ export default function CardListScreen({ navigation, route }) {
         setSelectAllLoading(true);
         try {
           const params = { status: currentStatus, search: searchQuery, ...activeFilters };
-          const { ok, data } = await apiGet(`/app/api/table/${tableId}/cards/all-ids/`, params);
+          const { ok, data } = await apiGet(`/api/mobile/table/${tableId}/cards/all-ids/`, params);
           if (ok && data?.success) {
             setSelectedIds(new Set(data.data?.ids || []));
           }
@@ -218,7 +209,7 @@ export default function CardListScreen({ navigation, route }) {
     const ids = Array.from(selectedIds);
     setBulkLoading(true);
     try {
-      const { data } = await apiPost(`/app/api/table/${tableId}/cards/bulk-status/`, {
+      const { data } = await apiPost(`/api/mobile/table/${tableId}/cards/bulk-status/`, {
         card_ids: ids,
         status: newStatus
       });
@@ -236,7 +227,7 @@ export default function CardListScreen({ navigation, route }) {
 
   const handleSingleStatus = async (id, newStatus) => {
     try {
-      const { data } = await apiPost(`/app/api/card/${id}/status/`, { status: newStatus });
+      const { data } = await apiPost(`/api/mobile/card/${id}/status/`, { status: newStatus });
       if (data?.success) {
         showToast(data.message || 'Status updated', 'success');
         setCards(prev => prev.filter(c => c.id !== id));
@@ -249,12 +240,11 @@ export default function CardListScreen({ navigation, route }) {
 
   const handleDownloadPDF = async () => {
     try {
-      let url = `${BASE_URL}/app/api/table/${tableId}/download-pdf/?status=${currentStatus}`;
+      let url = `${BASE_URL}/api/mobile/table/${tableId}/download-pdf/?status=${currentStatus}`;
       
       if (selectedIds.size > 0) {
         url += `&selected_ids=${Array.from(selectedIds).join(',')}`;
       } else {
-        // Pass current search and filters if no specific cards selected
         if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
         if (activeFilters.class) url += `&class=${encodeURIComponent(activeFilters.class)}`;
         if (activeFilters.section) url += `&section=${encodeURIComponent(activeFilters.section)}`;
@@ -281,7 +271,7 @@ export default function CardListScreen({ navigation, route }) {
         setBulkLoading(true);
         setConfirmModal(p => ({ ...p, visible: false }));
         try {
-          const { data } = await apiPost(`/app/api/card/${id}/delete/`, {});
+          const { data } = await apiPost(`/api/mobile/card/${id}/delete/`, {});
           if (data?.success) { 
             showToast('Moved to pool', 'success'); 
             setCards(prev => prev.filter(c => c.id !== id));
@@ -298,7 +288,6 @@ export default function CardListScreen({ navigation, route }) {
     const opt = STATUS_OPTIONS.find(o => o.key === newStatus);
     const label = opt?.label || newStatus;
     
-    // Only confirm for serious transitions (e.g., verifying/approving)
     if (newStatus === 'pending' || newStatus === 'download') {
       handleSingleStatus(id, newStatus);
       return;
@@ -320,13 +309,6 @@ export default function CardListScreen({ navigation, route }) {
     });
   };
 
-  const onCardLongPress = useCallback((cardId) => {
-    if (!selectMode) {
-      setSelectMode(true);
-      setSelectedIds(new Set([cardId]));
-    }
-  }, [selectMode]);
-
   const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); };
 
   const renderItem = useCallback(({ item }) => {
@@ -345,7 +327,7 @@ export default function CardListScreen({ navigation, route }) {
         permissions={perms}
       />
     );
-  }, [selectedIds, toggleSelect, selectMode, navigation, tableId, currentStatus, handleSingleStatusConfirm, handleSingleDelete, user]);
+  }, [selectedIds, toggleSelect, selectMode, currentStatus, handleSingleStatusConfirm, handleSingleDelete, user]);
   const keyExtractor = useCallback((item) => item.id.toString(), []);
 
   return (
@@ -358,7 +340,6 @@ export default function CardListScreen({ navigation, route }) {
         onAdd={(tableId && (user?.permissions?.perm_idcard_add || user?.permissions?.perm_idcard_create || user?.permissions?.perm_add_card)) ? () => { setEditingCardId(null); setShowForm(true); } : undefined}
         onDownload={handleDownloadPDF}
       >
-        {/* Badges Bar (Inside Gradient) */}
         <View style={s.badgeBarWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.badgeBar}>
             {allowedStatuses.map(opt => {
@@ -397,7 +378,6 @@ export default function CardListScreen({ navigation, route }) {
           </ScrollView>
         </View>
 
-        {/* Search Bar (Inside Gradient) */}
         <View style={s.searchRow}>
           <TouchableOpacity style={s.leftIconBtn} onPress={() => setShowFilterDrawer(true)} activeOpacity={0.7}>
             <IconFilter size={14} color="#fff" />
@@ -417,7 +397,6 @@ export default function CardListScreen({ navigation, route }) {
         </View>
       </TopBar>
 
-      {/* Select All Row */}
       <View style={s.selectAllRow}>
         <TouchableOpacity 
           style={s.selectAllBtn} 
@@ -430,7 +409,7 @@ export default function CardListScreen({ navigation, route }) {
           ) : (
             <View style={s.selectAllContent}>
               <View style={[s.checkboxSmall, selectMode && selectedIds.size > 0 && s.checkboxCheckedSmall]}>
-                {selectMode && selectedIds.size > 0 && <FontAwesome5 name="check" size={8} color="#fff" />}
+                {selectMode && selectedIds.size > 0 && <DynamicIcon name="check" size={8} color="#fff" />}
               </View>
               <Text style={s.selectAllText}>Select All</Text>
             </View>

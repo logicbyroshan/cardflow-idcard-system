@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon, IconProfile, IconLock, IconWarning, IconShield, IconBuilding } from '../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
@@ -106,7 +106,7 @@ export default function LoginScreen({ navigation }) {
           {/* Top branding */}
           <View style={styles.brandSection}>
             <View style={styles.appIcon}>
-              <FontAwesome5 name="id-card" size={30} color={colors.white} solid />
+              <DynamicIcon name="id-card" size={30} color={colors.white} />
             </View>
             <Text style={styles.brandTitle}>Adarsh ID Cards</Text>
             <Text style={styles.brandSubtitle}>Management Portal</Text>
@@ -120,7 +120,7 @@ export default function LoginScreen({ navigation }) {
             {/* Error bar */}
             {!!error && (
               <View style={styles.errorBar}>
-                <FontAwesome5 name="exclamation-circle" size={14} color={colors.error} solid />
+                <DynamicIcon name="exclamation-circle" size={14} color={colors.error} />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}

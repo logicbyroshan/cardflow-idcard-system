@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from './Icons';
 import { colors, radius, fontFamily, typography } from '../theme';
 
 export default function Input({
@@ -23,7 +23,11 @@ export default function Input({
     <View style={[styles.wrap, containerStyle]}>
       {label ? <Text style={[styles.label, labelStyle]}>{label}</Text> : null}
       <View style={[styles.field, error && styles.fieldError, style]}>
-        {leftIcon ? <FontAwesome5 name={leftIcon} size={12} color={colors.gray400} style={[styles.leftIcon, { marginRight: 10 }]} /> : null}
+        {leftIcon ? (
+          <View style={styles.leftIcon}>
+            <DynamicIcon name={leftIcon} size={12} color={colors.gray400} />
+          </View>
+        ) : null}
         <TextInput
           style={[styles.input, leftIcon && styles.inputWithLeft, showToggle && styles.inputWithRight, inputStyle]}
           placeholderTextColor={colors.gray300}
@@ -32,11 +36,11 @@ export default function Input({
         />
         {showToggle ? (
           <TouchableOpacity onPress={() => setHidden(v => !v)} style={styles.rightBtn} activeOpacity={0.7}>
-            <FontAwesome5 name={hidden ? 'eye' : 'eye-slash'} size={12} color={colors.gray400} />
+            <DynamicIcon name={hidden ? 'eye' : 'eye-slash'} size={12} color={colors.gray400} />
           </TouchableOpacity>
         ) : rightIcon ? (
           <View style={styles.rightBtn}>
-            <FontAwesome5 name={rightIcon} size={12} color={colors.gray400} />
+            <DynamicIcon name={rightIcon} size={12} color={colors.gray400} />
           </View>
         ) : null}
       </View>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, typography, spacing, radius } from '../theme';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from './Icons';
 
 
 const STATUS_STYLES = {
@@ -25,7 +25,7 @@ export default function StatusBadge({ status, count, size = 'md', variant = 'sol
       isGlass && styles.badgeGlass,
       isGlass && { borderColor: style.text + '20' }
     ]}>
-      {showIcon && <FontAwesome5 name={style.icon} size={isLarge ? 12 : 9} color={style.text} style={{ marginRight: 6 }} />}
+      {showIcon && <DynamicIcon name={style.icon} size={isLarge ? 12 : 9} color={style.text} style={{ marginRight: 6 }} />}
       <Text style={[
         styles.text,
         { color: style.text },

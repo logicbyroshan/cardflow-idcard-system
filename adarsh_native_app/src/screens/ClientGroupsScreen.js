@@ -18,7 +18,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
 
   const loadData = useCallback(async () => {
     try {
-      const { ok, data } = await apiGet(`/app/api/client/${clientId}/tables/`);
+      const { ok, data } = await apiGet(`/api/mobile/client/${clientId}/tables/`);
       if (ok && data?.success) {
         return data.data || [];
       } else {

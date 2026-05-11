@@ -98,7 +98,7 @@ async function apiFetch(path, options = {}) {
   };
 
   // Always attach CSRF for mutations when available.
-  // The backend CSRF bypass middleware already exempts /app/api/ paths,
+  // The backend CSRF bypass middleware already exempts /api/mobile/ paths,
   // but sending it when we have it is strictly safer.
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && cachedCsrf) {
     headers['X-CSRFToken'] = cachedCsrf;

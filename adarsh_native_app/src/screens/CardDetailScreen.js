@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Linking } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { IconClock, IconWarning, IconList, IconEdit, IconDownload, IconTrash, IconLock, IconFilter, IconCheck, IconThumbsUp } from '../components/Icons';
+import { DynamicIcon, IconClock, IconWarning, IconList, IconEdit, IconDownload, IconTrash, IconLock, IconFilter, IconCheck, IconThumbsUp } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -30,7 +30,7 @@ export default function CardDetailScreen({ navigation, route }) {
 
   const loadCard = useCallback(async () => {
     try {
-      const { ok, data } = await apiGet(`/app/api/card/${cardId}/detail/`);
+      const { ok, data } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
       if (ok && data?.success) {
         return data.data;
       } else {
@@ -46,7 +46,7 @@ export default function CardDetailScreen({ navigation, route }) {
   const updateStatus = async (status) => {
     setUpdating(true);
     try {
-      const { data } = await apiPost(`/app/api/card/${cardId}/status/`, { status });
+      const { data } = await apiPost(`/api/mobile/card/${cardId}/status/`, { status });
       showToast(data?.success ? 'Status updated!' : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
       if (data?.success) refresh();
     } catch (e) { showToast('Network error', 'error'); }
@@ -58,7 +58,7 @@ export default function CardDetailScreen({ navigation, route }) {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move to Pool', style: 'destructive', onPress: async () => {
         try {
-          const { data } = await apiPost(`/app/api/card/${cardId}/delete/`, {});
+          const { data } = await apiPost(`/api/mobile/card/${cardId}/delete/`, {});
           if (data?.success) {
             showToast('Moved to pool', 'success');
             setTimeout(() => navigation.goBack(), 800);
@@ -70,7 +70,7 @@ export default function CardDetailScreen({ navigation, route }) {
 
     const downloadCard = async () => {
       try {
-        const url = `${BASE_URL}/app/api/card/${cardId}/download-pdf/`;
+        const url = `${BASE_URL}/api/mobile/card/${cardId}/download-pdf/`;
         Linking.openURL(url);
       } catch (e) {
         showToast('Could not download card', 'error');
@@ -125,7 +125,7 @@ export default function CardDetailScreen({ navigation, route }) {
                 <Image source={{ uri: card.photo_url.startsWith('http') ? card.photo_url : `${BASE_URL}${card.photo_url}` }} style={s.photo} />
               ) : (
                 <View style={[s.photoPlaceholder, isPending && { backgroundColor: '#fef08a' }, isEmpty && { backgroundColor: '#f1f5f9' }]}>
-                  <IconClock size={24} color={isPending ? "#ca8a04" : "#cbd5e1"} />
+                  <DynamicIcon name={isPending ? 'clock' : 'user-alt-slash'} size={24} color={isPending ? "#ca8a04" : "#cbd5e1"} />
                   <Text style={[s.emptyPhotoText, { color: isPending ? "#ca8a04" : "#94a3b8" }]}>{isPending ? 'PENDING' : 'EMPTY'}</Text>
                 </View>
               )}

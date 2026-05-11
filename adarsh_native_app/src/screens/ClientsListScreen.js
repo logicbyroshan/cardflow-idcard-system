@@ -91,7 +91,7 @@ export default function ClientsListScreen({ navigation }) {
     setLoadingPerms(true);
     setShowPerms(true);
     try {
-      const { ok, data } = await apiGet(`/app/api/client/${client.id}/permissions/`);
+      const { ok, data } = await apiGet(`/api/mobile/client/${client.id}/permissions/`);
       if (ok && data.success) {
         setClientPerms(data.data || {});
       } else {
@@ -108,7 +108,7 @@ export default function ClientsListScreen({ navigation }) {
   const savePerms = async () => {
     setSavingPerms(true);
     try {
-      const { ok, data } = await apiPost(`/app/api/client/${permClientId}/permissions/update/`, {
+      const { ok, data } = await apiPost(`/api/mobile/client/${permClientId}/permissions/update/`, {
         permissions: clientPerms
       });
       if (ok && data.success) {
@@ -149,7 +149,7 @@ export default function ClientsListScreen({ navigation }) {
     setForm({ name: client.name || '', email: client.email || '', phone: client.phone || '', password: '' });
     setShowForm(true);
     try {
-      const { ok, data } = await apiGet(`/app/api/client/${client.id}/`);
+      const { ok, data } = await apiGet(`/api/mobile/client/${client.id}/`);
       if (ok && data?.success) {
         const c = data.client || {};
         setForm({ name: c.name || client.name || '', email: c.email || client.email || '', phone: c.phone || client.phone || '', password: '' });
@@ -162,7 +162,7 @@ export default function ClientsListScreen({ navigation }) {
     if (!editingId && !form.email.trim()) { showToast('Email is required', 'error'); return; }
     setSaving(true);
     try {
-      const url = editingId ? `/app/api/client/${editingId}/update/` : '/api/mobile/client/create/';
+      const url = editingId ? `/api/mobile/client/${editingId}/update/` : '/api/mobile/client/create/';
       const body = { ...form };
       if (!body.password) delete body.password;
       const { data } = await apiPost(url, body);
@@ -178,7 +178,7 @@ export default function ClientsListScreen({ navigation }) {
     setShowAssign(true);
     setLoadingAssign(true);
     try {
-      const { data } = await apiGet(`/app/api/client/${client.id}/tables/`);
+      const { data } = await apiGet(`/api/mobile/client/${client.id}/tables/`);
       if (data?.success) setAssignTables(data.tables || data.data || []);
     } catch (e) { }
     setLoadingAssign(false);
@@ -186,7 +186,7 @@ export default function ClientsListScreen({ navigation }) {
 
   const toggleClient = async (client) => {
     try {
-      const { data } = await apiPost(`/app/api/client/${client.id}/toggle/`, {});
+      const { data } = await apiPost(`/api/mobile/client/${client.id}/toggle/`, {});
       showToast(data?.success ? (data.message || 'Toggled') : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
       if (data?.success) loadClients();
     } catch (e) { showToast('Network error', 'error'); }
@@ -202,7 +202,7 @@ export default function ClientsListScreen({ navigation }) {
       onConfirm: async () => {
         setConfirmModal(p => ({ ...p, visible: false }));
         try {
-          const { data } = await apiPost(`/app/api/client/${client.id}/delete/`, {});
+          const { data } = await apiPost(`/api/mobile/client/${client.id}/delete/`, {});
           showToast(data?.success ? (data.message || 'Deleted') : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
           if (data?.success) loadClients();
         } catch (e) { showToast('Network error', 'error'); }

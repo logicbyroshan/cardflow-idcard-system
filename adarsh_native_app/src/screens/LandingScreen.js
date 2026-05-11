@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Animated,
 } from "react-native";
-import { FontAwesome5 } from "@expo/vector-icons";
+import { DynamicIcon } from "../components/Icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -52,7 +52,7 @@ export default function LandingScreen({ navigation }) {
   const loadLandingData = useCallback(async () => {
     try {
       const { ok, data: res } = await apiGet(
-        "https://adarshbhopal.in/app/api/pub/website/landing/",
+        "https://adarshbhopal.in/api/mobile/pub/website/landing/",
       );
       if (ok && res.success) return res.data;
       throw new Error(
@@ -94,7 +94,7 @@ export default function LandingScreen({ navigation }) {
     setSubmitting(true);
     try {
       const { data: res } = await apiPost(
-        "https://adarshbhopal.in/app/api/pub/website/contact/",
+        "https://adarshbhopal.in/api/mobile/pub/website/contact/",
         form,
       );
       setToast({
@@ -125,7 +125,7 @@ export default function LandingScreen({ navigation }) {
           style={StyleSheet.absoluteFill}
         />
         <View style={s.errorIconCircle}>
-          <FontAwesome5 name="wifi" size={32} color={colors.red} />
+          <DynamicIcon name="wifi" size={32} color={colors.red} />
           <View style={s.slash} />
         </View>
         <Text style={s.errorTitle}>Connection Issue</Text>
@@ -137,7 +137,7 @@ export default function LandingScreen({ navigation }) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <FontAwesome5 name="redo" size={12} color="#fff" />
+            <DynamicIcon name="redo" size={12} color="#fff" />
             <Text style={s.retryBtnText}>TAP TO RETRY</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -180,11 +180,9 @@ export default function LandingScreen({ navigation }) {
         <View style={s.headerInner}>
           <View style={s.logoSide}>
             <View style={s.logoWrap}>
-              <Image
-                source={require("../../assets/logo.png")}
-                style={s.logoImg}
-                resizeMode="contain"
-              />
+              <View style={s.logoCircle}>
+                <DynamicIcon name="id-card" size={20} color="#fff" />
+              </View>
             </View>
             <Text style={s.logoText}>ADARSH</Text>
           </View>
@@ -203,7 +201,7 @@ export default function LandingScreen({ navigation }) {
               <Text style={s.loginBtnText}>
                 {isAuthenticated ? "GO TO DASHBOARD" : "LOGIN PANEL"}
               </Text>
-              <FontAwesome5
+              <DynamicIcon
                 name={isAuthenticated ? "th-large" : "arrow-right"}
                 size={10}
                 color="#fff"
@@ -278,13 +276,13 @@ export default function LandingScreen({ navigation }) {
                 }
                 style={s.quickCatChip}
               >
-                <FontAwesome5
-                  name={
-                    cat.icon?.replace("fas ", "").replace("fa-", "") || "tag"
-                  }
-                  size={10}
-                  color={colors.brandLight}
-                />
+                <View style={s.catIconWrap}>
+                  <DynamicIcon
+                    name={cat.icon || "star"}
+                    size={18}
+                    color={colors.brandPrimary}
+                  />
+                </View>
                 <Text style={s.quickCatText}>{cat.name}</Text>
               </TouchableOpacity>
             ))}
@@ -403,7 +401,7 @@ export default function LandingScreen({ navigation }) {
                   ) : (
                     <>
                       <Text style={s.submitText}>Send Message</Text>
-                      <FontAwesome5 name="paper-plane" size={12} color="#fff" />
+                      <DynamicIcon name="paper-plane" size={12} color="#fff" />
                     </>
                   )}
                 </LinearGradient>
@@ -417,21 +415,21 @@ export default function LandingScreen({ navigation }) {
             </Text>
             <View style={s.socials}>
               <TouchableOpacity>
-                <FontAwesome5
+                <DynamicIcon
                   name="facebook"
                   size={18}
                   color={colors.gray400}
                 />
               </TouchableOpacity>
               <TouchableOpacity>
-                <FontAwesome5
+                <DynamicIcon
                   name="instagram"
                   size={18}
                   color={colors.gray400}
                 />
               </TouchableOpacity>
               <TouchableOpacity>
-                <FontAwesome5
+                <DynamicIcon
                   name="whatsapp"
                   size={18}
                   color={colors.gray400}
@@ -456,7 +454,7 @@ function BenefitItem({ icon, title, sub }) {
   return (
     <View style={s.benefitCard}>
       <View style={s.benefitIcon}>
-        <FontAwesome5 name={icon} size={14} color={colors.brandLight} />
+        <DynamicIcon name={icon} size={14} color={colors.brandLight} />
       </View>
       <Text style={s.benefitTitle}>{title}</Text>
       <Text style={s.benefitSub}>{sub}</Text>
@@ -468,7 +466,7 @@ function LandingInput({ icon, ...props }) {
   return (
     <View style={s.inputWrap}>
       <View style={s.inputIcon}>
-        <FontAwesome5 name={icon} size={12} color={colors.brandLight} />
+        <DynamicIcon name={icon} size={12} color={colors.brandLight} />
       </View>
       <TextInput
         {...props}

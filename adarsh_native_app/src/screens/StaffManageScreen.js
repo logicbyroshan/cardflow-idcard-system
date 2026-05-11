@@ -108,7 +108,7 @@ export default function StaffManageScreen({ navigation }) {
     setShowAssign(true);
     setLoadingAssign(true);
     try {
-      const { ok, data } = await apiGet(`/app/api/staff/${member.id}/assignable-items/`);
+      const { ok, data } = await apiGet(`/api/mobile/staff/${member.id}/assignable-items/`);
       if (ok && data?.success) {
         setAssignData({ groups: data.groups || [], tables: data.tables || [] });
       } else {
@@ -131,7 +131,7 @@ export default function StaffManageScreen({ navigation }) {
   const saveAssignment = async () => {
     setSavingAssign(true);
     try {
-      const { ok, data } = await apiPost(`/app/api/staff/${assigningId}/assign/`, {
+      const { ok, data } = await apiPost(`/api/mobile/staff/${assigningId}/assign/`, {
         assigned_groups: selectedGroupIds,
         assigned_table_ids: selectedTableIds,
         allowed_classes: allowedClasses.split(',').map(s => s.trim()).filter(s => !!s),
@@ -156,7 +156,7 @@ export default function StaffManageScreen({ navigation }) {
     if (!editingId && !form.email.trim()) { showToast('Email is required', 'error'); return; }
     setSaving(true);
     try {
-      const url = editingId ? `/app/api/staff/${editingId}/update/` : '/api/mobile/staff/create/';
+      const url = editingId ? `/api/mobile/staff/${editingId}/update/` : '/api/mobile/staff/create/';
       const body = { ...form };
       if (!body.password) delete body.password;
       const { data } = await apiPost(url, body);
@@ -168,7 +168,7 @@ export default function StaffManageScreen({ navigation }) {
 
   const toggleActive = async (member) => {
     try {
-      const { data } = await apiPost(`/app/api/staff/${member.id}/toggle/`, {});
+      const { data } = await apiPost(`/api/mobile/staff/${member.id}/toggle/`, {});
       showToast(data?.success ? (data.message || 'Toggled') : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
       if (data?.success) refresh();
     } catch (e) { showToast('Network error', 'error'); }
@@ -184,7 +184,7 @@ export default function StaffManageScreen({ navigation }) {
       onConfirm: async () => {
         setConfirmModal(p => ({ ...p, visible: false }));
         try {
-          const { data } = await apiPost(`/app/api/staff/${item.id}/delete/`, {});
+          const { data } = await apiPost(`/api/mobile/staff/${item.id}/delete/`, {});
           showToast(data?.message || 'Deleted', data?.success ? 'success' : 'error');
           if (data?.success) refresh();
         } catch (e) { showToast('Network error', 'error'); }

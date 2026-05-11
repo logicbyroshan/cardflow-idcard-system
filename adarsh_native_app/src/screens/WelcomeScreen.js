@@ -13,7 +13,7 @@ import {
   Linking,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { FontAwesome5 } from "@expo/vector-icons";
+import { DynamicIcon } from "../components/Icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   colors,
@@ -56,7 +56,7 @@ export default function WelcomeScreen({ navigation }) {
   const loadLandingData = async () => {
     try {
       const { ok, data } = await apiGet(
-        "https://adarshbhopal.in/app/api/pub/website/landing/",
+        "https://adarshbhopal.in/api/mobile/pub/website/landing/",
       );
       if (ok && data?.success) {
         setData(data);
@@ -78,7 +78,7 @@ export default function WelcomeScreen({ navigation }) {
     setSending(true);
     try {
       const { ok, data } = await apiPost(
-        "https://adarshbhopal.in/app/api/pub/website/contact/",
+        "https://adarshbhopal.in/api/mobile/pub/website/contact/",
         {
           ...contact,
           subject: "Mobile App Landing Enquiry",
@@ -139,7 +139,7 @@ export default function WelcomeScreen({ navigation }) {
           <View style={s.headerContent}>
             <View style={s.logoArea}>
               <View style={s.logoCircle}>
-                <FontAwesome5 name="id-card" size={20} color="#fff" />
+                <DynamicIcon name="id-card" size={20} color="#fff" />
               </View>
               <Text style={s.logoText}>ADARSH</Text>
             </View>
@@ -190,7 +190,7 @@ export default function WelcomeScreen({ navigation }) {
             {(data?.categories || []).map((cat) => (
               <TouchableOpacity key={cat.id} style={s.catCard}>
                 <View style={s.catIconWrap}>
-                  <FontAwesome5
+                  <DynamicIcon
                     name={cat.icon || "star"}
                     size={18}
                     color={colors.brandPrimary}
@@ -227,7 +227,7 @@ export default function WelcomeScreen({ navigation }) {
                 />
                 {prod.type === "video" && (
                   <View style={s.playIconOverlay}>
-                    <FontAwesome5 name="play" size={24} color="#fff" />
+                    <DynamicIcon name="play" size={24} color="#fff" />
                   </View>
                 )}
                 <LinearGradient
@@ -254,7 +254,7 @@ export default function WelcomeScreen({ navigation }) {
 
             <View style={s.form}>
               <View style={s.inputGroup}>
-                <FontAwesome5
+                <DynamicIcon
                   name="user"
                   size={12}
                   color="rgba(255,255,255,0.6)"
@@ -269,7 +269,7 @@ export default function WelcomeScreen({ navigation }) {
                 />
               </View>
               <View style={s.inputGroup}>
-                <FontAwesome5
+                <DynamicIcon
                   name="envelope"
                   size={12}
                   color="rgba(255,255,255,0.6)"
@@ -285,7 +285,7 @@ export default function WelcomeScreen({ navigation }) {
                 />
               </View>
               <View style={s.inputGroup}>
-                <FontAwesome5
+                <DynamicIcon
                   name="comment-alt"
                   size={12}
                   color="rgba(255,255,255,0.6)"
@@ -332,19 +332,19 @@ export default function WelcomeScreen({ navigation }) {
               }
               style={s.socialIcon}
             >
-              <FontAwesome5 name="whatsapp" size={16} color={colors.gray400} />
+              <DynamicIcon name="whatsapp" size={16} color={colors.gray400} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => Linking.openURL("https://facebook.com")}
               style={s.socialIcon}
             >
-              <FontAwesome5 name="facebook" size={16} color={colors.gray400} />
+              <DynamicIcon name="facebook" size={16} color={colors.gray400} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => Linking.openURL("https://instagram.com")}
               style={s.socialIcon}
             >
-              <FontAwesome5 name="instagram" size={16} color={colors.gray400} />
+              <DynamicIcon name="instagram" size={16} color={colors.gray400} />
             </TouchableOpacity>
           </View>
           <Text style={s.version}>v1.2.0 • Made with ❤️ in Bhopal</Text>

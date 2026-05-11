@@ -19,7 +19,7 @@ export default function ReprintScreen({ navigation, route }) {
       if (!clientId) {
         return { tables: [], totals: { request: 0, confirmed: 0, download: 0 } };
       }
-      const { ok, data } = await apiGet(`/app/api/reprint/${clientId}/`);
+      const { ok, data } = await apiGet(`/api/mobile/reprint/${clientId}/`);
       if (ok && data?.success) {
         return {
           tables: data.data?.tables || [],

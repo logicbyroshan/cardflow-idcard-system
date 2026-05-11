@@ -1,5 +1,14 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { 
+  FontAwesome5, 
+  MaterialCommunityIcons, 
+  Ionicons, 
+  Feather, 
+  Entypo, 
+  AntDesign, 
+  SimpleLineIcons,
+  Octicons
+} from '@expo/vector-icons';
 import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox } from 'react-native';
 LogBox.ignoreAllLogs();
 import { StatusBar } from 'expo-status-bar';
@@ -26,6 +35,12 @@ export default function App() {
     'SairaSemiCondensed-Bold': require('./assets/fonts/SairaSemiCondensed-Bold.ttf'),
     ...FontAwesome5.font,
     ...MaterialCommunityIcons.font,
+    ...Ionicons.font,
+    ...Feather.font,
+    ...Entypo.font,
+    ...AntDesign.font,
+    ...SimpleLineIcons.font,
+    ...Octicons.font,
   });
 
   useEffect(() => {

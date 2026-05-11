@@ -30,7 +30,7 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
     setLoading(true);
     try {
       // The endpoint returns list of fields and their unique values for filtering
-      const { ok, data } = await apiGet(`/app/api/table/${tableId}/filter-options/`, { status });
+      const { ok, data } = await apiGet(`/api/mobile/table/${tableId}/filter-options/`, { status });
 
       if (ok && data?.success) {
         setFilterOptions(data.data?.fields || []);

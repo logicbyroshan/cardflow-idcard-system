@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from './Icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiGet, apiPostForm } from '../api/client';
@@ -38,11 +39,11 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
     setError(null);
     try {
       // Load table fields
-      let { ok: fOk, data: fData } = await apiGet(`/app/api/table/${tableId}/filter-options/?status=pending`);
+      let { ok: fOk, data: fData } = await apiGet(`/api/mobile/table/${tableId}/filter-options/?status=pending`);
       
       // Fallback: If filter-options didn't provide fields, try the table config endpoint
       if (!fOk || !fData?.data?.fields || fData.data.fields.length === 0) {
-        const { ok: tOk, data: tData } = await apiGet(`/app/api/table/${tableId}/config/`);
+        const { ok: tOk, data: tData } = await apiGet(`/api/mobile/table/${tableId}/config/`);
         if (tOk && tData?.success && tData.data?.fields) {
           fData = tData;
           fOk = true;
@@ -57,7 +58,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
 
       // If editing, load existing card data
       if (isEdit) {
-        const { ok: cOk, data: cData } = await apiGet(`/app/api/card/${cardId}/detail/`);
+        const { ok: cOk, data: cData } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
         if (cOk && cData?.success) {
           setValues(cData.data?.field_data || {});
           setTableName(cData.data?.table_name || '');
@@ -113,8 +114,8 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       formData.append('field_data', JSON.stringify(fieldData));
 
       const url = isEdit
-        ? `/app/api/table/${tableId}/card/${cardId}/update/`
-        : `/app/api/table/${tableId}/card/add/`;
+        ? `/api/mobile/table/${tableId}/card/${cardId}/update/`
+        : `/api/mobile/table/${tableId}/card/add/`;
 
       const { data } = await apiPostForm(url, formData);
       if (data?.success) {
@@ -174,7 +175,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                 )}
               </View>
               <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-                <FontAwesome5 name="times" size={16} color={colors.gray400} />
+                <DynamicIcon name="times" size={16} color={colors.gray400} />
               </TouchableOpacity>
             </View>
 
@@ -208,12 +209,12 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                                 <Image source={{ uri: val }} style={s.photoImg} />
                               ) : (
                                 <View style={s.photoPlaceholder}>
-                                  <FontAwesome5 name="camera" size={24} color={colors.gray300} />
+                                  <DynamicIcon name="camera" size={24} color={colors.gray300} />
                                   <Text style={s.photoLabel}>{field.name}</Text>
                                 </View>
                               )}
                               <View style={s.photoEditIcon}>
-                                <FontAwesome5 name={hasImage ? "ellipsis-h" : "plus"} size={10} color="#fff" />
+                                <DynamicIcon name={hasImage ? "ellipsis-h" : "plus"} size={10} color="#fff" />
                               </View>
                             </TouchableOpacity>
                           </View>
@@ -225,14 +226,14 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                   <View style={s.fieldsWrap}>
                     {error && (
                       <HStack spacing={8} style={s.errorBox} align="center">
-                        <FontAwesome5 name="exclamation-circle" size={12} color="#ef4444" />
+                        <DynamicIcon name="exclamation-circle" size={12} color="#ef4444" />
                         <Text style={s.errorText}>{error}</Text>
                       </HStack>
                     )}
 
                     {fieldList.length === 0 && !loading && (
                       <HStack spacing={12} style={s.noFieldsCard} align="center">
-                        <FontAwesome5 name="info-circle" size={14} color={colors.info} />
+                        <DynamicIcon name="info-circle" size={14} color={colors.info} />
                         <Text style={s.noFieldsText}>No field definitions found.</Text>
                       </HStack>
                     )}
@@ -300,14 +301,14 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                 onCapture: (uri) => setValues(prev => ({ ...prev, [photoMenu.field]: uri })) 
               });
               }}>
-                <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><FontAwesome5 name="camera" size={14} color="#6366f1" /></View>
+                <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><DynamicIcon name="camera" size={14} color="#6366f1" /></View>
                 <Text style={s.menuItemText}>Take New Photo</Text>
               </TouchableOpacity>
             </HStack>
 
             <HStack spacing={14} style={s.menuItem} align="center">
               <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={handlePickFromGallery}>
-                <View style={[s.menuIconBox, { backgroundColor: '#f0fdf4' }]}><FontAwesome5 name="images" size={14} color="#22c55e" /></View>
+                <View style={[s.menuIconBox, { backgroundColor: '#f0fdf4' }]}><DynamicIcon name="images" size={14} color="#22c55e" /></View>
                 <Text style={s.menuItemText}>Choose from Gallery</Text>
               </TouchableOpacity>
             </HStack>
@@ -318,7 +319,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                   setValues(prev => ({ ...prev, [photoMenu.field]: null }));
                   setPhotoMenu(p => ({ ...p, visible: false }));
                 }}>
-                  <View style={[s.menuIconBox, { backgroundColor: '#fef2f2' }]}><FontAwesome5 name="trash-alt" size={14} color="#ef4444" /></View>
+                  <View style={[s.menuIconBox, { backgroundColor: '#fef2f2' }]}><DynamicIcon name="trash-alt" size={14} color="#ef4444" /></View>
                   <Text style={[s.menuItemText, { color: '#ef4444' }]}>Remove Current Photo</Text>
                 </TouchableOpacity>
               </HStack>

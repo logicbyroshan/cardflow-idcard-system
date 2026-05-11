@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { apiGet } from '../api/client';
 import { colors, typography, spacing, radius, shadows, fontFamily } from '../theme';
@@ -19,7 +20,7 @@ export default function TablePickerScreen({ navigation, route }) {
   const statusDisplay = status.charAt(0).toUpperCase() + status.slice(1);
 
   const loadTables = useCallback(async () => {
-    const { data } = await apiGet(`/app/api/tables/?status=${encodeURIComponent(status)}`);
+    const { data } = await apiGet(`/api/mobile/tables/?status=${encodeURIComponent(status)}`);
     if (data?.success) {
       return data.data || [];
     }
@@ -39,7 +40,7 @@ export default function TablePickerScreen({ navigation, route }) {
       }}
     >
       <View style={s.iconWrap}>
-        <FontAwesome5 name="table" size={15} color={colors.brandLight} />
+        <DynamicIcon name="table" size={15} color={colors.brandLight} />
       </View>
       <View style={s.info}>
         <Text style={s.tableName} numberOfLines={1}>{item.name}</Text>
@@ -51,14 +52,14 @@ export default function TablePickerScreen({ navigation, route }) {
         <View style={[s.countBadge, { backgroundColor: sc.bg }]}>
           <Text style={[s.countText, { color: sc.text }]}>{item.status_count ?? 0}</Text>
         </View>
-        <FontAwesome5 name="chevron-right" size={10} color={colors.gray300} />
+        <DynamicIcon name="chevron-right" size={10} color={colors.gray300} />
       </View>
     </TouchableOpacity>
   );
 
   const EmptyState = () => (
     <View style={s.empty}>
-      <View style={s.emptyIcon}><FontAwesome5 name="table" size={24} color={colors.gray300} /></View>
+      <View style={s.emptyIcon}><DynamicIcon name="table" size={24} color={colors.gray300} /></View>
       <Text style={s.emptyTitle}>No tables available</Text>
       <Text style={s.emptySub}>No tables with {status} cards</Text>
     </View>

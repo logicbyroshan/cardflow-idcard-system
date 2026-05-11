@@ -26,14 +26,14 @@ export default function CardFormScreen({ navigation, route }) {
   const loadData = useCallback(async () => {
     try {
       // Load table fields
-      const { ok: fOk, data: fData } = await apiGet(`/app/api/table/${tableId}/filter-options/?status=pending`);
+      const { ok: fOk, data: fData } = await apiGet(`/api/mobile/table/${tableId}/filter-options/?status=pending`);
       if (fOk && fData?.success && fData.data?.fields) {
         setFields(fData.data.fields);
       }
 
       // If editing, load existing card data
       if (isEdit) {
-        const { ok: cOk, data: cData } = await apiGet(`/app/api/card/${cardId}/detail/`);
+        const { ok: cOk, data: cData } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
         if (cOk && cData?.success) {
           setValues(cData.data?.field_data || {});
           setTableName(cData.data?.table_name || '');
@@ -55,8 +55,8 @@ export default function CardFormScreen({ navigation, route }) {
       formData.append('field_data', JSON.stringify(values));
 
       const url = isEdit
-        ? `/app/api/table/${tableId}/card/${cardId}/update/`
-        : `/app/api/table/${tableId}/card/add/`;
+        ? `/api/mobile/table/${tableId}/card/${cardId}/update/`
+        : `/api/mobile/table/${tableId}/card/add/`;
 
       const { data } = await apiPostForm(url, formData);
       showToast(

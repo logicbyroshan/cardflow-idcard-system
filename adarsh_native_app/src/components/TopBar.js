@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { IconArrowLeft, IconHome, IconDownload, IconPlus, IconSearch, IconFilter, IconList, IconUsers, IconSettings } from './Icons';
+
+import { DynamicIcon, IconArrowLeft, IconHome, IconDownload, IconPlus, IconSearch, IconFilter, IconList, IconUsers, IconSettings } from './Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -162,9 +162,5 @@ const styles = StyleSheet.create({
 });
 
 function RightIcon({ iconName, size, color }) {
-  if (iconName === 'plus') return <IconPlus size={size} color={color} />;
-  if (iconName === 'search') return <IconSearch size={size} color={color} />;
-  if (iconName === 'filter') return <IconFilter size={size} color={color} />;
-  if (iconName === 'settings') return <IconSettings size={size} color={color} />;
-  return <IconPlus size={size} color={color} />; // Fallback
+  return <DynamicIcon name={iconName} size={size} color={color} />;
 }

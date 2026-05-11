@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { IconClock, IconWarning, IconCheck } from './Icons';
+import { DynamicIcon, IconClock, IconWarning, IconCheck } from './Icons';
 import { colors, shadows, radius, spacing, typography, fontFamily } from '../theme';
 import { HStack } from './Stack';
 import { BASE_URL } from '../api/client';
@@ -78,10 +77,6 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
 
     const hasError = imageErrors[field.name];
 
-    let bgColor = '#f1f5f9'; // GREY placeholder (default/empty)
-    let iconName = 'user-alt-slash';
-    let iconColor = '#cbd5e1';
-
     if (isPending) {
       bgColor = '#fef08a'; // YELLOW placeholder for pending
       iconName = 'clock';
@@ -107,7 +102,7 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
             />
           ) : (
             <View style={s.photoPlaceholderCenter}>
-              <IconClock size={18} color={iconColor} />
+               <DynamicIcon name={iconName} size={18} color={iconColor} />
               {isEmpty && <Text style={[s.emptyPhotoText, { color: '#94a3b8' }]}>EMPTY</Text>}
               {isPending && <Text style={[s.emptyPhotoText, { color: '#ca8a04' }]}>PENDING</Text>}
             </View>
@@ -156,7 +151,7 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
         <HStack spacing={8} style={s.rightActions}>
           {onEdit && hasPerm('perm_idcard_edit') && (
             <TouchableOpacity onPress={onEdit} style={s.editBtnWrap} activeOpacity={0.7}>
-              <Text style={s.editBtnText}>Edit</Text>
+              <DynamicIcon name="edit" size={14} color={colors.brandPrimary} />
             </TouchableOpacity>
           )}
 
@@ -194,8 +189,8 @@ const CardItem = React.memo(function CardItem({ item, showCheckbox, isSelected, 
           )}
 
           {onDelete && permissions.perm_idcard_delete && (
-            <TouchableOpacity onPress={onDelete} style={s.actionBtnRed} activeOpacity={0.7}>
-              <Text style={s.actionBtnTextRed}>Delete</Text>
+            <TouchableOpacity style={s.actionBtn} onPress={onDelete}>
+              <DynamicIcon name="trash" size={14} color={colors.red} />
             </TouchableOpacity>
           )}
         </HStack>

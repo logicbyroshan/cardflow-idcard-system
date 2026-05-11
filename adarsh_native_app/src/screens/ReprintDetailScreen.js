@@ -33,7 +33,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
   const loadCards = useCallback(async (pageNum = 1, append = false) => {
     try {
       setError(null);
-      const { data } = await apiGet(`/app/api/table/${tableId}/cards/?status=reprint&page=${pageNum}&per_page=${perPage}`);
+      const { data } = await apiGet(`/api/mobile/table/${tableId}/cards/?status=reprint&page=${pageNum}&per_page=${perPage}`);
       if (data?.success) {
         const items = data.data?.cards || data.data?.items || data.data || [];
         const list = Array.isArray(items) ? items : [];
@@ -70,7 +70,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
         { text: label, onPress: async () => {
           setUpdating(cardId);
           try {
-            const { data } = await apiPost(`/app/api/card/${cardId}/status/`, { status: newStatus });
+            const { data } = await apiPost(`/api/mobile/card/${cardId}/status/`, { status: newStatus });
             if (data?.success) {
               showToast(data.message || `Card ${label.toLowerCase()}!`, 'success');
               // Remove from list since status changed

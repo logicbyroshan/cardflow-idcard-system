@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
@@ -26,7 +27,7 @@ export default function NotificationsScreen({ navigation }) {
       <View style={[s.card, !item.read && s.unread]}>
         <View style={s.row}>
           <View style={[s.iconW, { backgroundColor: ic.bg }]}>
-            <FontAwesome5 name={item.icon?.replace('fa-', '') || 'bell'} size={14} color={ic.c} solid />
+            <DynamicIcon name={item.icon?.replace('fa-', '') || 'bell'} size={14} color={ic.c} />
           </View>
           <View style={s.body}>
             <View style={s.titleRow}>
@@ -43,7 +44,7 @@ export default function NotificationsScreen({ navigation }) {
 
   const EmptyState = () => (
     <View style={s.empty}>
-      <View style={s.emptyIcon}><FontAwesome5 name="bell-slash" size={24} color={colors.gray300} solid /></View>
+      <View style={s.emptyIcon}><DynamicIcon name="bell-slash" size={24} color={colors.gray300} /></View>
       <Text style={s.emptyTitle}>No notifications yet</Text>
       <Text style={s.emptySub}>You're all caught up!</Text>
     </View>

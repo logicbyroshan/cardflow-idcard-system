@@ -202,3 +202,208 @@ export const IconThumbsUp = ({ size = 24, color = "#fff" }) => (
     <Path d="M7 11H2V22H7V11Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
+export const IconArchive = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M21 8V21H3V8" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M23 3H1V8H23V3Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M10 12H14" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconExclamation = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" />
+    <Path d="M12 8V12" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M12 16H12.01" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconUserSlash = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M17.39 11.77C18.42 12.09 19.33 12.63 20.06 13.34C20.67 13.93 21 14.73 21 15.58V18.15C21 18.62 20.62 19 20.15 19H8.07L17.39 11.77Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M9.13 5.93C9.44 5.39 9.93 4.96 10.53 4.74C11.13 4.52 11.79 4.52 12.39 4.74C12.99 4.96 13.48 5.39 13.79 5.93M14.79 8.93C14.79 9.33 14.67 9.71 14.47 10.03" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M3 3L21 21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M9 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconChevronUp = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M18 15L12 9L6 15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconChevronDown = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M6 9L12 15L18 9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconRedo = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M23 4V10H17" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M20.49 15C19.98 16.39 19.04 17.62 17.81 18.52C16.58 19.42 15.11 19.95 13.58 20.06C12.05 20.17 10.51 19.86 9.15 19.16C7.79 18.46 6.66 17.4 5.88 16.1C5.1 14.8 4.71 13.31 4.76 11.8C4.81 10.29 5.29 8.84 6.16 7.6C7.03 6.36 8.24 5.37 9.64 4.76C11.04 4.15 12.59 3.93 14.11 4.14C16.55 4.47 18.77 5.7 20.25 7.6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconBuilding = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M3 21H21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M9 21V9H15V21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M5 21V5H19V21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M9 13H11" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M13 13H15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M9 17H11" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M13 17H15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconTable = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="3" y="3" width="18" height="18" rx="2" stroke={color} strokeWidth="2" />
+    <Path d="M3 9H21" stroke={color} strokeWidth="2" />
+    <Path d="M3 15H21" stroke={color} strokeWidth="2" />
+    <Path d="M9 3V21" stroke={color} strokeWidth="2" />
+    <Path d="M15 3V21" stroke={color} strokeWidth="2" />
+  </Svg>
+);
+
+export const IconStar = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconUserTie = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="7" r="4" stroke={color} strokeWidth="2" />
+    <Path d="M6 21V19C6 17.9 6.9 17 8 17H16C17.1 17 18 17.9 18 19V21" stroke={color} strokeWidth="2" />
+    <Path d="M12 17V21M10 21L12 19L14 21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconSliders = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M4 21V14M4 10V3M12 21V12M12 8V3M20 21V16M20 12V3M2 14H6M10 8H14M18 16H22" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconWifi = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M5 12.55C7.38 10.16 10.53 9 13.68 9C16.83 9 19.98 10.16 22.36 12.55M1.64 8.29C5.35 4.58 10.3 2.75 15.26 2.75C20.22 2.75 25.17 4.58 28.88 8.29M8.36 16.81C9.69 15.48 11.45 14.81 13.22 14.81C14.99 14.81 16.75 15.48 18.08 16.81" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx="13" cy="21" r="1" fill={color} />
+  </Svg>
+);
+
+export const IconPaperPlane = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconClock = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" />
+    <Path d="M12 6V12L16 14" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconThumbsUp = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M14 9V5C14 4.20435 13.6839 3.44129 13.1213 2.87868C12.5587 2.31607 11.7956 2 11 2L7 11V22H18.28C18.7621 22.0008 19.2304 21.8344 19.6015 21.5305C19.9725 21.2266 20.2241 20.8041 20.31 20.33L21.66 12.33C21.7135 12.0401 21.7116 11.7423 21.6544 11.4531C21.5973 11.1639 21.4862 10.8893 21.3276 10.6449C21.1691 10.4005 20.9664 10.1915 20.7309 10.03C20.4955 9.86851 20.2323 9.75787 19.956 9.70422C19.8306 9.68068 19.7032 9.6687 19.5755 9.66838L14 9Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M7 11H2V22H7V11Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconArchive = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Polyline points="21 8 21 21 3 21 3 8" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Rect x="1" y="3" width="22" height="5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Line x1="10" y1="12" x2="14" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconLightbulb = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M9 18H15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M10 22H14" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M12 2C9.23858 2 7 4.23858 7 7C7 8.5 7.5 10 8.5 11.5C9.5 13 10 14.5 10 16H14C14 14.5 14.5 13 15.5 11.5C16.5 10 17 8.5 17 7C17 4.23858 14.7614 2 12 2Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconHourglass = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M5 2H19" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M5 22H19" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M15 2V8L12 11L9 8V2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M9 22V16L12 13L15 16V22" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconTimes = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M18 6L6 18M6 6L18 18" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+/**
+ * Dynamic mapping component to bridge FontAwesome-style names to premium SVG icons.
+ */
+export const DynamicIcon = ({ name, size = 24, color = "#fff", solid = false }) => {
+  const n = String(name || '').toLowerCase();
+  
+  if (n === 'clock' || n === 'pending') return <IconClock size={size} color={color} />;
+  if (n === 'check' || n === 'check-circle' || n === 'verified') return <IconCheck size={size} color={color} />;
+  if (n === 'thumbs-up' || n === 'approved') return <IconThumbsUp size={size} color={color} />;
+  if (n === 'download') return <IconDownload size={size} color={color} />;
+  if (n === 'pool' || n === 'archive') return <IconArchive size={size} color={color} />;
+  if (n === 'reprint' || n === 'redo') return <IconRedo size={size} color={color} />;
+  
+  if (n === 'trash' || n === 'trash-alt') return <IconTrash size={size} color={color} />;
+  if (n === 'edit' || n === 'pen') return <IconEdit size={size} color={color} />;
+  if (n === 'plus' || n === 'add') return <IconPlus size={size} color={color} />;
+  if (n === 'search') return <IconSearch size={size} color={color} />;
+  if (n === 'filter') return <IconFilter size={size} color={color} />;
+  
+  if (n === 'user' || n === 'profile') return <IconProfile size={size} color={color} />;
+  if (n === 'users') return <IconUsers size={size} color={color} />;
+  if (n === 'home') return <IconHome size={size} color={color} />;
+  if (n === 'list' || n === 'layer-group') return <IconList size={size} color={color} />;
+  
+  if (n === 'chevron-right') return <IconChevronRight size={size} color={color} />;
+  if (n === 'chevron-left' || n === 'arrow-left') return <IconChevronLeft size={size} color={color} />;
+  if (n === 'chevron-up') return <IconChevronUp size={size} color={color} />;
+  if (n === 'chevron-down') return <IconChevronDown size={size} color={color} />;
+  
+  if (n === 'exclamation-triangle' || n === 'warning' || n === 'exclamation-circle') return <IconExclamation size={size} color={color} />;
+  if (n === 'user-alt-slash' || n === 'user-slash') return <IconUserSlash size={size} color={color} />;
+  if (n === 'lock') return <IconLock size={size} color={color} />;
+  if (n === 'bell' || n === 'bell-outline') return <IconBell size={size} color={color} />;
+  if (n === 'envelope' || n === 'mail') return <IconMail size={size} color={color} />;
+  if (n === 'phone') return <IconPhone size={size} color={color} />;
+  if (n === 'cog' || n === 'cog-outline' || n === 'settings') return <IconSettings size={size} color={color} />;
+  if (n === 'building') return <IconBuilding size={size} color={color} />;
+  if (n === 'table' || n === 'th-large') return <IconTable size={size} color={color} />;
+  if (n === 'star') return <IconStar size={size} color={color} />;
+  if (n === 'user-tie') return <IconUserTie size={size} color={color} />;
+  if (n === 'sliders-h') return <IconSliders size={size} color={color} />;
+  if (n === 'wifi') return <IconWifi size={size} color={color} />;
+  if (n === 'paper-plane') return <IconPaperPlane size={size} color={color} />;
+  if (n === 'user-circle' || n === 'user') return <IconProfile size={size} color={color} />;
+  if (n === 'arrow-right') return <IconArrowRight size={size} color={color} />;
+  if (n === 'clock') return <IconClock size={size} color={color} />;
+  if (n === 'check') return <IconCheck size={size} color={color} />;
+  if (n === 'thumbs-up') return <IconThumbsUp size={size} color={color} />;
+  if (n === 'archive') return <IconArchive size={size} color={color} />;
+  if (n === 'lightbulb') return <IconLightbulb size={size} color={color} />;
+  if (n === 'hourglass-half') return <IconHourglass size={size} color={color} />;
+  if (n === 'times' || n === 'times-circle') return <IconTimes size={size} color={color} />;
+  if (n === 'redo') return <IconRedo size={size} color={color} />;
+  if (n === 'search') return <IconSearch size={size} color={color} />;
+  if (n === 'plus') return <IconPlus size={size} color={color} />;
+  if (n === 'edit') return <IconEdit size={size} color={color} />;
+  if (n === 'trash') return <IconTrash size={size} color={color} />;
+
+  // Final fallback to a generic warning icon
+  return <IconWarning size={size} color={color} />;
+};

@@ -28,7 +28,7 @@ export default function ProductCategoryDetailScreen({ navigation, route }) {
 
   const loadProducts = useCallback(async () => {
     const { ok, data } = await apiGet(
-      `https://adarshbhopal.in/app/api/pub/website/category/${category.id}/products/`,
+      `https://adarshbhopal.in/api/mobile/pub/website/category/${category.id}/products/`,
     );
     if (ok && data.success) {
       return data.products || [];

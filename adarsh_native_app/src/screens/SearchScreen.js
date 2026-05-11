@@ -31,7 +31,7 @@ export default function SearchScreen({ navigation }) {
     try {
       const params = new URLSearchParams({ q: q.trim() });
       if (filter && filter !== 'all') params.set('filter', filter);
-      const { data } = await apiGet(`/app/api/search/?${params.toString()}`);
+      const { data } = await apiGet(`/api/mobile/search/?${params.toString()}`);
       if (data?.success) setResults(data.data?.results || []);
     } catch (e) { /* silent */ }
     setLoading(false);

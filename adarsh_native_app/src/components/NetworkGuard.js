@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, AppState } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { DynamicIcon } from './Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import NetInfo from '@react-native-community/netinfo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,7 +42,7 @@ export default function NetworkGuard({ children }) {
       {!isOnline && <OfflineOverlay />}
       {isOnline && wasOffline && (
         <Animated.View style={[styles.reconnected, { opacity: fadeAnim }]}>
-          <FontAwesome5 name="wifi" size={11} color="#fff" />
+          <DynamicIcon name="wifi" size={11} color="#fff" />
           <Text style={styles.reconnectedText}>Back online</Text>
         </Animated.View>
       )}
@@ -69,7 +69,7 @@ function OfflineOverlay() {
       <LinearGradient colors={['#1e1e2e', '#2d1f3d']} style={styles.overlayGradient}>
         <View style={styles.overlayContent}>
           <Animated.View style={[styles.iconCircle, { opacity: pulseAnim }]}>
-            <FontAwesome5 name="wifi" size={32} color="#ef4444" />
+            <DynamicIcon name="wifi" size={32} color="#ef4444" />
             <View style={styles.slash} />
           </Animated.View>
           <Text style={styles.overlayTitle}>No Internet Connection</Text>
@@ -77,7 +77,7 @@ function OfflineOverlay() {
             Please check your Wi-Fi or mobile data and try again. The app will reconnect automatically.
           </Text>
           <View style={styles.tipCard}>
-            <FontAwesome5 name="lightbulb" size={12} color="#f59e0b" />
+            <DynamicIcon name="lightbulb" size={12} color="#f59e0b" />
             <Text style={styles.tipText}>Make sure airplane mode is off and you have signal</Text>
           </View>
         </View>
@@ -191,7 +191,7 @@ export function ErrorView({ type = ERROR_TYPES.GENERIC, message, onRetry, onGoBa
   return (
     <View style={ev.root}>
       <View style={[ev.iconWrap, { backgroundColor: config.bgTint, borderColor: config.borderColor }]}>
-        <FontAwesome5 name={config.icon} size={28} color={config.iconColor} solid />
+        <DynamicIcon name={config.icon} size={28} color={config.iconColor} />
       </View>
       <Text style={ev.title}>{config.title}</Text>
       <Text style={ev.message}>{displayMessage}</Text>
@@ -200,20 +200,20 @@ export function ErrorView({ type = ERROR_TYPES.GENERIC, message, onRetry, onGoBa
         {onRetry && (
           <TouchableOpacity onPress={onRetry} activeOpacity={0.85} style={ev.btnWrap}>
             <LinearGradient colors={config.gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ev.btn}>
-              <FontAwesome5 name={config.actionIcon} size={12} color="#fff" />
+              <DynamicIcon name={config.actionIcon} size={12} color="#fff" />
               <Text style={ev.btnText}>{config.actionLabel}</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
         {onGoHome && (
           <TouchableOpacity onPress={onGoHome} activeOpacity={0.85} style={ev.secondaryBtnWrap}>
-            <FontAwesome5 name="home" size={12} color={colors.gray600} />
+            <DynamicIcon name="home" size={12} color={colors.gray600} />
             <Text style={ev.secondaryBtnText}>Go Home</Text>
           </TouchableOpacity>
         )}
         {onGoBack && (
           <TouchableOpacity onPress={onGoBack} activeOpacity={0.85} style={ev.secondaryBtnWrap}>
-            <FontAwesome5 name="arrow-left" size={12} color={colors.gray600} />
+            <DynamicIcon name="arrow-left" size={12} color={colors.gray600} />
             <Text style={ev.secondaryBtnText}>Go Back</Text>
           </TouchableOpacity>
         )}
@@ -237,16 +237,16 @@ export function ErrorBanner({ message, type = 'error', onDismiss, onRetry }) {
 
   return (
     <View style={[eb.root, { backgroundColor: bg, borderColor: border }]}>
-      <FontAwesome5 name={icon} size={14} color={iconColor} solid />
+      <DynamicIcon name={icon} size={14} color={iconColor} />
       <Text style={[eb.text, { color: textColor }]} numberOfLines={3}>{message}</Text>
       {onRetry && (
         <TouchableOpacity onPress={onRetry} style={eb.retryBtn}>
-          <FontAwesome5 name="redo" size={10} color={textColor} />
+          <DynamicIcon name="redo" size={10} color={textColor} />
         </TouchableOpacity>
       )}
       {onDismiss && (
         <TouchableOpacity onPress={onDismiss} style={eb.dismissBtn}>
-          <FontAwesome5 name="times" size={10} color={textColor} />
+          <DynamicIcon name="times" size={10} color={textColor} />
         </TouchableOpacity>
       )}
     </View>

@@ -1,8 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Dimensions, Image } from 'react-native';
 const { width } = Dimensions.get('window');
-import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
-import { IconPending, IconVerified, IconApproved, IconDownload, IconPool, IconTotal, IconSearch, IconProfile } from '../components/Icons';
+import { DynamicIcon, IconPending, IconVerified, IconApproved, IconDownload, IconPool, IconTotal, IconSearch, IconProfile } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet } from '../api/client';
@@ -63,7 +62,7 @@ export default function HomeScreen({ navigation }) {
 
     if (isSuperAdmin) {
       // ADMIN: All actions
-      actions.push({ label: 'Reprint', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: counts.client_id } });
+      actions.push({ label: 'Reprint', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: 0 } });
       actions.push({ label: 'Manage Client', icon: 'building', color: '#3b82f6', bg: '#eff6ff', screen: 'ClientsList' });
       actions.push({ label: 'Manage Assistant', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', screen: 'StaffManage' });
       actions.push({ label: 'Manage Operator', icon: 'user-tie', color: '#10b981', bg: '#ecfdf5', screen: 'StaffManage' });
@@ -71,7 +70,7 @@ export default function HomeScreen({ navigation }) {
       actions.push({ label: 'Pro Feature', icon: 'star', color: '#a855f7', bg: '#faf5ff', screen: 'DesktopRequired' });
     } else if (isOperator) {
       // OPERATOR: Reprint + Manage Clients
-      actions.push({ label: 'Reprint', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: counts.client_id } });
+      actions.push({ label: 'Reprint', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: 0 } });
       actions.push({ label: 'Manage Clients', icon: 'building', color: '#3b82f6', bg: '#eff6ff', screen: 'ClientsList' });
     } else if (isClient) {
       // CLIENT: Conditional Reprint + Manage Assistant (if permitted)
@@ -214,7 +213,7 @@ export default function HomeScreen({ navigation }) {
                     onPress={() => setExpandedClient(expandedClient === client.id ? null : client.id)}
                   >
                     <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}>
-                      <FontAwesome5 name="user-circle" size={14} color={theme.primary} />
+                      <DynamicIcon name="user-circle" size={14} color={theme.primary} />
                     </View>
                     <View style={s.clientInfo}>
                       <Text style={s.clientName} numberOfLines={1}>{client.name}</Text>
@@ -222,7 +221,7 @@ export default function HomeScreen({ navigation }) {
                         P: {client.pending || 0} | V: {client.verified || 0} | A: {client.approved || 0} | D: {client.download || 0}
                       </Text>
                     </View>
-                    <FontAwesome5 
+                    <DynamicIcon 
                       name={expandedClient === client.id ? 'chevron-up' : 'chevron-down'} 
                       size={12} 
                       color={colors.gray400}
@@ -238,7 +237,7 @@ export default function HomeScreen({ navigation }) {
                           style={s.tableRow}
                           onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'all' })}
                         >
-                          <FontAwesome5 name="table" size={11} color={colors.gray400} style={{ marginRight: 8 }} />
+                          <DynamicIcon name="table" size={11} color={colors.gray400} style={{ marginRight: 8 }} />
                           <Text style={s.tableRowName} numberOfLines={1}>{table.name}</Text>
                           <View style={s.tableRowStats}>
                             <Text style={s.tableStat}>P:{table.p || 0}</Text>
@@ -251,7 +250,7 @@ export default function HomeScreen({ navigation }) {
                         onPress={() => navigation.navigate('ClientGroups', { clientId: client.id, clientName: client.name })}
                       >
                         <Text style={[s.tableRowName, { flex: 0, fontSize: 10, color: colors.brandPrimary, fontWeight: '700' }]}>VIEW ALL TABLES</Text>
-                        <FontAwesome5 name="arrow-right" size={8} color={colors.brandPrimary} style={{ marginLeft: 6 }} />
+                        <DynamicIcon name="arrow-right" size={8} color={colors.brandPrimary} style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
                     </View>
                   )}
@@ -271,7 +270,7 @@ export default function HomeScreen({ navigation }) {
                 >
                   <View style={s.tableCardTop}>
                     <View style={[s.tableIcon, { backgroundColor: theme.bgSoft }]}>
-                      <FontAwesome5 name="table" size={13} color={theme.primary} />
+                      <DynamicIcon name="table" size={13} color={theme.primary} />
                     </View>
                     <Text style={s.tableName} numberOfLines={1}>{table.name}</Text>
                   </View>
@@ -309,11 +308,7 @@ export default function HomeScreen({ navigation }) {
                   onPress={() => navigation.navigate(act.screen, act.params)}
                 >
                   <View style={[s.actionIcon, { backgroundColor: act.bg }]}>
-                    {act.lib === 'MaterialCommunityIcons' ? (
-                      <MaterialCommunityIcons name={act.icon} size={18} color={act.color} />
-                    ) : (
-                      <FontAwesome5 name={act.icon} size={15} color={act.color} solid />
-                    )}
+                    <DynamicIcon name={act.icon} size={18} color={act.color} />
                   </View>
                   <Text style={s.actionLabel} numberOfLines={2}>{act.label}</Text>
                 </TouchableOpacity>
@@ -340,7 +335,7 @@ export default function HomeScreen({ navigation }) {
           activeOpacity={0.8}
         >
           <LinearGradient colors={gradients.brand} style={s.fabGradient}>
-            <FontAwesome5 name="plus" size={18} color="#fff" />
+            <DynamicIcon name="plus" size={18} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
       )}
