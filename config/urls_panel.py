@@ -18,6 +18,7 @@ SEO: This entire domain is blocked from indexing via:
 For local development (single domain), config/urls.py is used instead.
 """
 import os
+import sys
 
 from django.contrib import admin
 from django.urls import path, include
@@ -34,7 +35,7 @@ from website import views as website_views
 def panel_robots_txt(request):
     """Allow ALL crawlers to index the panel subdomain as per user request."""
     return HttpResponse(
-        "User-agent: *\nAllow: /\n",
+        "User-agent: *\nDisallow: /\n",
         content_type="text/plain",
     )
 

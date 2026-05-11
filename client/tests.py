@@ -616,6 +616,54 @@ class ClientDashboardServiceTests(TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.data['group_count'], 1)
 
+    def test_dashboard_data_survives_recent_activity_failure_for_client_staff(self):
+        from unittest.mock import patch
+
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='dash-owner-activity-fail@test.com', email='dash-owner-activity-fail@test.com',
+            password='pass1234', role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Activity Failure Client')
+
+        group = IDCardGroup.objects.create(client=client_obj, name='Group A')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Table A',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+            ],
+        )
+
+        IDCard.objects.create(table=table, status='pending', field_data={'CLASS': '10', 'SECTION': 'A'})
+
+        staff_user = User.objects.create_user(
+            username='dash-activity-fail@test.com', email='dash-activity-fail@test.com',
+            password='pass1234', role='client_staff',
+        )
+        staff = Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=client_obj,
+            assigned_table_ids=[table.id],
+            allowed_classes=['10'],
+            allowed_sections=['A'],
+        )
+        self.assertIsNotNone(staff.id)
+
+        with patch('client.services_dashboard.ActivityService.get_recent', side_effect=RuntimeError('boom')):
+            result = ClientDashboardService.get_dashboard_data(staff_user)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['counts']['pending'], 1)
+        self.assertEqual(result.data['total_cards'], 1)
+        self.assertEqual(result.data['recent_activity'], [])
+
     def test_groups_with_counts_scoped_for_client_staff(self):
         from client.services import ClientDashboardService
         from client.models import Client

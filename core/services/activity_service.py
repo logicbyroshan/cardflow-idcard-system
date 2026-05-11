@@ -1196,6 +1196,12 @@ class ActivityService:
         if action not in cls.RECENT_ACTIVITY_SIMILAR_ACTIONS:
             return None, 1
 
+        def _safe_int(value):
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return 0
+
         user_id = item.get('user_id') or 0
         target_model = str(item.get('target_model') or '').strip().lower()
         target_id = item.get('target_id') or 0
@@ -1222,7 +1228,7 @@ class ActivityService:
             user_id,
             action,
             target_model,
-            int(target_id) if target_id else 0,
+            _safe_int(target_id),
             target_name if not target_id else '',
             client_context,
             detail_discriminator,

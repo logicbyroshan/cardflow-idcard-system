@@ -164,6 +164,14 @@ def _table_scope_filters_for_staff(staff, table):
     } for s in matched]
 
 
+def _table_scope_values_for_staff(staff, table, key):
+    """Flatten matching scope values for a single scope key across all matched scopes."""
+    values = []
+    for scope in _table_scope_filters_for_staff(staff, table):
+        values.extend(scope.get(key) or [])
+    return _dedupe_scope_values(values)
+
+
 def _safe_error(e, fallback='An error occurred. Please try again.'):
     """Return a safe error message for API responses. Logs the real exception."""
     logger.exception("API error: %s", e)
@@ -365,16 +373,8 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     if not _table_is_assigned_to_staff(staff, table):
         return qs.none()
 
-    if str(status_filter or '').strip().lower() == 'pool':
-        return qs
-
     scope_groups = _table_scope_filters_for_staff(staff, table)
     
-    # If ANY scope is empty, the staff has full access to this table
-    has_full_access = any(not (s['classes'] or s['sections'] or s['branches']) for s in scope_groups)
-    if has_full_access:
-        return qs
-
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast, Coalesce
     from django.db.models import CharField, Q, Value
@@ -423,9 +423,11 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
 
     for scope in scope_groups:
         scope_q = Q()
+        has_any_filter = False
         
         # Classes
         if scope['classes'] and class_field:
+            has_any_filter = True
             normalized_allowed = {normalize_class_value(v) for v in scope['classes'] if normalize_class_value(v)}
             if normalized_allowed:
                 # We still need to find matching raw variants because normalize_class_value is a Python function
@@ -442,6 +444,7 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
 
         # Sections
         if scope['sections'] and section_field:
+            has_any_filter = True
             allowed_normalized = {str(s).strip().upper() for s in scope['sections'] if str(s).strip()}
             if allowed_normalized:
                 raw_values = list(
@@ -457,6 +460,7 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
 
         # Branches
         if scope['branches'] and branch_field:
+            has_any_filter = True
             normalized_allowed = {normalize_compact_text_value(v) for v in scope['branches'] if normalize_compact_text_value(v)}
             if normalized_allowed:
                 raw_values = list(
@@ -469,6 +473,10 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
                     scope_q &= Q(id__isnull=True)
             else:
                 scope_q &= Q(id__isnull=True)
+
+        if not has_any_filter:
+            # An empty scope entry grants access to the full table.
+            scope_q = Q()
 
         # OR this scope's requirements to the final Q
         final_q |= scope_q

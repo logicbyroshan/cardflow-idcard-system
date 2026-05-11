@@ -31,6 +31,12 @@
                         <i class="fa-solid fa-mobile-screen-button"></i>
                         <span>Open App Now</span>
                     </a>
+                    {% if MOBILE_ANDROID_APP_DOWNLOAD_URL %}
+                    <a id="downloadApkCta" href="{{ MOBILE_ANDROID_APP_DOWNLOAD_URL }}" class="download-app-btn download-app-btn-secondary">
+                        <i class="fa-brands fa-android"></i>
+                        <span>Download APK</span>
+                    </a>
+                    {% endif %}
                 </div>
             </div>
             <div class="download-app-visual">

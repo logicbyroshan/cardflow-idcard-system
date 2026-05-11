@@ -60,20 +60,31 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(body)
         });
         const ct = response.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) {
-            // Server returned HTML instead of JSON
+        const rawBody = await response.text();
+
+        let data = null;
+        if (ct.includes('application/json') || rawBody.trim().startsWith('{') || rawBody.trim().startsWith('[')) {
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (parseError) {
+                data = null;
+            }
+        }
+
+        if (!data || typeof data !== 'object') {
+            // Server returned HTML or malformed JSON instead of a JSON payload.
             if (response.status === 403) {
                 // Step 6: Frontend Auto-Recovery (Reload ONCE only)
                 if (!window.__csrfRetry) {
                     window.__csrfRetry = true;
-                    try { sessionStorage.setItem('__csrf_retry', '1'); } catch(e) {}
+                    try { sessionStorage.setItem('__csrf_retry', '1'); } catch (e) {}
                     window.location.reload();
                     return new Promise(() => {}); // stop execution
                 }
             }
             throw new Error('Server error (' + response.status + '). Please refresh and try again.');
         }
-        const data = await response.json();
+
         if (response.status === 429) {
             throw new Error(data.message || 'Too many requests. Please wait and try again.');
         }

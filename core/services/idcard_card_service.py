@@ -9,6 +9,7 @@ Part of the IDCardService split. Handles:
   class filtering, and name-field detection.
 """
 import logging
+import os
 import re
 from typing import Dict, Any, List
 
@@ -345,16 +346,27 @@ class IDCardCardService(BaseService):
                 text_qs = text_qs.annotate(**annotations)
             matched_ids.update(text_qs.filter(q).values_list(id_lookup, flat=True))
 
-        if image_fields:
-            candidate_rows = queryset.filter(**{f'{json_field}__icontains': search}).values(id_lookup, json_field)
-            for row in candidate_rows.iterator(chunk_size=500):
-                field_data = row.get(json_field) or {}
-                if not isinstance(field_data, dict):
-                    continue
-                if any(cls.image_filename_contains_query(field_data.get(fname, ''), search) for fname in image_fields):
-                    row_id = row.get(id_lookup)
-                    if row_id is not None:
-                        matched_ids.add(row_id)
+        candidate_rows = queryset.values(id_lookup, json_field)
+        for row in candidate_rows.iterator(chunk_size=500):
+            field_data = row.get(json_field) or {}
+            if not isinstance(field_data, dict):
+                continue
+
+            if image_fields and any(cls.image_filename_contains_query(field_data.get(fname, ''), search) for fname in image_fields):
+                row_id = row.get(id_lookup)
+                if row_id is not None:
+                    matched_ids.add(row_id)
+                continue
+
+            if any(
+                isinstance(value, str)
+                and (('/' in value) or ('\\' in value) or value.startswith('PENDING:'))
+                and cls.image_filename_contains_query(value, search)
+                for value in field_data.values()
+            ):
+                row_id = row.get(id_lookup)
+                if row_id is not None:
+                    matched_ids.add(row_id)
 
         if not matched_ids:
             return queryset.none()
@@ -368,7 +380,16 @@ class IDCardCardService(BaseService):
         """Serialize IDCard to dict"""
         # Strip internal __ref_ keys (used by reupload processor for matching)
         fd = card.field_data or {}
-        public_fd = {k: v for k, v in fd.items() if not k.startswith('__')}
+        public_fd = {}
+        for k, v in fd.items():
+            if isinstance(k, str) and k.startswith('__'):
+                continue
+            if isinstance(k, str) and isinstance(v, str) and cls.is_image_field_by_name(k):
+                value = v.strip()
+                if value and '/' not in value and '\\' not in value and not value.startswith('PENDING:'):
+                    public_fd[k] = f'PENDING:{os.path.basename(value)}'
+                    continue
+            public_fd[k] = v
         data = {
             'id': card.id,
             'table_id': card.table_id,
@@ -806,6 +827,11 @@ class IDCardCardService(BaseService):
                     continue
 
                 if uploaded_file is None:
+                    raw_text = str(raw_value or '').strip()
+                    if raw_text and '/' not in raw_text and '\\' not in raw_text and not raw_text.startswith('PENDING:'):
+                        field_data[field_name] = f'PENDING:{os.path.basename(raw_text)}'
+                        continue
+
                     result = ImageService.process_image_field(
                         field_name=field_name,
                         new_value=raw_value,
@@ -824,6 +850,15 @@ class IDCardCardService(BaseService):
                             field_data.pop(existing_key, None)
                         field_data[field_name] = result.data.get('final_value', raw_value)
 
+            for key in list(field_data.keys()):
+                if not isinstance(key, str):
+                    continue
+                if not cls.is_image_field({'name': key, 'type': 'image'}):
+                    continue
+                value = str(field_data.get(key, '') or '').strip()
+                if value and '/' not in value and '\\' not in value and not value.startswith('PENDING:'):
+                    field_data[key] = f'PENDING:{os.path.basename(value)}'
+
             # Atomic block: card creation + media records together
             with transaction.atomic():
                 from idcards.services_workflow import WorkflowService
@@ -832,6 +867,22 @@ class IDCardCardService(BaseService):
                     field_data=field_data,
                     status=WorkflowService.INITIAL_STATUS
                 )
+
+                normalized_after_create = dict(card.field_data or {})
+                normalized_after_create_changed = False
+                for field in table.fields:
+                    if not cls.is_image_field(field):
+                        continue
+
+                    field_name = field['name']
+                    current_value = str(normalized_after_create.get(field_name, '') or '').strip()
+                    if current_value and '/' not in current_value and '\\' not in current_value and not current_value.startswith('PENDING:'):
+                        normalized_after_create[field_name] = f'PENDING:{os.path.basename(current_value)}'
+                        normalized_after_create_changed = True
+
+                if normalized_after_create_changed:
+                    card.field_data = normalized_after_create
+                    card.save(update_fields=['field_data'])
 
                 # DUAL-WRITE: Create CardMedia records for saved images
                 for img_info in saved_images:

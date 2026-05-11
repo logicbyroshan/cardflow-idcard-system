@@ -313,7 +313,7 @@ class ClientCardService(BaseService):
         
         # Multiple scope entries are OR-ed together.
         # Inside a scope entry, class/section/branch are AND-ed.
-        # If any scope entry is empty (no filters), it grants access to the full table.
+        # An empty scope entry should not widen access.
         
         # 1. Collect all applicable scopes (direct table + parent group)
         scope_entries = cls._matched_assignment_scopes_for_table(staff, table)
@@ -331,17 +331,7 @@ class ClientCardService(BaseService):
                 'branches': legacy_branches
             }]
 
-        # 2. Check if ANY scope entry is unrestricted (empty filters)
-        has_full_access = False
-        for scope in scope_entries:
-            if not (scope.get('classes') or scope.get('sections') or scope.get('branches')):
-                has_full_access = True
-                break
-        
-        if has_full_access:
-            return qs
-
-        # 3. Build OR query for all scope entries
+        # 2. Build OR query for all scope entries
         from django.db.models import Q
         from core.utils.field_utils import normalize_class_value, normalize_compact_text_value
         
@@ -362,9 +352,11 @@ class ClientCardService(BaseService):
         final_q = Q()
         for scope in scope_entries:
             scope_q = Q()
+            has_any_filter = False
             
             # Classes
             if scope.get('classes') and class_field:
+                has_any_filter = True
                 allowed = {normalize_class_value(v) for v in scope['classes'] if normalize_class_value(v)}
                 if allowed:
                     raw_values = list(qs.exclude(_scope_cls='').values_list('_scope_cls', flat=True).distinct())
@@ -378,14 +370,21 @@ class ClientCardService(BaseService):
 
             # Sections
             if scope.get('sections') and section_field:
+                has_any_filter = True
                 allowed = {str(s).strip().lower() for s in scope['sections'] if str(s).strip()}
                 if allowed:
-                    scope_q &= Q(_scope_sec__lower__in=allowed)
+                    raw_values = list(qs.exclude(_scope_sec='').values_list('_scope_sec', flat=True).distinct())
+                    matching_raw = [raw for raw in raw_values if str(raw).strip().lower() in allowed]
+                    if matching_raw:
+                        scope_q &= Q(_scope_sec__in=matching_raw)
+                    else:
+                        scope_q &= Q(id__isnull=True)
                 else:
                     scope_q &= Q(id__isnull=True)
 
             # Branches
             if scope.get('branches') and branch_field:
+                has_any_filter = True
                 allowed = {normalize_compact_text_value(v) for v in scope['branches'] if normalize_compact_text_value(v)}
                 if allowed:
                     raw_values = list(qs.exclude(_scope_branch='').values_list('_scope_branch', flat=True).distinct())
@@ -396,6 +395,9 @@ class ClientCardService(BaseService):
                         scope_q &= Q(id__isnull=True)
                 else:
                     scope_q &= Q(id__isnull=True)
+
+            if not has_any_filter:
+                scope_q = Q(id__isnull=True)
 
             final_q |= scope_q
 
@@ -655,24 +657,16 @@ class ClientCardService(BaseService):
                 name_field = cls._get_name_field(table)
                 if name_field:
                     cards_query = cards_query.annotate(
-                        _name_raw=KeyTextTransform(name_field, 'field_data'),
                         _name_sort=Lower(Coalesce(
-                            KeyTextTransform(name_field, 'field_data'),
+                            Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
                             Value(''),
+                            output_field=CharField(),
                         )),
-                        _name_empty=Case(
-                            When(
-                                Q(_name_raw__isnull=True) | Q(_name_raw=''),
-                                then=Value(1),
-                            ),
-                            default=Value(0),
-                            output_field=IntegerField(),
-                        ),
                     )
                     if normalized_sort == 'name-asc':
-                        cards_query = cards_query.order_by('_name_empty', '_name_sort', 'id')
+                        cards_query = cards_query.order_by('_name_sort', 'id')
                     else:
-                        cards_query = cards_query.order_by('_name_empty', '-_name_sort', '-id')
+                        cards_query = cards_query.order_by('-_name_sort', '-id')
             
             total_count = cards_query.count()
 

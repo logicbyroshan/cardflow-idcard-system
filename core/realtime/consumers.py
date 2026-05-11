@@ -16,7 +16,6 @@ class RealtimeHubConsumer(AsyncJsonWebsocketConsumer):
 
     MAX_TOPICS_PER_CLIENT = 20
     MAX_TOPICS_PER_PACKET = 50
-    MAX_OFFICEWORK_CHAT_CHARS = 4000
     PACKET_RATE_LIMIT_COUNT = 80
     PACKET_RATE_LIMIT_WINDOW_SECONDS = 30
     CHAT_SEND_RATE_LIMIT_COUNT = 30
@@ -58,7 +57,7 @@ class RealtimeHubConsumer(AsyncJsonWebsocketConsumer):
             return []
 
         topics = []
-        # Add non-officework bootstrap topics here if any
+        # Add any default bootstrap topics here
         return topics
 
     async def disconnect(self, close_code):

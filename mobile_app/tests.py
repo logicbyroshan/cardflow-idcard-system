@@ -136,6 +136,10 @@ class MobileAppBaseTestCase(TestCase):
 		# Keep test client aligned with mobile-only server-side gating.
 		self.client.defaults['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Mobile Safari/537.36'
 
+		# Clear rate limiter cache to avoid 429 errors across tests
+		from django.core.cache import cache
+		cache.clear()
+
 		# Class-level fixtures can be mutated by tests; refresh to stable DB state each run.
 		for attr in (
 			'super_admin',
@@ -192,6 +196,9 @@ class MobileAppBaseTestCase(TestCase):
 		self._set_mobile_auth_checkpoint()
 
 	def _create_authenticated_session_for_user(self, user, *, surface='desktop', mobile_auth_ok=False, browser_fp=''):
+		from django.utils import timezone
+		from accounts.models import UserDeviceSession
+		
 		session = SessionStore()
 		session['_auth_user_id'] = str(user.pk)
 		session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
@@ -202,6 +209,16 @@ class MobileAppBaseTestCase(TestCase):
 		if mobile_auth_ok or surface == 'mobile':
 			session['mobile_auth_ok'] = True
 		session.save()
+		
+		# Register session in UserDeviceSession so signal handler can enforce limits
+		device_type = 'mobile' if surface == 'mobile' else 'web'
+		UserDeviceSession.objects.create(
+			user=user,
+			session_key=session.session_key,
+			device_type=device_type,
+			last_active=timezone.now(),
+		)
+		
 		return session.session_key
 
 	def _enable_mobile_photo_edit_for_all_roles(self):

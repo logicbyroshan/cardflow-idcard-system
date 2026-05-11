@@ -581,6 +581,11 @@ class WordTablesMixin:
                     image_subtype=field.get('image_subtype'),
                     field_name=field.get('name')
                 )
+                if self._should_add_photo_border(
+                    image_subtype=field.get('image_subtype'),
+                    field_name=field.get('name'),
+                ):
+                    self._remove_cell_borders(cell, parse_xml, nsdecls)
             else:
                 value = format_field_value(field_data.get(field['name'], ''), uppercase=True)
                 value = self._prepare_text_for_word(value)

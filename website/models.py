@@ -384,7 +384,7 @@ class PortfolioItem(models.Model):
         if self._needs_portfolio_image_processing():
             from .watermark import process_portfolio_image
             # Ensure portfolio images are compressed to the requested maximum (200KB)
-            self.image = process_portfolio_image(self.image, max_kb=200)
+            self.image = process_portfolio_image(self.image)
 
         # Defer heavy video processing to background worker to avoid blocking
         # request/transaction lifecycle. The background job will normalize,

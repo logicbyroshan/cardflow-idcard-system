@@ -259,6 +259,7 @@ class PanelEntryGateMiddleware:
         '/favicon.ico',
         '/robots.txt',
         '/api/health/',
+        '/__debug__/',
     )
     EXEMPT_PATHS = {
         '/admin/',
@@ -273,12 +274,29 @@ class PanelEntryGateMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Entry gate disabled as per user request to allow discovery
-        return self.get_response(request)
+        if not getattr(request, '_is_panel_subdomain', False):
+            return self.get_response(request)
 
-        # if not getattr(request, '_is_panel_subdomain', False):
-        #     return self.get_response(request)
-        # ... (commented out the rest)
+        if self._is_exempt(getattr(request, 'path', '') or ''):
+            return self.get_response(request)
+
+        not_found_mode, gate_enabled = self._get_gate_settings()
+        if not gate_enabled:
+            return self.get_response(request)
+
+        token = request.GET.get(self.TOKEN_PARAM, '')
+        if token:
+            if not self._is_valid_token(token):
+                from django.http import Http404
+                raise Http404
+
+            try:
+                request.session[self.SESSION_KEY] = '1'
+                request.session.modified = True
+            except Exception:
+                pass
+
+        return self.get_response(request)
 
     def _get_gate_settings(self):
         """Fetch gate flags with short cache to avoid per-request DB reads."""
@@ -348,6 +366,9 @@ class PermissionValidationMiddleware:
         'app/no-access/',
         'app/manifest.json',
         'app/sw.js',
+        # Also allow manifest and service-worker at root on panel host
+        'manifest.json',
+        'sw.js',
         'app/api/auth/',
         'inactive/',
         'maintenance/',
@@ -363,6 +384,7 @@ class PermissionValidationMiddleware:
         '/robots.txt',
         '/sitemap.xml',
         '/panel-entry/',
+        '/__debug__/',
     ]
     
     def __init__(self, get_response):

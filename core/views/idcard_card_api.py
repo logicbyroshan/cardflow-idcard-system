@@ -42,6 +42,7 @@ from .idcard_helpers import (
     _is_client_edit_locked,
     _client_edit_locked_response,
     _apply_client_staff_row_scope,
+    _table_scope_values_for_staff,
 )
 
 # Logger for this module
@@ -168,12 +169,7 @@ def _pool_retrieve_scope_payload(user, card):
     )
     payload['class_field'] = class_field_name
 
-    allowed_classes, _allowed_sections, _allowed_branches = _table_scope_filters_for_staff(staff, card.table)
-    payload['allowed_classes'] = [
-        str(value).strip()
-        for value in (allowed_classes or [])
-        if str(value).strip()
-    ]
+    payload['allowed_classes'] = _table_scope_values_for_staff(staff, card.table, 'classes')
 
     if class_field_name:
         field_data = card.field_data or {}
@@ -236,12 +232,7 @@ def _apply_pool_retrieve_class_change(user, card, requested_class):
     if not class_field_name:
         return False, 'Class field is not configured for this table.'
 
-    allowed_classes, _allowed_sections, _allowed_branches = _table_scope_filters_for_staff(staff, card.table)
-    allowed_values = [
-        str(value).strip()
-        for value in (allowed_classes or [])
-        if str(value).strip()
-    ]
+    allowed_values = _table_scope_values_for_staff(staff, card.table, 'classes')
     if not allowed_values:
         return False, 'No assigned class available for this table.'
 
@@ -1472,8 +1463,6 @@ def api_idcard_change_status(request, card_id):
     """
     card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
-    if not _is_card_in_client_staff_scope(request.user, card):
-        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
         data = json.loads(request.body)
         new_status = data.get('status')
@@ -1510,7 +1499,10 @@ def api_idcard_change_status(request, card_id):
                         'retrieve_scope': 'pool_to_pending',
                         **payload,
                     }, status=409)
-                return JsonResponse({'success': False, 'message': _POOL_RETRIEVE_SCOPE_MESSAGE}, status=403)
+                return JsonResponse({'success': False, 'message': _POOL_RETRIEVE_SCOPE_MESSAGE}, status=409)
+
+                if not _is_card_in_client_staff_scope(request.user, card):
+                    return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
 
         from idcards.services_workflow import WorkflowService
         result = WorkflowService.transition(card, new_status, user=request.user, request=request)
@@ -1612,7 +1604,7 @@ def api_idcard_bulk_status(request, table_id):
                         return JsonResponse({
                             'success': False,
                             'message': _POOL_RETRIEVE_SCOPE_MESSAGE,
-                        }, status=403)
+                        }, status=409)
             if forbidden_ids:
                 return JsonResponse({
                     'success': False,

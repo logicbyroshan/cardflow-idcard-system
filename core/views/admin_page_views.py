@@ -28,11 +28,11 @@ from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,
+    require_super_admin,
 )
 from .base_helpers import (
     get_user_role,
     get_page_range,
-    super_admin_required,
     _STATUS_LIST_PERM,
     _VALID_STATUSES,
 )
@@ -350,7 +350,7 @@ def _build_personal_guide_text(share_url):
 
 
 # Staff Management
-@super_admin_required
+@require_super_admin
 def manage_staff(request):
     """View to manage admin staff — supports HTMX partial responses."""
     DEFAULT_PER_PAGE = 25
@@ -791,7 +791,7 @@ def api_client_staff_assignment_timeline(request, staff_id):
     })
 
 
-@super_admin_required
+@require_super_admin
 @require_http_methods(['GET'])
 def api_staff_login_history(request, staff_id):
     """Return login/logout timeline for a single admin staff (operator)."""
@@ -836,7 +836,7 @@ def api_staff_login_history(request, staff_id):
     })
 
 
-@super_admin_required
+@require_super_admin
 @require_http_methods(['GET'])
 def api_staff_assignment_timeline(request, staff_id):
     """Return assignment-change timeline for a single admin staff (operator)."""

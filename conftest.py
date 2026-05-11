@@ -38,7 +38,7 @@ VERY_SLOW_NODEID_CONTAINS = (
 
 IMPORTANT_NODEID_CONTAINS = (
     "SecurityApiRegressionTests",
-    "OfficeWork",
+    # OfficeWork app removed; keep marker list focused on active suites
     "ReprintApiIntegrationTests",
     "ClientApiIntegrationTests",
     "ExportApiIntegrationAdvancedTests",

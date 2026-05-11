@@ -2458,6 +2458,38 @@ class ActivityFeedIsolationTests(TestCase):
         self.assertNotIn('Admin created client staff account', descriptions)
         self.assertNotIn('System user-management sync', descriptions)
 
+    def test_recent_activity_ignores_malformed_target_id_rows(self):
+        from core.models import ActivityLog
+        from core.services.activity_service import ActivityService
+        from django.db import connection
+
+        good_entry = ActivityLog.objects.create(
+            user=self.client_staff_user,
+            action='card_status',
+            description='1 card verified',
+            target_model='IDCard',
+            target_id=101,
+            target_name='Card #101',
+        )
+        bad_entry = ActivityLog.objects.create(
+            user=self.client_staff_user,
+            action='staff_update',
+            description='Legacy bad target id row',
+            target_model='Staff',
+            target_name='Assistant',
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE core_activitylog SET target_id = 'abc' WHERE id = %s",
+                [bad_entry.pk],
+            )
+
+        rows = ActivityService.get_recent(limit=20, hours=None, user=self.client_staff_user)
+        row_ids = [row.get('id') for row in rows]
+
+        self.assertIn(good_entry.id, row_ids)
+        self.assertIn(bad_entry.id, row_ids)
+
     def test_recent_activity_combines_repeated_actions_within_one_hour(self):
         from core.models import ActivityLog
         from core.services.activity_service import ActivityService

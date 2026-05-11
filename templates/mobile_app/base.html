@@ -922,6 +922,11 @@
             return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
         }
 
+        // For PWA-based install and update flows, only proceed if we should NOT use native UI
+        if (!shouldUseNativeUpdateUi()) {
+            // PWA install/update code path; skip native shell handling
+        }
+
         function syncDeferredPrompt() {
             if (!window.__deferredInstallPrompt) return;
             installEvent = window.__deferredInstallPrompt;

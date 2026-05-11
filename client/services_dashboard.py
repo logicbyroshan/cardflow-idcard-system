@@ -397,7 +397,17 @@ class ClientDashboardService(BaseService):
             ).count()
             
             # Use centralized role-aware activity feed so legacy per-card logs are merged.
-            recent_activity = ActivityService.get_recent(limit=6, hours=None, user=user)
+            # Keep dashboard counts resilient if the activity feed hits a malformed row.
+            try:
+                recent_activity = ActivityService.get_recent(limit=6, hours=None, user=user)
+            except Exception as activity_exc:
+                logger.warning(
+                    'ClientDashboardService.get_dashboard_data: recent activity load failed for user_id=%s role=%s: %s',
+                    user.pk,
+                    getattr(user, 'role', 'unknown'),
+                    activity_exc,
+                )
+                recent_activity = []
             
             return ServiceResult(
                 success=True,
