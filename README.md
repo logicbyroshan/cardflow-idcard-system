@@ -133,7 +133,7 @@ This section summarizes important recent platform-level updates now live on main
 - **Eliminated Android Startup Crashes**: Fully migrated the icon infrastructure from `@expo/vector-icons` (FontAwesome5/Material) to a centralized SVG-based `DynamicIcon` system. This resolves the `ReferenceError: Property 'fontFamily' doesn't exist` crashes on Android devices.
 - **Improved Cold Boot Times**: Removed font-loading dependencies during the application initialization phase, speeding up startup on mid-range and premium devices.
 - **Global UI Coverage**: Updated Home, Login, Welcome, Landing, and Card List screens to use 100% SVG iconography, ensuring visual parity and reliability across all user roles.
-- **Production Build v1.0.44**: Incremented mobile versioning and configured official production signing keys for Play Store rollout.
+- **Production Build v1.0.45**: Updated `targetSdkVersion` to 35 and incremented build number to satisfy latest Google Play Store security and compliance requirements.
 
 ---
 
