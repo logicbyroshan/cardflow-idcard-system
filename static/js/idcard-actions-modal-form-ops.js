@@ -64,33 +64,9 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
                     handled = false;
                 }
             }
-            
-            // Fallback 1: full table refresh
-            if (!handled && window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
-                try {
-                    window.IDCardApp.refreshCardTable();
-                    handled = true;
-                    console.log('Card table refreshed');
-                } catch (err) {
-                    console.error('refreshCardTable failed:', err);
-                    handled = false;
-                }
-            }
-            
-            // Fallback 2: navigate to status
-            if (!handled && window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
-                try {
-                    window.IDCardPage.navigateStatusNoReload('pending');
-                    handled = true;
-                    console.log('Navigated to pending');
-                } catch (err) {
-                    console.error('navigateStatusNoReload failed:', err);
-                    handled = false;
-                }
-            }
-            
+
             if (!handled) {
-                console.error('All card refresh methods failed');
+                console.error('Card insert failed and no local fallback was applied');
             }
         } else {
             if (typeof showToast === 'function') showToast(data.message || 'Error adding card', false);

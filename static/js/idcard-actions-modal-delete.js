@@ -207,13 +207,10 @@ function initDeleteModal() {
                 closeDeleteModalFn();
                 if (data.success) {
                     if (typeof showToast === 'function') showToast(`${data.deleted_count} card(s) permanently deleted`);
-                    // Use HTMX refresh instead of full page reload
-                    if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
-                        window.IDCardApp.refreshCardTable();
-                    } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
-                        window.IDCardPage.navigateStatusNoReload((typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending');
+                    if (window.IDCardApp && typeof window.IDCardApp.removeCardRows === 'function') {
+                        window.IDCardApp.removeCardRows(cardIds, { removedCount: data.deleted_count });
                     } else {
-                        console.warn('permanent delete fallback skipped: no refresh bridge available');
+                        console.warn('permanent delete local update skipped: removeCardRows unavailable');
                     }
                 } else {
                     if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', false);
@@ -302,13 +299,10 @@ function initSimpleDeleteModal() {
                 closeSimpleDeleteModalFn();
                 if (data.success) {
                     if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) deleted`);
-                    // Use HTMX refresh instead of full page reload to preserve context
-                    if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
-                        window.IDCardApp.refreshCardTable();
-                    } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
-                        window.IDCardPage.navigateStatusNoReload((typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending');
+                    if (window.IDCardApp && typeof window.IDCardApp.removeCardRows === 'function') {
+                        window.IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
                     } else {
-                        console.warn('simple delete fallback skipped: no refresh bridge available');
+                        console.warn('simple delete local update skipped: removeCardRows unavailable');
                     }
                 } else {
                     if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', false);

@@ -38,8 +38,6 @@ function bulkVerify(cardIds) {
                     }
                     if (typeof IDCardApp.removeCardRows === 'function') {
                         IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
-                    } else {
-                        IDCardApp.refreshCardTable();
                     }
                 })
                 .catch(err => {
@@ -68,8 +66,6 @@ function bulkApprove(cardIds) {
                     }
                     if (typeof IDCardApp.removeCardRows === 'function') {
                         IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
-                    } else {
-                        IDCardApp.refreshCardTable();
                     }
                 })
                 .catch(err => {
@@ -94,7 +90,9 @@ function bulkUnverify(cardIds) {
                         return;
                     }
                     if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to pending`);
-                    IDCardApp.refreshCardTable();
+                    if (typeof IDCardApp.removeCardRows === 'function') {
+                        IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
+                    }
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Bulk unverify failed', false);
@@ -122,7 +120,9 @@ function bulkDisapprove(cardIds) {
                         return;
                     }
                     if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to verified`);
-                    IDCardApp.refreshCardTable();
+                    if (typeof IDCardApp.removeCardRows === 'function') {
+                        IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
+                    }
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Bulk disapprove failed', false);
@@ -153,7 +153,9 @@ function bulkDelete(cardIds) {
                             return;
                         }
                         if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to pool`);
-                        IDCardApp.refreshCardTable();
+                        if (typeof IDCardApp.removeCardRows === 'function') {
+                            IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
+                        }
                     })
                     .catch(err => {
                         if (typeof showToast === 'function') showToast(err.message || 'Bulk delete failed', false);
@@ -211,7 +213,9 @@ function bulkRetrieve(cardIds) {
                     return;
                 }
                 if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) retrieved to pending`);
-                IDCardApp.refreshCardTable();
+                if (typeof IDCardApp.removeCardRows === 'function') {
+                    IDCardApp.removeCardRows(cardIds, { removedCount: data.updated_count });
+                }
             })
             .catch(function(err) {
                 var extractFn = window.IDCardApp && window.IDCardApp.extractRetrieveClassChangeDetails;

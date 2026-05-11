@@ -19,6 +19,151 @@ function reindexVisibleSrNumbers() {
     });
 }
 
+function _getCardSortName(cardData) {
+    if (!cardData || !Array.isArray(cardData.ordered_fields)) return '';
+
+    for (var i = 0; i < cardData.ordered_fields.length; i++) {
+        var field = cardData.ordered_fields[i];
+        if (field && field.type === 'name') {
+            return String(field.value || '').toLowerCase().trim();
+        }
+    }
+
+    var blocked = ['father', 'mother', 'guardian', 'parent', 'relation', 'spouse', 'husband', 'wife'];
+    for (var j = 0; j < cardData.ordered_fields.length; j++) {
+        var nameField = cardData.ordered_fields[j];
+        if (!nameField || nameField.type === 'image') continue;
+        var fieldName = String(nameField.name || '').toLowerCase().replace(/[_\-.]/g, ' ');
+        if (fieldName.indexOf('name') === -1) continue;
+        var blockedMatch = false;
+        for (var b = 0; b < blocked.length; b++) {
+            if (fieldName.indexOf(blocked[b]) !== -1) {
+                blockedMatch = true;
+                break;
+            }
+        }
+        if (!blockedMatch) {
+            return String(nameField.value || '').toLowerCase().trim();
+        }
+    }
+
+    for (var k = 0; k < cardData.ordered_fields.length; k++) {
+        var fallbackField = cardData.ordered_fields[k];
+        if (fallbackField && fallbackField.type !== 'image') {
+            return String(fallbackField.value || '').toLowerCase().trim();
+        }
+    }
+
+    return '';
+}
+
+function _getCardSortDate(cardData) {
+    if (!cardData) return '';
+    return String(cardData.updated_at_iso || cardData.updated_at || '').trim();
+}
+
+function _getRowSortName(row) {
+    if (!row) return '';
+    var cells = row.querySelectorAll('td[data-field-name]');
+    for (var i = 0; i < cells.length; i++) {
+        var cell = cells[i];
+        var fieldType = String(cell.getAttribute('data-field-type') || '').toLowerCase();
+        var fieldName = String(cell.getAttribute('data-field-name') || '').toLowerCase();
+        if (fieldType === 'image') continue;
+        if (fieldName.indexOf('name') !== -1 && fieldName.indexOf('father') === -1 && fieldName.indexOf('mother') === -1 && fieldName.indexOf('guardian') === -1 && fieldName.indexOf('relation') === -1) {
+            return String(cell.getAttribute('data-original-value') || cell.textContent || '').toLowerCase().trim();
+        }
+    }
+    for (var j = 0; j < cells.length; j++) {
+        var fallbackCell = cells[j];
+        if (String(fallbackCell.getAttribute('data-field-type') || '').toLowerCase() !== 'image') {
+            return String(fallbackCell.getAttribute('data-original-value') || fallbackCell.textContent || '').toLowerCase().trim();
+        }
+    }
+    return '';
+}
+
+function _getRowSortDate(row) {
+    if (!row) return '';
+    var cells = row.querySelectorAll('td');
+    if (cells.length >= 2) {
+        var updatedCell = cells[cells.length - 2];
+        return String(updatedCell.textContent || '').trim();
+    }
+    return '';
+}
+
+function _compareCardsForSort(a, b, sortMode) {
+    var left = a || {};
+    var right = b || {};
+    var mode = String(sortMode || 'sr-asc').toLowerCase();
+
+    switch (mode) {
+        case 'sr-desc':
+            return (Number(right.sr_no) || 0) - (Number(left.sr_no) || 0);
+        case 'name-asc':
+            return _getCardSortName(left).localeCompare(_getCardSortName(right));
+        case 'name-desc':
+            return _getCardSortName(right).localeCompare(_getCardSortName(left));
+        case 'date-new':
+            return String(_getCardSortDate(right)).localeCompare(_getCardSortDate(left));
+        case 'date-old':
+            return String(_getCardSortDate(left)).localeCompare(_getCardSortDate(right));
+        case 'sr-asc':
+        default:
+            return (Number(left.sr_no) || 0) - (Number(right.sr_no) || 0);
+    }
+}
+
+function _findInsertBeforeRow(cardData) {
+    var tableBody = document.getElementById('cardsTableBody');
+    if (!tableBody) return null;
+
+    var sortMode = (IDCardApp._ts && IDCardApp._ts.currentSort) ? String(IDCardApp._ts.currentSort) : 'sr-asc';
+    var rows = Array.prototype.slice.call(tableBody.querySelectorAll('tr[data-card-id]'));
+    if (!rows.length) return null;
+
+    var cardsState = null;
+    if (IDCardApp._ts && Array.isArray(IDCardApp._ts.allRows)) {
+        cardsState = IDCardApp._ts.allRows.map(function(row) {
+            var rowId = row.getAttribute('data-card-id');
+            if (rowId && String(rowId) === String(cardData.id)) return null;
+            return row;
+        }).filter(Boolean);
+    }
+
+    if (sortMode === 'sr-asc') {
+        return rows[0];
+    }
+
+    if (sortMode === 'sr-desc') {
+        return null;
+    }
+
+    for (var r = 0; r < rows.length; r++) {
+        var row = rows[r];
+        if (sortMode === 'name-asc' || sortMode === 'name-desc') {
+            var compareName = _getRowSortName(row);
+            var newName = _getCardSortName(cardData);
+            if (sortMode === 'name-asc') {
+                if (newName.localeCompare(compareName) < 0) return row;
+            } else if (compareName.localeCompare(newName) < 0) {
+                return row;
+            }
+        } else if (sortMode === 'date-new' || sortMode === 'date-old') {
+            var compareDate = _getRowSortDate(row);
+            var newDate = _getCardSortDate(cardData);
+            if (sortMode === 'date-new') {
+                if (newDate.localeCompare(compareDate) > 0) return row;
+            } else if (newDate.localeCompare(compareDate) < 0) {
+                return row;
+            }
+        }
+    }
+
+    return null;
+}
+
 /**
  * Prepend a newly created card row to the table without full refresh.
  * Updates SR numbers and internal state to match verify/delete/pool behavior.
@@ -56,8 +201,14 @@ function prependCardRowToTable(cardData) {
         newRow.style.opacity = '0';
         newRow.style.transform = 'translateY(-10px)';
 
-        // Prepend to table body
-        tableBody.insertBefore(newRow, tableBody.firstChild);
+        // Keep the row order aligned with the active sort mode.
+        newRow._cardData = cardData;
+        var insertBeforeRow = _findInsertBeforeRow(cardData);
+        if (insertBeforeRow) {
+            tableBody.insertBefore(newRow, insertBeforeRow);
+        } else {
+            tableBody.appendChild(newRow);
+        }
 
         // Animate in
         requestAnimationFrame(function() {
@@ -71,10 +222,26 @@ function prependCardRowToTable(cardData) {
         if (_ts) {
             // Add to allRows and filteredRows (new rows should always be visible)
             if (Array.isArray(_ts.allRows)) {
-                _ts.allRows.unshift(newRow);
+                var allInsertIndex = _ts.allRows.length;
+                var allRows = _ts.allRows;
+                for (var a = 0; a < allRows.length; a++) {
+                    if (allRows[a] === insertBeforeRow || allRows[a].getAttribute('data-card-id') === String(cardData.id)) {
+                        allInsertIndex = a;
+                        break;
+                    }
+                }
+                _ts.allRows.splice(allInsertIndex, 0, newRow);
             }
             if (Array.isArray(_ts.filteredRows)) {
-                _ts.filteredRows.unshift(newRow);
+                var filteredInsertIndex = _ts.filteredRows.length;
+                var filteredRows = _ts.filteredRows;
+                for (var f = 0; f < filteredRows.length; f++) {
+                    if (filteredRows[f] === insertBeforeRow || filteredRows[f].getAttribute('data-card-id') === String(cardData.id)) {
+                        filteredInsertIndex = f;
+                        break;
+                    }
+                }
+                _ts.filteredRows.splice(filteredInsertIndex, 0, newRow);
             }
 
             // Track in loaded IDs
