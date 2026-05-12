@@ -5173,6 +5173,7 @@ def api_dashboard_data(request):
         from core.services.cache_version_service import CacheVersionService
         from core.services.activity_service import ActivityService
         from client.models import Client
+        from core.models import User
         
         is_admin = PermissionService.is_super_admin(user) or PermissionService.is_admin_staff(user)
         is_staff = PermissionService.is_client_staff(user)
@@ -5215,7 +5216,9 @@ def api_dashboard_data(request):
                 'approved': global_counts_agg.get('approved', 0),
                 'download': global_counts_agg.get('download', 0),
                 'pool': global_counts_agg.get('pool', 0),
-                'total': global_counts_agg.get('total', 0)
+                'total': global_counts_agg.get('total', 0),
+                'operator_count': User.objects.filter(role='admin_staff', is_active=True).count(),
+                'assistant_count': User.objects.filter(role='client_staff', is_active=True).count(),
             }
             
             clients_data = []

@@ -28,6 +28,7 @@ export default function HomeScreen({ navigation }) {
   const theme = roleThemes[user?.role] || roleThemes.default;
   const [expandedClient, setExpandedClient] = useState(null);
   const [activeTab, setActiveTab] = useState('clients'); // 'clients', 'activity', 'reprints'
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   const isSuperAdmin = !!user?.isSuperAdmin;
   const isOperator = !!user?.isOperator;
@@ -193,26 +194,91 @@ export default function HomeScreen({ navigation }) {
         {/* Home Section / Tab Bar (Admin/Operator Only) */}
         {(isSuperAdmin || isOperator) && (
           <View style={s.homeSectionWrap}>
-            <Text style={s.homeSecTitle}>HOME SECTION</Text>
-            <View style={s.tabBar}>
-              <TouchableOpacity 
-                style={[s.tabBtn, activeTab === 'clients' && s.tabBtnActive]} 
-                onPress={() => setActiveTab('clients')}
-              >
-                <Text style={[s.tabBtnText, activeTab === 'clients' && s.tabBtnTextActive]}>RECENT CLIENTS</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[s.tabBtn, activeTab === 'activity' && s.tabBtnActive]} 
-                onPress={() => setActiveTab('activity')}
-              >
-                <Text style={[s.tabBtnText, activeTab === 'activity' && s.tabBtnTextActive]}>RECENT ACTIVITY</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[s.tabBtn, activeTab === 'reprints' && s.tabBtnActive]} 
-                onPress={() => setActiveTab('reprints')}
-              >
-                <Text style={[s.tabBtnText, activeTab === 'reprints' && s.tabBtnTextActive]}>RECENT REPRINTS</Text>
-              </TouchableOpacity>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={width - 24}
+              decelerationRate="fast"
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(e.nativeEvent.contentOffset.x / (width - 24));
+                setCurrentSlide(index);
+              }}
+              style={s.slideScroll}
+            >
+              {/* Slide 1: Home Tabs */}
+              <View style={s.slidePage}>
+                <Text style={s.homeSecTitle}>HOME SECTION</Text>
+                <View style={s.tabBar}>
+                  <TouchableOpacity 
+                    style={[s.tabBtn, activeTab === 'clients' && s.tabBtnActive]} 
+                    onPress={() => setActiveTab('clients')}
+                  >
+                    <Text style={[s.tabBtnText, activeTab === 'clients' && s.tabBtnTextActive]}>RECENT CLIENTS</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[s.tabBtn, activeTab === 'activity' && s.tabBtnActive]} 
+                    onPress={() => setActiveTab('activity')}
+                  >
+                    <Text style={[s.tabBtnText, activeTab === 'activity' && s.tabBtnTextActive]}>RECENT ACTIVITY</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[s.tabBtn, activeTab === 'reprints' && s.tabBtnActive]} 
+                    onPress={() => setActiveTab('reprints')}
+                  >
+                    <Text style={[s.tabBtnText, activeTab === 'reprints' && s.tabBtnTextActive]}>RECENT REPRINTS</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Slide 2: Quick Actions & Users Overview */}
+              <View style={s.slidePage}>
+                <View style={s.slideHeaderRow}>
+                  <Text style={s.homeSecTitle}>QUICK ACTIONS</Text>
+                </View>
+                <View style={s.quickActionsRow}>
+                  <TouchableOpacity style={s.quickActionBtn} onPress={() => navigation.navigate('ClientsList', { openForm: true })}>
+                    <View style={[s.qaIcon, { backgroundColor: '#eff6ff' }]}>
+                      <DynamicIcon name="plus" size={14} color="#3b82f6" />
+                    </View>
+                    <Text style={s.qaLabel}>ADD CLIENT</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={s.quickActionBtn} onPress={() => navigation.navigate('StaffManage', { openForm: true })}>
+                    <View style={[s.qaIcon, { backgroundColor: '#f5f3ff' }]}>
+                      <DynamicIcon name="users" size={14} color="#8b5cf6" />
+                    </View>
+                    <Text style={s.qaLabel}>ADD ASSISTANT</Text>
+                  </TouchableOpacity>
+
+                  {isSuperAdmin && (
+                    <TouchableOpacity style={s.quickActionBtn} onPress={() => navigation.navigate('StaffManage', { openForm: true, role: 'admin_staff' })}>
+                      <View style={[s.qaIcon, { backgroundColor: '#ecfdf5' }]}>
+                        <DynamicIcon name="user-tie" size={14} color="#10b981" />
+                      </View>
+                      <Text style={s.qaLabel}>ADD OPERATOR</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <Text style={[s.homeSecTitle, { marginTop: 12 }]}>USERS OVERVIEW</Text>
+                <View style={s.usersOverviewRow}>
+                  <View style={s.userStatCard}>
+                    <Text style={s.userStatCount}>{counts.operator_count || 0}</Text>
+                    <Text style={s.userStatLabel}>OPERATORS</Text>
+                  </View>
+                  <View style={s.userStatCard}>
+                    <Text style={s.userStatCount}>{counts.assistant_count || 0}</Text>
+                    <Text style={s.userStatLabel}>ASSISTANTS</Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+            
+            {/* Pagination Dots */}
+            <View style={s.dotRow}>
+              <View style={[s.dot, currentSlide === 0 && s.dotActive]} />
+              <View style={[s.dot, currentSlide === 1 && s.dotActive]} />
             </View>
           </View>
         )}
@@ -459,12 +525,28 @@ const s = StyleSheet.create({
     letterSpacing: 0.3,
   },
   homeSectionWrap: { marginTop: 12, marginBottom: 12 },
-  homeSecTitle: { fontSize: 10, fontFamily: fontFamily.black, color: colors.gray400, letterSpacing: 1, marginBottom: 10 },
+  slideScroll: { width: width - 24 },
+  slidePage: { width: width - 24, paddingRight: 4 },
+  homeSecTitle: { fontSize: 10, fontFamily: fontFamily.black, color: colors.gray400, letterSpacing: 1, marginBottom: 8 },
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: radius.md, padding: 4, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm },
   tabBtnActive: { backgroundColor: colors.brandPrimary },
   tabBtnText: { fontSize: 8, fontFamily: fontFamily.bold, color: colors.gray400 },
   tabBtnTextActive: { color: '#fff' },
+
+  quickActionsRow: { flexDirection: 'row', justifyContent: 'flex-start', gap: 10 },
+  quickActionBtn: { flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: radius.md, alignItems: 'center', ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
+  qaIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  qaLabel: { fontSize: 7, fontFamily: fontFamily.black, color: colors.gray700, textAlign: 'center' },
+
+  usersOverviewRow: { flexDirection: 'row', gap: 10 },
+  userStatCard: { flex: 1, backgroundColor: '#fff', padding: 12, borderRadius: radius.md, alignItems: 'center', ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
+  userStatCount: { fontSize: 18, fontFamily: fontFamily.black, color: colors.brandPrimary },
+  userStatLabel: { fontSize: 8, fontFamily: fontFamily.bold, color: colors.gray400, marginTop: 2 },
+
+  dotRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gray200 },
+  dotActive: { width: 16, backgroundColor: colors.brandPrimary },
 
   secHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.md, marginBottom: 12, backgroundColor: '#fff', ...shadows.sm },
   secTitle: { fontSize: 11, fontFamily: fontFamily.black, color: colors.gray400, letterSpacing: 1.5 },

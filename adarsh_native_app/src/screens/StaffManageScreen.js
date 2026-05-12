@@ -61,6 +61,12 @@ export default function StaffManageScreen({ navigation }) {
   }, []);
 
   const { loading, refreshing, error, setError, refresh } = useRefreshableResource(loadStaff, { initialData: [] });
+  
+  useEffect(() => {
+    if (navigation.getState().routes.find(r => r.name === 'StaffManage')?.params?.openForm) {
+      openCreate();
+    }
+  }, []);
 
   const handleStopImpersonation = async () => {
     const result = await stopImpersonation();
