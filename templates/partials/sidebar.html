@@ -101,14 +101,49 @@
     
     <!-- Temporary Migration Export (POST form) -->
     <div style="padding: 0 16px; margin-top: 8px;">
-        <form action="{% url 'manage_website:export_migration_data' %}" method="POST" id="sidebarMigrationForm">
+        <form action="{% url 'manage_website:export_migration_data' %}" method="POST" id="sidebarMigrationForm" onsubmit="showMigrationProgress()">
             {% csrf_token %}
-            <button type="submit" class="quick-action-btn" style="width: 100%; justify-content: flex-start; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 6px; cursor: pointer; font-size: 13px;">
+            <button type="submit" id="sidebarMigrationBtn" class="quick-action-btn" style="width: 100%; justify-content: flex-start; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 6px; cursor: pointer; font-size: 13px;">
                 <i class="fa-solid fa-file-export" style="margin-right: 10px; color: #f59e0b;"></i>
                 <span>Migration Export</span>
             </button>
         </form>
     </div>
+    <script>
+    function showMigrationProgress() {
+        const btn = document.getElementById('sidebarMigrationBtn');
+        const overlay = document.getElementById('blockingOverlay');
+        
+        if (btn) btn.disabled = true;
+        
+        if (overlay) {
+            overlay.style.display = 'flex';
+            document.getElementById('blockingOverlayTitle').innerText = 'Bundling Site Data';
+            document.getElementById('blockingOverlayMessage').innerText = 'Preparing database and media assets (Images/Logos). This may take up to 60 seconds. Please wait...';
+            
+            const bar = document.getElementById('blockingOverlayBar');
+            if (bar) {
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.transition = 'width 45s cubic-bezier(0.1, 0.5, 0.1, 1)';
+                    bar.style.width = '95%';
+                }, 100);
+            }
+
+            // Hide overlay after 60 seconds or if user clicks 'Done' (though it should be a file download)
+            setTimeout(() => {
+                if (btn) btn.disabled = false;
+                // We don't hide the overlay automatically as the browser download will happen
+                // But we show the Done button if it exists
+                const doneBtn = document.getElementById('blockingOverlayDoneBtn');
+                if (doneBtn) {
+                    doneBtn.style.display = 'block';
+                    doneBtn.onclick = () => { overlay.style.display = 'none'; };
+                }
+            }, 45000);
+        }
+    }
+    </script>
     {% endif %}
 
   </nav>
