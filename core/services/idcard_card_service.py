@@ -850,14 +850,14 @@ class IDCardCardService(BaseService):
                             field_data.pop(existing_key, None)
                         field_data[field_name] = result.data.get('final_value', raw_value)
 
-            for key in list(field_data.keys()):
-                if not isinstance(key, str):
+            # Safely handle bare filenames in image fields only (from table schema)
+            for field in table.fields:
+                if not cls.is_image_field(field):
                     continue
-                if not cls.is_image_field({'name': key, 'type': 'image'}):
-                    continue
-                value = str(field_data.get(key, '') or '').strip()
+                field_name = field['name']
+                value = str(field_data.get(field_name, '') or '').strip()
                 if value and '/' not in value and '\\' not in value and not value.startswith('PENDING:'):
-                    field_data[key] = f'PENDING:{os.path.basename(value)}'
+                    field_data[field_name] = f'PENDING:{os.path.basename(value)}'
 
             # Atomic block: card creation + media records together
             with transaction.atomic():

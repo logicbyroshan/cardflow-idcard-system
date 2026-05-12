@@ -759,6 +759,21 @@ class ClientCardService(BaseService):
                     ''
                 )
                 
+                # Sanitize field_data: remove PENDING: prefix from non-image fields before exposing to client
+                sanitized_field_data = {}
+                for key, val in (card.field_data or {}).items():
+                    # Check if this is an image field
+                    is_image_field = False
+                    for field in table.fields:
+                        if field.get('name') == key or field.get('name', '').upper() == key.upper():
+                            is_image_field = field.get('type') in ['photo', 'image', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+                            break
+                    # Strip PENDING: prefix from non-image fields
+                    if not is_image_field and val and isinstance(val, str) and val.startswith('PENDING:'):
+                        sanitized_field_data[key] = ''
+                    else:
+                        sanitized_field_data[key] = val
+                
                 card_data = {
                     'id': card.id,
                     'sr_no': offset + idx + 1,
@@ -766,7 +781,7 @@ class ClientCardService(BaseService):
                     'id_number': id_number,
                     'class_designation': class_designation,
                     'photo_url': get_card_photo_url(card, field_data),
-                    'field_data': card.field_data,
+                    'field_data': sanitized_field_data,
                     'status': card.status,
                     'status_display': card.get_status_display(),
                     'downloaded_date': localtime(card.downloaded_at).strftime('%Y-%m-%d') if card.downloaded_at else '',

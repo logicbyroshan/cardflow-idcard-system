@@ -730,6 +730,11 @@ def api_idcard_cards_json(request, table_id):
                     val = card.photo.name or card.photo.url
                 except Exception:
                     pass
+            
+            # Sanitize: strip PENDING: prefix from non-image fields (internal placeholder should not be exposed)
+            if not is_img and val and isinstance(val, str) and val.startswith('PENDING:'):
+                val = ''
+            
             entry = {'name': fname, 'type': ftype, 'value': val}
             if is_img:
                 entry['thumb'] = _thumb(val) if val else ''
