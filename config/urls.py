@@ -183,6 +183,21 @@ urlpatterns += [
     path('panel/work/', include('idcards.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
 
+    # Backward-compatible root mounts for deployments that still hit the app
+    # without the /panel prefix.
+    path('', include('core.urls')),
+    path('', include(('accounts.urls', 'accounts'), namespace='accounts_root')),
+    path('auth/', include(('accounts.urls', 'accounts'), namespace='accounts_auth_root')),
+    path('client/', include(('client.urls', 'client'), namespace='client_root')),
+    path('exports/', include(('exports.urls', 'exports'), namespace='exports_root')),
+    path('images/', include(('mediafiles.urls', 'mediafiles'), namespace='mediafiles_root')),
+    path('staff/', include(('staff.urls', 'staff'), namespace='staff_root')),
+    path('work/', include(('idcards.urls', 'idcards'), namespace='idcards_root')),
+    path('reprint/', include(('reprintcard.urls', 'reprintcard'), namespace='reprintcard_root')),
+
+    # ==================== PWA MOBILE APP (/app/) ====================
+    path('app/', include('mobile_app.urls')),
+    path('sw.js', pwa_service_worker),
     # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
     path('api/mobile/', include('mobile_api.urls')),
 ]

@@ -1301,6 +1301,77 @@ def api_mobile_login(request):
     except Exception:
         logger.exception('Mobile login error for user=%s', identifier or 'unknown')
         return JsonResponse({'success': False, 'message': 'An unexpected error occurred. Please try again.'}, status=500)
+@csrf_exempt
+@require_http_methods(['GET'])
+def api_website_landing_data(request):
+    """Compatibility landing payload for the mobile PWA."""
+    data = {
+        'hero_images': [
+            {
+                'id': 1,
+                'image': 'https://panel.adarshbhopal.in/static/img/landing-hero-1.jpg',
+                'title': 'Premium ID Cards',
+                'subtitle': 'High-quality PVC printing for all institutions',
+            },
+            {
+                'id': 2,
+                'image': 'https://panel.adarshbhopal.in/static/img/landing-hero-2.jpg',
+                'title': 'Secure & Fast',
+                'subtitle': 'Trusted by 1000+ organizations across India',
+            },
+        ],
+        'categories': [
+            {'id': 1, 'name': 'PVC Cards', 'icon': 'id-card', 'description': 'Standard PVC Identification Cards'},
+            {'id': 2, 'name': 'RFID Cards', 'icon': 'microchip', 'description': 'Contactless Smart Cards'},
+            {'id': 3, 'name': 'Lanyards', 'icon': 'ribbon', 'description': 'Custom Printed Lanyards'},
+        ],
+        'products': [],
+        'clients': [],
+        'business': {
+            'site_name': 'Adarsh ID Cards',
+            'tagline': 'Excellence in Identification',
+            'address': 'Bhopal, MP, India',
+            'phone': '+91-XXXXXXXXXX',
+            'email': 'info@adarshbhopal.in',
+            'whatsapp': '91XXXXXXXXXX',
+        },
+    }
+    return JsonResponse({'success': True, 'data': data})
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def api_website_category_products(request, category_id):
+    """Compatibility category-products payload for the mobile PWA."""
+    return JsonResponse({
+        'success': True,
+        'category': {'id': category_id, 'name': 'Category'},
+        'products': [],
+    })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_website_contact_submit(request):
+    """Compatibility contact endpoint for the mobile PWA."""
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+
+        name = str(data.get('name', '')).strip()
+        email = str(data.get('email', '')).strip()
+        message = str(data.get('message', '')).strip()
+
+        if not all([name, email, message]):
+            return JsonResponse({'success': False, 'message': 'Required fields missing'}, status=400)
+
+        logger.info('Mobile contact enquiry received (compatibility): %s <%s>', name, email)
+        return JsonResponse({'success': True, 'message': 'Thank you! We have received your message.'})
+    except Exception as exc:
+        logger.error('Mobile contact compatibility failed: %s', exc)
+        return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
 
 
 def pwa_manifest(request):

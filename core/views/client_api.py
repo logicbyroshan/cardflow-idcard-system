@@ -339,6 +339,89 @@ def api_client_get(request, client_id):
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
+@require_http_methods(["GET"])
+@api_require_any_admin
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='client_logo_get')
+def api_client_logo_get(request, client_id):
+    """Return the current client logo for the manage-client drawer preview."""
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    client = Client.objects.filter(id=client_id).only('id', 'logo').first()
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    logo_field = getattr(client, 'logo', None)
+    logo_url = logo_field.url if logo_field else None
+    return JsonResponse({
+        'success': True,
+        'logo_url': logo_url,
+        'photo_url': logo_url,
+        'website_logo_url': logo_url,
+    })
+
+
+@require_http_methods(["POST", "PUT"])
+@api_require_any_admin
+def api_client_logo_upload(request, client_id):
+    """Upload and replace the client logo."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    uploaded = request.FILES.get('logo') or request.FILES.get('photo') or request.FILES.get('image')
+    uploaded, file_error = _validate_optional_image_upload(uploaded)
+    if file_error:
+        return file_error
+    if not uploaded:
+        return JsonResponse({'success': False, 'message': 'Logo file is required'}, status=400)
+
+    client = Client.objects.filter(id=client_id).first()
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    old_logo = getattr(client, 'logo', None)
+    client.logo = uploaded
+    client.save()
+    try:
+        if old_logo and old_logo.name and old_logo.name != uploaded.name:
+            old_logo.storage.delete(old_logo.name)
+    except Exception:
+        logger.warning('Could not remove previous client logo file for client_id=%s', client_id)
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Logo uploaded successfully',
+        'logo_url': client.logo.url if client.logo else None,
+    })
+
+
+@require_http_methods(["DELETE", "POST"])
+@api_require_any_admin
+def api_client_logo_delete(request, client_id):
+    """Remove the current client logo."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    client = Client.objects.filter(id=client_id).first()
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    logo_field = getattr(client, 'logo', None)
+    try:
+        if logo_field and logo_field.name:
+            logo_field.delete(save=False)
+    except Exception:
+        logger.warning('Could not delete client logo file for client_id=%s', client_id)
+
+    client.logo = None
+    client.save()
+    return JsonResponse({'success': True, 'message': 'Logo deleted successfully'})
+
+
 @require_http_methods(["PUT", "POST"])
 @api_require_any_admin
 def api_client_update(request, client_id):
