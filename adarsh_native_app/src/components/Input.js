@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.xs,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray500,
     letterSpacing: 0.8,
     marginBottom: 6,
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.gray800,
     fontSize: typography.base,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   error: {
     color: colors.error,
     fontSize: typography.xs,
-    fontFamily: fontFamily.medium,
+    fontFamily: 'SairaSemiCondensed-Medium',
     marginTop: 4,
   },
 });

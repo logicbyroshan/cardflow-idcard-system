@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: typography.base,
-    fontFamily: fontFamily.semibold,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
     color: colors.gray700,
   },
   primaryBtnWrap: {
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     fontSize: typography.base,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.white,
   },
 });

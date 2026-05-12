@@ -71,14 +71,14 @@ const s = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray800,
     marginBottom: 12,
     textAlign: 'center',
   },
   message: {
     fontSize: 15,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
     color: colors.gray500,
     textAlign: 'center',
     lineHeight: 22,
@@ -96,7 +96,7 @@ const s = StyleSheet.create({
   },
   backBtnText: {
     fontSize: 14,
-    fontFamily: fontFamily.semibold,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
     color: colors.gray600,
   },
   homeBtnWrap: {
@@ -110,7 +110,7 @@ const s = StyleSheet.create({
   },
   homeBtnText: {
     fontSize: 14,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: '#fff',
   },
 });

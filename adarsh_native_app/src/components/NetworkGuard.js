@@ -292,14 +292,14 @@ const styles = StyleSheet.create({
   },
   overlayTitle: {
     fontSize: 22,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: '#fff',
     marginBottom: 10,
     textAlign: 'center',
   },
   overlayMessage: {
     fontSize: 14,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
     lineHeight: 20,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   tipText: {
     flex: 1,
     fontSize: 12,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
     color: 'rgba(255,255,255,0.5)',
     lineHeight: 16,
   },
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   },
   reconnectedText: {
     fontSize: 12,
-    fontFamily: fontFamily.semibold,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
     color: '#fff',
   },
 });
@@ -363,14 +363,14 @@ const ev = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray800,
     marginBottom: 8,
     textAlign: 'center',
   },
   message: {
     fontSize: 14,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
     color: colors.gray500,
     textAlign: 'center',
     lineHeight: 20,
@@ -397,7 +397,7 @@ const ev = StyleSheet.create({
   btnText: {
     color: '#fff',
     fontSize: 14,
-    fontFamily: fontFamily.semibold,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
   },
   secondaryBtnWrap: {
     flexDirection: 'row',
@@ -409,7 +409,7 @@ const ev = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: 13,
-    fontFamily: fontFamily.medium,
+    fontFamily: 'SairaSemiCondensed-Medium',
     color: colors.gray600,
   },
 });
@@ -428,7 +428,7 @@ const eb = StyleSheet.create({
   text: {
     flex: 1,
     fontSize: 12,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
     lineHeight: 16,
   },
   retryBtn: {

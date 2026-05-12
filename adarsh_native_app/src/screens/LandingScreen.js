@@ -478,17 +478,17 @@ function LandingInput({ icon, ...props }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#fff" },
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
-  loadingText: { marginTop: 10, fontSize: 12, color: colors.gray400, fontFamily: fontFamily.bold },
+  loadingText: { marginTop: 10, fontSize: 12, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Bold' },
   errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   errorIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.errorBg, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   slash: { position: 'absolute', width: 2, height: 40, backgroundColor: colors.red, transform: [{ rotate: '45deg' }] },
-  errorTitle: { fontSize: 20, fontFamily: fontFamily.bold, color: colors.gray800, marginBottom: 8 },
-  errorMsg: { fontSize: 13, color: colors.gray500, textAlign: 'center', marginBottom: 32, fontFamily: fontFamily.regular, lineHeight: 20 },
+  errorTitle: { fontSize: 20, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 8 },
+  errorMsg: { fontSize: 13, color: colors.gray500, textAlign: 'center', marginBottom: 32, fontFamily: 'SairaSemiCondensed-Regular', lineHeight: 20 },
   retryBtn: { width: '100%', borderRadius: radius.sm, overflow: 'hidden', ...shadows.md },
   retryBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 10 },
-  retryBtnText: { fontSize: 13, fontFamily: fontFamily.bold, color: '#fff', letterSpacing: 1 },
+  retryBtnText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff', letterSpacing: 1 },
   errorLoginLink: { marginTop: 20 },
-  errorLoginLinkText: { fontSize: 12, fontFamily: fontFamily.bold, color: colors.brandPrimary },
+  errorLoginLinkText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
 
   header: {
     position: "absolute",
@@ -518,7 +518,7 @@ const s = StyleSheet.create({
   logoCircle: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center' },
   logoText: {
     fontSize: 16,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.brandPrimary,
     letterSpacing: 1,
     marginLeft: 8,
@@ -533,7 +533,7 @@ const s = StyleSheet.create({
   },
   loginBtnText: {
     fontSize: 10,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     letterSpacing: 0.5,
   },
@@ -554,7 +554,7 @@ const s = StyleSheet.create({
   heroContent: { paddingBottom: 10 },
   heroTitle: {
     fontSize: 32,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     lineHeight: 38,
   },
@@ -562,7 +562,7 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: "rgba(255,255,255,0.8)",
     marginTop: 8,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   heroDots: {
     position: "absolute",
@@ -583,7 +583,7 @@ const s = StyleSheet.create({
   sectionPadding: { paddingHorizontal: 20 },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#1e293b",
     marginBottom: 16,
   },
@@ -592,7 +592,7 @@ const s = StyleSheet.create({
     color: "#64748b",
     marginTop: -8,
     marginBottom: 16,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
 
   featuredProdCard: {
@@ -609,14 +609,14 @@ const s = StyleSheet.create({
   featuredProdInfo: { padding: 15 },
   featuredProdTag: {
     fontSize: 9,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.brandPrimary,
     textTransform: "uppercase",
     marginBottom: 4,
   },
   featuredProdTitle: {
     fontSize: 14,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#1e293b",
   },
 
@@ -638,7 +638,7 @@ const s = StyleSheet.create({
     marginRight: 10,
   },
   catIconWrap: { marginRight: 8 },
-  quickCatText: { fontSize: 11, fontFamily: fontFamily.bold, color: "#475569" },
+  quickCatText: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: "#475569" },
 
   shelfScroll: { paddingHorizontal: 15, paddingBottom: 10 },
 
@@ -667,13 +667,13 @@ const s = StyleSheet.create({
     borderColor: "#f1f5f9",
     ...shadows.xl,
   },
-  contactTitle: { fontSize: 24, fontFamily: fontFamily.bold, color: "#1e293b" },
+  contactTitle: { fontSize: 24, fontFamily: 'SairaSemiCondensed-Bold', color: "#1e293b" },
   contactSub: {
     fontSize: 14,
     color: "#64748b",
     marginTop: 4,
     marginBottom: 24,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   form: { gap: 12 },
   inputWrap: {
@@ -690,7 +690,7 @@ const s = StyleSheet.create({
     paddingRight: 12,
     color: "#1e293b",
     fontSize: 14,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   submitBtn: { borderRadius: radius.sm, overflow: "hidden", ...shadows.md },
   submitGrad: {
@@ -700,13 +700,13 @@ const s = StyleSheet.create({
     paddingVertical: 16,
     gap: 10,
   },
-  submitText: { fontSize: 14, fontFamily: fontFamily.bold, color: "#fff" },
+  submitText: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: "#fff" },
 
   footer: { marginTop: 40, alignItems: "center" },
   footerText: {
     fontSize: 11,
     color: colors.gray400,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   socials: { flexDirection: "row", gap: 20, marginTop: 16 },
 
@@ -720,6 +720,6 @@ const s = StyleSheet.create({
     borderColor: "#e2e8f0",
   },
   benefitIcon: { marginBottom: 12 },
-  benefitTitle: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800, marginBottom: 4 },
-  benefitSub: { fontSize: 11, color: colors.gray500, textAlign: 'center', fontFamily: fontFamily.regular },
+  benefitTitle: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 4 },
+  benefitSub: { fontSize: 11, color: colors.gray500, textAlign: 'center', fontFamily: 'SairaSemiCondensed-Regular' },
 });

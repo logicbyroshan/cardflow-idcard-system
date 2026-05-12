@@ -122,12 +122,12 @@ const styles = StyleSheet.create({
   title: {
     color: colors.white,
     fontSize: typography.lg,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
   },
   subtitle: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: typography.xs,
-    fontFamily: fontFamily.medium,
+    fontFamily: 'SairaSemiCondensed-Medium',
     marginTop: 1,
   },
   homeBtn: {
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   addBtnText: {
     color: colors.white,
     fontSize: 10,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
   },
   downloadBtn: {
     width: 32,

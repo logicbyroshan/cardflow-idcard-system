@@ -49,14 +49,14 @@ export default function App() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Safety: Force ready after 4 seconds regardless of fonts
+  // Safety: Force ready after 2 seconds regardless of fonts to prevent stuck splash
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!appReady) {
         console.log('[App] Safety trigger: forcing appReady true');
         setAppReady(true);
       }
-    }, 4000);
+    }, 2000);
     return () => clearTimeout(timer);
   }, [appReady]);
 
@@ -113,7 +113,7 @@ const splash = StyleSheet.create({
   logo: { width: '100%', height: '100%' },
   title: { 
     fontSize: 32, 
-    fontFamily: 'SairaSemiCondensed-Bold', 
+    fontWeight: 'bold', 
     color: '#fff', 
     letterSpacing: 8,
     marginTop: 10
@@ -127,7 +127,7 @@ const splash = StyleSheet.create({
   },
   subtitle: { 
     fontSize: 12, 
-    fontFamily: 'SairaSemiCondensed-Medium', 
+    fontWeight: '500', 
     color: '#94a3b8', 
     letterSpacing: 3,
     textTransform: 'uppercase'
@@ -147,7 +147,6 @@ const splash = StyleSheet.create({
   },
   version: { 
     fontSize: 9, 
-    fontFamily: 'SairaSemiCondensed-Regular', 
     color: 'rgba(255,255,255,0.3)', 
     letterSpacing: 2 
   },

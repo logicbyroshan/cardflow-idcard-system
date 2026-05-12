@@ -171,7 +171,7 @@ const s = StyleSheet.create({
   resendBtn: { marginTop: 4, alignSelf: 'center' },
   resendText: { color: colors.brandLight, textDecorationLine: 'underline' },
   doneSection: { alignItems: 'center', paddingVertical: 20 },
-  doneBadge: { width: 72, height: 72, borderRadius: radius.full, backgroundColor: '#d1fae5', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 2, borderColor: '#a7f3d0' },
+  doneBadge: { width: 72, height: 72, borderRadius: radius.sm, backgroundColor: '#d1fae5', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 2, borderColor: '#a7f3d0' },
   doneTitle: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 6 },
   doneSub: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray400, textAlign: 'center', marginBottom: 20 },
 });

@@ -101,14 +101,14 @@ const s = StyleSheet.create({
   tableTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   tableIcon: { width: 34, height: 34, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   tableNameWrap: { flex: 1 },
-  tableName: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800 },
-  groupName: { fontSize: 10, fontFamily: fontFamily.medium, color: colors.gray400, marginTop: 1 },
+  tableName: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  groupName: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400, marginTop: 1 },
   
   tablePills: { flexDirection: 'row', justifyContent: 'space-between' },
   pillBtn: { flex: 1, alignItems: 'center', minWidth: 0 },
-  pillLabel: { fontSize: 7, fontFamily: fontFamily.bold, color: colors.gray400, marginBottom: 4, textTransform: 'uppercase' },
+  pillLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginBottom: 4, textTransform: 'uppercase' },
   
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray400 },
+  emptyTitle: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400 },
 });

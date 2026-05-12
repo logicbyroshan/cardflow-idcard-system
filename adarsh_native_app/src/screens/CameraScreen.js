@@ -228,7 +228,7 @@ const s = StyleSheet.create({
   levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm },
   bgSuccess: { backgroundColor: '#22c55e' },
   bgError: { backgroundColor: '#ef4444' },
-  levelText: { color: '#fff', fontSize: 13, fontFamily: fontFamily.bold, marginLeft: 8 },
+  levelText: { color: '#fff', fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', marginLeft: 8 },
 
   bottomControls: { 
     position: 'absolute', 
@@ -252,7 +252,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)'
   },
-  controlLabel: { color: '#fff', fontSize: 10, fontFamily: fontFamily.bold, opacity: 0.8, marginTop: 4 },
+  controlLabel: { color: '#fff', fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', opacity: 0.8, marginTop: 4 },
   
   captureBtnMain: { alignItems: 'center' },
   captureBtnOuter: { 
@@ -269,13 +269,13 @@ const s = StyleSheet.create({
 
   fullPreview: { flex: 1, resizeMode: 'cover' },
   reviewOverlay: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(0,0,0,0.85)', padding: 24, borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md },
-  reviewTitle: { color: '#fff', fontSize: 20, fontFamily: fontFamily.bold, textAlign: 'center', marginBottom: 20 },
+  reviewTitle: { color: '#fff', fontSize: 20, fontFamily: 'SairaSemiCondensed-Bold', textAlign: 'center', marginBottom: 20 },
   reviewActions: { flexDirection: 'row' },
   retakeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md },
   confirmBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: '#22c55e', borderRadius: radius.md },
-  btnText: { color: '#fff', fontSize: 15, fontFamily: fontFamily.bold },
+  btnText: { color: '#fff', fontSize: 15, fontFamily: 'SairaSemiCondensed-Bold' },
   
-  errorText: { color: '#fff', marginBottom: 20, fontFamily: fontFamily.medium },
+  errorText: { color: '#fff', marginBottom: 20, fontFamily: 'SairaSemiCondensed-Medium' },
   grantBtn: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: colors.brandPrimary, borderRadius: radius.md },
-  grantBtnText: { color: '#fff', fontFamily: fontFamily.bold },
+  grantBtnText: { color: '#fff', fontFamily: 'SairaSemiCondensed-Bold' },
 });

@@ -231,13 +231,13 @@ const styles = StyleSheet.create({
   brandTitle: {
     color: colors.white,
     fontSize: typography.title,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold', 
     letterSpacing: -0.5,
   },
   brandSubtitle: {
     color: 'rgba(255,255,255,0.7)',
     fontSize: typography.lg,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular', 
     marginTop: 4,
   },
 
@@ -256,13 +256,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.gray800,
     fontSize: typography.xxxl,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold', 
     marginBottom: 4,
   },
   cardSubtitle: {
     color: colors.gray400,
     fontSize: typography.lg,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular', 
     marginBottom: 24,
   },
 
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.gray400,
     fontSize: typography.md,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular', 
     marginTop: 12,
   },
   forgotLink: {

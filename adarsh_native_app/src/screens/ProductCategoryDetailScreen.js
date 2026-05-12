@@ -136,9 +136,9 @@ const s = StyleSheet.create({
   },
   image: { width: "100%", height: ITEM_WIDTH },
   info: { padding: 10 },
-  title: { fontSize: 13, fontWeight: "700", color: "#334155" },
+  title: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: "#334155" },
   empty: { marginTop: 100, alignItems: "center" },
-  emptyText: { fontSize: 14, color: "#94a3b8" },
+  emptyText: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Medium', color: "#94a3b8" },
   modalRoot: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.9)",

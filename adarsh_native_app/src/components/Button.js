@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   text: {
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     fontSize: typography.lg,
   },
   primaryText: { color: colors.white },

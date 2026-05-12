@@ -387,7 +387,7 @@ const s = StyleSheet.create({
   },
   logoText: {
     fontSize: 18,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     letterSpacing: 1,
   },
@@ -399,7 +399,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
   },
-  headerLoginText: { fontSize: 12, fontFamily: fontFamily.bold, color: "#fff" },
+  headerLoginText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: "#fff" },
 
   heroWrap: { height: 450, backgroundColor: colors.gray100 },
   heroItem: { width: width, height: 450 },
@@ -414,7 +414,7 @@ const s = StyleSheet.create({
   },
   heroTitle: {
     fontSize: 32,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     lineHeight: 38,
   },
@@ -422,7 +422,7 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: "rgba(255,255,255,0.8)",
     marginTop: 8,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   heroDots: {
     position: "absolute",
@@ -447,7 +447,7 @@ const s = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray800,
   },
   sectionLine: {
@@ -458,7 +458,7 @@ const s = StyleSheet.create({
   },
   viewAll: {
     fontSize: 14,
-    fontFamily: fontFamily.semibold,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
     color: colors.brandPrimary,
   },
 
@@ -484,7 +484,7 @@ const s = StyleSheet.create({
   },
   catName: {
     fontSize: 11,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray600,
     textAlign: "center",
   },
@@ -515,19 +515,19 @@ const s = StyleSheet.create({
     right: 0,
     padding: 12,
   },
-  productTitle: { fontSize: 14, fontFamily: fontFamily.bold, color: "#fff" },
+  productTitle: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: "#fff" },
   productCat: {
     fontSize: 11,
     color: "rgba(255,255,255,0.7)",
     marginTop: 2,
-    fontFamily: fontFamily.medium,
+    fontFamily: 'SairaSemiCondensed-Medium',
   },
 
   contactSection: { marginTop: 40 },
   contactCard: { borderRadius: radius.md, padding: 25, ...shadows.lg },
   contactTitle: {
     fontSize: 24,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     textAlign: "center",
   },
@@ -537,7 +537,7 @@ const s = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
     marginBottom: 25,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   form: {},
   inputGroup: {
@@ -555,7 +555,7 @@ const s = StyleSheet.create({
     color: "#fff",
     paddingVertical: 12,
     fontSize: 14,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   textArea: { height: 80, textAlignVertical: "top", paddingTop: 12 },
   submitBtn: {
@@ -567,7 +567,7 @@ const s = StyleSheet.create({
   },
   submitBtnText: {
     fontSize: 14,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.brandPrimary,
     letterSpacing: 1,
   },
@@ -581,7 +581,7 @@ const s = StyleSheet.create({
   },
   footerBrand: {
     fontSize: 16,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray300,
     letterSpacing: 2,
   },
@@ -589,7 +589,7 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: colors.gray400,
     marginTop: 4,
-    fontFamily: fontFamily.medium,
+    fontFamily: 'SairaSemiCondensed-Medium',
   },
   socialRow: { flexDirection: "row", marginTop: 25 },
   socialIcon: {
@@ -604,6 +604,6 @@ const s = StyleSheet.create({
     fontSize: 10,
     color: colors.gray300,
     marginTop: 30,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
 });
