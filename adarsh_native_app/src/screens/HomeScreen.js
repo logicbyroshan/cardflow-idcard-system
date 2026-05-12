@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, Dimensions, Image
+  RefreshControl, Dimensions, Image, Modal, ActivityIndicator, TextInput
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   IconSearch, IconProfile, IconPending, IconVerified, IconApproved,
-  IconDownload, IconPool, IconTotal, DynamicIcon
+  IconDownload, IconPool, IconTotal, DynamicIcon, IconClose
 } from '../components/Icons';
 import { colors, gradients, shadows, radius, fontFamily, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
-import { apiGet } from '../api/client';
+import { apiGet, apiPost } from '../api/client';
+import Toast from '../components/Toast';
 import { DashboardSkeleton } from '../components/Skeleton';
 import { ErrorBanner, ErrorView, ERROR_TYPES } from '../components/NetworkGuard';
 
@@ -54,6 +55,52 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
   const { data: counts = {}, loading, refreshing, error, refresh } = useRefreshableResource(loadDashboard, { initialData: {} });
+  
+  // Creation States
+  const [showClientForm, setShowClientForm] = useState(false);
+  const [showStaffForm, setShowStaffForm] = useState(false);
+  const [staffRole, setStaffRole] = useState('client_staff');
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+
+  const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '' });
+
+  const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
+
+  const handleSaveClient = async () => {
+    if (!clientForm.name || !clientForm.email || !clientForm.password) {
+      showToast('Please fill required fields', 'error'); return;
+    }
+    setSaving(true);
+    try {
+      const { ok, data } = await apiPost('/api/mobile/client/create/', clientForm);
+      if (ok && data.success) {
+        showToast('Client created successfully', 'success');
+        setShowClientForm(false);
+        setClientForm({ name: '', email: '', phone: '', password: '' });
+        refresh();
+      } else showToast(data.message || 'Error creating client', 'error');
+    } catch (e) { showToast('Network error', 'error'); }
+    setSaving(false);
+  };
+
+  const handleSaveStaff = async () => {
+    if (!staffForm.first_name || !staffForm.email || !staffForm.password) {
+      showToast('Please fill required fields', 'error'); return;
+    }
+    setSaving(true);
+    try {
+      const { ok, data } = await apiPost('/api/mobile/staff/create/', { ...staffForm, role: staffRole });
+      if (ok && data.success) {
+        showToast((staffRole === 'admin_staff' ? 'Operator' : 'Assistant') + ' created', 'success');
+        setShowStaffForm(false);
+        setStaffForm({ first_name: '', last_name: '', email: '', phone: '', password: '' });
+        refresh();
+      } else showToast(data.message || 'Error creating staff', 'error');
+    } catch (e) { showToast('Network error', 'error'); }
+    setSaving(false);
+  };
   const totalCards = counts.total || STATUS_CONFIG.filter(s => s.key !== 'total' && s.key !== 'pool').reduce((sum, s) => sum + (counts[s.key] || 0), 0);
   
   const quickActions = useMemo(() => {
@@ -62,12 +109,12 @@ export default function HomeScreen({ navigation }) {
     const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list;
 
     if (isSuperAdmin) {
-      actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', screen: 'ClientsList', params: { openForm: true } });
-      actions.push({ label: 'ADD ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', screen: 'StaffManage', params: { role: 'client_staff', openForm: true } });
-      actions.push({ label: 'ADD OPERATOR', icon: 'user-tie', color: '#10b981', bg: '#ecfdf5', screen: 'StaffManage', params: { role: 'admin_staff', openForm: true } });
+      actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', onPress: () => setShowClientForm(true) });
+      actions.push({ label: 'ADD ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', onPress: () => { setStaffRole('client_staff'); setShowStaffForm(true); } });
+      actions.push({ label: 'ADD OPERATOR', icon: 'user-tie', color: '#10b981', bg: '#ecfdf5', onPress: () => { setStaffRole('admin_staff'); setShowStaffForm(true); } });
       actions.push({ label: 'REPRINTS', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: 0 } });
     } else if (isOperator) {
-      actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', screen: 'ClientsList', params: { openForm: true } });
+      actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', onPress: () => setShowClientForm(true) });
       actions.push({ label: 'REPRINT', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: 0 } });
     } else if (isClient || isAssistant) {
       actions.push({ label: 'NOTIFICATIONS', icon: 'bell', color: '#f59e0b', bg: '#fffbeb', screen: 'Notifications' });
@@ -181,7 +228,7 @@ export default function HomeScreen({ navigation }) {
                 <Text style={s.homeSecTitle}>QUICK ACTIONS</Text>
                 <View style={s.quickActionsRow}>
                   {quickActions.slice(0, 3).map((act, i) => (
-                    <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => navigation.navigate(act.screen, act.params)}>
+                    <TouchableOpacity key={i} style={s.quickActionBtn} onPress={act.onPress || (() => navigation.navigate(act.screen, act.params))}>
                       <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
                       <Text style={s.qaLabel}>{act.label}</Text>
                     </TouchableOpacity>
@@ -285,6 +332,74 @@ export default function HomeScreen({ navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* MODALS */}
+      <Modal visible={showClientForm} animationType="fade" transparent onRequestClose={() => setShowClientForm(false)}>
+        <View style={s.modalOverlay}>
+          <TouchableOpacity style={s.modalBg} activeOpacity={1} onPress={() => setShowClientForm(false)} />
+          <View style={s.modalContent}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>New Client</Text>
+              <TouchableOpacity onPress={() => setShowClientForm(false)}><IconClose size={20} color={colors.gray400} /></TouchableOpacity>
+            </View>
+            <ScrollView>
+              <FormField label="CLIENT NAME *" value={clientForm.name} onChangeText={t => setClientForm(f => ({ ...f, name: t }))} />
+              <FormField label="EMAIL *" value={clientForm.email} onChangeText={t => setClientForm(f => ({ ...f, email: t }))} keyboardType="email-address" />
+              <FormField label="PHONE" value={clientForm.phone} onChangeText={t => setClientForm(f => ({ ...f, phone: t }))} keyboardType="phone-pad" />
+              <FormField label="PASSWORD *" value={clientForm.password} onChangeText={t => setClientForm(f => ({ ...f, password: t }))} secureTextEntry />
+            </ScrollView>
+            <View style={s.modalFooter}>
+              <TouchableOpacity style={s.modalCancel} onPress={() => setShowClientForm(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={s.modalSave} onPress={handleSaveClient} disabled={saving}>
+                <LinearGradient colors={gradients.brand} style={s.modalSaveBtn}>
+                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.modalSaveText}>CREATE CLIENT</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showStaffForm} animationType="fade" transparent onRequestClose={() => setShowStaffForm(false)}>
+        <View style={s.modalOverlay}>
+          <TouchableOpacity style={s.modalBg} activeOpacity={1} onPress={() => setShowStaffForm(false)} />
+          <View style={s.modalContent}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>New {staffRole === 'admin_staff' ? 'Operator' : 'Assistant'}</Text>
+              <TouchableOpacity onPress={() => setShowStaffForm(false)}><IconClose size={20} color={colors.gray400} /></TouchableOpacity>
+            </View>
+            <ScrollView>
+              <View style={{ flexDirection: 'row' }}>
+                <FormField label="FIRST NAME *" value={staffForm.first_name} onChangeText={t => setStaffForm(f => ({ ...f, first_name: t }))} />
+                <View style={{ width: 10 }} />
+                <FormField label="LAST NAME" value={staffForm.last_name} onChangeText={t => setStaffForm(f => ({ ...f, last_name: t }))} />
+              </View>
+              <FormField label="EMAIL *" value={staffForm.email} onChangeText={t => setStaffForm(f => ({ ...f, email: t }))} keyboardType="email-address" />
+              <FormField label="PHONE" value={staffForm.phone} onChangeText={t => setStaffForm(f => ({ ...f, phone: t }))} keyboardType="phone-pad" />
+              <FormField label="PASSWORD *" value={staffForm.password} onChangeText={t => setStaffForm(f => ({ ...f, password: t }))} secureTextEntry />
+            </ScrollView>
+            <View style={s.modalFooter}>
+              <TouchableOpacity style={s.modalCancel} onPress={() => setShowStaffForm(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={s.modalSave} onPress={handleSaveStaff} disabled={saving}>
+                <LinearGradient colors={gradients.brand} style={s.modalSaveBtn}>
+                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.modalSaveText}>CREATE {staffRole === 'admin_staff' ? 'OPERATOR' : 'ASSISTANT'}</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({ ...p, visible: false }))} />
+    </View>
+  );
+}
+
+function FormField({ label, value, onChangeText, secureTextEntry, keyboardType }) {
+  return (
+    <View style={s.field}>
+      <Text style={s.fieldLabel}>{label}</Text>
+      <TextInput style={s.fieldInput} value={value} onChangeText={onChangeText} secureTextEntry={secureTextEntry} keyboardType={keyboardType} placeholderTextColor={colors.gray300} />
     </View>
   );
 }
@@ -357,4 +472,18 @@ const s = StyleSheet.create({
   fabGradient: { width: '100%', height: '100%', borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   emptyState: { padding: 30, alignItems: 'center' },
   emptyText: { color: colors.gray400, fontSize: 12, fontFamily: 'SairaSemiCondensed-Medium' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: radius.sm, borderTopRightRadius: radius.sm, padding: 20, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 16, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  field: { flex: 1, marginBottom: 16 },
+  fieldLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500, marginBottom: 6 },
+  fieldInput: { backgroundColor: colors.gray50, borderRadius: radius.xs, paddingHorizontal: 12, height: 44, fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800, borderWidth: 1, borderColor: colors.gray100 },
+  modalFooter: { flexDirection: 'row', gap: 12, marginTop: 10, paddingTop: 10 },
+  modalCancel: { flex: 1, height: 44, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gray100 },
+  modalCancelText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray600 },
+  modalSave: { flex: 2, height: 44, borderRadius: radius.xs },
+  modalSaveBtn: { flex: 1, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
+  modalSaveText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
 });

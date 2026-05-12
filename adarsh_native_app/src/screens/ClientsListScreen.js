@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions, Linking } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions, Linking, Image } from 'react-native';
 import { IconSearch, IconFilter, IconPlus, IconTrash, IconEdit, IconUsers, IconList, IconClose, IconCheck, IconMail, IconPhone } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
@@ -7,7 +7,7 @@ import Toast from '../components/Toast';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import ConfirmModal from '../components/ConfirmModal';
-import { apiGet, apiPost } from '../api/client';
+import { apiGet, apiPost, BASE_URL } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
@@ -146,20 +146,39 @@ export default function ClientsListScreen({ navigation, route }) {
   const renderItem = ({ item }) => (
     <View style={s.card}>
       <View style={s.cardTop}>
+        <View style={s.logoCircle}>
+          {item.logo_url ? (
+            <Image source={{ uri: item.logo_url.startsWith('http') ? item.logo_url : `${BASE_URL}${item.logo_url}` }} style={s.logo} />
+          ) : (
+            <Text style={s.logoText}>{(item.name || 'C').charAt(0).toUpperCase()}</Text>
+          )}
+        </View>
         <View style={s.cardInfo}>
           <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
-          <View style={s.badgeGrid}>
-            <StatPill label="P" count={item.counts.pending} color="#f59e0b" />
-            <StatPill label="V" count={item.counts.verified} color="#10b981" />
-            <StatPill label="A" count={item.counts.approved} color="#3b82f6" />
-            <StatPill label="D" count={item.counts.download} color="#8b5cf6" />
+          <View style={s.contactRow}>
+            <IconMail size={10} color={colors.gray400} />
+            <Text style={s.contactText} numberOfLines={1}>{item.email}</Text>
           </View>
+          {item.phone && (
+            <View style={[s.contactRow, { marginTop: 2 }]}>
+              <IconPhone size={10} color={colors.gray400} />
+              <Text style={s.contactText} numberOfLines={1}>{item.phone}</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity activeOpacity={0.7} onPress={() => toggleClient(item)} style={[s.statusPill, { backgroundColor: item.is_active ? '#ecfdf5' : '#fef2f2' }]}>
           <View style={[s.statusDotSmall, { backgroundColor: item.is_active ? '#10b981' : '#ef4444' }]} />
           <Text style={[s.statusPillText, { color: item.is_active ? '#065f46' : '#991b1b' }]}>{item.is_active ? 'ACTIVE' : 'INACTIVE'}</Text>
         </TouchableOpacity>
       </View>
+      
+      <View style={s.cardStats}>
+        <StatPill label="PENDING" count={item.counts.pending} color="#f59e0b" />
+        <StatPill label="VERIFIED" count={item.counts.verified} color="#10b981" />
+        <StatPill label="APPROVED" count={item.counts.approved} color="#3b82f6" />
+        <StatPill label="DOWNLOAD" count={item.counts.download} color="#8b5cf6" />
+      </View>
+
       <View style={s.cardActions}>
         <TouchableOpacity style={s.actionBtn} onPress={() => handleImpersonate(item)} disabled={impersonatingId === item.id}>
           <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
@@ -231,7 +250,7 @@ export default function ClientsListScreen({ navigation, route }) {
 
 function StatPill({ label, count, color }) {
   return (
-    <View style={[s.statPill, { borderColor: color + '30', backgroundColor: color + '08' }]}>
+    <View style={[s.statPill, { borderColor: color + '20', backgroundColor: color + '05' }]}>
       <Text style={[s.statLabel, { color }]}>{label}</Text>
       <Text style={[s.statCount, { color }]}>{count || 0}</Text>
     </View>
@@ -255,22 +274,27 @@ const s = StyleSheet.create({
   addBtn: { width: 44, height: 44, borderRadius: radius.xs, ...shadows.md },
   addBtnInner: { flex: 1, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: 12, paddingVertical: 8, paddingBottom: 100 },
-  card: { backgroundColor: '#fff', borderRadius: radius.xs, padding: 12, marginBottom: 12, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start' },
+  card: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 14, marginBottom: 16, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
+  cardTop: { flexDirection: 'row', alignItems: 'center' },
+  logoCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center', marginRight: 14, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden' },
+  logo: { width: '100%', height: '100%', resizeMode: 'cover' },
+  logoText: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
   cardInfo: { flex: 1 },
-  cardName: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 8 },
-  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  statPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.xs, borderWidth: 1, minWidth: 44, justifyContent: 'space-between' },
-  statLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', opacity: 0.8 },
-  statCount: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', marginLeft: 4 },
-  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.xs },
+  cardName: { fontSize: 15, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 4 },
+  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  contactText: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400 },
+  cardStats: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
+  statPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.xs, borderWidth: 1, minWidth: 60, justifyContent: 'space-between' },
+  statLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', letterSpacing: 0.5 },
+  statCount: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', marginLeft: 6 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.xs },
   statusDotSmall: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-  statusPillText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold' },
-  cardActions: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
-  actionBtn: { flex: 1, height: 32, borderRadius: radius.xs },
+  statusPillText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
+  cardActions: { flexDirection: 'row', gap: 10, marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  actionBtn: { flex: 1, height: 36, borderRadius: radius.xs },
   actionBtnInner: { flex: 1, borderRadius: radius.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   actionIcon: { marginRight: 8 },
-  actionBtnText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
+  actionBtnText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: radius.sm, borderTopRightRadius: radius.sm, padding: 20, maxHeight: '90%' },
