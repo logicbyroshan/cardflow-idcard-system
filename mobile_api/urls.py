@@ -49,9 +49,4 @@ urlpatterns = [
     path('client/<int:client_id>/toggle/', views.api_client_toggle, name='api_client_toggle'),
     path('client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
     path('client/<int:client_id>/tables/', views.api_client_tables, name='api_client_tables'),
-    path('website/portfolio/upload/', views.api_portfolio_upload, name='api_portfolio_upload'),
-    path('website/portfolio/category/<int:category_id>/items/', views.api_portfolio_category_items, name='api_portfolio_category_items'),
-    path('pub/website/landing/', views.api_website_landing_data, name='api_website_landing_data'),
-    path('pub/website/category/<int:category_id>/products/', views.api_website_category_products, name='api_website_category_products'),
-    path('pub/website/contact/', views.api_website_contact_submit, name='api_website_contact_submit'),
 ]
