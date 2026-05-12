@@ -98,6 +98,17 @@
     <a href="{% url 'login_as_user' %}" class="{% if active_page == 'impersonate' or active_page == 'pro_user_activity_logs' or active_page == 'pro_user_log_deletion_guard' or active_page == 'pro_user_data_deletion_guard' or active_page == 'pro_user_super_mode' %}active{% endif %}">
       <i class="fa-solid fa-gem"></i><span>Pro Features</span>
     </a>
+    
+    <!-- Temporary Migration Export (POST form) -->
+    <div style="padding: 0 16px; margin-top: 8px;">
+        <form action="{% url 'manage_website:export_migration_data' %}" method="POST" id="sidebarMigrationForm">
+            {% csrf_token %}
+            <button type="submit" class="quick-action-btn" style="width: 100%; justify-content: flex-start; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                <i class="fa-solid fa-file-export" style="margin-right: 10px; color: #f59e0b;"></i>
+                <span>Migration Export</span>
+            </button>
+        </form>
+    </div>
     {% endif %}
 
   </nav>
