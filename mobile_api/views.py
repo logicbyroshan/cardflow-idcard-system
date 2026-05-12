@@ -5268,10 +5268,31 @@ def api_dashboard_data(request):
                     'tables': tables_data,
                 })
             
+            recent_reprints = []
+            if is_admin:
+                from reprintcard.models import ReprintRequest
+                reprints_qs = ReprintRequest.objects.select_related('card', 'table', 'requested_by', 'table__group__client').order_by('-created_at')
+                if not PermissionService.is_super_admin(user):
+                    reprints_qs = reprints_qs.filter(table__group__client_id__in=accessible_ids)
+                
+                for r in reprints_qs[:10]:
+                    recent_reprints.append({
+                        'id': r.id,
+                        'card_id': r.card_id,
+                        'client_name': r.table.group.client.business_name or r.table.group.client.name,
+                        'table_name': r.table.name,
+                        'status': r.status,
+                        'reason': r.reason,
+                        'requested_by': r.requested_by.get_full_name() if r.requested_by else 'Unknown',
+                        'time_ago': timesince(r.created_at, timezone.now()) + ' ago',
+                        'created_at': r.created_at.isoformat(),
+                    })
+
             counts = {
                 **global_counts,
                 'recent_clients': clients_data,
                 'recent_activity': recent_activity,
+                'recent_reprints': recent_reprints,
                 'is_admin': True
             }
             
