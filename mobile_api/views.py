@@ -570,7 +570,7 @@ def _can_manage_clients_surface(user):
     if PermissionService.is_super_admin(user):
         return True
     if PermissionService.is_admin_staff(user):
-        return PermissionService.has(user, 'perm_manage_website_clients') or PermissionService.has(user, 'perm_idcard_client_list')
+        return PermissionService.has(user, 'perm_idcard_client_list')
     return PermissionService.has(user, 'perm_idcard_client_list')
 
 
@@ -4296,7 +4296,7 @@ def staff_manage(request):
         return redirect('/app/login/')
 
     # Super admin can always manage admin staff.
-    # Client role must also hold Manage Client permission (website parity).
+    # Client role must hold appropriate staff management permissions.
     if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return redirect('mobile_app:home')
 
@@ -5185,7 +5185,7 @@ def api_dashboard_data(request):
             
             # Get accessible clients
             if PermissionService.is_super_admin(user):
-                # Super admins see EVERYTHING (active or not) to match website truth
+                # Super admins see EVERYTHING (active or not) to match system-wide data visibility
                 clients_qs = Client.objects.all()
             else:  # admin_staff
                 accessible_ids = PermissionService.get_accessible_client_ids(user) or []
@@ -6183,7 +6183,6 @@ def api_client_create(request):
         'perm_idcard_info': True,
         'perm_idcard_verify': True,
         'perm_idcard_approve': True,
-        'perm_website_view': True,
         'perm_idcard_client_list': True,
         'perm_idcard_pending_list': True,
         'perm_idcard_verified_list': True,
@@ -6245,72 +6244,6 @@ def api_client_update(request, client_id):
     })
 
 
-# ---------------------------------------------------------------------------
-# WEBSITE MANAGEMENT (Portfolio Media — mobile upload)
-# ---------------------------------------------------------------------------
-
-@require_mobile_client
-def website_manage(request):
-    """Mobile website management page: portfolio categories + unified media upload."""
-    user = request.user
-    if not PermissionService.has(user, 'perm_website_view'):
-        return render(request, 'mobile_app/no_access.html', {
-            'user_name': user.get_full_name() or user.username,
-        }, status=403)
-
-    from website.models import PortfolioCategory
-
-    # Fetch only the fields needed for JSON serialisation — no full ORM hydration
-    from django.core.cache import cache
-    if not cache.get('portfolio_defaults_ensured'):
-        PortfolioCategory.ensure_defaults()
-        cache.set('portfolio_defaults_ensured', True, 3600)
-
-    bento_rank_case = Case(
-        *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(MOBILE_PUBLIC_BENTO_ORDER)],
-        default=Value(len(MOBILE_PUBLIC_BENTO_ORDER)),
-        output_field=IntegerField(),
-    )
-
-    categories = (
-        PortfolioCategory.objects
-        .filter(is_active=True)
-        .annotate(photo_count=Count('items', filter=Q(items__is_active=True)))
-        .annotate(
-            mobile_public_bento=Case(
-                When(slug__in=MOBILE_PUBLIC_BENTO_EXCLUDE_SLUGS, then=Value(0)),
-                When(slug__in=MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS, then=Value(1)),
-                When(is_bento=True, then=Value(1)),
-                default=Value(0),
-                output_field=IntegerField(),
-            ),
-            mobile_bento_rank=bento_rank_case,
-        )
-        .order_by('-mobile_public_bento', 'mobile_bento_rank', 'order', 'name')
-        .only('id', 'name', 'icon', 'order', 'slug')
-    )
-
-    # Skip the client lookup — website_manage doesn’t need a client object
-    perms = PermissionService.get_permission_context(user)
-
-    categories_data = [
-        {
-            'id': c.id,
-            'name': c.name,
-            'icon': c.icon,
-            'count': c.photo_count,
-            'is_public_bento': bool(getattr(c, 'mobile_public_bento', 0)),
-        }
-        for c in categories
-    ]
-
-    return render(request, 'mobile_app/website_manage.html', {
-        'user_name': user.get_full_name() or user.username,
-        'categories_json': categories_data,
-        **perms,
-    })
-
-
 @require_mobile_client
 @require_http_methods(["POST"])
 def api_client_update_permissions(request, client_user_id):
@@ -6332,7 +6265,7 @@ def api_client_update_permissions(request, client_user_id):
         # Whitelist of permissions that can be toggled via mobile
         ALLOWED_TOGGLES = {
             'perm_idcard_info', 'perm_idcard_verify', 'perm_idcard_approve', 
-            'perm_idcard_download', 'perm_website_view'
+            'perm_idcard_download'
         }
 
         for key, value in updates.items():

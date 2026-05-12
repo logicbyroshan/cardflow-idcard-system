@@ -603,7 +603,7 @@ def _can_manage_clients_surface(user):
     if PermissionService.is_super_admin(user):
         return True
     if PermissionService.is_admin_staff(user):
-        return PermissionService.has(user, 'perm_manage_website_clients') or PermissionService.has(user, 'perm_idcard_client_list')
+        return PermissionService.has(user, 'perm_idcard_client_list')
     return PermissionService.has(user, 'perm_idcard_client_list')
 
 
@@ -5244,7 +5244,7 @@ def api_dashboard_data(request):
             
             # Get accessible clients
             if PermissionService.is_super_admin(user):
-                # Super admins see EVERYTHING (active or not) to match website truth
+                # Super admins see EVERYTHING (active or not) to match system-wide data visibility
                 clients_qs = Client.objects.all()
             else:  # admin_staff
                 accessible_ids = PermissionService.get_accessible_client_ids(user) or []
@@ -6113,7 +6113,6 @@ def api_client_create(request):
         'perm_idcard_info': True,
         'perm_idcard_verify': True,
         'perm_idcard_approve': True,
-        'perm_website_view': True,
         'perm_idcard_client_list': True,
         'perm_idcard_pending_list': True,
         'perm_idcard_verified_list': True,
@@ -6173,199 +6172,4 @@ def api_client_update(request, client_id):
         'message': result.message or 'Client updated successfully',
         'client': client_payload,
     })
-
-
-# ---------------------------------------------------------------------------
-# WEBSITE MANAGEMENT (Portfolio Media — mobile upload)
-# ---------------------------------------------------------------------------
-
-@require_mobile_client
-def website_manage(request):
-    """Mobile website management page: portfolio categories + unified media upload."""
-    user = request.user
-    if not PermissionService.has(user, 'perm_website_view'):
-        return render(request, 'mobile_app/no_access.html', {
-            'user_name': user.get_full_name() or user.username,
-        }, status=403)
-
-    from website.models import PortfolioCategory
-
-    # Fetch only the fields needed for JSON serialisation — no full ORM hydration
-    from django.core.cache import cache
-    if not cache.get('portfolio_defaults_ensured'):
-        PortfolioCategory.ensure_defaults()
-        cache.set('portfolio_defaults_ensured', True, 3600)
-
-    bento_rank_case = Case(
-        *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(MOBILE_PUBLIC_BENTO_ORDER)],
-        default=Value(len(MOBILE_PUBLIC_BENTO_ORDER)),
-        output_field=IntegerField(),
-    )
-
-    categories = (
-        PortfolioCategory.objects
-        .filter(is_active=True)
-        .annotate(photo_count=Count('items', filter=Q(items__is_active=True)))
-        .annotate(
-            mobile_public_bento=Case(
-                When(slug__in=MOBILE_PUBLIC_BENTO_EXCLUDE_SLUGS, then=Value(0)),
-                When(slug__in=MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS, then=Value(1)),
-                When(is_bento=True, then=Value(1)),
-                default=Value(0),
-                output_field=IntegerField(),
-            ),
-            mobile_bento_rank=bento_rank_case,
-        )
-        .order_by('-mobile_public_bento', 'mobile_bento_rank', 'order', 'name')
-        .only('id', 'name', 'icon', 'order', 'slug')
-    )
-
-    # Skip the client lookup — website_manage doesn’t need a client object
-    perms = PermissionService.get_permission_context(user)
-
-    categories_data = [
-        {
-            'id': c.id,
-            'name': c.name,
-            'icon': c.icon,
-            'count': c.photo_count,
-            'is_public_bento': bool(getattr(c, 'mobile_public_bento', 0)),
-        }
-        for c in categories
-    ]
-
-    return render(request, 'mobile_app/website_manage.html', {
-        'user_name': user.get_full_name() or user.username,
-        'categories_json': categories_data,
-        **perms,
-    })
-
-
-@require_mobile_client
-@require_http_methods(["POST"])
-def api_client_update_permissions(request, client_user_id):
-    """Admin-only: Update permissions for a specific client account."""
-    user = request.user
-    if not PermissionService.is_super_admin(user) and not PermissionService.is_admin_staff(user):
-        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
-
-    try:
-        from core.models import User
-        client_user = get_object_or_404(User, id=client_user_id)
-        profile = getattr(client_user, 'client_profile', None)
-        if not profile:
-            return JsonResponse({'success': False, 'message': 'Client profile not found'}, status=404)
-
-        data = json.loads(request.body)
-        updates = data.get('permissions', {})
-        
-        # Whitelist of permissions that can be toggled via mobile
-        ALLOWED_TOGGLES = {
-            'perm_idcard_info', 'perm_idcard_verify', 'perm_idcard_approve', 
-            'perm_idcard_download', 'perm_website_view'
-        }
-
-        for key, value in updates.items():
-            if key in ALLOWED_TOGGLES and hasattr(profile, key):
-                setattr(profile, key, bool(value))
-        
-        profile.save()
-        
-        # Invalidate permission cache for this user
-        cache_key = PermissionService._permission_context_cache_key(client_user)
-        from django.core.cache import cache
-        cache.delete(cache_key)
-
-        return JsonResponse({'success': True, 'message': 'Permissions updated'})
-    except Exception:
-        logger.exception('api_client_update_permissions error')
-        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
-
-
-@require_mobile_client
-@require_http_methods(["GET"])
-def api_client_permissions(request, client_user_id):
-    """Admin-only: Get current permissions for a specific client account."""
-    user = request.user
-    if not PermissionService.is_super_admin(user) and not PermissionService.is_admin_staff(user):
-        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
-
-    from core.models import User
-    client_user = get_object_or_404(User, id=client_user_id)
-    perms = PermissionService.get_permission_context(client_user)
-    return JsonResponse({'success': True, 'data': perms.get('user_permissions', {})})
-@require_mobile_client
-@require_http_methods(['POST'])
-def api_portfolio_upload(request):
-    """Upload one or more media files (images/videos) into a portfolio category from mobile."""
-    user = request.user
-    # perm_website_edit required — view-only users must not be able to write content
-    if not PermissionService.has(user, 'perm_website_edit'):
-        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
-
-    from website.models import PortfolioCategory
-    from website.services import PortfolioItemService
-    from django.core.exceptions import ValidationError
-
-    category_id = request.POST.get('category_id')
-    files = request.FILES.getlist('files') or request.FILES.getlist('images')
-
-    if not category_id:
-        return JsonResponse({'success': False, 'message': 'category_id required'}, status=400)
-    if not files:
-        return JsonResponse({'success': False, 'message': 'No files provided'}, status=400)
-    if len(files) > 20:
-        return JsonResponse({'success': False, 'message': 'Maximum 20 files per upload'}, status=400)
-
-    def _is_video_file(upload):
-        content_type = (getattr(upload, 'content_type', '') or '').lower()
-        if content_type.startswith('video/'):
-            return True
-        name = (getattr(upload, 'name', '') or '').lower()
-        return name.endswith(('.mp4', '.webm', '.mov', '.avi'))
-
-    try:
-        get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
-        created = []
-        failed = []
-        for f in files:
-            try:
-                is_video = _is_video_file(f)
-                media_type = 'reel' if is_video else 'image'
-                item = PortfolioItemService.create(
-                    category_id=category_id,
-                    image=None if is_video else f,
-                    video_file=f if is_video else None,
-                    item_type=media_type,
-                    is_active=True,
-                )
-                created.append(item.id)
-            except ValidationError as e:
-                failed.append(str(e))
-            except Exception:
-                logger.exception('Portfolio upload failed for a single file')
-                failed.append('Internal error')
-
-        return JsonResponse({
-            'success': True,
-            'created_count': len(created),
-            'failed_count': len(failed),
-            'errors': failed if failed else None
-        })
-    except Exception:
-        logger.exception('api_portfolio_upload general error')
-        return JsonResponse({'success': False, 'message': 'An error occurred during upload'}, status=500)
-
-
-
-
-@require_mobile_client
-@require_http_methods(['GET'])
-def api_portfolio_category_items(request, category_id):
-    """List recent uploaded portfolio media for a category (preview in mobile website manager)."""
-    user = request.user
-    if not PermissionService.has(user, 'perm_website_view'):
-        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
-
-    from website.models import PortfolioCategory, PortfolioItem
 

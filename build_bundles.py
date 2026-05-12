@@ -185,17 +185,6 @@ CSS_BUNDLES = [
             "css/dashboard-activity.css",
         ],
     ),
-    # ── Website Admin CSS (replaces website-admin.css @import chain) ──
-    (
-        "wa.min.css",
-        [
-            "css/wa-layout.css",
-            "css/wa-components.css",
-            "css/wa-table.css",
-            "css/wa-forms.css",
-            "css/wa-modals.css",
-        ],
-    ),
 ]
 
 

@@ -59,7 +59,6 @@ class ActivityService:
         'group_update',
         'reprint_status',
         'settings_update',
-        'website_update',
         'bulk_upgrade',
         'bulk_delete',
     }

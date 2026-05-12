@@ -50,4 +50,8 @@ urlpatterns = [
     path('client/<int:client_id>/toggle/', views.api_client_toggle, name='api_client_toggle'),
     path('client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
     path('client/<int:client_id>/tables/', views.api_client_tables, name='api_client_tables'),
+    
+    # Public Website Fallbacks (since website app was removed)
+    path('pub/website/landing/', views.api_website_landing_data, name='api_website_landing_data'),
+    path('pub/website/contact/', views.api_website_contact_submit, name='api_website_contact_submit'),
 ]

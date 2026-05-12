@@ -202,11 +202,11 @@ class LogoutView(View):
             if is_ajax:
                 return JsonResponse({'success': True, 'redirect': login_url})
             return redirect(login_url)
-        # Redirect to the main website landing page if configured,
-        # otherwise fall back to the login page
+        # Redirect back into the panel when no explicit destination is set.
+        # The public website surface is no longer the default landing page.
         from django.conf import settings
         website_url = getattr(settings, 'WEBSITE_URL', '')
-        target_url = website_url or '/'
+        target_url = website_url or reverse('accounts:login')
         if is_ajax:
             return JsonResponse({'success': True, 'redirect': target_url})
         return redirect(target_url)
