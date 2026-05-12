@@ -89,11 +89,11 @@ const s = StyleSheet.create({
   list: { padding: 16, paddingBottom: 32 },
   card: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: radius.lg, padding: 14,
+    backgroundColor: '#fff', borderRadius: radius.md, padding: 14,
     borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm,
   },
   iconWrap: {
-    width: 44, height: 44, borderRadius: radius.md,
+    width: 44, height: 44, borderRadius: radius.sm,
     backgroundColor: 'rgba(51,183,239,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },

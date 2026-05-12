@@ -286,9 +286,9 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   scroll: { flex: 1 }, scrollC: { padding: 16, paddingBottom: 40 },
-  heroCard: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.md, marginBottom: 20 },
+  heroCard: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 20, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.md, marginBottom: 20 },
   heroTop: { flexDirection: 'row' },
-  photoFrame: { width: 90, height: 110, borderRadius: radius.md, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  photoFrame: { width: 90, height: 110, borderRadius: radius.xs, overflow: 'hidden', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   photo: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2' },
   emptyPhotoText: { fontSize: 8, fontFamily: fontFamily.bold, color: '#fca5a5', marginTop: 4 },
@@ -298,7 +298,7 @@ const s = StyleSheet.create({
   statusLine: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
   vLine: { width: 1, height: 16, backgroundColor: '#e2e8f0' },
   srNo: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray400 },
-  section: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
+  section: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 4, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 8 },
   sectionTitle: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase' },
   fieldsList: { padding: 8 },
@@ -324,18 +324,18 @@ const s = StyleSheet.create({
 
     // Status buttons grid styling
     statusButtonsWrap: { padding: 12, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
-    statusBtn: { flex: 1, minWidth: '30%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: radius.md, borderWidth: 1, gap: 6 },
+    statusBtn: { flex: 1, minWidth: '30%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: radius.xs, borderWidth: 1, gap: 6 },
     statusBtnActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
     statusBtnText: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray600, textAlign: 'center' },
     statusBtnTextActive: { color: '#fff' },
   
     // Bottom action buttons
     actionButtonsRow: { flexDirection: 'row', gap: 12, marginBottom: 20, marginTop: 16 },
-    actionBtnHalf: { flex: 1, borderRadius: radius.md, overflow: 'hidden', ...shadows.md },
-    actionBtnFull: { width: '100%', borderRadius: radius.md, overflow: 'hidden', marginTop: 12 },
+    actionBtnHalf: { flex: 1, borderRadius: radius.sm, overflow: 'hidden', ...shadows.md },
+    actionBtnFull: { width: '100%', borderRadius: radius.sm, overflow: 'hidden', marginTop: 12 },
     actionBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 8 },
     actionBtnText: { fontSize: 13, fontFamily: fontFamily.bold, color: '#fff' },
-    deleteActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderWidth: 1.5, borderColor: colors.red, borderRadius: radius.md, backgroundColor: 'rgba(239, 68, 68, 0.05)' },
+    deleteActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderWidth: 1.5, borderColor: colors.red, borderRadius: radius.sm, backgroundColor: 'rgba(239, 68, 68, 0.05)' },
     deleteActionBtnText: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.red, marginLeft: 8 },
 });
 

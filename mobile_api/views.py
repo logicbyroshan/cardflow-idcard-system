@@ -31,8 +31,9 @@ from django.db.models import Count, Q, Max, CharField, F, Case, When, Value, Int
 from django.db.models.functions import Cast
 from django.db.models.fields.json import KeyTextTransform
 from django.utils.dateparse import parse_date, parse_datetime
-from django.utils.timezone import make_aware, is_naive
+from django.utils.timezone import make_aware, is_naive, localtime
 from django.utils import timezone
+from django.utils.timesince import timesince
 
 from client.services import (
     ClientAccessService,
@@ -4708,9 +4709,27 @@ def api_staff_list(request):
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     
     elif PermissionService.is_super_admin(user):
-        # Super admin sees all admin_staff (system-wide)
-        staff_data = _list_mobile_admin_staff(limit=200)
-        return JsonResponse({'success': True, 'data': {'staff': staff_data}})
+        role = request.GET.get('role', 'admin_staff')
+        if role == 'client_staff':
+            # List all client staff system-wide
+            from accounts.models import Staff
+            queryset = Staff.objects.filter(staff_type='client_staff').select_related('user', 'client').order_by('-created_at')[:200]
+            staff_data = []
+            for s in queryset:
+                staff_data.append({
+                    'id': s.id,
+                    'name': s.user.get_full_name() or s.user.username,
+                    'email': s.user.email,
+                    'phone': getattr(s.user, 'phone', ''),
+                    'is_active': s.user.is_active,
+                    'client_name': s.client.name if s.client else 'System',
+                    'created_at': s.created_at.strftime('%d %b %Y'),
+                })
+            return JsonResponse({'success': True, 'data': {'staff': staff_data}})
+        else:
+            # Super admin sees all admin_staff (system-wide)
+            staff_data = _list_mobile_admin_staff(limit=200)
+            return JsonResponse({'success': True, 'data': {'staff': staff_data}})
         
     return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
@@ -4851,10 +4870,13 @@ def api_staff_assignable_items(request, staff_id):
     try:
         staff = get_object_or_404(Staff, id=staff_id)
         # For client staff, we need their client context
+        if staff.staff_type == 'admin_staff':
+            # Operator: return all active clients
+            from client.models import Client
+            clients = Client.objects.filter(status='active').values('id', 'name').order_by('name')
+            return JsonResponse({'success': True, 'clients': list(clients)})
+
         client_id = staff.client_id
-        if not client_id:
-            # If no client, they might be admin_staff; for now mostly used for client_staff
-            return JsonResponse({'success': True, 'groups': [], 'tables': []})
 
         if not PermissionService.can_access_client(user, client_id):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)

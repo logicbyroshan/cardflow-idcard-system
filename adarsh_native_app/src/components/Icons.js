@@ -337,17 +337,20 @@ export const IconEyeOff = ({ size = 24, color = "#fff" }) => (
     <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     <Path d="M1 1l22 22" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
-);
-
 /**
  * Dynamic mapping component to bridge FontAwesome-style names to premium SVG icons.
  */
-export const DynamicIcon = ({ name, size = 24, color = "#fff", solid = false }) => {
-  const n = String(name || '').toLowerCase();
+export const DynamicIcon = ({ name, size = 18, color = "#fff" }) => {
+  if (!name) return <IconWarning size={size} color={color} />;
   
-  if (n === 'clock' || n === 'pending') return <IconClock size={size} color={color} />;
-  if (n === 'check' || n === 'check-circle' || n === 'verified') return <IconCheck size={size} color={color} />;
-  if (n === 'thumbs-up' || n === 'approved') return <IconThumbsUp size={size} color={color} />;
+  // Strip FontAwesome prefix if present
+  let n = name.toLowerCase().trim().replace(/^fa-/, '');
+
+  if (n === 'pending' || n === 'clock' || n === 'hourglass-half') return <IconPending size={size} color={color} />;
+  if (n === 'verified' || n === 'user-check') return <IconVerified size={size} color={color} />;
+  if (n === 'approved' || n === 'thumbs-up' || n === 'check') return <IconApproved size={size} color={color} />;
+  if (n === 'user-plus' || n === 'add-user') return <IconUsers size={size} color={color} />;
+  if (n === 'user-shield' || n === 'user-tie' || n === 'shield') return <IconUserTie size={size} color={color} />;
   if (n === 'download') return <IconDownload size={size} color={color} />;
   if (n === 'pool' || n === 'archive') return <IconArchive size={size} color={color} />;
   if (n === 'reprint' || n === 'redo') return <IconRedo size={size} color={color} />;
