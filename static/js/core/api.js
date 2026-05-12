@@ -27,7 +27,11 @@
 (function () {
     'use strict';
     var _originalFetch = window.fetch;
-
+    
+    // Auto-detect API base URL based on current path if not explicitly provided by Django templates
+    if (typeof window.API_BASE_URL !== 'string') {
+        window.API_BASE_URL = window.location.pathname.startsWith('/panel/') ? '/panel' : (window.location.pathname.startsWith('/app/') ? '/app' : '');
+    }
     /** True when the current page is the login page itself. */
     var _isLoginPage = window.location.pathname.indexOf('/auth/login') !== -1;
 
