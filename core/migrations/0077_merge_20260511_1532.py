@@ -6,7 +6,6 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0076_cropperrelease'),
         ('core', '0076_remove_staff_manage_website_section_perms'),
     ]
 

@@ -1,32 +1,25 @@
 {% load static %}
 
 {% if staff_list %}
-  <table class="superadmin-table">
+  <table class="sam-table">
     <thead>
       <tr>
         <th>Admin User</th>
         <th>Email</th>
         <th>Status</th>
-        <th style="width: 40%;">Pro Features</th>
+        <th style="width: 45%;">Pro Features</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for staff in staff_list %}
         <tr>
-          <!-- Admin Info -->
+          <!-- Admin User Name -->
           <td>
-            <div class="admin-info">
-              <div class="admin-avatar">
-                {{ staff.user.first_name|first|default:"A" }}
-              </div>
-              <div class="admin-details">
-                <div class="admin-name">{{ staff.user.get_full_name|default:staff.user.username }}</div>
-                {% if staff.user.phone %}
-                  <div class="admin-email">{{ staff.user.phone }}</div>
-                {% endif %}
-              </div>
-            </div>
+            <div class="sam-admin-name">{{ staff.user.get_full_name|default:staff.user.username }}</div>
+            {% if staff.user.phone %}
+              <div class="sam-admin-email">{{ staff.user.phone }}</div>
+            {% endif %}
           </td>
 
           <!-- Email -->
@@ -36,17 +29,17 @@
 
           <!-- Status -->
           <td>
-            <span class="status-badge {% if staff.user.is_active %}active{% else %}inactive{% endif %}">
+            <span class="sam-status-badge {% if staff.user.is_active %}active{% else %}inactive{% endif %}">
               <i class="fa-solid fa-{% if staff.user.is_active %}check-circle{% else %}ban{% endif %}"></i>
               {{ staff.user.is_active|yesno:"Active,Inactive" }}
             </span>
           </td>
 
-          <!-- Pro Features Toggle -->
+          <!-- Pro Features -->
           <td>
-            <div class="feature-toggles">
+            <div class="sam-feature-toggles">
               <!-- User Options -->
-              <span class="feature-toggle {% if staff.perm_pro_user_options %}enabled{% else %}disabled{% endif %}"
+              <span class="sam-feature-toggle {% if staff.perm_pro_user_options %}enabled{% else %}disabled{% endif %}"
                     data-staff-id="{{ staff.id }}"
                     data-feature="user_options"
                     title="User Options (Impersonation)">
@@ -55,7 +48,7 @@
               </span>
 
               <!-- Log Deletion Guard -->
-              <span class="feature-toggle {% if staff.perm_pro_log_deletion_guard %}enabled{% else %}disabled{% endif %}"
+              <span class="sam-feature-toggle {% if staff.perm_pro_log_deletion_guard %}enabled{% else %}disabled{% endif %}"
                     data-staff-id="{{ staff.id }}"
                     data-feature="log_deletion_guard"
                     title="Log Deletion Guard">
@@ -64,7 +57,7 @@
               </span>
 
               <!-- Data Deletion Guard -->
-              <span class="feature-toggle {% if staff.perm_pro_data_deletion_guard %}enabled{% else %}disabled{% endif %}"
+              <span class="sam-feature-toggle {% if staff.perm_pro_data_deletion_guard %}enabled{% else %}disabled{% endif %}"
                     data-staff-id="{{ staff.id }}"
                     data-feature="data_deletion_guard"
                     title="Data Deletion Guard">
@@ -76,8 +69,8 @@
 
           <!-- Actions -->
           <td>
-            <div class="actions">
-              <button class="action-btn action-btn-grant"
+            <div class="sam-actions">
+              <button class="sam-action-btn sam-action-btn-grant"
                       data-action="grant-all"
                       data-staff-id="{{ staff.id }}"
                       data-admin-name="{{ staff.user.get_full_name|default:staff.user.username }}"
@@ -85,7 +78,7 @@
                 <i class="fa-solid fa-star"></i> Grant All
               </button>
               {% if staff.perm_pro_user_options or staff.perm_pro_log_deletion_guard or staff.perm_pro_data_deletion_guard %}
-                <button class="action-btn action-btn-revoke"
+                <button class="sam-action-btn sam-action-btn-revoke"
                         data-action="revoke-all"
                         data-staff-id="{{ staff.id }}"
                         data-admin-name="{{ staff.user.get_full_name|default:staff.user.username }}"
@@ -102,7 +95,7 @@
 
   <!-- Pagination -->
   {% if page_obj.has_other_pages %}
-    <div class="pagination">
+    <div class="sam-pagination">
       {% if page_obj.has_previous %}
         <a href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">« First</a>
         <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">‹ Prev</a>
@@ -126,9 +119,9 @@
   {% endif %}
 
 {% else %}
-  <div class="empty-state">
+  <div class="sam-empty">
     <i class="fa-solid fa-inbox"></i>
-    <p style="font-size: 16px; margin: 12px 0;">No admin users found</p>
-    <p style="font-size: 13px; margin: 0;">Create admin users or adjust filters to get started</p>
+    <p style="font-size: 13px; margin: 12px 0; font-weight: 600;">No admin users found</p>
+    <p style="font-size: 12px; margin: 0;">Create admin users or adjust filters to get started</p>
   </div>
 {% endif %}

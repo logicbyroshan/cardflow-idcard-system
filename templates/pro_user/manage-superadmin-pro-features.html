@@ -2,283 +2,338 @@
 {% load static %}
 
 {% block title %}Manage Superadmin Pro Features - Adarsh Admin{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
 
 {% block extra_css %}
   <style>
-    .pro-manage-page {
-      background: linear-gradient(180deg, #f3f8ff 0%, #edf3fb 100%);
-      min-height: 100vh;
+    .main.main-scrollable-page {
+      grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
     }
 
-    .manage-superadmin-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    .superadmin-header {
-      background: white;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    .superadmin-header h1 {
-      margin: 0 0 8px 0;
-      font-size: 24px;
-      font-weight: 700;
-      color: #1a202c;
-    }
-
-    .superadmin-header p {
-      margin: 0;
-      color: #64748b;
-      font-size: 14px;
-    }
-
-    .search-filter-row {
+    .superadmin-manage-page {
+      height: 100%;
+      min-height: 0;
       display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
+      flex-direction: column;
+      background: linear-gradient(180deg, #f3f8ff 0%, #edf3fb 100%);
+      overflow: hidden;
+    }
+
+    .superadmin-manage-page .pro-feature-tabs {
+      position: static;
+      top: auto;
+      margin: 0;
+      padding: 0 20px;
+      min-height: 42px;
+      border: 1px solid var(--color-gray-200, var(--color-gray-200));
+      border-left: 0;
+      border-right: 0;
+      background: var(--color-white);
+    }
+
+    .sam-shell {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px 20px 24px;
+    }
+
+    .sam-inner {
+      width: 100%;
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+    }
+
+    .sam-card {
+      border: 1px solid #dbe5f1;
+      border-radius: 6px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+      overflow: hidden;
+    }
+
+    .sam-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid #e5edf7;
+      display: flex;
       align-items: center;
+      justify-content: space-between;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
-    .search-box {
+    .sam-head h2 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .sam-head p {
+      margin: 4px 0 0;
+      color: var(--color-slate-500);
+      font-size: 12px;
+    }
+
+    .sam-body {
+      padding: 14px;
+    }
+
+    .sam-search-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .sam-search-input {
       flex: 1;
       min-width: 200px;
-    }
-
-    .search-box input {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #dfe7ef;
-      border-radius: 6px;
-      font-size: 14px;
-      background: white;
-    }
-
-    .filter-select {
-      padding: 8px 12px;
-      border: 1px solid #dfe7ef;
-      border-radius: 6px;
-      font-size: 14px;
-      background: white;
-      min-width: 150px;
-    }
-
-    .table-wrapper {
-      background: white;
-      border: 1px solid #e2e8f0;
+      height: 36px;
+      border: 1px solid #dbe5f1;
       border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      background: #fff;
+      padding: 0 10px;
+      font-size: 12px;
+      color: var(--color-slate-700);
     }
 
-    .superadmin-table {
+    .sam-search-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+    }
+
+    .sam-filter-select {
+      height: 36px;
+      border: 1px solid #dbe5f1;
+      border-radius: 8px;
+      background: #fff;
+      padding: 0 10px;
+      font-size: 12px;
+      color: var(--color-slate-700);
+      min-width: 140px;
+    }
+
+    .sam-filter-select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+    }
+
+    .sam-btn-search {
+      height: 36px;
+      padding: 0 16px;
+      background: var(--color-primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .sam-btn-search:hover {
+      background: var(--secondary);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(15, 23, 42, 0.12);
+    }
+
+    .sam-table-wrap {
+      overflow: auto;
+    }
+
+    .sam-table {
       width: 100%;
+      min-width: 900px;
       border-collapse: collapse;
     }
 
-    .superadmin-table thead {
-      background: #f8fafc;
-      border-bottom: 1px solid #dfe7ef;
-    }
-
-    .superadmin-table th {
-      padding: 12px 16px;
+    .sam-table th {
       text-align: left;
-      font-weight: 600;
-      font-size: 12px;
-      color: #475569;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.04em;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+      padding: 10px 12px;
+      font-weight: 700;
     }
 
-    .superadmin-table tbody tr {
-      border-bottom: 1px solid #f1f5f9;
-      transition: background-color 0.2s ease;
-    }
-
-    .superadmin-table tbody tr:hover {
-      background-color: #f8fafc;
-    }
-
-    .superadmin-table td {
-      padding: 14px 16px;
-      font-size: 14px;
-      color: #334155;
-    }
-
-    .admin-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .admin-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 600;
+    .sam-table td {
+      border-bottom: 1px solid #e7eef7;
+      padding: 10px 12px;
       font-size: 12px;
+      color: var(--color-slate-700);
+      vertical-align: middle;
     }
 
-    .admin-details {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+    .sam-admin-name {
+      font-weight: 700;
+      color: #1f2937;
     }
 
-    .admin-name {
-      font-weight: 600;
-      color: #1a202c;
+    .sam-admin-email {
+      font-size: 11px;
+      color: var(--color-slate-500);
+      margin-top: 1px;
     }
 
-    .admin-email {
-      font-size: 12px;
-      color: #64748b;
-    }
-
-    .feature-toggles {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .feature-toggle {
+    .sam-status-badge {
       display: inline-flex;
       align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .sam-status-badge.active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .sam-status-badge.inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .sam-feature-toggles {
+      display: flex;
       gap: 6px;
-      padding: 5px 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .sam-feature-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
       border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.2s ease;
       border: 1px solid transparent;
     }
 
-    .feature-toggle.disabled {
+    .sam-feature-toggle.disabled {
       background: #f1f5f9;
       color: #94a3b8;
-      border-color: #dfe7ef;
+      border-color: #cbd5e1;
     }
 
-    .feature-toggle.enabled {
+    .sam-feature-toggle.enabled {
       background: #dbeafe;
       color: #1e40af;
-      border-color: #bfdbfe;
+      border-color: #7dd3fc;
     }
 
-    .feature-toggle:hover {
+    .sam-feature-toggle:hover {
       transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
     }
 
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      border-radius: 3px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .status-badge.active {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .status-badge.inactive {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .actions {
+    .sam-actions {
       display: flex;
       gap: 6px;
       align-items: center;
     }
 
-    .action-btn {
-      padding: 6px 10px;
+    .sam-action-btn {
+      padding: 5px 10px;
       border: none;
       border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.2s ease;
       text-transform: uppercase;
+      letter-spacing: 0.02em;
     }
 
-    .action-btn-grant {
+    .sam-action-btn-grant {
       background: #10b981;
       color: white;
     }
 
-    .action-btn-grant:hover {
+    .sam-action-btn-grant:hover {
       background: #059669;
+      transform: translateY(-1px);
     }
 
-    .action-btn-revoke {
+    .sam-action-btn-revoke {
       background: #ef4444;
       color: white;
     }
 
-    .action-btn-revoke:hover {
+    .sam-action-btn-revoke:hover {
       background: #dc2626;
+      transform: translateY(-1px);
     }
 
-    .pagination {
-      padding: 16px;
+    .sam-pagination {
+      padding: 12px;
       display: flex;
       justify-content: center;
-      gap: 8px;
-      border-top: 1px solid #f1f5f9;
+      gap: 6px;
+      border-top: 1px solid #e7eef7;
+      flex-wrap: wrap;
     }
 
-    .pagination a, .pagination span {
+    .sam-pagination a,
+    .sam-pagination span {
       padding: 6px 10px;
-      border: 1px solid #dfe7ef;
+      border: 1px solid #dbe5f1;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       text-decoration: none;
-      color: #475569;
+      color: var(--color-slate-700);
       transition: all 0.2s ease;
+      font-weight: 600;
     }
 
-    .pagination a:hover {
-      border-color: #667eea;
-      color: #667eea;
+    .sam-pagination a:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
     }
 
-    .pagination .active {
-      background: #667eea;
+    .sam-pagination .active {
+      background: var(--color-primary);
       color: white;
-      border-color: #667eea;
+      border-color: var(--color-primary);
     }
 
-    .empty-state {
+    .sam-empty {
       text-align: center;
       padding: 40px 20px;
-      color: #64748b;
+      color: var(--color-slate-500);
     }
 
-    .empty-state i {
+    .sam-empty i {
       font-size: 48px;
       color: #cbd5e1;
       margin-bottom: 12px;
+      display: block;
+    }
+
+    @media (max-width: 900px) {
+      .superadmin-manage-page .pro-feature-tabs,
+      .sam-shell {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .sam-table {
+        min-width: 100%;
+      }
     }
   </style>
 {% endblock %}
@@ -291,41 +346,55 @@
   <span class="breadcrumb-item active">Manage Superadmin</span>
 {% endblock %}
 
+{% block topbar_right %}
+  <div class="nav-right">
+    {% include 'partials/notification-bell.html' %}
+  </div>
+{% endblock %}
+
 {% block content %}
-  <div class="pro-manage-page">
-    <div class="manage-superadmin-container">
-      <!-- Header -->
-      <div class="superadmin-header">
-        <h1><i class="fa-solid fa-user-shield"></i> Manage Superadmin Pro Features</h1>
-        <p>Grant or revoke pro features for your admin users. Control access to User Options, Log Deletion Guard, and Data Deletion Guard.</p>
-      </div>
-
-      <!-- Pro Feature Tabs -->
-      {% include 'partials/pro-feature-tabs.html' %}
-
-      <!-- Search & Filter -->
-      <form method="get" class="search-filter-row" id="search-form">
-        <div class="search-box">
-          <input type="text" name="search" placeholder="Search by name, email, or username..." value="{{ search_query }}" />
+  <div class="superadmin-manage-page">
+    {% include 'partials/pro-feature-tabs.html' %}
+    <div class="sam-shell">
+      <div class="sam-inner">
+        <!-- Info Card -->
+        <div class="sam-card">
+          <div class="sam-head">
+            <div>
+              <h2><i class="fa-solid fa-user-shield"></i> Manage Superadmin</h2>
+              <p>Grant or revoke pro features for your admin staff</p>
+            </div>
+          </div>
         </div>
-        <select name="status" class="filter-select" onchange="document.getElementById('search-form').submit()">
-          <option value="">All Users</option>
-          <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
-          <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
-          <option value="has_pro_features" {% if status_filter == 'has_pro_features' %}selected{% endif %}>Has Pro Features</option>
-        </select>
-        <button type="submit" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px;">
-          <i class="fa-solid fa-search"></i> Search
-        </button>
-      </form>
 
-      <!-- Table -->
-      <div class="table-wrapper" id="superadmin-table-container"
-           hx-trigger="refreshTable from:body"
-           hx-get="{% url 'manage_superadmin_pro_features' %}"
-           hx-target="#superadmin-table-container"
-           hx-swap="innerHTML">
-        {% include 'partials/pro_user/manage-superadmin-table.html' %}
+        <!-- Search Card -->
+        <div class="sam-card">
+          <div class="sam-body">
+            <form method="get" class="sam-search-row" id="search-form">
+              <input type="text" name="search" class="sam-search-input" placeholder="Search by name, email, or username..." value="{{ search_query }}" />
+              <select name="status" class="sam-filter-select" onchange="document.getElementById('search-form').submit()">
+                <option value="">All Users</option>
+                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+                <option value="has_pro_features" {% if status_filter == 'has_pro_features' %}selected{% endif %}>Has Pro Features</option>
+              </select>
+              <button type="submit" class="sam-btn-search">
+                <i class="fa-solid fa-search"></i> Search
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="sam-card">
+          <div class="sam-table-wrap" id="superadmin-table-container"
+               hx-trigger="refreshTable from:body"
+               hx-get="{% url 'manage_superadmin_pro_features' %}"
+               hx-target="#superadmin-table-container"
+               hx-swap="innerHTML">
+            {% include 'partials/pro_user/manage-superadmin-table.html' %}
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -333,7 +402,7 @@
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // Toggle individual pro features
-      document.querySelectorAll('.feature-toggle').forEach(btn => {
+      document.querySelectorAll('.sam-feature-toggle').forEach(btn => {
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           const staffId = this.dataset.staffId;
@@ -432,7 +501,7 @@
     }
 
     function showToast(message, type) {
-      // Simple toast notification - you can enhance this
+      // Simple toast notification
       const toast = document.createElement('div');
       toast.style.cssText = `
         position: fixed;

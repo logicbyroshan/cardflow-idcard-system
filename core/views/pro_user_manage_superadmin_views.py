@@ -7,12 +7,11 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.core.paginator import Paginator
 
-from accounts.models import User
 from staff.models import Staff
 from core.services.permission_service import PermissionService
 from core.views.base import get_user_role, get_page_range
-from core.middleware import is_htmx
-from core.views.base import _apply_drawer_embed_frame_headers
+from core.utils.htmx import is_htmx
+from core.views.admin_page_views import _apply_drawer_embed_frame_headers
 
 
 @login_required
