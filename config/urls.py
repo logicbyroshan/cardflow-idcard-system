@@ -125,10 +125,6 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
-    # PWA — registered at root to satisfy browser expectations and enable site-wide service worker scope.
-    path('manifest.json', pwa_manifest, name='pwa_manifest'),
-    path('sw.js', pwa_service_worker, name='pwa_service_worker'),
-
     # Django admin
     path('admin/', admin.site.urls),
 
@@ -186,9 +182,6 @@ urlpatterns += [
     path('panel/staff/', include('staff.urls')),
     path('panel/work/', include('idcards.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
-
-    # ==================== PWA MOBILE APP (/app/) ====================
-    path('app/', include('mobile_app.urls')),
 
     # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
     path('api/mobile/', include('mobile_api.urls')),
