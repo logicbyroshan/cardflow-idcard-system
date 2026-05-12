@@ -48,8 +48,8 @@ class WebsiteMigrationService:
             logger.info("Starting database data dump...")
             try:
                 out = StringIO()
-                # Dump only essential apps to keep it fast and relevant
-                management.call_command('dumpdata', 'website', 'client', 'accounts', 'staff', 'idcards', 'core', indent=2, stdout=out)
+                # Only dump apps needed for the new website to ensure speed in production
+                management.call_command('dumpdata', 'website', 'client', 'accounts', 'staff', indent=2, stdout=out)
                 zipf.writestr('database/production_data_dump.json', out.getvalue())
                 logger.info("Added database/production_data_dump.json to bundle")
             except Exception as e:
