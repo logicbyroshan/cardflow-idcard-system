@@ -792,17 +792,17 @@ class ClientCardService(BaseService):
             
             # Status counts for the tab bar
             counts = {
-                'pending': cards_query.model.objects.filter(table=table, status='pending').count(),
-                'verified': cards_query.model.objects.filter(table=table, status='verified').count(),
-                'approved': cards_query.model.objects.filter(table=table, status='approved').count(),
-                'download': cards_query.model.objects.filter(table=table, status='download').count(),
-                'pool': cards_query.model.objects.filter(table=table, status='pool').count(),
+                'pending': IDCard.objects.filter(table=table, status='pending').count(),
+                'verified': IDCard.objects.filter(table=table, status='verified').count(),
+                'approved': IDCard.objects.filter(table=table, status='approved').count(),
+                'download': IDCard.objects.filter(table=table, status='download').count(),
+                'pool': IDCard.objects.filter(table=table, status='pool').count(),
             }
             # Apply row-scope if staff
             if PermissionService.is_client_staff(user):
                 for s_key in counts:
                     counts[s_key] = cls._apply_client_staff_row_scope(
-                        user, table, cards_query.model.objects.filter(table=table, status=s_key)
+                        user, table, IDCard.objects.filter(table=table, status=s_key)
                     ).count()
 
             return ServiceResult(

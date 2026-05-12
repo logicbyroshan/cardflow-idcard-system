@@ -35,6 +35,16 @@ from django.utils.timezone import make_aware, is_naive, localtime
 from django.utils import timezone
 from django.utils.timesince import timesince
 
+def _safe_file_url(file_field):
+    """Safely get URL from an ImageField/FileField, avoiding ValueError if file is missing."""
+    if not file_field:
+        return ''
+    try:
+        return file_field.url
+    except ValueError:
+        return ''
+
+
 from client.services import (
     ClientAccessService,
     ClientDashboardService,
@@ -1845,11 +1855,8 @@ def home(request):
     _now = _tz.now()
 
     def _safe_client_logo_url(_client_obj):
-        try:
-            _logo = getattr(_client_obj, 'logo', None)
-            return _logo.url if _logo else ''
-        except Exception:
-            return ''
+        _logo = getattr(_client_obj, 'logo', getattr(_client_obj, 'website_logo', None))
+        return _safe_file_url(_logo)
 
     _cards_scope = (
         IDCard.objects.all() if _is_admin
@@ -2793,7 +2800,7 @@ def card_list(request, table_id, status):
         section = (fd.get(section_field_name) if section_field_name else None) or fd.get('SECTION') or fd.get('section') or ''
         dob = fd.get('DOB') or fd.get('dob') or fd.get('DATE OF BIRTH') or fd.get('DATE_OF_BIRTH') or ''
 
-        primary_photo_url = card.photo.url if card.photo else None
+        primary_photo_url = _safe_file_url(card.photo) or None
         photo_slots, photo_urls = _extract_photo_slots(fd, primary_photo_url, table_fields)
         photo_url = next((_slot.get('url') for _slot in photo_slots if _slot.get('url')), None)
 
@@ -4587,7 +4594,7 @@ def search_page(request):
             fd = card.field_data or {}
             name = _card_display_name(card, fd)
             roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
-            photo_url = card.photo.url if card.photo else None
+            photo_url = _safe_file_url(card.photo) or None
             if not photo_url:
                 for val in fd.values():
                     if isinstance(val, str) and ('adarshimg/' in val or val.endswith(('.jpg', '.jpeg', '.png', '.webp'))):
@@ -5995,9 +6002,7 @@ def api_clients_list(request):
     users_list = []
     for u in clients_qs:
         profile = getattr(u, 'client_profile', None)
-        logo_url = ''
-        if profile and profile.logo:
-            logo_url = profile.logo.url
+        logo_url = _safe_file_url(getattr(profile, 'logo', None)) if profile else ''
             
         users_list.append({
             'id': u.id,
