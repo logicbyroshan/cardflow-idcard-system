@@ -31,8 +31,13 @@
     /** True when the current page is the login page itself. */
     var _isLoginPage = window.location.pathname.indexOf('/auth/login') !== -1;
 
-    window.fetch = function () {
-        return _originalFetch.apply(this, arguments).then(function (response) {
+    window.fetch = function (url, options) {
+        // Prepend global API prefix if it exists and URL is root-relative /api/...
+        if (typeof url === 'string' && url.startsWith('/api/') && typeof window.API_BASE_URL === 'string' && !url.startsWith(window.API_BASE_URL)) {
+            url = window.API_BASE_URL + url;
+        }
+
+        return _originalFetch.call(this, url, options).then(function (response) {
             //  Redirect detection 
             // If the server redirected (302  login page) and we're NOT
             // already on the login page, the session is expired/invalid.
@@ -148,7 +153,7 @@
 
         _csrfRefreshPromise = new Promise(function (resolve) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/panel/auth/api/auth/session-refresh/', true);
+            xhr.open('GET', (window.API_BASE_URL || '/panel') + '/auth/api/auth/session-refresh/', true);
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             xhr.timeout = 8000;
 
@@ -182,6 +187,11 @@
     // LOW-LEVEL FETCH WRAPPER
     // ------------------------------------------
     async function _request(url, method, data, options) {
+        // Prepend global API prefix if it exists and URL is root-relative /api/...
+        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/api/') && !url.startsWith(window.API_BASE_URL)) {
+            url = window.API_BASE_URL + url;
+        }
+
         // Safeguard: block requests to external origins (prevents credential leaking)
         if (url.indexOf('://') !== -1 && url.indexOf(window.location.origin) !== 0) {
             return Promise.reject(new Error('API request blocked: external URL not allowed'));

@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from core.views.health import health_check
 from core import views as core_views
+from mobile_app.views import pwa_manifest, pwa_service_worker
 
 
 
@@ -123,6 +124,10 @@ def _protected_media_serve(request, path, document_root=None):
 urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
+
+    # PWA — registered at root to satisfy browser expectations and enable site-wide service worker scope.
+    path('manifest.json', pwa_manifest, name='pwa_manifest'),
+    path('sw.js', pwa_service_worker, name='pwa_service_worker'),
 
     # Django admin
     path('admin/', admin.site.urls),

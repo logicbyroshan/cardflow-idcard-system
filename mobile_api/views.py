@@ -5282,7 +5282,7 @@ def api_dashboard_data(request):
                     recent_reprints.append({
                         'id': r.id,
                         'card_id': r.card_id,
-                        'client_name': r.table.group.client.business_name or r.table.group.client.name,
+                        'client_name': getattr(r.table.group.client, 'business_name', r.table.group.client.name),
                         'table_name': r.table.name,
                         'status': r.status,
                         'reason': r.reason,

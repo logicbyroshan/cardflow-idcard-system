@@ -135,6 +135,7 @@
     window.MAINTENANCE_STATUS_API_URL = "{% url 'api_system_maintenance_check' %}";
     window.ACTIVITY_LOG_CLEAR_ENABLED = {{ activity_log_clear_enabled|yesno:"true,false" }};
     window.ACTIVITY_LOG_CLEAR_CONFIRM_PHRASE = "{{ activity_log_clear_confirm_phrase|escapejs }}";
+    window.API_BASE_URL = "{{ API_BASE_URL|default:'' }}";
   </script>
   <script defer src="{% static 'js/core/unified-select-dropdown.js' %}"></script>
   <script defer src="{% static 'js/manage-panel.js' %}"></script>

@@ -142,6 +142,7 @@
       flatpickrCSS:"{% static 'css/vendor/flatpickr.min.css' %}",
       flatpickrJS: "{% static 'js/vendor/flatpickr.min.js' %}"
     };
+    window.API_BASE_URL = "{{ API_BASE_URL|default:'' }}";
   </script>
 
   <!-- Core JS bundle (api + toast + modal + utils + sanitizer + confirmation-code + download-manager + init + global-search + notification-bell) -->

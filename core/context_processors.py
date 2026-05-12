@@ -65,6 +65,7 @@ def permissions(request):
         'PANEL_URL': getattr(settings, 'PANEL_URL', ''),
         'APP_VERSION': getattr(settings, 'APP_VERSION', 'v0.00.00'),
         'MOBILE_ANDROID_APP_DOWNLOAD_URL': _resolve_mobile_android_download_url(request),
+        'API_BASE_URL': '/panel' if request.path.startswith('/panel/') else ('/app' if request.path.startswith('/app/') else ''),
     }
 
     if not request.user.is_authenticated:
