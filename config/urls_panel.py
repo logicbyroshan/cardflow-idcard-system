@@ -174,6 +174,7 @@ urlpatterns = [
     path('staff/', include('staff.urls')),
     path('work/', include('idcards.urls')),
     path('reprint/', include('reprintcard.urls')),
+    path('manage-website/', include('manage_website.urls')),
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/', include('mobile_app.urls')),
     
