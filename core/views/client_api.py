@@ -1129,6 +1129,62 @@ def api_client_message_targets(request):
     })
 
 
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_client_logo_get(request, client_id):
+    """Retrieve current logo URL for a client."""
+    from client.models import Client
+    client = get_object_or_404(Client, id=client_id)
+    return JsonResponse({
+        'success': True,
+        'logo_url': client.logo.url if client.logo else None
+    })
+
+
+@require_http_methods(["POST"])
+@api_require_any_admin
+def api_client_logo_upload(request, client_id):
+    """Upload a new logo for a client."""
+    from client.models import Client
+    client = get_object_or_404(Client, id=client_id)
+
+    if 'logo' not in request.FILES:
+        return JsonResponse({'success': False, 'message': 'No logo file provided'}, status=400)
+
+    logo_file = request.FILES['logo']
+    # Basic validation
+    if not logo_file.content_type.startswith('image/'):
+        return JsonResponse({'success': False, 'message': 'File must be an image'}, status=400)
+
+    if logo_file.size > 2 * 1024 * 1024:  # 2MB limit
+        return JsonResponse({'success': False, 'message': 'Image too large (max 2MB)'}, status=400)
+
+    client.logo = logo_file
+    client.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Logo uploaded successfully',
+        'logo_url': client.logo.url
+    })
+
+
+@require_http_methods(["POST"])
+@api_require_any_admin
+def api_client_logo_delete(request, client_id):
+    """Delete the client logo."""
+    from client.models import Client
+    client = get_object_or_404(Client, id=client_id)
+
+    if client.logo:
+        client.logo.delete(save=False)
+        client.logo = None
+        client.save()
+
+    return JsonResponse({'success': True, 'message': 'Logo deleted successfully'})
+
+
 @require_http_methods(["POST"])
 @api_require_any_admin
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='client_msg_group_send')
