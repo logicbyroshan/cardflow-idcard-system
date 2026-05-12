@@ -48,9 +48,9 @@ class WebsiteMigrationService:
             logger.info("Starting database data dump...")
             try:
                 out = StringIO()
-                # Only dump apps needed for the new website to ensure speed in production
-                management.call_command('dumpdata', 'website', 'client', 'accounts', 'staff', indent=2, stdout=out)
-                zipf.writestr('database/production_data_dump.json', out.getvalue())
+                # Dump ONLY the website app to ensure it finishes in < 1 second and avoids 502 timeouts
+                management.call_command('dumpdata', 'website', indent=2, stdout=out)
+                zipf.writestr('database/website_data_dump.json', out.getvalue())
                 logger.info("Added database/production_data_dump.json to bundle")
             except Exception as e:
                 logger.error(f"Failed to dump data: {e}")
