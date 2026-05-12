@@ -14,12 +14,12 @@ import useRefreshableResource from '../hooks/useRefreshableResource';
 
 // Status cards: 6 cards (without Reprint)
 const STATUS_CONFIG = [
-  { key: 'pending',  label: 'Pending',   Svg: IconPending,   bg: '#f59e0b', bg2: '#d97706' },
-  { key: 'verified', label: 'Verified',  Svg: IconVerified,  bg: '#10b981', bg2: '#059669' },
-  { key: 'approved', label: 'Approved',  Svg: IconApproved,  bg: '#3b82f6', bg2: '#2563eb' },
-  { key: 'download', label: 'Download',  Svg: IconDownload,  bg: '#8b5cf6', bg2: '#7c3aed' },
-  { key: 'pool',     label: 'Pool',      Svg: IconPool,      bg: '#ef4444', bg2: '#b91c1c' },
-  { key: 'total',    label: 'All Cards', Svg: IconTotal,     bg: '#1e293b', bg2: '#0f172a' },
+  { key: 'pending',  label: 'Pending',   Svg: IconPending,   bg: '#f59e0b', bg2: '#d97706', color: '#f59e0b' },
+  { key: 'verified', label: 'Verified',  Svg: IconVerified,  bg: '#10b981', bg2: '#059669', color: '#10b981' },
+  { key: 'approved', label: 'Approved',  Svg: IconApproved,  bg: '#3b82f6', bg2: '#2563eb', color: '#3b82f6' },
+  { key: 'download', label: 'Download',  Svg: IconDownload,  bg: '#8b5cf6', bg2: '#7c3aed', color: '#8b5cf6' },
+  { key: 'pool',     label: 'Pool',      Svg: IconPool,      bg: '#ef4444', bg2: '#b91c1c', color: '#ef4444' },
+  { key: 'total',    label: 'All Cards', Svg: IconTotal,     bg: '#1e293b', bg2: '#0f172a', color: '#1e293b' },
 ];
 
 export default function HomeScreen({ navigation }) {
@@ -287,8 +287,14 @@ export default function HomeScreen({ navigation }) {
           {(isSuperAdmin || isOperator) ? (
             // ADMIN/OPERATOR: Tab-based rendering
             activeTab === 'clients' ? (
-              // Tab 1: Recent Clients
-              counts.recent_clients && counts.recent_clients.length > 0 ? (
+              <View>
+                <View style={s.secHeaderRow}>
+                  <Text style={s.secTitle}>RECENT CLIENTS</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('ClientsList')}>
+                    <Text style={s.viewAllLink}>VIEW ALL</Text>
+                  </TouchableOpacity>
+                </View>
+                {counts.recent_clients && counts.recent_clients.length > 0 ? (
                 counts.recent_clients.map(client => (
                   <View key={client.id} style={s.clientCard}>
                     <TouchableOpacity 
@@ -301,10 +307,11 @@ export default function HomeScreen({ navigation }) {
                       <View style={s.clientInfo}>
                         <Text style={s.clientName} numberOfLines={1}>{client.name}</Text>
                         <View style={s.badgeRow}>
-                          <StatBadge label="P" count={client.pending || 0} theme={colors.pending} />
-                          <StatBadge label="V" count={client.verified || 0} theme={colors.verified} />
-                          <StatBadge label="A" count={client.approved || 0} theme={colors.approved} />
-                          <StatBadge label="D" count={client.download || 0} theme={colors.download} />
+                          <StatBadge label="PENDING" count={client.pending || 0} color="#f59e0b" />
+                          <StatBadge label="VERIFY" count={client.verified || 0} color="#10b981" />
+                          <StatBadge label="APPROVE" count={client.approved || 0} color="#3b82f6" />
+                          <StatBadge label="DOWNLOAD" count={client.download || 0} color="#8b5cf6" />
+                          <StatBadge label="POOL" count={client.pool || 0} color="#ef4444" />
                         </View>
                       </View>
                       <DynamicIcon 
@@ -321,7 +328,7 @@ export default function HomeScreen({ navigation }) {
                           <TouchableOpacity 
                             key={table.id}
                             style={s.tableRow}
-                            onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'all' })}
+                            onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pending' })}
                           >
                             <DynamicIcon name="table" size={11} color={colors.gray400} style={{ marginRight: 8 }} />
                             <Text style={s.tableRowName} numberOfLines={1}>{table.name}</Text>
@@ -345,9 +352,16 @@ export default function HomeScreen({ navigation }) {
               ) : (
                 <View style={s.emptyState}><Text style={s.emptyText}>No recent clients found</Text></View>
               )
+            </View>
             ) : activeTab === 'activity' ? (
-              // Tab 2: Recent Activity
-              counts.recent_activity && counts.recent_activity.length > 0 ? (
+              <View>
+                <View style={s.secHeaderRow}>
+                  <Text style={s.secTitle}>RECENT ACTIVITY</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+                    <Text style={s.viewAllLink}>VIEW ALL</Text>
+                  </TouchableOpacity>
+                </View>
+                {counts.recent_activity && counts.recent_activity.length > 0 ? (
                 counts.recent_activity.map(act => (
                   <View key={act.id} style={s.activityCard}>
                     <View style={[s.activityIcon, { backgroundColor: act.icon_color || colors.brandPrimary }]}>
@@ -361,10 +375,17 @@ export default function HomeScreen({ navigation }) {
                 ))
               ) : (
                 <View style={s.emptyState}><Text style={s.emptyText}>No recent activity found</Text></View>
-              )
+              )}
+            </View>
             ) : (
-              // Tab 3: Recent Reprints
-              counts.recent_reprints && counts.recent_reprints.length > 0 ? (
+              <View>
+                <View style={s.secHeaderRow}>
+                  <Text style={s.secTitle}>RECENT REPRINTS</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('Reprint')}>
+                    <Text style={s.viewAllLink}>VIEW ALL</Text>
+                  </TouchableOpacity>
+                </View>
+                {counts.recent_reprints && counts.recent_reprints.length > 0 ? (
                 counts.recent_reprints.map(rep => (
                   <TouchableOpacity 
                     key={rep.id} 
@@ -384,18 +405,18 @@ export default function HomeScreen({ navigation }) {
                 ))
               ) : (
                 <View style={s.emptyState}><Text style={s.emptyText}>No recent reprints found</Text></View>
-              )
+              )}
+            </View>
             )
           ) : (
             // CLIENT/ASSISTANT: Show tables header
             <>
-              <LinearGradient 
-                colors={gradients.brand} 
-                start={{x:0, y:0}} end={{x:1, y:0}} 
-                style={[s.secHeader, { marginBottom: 12 }]}
-              >
-                <Text style={[s.secTitle, { color: '#fff' }]}>MY TABLES</Text>
-              </LinearGradient>
+              <View style={s.secHeaderRow}>
+                <Text style={s.secTitle}>MY TABLES</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Groups')}>
+                  <Text style={s.viewAllLink}>VIEW ALL</Text>
+                </TouchableOpacity>
+              </View>
               {counts.tables && counts.tables.length > 0 ? (
                 counts.tables.map(table => (
                   <TouchableOpacity 
@@ -479,11 +500,11 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-function StatBadge({ label, count, theme }) {
+function StatBadge({ label, count, color }) {
   return (
-    <View style={[s.badge, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-      <Text style={[s.badgeLabel, { color: theme.text }]}>{label}</Text>
-      <Text style={[s.badgeCount, { color: theme.text }]}>{count}</Text>
+    <View style={[s.badge, { backgroundColor: color, borderColor: color }]}>
+      <Text style={s.badgeLabel}>{label}</Text>
+      <Text style={s.badgeCount}>{count}</Text>
     </View>
   );
 }
@@ -491,12 +512,12 @@ function StatBadge({ label, count, theme }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   scrollC: { padding: 12 },
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 0, marginTop: 10 },
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 0, marginTop: 4 },
   statusCardOuter: {
     width: (width - 36) / 3,
     aspectRatio: 1.1,
-    marginBottom: 10,
-    borderRadius: 8,
+    marginBottom: 8,
+    borderRadius: 6,
     overflow: 'hidden',
     ...shadows.md
   },
@@ -551,6 +572,10 @@ const s = StyleSheet.create({
   secHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.md, marginBottom: 12, backgroundColor: '#fff', ...shadows.sm },
   secTitle: { fontSize: 11, fontFamily: fontFamily.black, color: colors.gray400, letterSpacing: 1.5 },
 
+  secHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, marginTop: 15 },
+  secTitle: { fontSize: 10, fontFamily: fontFamily.black, color: colors.gray400, letterSpacing: 1 },
+  viewAllLink: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.brandPrimary, letterSpacing: 0.5 },
+
   // Groups/Tables Section
   groupsWrap: { marginBottom: 8 },
   
@@ -561,9 +586,9 @@ const s = StyleSheet.create({
   clientInfo: { flex: 1, minWidth: 0 },
   clientName: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray800, marginBottom: 4 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  badge: { paddingHorizontal: 4, paddingVertical: 2, borderRadius: radius.xs, borderWidth: 0.5, alignItems: 'center', minWidth: 32 },
-  badgeLabel: { fontSize: 6, fontFamily: fontFamily.bold },
-  badgeCount: { fontSize: 10, fontFamily: fontFamily.bold },
+  badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignItems: 'center', minWidth: 38 },
+  badgeLabel: { fontSize: 5, fontFamily: fontFamily.black, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3 },
+  badgeCount: { fontSize: 10, fontFamily: fontFamily.black, color: '#fff' },
   clientStats: { fontSize: 10, fontFamily: fontFamily.medium, color: colors.gray400, marginTop: 2 },
   
   // Expanded Tables
