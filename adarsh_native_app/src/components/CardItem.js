@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { DynamicIcon, IconClock, IconWarning, IconCheck, IconEdit, IconTrash } from './Icons';
 import { colors, shadows, radius, spacing, typography, fontFamily, gradients } from '../theme';
 import { HStack } from './Stack';
+import { cleanFieldValue } from '../utils/data';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BASE_URL } from '../api/client';
 
@@ -101,7 +102,7 @@ const CardItem = React.memo(function CardItem({
           {textFields.slice(0, 5).map((f, i) => (
             <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
               <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
-              <Text style={s.fieldValue} numberOfLines={1}>{f.value || '-'}</Text>
+              <Text style={s.fieldValue} numberOfLines={1}>{cleanFieldValue(f.value) || '-'}</Text>
             </View>
           ))}
           {textFields.length === 0 && (

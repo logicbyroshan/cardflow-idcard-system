@@ -9,6 +9,7 @@ import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../t
 import { useAuth } from '../context/AuthContext';
 import Toast from './Toast';
 import { HStack, VStack } from './Stack';
+import { cleanFieldData, cleanFieldValue } from '../utils/data';
 
 /**
  * Bottom-to-top dynamic form drawer for adding/editing cards.
@@ -59,7 +60,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       if (isEdit) {
         const { ok: cOk, data: cData } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
         if (cOk && cData?.success) {
-          setValues(cData.data?.field_data || {});
+          setValues(cleanFieldData(cData.data?.field_data || {}));
           setTableName(cData.data?.table_name || '');
         } else if (!cOk) {
           setError('Failed to load card details');
@@ -110,7 +111,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         }
       }
 
-      formData.append('field_data', JSON.stringify(fieldData));
+      formData.append('field_data', JSON.stringify(cleanFieldData(fieldData)));
 
       const url = isEdit
         ? `/api/mobile/table/${tableId}/card/${cardId}/update/`
