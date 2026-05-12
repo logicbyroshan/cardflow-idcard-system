@@ -49,6 +49,17 @@ export default function App() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Safety: Force ready after 4 seconds regardless of fonts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!appReady) {
+        console.log('[App] Safety trigger: forcing appReady true');
+        setAppReady(true);
+      }
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [appReady]);
+
 
   const onLayoutRootView = useCallback(async () => {
     if (appReady) {

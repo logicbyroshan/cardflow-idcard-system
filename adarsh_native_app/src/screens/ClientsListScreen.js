@@ -163,17 +163,17 @@ export default function ClientsListScreen({ navigation, route }) {
       <View style={s.cardActions}>
         <TouchableOpacity style={s.actionBtn} onPress={() => handleImpersonate(item)} disabled={impersonatingId === item.id}>
           <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
-            {impersonatingId === item.id ? <ActivityIndicator size="small" color="#3b82f6" /> : <><IconUsers size={12} color="#3b82f6" /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>SWITCH</Text></>}
+            {impersonatingId === item.id ? <ActivityIndicator size="small" color="#3b82f6" /> : <><DynamicIcon name="users" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>SWITCH</Text></>}
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
           <LinearGradient colors={['#f8fafc', '#f1f5f9']} style={s.actionBtnInner}>
-            <IconEdit size={12} color={colors.gray600} /><Text style={[s.actionBtnText, { color: colors.gray600 }]}>EDIT</Text>
+            <DynamicIcon name="edit" size={12} color={colors.gray600} style={s.actionIcon} /><Text style={[s.actionBtnText, { color: colors.gray600 }]}>EDIT</Text>
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtn} onPress={() => deleteClient(item)}>
           <LinearGradient colors={['#fef2f2', '#fee2e2']} style={s.actionBtnInner}>
-            <IconTrash size={12} color="#ef4444" /><Text style={[s.actionBtnText, { color: '#ef4444' }]}>DEL</Text>
+            <DynamicIcon name="trash" size={12} color="#ef4444" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#ef4444' }]}>DEL</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -249,18 +249,18 @@ function FormField({ label, value, onChangeText, secureTextEntry, keyboardType }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
-  searchSection: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginVertical: 12 },
-  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: radius.sm, paddingHorizontal: 12, height: 44, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
+  searchSection: { flexDirection: 'row', paddingHorizontal: 16, marginVertical: 12 },
+  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: radius.xs, paddingHorizontal: 12, height: 44, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100, marginRight: 10 },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 13, fontFamily: fontFamily.medium, color: colors.gray800 },
-  addBtn: { width: 44, height: 44, borderRadius: radius.sm, ...shadows.md },
-  addBtnInner: { flex: 1, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 12, paddingBottom: 100 },
-  card: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 12, marginBottom: 12, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
+  addBtn: { width: 44, height: 44, borderRadius: radius.xs, ...shadows.md },
+  addBtnInner: { flex: 1, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
+  list: { paddingHorizontal: 12, paddingVertical: 8, paddingBottom: 100 },
+  card: { backgroundColor: '#fff', borderRadius: radius.xs, padding: 12, marginBottom: 12, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start' },
   cardInfo: { flex: 1 },
   cardName: { fontSize: 14, fontFamily: fontFamily.bold, color: colors.gray800, marginBottom: 8 },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  statPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, minWidth: 44, justifyContent: 'space-between' },
+  statPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.xs, borderWidth: 1, minWidth: 44, justifyContent: 'space-between' },
   statLabel: { fontSize: 7, fontFamily: fontFamily.bold, opacity: 0.8 },
   statCount: { fontSize: 10, fontFamily: fontFamily.bold, marginLeft: 4 },
   statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.xs },
@@ -268,21 +268,22 @@ const s = StyleSheet.create({
   statusPillText: { fontSize: 8, fontFamily: fontFamily.bold },
   cardActions: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   actionBtn: { flex: 1, height: 32, borderRadius: radius.xs },
-  actionBtnInner: { flex: 1, borderRadius: radius.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  actionBtnInner: { flex: 1, borderRadius: radius.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  actionIcon: { marginRight: 8 },
   actionBtnText: { fontSize: 9, fontFamily: fontFamily.bold },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: 20, maxHeight: '90%' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: radius.sm, borderTopRightRadius: radius.sm, padding: 20, maxHeight: '90%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.gray800 },
   field: { marginBottom: 16 },
   fieldLabel: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray500, marginBottom: 6 },
-  fieldInput: { backgroundColor: colors.gray50, borderRadius: radius.sm, paddingHorizontal: 12, height: 44, fontSize: 13, fontFamily: fontFamily.medium, color: colors.gray800, borderWidth: 1, borderColor: colors.gray100 },
+  fieldInput: { backgroundColor: colors.gray50, borderRadius: radius.xs, paddingHorizontal: 12, height: 44, fontSize: 13, fontFamily: fontFamily.medium, color: colors.gray800, borderWidth: 1, borderColor: colors.gray100 },
   modalFooter: { flexDirection: 'row', gap: 12, marginTop: 10, paddingTop: 10 },
-  modalCancel: { flex: 1, height: 44, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gray100 },
+  modalCancel: { flex: 1, height: 44, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gray100 },
   modalCancelText: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray600 },
-  modalSave: { flex: 2, height: 44, borderRadius: radius.sm },
-  modalSaveBtn: { flex: 1, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  modalSave: { flex: 2, height: 44, borderRadius: radius.xs },
+  modalSaveBtn: { flex: 1, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   modalSaveText: { fontSize: 13, fontFamily: fontFamily.bold, color: '#fff' },
   empty: { padding: 60, alignItems: 'center' },
   emptyText: { fontSize: 13, fontFamily: fontFamily.medium, color: colors.gray400 },

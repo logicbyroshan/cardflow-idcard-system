@@ -217,7 +217,7 @@ export default function CardListScreen({ navigation, route }) {
           <IconSearch size={14} color={colors.gray400} />
           <TextInput style={s.searchInput} placeholder="Search name, roll, mobile..." value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" onSubmitEditing={() => loadCards(1)} />
         </View>
-        <TouchableOpacity onPress={() => setShowFilterDrawer(true)} style={s.filterBtn}><IconFilter size={14} color={colors.brandPrimary} /><Text style={s.filterBtnText}>FILTER</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowFilterDrawer(true)} style={s.filterBtn}><DynamicIcon name="filter" size={14} color={colors.brandPrimary} style={{ marginRight: 6 }} /><Text style={s.filterBtnText}>FILTER</Text></TouchableOpacity>
       </View>
 
       <View style={s.summaryRow}>
@@ -259,7 +259,7 @@ export default function CardListScreen({ navigation, route }) {
 function FBtn({ icon, label, onPress, color='#fff' }) {
   return (
     <TouchableOpacity style={s.fBtn} onPress={onPress}>
-      <DynamicIcon name={icon} size={12} color={color} />
+      <DynamicIcon name={icon} size={12} color={color} style={{ marginRight: 8 }} />
       <Text style={[s.fBtnText, { color }]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -268,23 +268,23 @@ function FBtn({ icon, label, onPress, color='#fff' }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   tabContainer: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  tabScroll: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  tabItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.xs, borderWidth: 1, borderColor: '#f1f5f9', backgroundColor: '#f8fafc' },
+  tabScroll: { paddingHorizontal: 12, paddingVertical: 8 },
+  tabItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.xs, borderWidth: 1, borderColor: '#f1f5f9', backgroundColor: '#f8fafc', marginRight: 8 },
   tabLabel: { fontSize: 9, fontFamily: fontFamily.bold, marginRight: 6 },
   tabCount: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10 },
   tabCountText: { fontSize: 8, fontFamily: fontFamily.bold },
-  headerActions: { flexDirection: 'row', padding: 12, gap: 10 },
-  searchWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 44, borderRadius: radius.sm, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  headerActions: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8 },
+  searchWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 44, borderRadius: radius.sm, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm, marginRight: 10 },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 13, fontFamily: fontFamily.medium, color: colors.gray800 },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 44, paddingHorizontal: 12, borderRadius: radius.sm, borderWidth: 1, borderColor: '#e2e8f0', gap: 6, ...shadows.sm },
-  filterBtnText: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.brandPrimary },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 44, paddingHorizontal: 12, borderRadius: radius.sm, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  filterBtnText: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.brandPrimary, marginLeft: 4 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  selectAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  checkboxSmall: { width: 14, height: 14, borderRadius: 3, borderWidth: 1, borderColor: colors.gray300, alignItems: 'center', justifyContent: 'center' },
+  selectAllBtn: { flexDirection: 'row', alignItems: 'center' },
+  checkboxSmall: { width: 14, height: 14, borderRadius: 3, borderWidth: 1, borderColor: colors.gray300, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   checkboxCheckedSmall: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
   selectAllText: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray600 },
   totalText: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.gray400 },
-  list: { padding: 10, paddingBottom: 100 },
+  list: { paddingHorizontal: 12, paddingVertical: 8, paddingBottom: 100 },
   empty: { padding: 80, alignItems: 'center' },
   emptyText: { fontSize: 13, color: colors.gray400, fontFamily: fontFamily.medium },
   floatingBar: { position: 'absolute', bottom: 20, left: 12, right: 12, borderRadius: radius.sm, overflow: 'hidden', ...shadows.lg },

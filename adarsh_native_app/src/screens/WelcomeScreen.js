@@ -394,7 +394,7 @@ const s = StyleSheet.create({
   headerLoginBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: radius.sm,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
@@ -468,7 +468,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     backgroundColor: colors.gray50,
-    borderRadius: radius.lg,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.gray100,
   },
@@ -493,7 +493,7 @@ const s = StyleSheet.create({
   productCard: {
     width: (width - 52) / 2,
     height: 220,
-    borderRadius: radius.lg,
+    borderRadius: radius.sm,
     overflow: "hidden",
     ...shadows.md,
   },
@@ -524,7 +524,7 @@ const s = StyleSheet.create({
   },
 
   contactSection: { marginTop: 40 },
-  contactCard: { borderRadius: radius.xl, padding: 25, ...shadows.lg },
+  contactCard: { borderRadius: radius.md, padding: 25, ...shadows.lg },
   contactTitle: {
     fontSize: 24,
     fontFamily: fontFamily.bold,
@@ -544,7 +544,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     paddingHorizontal: 15,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
@@ -560,7 +560,7 @@ const s = StyleSheet.create({
   textArea: { height: 80, textAlignVertical: "top", paddingTop: 12 },
   submitBtn: {
     backgroundColor: "#fff",
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     paddingVertical: 15,
     alignItems: "center",
     marginTop: 10,
@@ -595,7 +595,7 @@ const s = StyleSheet.create({
   socialIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.sm,
     backgroundColor: colors.gray50,
     alignItems: "center",
     justifyContent: "center",

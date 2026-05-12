@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   homeBtn: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 32,
     paddingHorizontal: 10,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   downloadBtn: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   rightBtn: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',

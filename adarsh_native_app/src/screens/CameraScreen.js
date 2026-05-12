@@ -114,17 +114,16 @@ export default function CameraScreen({ navigation, route }) {
     setIsCapturing(true);
     try {
       const p = await cameraRef.current.takePictureAsync({
-        quality: 0.8, // Slightly lower quality for better success
+        quality: 0.7,
         base64: false,
-        skipProcessing: false, // Standard processing for better results
+        skipProcessing: true,
       });
       if (p) setPhoto(p);
     } catch (e) {
-      console.error('Capture Error:', e);
-      alert('Failed to capture photo. Please try again.');
-    } finally {
-      setIsCapturing(false);
+      console.log('Capture error', e);
+      alert('Camera error. Please try again.');
     }
+    setTimeout(() => setIsCapturing(false), 500);
   };
 
   const handleConfirm = () => {
@@ -177,6 +176,7 @@ export default function CameraScreen({ navigation, route }) {
             style={s.camera} 
             ref={cameraRef} 
             facing={facing}
+            onCameraReady={() => console.log('Camera Ready')}
             onFacesDetected={hasNativeFace ? handleFacesDetected : undefined}
             faceDetectorSettings={hasNativeFace ? {
               mode: FaceDetector.FaceDetectorMode.accurate,
@@ -191,7 +191,7 @@ export default function CameraScreen({ navigation, route }) {
 
       <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15 }]}>
         <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
-          <View style={s.controlIconCircle}>
+          <View style={s.controlIconSquare}>
             <DynamicIcon name="sync-alt" size={18} color="#fff" />
           </View>
           <Text style={s.controlLabel}>Flip</Text>
@@ -205,7 +205,7 @@ export default function CameraScreen({ navigation, route }) {
         </TouchableOpacity>
 
         <TouchableOpacity style={s.controlItem} onPress={() => navigation.goBack()}>
-          <View style={s.controlIconCircle}>
+          <View style={s.controlIconSquare}>
             <DynamicIcon name="times" size={18} color="#fff" />
           </View>
           <Text style={s.controlLabel}>Cancel</Text>
@@ -225,10 +225,10 @@ const s = StyleSheet.create({
   camera: { flex: 1 },
   
   topStatus: { position: 'absolute', width: '100%', alignItems: 'center', zIndex: 10 },
-  levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25 },
+  levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm },
   bgSuccess: { backgroundColor: '#22c55e' },
   bgError: { backgroundColor: '#ef4444' },
-  levelText: { color: '#fff', fontSize: 13, fontFamily: fontFamily.bold },
+  levelText: { color: '#fff', fontSize: 13, fontFamily: fontFamily.bold, marginLeft: 8 },
 
   bottomControls: { 
     position: 'absolute', 
@@ -242,10 +242,10 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   controlItem: { alignItems: 'center', width: 80 },
-  controlIconCircle: { 
+  controlIconSquare: { 
     width: 44, 
     height: 44, 
-    borderRadius: 22, 
+    borderRadius: radius.sm, 
     backgroundColor: 'rgba(255,255,255,0.15)', 
     alignItems: 'center', 
     justifyContent: 'center',
@@ -258,17 +258,17 @@ const s = StyleSheet.create({
   captureBtnOuter: { 
     width: 72, 
     height: 72, 
-    borderRadius: 36, 
+    borderRadius: radius.sm, 
     borderWidth: 4, 
     borderColor: '#fff', 
     alignItems: 'center', 
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.1)'
   },
-  captureBtnInnerMain: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff' },
+  captureBtnInnerMain: { width: 56, height: 56, borderRadius: radius.xs, backgroundColor: '#fff' },
 
   fullPreview: { flex: 1, resizeMode: 'cover' },
-  reviewOverlay: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(0,0,0,0.85)', padding: 24, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+  reviewOverlay: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(0,0,0,0.85)', padding: 24, borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md },
   reviewTitle: { color: '#fff', fontSize: 20, fontFamily: fontFamily.bold, textAlign: 'center', marginBottom: 20 },
   reviewActions: { flexDirection: 'row' },
   retakeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md },

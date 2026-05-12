@@ -125,7 +125,7 @@ const CardItem = React.memo(function CardItem({
         <HStack spacing={8} style={s.rightActions}>
           {onStatusChange && hasPerm('perm_idcard_edit') && (
             <TouchableOpacity style={s.outlineBtn} onPress={() => onStatusChange(item)}>
-              <Text style={s.outlineBtnText}>STATUS</Text>
+              <Text style={s.outlineBtnText}>{currentStatus === 'pending' ? 'VERIFY' : 'STATUS'}</Text>
             </TouchableOpacity>
           )}
           {onEdit && hasPerm('perm_idcard_edit') && (
@@ -145,21 +145,21 @@ const CardItem = React.memo(function CardItem({
 });
 
 const s = StyleSheet.create({
-  card: { backgroundColor: '#fff', borderRadius: radius.sm, marginHorizontal: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, overflow: 'hidden' },
+  card: { backgroundColor: '#fff', borderRadius: radius.xs, marginHorizontal: 12, marginBottom: 10, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, overflow: 'hidden' },
   cardSelected: { borderColor: colors.brandPrimary, backgroundColor: '#f8fafc' },
-  cardBody: { flexDirection: 'row', padding: 12 },
+  cardBody: { flexDirection: 'row', padding: 8 },
   imagesColumn: { width: 50, gap: 10, marginRight: 12 },
   imgBoxWrap: { alignItems: 'center' },
   imgBox: { width: 50, height: 60, borderRadius: radius.xs, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
   actualImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   imgBoxLabel: { fontSize: 7, fontFamily: fontFamily.bold, color: colors.gray400, marginTop: 2, textTransform: 'uppercase' },
   fieldsList: { flex: 1, justifyContent: 'center' },
-  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
   fieldLabel: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase' },
   fieldValue: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray800, flex: 1, textAlign: 'right', marginLeft: 10 },
   emptyData: { padding: 10, alignItems: 'center' },
   emptyDataText: { fontSize: 10, fontFamily: fontFamily.medium, color: colors.gray300, fontStyle: 'italic' },
-  cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fafafa' },
+  cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fafafa' },
   leftActions: { flexDirection: 'row', alignItems: 'center' },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   checkboxSmall: { width: 14, height: 14, borderRadius: radius.xs, borderWidth: 1, borderColor: colors.gray300, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },

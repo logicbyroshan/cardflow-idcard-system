@@ -5239,6 +5239,7 @@ def api_dashboard_data(request):
                 'download': global_counts_agg.get('download', 0),
                 'pool': global_counts_agg.get('pool', 0),
                 'total': global_counts_agg.get('total', 0),
+                'client_count': clients_qs.count(),
                 'operator_count': User.objects.filter(role='admin_staff', is_active=True).count(),
                 'assistant_count': User.objects.filter(role='client_staff', is_active=True).count(),
             }

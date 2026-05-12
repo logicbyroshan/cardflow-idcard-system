@@ -4,6 +4,7 @@ import {
   RefreshControl, Dimensions, Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Camera } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   IconSearch, IconProfile, IconPending, IconVerified, IconApproved,
@@ -14,8 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
 import { apiGet } from '../api/client';
 import { DashboardSkeleton } from '../components/Skeleton';
-import { ErrorBanner } from '../components/NetworkGuard';
-import ErrorView, { ERROR_TYPES } from '../components/ErrorView';
+import { ErrorBanner, ErrorView, ERROR_TYPES } from '../components/NetworkGuard';
 
 const { width } = Dimensions.get('window');
 
@@ -34,6 +34,13 @@ export default function HomeScreen({ navigation }) {
   const theme = roleThemes[user?.role] || roleThemes.default;
   const [activeTab, setActiveTab] = useState('clients'); // 'clients', 'activity', 'reprints'
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      if (status !== 'granted') console.log('Camera permission denied');
+    })();
+  }, []);
 
   const isSuperAdmin = user?.role === 'admin' || user?.isSuperAdmin;
   const isOperator = user?.role === 'admin_staff';
@@ -97,12 +104,16 @@ export default function HomeScreen({ navigation }) {
       <LinearGradient colors={gradients.brandFull} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity style={s.headerLeftBtn} onPress={() => navigation.navigate('Landing')} activeOpacity={0.8}>
-            <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
+            <View style={s.logoSquare}>
+              <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
+            </View>
           </TouchableOpacity>
           <View style={s.headerCenter}><Text style={s.brandName}>Adarsh ID Cards</Text></View>
           <View style={s.headerRight}>
             <TouchableOpacity style={s.profileBtn} onPress={() => navigation.navigate('Profile')}>
-              <IconProfile size={14} color="#fff" />
+              <View style={s.profileSquare}>
+                <IconProfile size={14} color="#fff" />
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -146,30 +157,60 @@ export default function HomeScreen({ navigation }) {
           <View style={s.homeSectionWrap}>
             <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} snapToInterval={width - 24}
               decelerationRate="fast" style={s.slideScroll} onMomentumScrollEnd={(e) => setCurrentSlide(Math.round(e.nativeEvent.contentOffset.x / (width - 24)))}>
+              
+              {/* SLIDE 0: HOME SECTION (Tabs as Cards) */}
               <View style={s.slidePage}>
                 <Text style={s.homeSecTitle}>HOME SECTION</Text>
-                <View style={s.tabBar}>
-                  {['clients', 'activity', 'reprints'].map(tab => (
-                    <TouchableOpacity key={tab} style={[s.tabBtn, activeTab === tab && s.tabBtnActive]} onPress={() => setActiveTab(tab)}>
-                      <Text style={[s.tabBtnText, activeTab === tab && s.tabBtnTextActive]}>{tab.toUpperCase()} {tab === 'activity' ? '' : 'LIST'}</Text>
+                <View style={s.quickActionsRow}>
+                  {[
+                    { label: 'CLIENTS', icon: 'building', color: '#6366f1', bg: '#eef2ff', tab: 'clients' },
+                    { label: 'ACTIVITY', icon: 'history', color: '#ec4899', bg: '#fdf2f8', tab: 'activity' },
+                    { label: 'REPRINTS', icon: 'redo', color: '#f59e0b', bg: '#fffbeb', tab: 'reprints' },
+                  ].map((act, i) => (
+                    <TouchableOpacity key={i} style={[s.quickActionBtn, activeTab === act.tab && { borderColor: act.color, borderWidth: 1.5 }]} 
+                      onPress={() => setActiveTab(act.tab)}>
+                      <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
+                      <Text style={[s.qaLabel, activeTab === act.tab && { color: act.color }]}>{act.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
+
+              {/* SLIDE 1: QUICK ACTIONS */}
               <View style={s.slidePage}>
                 <Text style={s.homeSecTitle}>QUICK ACTIONS</Text>
                 <View style={s.quickActionsRow}>
                   {quickActions.slice(0, 3).map((act, i) => (
                     <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => navigation.navigate(act.screen, act.params)}>
-                      <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={14} color={act.color} /></View>
+                      <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
                       <Text style={s.qaLabel}>{act.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* SLIDE 2: USERS OVERVIEW */}
+              <View style={s.slidePage}>
+                <Text style={s.homeSecTitle}>USERS OVERVIEW</Text>
+                <View style={s.quickActionsRow}>
+                  {[
+                    { label: 'CLIENTS', icon: 'building', color: '#10b981', bg: '#ecfdf5', count: counts.client_count || 0, screen: 'ClientsList' },
+                    { label: 'OPERATORS', icon: 'user-tie', color: '#3b82f6', bg: '#eff6ff', count: counts.operator_count || 0, screen: 'StaffManage', params: { role: 'admin_staff' } },
+                    { label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', count: counts.assistant_count || 0, screen: 'StaffManage', params: { role: 'client_staff' } },
+                  ].map((act, i) => (
+                    <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => navigation.navigate(act.screen, act.params)}>
+                      <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
+                      <View style={s.qaInfo}>
+                        <Text style={s.qaCount}>{act.count}</Text>
+                        <Text style={s.qaLabel}>{act.label}</Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
             </ScrollView>
             <View style={s.dotRow}>
-              {[0, 1].map(i => <View key={i} style={[s.dot, currentSlide === i && s.dotActive]} />)}
+              {[0, 1, 2].map(i => <View key={i} style={[s.dot, currentSlide === i && s.dotActive]} />)}
             </View>
           </View>
         )}
@@ -242,12 +283,6 @@ export default function HomeScreen({ navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      {(isSuperAdmin || user?.permissions?.perm_idcard_add) && (
-        <TouchableOpacity style={s.fab} onPress={() => navigation.navigate('TablePicker', { action: 'add' })} activeOpacity={0.8}>
-          <LinearGradient colors={gradients.brand} style={s.fabGradient}><DynamicIcon name="plus" size={20} color="#fff" /></LinearGradient>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -256,9 +291,11 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   header: { paddingHorizontal: 16, paddingBottom: 20, borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg, ...shadows.md },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  logo: { width: 32, height: 32 },
+  logo: { width: 24, height: 24 },
+  logoSquare: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   brandName: { color: '#fff', fontSize: 18, fontFamily: fontFamily.bold },
-  profileBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  profileBtn: { },
+  profileSquare: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', marginTop: 12, paddingHorizontal: 12, height: 44, borderRadius: radius.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   searchPlaceholder: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginLeft: 10, fontFamily: fontFamily.medium },
   scroll: { flex: 1 },
@@ -281,11 +318,13 @@ const s = StyleSheet.create({
   tabBtnTextActive: { color: '#fff' },
   quickActionsRow: { flexDirection: 'row', gap: 10 },
   quickActionBtn: { flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: radius.sm, alignItems: 'center', ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
-  qaIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  qaLabel: { fontSize: 7, fontFamily: fontFamily.bold, color: colors.gray700 },
+  qaIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  qaInfo: { alignItems: 'center' },
+  qaCount: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.gray800, marginBottom: 2 },
+  qaLabel: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray600, textAlign: 'center' },
   dotRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 6 },
-  dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.gray200 },
-  dotActive: { width: 12, backgroundColor: colors.brandPrimary },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gray200 },
+  dotActive: { width: 16, backgroundColor: colors.brandPrimary },
   mainContent: { marginTop: 10 },
   secHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, marginTop: 10 },
   secTitle: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1 },
@@ -294,14 +333,14 @@ const s = StyleSheet.create({
   clientHeader: { flexDirection: 'row', alignItems: 'center' },
   clientIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   clientName: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray800 },
-  activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 10, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
-  activityIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  activityText: { fontSize: 11, fontFamily: fontFamily.medium, color: colors.gray800 },
-  activityTime: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.gray400, marginTop: 2 },
-  reprintCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 10, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
-  reprintIcon: { width: 28, height: 28, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  reprintTitle: { fontSize: 12, fontFamily: fontFamily.bold, color: colors.gray800 },
-  reprintSub: { fontSize: 9, fontFamily: fontFamily.medium, color: colors.gray500 },
+  activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
+  activityIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  activityText: { fontSize: 12, fontFamily: fontFamily.medium, color: colors.gray800 },
+  activityTime: { fontSize: 10, fontFamily: fontFamily.bold, color: colors.gray400, marginTop: 2 },
+  reprintCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
+  reprintIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  reprintTitle: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray800 },
+  reprintSub: { fontSize: 10, fontFamily: fontFamily.medium, color: colors.gray500, marginTop: 2 },
   tableCard: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 12, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100, marginBottom: 12 },
   tableCardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   tableIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
