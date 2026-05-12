@@ -21,7 +21,7 @@ export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     'SairaSemiCondensed-Regular': require('./assets/fonts/SairaSemiCondensed-Regular.ttf'),
     'SairaSemiCondensed-Medium': require('./assets/fonts/SairaSemiCondensed-Medium.ttf'),
-    'SairaSemiCondensed-SemiBold': require('./assets/fonts/SairaSemiCondensed-Bold.ttf'),
+    'SairaSemiCondensed-SemiBold': require('./assets/fonts/SairaSemiCondensed-SemiBold.ttf'),
     'SairaSemiCondensed-Bold': require('./assets/fonts/SairaSemiCondensed-Bold.ttf'),
   });
 

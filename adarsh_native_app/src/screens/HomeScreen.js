@@ -200,9 +200,11 @@ export default function HomeScreen({ navigation }) {
                   ].map((act, i) => (
                     <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => navigation.navigate(act.screen, act.params)}>
                       <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
-                      <View style={s.qaInfo}>
-                        <Text style={s.qaCount}>{act.count}</Text>
-                        <Text style={s.qaLabel}>{act.label}</Text>
+                      <View style={s.qaLabelRow}>
+                        <Text style={s.qaLabelSmall}>{act.label}</Text>
+                        <View style={[s.qaBadge, { backgroundColor: act.color }]}>
+                          <Text style={s.qaBadgeText}>{act.count}</Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -322,6 +324,10 @@ const s = StyleSheet.create({
   qaInfo: { alignItems: 'center' },
   qaCount: { fontSize: 16, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 2 },
   qaLabel: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray600, textAlign: 'center' },
+  qaLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  qaLabelSmall: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500 },
+  qaBadge: { paddingHorizontal: 5, paddingVertical: 1, borderRadius: radius.xs },
+  qaBadgeText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
   dotRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gray200 },
   dotActive: { width: 16, backgroundColor: colors.brandPrimary },
