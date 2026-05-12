@@ -136,29 +136,6 @@ class User(AbstractUser):
         return self.role == 'client_staff'
 
 
-class WebsiteSettings(models.Model):
-    """
-    Website/CMS Settings
-    """
-    site_name = models.CharField(max_length=200, default='Adarsh ID Cards')
-    site_logo = models.ImageField(upload_to='site/', blank=True, null=True)
-    site_favicon = models.ImageField(upload_to='site/', blank=True, null=True)
-    contact_email = models.EmailField(blank=True, null=True)
-    contact_phone = models.CharField(max_length=15, blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
-    about_text = models.TextField(blank=True, null=True)
-    facebook_url = models.URLField(blank=True, null=True)
-    twitter_url = models.URLField(blank=True, null=True)
-    instagram_url = models.URLField(blank=True, null=True)
-    linkedin_url = models.URLField(blank=True, null=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.site_name
-    
-    class Meta:
-        verbose_name = "Website Settings"
-        verbose_name_plural = "Website Settings"
 
 
 class SystemSettings(models.Model):
@@ -386,8 +363,6 @@ class ActivityLog(models.Model):
         # Bulk operations
         ('bulk_delete', 'Bulk delete'),
         ('bulk_upgrade', 'Bulk upgrade'),
-        # Website content
-        ('website_update', 'Website content updated'),
         ('notification_create', 'Notification created'),
         ('notification_delete', 'Notification deleted'),
         ('email_send', 'Email sent'),
@@ -438,7 +413,6 @@ class ActivityLog(models.Model):
         'table_delete': ('fa-table', 'delete'),
         'bulk_delete': ('fa-trash-can', 'delete'),
         'bulk_upgrade': ('fa-arrow-up', 'approve'),
-        'website_update': ('fa-globe', 'edit'),
         'notification_create': ('fa-bell', 'add'),
         'notification_delete': ('fa-bell-slash', 'delete'),
         'email_send': ('fa-envelope-circle-check', 'approve'),

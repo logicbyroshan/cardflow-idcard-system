@@ -70,7 +70,6 @@
 - `/api/v1/clients/` — Client operations
 - `/api/v1/cardprint/` — Card printing workflows
 - `/panel/api/` — Admin panel endpoints
-- `/website/` — Public website
 
 ### Database Schema
 - **Latest Migration**: Check `manage.py showmigrations` for current state

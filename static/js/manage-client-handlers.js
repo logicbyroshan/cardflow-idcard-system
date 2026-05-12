@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       function resolveClientLogoUrl(item) {
         if (!item || typeof item !== 'object') return '';
-        return item.website_logo_url || item.photo_url || item.logo_url || '';
+        return item.logo_url || item.website_logo_url || item.photo_url || '';
       }
 
       function panelBasePath() {

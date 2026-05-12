@@ -121,13 +121,6 @@ class Staff(models.Model):
     perm_manage_panel_backup = models.BooleanField(default=False)
     perm_manage_panel_email = models.BooleanField(default=False)
 
-    # Website Management Permissions
-    perm_website_view = models.BooleanField(default=False)
-    perm_website_add = models.BooleanField(default=False)
-    perm_website_edit = models.BooleanField(default=False)
-    perm_website_delete = models.BooleanField(default=False)
-    perm_website_publish = models.BooleanField(default=False)
-    
     # Pro Features (for admin/superadmin users to use pro tools)
     perm_pro_user_options = models.BooleanField(default=False, help_text='Allow User Options (Impersonation/Login as User)')
     perm_pro_log_deletion_guard = models.BooleanField(default=False, help_text='Allow Log Deletion Guard')

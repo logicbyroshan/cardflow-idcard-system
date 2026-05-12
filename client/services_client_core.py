@@ -75,7 +75,7 @@ class ClientService(BaseService):
     @classmethod
     def serialize(cls, client: Client, include_permissions: bool = True) -> Dict[str, Any]:
         """Serialize Client instance to dict"""
-        logo_url = client.website_logo.url if client.website_logo else None
+        logo_url = client.logo.url if client.logo else None
         data = {
             'id': client.id,
             'name': client.name,
@@ -88,7 +88,7 @@ class ClientService(BaseService):
             'status': client.status,
             # Keep photo_url key for existing UI compatibility.
             'photo_url': logo_url,
-            'website_logo_url': logo_url,
+            'logo_url': logo_url,
             'created_at': localtime(client.created_at).strftime('%d-%m-%Y %H:%M'),
             'updated_at': localtime(client.updated_at).strftime('%d-%m-%Y %H:%M'),
         }
@@ -230,8 +230,11 @@ class ClientService(BaseService):
                         client_kwargs[perm] = cls.parse_bool(data[perm])
                 
                 client = Client.objects.create(**client_kwargs)
-                
-                # Phase 1: Photo field removed - using avatar placeholder
+
+                # Set logo if provided
+                if photo:
+                    client.logo = photo
+                    client.save(update_fields=['logo'])
                 
                 # Queue welcome email only when it is actually needed:
                 # - active now and a real email exists
@@ -355,8 +358,10 @@ class ClientService(BaseService):
                         # Cascade deactivation to all client staff
                         if not new_active:
                             cls._cascade_deactivate_staff(client)
-                
-                # Phase 1: Photo field removed - using avatar placeholder
+
+                # Update logo if provided
+                if photo:
+                    client.logo = photo
                 
                 # Track revoked permissions for cascade to staff
                 revoked_permissions = []

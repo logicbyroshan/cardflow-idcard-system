@@ -69,7 +69,6 @@ from .admin_page_views import (                      # noqa: F401
     api_email_send_new,
     api_email_compose_defaults,
     settings,
-    product_gallery,
     tutorial,
     tutorial_personal_guide,
     tutorial_personal_guide_download,

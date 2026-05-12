@@ -127,16 +127,9 @@ else:
 #   PANEL_DOMAIN   → config.urls_panel    (admin panel + PWA)
 # In local dev, leave both blank to serve everything on one domain.
 # =============================================================================
-WEBSITE_DOMAIN = os.getenv('WEBSITE_DOMAIN', '').strip()   # e.g. www.adarshbhopal.in
-PANEL_DOMAIN = os.getenv('PANEL_DOMAIN', '').strip()       # e.g. panel.adarshbhopal.in
-
+# Subdomain Routing decommissioned - all traffic flows through ROOT_URLCONF.
 # Convenience URLs for templates / email links
-WEBSITE_URL = os.getenv('WEBSITE_URL', '').rstrip('/') or (
-    f'https://{WEBSITE_DOMAIN}' if WEBSITE_DOMAIN else ''
-)
-PANEL_URL = os.getenv('PANEL_URL', '').rstrip('/') or (
-    f'https://{PANEL_DOMAIN}' if PANEL_DOMAIN else ''
-)
+PANEL_URL = os.getenv('PANEL_URL', '').rstrip('/')
 
 
 # =============================================================================
@@ -158,15 +151,11 @@ INSTALLED_APPS = [
     'mediafiles',
     'staff',
     'idcards',
-    'website',
-    'manage_website',
     'reprintcard',
     'mobile_app',
     'panel',
     # 'officework',  # Removed - app not found
     'mobile_api',
-    'django.contrib.sitemaps',
-    'django.contrib.sites',
 ]
 
 if DEBUG and not _running_tests():
@@ -179,9 +168,6 @@ SITE_ID = 1
 AUTH_USER_MODEL = 'core.User'
 
 MIDDLEWARE = [
-    # Subdomain routing — sets request.urlconf based on Host header
-    # MUST be first so all downstream middleware see the correct URL conf
-    'core.middleware.SubdomainRoutingMiddleware',
     'core.middleware.MobileAppCSRFBypassMiddleware',
     "django.middleware.security.SecurityMiddleware",
 ]
@@ -202,20 +188,14 @@ MIDDLEWARE += [
     'django.contrib.messages.middleware.MessageMiddleware',
     # Request timing — logs duration, slow-request warnings (>1.5 s)
     'core.middleware.RequestTimingMiddleware',
-    # Panel entry gate — require website panel-button flow for anonymous panel access
-    'core.middleware.PanelEntryGateMiddleware',
     # Permission Validation Middleware - re-checks permissions on every request
-    # CRITICAL: Must come after AuthenticationMiddleware
     'core.middleware.PermissionValidationMiddleware',
-    # RoleScopingMiddleware removed — deprecated, scoping merged into PermissionValidationMiddleware
     # Session idle timeout — logs out after SESSION_IDLE_TIMEOUT of inactivity
     'core.middleware.SessionIdleTimeoutMiddleware',
     # Security headers — Permissions-Policy, Cache-Control
     'core.middleware.SecurityHeadersMiddleware',
     # Maintenance mode — blocks panel for non-superadmin when enabled
     'core.middleware.MaintenanceModeMiddleware',
-    # Website Offline Middleware — blocks public site when status is 'draft'
-    'core.middleware.WebsiteOfflineMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -284,18 +264,8 @@ if SENTRY_DSN:
     SENTRY_PROFILE_SESSION_SAMPLE_RATE = _env_float_optional('SENTRY_PROFILE_SESSION_SAMPLE_RATE')
     SENTRY_PROFILE_LIFECYCLE = os.getenv('SENTRY_PROFILE_LIFECYCLE', '').strip() or None
 
-    # Drop events originating from the public website or website management apps
+    # Drop events originating from deprecated domains or unwanted noise if needed.
     def _sentry_before_send(event, hint):
-        request = hint.get('request')
-        if request is not None:
-            try:
-                match = resolve(request.path)
-                view_mod = getattr(match.func, '__module__', '')
-                if view_mod.startswith('website') or view_mod.startswith('manage_website'):
-                    return None
-            except Exception:
-                # If resolution fails, don't block the event
-                pass
         return event
 
     try:
@@ -387,16 +357,7 @@ if render_hostname:
     if render_url not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_url)
 
-# Auto-add PANEL_DOMAIN and WEBSITE_DOMAIN to CSRF_TRUSTED_ORIGINS
-# so that CSRF works even if the env var is not explicitly set.
-for _domain in (PANEL_DOMAIN, WEBSITE_DOMAIN):
-    if _domain:
-        for _scheme in ('https', 'http'):
-            _origin = f'{_scheme}://{_domain}'
-            if _origin not in CSRF_TRUSTED_ORIGINS:
-                CSRF_TRUSTED_ORIGINS.append(_origin)
-
-# Use the same branded error page for CSRF failures (403).
+# CSRF failure view
 CSRF_FAILURE_VIEW = 'core.views.errors.csrf_failure'
 
 # ── Reverse-proxy SSL detection ──
@@ -799,11 +760,6 @@ SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 # Client tutorial page video URL (shown on /panel/tutorial/)
 CLIENT_TUTORIAL_VIDEO_URL = os.getenv('CLIENT_TUTORIAL_VIDEO_URL', 'https://www.youtube.com/')
 
-# Website video optimization defaults (FFmpeg pipeline)
-WEBSITE_VIDEO_MAX_WIDTH = max(240, int(os.getenv('WEBSITE_VIDEO_MAX_WIDTH', '1080')))
-WEBSITE_VIDEO_MAX_HEIGHT = max(240, int(os.getenv('WEBSITE_VIDEO_MAX_HEIGHT', '1920')))
-WEBSITE_VIDEO_CRF = min(28, max(23, int(os.getenv('WEBSITE_VIDEO_CRF', '24'))))
-WEBSITE_FFMPEG_BINARY = os.getenv('WEBSITE_FFMPEG_BINARY', '').strip()
 
 
 # =============================================================================
@@ -880,8 +836,8 @@ MOBILE_SHELL_ANDROID_UPDATE_URL = os.getenv('MOBILE_SHELL_ANDROID_UPDATE_URL', '
 # Keep push bootstrap disabled by default until Firebase is correctly wired
 # in the Android app (google-services.json + FCM project).
 MOBILE_SHELL_PUSH_ENABLED = _env_bool('MOBILE_SHELL_PUSH_ENABLED', False)
-MOBILE_SHELL_PRIVACY_URL = os.getenv('MOBILE_SHELL_PRIVACY_URL', WEBSITE_URL or SITE_URL).strip()
-MOBILE_SHELL_SUPPORT_URL = os.getenv('MOBILE_SHELL_SUPPORT_URL', WEBSITE_URL or SITE_URL).strip()
+MOBILE_SHELL_PRIVACY_URL = os.getenv('MOBILE_SHELL_PRIVACY_URL', SITE_URL).strip()
+MOBILE_SHELL_SUPPORT_URL = os.getenv('MOBILE_SHELL_SUPPORT_URL', SITE_URL).strip()
 
 
 # =============================================================================

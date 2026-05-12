@@ -10,12 +10,21 @@
           <input type="hidden" id="clientId" name="clientId" value="">
           <div class="drawer-body">
             
-            <!-- Profile Avatar Placeholder -->
-            <div class="profile-upload-section flex flex-row items-center gap-4">
-              <div id="clientDrawerAvatar">
-                {% include 'partials/components/user-avatar.html' with role='client' size='large' %}
+            <!-- Client Logo Upload Section -->
+            <div class="profile-upload-section flex flex-col items-start gap-3 mb-6">
+              <label class="form-label mb-1">Client Logo</label>
+              <div class="flex items-center gap-4">
+                <div id="clientDrawerLogoPreview" class="client-logo-badge" style="width: 60px; height: 60px; border-radius: 8px; border: 2px dashed #cbd5e1; background: #f8fafc; cursor: pointer;" onclick="document.getElementById('clientLogoInput').click()">
+                  <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-xl"></i>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <button type="button" class="btn btn-xs btn-neutral" onclick="document.getElementById('clientLogoInput').click()">
+                    <i class="fa-solid fa-upload"></i> Upload Logo
+                  </button>
+                  <p class="text-gray-500 m-0 text-2xs">Recommended: 200x200px (PNG/JPG)</p>
+                </div>
               </div>
-              <p class="text-gray-500 m-0 text-xs">Client avatar</p>
+              <input type="file" id="clientLogoInput" name="logo" accept="image/*" class="hidden" onchange="previewClientLogo(this)">
             </div>
 
             <!-- Client Info Section -->

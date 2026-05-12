@@ -2,7 +2,6 @@ from django.contrib import admin
 from django.urls import path, include, reverse
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
-from website import seo
 from core.views.health import health_check
 from core import views as core_views
 
@@ -125,10 +124,6 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
-    # SEO — served at root, only for public website (with error handling & caching)
-    path('robots.txt', seo.robots_txt, name='robots_txt'),
-    path('sitemap.xml', seo.sitemap_xml, name='sitemap_view'),
-
     # Django admin
     path('admin/', admin.site.urls),
 
@@ -187,19 +182,11 @@ urlpatterns += [
     path('panel/work/', include('idcards.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
 
-    # ==================== MANAGE WEBSITE (/dashboard) ====================
-    # Website management dashboard on main domain (adarshbhopal.in/dashboard)
-    path('dashboard/', include('manage_website.urls')),
-
     # ==================== PWA MOBILE APP (/app/) ====================
     path('app/', include('mobile_app.urls')),
 
     # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
     path('api/mobile/', include('mobile_api.urls')),
-
-    # ==================== PUBLIC WEBSITE (/) ====================
-    # Public-facing website at root — must be LAST to avoid catching /panel/ routes
-    path('', include('website.urls')),
 ]
 
 # Media file serving — always register the route so uploaded images/exports

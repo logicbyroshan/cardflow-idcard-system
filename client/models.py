@@ -78,26 +78,8 @@ class Client(models.Model):
     
     # Basic Information
     name = models.CharField(max_length=200, db_index=True)
-    website_logo = models.ImageField(
-        upload_to='images/Clients/Logos/',
-        blank=True,
-        null=True,
-        help_text='Logo used on website trusted clients section and client portal UI.',
-    )
-    website_logo_cover_color = models.CharField(max_length=16, blank=True, null=True)
-    website_logo_cover_color_dark = models.CharField(max_length=16, blank=True, null=True)
-    website_is_visible = models.BooleanField(
-        default=True,
-        db_index=True,
-        help_text='Controls visibility on public website trusted clients section.',
-    )
-    website_display_order = models.PositiveIntegerField(
-        default=0,
-        db_index=True,
-        help_text='Controls ordering in public website trusted clients section (lower shows first).',
-    )
-    # DEPRECATED: photo field removed - use frontend placeholder avatars instead
-    # photo field removed in Phase 1 refactor
+    # Logo for panel branding
+    logo = models.ImageField(upload_to='client_logos/', null=True, blank=True)
     
     # Address
     address = models.TextField(blank=True, null=True)

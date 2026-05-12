@@ -13,7 +13,7 @@ import logging
 
 from django.conf import settings
 from core.services.permission_service import PermissionService
-from website.services import TestimonialService
+
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,6 @@ def permissions(request):
     # Always-available context (works for both authenticated and anonymous)
     base_context = {
         'PANEL_URL': getattr(settings, 'PANEL_URL', ''),
-        'WEBSITE_URL': getattr(settings, 'WEBSITE_URL', ''),
         'APP_VERSION': getattr(settings, 'APP_VERSION', 'v0.00.00'),
         'MOBILE_ANDROID_APP_DOWNLOAD_URL': _resolve_mobile_android_download_url(request),
     }
@@ -126,23 +125,8 @@ def permissions(request):
         current_client = None
 
     context['current_client'] = current_client
-    context['current_client_logo_url'] = (
-        current_client.website_logo.url
-        if current_client and getattr(current_client, 'website_logo', None)
-        else ''
-    )
+    context['current_client_logo_url'] = current_client.logo.url if current_client and current_client.logo else None
 
-    client_ip = (request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '')).strip()
-    public_review_email = (getattr(request.user, 'email', '') or '').strip() if request.user.is_authenticated else ''
-    review_lookup_ip = '' if public_review_email else client_ip
-    try:
-        context['can_submit_public_review'] = not TestimonialService.has_public_review(
-            reviewer_email=public_review_email,
-            reviewer_ip=review_lookup_ip,
-        )
-    except Exception as exc:
-        logger.warning('Failed computing can_submit_public_review: %s', exc)
-        context['can_submit_public_review'] = True
     
     # Cache on request for this request lifecycle
     request._cached_permissions = context

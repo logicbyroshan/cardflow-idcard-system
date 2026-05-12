@@ -74,11 +74,6 @@ class PermissionService:
         'perm_idcard_upgrade_all',
     ]
 
-    WEBSITE_PERMISSIONS = [
-        'perm_website_view', 'perm_website_add', 'perm_website_edit',
-        'perm_website_delete', 'perm_website_publish',
-    ]
-
     MANAGE_PANEL_PERMISSIONS = [
         'perm_manage_panel_backup',
         'perm_manage_panel_email',
@@ -105,7 +100,6 @@ class PermissionService:
         + IDCARD_SETTING_PERMISSIONS
         + IDCARD_LIST_PERMISSIONS
         + IDCARD_ACTION_PERMISSIONS
-        + WEBSITE_PERMISSIONS
         + MANAGE_PANEL_PERMISSIONS
         + MOBILE_APP_PERMISSIONS
         + ACCOUNT_SECURITY_PERMISSIONS
@@ -128,17 +122,9 @@ class PermissionService:
         'perm_idcard_bulk_reupload',  # admin/staff-only (not available to client roles)
         'perm_delete_all_idcard',    # super_admin-only
         'perm_reupload_idcard_image',
-        # Website management — admin_staff only (not on Client model by design)
-        'perm_website_view',
-        'perm_website_add',
-        'perm_website_edit',
-        'perm_website_delete',
-        'perm_website_publish',
         # Panel management (admin_staff-only)
         'perm_manage_panel_backup',
         'perm_manage_panel_email',
-        'perm_manage_website_clients',
-        'perm_manage_website_portfolio',
         # 'perm_manage_client_staff' removed to allow client role access
     }
 

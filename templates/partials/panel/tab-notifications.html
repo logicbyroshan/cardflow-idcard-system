@@ -13,9 +13,7 @@
         <button class="btn btn-sm btn-danger" type="button" id="mtQuickToggleBtn" onclick="openMaintenanceModeModal()">
           <i class="fa-solid fa-power-off"></i> Enable Maintenance
         </button>
-        <button class="btn btn-sm btn-outline-primary domain-quick-btn" type="button" id="domainQuickControlBtn" onclick="openDomainNotFoundModal()">
-          <i class="fa-solid fa-triangle-exclamation"></i> Domain Not Found
-        </button>
+
         {% endif %}
         <button class="btn btn-sm btn-outline-primary" type="button" onclick="refreshNotificationsPanel()">
           <i class="fa-solid fa-arrows-rotate"></i> Refresh
@@ -40,7 +38,7 @@
       </span>
       {% if is_super_admin %}
       <span class="notif-maintenance-status" id="mtQuickStatusBadge">Maintenance: Inactive</span>
-      <span class="notif-domain-status" id="domainNotFoundQuickBadge">Domain Mode: Off</span>
+
       {% endif %}
     </div>
   </div>
@@ -107,76 +105,6 @@
     </div>
   </div>
 
-  {% if is_super_admin %}
-  <div class="center-modal-overlay center-modal-theme-blue" id="domainNotFoundModal" style="display:none;">
-    <div class="center-modal-card domain-not-found-modal-card" @click.stop>
-      <div class="center-modal-header">
-        <h3><i class="fa-solid fa-triangle-exclamation"></i> Domain Not Found Controls</h3>
-        <button type="button" class="center-modal-header-close" onclick="closeDomainNotFoundModal()" title="Close">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-      <div class="center-modal-body-area domain-not-found-modal-body">
-        <div class="domain-mode-intro">
-          <div class="domain-mode-intro-icon">
-            <i class="fa-solid fa-shield-halved"></i>
-          </div>
-          <div>
-            <p class="domain-mode-intro-title">Emergency Website Recovery</p>
-            <p class="panel-subtitle domain-mode-intro-sub">
-              Use this when your public domain has routing or DNS issues and you need to keep user access restricted while panel recovery links remain available.
-            </p>
-          </div>
-        </div>
-
-        <div class="domain-mode-status-strip">
-          <span class="notif-domain-status" id="domainModeStatusText">Domain Mode: Off</span>
-          <span class="notif-inline-stat-badge" id="websiteStatusText"><i class="fa-solid fa-globe"></i> Website: Draft</span>
-          <button type="button" class="btn btn-sm btn-neutral domain-mode-refresh-btn" id="domainModeRefreshBtn" onclick="loadDomainNotFoundStatus()">
-            <i class="fa-solid fa-rotate"></i> Refresh
-          </button>
-        </div>
-        <span class="panel-subtitle domain-sync-note" id="domainModeLastSyncText">Status not synced yet.</span>
-
-        <div class="maintenance-mode-form-row domain-mode-section-card">
-          <label class="panel-form-label">Domain Mode</label>
-          <span class="panel-subtitle">
-            When enabled, public website routes return 404 while panel recovery remains available.
-          </span>
-          <div class="domain-mode-actions">
-            <button type="button" class="btn btn-sm btn-danger" id="domainModeToggleBtn" onclick="toggleDomainNotFoundMode()">
-              <i class="fa-solid fa-triangle-exclamation"></i> Enable Not Found Mode
-            </button>
-          </div>
-        </div>
-
-        <div class="maintenance-mode-form-row domain-mode-section-card">
-          <label class="panel-form-label" for="domainRecoveryEmailInput">Emergency Access Email</label>
-          <input
-            type="email"
-            id="domainRecoveryEmailInput"
-            class="panel-form-input"
-            placeholder="Enter account email"
-          >
-          <span class="panel-subtitle domain-input-error" id="domainRecoveryValidation" style="display:none;"></span>
-          <span class="panel-subtitle" id="domainRecoveryHelpText">
-            Send a tokenized emergency panel access link while Domain Not Found mode is active.
-          </span>
-          <div class="domain-mode-actions">
-            <button type="button" class="btn btn-sm btn-primary" id="domainRecoverySendBtn" onclick="sendDomainRecoveryAccessLink()">
-              <i class="fa-solid fa-paper-plane"></i> Send Emergency Email
-            </button>
-          </div>
-          <span class="panel-subtitle domain-pro-note" id="domainProOnlyNote" style="display:none;">
-            Emergency access email sending is restricted to Pro User accounts.
-          </span>
-        </div>
-      </div>
-      <div class="center-modal-footer-area">
-        <button type="button" class="center-modal-btn center-modal-btn-cancel" onclick="closeDomainNotFoundModal()">Close</button>
-      </div>
-    </div>
-  </div>
 
   <div class="center-modal-overlay center-modal-theme-blue" id="maintenanceModeModal" style="display:none;">
     <div class="center-modal-card maintenance-mode-modal-card" @click.stop>

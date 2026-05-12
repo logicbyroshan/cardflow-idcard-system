@@ -167,84 +167,6 @@ def _absolute_url(url, request=None):
         return f"{_resolve_site_base_url(request)}{value}"
 
 
-def get_email_product_showcase(request=None, limit=5):
-        """Fetch top portfolio products for the shared email footer showcase."""
-        try:
-                from website.models import PortfolioItem
-
-                ranked_products = list(
-                        PortfolioItem.objects
-                        .select_related('category')
-                        .filter(is_active=True, image__isnull=False)
-                        .exclude(image='')
-                        .order_by('-is_featured', 'order', '-created_at')
-                )
-
-                if not ranked_products:
-                        return []
-
-                try:
-                        limit = int(limit)
-                except (TypeError, ValueError):
-                        limit = 5
-                if limit <= 0:
-                        return []
-
-                def _bucket_key(product):
-                        # Group uncategorized items together so category pass stays stable.
-                        return f'cat:{product.category_id}' if product.category_id else 'uncategorized'
-
-                def _bucket_sort_key(product):
-                        if product.category_id and product.category:
-                                category_order = product.category.order if product.category.order is not None else 10 ** 9
-                                category_name = (product.category.name or '').lower()
-                                return (0, category_order, category_name)
-                        return (1, 10 ** 9, 'uncategorized')
-
-                buckets = {}
-                for product in ranked_products:
-                        buckets.setdefault(_bucket_key(product), []).append(product)
-
-                # Pass 1: pick one item from each category bucket (best-ranked item in that bucket).
-                bucket_order = sorted(
-                        buckets.keys(),
-                        key=lambda key: _bucket_sort_key(buckets[key][0]),
-                )
-                selected = []
-                selected_ids = set()
-
-                for key in bucket_order:
-                        candidate = buckets[key][0]
-                        selected.append(candidate)
-                        selected_ids.add(candidate.id)
-                        if len(selected) >= limit:
-                                break
-
-                # Pass 2: fill remaining slots using the original ranking.
-                if len(selected) < limit:
-                        for product in ranked_products:
-                                if product.id in selected_ids:
-                                        continue
-                                selected.append(product)
-                                selected_ids.add(product.id)
-                                if len(selected) >= limit:
-                                        break
-
-                items = []
-                for product in selected:
-                        image_url = _absolute_url(product.image.url if product.image else '', request=request)
-                        if not image_url:
-                                continue
-                        items.append({
-                                'title': product.title,
-                                'category': product.category.name if product.category else 'Product',
-                                'image_url': image_url,
-                        })
-                return items
-        except Exception:
-                return []
-
-
 def build_unified_email_html(
         *,
         theme='system',
@@ -256,44 +178,12 @@ def build_unified_email_html(
         cta_url='',
         badge_text='',
         request=None,
-        showcase_items=None,
 ):
-                """Build a modern, consistent email shell with theme accents and product showcase."""
+                """Build a modern, consistent email shell with theme accents."""
                 tokens = EMAIL_THEME_TOKENS.get(theme, EMAIL_THEME_TOKENS['system'])
-                items = showcase_items if showcase_items is not None else get_email_product_showcase(request=request, limit=5)
                 website_url = _resolve_site_base_url(request)
-                products_url = urljoin(website_url.rstrip('/') + '/', 'our-products/')
                 safe_cta_url = escape(cta_url, quote=True)
                 safe_website_url = escape(website_url, quote=True)
-                safe_products_url = escape(products_url, quote=True)
-
-                showcase_html = ''
-                if items:
-                                cells = []
-                                for item in items[:5]:
-                                                item_image = escape(item.get('image_url') or '', quote=True)
-                                                cells.append(
-                                                                f"""
-                                                                <td style="padding:6px;vertical-align:top;">
-                                                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;">
-                                                                                <tr>
-                                                                                        <td style="padding:0;"><img src="{item_image}" alt="Product image" style="display:block;width:100%;height:112px;object-fit:cover;"></td>
-                                                                                </tr>
-                                                                        </table>
-                                                                </td>
-                                                                """
-                                                )
-
-                                showcase_html = f"""
-                                <tr>
-                                        <td style="padding:4px 24px 18px;">
-                                                <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#475569;margin-bottom:8px;">Product Showcase</div>
-                                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="showcase-grid">
-                                                        <tr>{''.join(cells)}</tr>
-                                                </table>
-                                        </td>
-                                </tr>
-                                """
 
                 cta_html = ''
                 if cta_label and cta_url:
@@ -307,8 +197,7 @@ def build_unified_email_html(
                 footer_cta_html = (
                         f"<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-top:14px;\">"
                         f"<tr>"
-                        f"<td style=\"padding:0 8px 0 0;\"><a href=\"{safe_website_url}\" style=\"display:inline-block;padding:11px 18px;border-radius:10px;background:{tokens['accent']};color:#ffffff !important;text-decoration:none;font-size:13px;font-weight:700;\">Visit Site</a></td>"
-                        f"<td style=\"padding:0;\"><a href=\"{safe_products_url}\" style=\"display:inline-block;padding:11px 18px;border-radius:10px;background:#ffffff;color:{tokens['accent']} !important;text-decoration:none;font-size:13px;font-weight:700;border:1px solid {tokens['accent']};\">Products</a></td>"
+                        f"<td style=\"padding:0 8px 0 0;\"><a href=\"{safe_website_url}\" style=\"display:inline-block;padding:11px 18px;border-radius:10px;background:{tokens['accent']};color:#ffffff !important;text-decoration:none;font-size:13px;font-weight:700;\">Visit Panel</a></td>"
                         f"</tr>"
                         f"</table>"
                 )
@@ -343,7 +232,6 @@ def build_unified_email_html(
                         .email-card {{ border-radius:12px !important; }}
                         .email-pad {{ padding-left:16px !important; padding-right:16px !important; }}
                         .email-title {{ font-size:22px !important; }}
-                        .showcase-grid td {{ display:block !important; width:100% !important; }}
                 }}
         </style>
 </head>
@@ -366,7 +254,6 @@ def build_unified_email_html(
                                                         {cta_html}
                                                 </td>
                                         </tr>
-                                        {showcase_html}
                                         <tr>
                                                 <td class="email-pad" style="padding:14px 24px 18px;background:#f8fafc;border-top:1px solid #e5e7eb;">
                                                         <div style="font-size:12px;line-height:1.7;color:#64748b;">This is an automated message from Adarsh Admin. Please do not reply to this email.</div>
@@ -463,57 +350,6 @@ def get_password_reset_otp_email_template(user_name, otp, expiry_minutes, reques
         return html_content, plain_content
 
 
-def get_contact_submission_email_template(submission, request=None):
-        """Build admin-facing contact form email content."""
-        name = escape(submission.name or 'Unknown')
-        email = escape(submission.email or 'Not provided')
-        phone = escape(submission.phone or 'Not provided')
-        subject_value = escape(submission.subject or 'No subject')
-        message = escape(submission.message or '')
-        submitted_at = escape(submission.created_at.strftime('%Y-%m-%d %H:%M:%S'))
-
-        body_html = f"""
-<p style="margin:0 0 12px;">A new contact form submission was received.</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #d1fae5;border-left:4px solid #0d9488;border-radius:12px;background:#f0fdfa;">
-  <tr><td style="padding:12px 14px;">
-        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Name</div>
-        <div style="font-size:14px;font-weight:700;color:#0f172a;">{name}</div>
-        <div style="height:8px;"></div>
-        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Email</div>
-        <div style="font-size:14px;font-weight:700;color:#0f172a;">{email}</div>
-        <div style="height:8px;"></div>
-        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Phone</div>
-        <div style="font-size:14px;font-weight:700;color:#0f172a;">{phone}</div>
-        <div style="height:8px;"></div>
-        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Subject</div>
-        <div style="font-size:14px;font-weight:700;color:#0f172a;">{subject_value}</div>
-  </td></tr>
-</table>
-<div style="margin-top:12px;border:1px solid #cbd5e1;border-radius:10px;background:#ffffff;padding:12px 14px;">
-  <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Message</div>
-  <div style="font-size:13px;line-height:1.7;color:#334155;white-space:pre-wrap;">{message}</div>
-</div>
-<p style="margin:12px 0 0;font-size:12px;color:#64748b;">Submitted at: {submitted_at}</p>
-"""
-
-        html_content = build_unified_email_html(
-                theme='contact',
-                kicker='Website Contact',
-                title='New Contact Form Submission',
-                subtitle='A website visitor sent a new message.',
-                body_html=body_html,
-                request=request,
-        )
-        plain_content = (
-                f"New contact form submission\n\n"
-                f"Name: {submission.name}\n"
-                f"Email: {submission.email}\n"
-                f"Phone: {submission.phone or 'Not provided'}\n"
-                f"Subject: {submission.subject}\n\n"
-                f"Message:\n{submission.message}\n\n"
-                f"Submitted at: {submission.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
-        )
-        return html_content, plain_content
 
 
 def get_welcome_email_template(
@@ -806,70 +642,3 @@ def send_emergency_panel_access_email(target_email, request=None, issued_by=None
         except Exception as e:
                 logger.error('Failed to send emergency panel access email to %s: %s', target_email, e)
                 return False, 'Failed to send emergency access email.'
-
-
-def send_not_found_mode_enabled_broadcast(request=None, enabled_by=None):
-        """
-        Broadcast a notice email to all active users when website not-found mode is enabled.
-
-        Returns:
-                tuple: (success: bool, sent_count: int, message: str)
-        """
-        try:
-                from django.contrib.auth import get_user_model
-
-                User = get_user_model()
-                recipients = list(
-                        User.objects.filter(is_active=True)
-                        .exclude(email__isnull=True)
-                        .exclude(email__exact='')
-                        .values_list('email', flat=True)
-                        .distinct()
-                )
-
-                if not recipients:
-                        return False, 0, 'No active users with email found.'
-
-                login_url = _get_panel_login_url(request)
-                actor = 'System'
-                if enabled_by is not None:
-                        actor = enabled_by.get_full_name() or enabled_by.username or 'Admin'
-
-                subject = 'Website Not Found Mode Enabled - Panel Access Notice'
-                from_email = settings.DEFAULT_FROM_EMAIL
-
-                body_html = (
-                    "<p style=\"margin:0 0 12px;\">Public website domain is now in <strong>Not Found Mode</strong>.</p>"
-                    "<p style=\"margin:0 0 12px;\">If you need panel access, use the secure login link below.</p>"
-                    f"<p style=\"margin:0 0 12px;\">Updated by: <strong>{escape(actor)}</strong></p>"
-                    "<div style=\"border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:10px;background:#fef2f2;padding:10px 12px;font-size:12px;color:#991b1b;line-height:1.65;\">"
-                    "This is an automated notification sent to all active users."
-                    "</div>"
-                )
-                html_content = build_unified_email_html(
-                    theme='alert',
-                    kicker='Website Access Mode',
-                    title='Not Found Mode Enabled',
-                    subtitle='Website is currently gated while panel access remains available.',
-                    body_html=body_html,
-                    cta_label='Open Panel Login',
-                    cta_url=login_url,
-                    request=request,
-                )
-
-                plain_content = (
-                        'Website Not Found Mode has been enabled.\n\n'
-                        f'Use this panel login link: {login_url}\n\n'
-                        f'Updated by: {actor}'
-                )
-
-                sent_count = 0
-                for email in recipients:
-                        send_html_email_async(subject, plain_content, html_content, from_email, [email])
-                        sent_count += 1
-
-                logger.info('Not-found mode broadcast queued for %d users', sent_count)
-                return True, sent_count, 'Broadcast queued successfully.'
-        except Exception as e:
-                logger.error('Failed to send not-found mode broadcast: %s', e)
-                return False, 0, 'Failed to queue notification emails.'

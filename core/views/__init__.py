@@ -64,7 +64,6 @@ from .base import (
     api_email_send_new,
     api_email_compose_defaults,
     settings,
-    product_gallery,
     tutorial,
     tutorial_personal_guide,
     tutorial_personal_guide_download,

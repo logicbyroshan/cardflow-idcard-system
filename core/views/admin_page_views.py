@@ -19,7 +19,6 @@ from client.models import Client
 from staff.models import Staff
 from accounts.services import AuthService
 from idcards.models import IDCardGroup, IDCard, IDCardTable
-from website.models import PortfolioItem
 from mediafiles.services.image_thumbnail import ThumbnailService
 from django.core.files.storage import default_storage
 from ..models import User, Notification, EmailLog, ActivityLog
@@ -44,110 +43,6 @@ from .idcard_helpers import (
 
 logger = logging.getLogger(__name__)
 
-
-_GALLERY_TYPE_LABELS = {
-    'school': 'School',
-    'college': 'College',
-    'office': 'Office',
-}
-
-_GALLERY_USER_TYPE_KEYWORDS = {
-    'school': (
-        'school', 'public school', 'academy', 'vidyalaya', 'vidya', 'convent',
-        'high school', 'secondary school', 'primary school', 'nursery', 'kinder',
-    ),
-    'college': (
-        'college', 'university', 'institute', 'polytechnic', 'engineering',
-        'campus', 'degree', 'b.tech', 'mba',
-    ),
-    'office': (
-        'office', 'corporate', 'company', 'private limited', 'pvt', 'ltd', 'llp',
-        'enterprise', 'industry', 'business', 'agency', 'hospital', 'bank',
-    ),
-}
-
-_GALLERY_RELEVANCE_HINTS = {
-    'school': (
-        'school', 'student', 'id card', 'id-card', 'stationery', 'diary',
-        'fee card', 'certificate', 'lanyard', 'badge',
-    ),
-    'college': (
-        'college', 'university', 'campus', 'prospectus', 'marksheet', 'certificate',
-        'degree', 'id card', 'id-card', 'lanyard',
-    ),
-    'office': (
-        'office', 'corporate', 'company', 'employee', 'visiting', 'business',
-        'brochure', 'pamphlet', 'badge', 'lanyard', 'mug',
-    ),
-}
-
-
-def _resolve_gallery_client(user):
-    """Return the client profile associated with a client-side user."""
-    if PermissionService.is_client(user):
-        return getattr(user, 'client_profile', None)
-    if PermissionService.is_client_staff(user):
-        staff_profile = getattr(user, 'staff_profile', None)
-        return getattr(staff_profile, 'client', None) if staff_profile else None
-    return None
-
-
-def _infer_gallery_user_type(client_obj, user):
-    """Infer product affinity type from client/user text signals."""
-    chunks = []
-    if client_obj is not None:
-        chunks.extend([
-            getattr(client_obj, 'name', ''),
-            getattr(client_obj, 'address', ''),
-            getattr(client_obj, 'city', ''),
-            getattr(client_obj, 'state', ''),
-        ])
-    chunks.extend([
-        getattr(user, 'email', ''),
-        getattr(user, 'username', ''),
-    ])
-
-    haystack = ' '.join(str(part or '').strip().lower() for part in chunks if part)
-    if not haystack:
-        return 'school'
-
-    scores = {key: 0 for key in _GALLERY_USER_TYPE_KEYWORDS.keys()}
-    for user_type, keywords in _GALLERY_USER_TYPE_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword in haystack:
-                scores[user_type] += 2 if ' ' in keyword else 1
-
-    best_type = max(scores, key=scores.get)
-    if scores.get(best_type, 0) <= 0:
-        return 'school'
-    return best_type
-
-
-def _portfolio_relevance_score(item, user_type):
-    """Score a portfolio item for the inferred client user type."""
-    category = getattr(item, 'category', None)
-    text_parts = [
-        getattr(item, 'title', ''),
-        getattr(item, 'description', ''),
-        getattr(category, 'name', '') if category else '',
-        getattr(category, 'slug', '') if category else '',
-    ]
-    haystack = ' '.join(str(part or '').strip().lower() for part in text_parts if part)
-
-    score = 0
-    for keyword in _GALLERY_RELEVANCE_HINTS.get(user_type, ()): 
-        if keyword in haystack:
-            score += 3 if ' ' in keyword else 1
-
-    slug = str(getattr(category, 'slug', '') or '').strip().lower()
-    if user_type == 'school' and slug in {'school-stationery', 'student-diaries', 'fee-cards'}:
-        score += 4
-    elif user_type == 'college' and slug in {'prospectus', 'marksheets', 'certificates'}:
-        score += 4
-    elif user_type == 'office' and slug in {'office-stationery', 'visiting-cards', 'brochures'}:
-        score += 4
-
-    return score
 
 
 def _apply_drawer_embed_frame_headers(request, response):
@@ -1227,73 +1122,6 @@ def _resolve_tutorial_video_url(scope):
         return getattr(django_settings, 'ADMIN_TUTORIAL_VIDEO_URL', client_url)
     return client_url
 
-
-@login_required
-def product_gallery(request):
-    """Client-side product gallery with latest 100 images and role relevance."""
-    if not PermissionService.is_client_role(request.user):
-        return redirect('/panel/')
-
-    gallery_client = _resolve_gallery_client(request.user)
-    gallery_user_type = _infer_gallery_user_type(gallery_client, request.user)
-
-    portfolio_items = list(
-        PortfolioItem.objects.filter(
-            is_active=True,
-            item_type='image',
-            image__isnull=False,
-        )
-        .exclude(image='')
-        .select_related('category')
-        .order_by('-created_at', '-id')[:100]
-    )
-    portfolio_items.sort(
-        key=lambda item: (
-            _portfolio_relevance_score(item, gallery_user_type),
-            item.created_at,
-            item.id,
-        ),
-        reverse=True,
-    )
-
-    gallery_categories = sorted(
-        {
-            item.category.name.strip()
-            for item in portfolio_items
-            if getattr(item, 'category', None) and str(item.category.name or '').strip()
-        },
-        key=lambda value: value.lower(),
-    )
-    if any(
-        not getattr(item, 'category', None) or not str(getattr(item.category, 'name', '') or '').strip()
-        for item in portfolio_items
-    ) and not any(category.lower() == 'general' for category in gallery_categories):
-        gallery_categories.append('General')
-
-    context = {
-        'active_page': 'product_gallery',
-        'user_role': get_user_role(request.user),
-        'gallery_items': portfolio_items,
-        'gallery_total': len(portfolio_items),
-        'gallery_categories': gallery_categories,
-        'gallery_user_type': gallery_user_type,
-        'gallery_user_type_label': _GALLERY_TYPE_LABELS.get(gallery_user_type, 'General'),
-        'gallery_client_name': getattr(gallery_client, 'name', ''),
-    }
-    # Attach a small/fast thumbnail URL for each item to use as the initial src
-    for item in portfolio_items:
-        try:
-            if getattr(item, 'image', None) and getattr(item.image, 'name', None):
-                thumb_path = ThumbnailService.get_thumbnail_path(item.image.name)
-                if thumb_path and default_storage.exists(thumb_path):
-                    item.thumb_url = default_storage.url(thumb_path)
-                else:
-                    item.thumb_url = item.image.url
-            else:
-                item.thumb_url = ''
-        except Exception:
-            item.thumb_url = getattr(item.image, 'url', '') if getattr(item, 'image', None) else ''
-    return render(request, 'product-gallery.html', context)
 
 
 @login_required

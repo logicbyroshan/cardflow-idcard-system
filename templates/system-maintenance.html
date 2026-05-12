@@ -200,7 +200,7 @@
         statusText.textContent = 'Maintenance complete. Redirecting...';
     }
 
-    function redirectToWebsite() {
+    function redirectToPanel() {
         window.location.replace(redirectUrl);
     }
 
@@ -247,7 +247,7 @@
             .then(function(data) {
                 if (!data.enabled) {
                     markMaintenanceComplete();
-                    setTimeout(redirectToWebsite, 700);
+                    setTimeout(redirectToPanel, 700);
                 } else {
                     statusText.textContent = 'Maintenance in progress. Will check again soon...';
                 }

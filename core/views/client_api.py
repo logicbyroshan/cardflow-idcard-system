@@ -4,6 +4,7 @@ Contains: All client-related API endpoints (CRUD, toggle status, get staff)
 """
 import json
 import logging
+import os
 from datetime import timedelta
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -1119,9 +1120,9 @@ def api_client_message_targets(request):
                 'name': item.name,
                 'status': item.status,
                 'is_user_active': bool(item.user and item.user.is_active),
-                'logo_url': item.website_logo.url if getattr(item, 'website_logo', None) else None,
-                'photo_url': item.website_logo.url if getattr(item, 'website_logo', None) else None,
-                'website_logo_url': item.website_logo.url if getattr(item, 'website_logo', None) else None,
+                'logo_url': item.logo.url if item.logo else None,
+                'photo_url': item.logo.url if item.logo else None,
+                'website_logo_url': item.logo.url if item.logo else None,
             }
             for item in rows
         ],

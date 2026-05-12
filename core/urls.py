@@ -129,9 +129,6 @@ urlpatterns = [
     path('api/notifications/admin/<int:notification_id>/delete/', views.api_panel_notification_delete, name='api_panel_notification_delete'),
     path('api/notifications/admin/target-users/', views.api_panel_target_users, name='api_panel_target_users'),
 
-    # Product Gallery (client/client_staff only)
-    path('product-gallery/', views.product_gallery, name='product_gallery'),
-
     # Client Tutorial (all authenticated users; content is client-oriented)
     path('tutorial/', views.tutorial, name='tutorial'),
     path('tutorial/personal-guide/', views.tutorial_personal_guide, name='tutorial_personal_guide'),
@@ -151,6 +148,9 @@ urlpatterns = [
     path('api/client/<int:client_id>/staff/<int:staff_id>/toggle-status/', views.api_client_staff_toggle_status, name='api_client_staff_toggle_status'),
     path('api/client/<int:client_id>/staff/<int:staff_id>/permissions/', views.api_client_staff_permissions, name='api_client_staff_permissions'),
     path('api/client/<int:client_id>/set-temp-password/', views.api_client_set_temp_password, name='api_client_set_temp_password'),
+    path('api/client/<int:client_id>/logo/', views.api_client_logo_get, name='api_client_logo_get'),
+    path('api/client/<int:client_id>/logo/upload/', views.api_client_logo_upload, name='api_client_logo_upload'),
+    path('api/client/<int:client_id>/logo/delete/', views.api_client_logo_delete, name='api_client_logo_delete'),
     path('api/client/<int:client_id>/messages/', views.api_client_messages, name='api_client_messages'),
     path('api/client/<int:client_id>/messages/send/', views.api_client_message_send, name='api_client_message_send'),
     path('api/client/<int:client_id>/class-section-options/', views.api_admin_client_class_section_options, name='api_admin_client_class_section_options'),

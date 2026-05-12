@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       function resolveClientLogoUrl(clientData) {
         if (!clientData || typeof clientData !== 'object') return '';
-        return clientData.website_logo_url || clientData.photo_url || clientData.logo_url || '';
+        return clientData.logo_url || clientData.website_logo_url || clientData.photo_url || '';
       }
 
       function panelBasePath() {
