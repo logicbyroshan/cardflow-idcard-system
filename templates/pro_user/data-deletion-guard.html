@@ -99,7 +99,7 @@
     width: 100%;
     margin: 0 auto;
     display: grid;
-    gap: 12px;
+    gap: 14px;
   }
 
   .guard-card {
@@ -108,6 +108,15 @@
     border-radius: 6px;
     padding: 16px;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  .guard-card-surface {
+    padding: 16px;
+  }
+
+  .guard-card-soft {
+    border-color: #dce8f5;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   }
 
   .guard-card-title {
@@ -138,19 +147,47 @@
     line-height: 1.55;
   }
 
+  .guard-section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid #dbe5f1;
+    background: #f8fbff;
+    color: #1e3a8a;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
   .guard-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
   }
 
   .guard-grid.guard-grid-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .guard-grid.guard-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .guard-grid.guard-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .guard-grid.guard-grid-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
   .guard-field label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
     font-size: var(--ui-font-size-2xs, 10px);
     font-weight: 800;
     letter-spacing: 0.04em;
@@ -161,13 +198,15 @@
   .guard-field input,
   .guard-field select {
     width: 100%;
-    height: 38px;
+    height: 40px;
     border: 1px solid var(--color-slate-300);
     border-radius: 6px;
-    padding: 0 10px;
+    padding: 0 12px;
     font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-900);
     background: #f8fafc;
+    box-sizing: border-box;
+    appearance: none;
   }
 
   .guard-field input:focus,
@@ -208,29 +247,123 @@
     font-weight: 700;
   }
 
-  .guard-preview-list {
-    margin-top: 10px;
-    border: 1px solid #e2e8f0;
+  .guard-preview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .guard-preview-table-wrap {
+    border: 1px solid #dbe5f1;
     border-radius: 6px;
-    max-height: 220px;
     overflow: auto;
+    background: #fff;
   }
 
-  .guard-preview-item {
-    padding: 8px 10px;
-    font-size: var(--ui-font-size-sm, 12px);
-    border-bottom: 1px solid #eef2f7;
+  .guard-preview-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+  }
+
+  .guard-preview-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+    color: #fff;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    white-space: nowrap;
+  }
+
+  .guard-preview-table td {
+    padding: 10px 12px;
+    font-size: 12px;
     color: var(--color-slate-700);
+    border-bottom: 1px solid #e7eef7;
+    vertical-align: top;
+    white-space: normal;
+    word-break: break-word;
   }
 
-  .guard-preview-item:last-child {
-    border-bottom: 0;
+  .guard-preview-table tr:nth-child(even) td {
+    background: #fafcff;
   }
 
-  .guard-empty {
-    padding: 12px;
+  .guard-preview-empty {
+    padding: 14px;
     color: var(--color-slate-500);
     font-size: var(--ui-font-size-sm, 12px);
+  }
+
+  .guard-danger-zone {
+    border: 1px solid #fecaca;
+    background: linear-gradient(180deg, #fff7f7 0%, #fffdfd 100%);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .guard-danger-zone > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #991b1b;
+    background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
+    border-bottom: 1px solid #fecaca;
+  }
+
+  .guard-danger-zone > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .guard-danger-zone-body {
+    padding: 14px 16px 16px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .guard-danger-note {
+    font-size: 12px;
+    line-height: 1.55;
+    color: #7f1d1d;
+  }
+
+  .guard-danger-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .guard-danger-actions .btn {
+    min-height: 38px;
+    border-radius: 8px;
+    font-weight: 800;
+  }
+
+  .guard-danger-actions .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .guard-danger-hint {
+    font-size: 11px;
+    color: #991b1b;
+    font-weight: 700;
   }
 
   .guard-modal-overlay {
@@ -321,6 +454,10 @@
     .guard-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .guard-grid.guard-grid-5 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 760px) {
@@ -334,6 +471,15 @@
     .guard-grid,
     .guard-grid.guard-grid-3 {
       grid-template-columns: 1fr;
+    }
+
+    .guard-grid.guard-grid-2,
+    .guard-grid.guard-grid-5 {
+      grid-template-columns: 1fr;
+    }
+
+    .guard-preview-table {
+      min-width: 760px;
     }
   }
 </style>
@@ -368,7 +514,7 @@
 
   <div class="data-guard-content">
     <div class="data-guard-inner">
-      <div class="guard-card">
+      <div class="guard-card guard-card-surface guard-card-soft">
         <h3 class="guard-card-title"><i class="fa-solid fa-lock"></i> Safety Contract</h3>
         <div class="guard-note">
           All actions here perform permanent delete from database records. This cannot be undone.
@@ -376,7 +522,8 @@
         </div>
       </div>
 
-      <div class="guard-card">
+      <div class="guard-card guard-card-surface">
+        <span class="guard-section-label"><i class="fa-solid fa-layer-group"></i> Scope</span>
         <h3 class="guard-card-title"><i class="fa-solid fa-list-check"></i> Scope Selection</h3>
         <div class="guard-grid guard-grid-3">
           <div class="guard-field">
@@ -406,9 +553,16 @@
         </div>
       </div>
 
-      <div class="guard-card">
-        <h3 class="guard-card-title"><i class="fa-solid fa-filter"></i> Filters</h3>
-        <div class="guard-grid">
+      <div class="guard-card guard-card-surface">
+        <span class="guard-section-label"><i class="fa-solid fa-filter"></i> Filters</span>
+        <h3 class="guard-card-title"><i class="fa-solid fa-sliders"></i> Match Conditions</h3>
+
+        <div class="guard-note" style="margin-bottom: 10px;">
+          These filters define the records that will appear in the preview and, after confirmation, be deleted.
+        </div>
+
+        <div class="guard-section-label">Text filters</div>
+        <div class="guard-grid guard-grid-5" style="margin-bottom: 12px;">
           <div class="guard-field">
             <label for="guardSearchInput">Search</label>
             <input id="guardSearchInput" type="text" placeholder="Name, number, or any text" />
@@ -429,6 +583,10 @@
             <label for="guardBranchInput">Branch</label>
             <input id="guardBranchInput" type="text" placeholder="Optional" />
           </div>
+        </div>
+
+        <div class="guard-section-label">Date and image filters</div>
+        <div class="guard-grid guard-grid-4" style="margin-bottom: 12px;">
           <div class="guard-field">
             <label for="guardImageColumnSelect">Image Column</label>
             <select id="guardImageColumnSelect">
@@ -452,6 +610,10 @@
             <label for="guardToInput">To (download)</label>
             <input id="guardToInput" type="datetime-local" />
           </div>
+        </div>
+
+        <div class="guard-section-label">Column filter</div>
+        <div class="guard-grid guard-grid-3">
           <div class="guard-field">
             <label for="guardColumnSelect">Column Filter</label>
             <select id="guardColumnSelect">
@@ -474,34 +636,57 @@
         </div>
       </div>
 
-      <div class="guard-card">
+      <div class="guard-card guard-card-surface">
         <h3 class="guard-card-title"><i class="fa-solid fa-bolt"></i> Actions</h3>
         <div class="guard-actions">
           <button type="button" class="btn btn-sm btn-outline-primary" id="guardPreviewBtn">
             <i class="fa-solid fa-magnifying-glass"></i> Preview Matches
           </button>
-          <button type="button" class="btn btn-sm btn-danger" id="guardDeleteFilteredBtn">
-            <i class="fa-solid fa-trash-can"></i> Delete Filtered Data
-          </button>
-          <button type="button" class="btn btn-sm btn-danger" id="guardDeletePendingImgBtn">
-            <i class="fa-solid fa-image"></i> Delete Pending Images
-          </button>
-          <button type="button" class="btn btn-sm btn-danger" id="guardDeleteCompletedImgBtn">
-            <i class="fa-solid fa-images"></i> Delete Completed Images
-          </button>
-          <button type="button" class="btn btn-sm btn-danger" id="guardDeleteByColumnBtn">
-            <i class="fa-solid fa-columns"></i> Delete By Column
-          </button>
         </div>
       </div>
 
-      <div class="guard-card">
-        <h3 class="guard-card-title"><i class="fa-solid fa-vial-circle-check"></i> Preview Result</h3>
-        <span class="guard-preview-pill" id="guardPreviewCount">No preview yet</span>
-        <div class="guard-preview-list" id="guardPreviewList">
-          <div class="guard-empty">Run preview to inspect matching records before delete.</div>
+      <div class="guard-card guard-card-surface">
+        <div class="guard-preview-meta">
+          <div>
+            <h3 class="guard-card-title" style="margin-bottom: 4px;"><i class="fa-solid fa-vial-circle-check"></i> Preview Result</h3>
+            <div class="guard-note">The table below shows full values for the matched sample rows.</div>
+          </div>
+          <span class="guard-preview-pill" id="guardPreviewCount">No preview yet</span>
+        </div>
+        <div class="guard-preview-table-wrap" id="guardPreviewTableWrap">
+          <div class="guard-preview-empty">Run preview to inspect matching records before delete.</div>
         </div>
       </div>
+
+      <details class="guard-danger-zone" id="guardDangerZone">
+        <summary>
+          <span><i class="fa-solid fa-triangle-exclamation"></i> Danger Zone - destructive actions</span>
+          <span class="guard-danger-hint">Open only when you are sure</span>
+        </summary>
+        <div class="guard-danger-zone-body">
+          <div class="guard-danger-note">
+            These actions permanently delete matching records. They stay visually separate from the preview so they are not easy to click by accident.
+          </div>
+          <div class="guard-danger-actions">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="guardPreviewBtnBottom">
+              <i class="fa-solid fa-magnifying-glass"></i> Preview Again
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" id="guardDeleteFilteredBtn" disabled>
+              <i class="fa-solid fa-trash-can"></i> Delete Filtered Data
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" id="guardDeletePendingImgBtn" disabled>
+              <i class="fa-solid fa-image"></i> Clear Pending Image Path
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" id="guardDeleteCompletedImgBtn" disabled>
+              <i class="fa-solid fa-images"></i> Delete Image + Path
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" id="guardDeleteByColumnBtn" disabled>
+              <i class="fa-solid fa-columns"></i> Clear Column Value
+            </button>
+          </div>
+          <div class="guard-danger-hint" id="guardDeleteHint">Run a preview first to enable the field-clear actions.</div>
+        </div>
+      </details>
     </div>
   </div>
 </div>
@@ -551,7 +736,7 @@
   const columnSelect = document.getElementById('guardColumnSelect');
 
   const previewCount = document.getElementById('guardPreviewCount');
-  const previewList = document.getElementById('guardPreviewList');
+  const previewTableWrap = document.getElementById('guardPreviewTableWrap');
 
   const confirmOverlay = document.getElementById('guardConfirmOverlay');
   const confirmClose = document.getElementById('guardConfirmClose');
@@ -562,6 +747,14 @@
   const confirmPhraseInput = document.getElementById('guardConfirmPhraseInput');
   const confirmPhraseHint = document.getElementById('guardConfirmPhraseHint');
   const confirmSubmit = document.getElementById('guardConfirmSubmitBtn');
+  const deleteButtons = [
+    document.getElementById('guardDeleteFilteredBtn'),
+    document.getElementById('guardDeletePendingImgBtn'),
+    document.getElementById('guardDeleteCompletedImgBtn'),
+    document.getElementById('guardDeleteByColumnBtn'),
+  ].filter(Boolean);
+  const deleteHint = document.getElementById('guardDeleteHint');
+  const previewAgainBtn = document.getElementById('guardPreviewBtnBottom');
 
   let tablesByClient = [];
   let selectedTable = null;
@@ -641,15 +834,52 @@
   function renderPreview(payload) {
     const count = Number(payload.match_count || 0);
     previewCount.textContent = count + ' record(s) match current filters';
+    const columns = Array.isArray(payload.columns) ? payload.columns : [];
     const sample = Array.isArray(payload.sample) ? payload.sample : [];
-    if (!sample.length) {
-      previewList.innerHTML = '<div class="guard-empty">No preview rows to show.</div>';
+    if (!sample.length || !columns.length) {
+      previewTableWrap.innerHTML = '<div class="guard-preview-empty">No preview rows to show.</div>';
+      setDeleteButtonsEnabled(false);
       return;
     }
-    const html = sample.map(function(row) {
-      return '<div class="guard-preview-item"><strong>#' + row.id + '</strong> [' + row.status + '] ' + (row.preview || '') + '</div>';
+
+    const headerHtml = columns.map(function(column) {
+      return '<th>' + escapeHtml(column.label || column.key || '') + '</th>';
     }).join('');
-    previewList.innerHTML = html;
+
+    const bodyHtml = sample.map(function(row) {
+      const cells = columns.map(function(column) {
+        const key = column.key;
+        return '<td>' + escapeHtml(row && row[key] != null ? String(row[key]) : '') + '</td>';
+      }).join('');
+      return '<tr>' + cells + '</tr>';
+    }).join('');
+
+    previewTableWrap.innerHTML =
+      '<table class="guard-preview-table">' +
+        '<thead><tr>' + headerHtml + '</tr></thead>' +
+        '<tbody>' + bodyHtml + '</tbody>' +
+      '</table>';
+    setDeleteButtonsEnabled(count > 0);
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function setDeleteButtonsEnabled(enabled) {
+    deleteButtons.forEach(function(button) {
+      button.disabled = !enabled;
+    });
+    if (deleteHint) {
+      deleteHint.textContent = enabled
+        ? 'Deletion buttons are enabled because a preview has been generated.'
+        : 'Run a preview first to enable deletion buttons.';
+    }
   }
 
   function normalizeCodeInput() {
@@ -687,9 +917,9 @@
   }
 
   function selectedActionLabel(actionType) {
-    if (actionType === 'delete_pending_images') return 'Delete Pending Images';
-    if (actionType === 'delete_completed_images') return 'Delete Completed Images';
-    if (actionType === 'delete_by_column') return 'Delete By Column';
+    if (actionType === 'delete_pending_images') return 'Clear Pending Image Path';
+    if (actionType === 'delete_completed_images') return 'Delete Image + Path';
+    if (actionType === 'delete_by_column') return 'Clear Column Value';
     return 'Delete Filtered Data';
   }
 
@@ -874,6 +1104,14 @@
     });
   });
 
+  if (previewAgainBtn) {
+    previewAgainBtn.addEventListener('click', function() {
+      runPreview('filtered_delete').catch(function(err) {
+        notify(err.message || 'Preview failed.', false);
+      });
+    });
+  }
+
   document.getElementById('guardDeleteFilteredBtn').addEventListener('click', function() {
     startDeleteAction('filtered_delete');
   });
@@ -891,12 +1129,44 @@
   });
 
   clientSelect.addEventListener('change', loadTablesForClient);
-  tableSelect.addEventListener('change', populateFieldOptions);
+  tableSelect.addEventListener('change', function() {
+    populateFieldOptions();
+    setDeleteButtonsEnabled(false);
+    previewCount.textContent = 'No preview yet';
+    previewTableWrap.innerHTML = '<div class="guard-preview-empty">Run preview to inspect matching records before delete.</div>';
+  });
+
+  [
+    'guardStatusSelect',
+    'guardSearchInput',
+    'guardClassInput',
+    'guardSectionInput',
+    'guardCourseInput',
+    'guardBranchInput',
+    'guardImageConditionSelect',
+    'guardFromInput',
+    'guardToInput',
+    'guardColumnSelect',
+    'guardColumnValueInput',
+    'guardColumnMatchSelect',
+    'guardImageColumnSelect',
+  ].forEach(function(id) {
+    const field = document.getElementById(id);
+    if (!field) return;
+    field.addEventListener('input', function() {
+      setDeleteButtonsEnabled(false);
+    });
+    field.addEventListener('change', function() {
+      setDeleteButtonsEnabled(false);
+    });
+  });
 
   confirmCodeInput.addEventListener('input', normalizeCodeInput);
   confirmClose.addEventListener('click', closeConfirmModal);
   confirmCancel.addEventListener('click', closeConfirmModal);
   confirmSubmit.addEventListener('click', confirmDeleteNow);
+
+  setDeleteButtonsEnabled(false);
 
   confirmOverlay.addEventListener('click', function(e) {
     if (e.target === confirmOverlay) {

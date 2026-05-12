@@ -325,21 +325,60 @@ def _summarize_filters(action_type: str, filters: Dict[str, Any]) -> str:
     return ', '.join(parts)
 
 
-def _sample_rows(qs, limit=10):
+def _apply_field_clear_action(request, target_ids, field_name: str):
+    modified_by = getattr(request.user, 'username', None) or getattr(request.user, 'email', None) or ''
+    cleared_count = 0
+
+    for card_id in target_ids:
+        result = IDCardService.update_single_field(card_id, field_name, '', modified_by=modified_by)
+        if not result.success:
+            return False, cleared_count, result.message or 'Field clear failed.'
+        cleared_count += 1
+
+    return True, cleared_count, ''
+
+
+def _sample_rows(qs, table, limit=10):
+    table_fields = list(getattr(table, 'fields', []) or [])
+    columns = [
+        {'key': 'id', 'label': 'ID'},
+        {'key': 'status', 'label': 'Status'},
+    ]
+    seen_keys = {'id', 'status'}
+
+    for field in table_fields:
+        field_name = str(field.get('name') or '').strip()
+        if not field_name or field_name in seen_keys:
+            continue
+        columns.append({'key': field_name, 'label': field_name})
+        seen_keys.add(field_name)
+
     rows = []
     for card in qs.only('id', 'status', 'field_data').order_by('id')[:limit]:
         field_data = card.field_data or {}
-        preview_parts = []
-        for key in list(field_data.keys())[:3]:
-            value = str(field_data.get(key) or '').strip()
-            if value:
-                preview_parts.append(f'{key}: {value}')
-        rows.append({
-            'id': card.id,
-            'status': card.status,
-            'preview': ' | '.join(preview_parts)[:220],
-        })
-    return rows
+        row = {'id': card.id, 'status': card.status}
+
+        for column in columns[2:]:
+            key = column['key']
+            value = field_data.get(key, '')
+            if isinstance(value, (dict, list, tuple)):
+                row[key] = json.dumps(value, ensure_ascii=False)
+            else:
+                row[key] = '' if value is None else str(value)
+
+        for key, value in field_data.items():
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            columns.append({'key': key, 'label': key})
+            if isinstance(value, (dict, list, tuple)):
+                row[key] = json.dumps(value, ensure_ascii=False)
+            else:
+                row[key] = '' if value is None else str(value)
+
+        rows.append(row)
+
+    return columns, rows
 
 
 @require_http_methods(["GET"])
@@ -423,10 +462,12 @@ def api_pro_user_data_guard_preview(request):
         return filter_err
 
     match_count = qs.count()
+    columns, sample_rows = _sample_rows(qs, table, limit=10)
     return JsonResponse({
         'success': True,
         'match_count': match_count,
-        'sample': _sample_rows(qs, limit=10),
+        'columns': columns,
+        'sample': sample_rows,
         'action_type': action_type,
         'normalized_filters': normalized,
     })
@@ -503,37 +544,89 @@ def api_pro_user_data_guard_delete(request):
             'filter_summary': _summarize_filters(action_type, normalized),
         })
 
-    deleted_total = 0
-    chunk_size = 400
     try:
-        for start in range(0, len(target_ids), chunk_size):
-            chunk = target_ids[start:start + chunk_size]
-            result = IDCardService.bulk_delete(table.id, chunk, delete_all=False)
-            if not result.success:
-                logger.error('Pro data guard delete failed on chunk: table=%s message=%s', table.id, result.message)
-                return JsonResponse({
-                    'success': False,
-                    'message': result.message or 'Delete failed during execution.',
-                    'partial_deleted_count': deleted_total,
-                }, status=500)
-            deleted_total += int((result.data or {}).get('deleted_count') or 0)
-
         filter_summary = _summarize_filters(action_type, normalized)
-        ActivityService.log_bulk_delete(
-            request,
-            f'guarded ID card records from table "{table.name}" ({filter_summary})',
-            deleted_total,
-        )
 
-        return JsonResponse({
-            'success': True,
-            'deleted_count': deleted_total,
-            'table_name': table.name,
-            'client_name': table.group.client.name if table.group_id and table.group.client_id else '',
-            'action_type': action_type,
-            'filter_summary': filter_summary,
-            'message': f'Permanently deleted {deleted_total} record(s).',
-        })
+        if action_type == 'filtered_delete':
+            deleted_total = 0
+            chunk_size = 400
+            for start in range(0, len(target_ids), chunk_size):
+                chunk = target_ids[start:start + chunk_size]
+                result = IDCardService.bulk_delete(table.id, chunk, delete_all=False)
+                if not result.success:
+                    logger.error('Pro data guard delete failed on chunk: table=%s message=%s', table.id, result.message)
+                    return JsonResponse({
+                        'success': False,
+                        'message': result.message or 'Delete failed during execution.',
+                        'partial_deleted_count': deleted_total,
+                    }, status=500)
+                deleted_total += int((result.data or {}).get('deleted_count') or 0)
+
+            ActivityService.log_bulk_delete(
+                request,
+                f'guarded ID card records from table "{table.name}" ({filter_summary})',
+                deleted_total,
+            )
+
+            return JsonResponse({
+                'success': True,
+                'deleted_count': deleted_total,
+                'table_name': table.name,
+                'client_name': table.group.client.name if table.group_id and table.group.client_id else '',
+                'action_type': action_type,
+                'filter_summary': filter_summary,
+                'message': f'Permanently deleted {deleted_total} record(s).',
+            })
+
+        if action_type in {'delete_pending_images', 'delete_completed_images'}:
+            if not normalized.get('image_column'):
+                return JsonResponse({'success': False, 'message': 'Select an image column first.'}, status=400)
+            success, affected_count, error_message = _apply_field_clear_action(request, target_ids, normalized['image_column'])
+            if not success:
+                return JsonResponse({'success': False, 'message': error_message, 'partial_deleted_count': affected_count}, status=500)
+
+            ActivityService.log_bulk_delete(
+                request,
+                f'cleared image field "{normalized["image_column"]}" on cards in table "{table.name}" ({filter_summary})',
+                affected_count,
+            )
+
+            return JsonResponse({
+                'success': True,
+                'deleted_count': affected_count,
+                'table_name': table.name,
+                'client_name': table.group.client.name if table.group_id and table.group.client_id else '',
+                'action_type': action_type,
+                'filter_summary': filter_summary,
+                'message': f'Cleared image field on {affected_count} record(s).',
+            })
+
+        if action_type == 'delete_by_column':
+            column_name = str(normalized.get('filter_column') or '').strip()
+            if not column_name:
+                return JsonResponse({'success': False, 'message': 'Select a column to clear.'}, status=400)
+
+            success, affected_count, error_message = _apply_field_clear_action(request, target_ids, column_name)
+            if not success:
+                return JsonResponse({'success': False, 'message': error_message, 'partial_deleted_count': affected_count}, status=500)
+
+            ActivityService.log_bulk_delete(
+                request,
+                f'cleared column "{column_name}" on cards in table "{table.name}" ({filter_summary})',
+                affected_count,
+            )
+
+            return JsonResponse({
+                'success': True,
+                'deleted_count': affected_count,
+                'table_name': table.name,
+                'client_name': table.group.client.name if table.group_id and table.group.client_id else '',
+                'action_type': action_type,
+                'filter_summary': filter_summary,
+                'message': f'Cleared column value on {affected_count} record(s).',
+            })
+
+        return JsonResponse({'success': False, 'message': 'Unsupported action type.'}, status=400)
     except Exception:
         logger.exception('Unexpected pro data guard delete failure for table=%s', table.id)
         return JsonResponse({'success': False, 'message': 'Unexpected delete failure.'}, status=500)
