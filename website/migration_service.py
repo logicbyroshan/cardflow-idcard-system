@@ -41,10 +41,23 @@ class WebsiteMigrationService:
         media_root = settings.MEDIA_ROOT
 
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # 1. Database Folder
-            if os.path.exists(db_path):
-                zipf.write(db_path, arcname='database/db.sqlite3')
-                logger.info("Added database/db.sqlite3 to bundle")
+            # 1. Database Data (JSON Dump for Production Compatibility)
+            from django.core import management
+            from io import StringIO
+            
+            logger.info("Starting database data dump...")
+            try:
+                out = StringIO()
+                # Dump only essential apps to keep it fast and relevant
+                management.call_command('dumpdata', 'website', 'client', 'accounts', 'staff', 'idcards', 'core', indent=2, stdout=out)
+                zipf.writestr('database/production_data_dump.json', out.getvalue())
+                logger.info("Added database/production_data_dump.json to bundle")
+            except Exception as e:
+                logger.error(f"Failed to dump data: {e}")
+                # Fallback to sqlite file if it exists
+                if os.path.exists(db_path):
+                    zipf.write(db_path, arcname='database/db.sqlite3')
+                    logger.info("Added fallback database/db.sqlite3 to bundle")
             
             # 2. Website Media Folders
             mapping = cls.get_website_media_mapping()
