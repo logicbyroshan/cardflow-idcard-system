@@ -129,7 +129,6 @@
 
             // Hide overlay after 60 seconds or if user clicks 'Done' (though it should be a file download)
             setTimeout(() => {
-                if (btn) btn.disabled = false;
                 // We don't hide the overlay automatically as the browser download will happen
                 // But we show the Done button if it exists
                 const doneBtn = document.getElementById('blockingOverlayDoneBtn');
