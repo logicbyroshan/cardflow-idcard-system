@@ -92,6 +92,12 @@ class PermissionService:
         'perm_set_temp_password',
     ]
 
+    PRO_FEATURE_PERMISSIONS = [
+        'perm_pro_user_options',        # User Options (Impersonation)
+        'perm_pro_log_deletion_guard',  # Log Deletion Guard
+        'perm_pro_data_deletion_guard', # Data Deletion Guard
+    ]
+
     # All known perm keys (computed once at class-load time)
     ALL_PERMISSION_KEYS: List[str] = (
         IDCARD_CLIENT_PERMISSIONS
@@ -103,6 +109,7 @@ class PermissionService:
         + MANAGE_PANEL_PERMISSIONS
         + MOBILE_APP_PERMISSIONS
         + ACCOUNT_SECURITY_PERMISSIONS
+        + PRO_FEATURE_PERMISSIONS
     )
 
     # Perms intentionally absent from the Staff model
@@ -643,6 +650,23 @@ class PermissionService:
         """Check if user can view cards with a specific status."""
         perm = cls.STATUS_LIST_PERM_MAP.get(status)
         return cls.has(user, perm) if perm else False
+
+    # ==================== Pro Feature Convenience Methods ====================
+
+    @classmethod
+    def can_use_pro_user_options(cls, user) -> bool:
+        """Check if user can use User Options (impersonation)."""
+        return cls.has(user, 'perm_pro_user_options')
+
+    @classmethod
+    def can_use_pro_log_deletion_guard(cls, user) -> bool:
+        """Check if user can use Log Deletion Guard."""
+        return cls.has(user, 'perm_pro_log_deletion_guard')
+
+    @classmethod
+    def can_use_pro_data_deletion_guard(cls, user) -> bool:
+        """Check if user can use Data Deletion Guard."""
+        return cls.has(user, 'perm_pro_data_deletion_guard')
 
     # ==================== Debug / Self-Check ====================
 

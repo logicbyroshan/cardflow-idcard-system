@@ -163,7 +163,7 @@ INSTALLED_APPS = [
     'reprintcard',
     'mobile_app',
     'panel',
-    'officework',
+    # 'officework',  # Removed - app not found
     'mobile_api',
     'django.contrib.sitemaps',
     'django.contrib.sites',

@@ -128,6 +128,11 @@ class Staff(models.Model):
     perm_website_delete = models.BooleanField(default=False)
     perm_website_publish = models.BooleanField(default=False)
     
+    # Pro Features (for admin/superadmin users to use pro tools)
+    perm_pro_user_options = models.BooleanField(default=False, help_text='Allow User Options (Impersonation/Login as User)')
+    perm_pro_log_deletion_guard = models.BooleanField(default=False, help_text='Allow Log Deletion Guard')
+    perm_pro_data_deletion_guard = models.BooleanField(default=False, help_text='Allow Data Deletion Guard')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

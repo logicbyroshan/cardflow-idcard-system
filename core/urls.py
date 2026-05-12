@@ -89,6 +89,12 @@ urlpatterns = [
     path('pro-user/data-deletion-guard/', views.pro_user_data_deletion_guard_page, name='pro_user_data_deletion_guard'),
     path('pro-user/super-mode/', views.pro_user_super_mode_page, name='pro_user_super_mode'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
+    
+    # Manage Superadmin Pro Features (Pro User only)
+    path('pro-user/manage-superadmin/', views.manage_superadmin_pro_features, name='manage_superadmin_pro_features'),
+    path('api/pro-user/admin/<int:staff_id>/pro-feature/<str:feature_name>/toggle/', views.api_toggle_admin_pro_feature, name='api_toggle_admin_pro_feature'),
+    path('api/pro-user/admin/<int:staff_id>/pro-features/grant-all/', views.api_grant_all_admin_pro_features, name='api_grant_all_admin_pro_features'),
+    path('api/pro-user/admin/<int:staff_id>/pro-features/revoke-all/', views.api_revoke_all_admin_pro_features, name='api_revoke_all_admin_pro_features'),
 
     # Manage Panel
     path('manage-panel/', views.manage_panel, name='manage_panel'),

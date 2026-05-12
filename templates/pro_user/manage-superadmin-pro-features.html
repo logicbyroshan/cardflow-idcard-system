@@ -1,0 +1,454 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Superadmin Pro Features - Adarsh Admin{% endblock %}
+
+{% block extra_css %}
+  <style>
+    .pro-manage-page {
+      background: linear-gradient(180deg, #f3f8ff 0%, #edf3fb 100%);
+      min-height: 100vh;
+    }
+
+    .manage-superadmin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .superadmin-header {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .superadmin-header h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .superadmin-header p {
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .search-filter-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dfe7ef;
+      border-radius: 6px;
+      font-size: 14px;
+      background: white;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid #dfe7ef;
+      border-radius: 6px;
+      font-size: 14px;
+      background: white;
+      min-width: 150px;
+    }
+
+    .table-wrapper {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .superadmin-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .superadmin-table thead {
+      background: #f8fafc;
+      border-bottom: 1px solid #dfe7ef;
+    }
+
+    .superadmin-table th {
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .superadmin-table tbody tr {
+      border-bottom: 1px solid #f1f5f9;
+      transition: background-color 0.2s ease;
+    }
+
+    .superadmin-table tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .superadmin-table td {
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #334155;
+    }
+
+    .admin-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .admin-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .admin-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .admin-name {
+      font-weight: 600;
+      color: #1a202c;
+    }
+
+    .admin-email {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .feature-toggles {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .feature-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .feature-toggle.disabled {
+      background: #f1f5f9;
+      color: #94a3b8;
+      border-color: #dfe7ef;
+    }
+
+    .feature-toggle.enabled {
+      background: #dbeafe;
+      color: #1e40af;
+      border-color: #bfdbfe;
+    }
+
+    .feature-toggle:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-badge.active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-badge.inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .action-btn {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+    }
+
+    .action-btn-grant {
+      background: #10b981;
+      color: white;
+    }
+
+    .action-btn-grant:hover {
+      background: #059669;
+    }
+
+    .action-btn-revoke {
+      background: #ef4444;
+      color: white;
+    }
+
+    .action-btn-revoke:hover {
+      background: #dc2626;
+    }
+
+    .pagination {
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .pagination a, .pagination span {
+      padding: 6px 10px;
+      border: 1px solid #dfe7ef;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      color: #475569;
+      transition: all 0.2s ease;
+    }
+
+    .pagination a:hover {
+      border-color: #667eea;
+      color: #667eea;
+    }
+
+    .pagination .active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #64748b;
+    }
+
+    .empty-state i {
+      font-size: 48px;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+    }
+  </style>
+{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <a href="{% url 'login_as_user' %}" class="breadcrumb-item">Pro Features</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">Manage Superadmin</span>
+{% endblock %}
+
+{% block content %}
+  <div class="pro-manage-page">
+    <div class="manage-superadmin-container">
+      <!-- Header -->
+      <div class="superadmin-header">
+        <h1><i class="fa-solid fa-user-shield"></i> Manage Superadmin Pro Features</h1>
+        <p>Grant or revoke pro features for your admin users. Control access to User Options, Log Deletion Guard, and Data Deletion Guard.</p>
+      </div>
+
+      <!-- Pro Feature Tabs -->
+      {% include 'partials/pro-feature-tabs.html' %}
+
+      <!-- Search & Filter -->
+      <form method="get" class="search-filter-row" id="search-form">
+        <div class="search-box">
+          <input type="text" name="search" placeholder="Search by name, email, or username..." value="{{ search_query }}" />
+        </div>
+        <select name="status" class="filter-select" onchange="document.getElementById('search-form').submit()">
+          <option value="">All Users</option>
+          <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+          <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+          <option value="has_pro_features" {% if status_filter == 'has_pro_features' %}selected{% endif %}>Has Pro Features</option>
+        </select>
+        <button type="submit" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px;">
+          <i class="fa-solid fa-search"></i> Search
+        </button>
+      </form>
+
+      <!-- Table -->
+      <div class="table-wrapper" id="superadmin-table-container"
+           hx-trigger="refreshTable from:body"
+           hx-get="{% url 'manage_superadmin_pro_features' %}"
+           hx-target="#superadmin-table-container"
+           hx-swap="innerHTML">
+        {% include 'partials/pro_user/manage-superadmin-table.html' %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Toggle individual pro features
+      document.querySelectorAll('.feature-toggle').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const staffId = this.dataset.staffId;
+          const feature = this.dataset.feature;
+          
+          fetch(`/api/pro-user/admin/${staffId}/pro-feature/${feature}/toggle/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken'),
+              'Content-Type': 'application/json',
+            }
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              // Refresh table
+              htmx.trigger('#superadmin-table-container', 'refreshTable');
+              showToast(data.message, 'success');
+            } else {
+              showToast(data.message || 'Error', 'error');
+            }
+          });
+        });
+      });
+
+      // Grant all features
+      document.querySelectorAll('[data-action="grant-all"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const staffId = this.dataset.staffId;
+          const adminName = this.dataset.adminName;
+          
+          if (!confirm(`Grant all pro features to ${adminName}?`)) return;
+          
+          fetch(`/api/pro-user/admin/${staffId}/pro-features/grant-all/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken'),
+              'Content-Type': 'application/json',
+            }
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              htmx.trigger('#superadmin-table-container', 'refreshTable');
+              showToast(data.message, 'success');
+            } else {
+              showToast(data.message || 'Error', 'error');
+            }
+          });
+        });
+      });
+
+      // Revoke all features
+      document.querySelectorAll('[data-action="revoke-all"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const staffId = this.dataset.staffId;
+          const adminName = this.dataset.adminName;
+          
+          if (!confirm(`Revoke all pro features from ${adminName}?`)) return;
+          
+          fetch(`/api/pro-user/admin/${staffId}/pro-features/revoke-all/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken'),
+              'Content-Type': 'application/json',
+            }
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              htmx.trigger('#superadmin-table-container', 'refreshTable');
+              showToast(data.message, 'success');
+            } else {
+              showToast(data.message || 'Error', 'error');
+            }
+          });
+        });
+      });
+    });
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    function showToast(message, type) {
+      // Simple toast notification - you can enhance this
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: ${type === 'success' ? '#10b981' : '#ef4444'};
+        color: white;
+        border-radius: 6px;
+        z-index: 10000;
+        font-size: 14px;
+        font-weight: 600;
+      `;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+  </script>
+{% endblock %}

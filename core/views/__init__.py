@@ -207,3 +207,9 @@ from .pro_user_session_api import (
     api_pro_user_list_sessions,
     api_pro_user_revoke_session_key,
 )
+from .pro_user_manage_superadmin_views import (
+    manage_superadmin_pro_features,
+    api_toggle_admin_pro_feature,
+    api_grant_all_admin_pro_features,
+    api_revoke_all_admin_pro_features,
+)
