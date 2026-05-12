@@ -25,9 +25,6 @@ class WebsiteMigrationService:
             'images/Avatars': 'website_media/avatars',
             'images/TestimonialAttachments': 'website_media/testimonial_attachments',
             'images/Clients/Logos': 'website_media/client_logos',
-            'adarshimg': 'idcard_media/adarshimg',
-            'card_media': 'idcard_media/card_media',
-            'staff_imgs': 'idcard_media/staff_imgs',
         }
 
     @classmethod
