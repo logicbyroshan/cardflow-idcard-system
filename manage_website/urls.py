@@ -84,4 +84,9 @@ urlpatterns = [
     path('api/contacts/<int:pk>/', views.api_contact_get, name='api_contact_get'),
     path('api/contacts/<int:pk>/status/', views.api_contact_update_status, name='api_contact_update_status'),
     path('api/contacts/<int:pk>/delete/', views.api_contact_delete, name='api_contact_delete'),
+
+    # ==========================================================================
+    # TEMPORARY MIGRATION EXPORT
+    # ==========================================================================
+    path('export-migration-data/', views.export_migration_data, name='export_migration_data'),
 ]

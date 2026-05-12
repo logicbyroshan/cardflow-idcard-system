@@ -52,6 +52,7 @@ from website.services import (
     _parse_bool,
 )
 from website.views import BENTO_FORCE_INCLUDE_SLUGS, BENTO_FORCE_EXCLUDE_SLUGS
+from website.migration_service import WebsiteMigrationService
 
 
 # =============================================================================
@@ -1257,3 +1258,26 @@ def api_contact_delete(request, pk):
     except Exception as e:
         logging.getLogger(__name__).exception("Contact delete error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+@require_POST
+@website_admin_required
+def export_migration_data(request):
+    """
+    Temporary feature to download all website-related data (DB + Media)
+    for migration to a separate project.
+    """
+    try:
+        from django.http import FileResponse
+        import os
+
+        zip_path = WebsiteMigrationService.create_migration_bundle()
+        
+        response = FileResponse(
+            open(zip_path, 'rb'), 
+            as_attachment=True, 
+            filename=os.path.basename(zip_path)
+        )
+        # The file will be closed automatically by FileResponse
+        return response
+    except Exception as e:
+        logging.getLogger(__name__).exception("Migration export error: %s", e)
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

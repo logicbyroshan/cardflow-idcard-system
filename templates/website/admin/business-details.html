@@ -569,6 +569,25 @@
         </div>
 
         </form>
+        
+        <!-- Migration Hub -->
+        <div class="wa-form-group-title wa-section-bar" style="margin-top: 20px; background: #fff1f2; border-color: #fecdd3;">
+            <span class="wa-section-bar-left" style="color: #9f1239;"><i class="fa-solid fa-truck-ramp-box"></i> Migration Hub (Project Cleanup)</span>
+        </div>
+        <div class="business-form-shell" style="padding: 14px; border: 1px solid #fecdd3; background: #fff5f5;">
+            <p style="font-size: 12px; color: #881337; margin-bottom: 12px; font-weight: 600;">
+                Download a complete backup of the project (Database + Website Media + ID Card Media) before deleting this instance. Data is organized into folders inside the ZIP.
+            </p>
+            <form action="{% url 'manage_website:export_migration_data' %}" method="POST" id="migrationExportForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger" id="downloadMigrationBtn">
+                    <i class="fa-solid fa-download"></i> Download Complete Project Data (ZIP)
+                </button>
+            </form>
+            <p id="migrationStatus" style="font-size: 11px; color: #be123c; margin-top: 8px; font-weight: 700; display: none;">
+                <i class="fa-solid fa-spinner fa-spin"></i> Preparing archive... This may take a few minutes.
+            </p>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -747,6 +766,24 @@
             await submitBusinessFormData(fd, btn);
         });
     });
+    
+    // Migration Export Handler
+    const migrationForm = document.getElementById('migrationExportForm');
+    const downloadBtn = document.getElementById('downloadMigrationBtn');
+    const migrationStatus = document.getElementById('migrationStatus');
+    
+    if (migrationForm && downloadBtn) {
+        migrationForm.addEventListener('submit', function() {
+            downloadBtn.disabled = true;
+            if (migrationStatus) migrationStatus.style.display = 'block';
+            
+            // Re-enable after a delay because we can't easily detect when the download starts/ends
+            setTimeout(() => {
+                downloadBtn.disabled = false;
+                if (migrationStatus) migrationStatus.style.display = 'none';
+            }, 10000);
+        });
+    }
 
 })();
 
