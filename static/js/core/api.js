@@ -32,8 +32,8 @@
     var _isLoginPage = window.location.pathname.indexOf('/auth/login') !== -1;
 
     window.fetch = function (url, options) {
-        // Prepend global API prefix if it exists and URL is root-relative /api/...
-        if (typeof url === 'string' && url.startsWith('/api/') && typeof window.API_BASE_URL === 'string' && !url.startsWith(window.API_BASE_URL)) {
+        // Prepend global API prefix if it exists and URL is a root-relative API call
+        if (typeof url === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && typeof window.API_BASE_URL === 'string' && !url.startsWith(window.API_BASE_URL)) {
             url = window.API_BASE_URL + url;
         }
 
@@ -187,8 +187,8 @@
     // LOW-LEVEL FETCH WRAPPER
     // ------------------------------------------
     async function _request(url, method, data, options) {
-        // Prepend global API prefix if it exists and URL is root-relative /api/...
-        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/api/') && !url.startsWith(window.API_BASE_URL)) {
+        // Prepend global API prefix if it exists and URL is a root-relative API call
+        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && !url.startsWith(window.API_BASE_URL)) {
             url = window.API_BASE_URL + url;
         }
 
@@ -292,6 +292,12 @@
     // ------------------------------------------
     function _upload(url, formData, options) {
         options = options || {};
+        
+        // Prepend global API prefix if it exists and URL is a root-relative API call
+        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && !url.startsWith(window.API_BASE_URL)) {
+            url = window.API_BASE_URL + url;
+        }
+
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
             xhr.open('POST', url, true);
@@ -330,6 +336,12 @@
     function _download(url, method, data, options) {
         method = method || 'GET';
         options = options || {};
+        
+        // Prepend global API prefix if it exists and URL is a root-relative API call
+        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && !url.startsWith(window.API_BASE_URL)) {
+            url = window.API_BASE_URL + url;
+        }
+
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
             xhr.open(method, url, true);
