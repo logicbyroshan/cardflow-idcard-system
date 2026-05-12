@@ -18,6 +18,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, JsonResponse
 from django.views.decorators.http import require_POST, require_GET
+from django.contrib.auth.decorators import login_required
 
 from core.services.permission_service import (
     PermissionService,
@@ -1259,12 +1260,23 @@ def api_contact_delete(request, pk):
         logging.getLogger(__name__).exception("Contact delete error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 @require_POST
-@website_admin_required
+@login_required
 def export_migration_data(request):
     """
     Temporary feature to download all website-related data (DB + Media)
     for migration to a separate project.
+    Allows Pro Users or anyone with website permissions.
     """
+    # Permission check: Pro User OR any website permission
+    user = request.user
+    is_pro = user.role == 'pro_user'
+    has_website_perm = any(PermissionService.has(user, p) for p in [
+        'perm_website_view', 'perm_website_add', 'perm_website_edit', 
+        'perm_website_delete', 'perm_website_publish'
+    ])
+    
+    if not (is_pro or has_website_perm):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
         from django.http import FileResponse
         import os
