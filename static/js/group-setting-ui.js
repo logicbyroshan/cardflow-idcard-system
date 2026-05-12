@@ -44,9 +44,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (reprintCardsBtn) {
             reprintCardsBtn.disabled = !hasSelection;
             if (hasSelection && GSP.selectedTableId) {
+                var prefix = window.API_BASE_URL || '';
                 var rUrl = isClient
-                    ? '/client/table/' + GSP.selectedTableId + '/reprint/'
-                    : '/table/' + GSP.selectedTableId + '/reprint/';
+                    ? prefix + '/client/table/' + GSP.selectedTableId + '/reprint/'
+                    : prefix + '/table/' + GSP.selectedTableId + '/reprint/';
                 reprintCardsBtn.onclick = function() { window.location.href = rUrl; };
             }
         }

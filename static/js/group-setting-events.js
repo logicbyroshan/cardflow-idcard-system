@@ -43,9 +43,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var tableId = row.dataset.tableId;
             // Use template-set flag (URL-based detection fails for admin on /client/<id>/settings/)
             var isClient = typeof IS_CLIENT_ROLE !== 'undefined' ? IS_CLIENT_ROLE : false;
+            var prefix = window.API_BASE_URL || '';
             var basePath = isClient
-                ? '/client/table/' + tableId + '/actions/'
-                : '/table/' + tableId + '/cards/';
+                ? prefix + '/client/table/' + tableId + '/actions/'
+                : prefix + '/table/' + tableId + '/cards/';
             window.location.href = basePath + '?status=pending';
         });
     }

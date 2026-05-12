@@ -298,7 +298,7 @@ def main():
     mode = "production (minified)" if minify else "development (no minification)"
 
     print(f"\n{'=' * 60}")
-    print(f"  Bundle Builder — {mode}")
+    print(f"  Bundle Builder - {mode}")
     print(f"{'=' * 60}\n")
 
     t0 = time.perf_counter()
@@ -313,10 +313,10 @@ def main():
     elapsed = time.perf_counter() - t0
     total_kb = (js_total + css_total) / 1024
 
-    print(f"\n{'─' * 60}")
+    print(f"\n{'-' * 60}")
     print(f"  Total: {total_kb:.1f} KB in {elapsed:.2f}s")
     print(f"  Output: static/dist/js/  static/dist/css/")
-    print(f"{'─' * 60}\n")
+    print(f"{'-' * 60}\n")
 
 
 if __name__ == "__main__":
