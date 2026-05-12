@@ -43,6 +43,7 @@ urlpatterns = [
     path('impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),
     path('impersonate/start/', views.api_impersonate_start, name='api_impersonate_start'),
     path('impersonate/stop/', views.api_impersonate_stop, name='api_impersonate_stop'),
+    path('clients/', views.api_clients_list, name='api_clients_list'),
     path('client/create/', views.api_client_create, name='api_client_create'),
     path('client/<int:client_id>/', views.api_client_detail, name='api_client_detail'),
     path('client/<int:client_id>/update/', views.api_client_update, name='api_client_update'),

@@ -146,6 +146,26 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 
+  const mapIcon = (faClass) => {
+    if (!faClass) return 'history';
+    const c = (faClass || '').toLowerCase();
+    if (c.includes('check') || c.includes('verify') || c.includes('approve')) return 'check-circle';
+    if (c.includes('trash') || c.includes('delete') || c.includes('remove')) return 'trash-2';
+    if (c.includes('edit') || c.includes('update')) return 'edit-3';
+    if (c.includes('user') || c.includes('staff')) return 'users';
+    if (c.includes('building') || c.includes('client')) return 'building';
+    if (c.includes('refresh') || c.includes('redo') || c.includes('history')) return 'history';
+    if (c.includes('image') || c.includes('photo')) return 'image';
+    if (c.includes('download')) return 'download';
+    return 'activity';
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  };
+
   return (
     <View style={s.root}>
       <LinearGradient colors={gradients.brandFull} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={[s.header, { paddingTop: insets.top + 12 }]}>
@@ -171,7 +191,7 @@ export default function HomeScreen({ navigation }) {
       </LinearGradient>
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}>
 
         <View style={s.statusGrid}>
           {STATUS_CONFIG.map(st => {
@@ -284,12 +304,23 @@ export default function HomeScreen({ navigation }) {
             ) : activeTab === 'activity' ? (
               <View>
                 <View style={s.secHeaderRow}><Text style={s.secTitle}>RECENT ACTIVITY</Text></View>
-                {counts.recent_activity?.length > 0 ? counts.recent_activity.map(act => (
-                  <View key={act.id} style={s.activityCard}>
-                    <View style={[s.activityIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon || 'history'} size={12} color={act.color} /></View>
-                    <View style={s.activityInfo}><Text style={s.activityText}>{act.text}</Text><Text style={s.activityTime}>{act.time_ago}</Text></View>
-                  </View>
-                )) : <View style={s.emptyState}><Text style={s.emptyText}>No activity found</Text></View>}
+                {counts.recent_activity?.length > 0 ? (
+                  counts.recent_activity.slice(0, 15).map(act => (
+                    <View key={act.id} style={s.activityCard}>
+                      <View style={[s.activityIcon, { backgroundColor: (act.icon_color || '#3b82f6') + '15' }]}>
+                        <DynamicIcon name={mapIcon(act.icon_class)} size={14} color={act.icon_color || '#3b82f6'} />
+                      </View>
+                      <View style={s.activityInfo}>
+                        <Text style={s.activityText} numberOfLines={2}>{act.display_text}</Text>
+                        <View style={s.activityMeta}>
+                          <Text style={s.activityTime}>{act.time_ago} ago</Text>
+                          <Text style={s.activityDot}>•</Text>
+                          <Text style={s.activityActor}>{act.actor}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))
+                ) : <View style={s.emptyState}><Text style={s.emptyText}>No activity found</Text></View>}
               </View>
             ) : (
               <View>
@@ -317,13 +348,13 @@ export default function HomeScreen({ navigation }) {
                     <View style={[s.tableIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="table" size={14} color={theme.primary} /></View>
                     <Text style={s.tableName}>{table.name}</Text>
                   </View>
-                  <View style={s.tableStats}>
                     {['P', 'V', 'A', 'D'].map((st, idx) => (
-                      <Text key={st} style={[s.statBadge, { backgroundColor: [colors.brandPrimary, '#10b981', '#3b82f6', '#8b5cf6'][idx] }]}>
-                        {st}: {table[st.toLowerCase()] || 0}
-                      </Text>
+                      <View key={st} style={[s.statBadge, { backgroundColor: [colors.brandPrimary, '#10b981', '#3b82f6', '#8b5cf6'][idx] + '15', borderColor: [colors.brandPrimary, '#10b981', '#3b82f6', '#8b5cf6'][idx] }]}>
+                        <Text style={[s.statBadgeText, { color: [colors.brandPrimary, '#10b981', '#3b82f6', '#8b5cf6'][idx] }]}>
+                          {st}: {table[st.toLowerCase()] || 0}
+                        </Text>
+                      </View>
                     ))}
-                  </View>
                 </TouchableOpacity>
               )) : <View style={s.emptyState}><Text style={s.emptyText}>No tables found</Text></View>}
             </>
@@ -456,8 +487,13 @@ const s = StyleSheet.create({
   clientName: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
   activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   activityIcon: { width: 32, height: 32, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  activityText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800 },
-  activityTime: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginTop: 2 },
+  activityInfo: { flex: 1, paddingLeft: 12 },
+  activityText: { fontSize: 13, color: colors.gray800, lineHeight: 18, fontFamily: 'SairaSemiCondensed-Medium' },
+  activityMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  activityTime: { fontSize: 11, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Regular' },
+  activityDot: { fontSize: 11, color: colors.gray300, marginHorizontal: 4 },
+  activityActor: { fontSize: 11, color: colors.brandPrimary, fontFamily: 'SairaSemiCondensed-Bold' },
+  emptyActivity: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, opacity: 0.6 },
   reprintCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   reprintIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   reprintTitle: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
@@ -467,7 +503,8 @@ const s = StyleSheet.create({
   tableIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   tableName: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
   tableStats: { flexDirection: 'row', justifyContent: 'space-between' },
-  statBadge: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.xs },
+  statBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.xs, borderWidth: 1 },
+  statBadgeText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
   fab: { position: 'absolute', bottom: 30, right: 20, width: 56, height: 56, borderRadius: radius.sm, ...shadows.xl },
   fabGradient: { width: '100%', height: '100%', borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   emptyState: { padding: 30, alignItems: 'center' },

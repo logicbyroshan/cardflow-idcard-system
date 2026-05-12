@@ -5958,6 +5958,61 @@ def api_impersonate_users(request):
 
 
 @require_mobile_client
+@require_http_methods(["GET"])
+def api_clients_list(request):
+    """Admin-only: Return all clients with full status counts for management."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
+    # Fetch all users with role 'client'
+    clients_qs = User.objects.filter(role='client').select_related('client_profile').order_by('client_profile__name', 'username')
+    
+    client_ids = list(clients_qs.values_list('id', flat=True))
+
+    from idcards.models import IDCard
+    from django.db.models import Count
+
+    # Bulk fetch counts
+    counts_map = {}
+    stats = (
+        IDCard.objects.filter(table__group__client_id__in=client_ids)
+        .values('table__group__client_id', 'status')
+        .annotate(count=Count('id'))
+    )
+    for s in stats:
+        cid = s['table__group__client_id']
+        status = s['status']
+        count = s['count']
+        if cid not in counts_map:
+            counts_map[cid] = {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
+        counts_map[cid]['total'] += count
+        if status in counts_map[cid]:
+            counts_map[cid][status] = count
+
+    users_list = []
+    for u in clients_qs:
+        profile = getattr(u, 'client_profile', None)
+        logo_url = ''
+        if profile and profile.logo:
+            logo_url = profile.logo.url
+            
+        users_list.append({
+            'id': u.id,
+            'name': (profile.name if profile else '') or u.get_full_name() or u.username,
+            'email': u.email,
+            'phone': getattr(profile, 'phone', '') if profile else '',
+            'is_active': u.is_active,
+            'logo_url': logo_url,
+            'counts': counts_map.get(u.id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
+        })
+
+    return JsonResponse({'success': True, 'users': users_list})
+
+
+@require_mobile_client
 @require_http_methods(["POST"])
 def api_impersonate_start(request):
     """Start impersonation from mobile and keep the session on the mobile surface."""

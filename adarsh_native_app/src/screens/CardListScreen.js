@@ -272,7 +272,7 @@ const s = StyleSheet.create({
   tabItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.xs, borderWidth: 1, borderColor: '#f1f5f9', backgroundColor: '#f8fafc', marginRight: 8 },
   tabLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', marginRight: 6 },
   tabCount: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10 },
-  tabCountText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold' },
+  tabCountText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
   headerActions: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8 },
   searchWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 44, borderRadius: radius.sm, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm, marginRight: 10 },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800 },

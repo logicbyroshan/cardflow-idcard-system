@@ -95,11 +95,11 @@ const CardItem = React.memo(function CardItem({
     <View style={[s.card, isSelected && s.cardSelected]}>
       <View style={s.cardBody}>
         <View style={s.imagesColumn}>
-          {imageFields.slice(0, 2).map(renderImage)}
+          {imageFields.slice(0, 4).map(renderImage)}
         </View>
 
         <View style={s.fieldsList}>
-          {textFields.slice(0, 5).map((f, i) => (
+          {textFields.slice(0, 8).map((f, i) => (
             <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
               <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
               <Text style={s.fieldValue} numberOfLines={1}>{cleanFieldValue(f.value) || '-'}</Text>
