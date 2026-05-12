@@ -1280,4 +1280,5 @@ def export_migration_data(request):
         return response
     except Exception as e:
         logging.getLogger(__name__).exception("Migration export error: %s", e)
+        from django.http import JsonResponse
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
