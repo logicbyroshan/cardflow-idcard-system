@@ -5179,7 +5179,7 @@ def api_dashboard_data(request):
         is_staff = PermissionService.is_client_staff(user)
         
         # Recent Activity (Always included for all roles)
-        recent_activity = ActivityService.get_recent(limit=8, user=user)
+        recent_activity = ActivityService.get_recent(limit=100, user=user)
         
         if is_admin:
             # ADMIN/OPERATOR: Return clients with nested tables
@@ -5233,7 +5233,7 @@ def api_dashboard_data(request):
                 F('latest_approved').desc(nulls_last=True),
                 F('created_at').desc(nulls_last=True),
                 F('id').desc(),
-            )[:50]
+            )[:100]
             
             for client in ordered_clients:
                 tables_qs = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
@@ -5278,7 +5278,7 @@ def api_dashboard_data(request):
                 if not PermissionService.is_super_admin(user):
                     reprints_qs = reprints_qs.filter(table__group__client_id__in=accessible_ids)
                 
-                for r in reprints_qs[:10]:
+                for r in reprints_qs[:100]:
                     recent_reprints.append({
                         'id': r.id,
                         'card_id': r.card_id,
