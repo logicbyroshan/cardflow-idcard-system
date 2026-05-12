@@ -14,22 +14,12 @@ import logging
 import time
 import hashlib
 from datetime import timedelta
-from urllib.parse import urlencode
 from functools import wraps
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.conf import settings
-from django.core.cache import cache
-from django.contrib.auth import login as auth_login
-from django.contrib.auth import logout as auth_logout
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
-from django.db import transaction
-from django.db.models import Count, Q, Max, CharField, F, Case, When, Value, IntegerField
-from django.db.models.functions import Cast
-from django.db.models.fields.json import KeyTextTransform
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import make_aware, is_naive, localtime
 from django.utils import timezone
@@ -48,7 +38,6 @@ def _safe_file_url(file_field):
 from client.services import (
     ClientAccessService,
     ClientDashboardService,
-    ClientCardService,
     ClientImageService,
     ClientStaffService,
 )
@@ -181,30 +170,6 @@ def _has_meaningful_field_value(value):
         return False
     text = str(value).strip()
     return bool(text)
-
-
-def _build_field_rename_pairs(old_fields, new_fields):
-    pairs = []
-    old_seq = old_fields if isinstance(old_fields, list) else []
-    new_seq = new_fields if isinstance(new_fields, list) else []
-
-    for index in range(min(len(old_seq), len(new_seq))):
-        old_field = old_seq[index] or {}
-        new_field = new_seq[index] or {}
-        old_name = _normalize_field_name(old_field.get('name', ''))
-        new_name = _normalize_field_name(new_field.get('name', ''))
-        old_type = _normalize_field_name(old_field.get('type', 'text'))
-        new_type = _normalize_field_name(new_field.get('type', 'text'))
-        if old_name and new_name and (old_name != new_name or old_type != new_type):
-            pairs.append({
-                'old_name': old_name,
-                'new_name': new_name,
-                'old_type': old_type,
-                'new_type': new_type,
-                'old_rel_slot': _rel_photo_slot_for_name(old_name) if old_type in {'REL_PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'} else None,
-                'new_rel_slot': _rel_photo_slot_for_name(new_name) if new_type in {'REL_PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'} else None,
-            })
-    return pairs
 
 
 def _migrate_table_field_data_for_renames(table_id, rename_pairs, *, batch_size=500):
