@@ -18,6 +18,7 @@ from functools import wraps
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.utils.dateparse import parse_date, parse_datetime
@@ -25,233 +26,17 @@ from django.utils.timezone import make_aware, is_naive, localtime
 from django.utils import timezone
 from django.utils.timesince import timesince
 
-def _safe_file_url(file_field):
-    """Safely get URL from an ImageField/FileField, avoiding ValueError if file is missing."""
+def _safe_file_url(file_field, request=None):
+    """Safely get URL from an ImageField/FileField and prefer absolute URLs for external clients."""
     if not file_field:
         return ''
     try:
-        return file_field.url
+        url = file_field.url
     except ValueError:
         return ''
 
-
-from client.services import (
-    ClientAccessService,
-    ClientDashboardService,
-    ClientImageService,
-    ClientStaffService,
-)
-from client.services_client_core import ClientService
-from core.services.permission_service import PermissionService
-from idcards.models import IDCardTable, IDCard, IDCardGroup
-from reprintcard.models import ReprintRequest
-from mediafiles.utils import get_card_photo_url
-from staff.models import Staff
-from accounts.rate_limit import rate_limit
-from accounts.rate_limit import _get_client_ip
-from accounts.services import AuthService
-from core.services.activity_service import ActivityService
-from core.services.cache_version_service import CacheVersionService
-from core.services import StaffService, IDCardService
-from core.utils.field_utils import normalize_class_value
-from mediafiles.utils import normalize_uploaded_image
-from mediafiles.services import ImageService
-from mediafiles.services.image_thumbnail import ThumbnailService
-from mediafiles.models import CardMedia
-from mobile_app.models import MobileDevice
-
-logger = logging.getLogger(__name__)
-APP_BOOT_TS = time.time()
-MAX_SEARCH_QUERY_LEN = 100
-MAX_GLOBAL_SEARCH_DB_SCAN = 100
-MAX_REPRINT_ACTION_IDS = 200
-MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
-MOBILE_INSTALLATION_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._:-]{7,79}$')
-MOBILE_SORT_MODES = frozenset({'sr-asc', 'name-asc', 'name-desc'})
-
-
-def _truthy(value):
-    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
-
-
-def _normalize_mobile_sort_mode(value):
-    normalized = str(value or '').strip().lower()
-    if normalized in MOBILE_SORT_MODES:
-        return normalized
-    return 'sr-asc'
-
-
-def _mobile_shell_safe_int(raw_value, default=0):
-    try:
-        return int(raw_value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _mobile_shell_safe_bool(raw_value, default=False):
-    if raw_value is None:
-        return default
-    if isinstance(raw_value, bool):
-        return raw_value
-    return _truthy(raw_value)
-
-
-def _normalize_field_name(name):
-    return str(name or '').strip().upper()
-
-
-def _field_token(name):
-    return re.sub(r'[^A-Z0-9]+', '', _normalize_field_name(name))
-
-
-def _rel_photo_slot_for_name(name):
-    normalized = _normalize_field_name(name)
-    token = _field_token(name)
-    if token in {'FATHERPHOTO', 'FPHOTO'}:
-        return 1
-    if token in {'MOTHERPHOTO', 'MPHOTO'}:
-        return 2
-
-    match = re.search(r'REL(?:ATION)?(?:NO)?([0-9]+)', token)
-    if match:
-        try:
-            slot = int(match.group(1))
-            if slot > 0:
-                return slot
-        except (TypeError, ValueError):
-            pass
-
-    match = re.search(r'REL[ _-]*NO?[ _-]*([0-9]+)', normalized)
-    if match:
-        try:
-            slot = int(match.group(1))
-            if slot > 0:
-                return slot
-        except (TypeError, ValueError):
-            pass
-    return None
-
-
-def _rel_photo_aliases_for_slot(slot):
-    if not slot or slot <= 0:
-        return []
-    aliases = [
-        f'REL_{slot}PHOTO',
-        f'REL{slot}PHOTO',
-        f'REL {slot} PHOTO',
-        f'REL NO {slot} PHOTO',
-        f'REL{slot}',
-        f'REL {slot}',
-        f'REL_{slot}',
-    ]
-    if slot == 1:
-        aliases.extend(['FATHER PHOTO', 'FATHER_PHOTO', 'F PHOTO'])
-    elif slot == 2:
-        aliases.extend(['MOTHER PHOTO', 'MOTHER_PHOTO', 'M PHOTO'])
-    return aliases
-
-
-def _get_field_value_case_insensitive(field_data, field_name):
-    if not isinstance(field_data, dict):
+    if not url:
         return ''
-    canonical = _normalize_field_name(field_name)
-    canonical_token = _field_token(field_name)
-    for key, value in field_data.items():
-        key_norm = _normalize_field_name(key)
-        if key_norm == canonical:
-            return value
-        if canonical_token and _field_token(key_norm) == canonical_token:
-            return value
-    return ''
-
-
-def _has_meaningful_field_value(value):
-    if value is None:
-        return False
-    text = str(value).strip()
-    return bool(text)
-
-
-def _migrate_table_field_data_for_renames(table_id, rename_pairs, *, batch_size=500):
-    if not rename_pairs:
-        return 0
-
-    updated = 0
-    pending = []
-
-    qs = IDCard.objects.filter(table_id=table_id).only('id', 'field_data')
-    for card in qs.iterator(chunk_size=batch_size):
-        field_data = card.field_data if isinstance(card.field_data, dict) else {}
-        changed = False
-
-        for pair in rename_pairs:
-            old_name = pair['old_name']
-            new_name = pair['new_name']
-            old_slot = pair.get('old_rel_slot')
-
-            old_val = _get_field_value_case_insensitive(field_data, old_name)
-            if not _has_meaningful_field_value(old_val) and old_slot:
-                for alias in _rel_photo_aliases_for_slot(old_slot):
-                    old_val = _get_field_value_case_insensitive(field_data, alias)
-                    if _has_meaningful_field_value(old_val):
-                        break
-
-            new_val = _get_field_value_case_insensitive(field_data, new_name)
-
-            if _has_meaningful_field_value(old_val) and not _has_meaningful_field_value(new_val):
-                field_data[new_name] = old_val
-                changed = True
-
-        if changed:
-            card.field_data = field_data
-            pending.append(card)
-            updated += 1
-            if len(pending) >= batch_size:
-                IDCard.objects.bulk_update(pending, ['field_data'], batch_size=batch_size)
-                pending.clear()
-
-    if pending:
-        IDCard.objects.bulk_update(pending, ['field_data'], batch_size=batch_size)
-
-    return updated
-
-
-def _migrate_cardmedia_field_names_for_renames(table_id, rename_pairs):
-    if not rename_pairs:
-        return 0
-
-    updated_rows = 0
-    for pair in rename_pairs:
-        old_name = pair['old_name']
-        new_name = pair['new_name']
-        old_slot = pair.get('old_rel_slot')
-        updated_rows += CardMedia.objects.filter(
-            card__table_id=table_id,
-            field_name__iexact=old_name,
-        ).exclude(field_name=new_name).update(field_name=new_name)
-
-        if old_slot:
-            for alias in _rel_photo_aliases_for_slot(old_slot):
-                updated_rows += CardMedia.objects.filter(
-                    card__table_id=table_id,
-                    field_name__iexact=alias,
-                ).exclude(field_name=new_name).update(field_name=new_name)
-    return updated_rows
-
-
-def _mobile_shell_resolve_url(url_value, *, request=None, fallback=''):
-    raw = str(url_value or '').strip() or str(fallback or '').strip()
-    if not raw:
-        return ''
-
-    if raw.startswith('http://') or raw.startswith('https://'):
-        return raw
-
-    if raw.startswith('/'):
-        if request is not None:
-            try:
-                return request.build_absolute_uri(raw)
-            except Exception:
                 pass
 
         base = str(getattr(settings, 'WEBSITE_URL', '') or getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
@@ -349,8 +134,8 @@ def require_mobile_client(view_func=None, allow_public=False):
             is_api_request = (request.path or '').startswith('/api/mobile/')
             ua = request.META.get('HTTP_USER_AGENT', '')
 
-            # 1. Enforce Native App User-Agent in production
-            if not getattr(settings, 'DEBUG', False) and 'AdarshMobileApp' not in ua:
+            # 1. Enforce mobile user-agent in production
+            if not getattr(settings, 'DEBUG', False) and not is_mobile(request):
                 if is_api_request:
                     return JsonResponse({'success': False, 'message': 'Invalid client source.'}, status=403)
                 return redirect('/app/no-access/?reason=invalid-source')
@@ -5801,6 +5586,8 @@ def api_mobile_shell_device_summary(request):
     if not (PermissionService.is_super_admin(request.user) or PermissionService.is_pro_user(request.user)):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
 
+    from django.db.models import Count, Max
+
     include_inactive = _mobile_shell_safe_bool(request.GET.get('include_inactive'), False)
     now = timezone.now()
     base_qs = MobileDevice.objects.filter(platform='android')
@@ -5897,7 +5684,7 @@ def api_impersonate_users(request):
     mobile_allowed_ids = set(user_ids)
 
     from idcards.models import IDCard
-    from django.db.models import Count
+    from django.db.models import Count, Max
 
     # Bulk fetch counts for all mobile-allowed IDs in one query
     counts_map = {}
@@ -6297,3 +6084,303 @@ def api_client_permissions(request, client_user_id):
     client_user = get_object_or_404(User, id=client_user_id)
     perms = PermissionService.get_permission_context(client_user)
     return JsonResponse({'success': True, 'data': perms.get('user_permissions', {})})
+<<<<<<< HEAD
+=======
+@require_mobile_client
+@require_http_methods(['POST'])
+def api_portfolio_upload(request):
+    """Upload one or more media files (images/videos) into a portfolio category from mobile."""
+    user = request.user
+    # perm_website_edit required — view-only users must not be able to write content
+    if not PermissionService.has(user, 'perm_website_edit'):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    from website.models import PortfolioCategory
+    from website.services import PortfolioItemService
+    from django.core.exceptions import ValidationError
+
+    category_id = request.POST.get('category_id')
+    files = request.FILES.getlist('files') or request.FILES.getlist('images')
+
+    if not category_id:
+        return JsonResponse({'success': False, 'message': 'category_id required'}, status=400)
+    if not files:
+        return JsonResponse({'success': False, 'message': 'No files provided'}, status=400)
+    if len(files) > 20:
+        return JsonResponse({'success': False, 'message': 'Maximum 20 files per upload'}, status=400)
+
+    def _is_video_file(upload):
+        content_type = (getattr(upload, 'content_type', '') or '').lower()
+        if content_type.startswith('video/'):
+            return True
+        name = (getattr(upload, 'name', '') or '').lower()
+        return name.endswith(('.mp4', '.webm', '.mov', '.avi'))
+
+    try:
+        get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
+        created = []
+        failed = []
+        for f in files:
+            try:
+                is_video = _is_video_file(f)
+                media_type = 'reel' if is_video else 'image'
+                item = PortfolioItemService.create(
+                    category_id=category_id,
+                    image=None if is_video else f,
+                    video_file=f if is_video else None,
+                    item_type=media_type,
+                    is_active=True,
+                )
+                created.append(item.id)
+            except ValidationError as e:
+                failed.append(str(e))
+            except Exception:
+                logger.exception('Portfolio upload failed for a single file')
+                failed.append('Internal error')
+
+        return JsonResponse({
+            'success': True,
+            'created_count': len(created),
+            'failed_count': len(failed),
+            'errors': failed if failed else None
+        })
+    except Exception:
+        logger.exception('api_portfolio_upload general error')
+        return JsonResponse({'success': False, 'message': 'An error occurred during upload'}, status=500)
+
+
+
+
+@require_mobile_client
+@require_http_methods(['GET'])
+def api_portfolio_category_items(request, category_id):
+    """List recent uploaded portfolio media for a category (preview in mobile website manager)."""
+    user = request.user
+    if not PermissionService.has(user, 'perm_website_view'):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    from website.models import PortfolioCategory, PortfolioItem
+
+    category = get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
+    try:
+        limit = int(request.GET.get('limit', 30) or 30)
+    except (TypeError, ValueError):
+        limit = 30
+    limit = min(max(limit, 1), 100)
+
+    items_qs = (
+        PortfolioItem.objects
+        .filter(category=category, is_active=True)
+        .order_by('-created_at')[:limit]
+    )
+
+    items = [
+        {
+            'id': it.id,
+            'title': it.title or category.name,
+            'type': it.item_type,
+            'url': _safe_file_url(it.image, request=request),
+            'video_url': _safe_file_url(it.video_file, request=request) or _mobile_shell_resolve_url(it.video_url or '', request=request),
+        }
+        for it in items_qs
+    ]
+
+    return JsonResponse({'success': True, 'category': {'id': category.id, 'name': category.name}, 'items': items})
+
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def api_website_landing_data(request):
+    """
+    Public endpoint for mobile app landing screen.
+    Returns: Hero images, categories, featured products, and trusted clients.
+    """
+    from website.models import HeroImage, PortfolioCategory, PortfolioItem, BusinessDetails
+    from client.models import Client
+    
+    # 1. Hero Images
+    hero_qs = HeroImage.objects.filter(is_active=True).order_by('order', 'pk')
+    hero_images = [
+        {
+            'id': h.id,
+            'image': _safe_file_url(h.image, request=request),
+            'title': h.title or '',
+            'subtitle': h.subtitle or '',
+        }
+        for h in hero_qs
+    ]
+
+    # 2. Categories with Product Previews
+    cat_qs = PortfolioCategory.objects.filter(is_active=True).order_by('order')
+    categories = []
+    for c in cat_qs:
+        # Get top 4 featured products for this category
+        prod_qs = PortfolioItem.objects.filter(category=c, is_active=True).order_by('order', '-created_at')[:4]
+        cat_products = [
+            {
+                'id': p.id,
+                'title': p.title,
+                'image': _safe_file_url(p.image, request=request),
+            }
+            for p in prod_qs
+        ]
+        
+        categories.append({
+            'id': c.id,
+            'name': c.name,
+            'slug': c.slug,
+            'icon': c.icon,
+            'description': c.description or '',
+            'cover_image': _mobile_shell_resolve_url(c.cover_image_url or '', request=request),
+            'is_bento': c.is_bento,
+            'bento_size': c.bento_size,
+            'preview_products': cat_products
+        })
+
+    # 3. Featured Products (Interleaved)
+    # We'll take top featured items and interleave them by category
+    featured_qs = PortfolioItem.objects.filter(is_active=True, is_featured=True).select_related('category').order_by('order', '-created_at')[:20]
+    
+    from website.views import _interleave_random_by_category
+    interleaved = _interleave_random_by_category(list(featured_qs))[:8]
+    
+    products = [
+        {
+            'id': p.id,
+            'title': p.title,
+            'image': _safe_file_url(p.image, request=request),
+            'category': p.category.name if p.category else 'General',
+            'type': p.item_type,
+        }
+        for p in interleaved
+    ]
+
+    # 4. Trusted Clients
+    client_qs = Client.objects.filter(website_is_visible=True).exclude(website_logo__isnull=True).exclude(website_logo='').order_by('website_display_order', 'name', 'id')[:15]
+    clients = [
+        {
+            'id': cl.id,
+            'name': cl.name,
+            'logo': _safe_file_url(cl.website_logo, request=request),
+        }
+        for cl in client_qs
+    ]
+
+    # 5. Business Details
+    biz = BusinessDetails.objects.first()
+    business = {
+        'site_name': biz.site_name if biz else 'Adarsh ID Cards',
+        'tagline': biz.tagline if biz else '',
+        'address': biz.address if biz else '',
+        'phone': biz.phone1 if biz else '',
+        'email': biz.email if biz else '',
+        'whatsapp': biz.whatsapp_number if biz else '',
+    }
+
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'hero_images': hero_images,
+            'categories': categories,
+            'products': products,
+            'clients': clients,
+            'business': business,
+        }
+    })
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def api_website_category_products(request, category_id):
+    """
+    Public endpoint for fetching products of a specific category.
+    """
+    from website.models import PortfolioItem, PortfolioCategory
+    category = get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
+    
+    products_qs = PortfolioItem.objects.filter(category=category, is_active=True).order_by('order', '-created_at')
+    products = [
+        {
+            'id': p.id,
+            'title': p.title,
+            'image': _safe_file_url(p.image, request=request),
+            'description': p.description or '',
+            'type': p.item_type,
+        }
+        for p in products_qs
+    ]
+    
+    return JsonResponse({
+        'success': True,
+        'category': {'id': category.id, 'name': category.name},
+        'products': products
+    })
+
+@require_mobile_client(allow_public=True)
+@require_http_methods(['GET'])
+def api_website_landing_data(request):
+    """
+    Public fallback for mobile app landing screen.
+    Returns static content since the website app has been removed.
+    """
+    data = {
+        'hero_images': [
+            {
+                'id': 1,
+                'image': 'https://panel.adarshbhopal.in/static/img/landing-hero-1.jpg',
+                'title': 'Premium ID Cards',
+                'subtitle': 'High-quality PVC printing for all institutions',
+            },
+            {
+                'id': 2,
+                'image': 'https://panel.adarshbhopal.in/static/img/landing-hero-2.jpg',
+                'title': 'Secure & Fast',
+                'subtitle': 'Trusted by 1000+ organizations across India',
+            },
+        ],
+        'categories': [
+            {'id': 1, 'name': 'PVC Cards', 'icon': 'id-card', 'description': 'Standard PVC Identification Cards'},
+            {'id': 2, 'name': 'RFID Cards', 'icon': 'microchip', 'description': 'Contactless Smart Cards'},
+            {'id': 3, 'name': 'Lanyards', 'icon': 'ribbon', 'description': 'Custom Printed Lanyards'},
+        ],
+        'products': [],
+        'clients': [],
+        'business': {
+            'site_name': 'Adarsh ID Cards',
+            'tagline': 'Excellence in Identification',
+            'address': 'Bhopal, MP, India',
+            'phone': '+91-XXXXXXXXXX',
+            'email': 'info@adarshbhopal.in',
+            'whatsapp': '91XXXXXXXXXX',
+        },
+    }
+    return JsonResponse({'success': True, 'data': data})
+
+
+@require_mobile_client(allow_public=True)
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_website_contact_submit(request):
+    """
+    Fallback for contact form submission.
+    Logs the enquiry since the website service is removed.
+    """
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+
+        name = str(data.get('name', '')).strip()
+        email = str(data.get('email', '')).strip()
+        message = str(data.get('message', '')).strip()
+
+        if not all([name, email, message]):
+            return JsonResponse({'success': False, 'message': 'Required fields missing'}, status=400)
+
+        logger.info('Mobile contact enquiry received (fallback): %s <%s>', name, email)
+        return JsonResponse({'success': True, 'message': 'Thank you! We have received your message.'})
+    except Exception as e:
+        logger.error('Mobile contact fallback failed: %s', e)
+        return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
+>>>>>>> c6a96ad0 (Harden mobile product URLs and keep shell tests stable)
