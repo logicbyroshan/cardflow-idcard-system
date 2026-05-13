@@ -59,12 +59,12 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: typography.xxs + 1,
-    fontWeight: '800',
+    fontFamily: 'SairaSemiCondensed-Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   textLg: {
     fontSize: typography.sm,
-    fontWeight: '800',
+    fontFamily: 'SairaSemiCondensed-Bold',
   },
 });

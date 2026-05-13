@@ -15,6 +15,9 @@ import time
 import hashlib
 from datetime import timedelta
 from functools import wraps
+import logging
+
+logger = logging.getLogger(__name__)
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
@@ -24,9 +27,10 @@ from django.views.decorators.http import require_http_methods
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import make_aware, is_naive, localtime
 from django.utils import timezone
+from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.utils.timesince import timesince
 from django.db.models import Q, Count, Max, Min, F, Sum, Avg, CharField
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Coalesce
 from django.db.models.fields.json import KeyTextTransform
 from django.core.cache import cache
 
@@ -148,6 +152,14 @@ def is_mobile(request):
         r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Adarsh|okhttp',
         ua, re.I,
     ))
+
+def _truthy(value):
+    """Convert value to boolean, handling strings like 'true', '1', 'yes'."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in ('true', '1', 'yes', 'y', 't')
+    return bool(value)
 
 
 def require_mobile_client(view_func=None, allow_public=False):
@@ -1043,12 +1055,19 @@ def api_mobile_login(request):
         surface_counts = session_inspection.get('surface_counts') or {}
         active_mobile_sessions = int(surface_counts.get('mobile', 0) or 0)
 
-        auth_login(request, user)
+        try:
+            auth_login(request, user)
+        except Exception as e:
+            logger.error("api_mobile_login: auth_login failed: %s", str(e), exc_info=True)
+            return JsonResponse({'success': False, 'message': 'Authentication failed during session creation.'}, status=500)
 
         # Seed session fingerprint immediately so the very next
         # request doesn't see a mismatch and force-logout the user.
-        from core.middleware import PermissionValidationMiddleware
-        PermissionValidationMiddleware.seed_session_fingerprint(request)
+        try:
+            from core.middleware import PermissionValidationMiddleware
+            PermissionValidationMiddleware.seed_session_fingerprint(request)
+        except Exception as e:
+            logger.warning("api_mobile_login: seed_session_fingerprint failed: %s", str(e))
 
         # Reset the absolute max-age clock for a fresh session lifetime.
         import time as _time
@@ -1058,29 +1077,44 @@ def api_mobile_login(request):
         request.session['selected_role'] = getattr(user, 'role', '')
         # Mark session as mobile-authenticated so require_mobile_client passes.
         request.session['mobile_auth_ok'] = True
-        AuthService.apply_session_auth_context(
-            request,
-            surface='mobile',
-            ip_address=client_ip,
-        )
-        ActivityService.log_login(request, user)
-        _, perms = _client_ctx(user)
-        client, _ = _client_ctx(user)
+        
+        try:
+            AuthService.apply_session_auth_context(
+                request,
+                surface='mobile',
+                ip_address=client_ip,
+            )
+        except Exception as e:
+            logger.warning("api_mobile_login: apply_session_auth_context failed: %s", str(e))
+
+        try:
+            ActivityService.log_login(request, user)
+        except Exception as e:
+            logger.warning("api_mobile_login: log_login failed: %s", str(e))
+
+        client, perms = _client_ctx(user)
+        
         return JsonResponse({
             'success': True,
             'redirect_url': '/app/',
             'message': 'Login successful',
-            'user_name': user.get_full_name() or user.username,
-            'role': getattr(user, 'role', ''),
-            'client_id': getattr(client, 'id', None) if client else None,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'full_name': user.get_full_name(),
+                'role': user.role,
+                'client_id': getattr(client, 'id', None) if client else None,
+                'client_name': getattr(client, 'name', None) if client else None,
+            },
+            'permissions': perms or {},
+            'pwa_enabled': (perms or {}).get('perm_mobile_app', False),
             'can_manage_clients': _can_manage_clients_surface(user),
             'can_manage_staff': _can_manage_client_staff_surface(user),
-            'permissions': perms,
         })
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
-    except Exception:
-        logger.exception('Mobile login error for user=%s', identifier or 'unknown')
+    except Exception as e:
+        logger.error("api_mobile_login critical error: %s", str(e), exc_info=True)
         return JsonResponse({'success': False, 'message': 'An unexpected error occurred. Please try again.'}, status=500)
 
 
@@ -5060,13 +5094,25 @@ def api_dashboard_data(request):
                             client_counts[st] = row['n']
                 
                 tables_data = []
-                # For nested list, only show active tables to keep it clean
-                for t in tables_qs.filter(is_active=True)[:10]:
+                # For nested list, include counts and group info for intelligent navigation
+                tables_with_counts = tables_qs.filter(is_active=True).annotate(
+                    cnt_p=Count('id_cards', filter=Q(id_cards__status='pending')),
+                    cnt_v=Count('id_cards', filter=Q(id_cards__status='verified')),
+                    cnt_a=Count('id_cards', filter=Q(id_cards__status='approved')),
+                    cnt_d=Count('id_cards', filter=Q(id_cards__status='download')),
+                    cnt_po=Count('id_cards', filter=Q(id_cards__status='pool')),
+                ).select_related('group')[:20]
+
+                for t in tables_with_counts:
                     tables_data.append({
                         'id': t.id,
                         'name': t.name,
-                        'p': IDCard.objects.filter(table=t, status='pending').count(),
-                        'v': IDCard.objects.filter(table=t, status='verified').count(),
+                        'group': t.group.name if t.group else '',
+                        'p': t.cnt_p,
+                        'v': t.cnt_v,
+                        'a': t.cnt_a,
+                        'd': t.cnt_d,
+                        'po': t.cnt_po,
                     })
                 
                 clients_data.append({

@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox, ActivityIndicator } from 'react-native';
-LogBox.ignoreAllLogs();
+// LogBox.ignoreAllLogs();
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -30,9 +30,9 @@ export default function App() {
       try {
         Appearance.setColorScheme('light');
         await SplashScreen.preventAutoHideAsync().catch(() => {});
-        console.log('[App] Initialized Native Splash');
+        // Fonts are handled by useFonts hook at the top level
       } catch (e) {
-        console.warn('[App] Splash init err', e);
+        console.warn('[App] prepare() failed', e);
       }
     }
     prepare();
@@ -40,38 +40,34 @@ export default function App() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      console.log('[App] Fonts loaded status:', { fontsLoaded, fontError });
+      console.log('[App] Initializing...', { fontsLoaded, fontError });
       setAppReady(true);
-      // Fallback: hide splash after a delay even if onLayout doesn't fire
-      setTimeout(() => {
-        SplashScreen.hideAsync().catch(() => {});
-      }, 500);
     }
   }, [fontsLoaded, fontError]);
 
-  // Safety: Force ready after 2 seconds regardless of fonts to prevent stuck splash
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!appReady) {
-        console.log('[App] Safety trigger: forcing appReady true');
+        console.log('[App] Safety trigger: forcing appReady');
         setAppReady(true);
       }
     }, 2000);
     return () => clearTimeout(timer);
   }, [appReady]);
 
-
-  const onLayoutRootView = useCallback(async () => {
+  useEffect(() => {
     if (appReady) {
-      console.log('[App] Hiding Splash via onLayout');
-      await SplashScreen.hideAsync().catch(() => {});
+      console.log('[App] Hiding splash screen');
+      SplashScreen.hideAsync().catch(err => console.log('[App] Splash hide error:', err));
     }
   }, [appReady]);
 
-  // If fonts are not loaded, we still want to render the SafeAreaProvider and a basic loading view
-  // so that the JS engine stays alive and can eventually trigger the hide.
+  const onLayoutRootView = useCallback(async () => {
+    // No-op, we hide in useEffect now
+  }, []);
+
   return (
-    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+    <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: colors.brandPrimary }} onLayout={onLayoutRootView}>
         <ErrorBoundary>
           {!appReady ? (
@@ -113,21 +109,14 @@ const splash = StyleSheet.create({
   logo: { width: '100%', height: '100%' },
   title: { 
     fontSize: 32, 
-    fontWeight: 'bold', 
+    fontFamily: 'SairaSemiCondensed-Bold', 
     color: '#fff', 
     letterSpacing: 8,
     marginTop: 10
   },
-  line: {
-    width: 40,
-    height: 2,
-    backgroundColor: '#38bdf8',
-    marginVertical: 15,
-    borderRadius: 1
-  },
   subtitle: { 
     fontSize: 12, 
-    fontWeight: '500', 
+    fontFamily: 'SairaSemiCondensed-Medium', 
     color: '#94a3b8', 
     letterSpacing: 3,
     textTransform: 'uppercase'

@@ -334,6 +334,11 @@ class ClientCardService(BaseService):
         if not PermissionService.is_client_staff(user):
             return qs
 
+        if not table:
+            # Cannot apply row-level filtering without table context (fields vary by table).
+            # Fallback to group-level assignment check only.
+            return qs
+
         staff = getattr(user, 'staff_profile', None)
         if not staff:
             return qs.none()

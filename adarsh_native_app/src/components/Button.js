@@ -20,7 +20,8 @@ const Button = React.memo(function Button({
   ...props
 }) {
   const isDisabled = disabled || loading;
-  const containerStyle = [styles.base, styles[size], fullWidth && styles.fullWidth, isDisabled && styles.disabled, style];
+  const radiusStyle = style && StyleSheet.flatten(style).borderRadius ? { borderRadius: StyleSheet.flatten(style).borderRadius } : { borderRadius: radius.md };
+  const containerStyle = [styles.base, styles[size], fullWidth && styles.fullWidth, isDisabled && styles.disabled, radiusStyle, style];
 
   const content = (
     <View style={[styles.content, contentStyle]}>
@@ -48,7 +49,7 @@ const Button = React.memo(function Button({
   if (variant === 'primary' || variant === 'gradient') {
     return (
       <TouchableOpacity onPress={onPress} disabled={isDisabled} activeOpacity={0.85} style={containerStyle} {...props}>
-        <LinearGradient colors={gradients.brand} style={[styles.fill, styles[size]]}>
+        <LinearGradient colors={gradients.brand} style={[styles.fill, styles[size], radiusStyle]}>
           {content}
         </LinearGradient>
       </TouchableOpacity>

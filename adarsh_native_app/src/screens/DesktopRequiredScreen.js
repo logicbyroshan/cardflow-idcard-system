@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.xxl,
-    fontWeight: typography.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray800,
     textAlign: 'center',
     marginBottom: 8,
