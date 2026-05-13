@@ -113,7 +113,7 @@ export default function LoginScreen({ navigation }) {
           </View>
 
           {/* Login Card */}
-          <View style={[styles.card, { paddingBottom: insets.bottom + 28 }]}>
+          <View style={[styles.card, { paddingBottom: Math.max(insets.bottom, 20) + 28 }]}>
             <Text style={styles.cardTitle}>Welcome back</Text>
             <Text style={styles.cardSubtitle}>Sign in to continue</Text>
 
@@ -244,13 +244,15 @@ const styles = StyleSheet.create({
   // Login card
   card: {
     backgroundColor: colors.glassBg,
-    borderTopLeftRadius: radius.sm,
-    borderTopRightRadius: radius.sm,
-    paddingTop: 28,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    paddingTop: 32,
     paddingHorizontal: 24,
     borderWidth: 1,
     borderColor: colors.glassBorder,
     borderBottomWidth: 0,
+    width: '100%',
+    alignSelf: 'stretch',
     ...shadows.xl,
   },
   cardTitle: {
@@ -286,8 +288,9 @@ const styles = StyleSheet.create({
 
   // Submit button
   submitBtn: {
-    marginTop: 8,
-    borderRadius: radius.sm,
+    marginTop: 12,
+    borderRadius: radius.md,
+    height: 50,
     ...shadows.lg,
   },
   helpText: {

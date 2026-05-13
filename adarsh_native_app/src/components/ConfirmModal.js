@@ -120,7 +120,7 @@ const s = StyleSheet.create({
   },
   statusFlow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.xs, borderWidth: 1 },
-  statusText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  statusText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', letterSpacing: 0.5 },
   flowArrow: { marginHorizontal: 2 },
   noteBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, padding: 10, borderRadius: radius.sm, marginBottom: 24, width: '100%' },
   noteText: { fontSize: 11, color: colors.gray500, flex: 1 },

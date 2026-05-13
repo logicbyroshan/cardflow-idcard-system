@@ -37,7 +37,9 @@ const Stack = createNativeStackNavigator();
 export default function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <Stack.Navigator

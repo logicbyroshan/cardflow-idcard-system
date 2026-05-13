@@ -231,12 +231,30 @@ package-lock.json
 static/css/tailwind.__last_good.css
 static/css/tailwind.__new.css
 
-# Android shell local artifacts
-mobile_shell_app/android/.gradle/
-mobile_shell_app/android/local.properties
-mobile_shell_app/android/app/build/
+# ── React Native / Expo (Adarsh Native App) ──
+adarsh_native_app/node_modules/
+adarsh_native_app/.expo/
+adarsh_native_app/android/
+adarsh_native_app/ios/
+adarsh_native_app/dist/
+adarsh_native_app/build/
+adarsh_native_app/bin/
+adarsh_native_app/downloads/
+adarsh_native_app/scratch/
+adarsh_native_app/*.txt
+adarsh_native_app/*.png
+adarsh_native_app/*.apk
+adarsh_native_app/.env
+adarsh_native_app/.env.local
+
+# Mobile shell / Native build local artifacts
+mobile_shell_app/
+adarsh_native_app/android/.gradle/
+adarsh_native_app/android/local.properties
+adarsh_native_app/android/app/build/
 *.jks
 *.keystore
+*.pem
 
 # Temp test scripts
 test_*.py
@@ -261,17 +279,11 @@ mobile_shell_app/
  
 # Secure secrets folder for keystore and PEM (local only)
 /secrets/
+/secrets/keystore/
+/secrets/certs/
 
 # Backup and local signing artifacts
 adarsh_native_app/android_backup/
-adarsh_native_app/.expo/
-adarsh_native_app/node_modules/
-adarsh_native_app/dist/
-adarsh_native_app/downloads/
-adarsh_native_app/scratch/
-adarsh_native_app/*.txt
-adarsh_native_app/*.png
-adarsh_native_app/.env
 
 # Upload certificate (PEM)
 upload_certificate.pem

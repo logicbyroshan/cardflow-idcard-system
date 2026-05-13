@@ -336,7 +336,7 @@ const s = StyleSheet.create({
   headerLoginBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",

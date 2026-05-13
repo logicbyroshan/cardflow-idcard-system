@@ -94,8 +94,9 @@ export function AuthProvider({ children }) {
           refreshProfile();
         }
       } catch (e) {
-        console.log('Auth init failed', e);
+        console.log('[Auth] Init failed', e);
       } finally {
+        console.log('[Auth] Initial loading finished');
         setIsLoading(false);
       }
     })();

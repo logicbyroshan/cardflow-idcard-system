@@ -1,28 +1,81 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Mobile App - Placeholder</title>
-  <link rel="stylesheet" href="/static/mobile/css/mobile.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Adarsh Panel{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --secondary: #7c3aed;
+            --bg: #f8fafc;
+            --text: #1e293b;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header {
+            background: white;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .logo {
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .content {
+            padding: 1rem;
+            padding-bottom: 5rem; /* Space for bottom nav */
+        }
+        .hidden { display: none !important; }
+        {% block extra_css %}{% endblock %}
+    </style>
 </head>
 <body>
-  <div id="content">{% block content %}Placeholder mobile base{% endblock %}</div>
-  <script>
-    function isNativeShell() {
-      return /(?:Android|iPhone|iPad|iPod)/i.test(navigator.userAgent || '');
-    }
+    <header class="header">
+        <a href="/" class="logo">ADARSH</a>
+        <div class="user-menu">
+            {% if user.is_authenticated %}
+                <i class="fas fa-user-circle" style="font-size: 1.5rem; color: #94a3b8;"></i>
+            {% endif %}
+        </div>
+    </header>
 
-    var apkDownloadUrl = '{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:"" }}';
-    if (apkDownloadUrl) {
-      var nativeShell = isNativeShell();
-      if (nativeShell) {
-        var installCta = document.getElementById('downloadApkCta');
-        if (installCta) {
-          installCta.classList.add('hidden');
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        function isNativeShell() {
+            return /(?:Android|iPhone|iPad|iPod)/i.test(navigator.userAgent || '');
         }
-      }
-    }
-  </script>
-  <script src="/static/mobile/js/app.js"></script>
+
+        var apkDownloadUrl = '{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:"" }}';
+        if (apkDownloadUrl) {
+            var nativeShell = isNativeShell();
+            if (nativeShell) {
+                var installCta = document.getElementById('downloadApkCta');
+                if (installCta) {
+                    installCta.classList.add('hidden');
+                }
+            }
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, Dimensions, Image, Modal, ActivityIndicator, TextInput
+  RefreshControl, Dimensions, Image, Modal, ActivityIndicator, TextInput,
+  LayoutAnimation, Platform, UIManager
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera } from 'expo-camera';
@@ -29,12 +30,36 @@ const STATUS_CONFIG = [
   { key: 'total',    label: 'All Cards', Svg: IconTotal,     bg: '#1e293b', bg2: '#0f172a' },
 ];
 
+
+
+function ClientMiniStat({ label, count, color, bg, onPress }) {
+  return (
+    <TouchableOpacity 
+      style={s.clientMiniStat} 
+      onPress={onPress} 
+      activeOpacity={onPress ? 0.6 : 1}
+      disabled={!onPress || count === 0}
+    >
+      <Text style={[s.clientMiniStatLabel, { color, opacity: count > 0 ? 1 : 0.4 }]}>{label}</Text>
+      <View style={[s.clientMiniStatBadge, { backgroundColor: bg, opacity: count > 0 ? 1 : 0.3 }]}>
+        <Text style={[s.clientMiniStatCount, { color }]}>{count || 0}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
   const [activeTab, setActiveTab] = useState('clients'); // 'clients', 'activity', 'reprints'
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -49,9 +74,13 @@ export default function HomeScreen({ navigation }) {
   const isAssistant = user?.role === 'client_staff';
 
   const loadDashboard = useCallback(async () => {
-    const { ok, data } = await apiGet('/api/mobile/dashboard/');
-    if (!ok || !data?.success) throw new Error(data?.message || 'Sync failed');
-    return data.data;
+    try {
+      const { ok, data } = await apiGet('/api/mobile/dashboard/');
+      if (!ok || !data?.success) throw new Error(data?.message || 'Sync failed');
+      return data.data;
+    } catch (e) {
+      throw e;
+    }
   }, []);
 
   const { data: counts = {}, loading, refreshing, error, refresh } = useRefreshableResource(loadDashboard, { initialData: {} });
@@ -62,6 +91,7 @@ export default function HomeScreen({ navigation }) {
   const [staffRole, setStaffRole] = useState('client_staff');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const [expandedClient, setExpandedClient] = useState(null); // { id, status }
 
   const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '' });
@@ -128,6 +158,26 @@ export default function HomeScreen({ navigation }) {
     return actions;
   }, [user, isSuperAdmin, isOperator, isClient, isAssistant]);
 
+  const handleBadgePress = (client, statusKey) => {
+    const statusMap = { PENDING: 'p', VERIFIED: 'v', APPROVED: 'a', DOWNLOAD: 'd', POOL: 'po' };
+    const statusValue = { PENDING: 'pending', VERIFIED: 'verified', APPROVED: 'approved', DOWNLOAD: 'download', POOL: 'pool' };
+    
+    const tablesWithStatus = (client.tables || []).filter(t => t[statusMap[statusKey]] > 0);
+    
+    if (tablesWithStatus.length === 0) return;
+    
+    if (tablesWithStatus.length === 1) {
+      navigation.navigate('CardList', { tableId: tablesWithStatus[0].id, status: statusValue[statusKey] });
+    } else {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      if (expandedClient?.id === client.id && expandedClient?.status === statusKey) {
+        setExpandedClient(null);
+      } else {
+        setExpandedClient({ id: client.id, status: statusKey });
+      }
+    }
+  };
+
   if (loading) return (
     <View style={s.root}>
       <LinearGradient colors={gradients.brand} style={[s.header, { paddingTop: insets.top + 12 }]}>
@@ -157,7 +207,27 @@ export default function HomeScreen({ navigation }) {
     if (c.includes('refresh') || c.includes('redo') || c.includes('history')) return 'history';
     if (c.includes('image') || c.includes('photo')) return 'image';
     if (c.includes('download')) return 'download';
+    if (c.includes('login') || c.includes('bracket')) return 'log-in';
+    if (c.includes('logout')) return 'log-out';
+    if (c.includes('plus') || c.includes('add')) return 'plus-circle';
+    if (c.includes('key')) return 'key';
+    if (c.includes('print')) return 'printer';
+    if (c.includes('gear') || c.includes('setting')) return 'settings';
+    if (c.includes('envelope')) return 'mail';
+    if (c.includes('bell')) return 'bell';
+    if (c.includes('database') || c.includes('vault')) return 'database';
     return 'activity';
+  };
+
+  const mapColor = (c) => {
+    if (!c) return colors.brandPrimary;
+    const low = c.toLowerCase();
+    if (low === 'add') return colors.green;
+    if (low === 'edit') return colors.blue;
+    if (low === 'delete') return colors.red;
+    if (low === 'verify') return colors.purple;
+    if (low === 'approve') return colors.teal;
+    return c;
   };
 
   const onRefresh = async () => {
@@ -222,59 +292,71 @@ export default function HomeScreen({ navigation }) {
 
         {(isSuperAdmin || isOperator) && (
           <View style={s.homeSectionWrap}>
-            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} snapToInterval={width - 24}
-              decelerationRate="fast" style={s.slideScroll} onMomentumScrollEnd={(e) => setCurrentSlide(Math.round(e.nativeEvent.contentOffset.x / (width - 24)))}>
+            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} snapToInterval={width}
+              decelerationRate="fast" style={s.slideScroll} onMomentumScrollEnd={(e) => setCurrentSlide(Math.round(e.nativeEvent.contentOffset.x / width))}>
               
               {/* SLIDE 0: HOME SECTION (Tabs as Cards) */}
               <View style={s.slidePage}>
-                <Text style={s.homeSecTitle}>HOME SECTION</Text>
-                <View style={s.quickActionsRow}>
-                  {[
-                    { label: 'CLIENTS', icon: 'building', color: '#6366f1', bg: '#eef2ff', tab: 'clients' },
-                    { label: 'ACTIVITY', icon: 'history', color: '#ec4899', bg: '#fdf2f8', tab: 'activity' },
-                    { label: 'REPRINTS', icon: 'redo', color: '#f59e0b', bg: '#fffbeb', tab: 'reprints' },
-                  ].map((act, i) => (
-                    <TouchableOpacity key={i} style={[s.quickActionBtn, activeTab === act.tab && { borderColor: act.color, borderWidth: 1.5 }]} 
-                      onPress={() => setActiveTab(act.tab)}>
-                      <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
-                      <Text style={[s.qaLabel, activeTab === act.tab && { color: act.color }]}>{act.label}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
+                  <Text style={s.slideHeaderTitle}>HOME SECTION</Text>
+                </LinearGradient>
+                <View style={s.slideContent}>
+                  <View style={s.quickActionsRow}>
+                    {[
+                      { label: 'CLIENTS', icon: 'building', color: '#6366f1', bg: '#eef2ff', tab: 'clients' },
+                      { label: 'ACTIVITY', icon: 'history', color: '#ec4899', bg: '#fdf2f8', tab: 'activity' },
+                      { label: 'REPRINTS', icon: 'redo', color: '#f59e0b', bg: '#fffbeb', tab: 'reprints' },
+                    ].map((act, i) => (
+                      <TouchableOpacity key={i} style={[s.quickActionBtn, activeTab === act.tab && { borderColor: act.color, borderWidth: 1.5 }]} 
+                        onPress={() => setActiveTab(act.tab)}>
+                        <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
+                        <Text style={[s.qaLabel, activeTab === act.tab && { color: act.color }]}>{act.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
 
               {/* SLIDE 1: QUICK ACTIONS */}
               <View style={s.slidePage}>
-                <Text style={s.homeSecTitle}>QUICK ACTIONS</Text>
-                <View style={s.quickActionsRow}>
-                  {quickActions.slice(0, 3).map((act, i) => (
-                    <TouchableOpacity key={i} style={s.quickActionBtn} onPress={act.onPress || (() => navigation.navigate(act.screen, act.params))}>
-                      <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
-                      <Text style={s.qaLabel}>{act.label}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
+                  <Text style={s.slideHeaderTitle}>QUICK ACTIONS</Text>
+                </LinearGradient>
+                <View style={s.slideContent}>
+                  <View style={s.quickActionsRow}>
+                    {quickActions.slice(0, 3).map((act, i) => (
+                      <TouchableOpacity key={i} style={s.quickActionBtn} onPress={act.onPress || (() => navigation.navigate(act.screen, act.params))}>
+                        <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
+                        <Text style={s.qaLabel}>{act.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
 
               {/* SLIDE 2: USERS OVERVIEW */}
               <View style={s.slidePage}>
-                <Text style={s.homeSecTitle}>USERS OVERVIEW</Text>
-                <View style={s.quickActionsRow}>
-                  {[
-                    { label: 'CLIENTS', icon: 'building', color: '#10b981', bg: '#ecfdf5', count: counts.client_count || 0, screen: 'ClientsList' },
-                    { label: 'OPERATORS', icon: 'user-tie', color: '#3b82f6', bg: '#eff6ff', count: counts.operator_count || 0, screen: 'StaffManage', params: { role: 'admin_staff' } },
-                    { label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', count: counts.assistant_count || 0, screen: 'StaffManage', params: { role: 'client_staff' } },
-                  ].map((act, i) => (
-                    <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => navigation.navigate(act.screen, act.params)}>
-                      <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
-                      <View style={s.qaLabelRow}>
-                        <Text style={s.qaLabelSmall}>{act.label}</Text>
-                        <View style={[s.qaBadge, { backgroundColor: act.color }]}>
-                          <Text style={s.qaBadgeText}>{act.count}</Text>
+                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
+                  <Text style={s.slideHeaderTitle}>USERS OVERVIEW</Text>
+                </LinearGradient>
+                <View style={s.slideContent}>
+                  <View style={s.quickActionsRow}>
+                    {[
+                      { label: 'CLIENTS', icon: 'building', color: '#10b981', bg: '#ecfdf5', count: counts.client_count || 0, screen: 'ClientsList' },
+                      { label: 'OPERATORS', icon: 'user-tie', color: '#3b82f6', bg: '#eff6ff', count: counts.operator_count || 0, screen: 'StaffManage', params: { role: 'admin_staff' } },
+                      { label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', count: counts.assistant_count || 0, screen: 'StaffManage', params: { role: 'client_staff' } },
+                    ].map((act, i) => (
+                      <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => navigation.navigate(act.screen, act.params)}>
+                        <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
+                        <View style={s.qaLabelRow}>
+                          <Text style={s.qaLabelSmall}>{act.label}</Text>
+                          <View style={[s.qaBadge, { backgroundColor: act.color }]}>
+                            <Text style={s.qaBadgeText}>{act.count}</Text>
+                          </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
             </ScrollView>
@@ -288,27 +370,77 @@ export default function HomeScreen({ navigation }) {
           {isSuperAdmin || isOperator ? (
             activeTab === 'clients' ? (
               <View>
-                <View style={s.secHeaderRow}>
-                  <Text style={s.secTitle}>RECENT CLIENTS</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('ClientsList')}><Text style={s.viewAllLink}>VIEW ALL</Text></TouchableOpacity>
-                </View>
-                {counts.recent_clients?.length > 0 ? counts.recent_clients.map(client => (
-                  <TouchableOpacity key={client.id} style={s.clientCard} onPress={() => navigation.navigate('TablePicker', { clientId: client.id })}>
-                    <View style={s.clientHeader}>
-                      <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="building" size={14} color={theme.primary} /></View>
-                      <View style={s.clientInfo}><Text style={s.clientName}>{client.name}</Text></View>
+                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+                  <Text style={s.secTitleWhite}>RECENT CLIENTS</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('ClientsList')}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
+                </LinearGradient>
+                <View style={s.secContent}>
+                {counts.recent_clients?.length > 0 ? counts.recent_clients.map(client => {
+                  const isExpanded = expandedClient?.id === client.id;
+                  const expandedStatus = expandedClient?.status;
+                  const statusMap = { PENDING: 'p', VERIFIED: 'v', APPROVED: 'a', DOWNLOAD: 'd', POOL: 'po' };
+                  const statusValueMap = { PENDING: 'pending', VERIFIED: 'verified', APPROVED: 'approved', DOWNLOAD: 'download', POOL: 'pool' };
+                  
+                  return (
+                    <View key={client.id} style={s.clientCardWrapper}>
+                      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
+                        <View style={s.clientCard}>
+                          <View style={s.clientHeader}>
+                            <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="building" size={14} color={theme.primary} /></View>
+                            <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text></View>
+                          </View>
+                          <View style={s.clientStatsRow}>
+                            <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={() => handleBadgePress(client, 'PENDING')} />
+                            <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={() => handleBadgePress(client, 'VERIFIED')} />
+                            <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={() => handleBadgePress(client, 'APPROVED')} />
+                            <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={() => handleBadgePress(client, 'DOWNLOAD')} />
+                            <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={() => handleBadgePress(client, 'POOL')} />
+                          </View>
+
+                          {isExpanded && (
+                            <View style={s.expandedContent}>
+                              <View style={s.expandedHeader}>
+                                <Text style={s.expandedTitle}>{expandedStatus} LISTS</Text>
+                                <TouchableOpacity onPress={() => setExpandedClient(null)}><DynamicIcon name="times" size={10} color={colors.gray400} /></TouchableOpacity>
+                              </View>
+                              {(client.tables || []).filter(t => t[statusMap[expandedStatus]] > 0).map(table => (
+                                <TouchableOpacity 
+                                  key={table.id} 
+                                  style={s.expandedItem}
+                                  onPress={() => navigation.navigate('CardList', { tableId: table.id, status: statusValueMap[expandedStatus] })}
+                                >
+                                  <View style={s.expandedItemInfo}>
+                                    <Text style={s.expandedItemName}>{table.name}</Text>
+                                    <Text style={s.expandedItemGroup}>{table.group}</Text>
+                                  </View>
+                                  <View style={s.expandedBadge}>
+                                    <Text style={[s.expandedBadgeText, { color: colors[statusValueMap[expandedStatus]]?.text || colors.brandPrimary }]}>
+                                      {table[statusMap[expandedStatus]]}
+                                    </Text>
+                                  </View>
+                                  <DynamicIcon name="chevron-right" size={8} color={colors.gray300} />
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      </LinearGradient>
                     </View>
-                  </TouchableOpacity>
-                )) : <View style={s.emptyState}><Text style={s.emptyText}>No recent clients</Text></View>}
+                  );
+                }) : <View style={s.emptyState}><Text style={s.emptyText}>No recent clients</Text></View>}
+                </View>
               </View>
             ) : activeTab === 'activity' ? (
               <View>
-                <View style={s.secHeaderRow}><Text style={s.secTitle}>RECENT ACTIVITY</Text></View>
+                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+                  <Text style={s.secTitleWhite}>RECENT ACTIVITY</Text>
+                </LinearGradient>
+                <View style={s.secContent}>
                 {counts.recent_activity?.length > 0 ? (
                   counts.recent_activity.slice(0, 15).map(act => (
                     <View key={act.id} style={s.activityCard}>
-                      <View style={[s.activityIcon, { backgroundColor: (act.icon_color || '#3b82f6') + '15' }]}>
-                        <DynamicIcon name={mapIcon(act.icon_class)} size={14} color={act.icon_color || '#3b82f6'} />
+                      <View style={[s.activityIcon, { backgroundColor: mapColor(act.icon_color) + '15' }]}>
+                        <DynamicIcon name={mapIcon(act.icon_class)} size={14} color={mapColor(act.icon_color)} />
                       </View>
                       <View style={s.activityInfo}>
                         <Text style={s.activityText} numberOfLines={2}>{act.display_text}</Text>
@@ -321,27 +453,31 @@ export default function HomeScreen({ navigation }) {
                     </View>
                   ))
                 ) : <View style={s.emptyState}><Text style={s.emptyText}>No activity found</Text></View>}
+                </View>
               </View>
             ) : (
               <View>
-                <View style={s.secHeaderRow}>
-                  <Text style={s.secTitle}>RECENT REPRINTS</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('Reprint')}><Text style={s.viewAllLink}>VIEW ALL</Text></TouchableOpacity>
-                </View>
+                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+                  <Text style={s.secTitleWhite}>RECENT REPRINTS</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('Reprint')}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
+                </LinearGradient>
+                <View style={s.secContent}>
                 {counts.recent_reprints?.length > 0 ? counts.recent_reprints.map(rep => (
                   <TouchableOpacity key={rep.id} style={s.reprintCard} onPress={() => navigation.navigate('Reprint', { clientId: 0 })}>
                     <View style={[s.reprintIcon, { backgroundColor: rep.status === 'requested' ? '#fffbeb' : '#ecfdf5' }]}><DynamicIcon name="redo" size={12} color={rep.status === 'requested' ? '#f59e0b' : '#10b981'} /></View>
                     <View style={s.reprintInfo}><Text style={s.reprintTitle}>#{rep.card_id} - {rep.client_name}</Text><Text style={s.reprintSub}>{rep.status.toUpperCase()}</Text></View>
                   </TouchableOpacity>
                 )) : <View style={s.emptyState}><Text style={s.emptyText}>No recent reprints</Text></View>}
+                </View>
               </View>
             )
           ) : (
             <>
-              <View style={s.secHeaderRow}>
-                <Text style={s.secTitle}>MY TABLES</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Groups')}><Text style={s.viewAllLink}>VIEW ALL</Text></TouchableOpacity>
-              </View>
+              <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+                <Text style={s.secTitleWhite}>MY TABLES</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Groups')}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
+              </LinearGradient>
+              <View style={s.secContent}>
               {counts.tables?.length > 0 ? counts.tables.map(table => (
                 <TouchableOpacity key={table.id} style={s.tableCard} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'all' })}>
                   <View style={s.tableCardTop}>
@@ -357,6 +493,7 @@ export default function HomeScreen({ navigation }) {
                     ))}
                 </TouchableOpacity>
               )) : <View style={s.emptyState}><Text style={s.emptyText}>No tables found</Text></View>}
+              </View>
             </>
           )}
         </View>
@@ -447,8 +584,8 @@ const s = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', marginTop: 12, paddingHorizontal: 12, height: 44, borderRadius: radius.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   searchPlaceholder: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginLeft: 10, fontFamily: 'SairaSemiCondensed-Medium' },
   scroll: { flex: 1 },
-  scrollC: { padding: 12 },
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  scrollC: { paddingVertical: 12 },
+  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4, paddingHorizontal: 12 },
   statusCardOuter: { width: (width - 44) / 3, aspectRatio: 1, borderRadius: radius.xs, overflow: 'hidden', ...shadows.sm },
   statusCard: { flex: 1, padding: 8, justifyContent: 'center' },
   statusCardContent: { alignItems: 'center' },
@@ -456,15 +593,16 @@ const s = StyleSheet.create({
   statusCount: { color: '#fff', fontSize: 16, fontFamily: 'SairaSemiCondensed-Bold' },
   statusLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', letterSpacing: 0.5 },
   homeSectionWrap: { marginTop: 16 },
-  slideScroll: { width: width - 24 },
-  slidePage: { width: width - 24, paddingRight: 4 },
+  slideScroll: { width: width },
+  slidePage: { width: width, paddingBottom: 12 },
+  slideContent: { paddingHorizontal: 12, paddingTop: 4 },
   homeSecTitle: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 1, marginBottom: 10 },
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: radius.sm, padding: 4, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.xs },
   tabBtnActive: { backgroundColor: colors.brandPrimary },
   tabBtnText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400 },
   tabBtnTextActive: { color: '#fff' },
-  quickActionsRow: { flexDirection: 'row', gap: 10 },
+  quickActionsRow: { flexDirection: 'row', gap: 8 },
   quickActionBtn: { flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: radius.sm, alignItems: 'center', ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   qaIcon: { width: 44, height: 44, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   qaInfo: { alignItems: 'center' },
@@ -479,14 +617,50 @@ const s = StyleSheet.create({
   dotActive: { width: 16, backgroundColor: colors.brandPrimary },
   mainContent: { marginTop: 10 },
   secHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, marginTop: 10 },
+  secHeaderGradient: { 
+    width: '100%',
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    marginBottom: 12 
+  },
   secTitle: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 1 },
+  secTitleWhite: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff', letterSpacing: 1 },
   viewAllLink: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
-  clientCard: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 10, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100, marginBottom: 8 },
+  viewAllLinkWhite: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff', opacity: 0.8 },
+  secContent: { paddingHorizontal: 12 },
+  slideHeader: { 
+    width: '100%',
+    paddingHorizontal: 16, 
+    paddingVertical: 14, 
+    marginBottom: 12 
+  },
+  slideHeaderTitle: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff', letterSpacing: 1 },
+  clientCardWrapper: { marginBottom: 12 },
+  clientCardGradient: { borderRadius: radius.sm, padding: 1.5, ...shadows.sm },
+  clientCard: { backgroundColor: '#fff', borderRadius: radius.sm - 1, padding: 10 },
   clientHeader: { flexDirection: 'row', alignItems: 'center' },
   clientIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  clientInfo: { flex: 1 },
   clientName: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  clientStatsRow: { flexDirection: 'row', gap: 3, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  clientMiniStat: { alignItems: 'center', flex: 1 },
+  clientMiniStatLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', marginBottom: 4, letterSpacing: 0.3 },
+  clientMiniStatBadge: { width: '100%', paddingHorizontal: 2, paddingVertical: 2, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
+  clientMiniStatCount: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
+  expandedContent: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  expandedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  expandedTitle: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 0.5 },
+  expandedItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  expandedItemInfo: { flex: 1 },
+  expandedItemName: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray700 },
+  expandedItemGroup: { fontSize: 9, color: colors.gray400, marginTop: 1 },
+  expandedBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.xs, backgroundColor: '#f8fafc', marginRight: 10 },
+  expandedBadgeText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
   activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
-  activityIcon: { width: 32, height: 32, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  activityIcon: { width: 36, height: 36, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   activityInfo: { flex: 1, paddingLeft: 12 },
   activityText: { fontSize: 13, color: colors.gray800, lineHeight: 18, fontFamily: 'SairaSemiCondensed-Medium' },
   activityMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },

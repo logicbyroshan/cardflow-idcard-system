@@ -20,7 +20,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
     try {
       const { ok, data } = await apiGet(`/api/mobile/client/${clientId}/tables/`);
       if (ok && data?.success) {
-        return data.data || [];
+        return data.tables || [];
       } else {
         throw new Error(data?.message || 'Failed to load client tables');
       }
@@ -41,6 +41,8 @@ export default function ClientGroupsScreen({ navigation, route }) {
       groups[gName].totalCards += (t.total_cards || 0);
       groups[gName].pending += (t.pending_count || 0);
       groups[gName].verified += (t.verified_count || 0);
+      groups[gName].approved += (t.approved_count || 0);
+      groups[gName].download += (t.download_count || 0);
       groups[gName].pool += (t.pool_count || 0);
     });
     return Object.values(groups);
@@ -63,6 +65,8 @@ export default function ClientGroupsScreen({ navigation, route }) {
           <View style={s.groupBadges}>
             {group.pending > 0 && <MiniCount count={group.pending} bg={colors.pending.bg} c={colors.pending.text} />}
             {group.verified > 0 && <MiniCount count={group.verified} bg={colors.verified.bg} c={colors.verified.text} />}
+            {group.approved > 0 && <MiniCount count={group.approved} bg={colors.approved.bg} c={colors.approved.text} />}
+            {group.download > 0 && <MiniCount count={group.download} bg={colors.download.bg} c={colors.download.text} />}
             {group.pool > 0 && <MiniCount count={group.pool} bg={colors.pool.bg} c={colors.pool.text} />}
           </View>
           <DynamicIcon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={10} color={colors.gray400} />
