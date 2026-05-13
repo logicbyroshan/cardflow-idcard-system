@@ -23,6 +23,7 @@ let _domainStatusLoading = false;
 let _domainToggleBusy = false;
 let _domainEmailBusy = false;
 let _batchJobsAutoRefreshTimer = null;
+let _templateEditorBound = false;
 const MANAGE_PANEL_TAB_KEY = 'managePanel:lastTab';
 const SERVER_INFO_LOCAL_CACHE_KEY = 'managePanel:serverInfoSnapshot:v2';
 const SERVER_INFO_LOCAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -1866,8 +1867,9 @@ function _setTemplateEditorHtml(value) {
 function _getTemplateEditorHtml() {
   const editor = document.getElementById('templateInstructionsEditor');
   if (!editor) return '';
-  const cleanHtml = _sanitizeTemplateHtml(editor.innerHTML || '');
-  editor.innerHTML = cleanHtml || '<p><br></p>';
+  const rawHtml = editor.innerHTML || '';
+  const cleanHtml = _sanitizeTemplateHtml(rawHtml);
+  // Do not reassign editor.innerHTML here, it ruins cursor position while typing
   const hiddenInput = document.getElementById('templateInstructions');
   if (hiddenInput) hiddenInput.value = cleanHtml;
   return cleanHtml;

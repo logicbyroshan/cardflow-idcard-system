@@ -1394,28 +1394,10 @@ def pwa_manifest(request):
         'prefer_related_applications': False,
         'icons': [
             {
-                'src': '/static/mobile/images/icon-192.png',
-                'sizes': '192x192',
+                'src': '/static/assets/icons/apple-touch-icon.png',
+                'sizes': '180x180',
                 'type': 'image/png',
-                'purpose': 'any',
-            },
-            {
-                'src': '/static/mobile/images/icon-192.png',
-                'sizes': '192x192',
-                'type': 'image/png',
-                'purpose': 'maskable',
-            },
-            {
-                'src': '/static/mobile/images/icon-512.png',
-                'sizes': '512x512',
-                'type': 'image/png',
-                'purpose': 'any',
-            },
-            {
-                'src': '/static/mobile/images/icon-512.png',
-                'sizes': '512x512',
-                'type': 'image/png',
-                'purpose': 'maskable',
+                'purpose': 'any maskable',
             },
         ],
         'categories': ['business', 'productivity'],
@@ -1723,7 +1705,7 @@ self.addEventListener('fetch', function(event) {
         .replace('__ONLINE_REQUIRED_PREFIXES_JSON__', json.dumps(online_required_prefixes))
     )
     response = HttpResponse(sw_content, content_type='application/javascript')
-    response['Service-Worker-Allowed'] = '/app/'
+    response['Service-Worker-Allowed'] = '/'
     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return response
 
