@@ -2,7 +2,6 @@
 Core Middleware Module
 
 Contains middleware for:
-- Subdomain-based URL routing (www vs panel)
 - Request timing, slow-request detection, and query monitoring
 - Permission validation on every request
 - Session invalidation when permissions are revoked
@@ -184,9 +183,8 @@ class PermissionValidationMiddleware:
     - For client users: Client.status must be 'active'
     - For client_staff: Client.status must be 'active' and staff user must be active
     
-    Prefix-aware: On the panel subdomain (where SubdomainRoutingMiddleware
-    strips the /panel/ prefix), paths arrive without the prefix. On local
-    dev, paths retain the /panel/ prefix. This middleware handles both.
+    Handles paths with and without the /panel/ prefix for flexibility across 
+    different deployment environments.
     """
     
     # URL suffixes that are exempt from permission checking (prefix is prepended)
@@ -228,18 +226,13 @@ class PermissionValidationMiddleware:
     
     @staticmethod
     def _panel_prefix(request):
-        """Return the panel URL prefix: '' on panel subdomain, '/panel' on local dev."""
-        if getattr(request, '_is_panel_subdomain', False):
-            return ''
+        """Return the panel URL prefix. Currently defaults to '/panel' as 
+        subdomain routing is decommissioned."""
         return '/panel'
     
     @staticmethod
     def _is_panel_path(request):
         """Check if the current request is a panel route."""
-        if getattr(request, '_is_panel_subdomain', False):
-            # On the panel subdomain, all paths are panel paths
-            # (SubdomainRoutingMiddleware already stripped /panel/ prefix)
-            return True
         return request.path.startswith('/panel/')
     
     def __call__(self, request):

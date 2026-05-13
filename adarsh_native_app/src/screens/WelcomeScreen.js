@@ -172,72 +172,14 @@ export default function WelcomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Product Categories */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Our Product Range</Text>
+            <Text style={s.sectionTitle}>Institutional ID Solutions</Text>
             <View style={s.sectionLine} />
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.catScroll}
-          >
-            {(data?.categories || []).map((cat) => (
-              <TouchableOpacity key={cat.id} style={s.catCard}>
-                <View style={s.catIconWrap}>
-                  <DynamicIcon
-                    name={cat.icon || "star"}
-                    size={18}
-                    color={colors.brandPrimary}
-                  />
-                </View>
-                <Text style={s.catName}>{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Featured Products */}
-        <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Featured Products</Text>
-            <TouchableOpacity
-              onPress={() =>
-                Linking.openURL("https://adarshidcards.com/our-products")
-              }
-            >
-              <Text style={s.viewAll}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={s.productGrid}>
-            {(data?.products || []).map((prod) => (
-              <View key={prod.id} style={s.productCard}>
-                <Image
-                  source={{
-                    uri: prod.image.startsWith("http")
-                      ? prod.image
-                      : `${BASE_URL}${prod.image}`,
-                  }}
-                  style={s.productImg}
-                />
-                {prod.type === "video" && (
-                  <View style={s.playIconOverlay}>
-                    <DynamicIcon name="play" size={24} color="#fff" />
-                  </View>
-                )}
-                <LinearGradient
-                  colors={["transparent", "rgba(0,0,0,0.7)"]}
-                  style={s.productOverlay}
-                >
-                  <Text style={s.productTitle} numberOfLines={1}>
-                    {prod.title}
-                  </Text>
-                  <Text style={s.productCat}>{prod.category}</Text>
-                </LinearGradient>
-              </View>
-            ))}
-          </View>
+          <Text style={s.sectionSubText}>
+            Adarsh ID Cards provides end-to-end identification solutions for schools, colleges, and corporate organizations.
+          </Text>
         </View>
 
         {/* Contact Us */}
@@ -455,6 +397,12 @@ const s = StyleSheet.create({
     height: 2,
     backgroundColor: colors.gray100,
     marginLeft: 15,
+  },
+  sectionSubText: {
+    fontSize: 14,
+    color: colors.gray500,
+    lineHeight: 22,
+    fontFamily: 'SairaSemiCondensed-Medium',
   },
   viewAll: {
     fontSize: 14,

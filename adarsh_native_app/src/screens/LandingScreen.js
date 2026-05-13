@@ -255,69 +255,13 @@ export default function LandingScreen({ navigation }) {
           </View>
         </View>
 
-        <View style={s.quickCatRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.quickCatScroll}
-          >
-            {landingData?.categories?.map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() =>
-                  navigation.navigate("ProductCategoryDetail", {
-                    category: cat,
-                  })
-                }
-                style={s.quickCatChip}
-              >
-                <View style={s.catIconWrap}>
-                  <DynamicIcon
-                    name={cat.icon || "star"}
-                    size={18}
-                    color={colors.brandPrimary}
-                  />
-                </View>
-                <Text style={s.quickCatText}>{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
         <View style={s.section}>
           <View style={s.sectionPadding}>
-            <Text style={s.sectionTitle}>Featured Products</Text>
+            <Text style={s.sectionTitle}>Adarsh ID Card Solutions</Text>
+            <Text style={s.sectionSub}>
+              Specialist in all types of PVC ID cards printing, RFID solutions, and custom lanyards.
+            </Text>
           </View>
-          <FlatList
-            data={landingData?.products || []}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.shelfScroll}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={s.featuredProdCard}
-                onPress={() =>
-                  navigation.navigate("ProductDetail", { product: item })
-                }
-              >
-                <Image
-                  source={{
-                    uri: item.image?.startsWith("http")
-                      ? item.image
-                      : `${BASE_URL}${item.image}`,
-                  }}
-                  style={s.featuredProdImg}
-                />
-                <View style={s.featuredProdInfo}>
-                  <Text style={s.featuredProdTag}>{item.category}</Text>
-                  <Text style={s.featuredProdTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item) => "featured-" + item.id}
-          />
         </View>
 
         <View style={s.section}>

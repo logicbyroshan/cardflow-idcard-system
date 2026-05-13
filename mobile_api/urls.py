@@ -5,6 +5,7 @@ app_name = 'mobile_api'
 
 urlpatterns = [
     path('auth/login/', views.api_mobile_login, name='api_mobile_login'),
+    path('auth/logout/', views.api_mobile_logout, name='api_mobile_logout'),
     path('card/<int:card_id>/status/', views.api_card_status, name='api_card_status'),
     path('card/<int:card_id>/detail/', views.api_card_detail, name='api_card_detail'),
     path('card/<int:card_id>/delete/', views.api_card_delete, name='api_card_delete'),

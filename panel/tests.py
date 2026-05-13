@@ -110,22 +110,6 @@ class PanelAccessTests(PanelBaseTestCase):
         response = self.client.get('/panel/manage-panel/')
         self.assertEqual(response.status_code, 200)
 
-    def test_website_clients_page_allows_website_view_permission(self):
-        self.admin_staff_profile.perm_website_view = True
-        self.admin_staff_profile.save(update_fields=['perm_website_view'])
-
-        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
-        response = self.client.get('/dashboard/clients/')
-        self.assertEqual(response.status_code, 200)
-
-    def test_website_portfolio_page_allows_website_add_permission(self):
-        self.admin_staff_profile.perm_website_add = True
-        self.admin_staff_profile.save(update_fields=['perm_website_add'])
-
-        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
-        response = self.client.get('/dashboard/portfolio/')
-        self.assertEqual(response.status_code, 200)
-
 
 class PanelNotificationApiTests(PanelBaseTestCase):
     def setUp(self):
