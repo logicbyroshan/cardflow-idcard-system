@@ -60,6 +60,17 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Safety: Force loading false after 5 seconds if it gets stuck
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.log('[Auth] Safety trigger: forcing isLoading false');
+        setIsLoading(false);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
   // Load stored auth on mount + setup foreground sync
   useEffect(() => {
     (async () => {
@@ -82,8 +93,11 @@ export function AuthProvider({ children }) {
           // Initial background sync
           refreshProfile();
         }
-      } catch (e) {}
-      setIsLoading(false);
+      } catch (e) {
+        console.log('Auth init failed', e);
+      } finally {
+        setIsLoading(false);
+      }
     })();
 
     // Foreground sync listener

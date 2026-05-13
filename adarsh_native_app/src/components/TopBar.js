@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -122,18 +122,18 @@ const styles = StyleSheet.create({
   title: {
     color: colors.white,
     fontSize: typography.lg,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
   },
   subtitle: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: typography.xs,
-    fontFamily: fontFamily.medium,
+    fontFamily: 'SairaSemiCondensed-Medium',
     marginTop: 1,
   },
   homeBtn: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 32,
     paddingHorizontal: 10,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -150,12 +150,12 @@ const styles = StyleSheet.create({
   addBtnText: {
     color: colors.white,
     fontSize: 10,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
   },
   downloadBtn: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   rightBtn: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',

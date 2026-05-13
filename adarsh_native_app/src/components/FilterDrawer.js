@@ -216,14 +216,14 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9'
   },
-  title: { fontSize: 18, fontFamily: fontFamily.bold, color: colors.gray800 },
+  title: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
   subtitle: { fontSize: 12, color: colors.gray400, marginTop: 2 },
   closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   scrollC: { padding: 20 },
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 },
+  sectionTitle: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
   chip: { 
     paddingHorizontal: 12, 
@@ -234,7 +234,7 @@ const s = StyleSheet.create({
     borderColor: '#e2e8f0' 
   },
   chipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
-  chipText: { fontSize: 12, fontFamily: fontFamily.semibold, color: colors.gray600 },
+  chipText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray600 },
   chipTextActive: { color: '#fff' },
   emptyText: { fontSize: 13, color: colors.gray400, textAlign: 'center', marginTop: 40 },
   footer: { 
@@ -245,8 +245,8 @@ const s = StyleSheet.create({
     backgroundColor: '#fff' 
   },
   clearBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm, backgroundColor: colors.gray100 },
-  clearText: { fontSize: 14, fontFamily: fontFamily.semibold, color: colors.gray600 },
+  clearText: { fontSize: 14, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray600 },
   applyBtnWrap: { flex: 2, borderRadius: radius.sm, overflow: 'hidden' },
   applyBtn: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
-  applyText: { fontSize: 14, fontFamily: fontFamily.bold, color: '#fff' },
+  applyText: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
 });

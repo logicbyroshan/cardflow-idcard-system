@@ -32,6 +32,15 @@ This document serves as the ultimate reference for maintaining the stability of 
 ### 4. The "Domain Drift" Error (Hardcoded URLs)
 *   **The Issue**: Moving from staging to production broke the app because some screens still pointed to `localhost` or `panel.adarshbhopal.in`.
 *   **The Mistake**: Hardcoding the full URL in `fetch` or `axios` calls.
+*   **UI/UX Refinement**:
+    *   Corrected a broken import for `ErrorView` in `src/screens/HomeScreen.js`.
+    *   Verified alignment with the project's "less rounded" design system (using `radius.sm` and `radius.md` tokens).
+    *   Redesigned Home Section with card-based navigation for consistency.
+    *   Standardized icon-to-text spacing across all buttons using explicit margins.
+    *   Increased font sizes for critical dashboard metrics.
+*   **Feature Parity**:
+    *   Implemented "User Overview" section on mobile dashboard.
+    *   Enhanced API endpoints to provide total client/operator/assistant counts.
 *   **THE RULE**: 
     *   **NEVER** write a full URL (https://...) inside a Screen or Component.
     *   **ALWAYS** use relative paths (e.g., `/api/mobile/login/`) and use the centralized `api/client.js` helper.

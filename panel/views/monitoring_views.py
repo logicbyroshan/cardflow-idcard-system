@@ -1340,26 +1340,7 @@ def api_server_info_snapshot(request):
 
     db_info = _database_storage_snapshot(base_dir)
     db_size_bytes = int(db_info.get('size_bytes') or 0)
-    website_db_size_bytes = db_size_bytes
     db_backend = str(settings.DATABASES.get('default', {}).get('ENGINE', '')).lower()
-    if ('postgresql' in db_backend or 'postgres' in db_backend) and db_info.get('status') == 'ok':
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT COALESCE(
-                        SUM(pg_total_relation_size(to_regclass(format('%I.%I', schemaname, relname)))),
-                        0
-                    )
-                    FROM pg_stat_user_tables
-                    WHERE relname LIKE 'website_%'
-                    """
-                )
-                row = cursor.fetchone()
-            website_db_size_bytes = int(row[0]) if row and row[0] is not None else 0
-        except Exception:
-            logger.exception('Website app DB size estimate failed')
-            website_db_size_bytes = db_size_bytes
 
     disk_used_nonfree = int(disk.used)
     known_used_bytes = max(project_root_size + db_size_bytes, 0)
@@ -1469,13 +1450,6 @@ def api_server_info_snapshot(request):
             'size_human': _format_bytes(logs_size_bytes),
             'pct_of_project': round((logs_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
             'meta': 'Application and service logs',
-        },
-        {
-            'name': 'Website App DB',
-            'size_bytes': int(website_db_size_bytes),
-            'size_human': _format_bytes(website_db_size_bytes),
-            'pct_of_project': round((website_db_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
-            'meta': 'Website app tables footprint',
         },
     ]
 

@@ -9,6 +9,7 @@ import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../t
 import { useAuth } from '../context/AuthContext';
 import Toast from './Toast';
 import { HStack, VStack } from './Stack';
+import { cleanFieldData, cleanFieldValue } from '../utils/data';
 
 /**
  * Bottom-to-top dynamic form drawer for adding/editing cards.
@@ -59,7 +60,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       if (isEdit) {
         const { ok: cOk, data: cData } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
         if (cOk && cData?.success) {
-          setValues(cData.data?.field_data || {});
+          setValues(cleanFieldData(cData.data?.field_data || {}));
           setTableName(cData.data?.table_name || '');
         } else if (!cOk) {
           setError('Failed to load card details');
@@ -110,7 +111,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         }
       }
 
-      formData.append('field_data', JSON.stringify(fieldData));
+      formData.append('field_data', JSON.stringify(cleanFieldData(fieldData)));
 
       const url = isEdit
         ? `/api/mobile/table/${tableId}/card/${cardId}/update/`
@@ -342,8 +343,8 @@ const s = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginTop: 10, marginBottom: 4 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   titleBox: { flex: 1 },
-  title: { fontSize: 18, fontFamily: fontFamily.bold, color: colors.gray800 },
-  subtitle: { fontSize: 11, fontFamily: fontFamily.medium, color: colors.gray400, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+  title: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  subtitle: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
   closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
   
   formScroll: { flex: 1 },
@@ -355,37 +356,37 @@ const s = StyleSheet.create({
   photoBox: { width: 100, height: 110, backgroundColor: '#fff', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', ...shadows.sm },
   photoImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   photoPlaceholder: { alignItems: 'center' },
-  photoLabel: { fontSize: 9, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase' },
+  photoLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, textTransform: 'uppercase' },
   photoEditIcon: { position: 'absolute', bottom: 6, right: 6, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
 
   fieldsWrap: { marginTop: 4 },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 100 },
-  loadingText: { marginTop: 12, fontSize: 13, color: colors.gray400, fontFamily: fontFamily.medium },
+  loadingText: { marginTop: 12, fontSize: 13, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium' },
   errorBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', padding: 12, borderRadius: radius.md, marginBottom: 20, borderWidth: 1, borderColor: '#fecaca' },
-  errorText: { fontSize: 12, color: '#991b1b', fontFamily: fontFamily.medium },
+  errorText: { fontSize: 12, color: '#991b1b', fontFamily: 'SairaSemiCondensed-Medium' },
   noFieldsCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', borderRadius: radius.md, padding: 16, borderWidth: 1, borderColor: '#dbeafe', marginBottom: 20 },
-  noFieldsText: { flex: 1, fontSize: 12, color: '#1e40af', fontFamily: fontFamily.medium },
+  noFieldsText: { flex: 1, fontSize: 12, color: '#1e40af', fontFamily: 'SairaSemiCondensed-Medium' },
   field: { marginBottom: 20 },
   fieldLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingLeft: 2 },
-  fieldLabel: { fontSize: 11, fontFamily: fontFamily.bold, color: colors.gray600, letterSpacing: 0.5, textTransform: 'uppercase' },
+  fieldLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray600, letterSpacing: 0.5, textTransform: 'uppercase' },
   mandatoryDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#f43f5e' },
-  fieldInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.sm, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.gray900, fontFamily: fontFamily.semibold },
+  fieldInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.sm, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.gray900, fontFamily: 'SairaSemiCondensed-SemiBold' },
   
   footerContainer: { padding: 16, borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fff', paddingBottom: Platform.OS === 'ios' ? 34 : 16 },
   footer: { flexDirection: 'row', alignItems: 'center' },
   saveBtnWrap: { flex: 2, borderRadius: radius.sm, overflow: 'hidden', ...shadows.md },
   saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
-  saveBtnText: { fontSize: 15, fontFamily: fontFamily.bold, color: '#fff' },
+  saveBtnText: { fontSize: 15, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
   cancelBtn: { flex: 1, paddingVertical: 16, alignItems: 'center', backgroundColor: colors.gray100, borderRadius: radius.sm },
-  cancelBtnText: { fontSize: 14, fontFamily: fontFamily.semibold, color: colors.gray500 },
+  cancelBtnText: { fontSize: 14, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray500 },
 
   // Menu styles
   menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end', padding: 16 },
   menuContent: { backgroundColor: '#fff', borderRadius: radius.lg, padding: 8, ...shadows.xl },
-  menuTitle: { fontSize: 13, fontFamily: fontFamily.bold, color: colors.gray400, textTransform: 'uppercase', textAlign: 'center', paddingVertical: 12, letterSpacing: 1 },
+  menuTitle: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, textTransform: 'uppercase', textAlign: 'center', paddingVertical: 12, letterSpacing: 1 },
   menuItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: radius.md },
   menuIconBox: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  menuItemText: { fontSize: 15, fontFamily: fontFamily.bold, color: colors.gray800 },
+  menuItemText: { fontSize: 15, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
   menuCancel: { marginTop: 8, paddingVertical: 16, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9' },
-  menuCancelText: { fontSize: 15, fontFamily: fontFamily.bold, color: colors.gray400 },
+  menuCancelText: { fontSize: 15, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400 },
 });

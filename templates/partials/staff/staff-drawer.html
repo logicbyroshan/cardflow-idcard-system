@@ -23,7 +23,7 @@ Refactored into sub-partials for maintainability.
         
         <div class="drawer-body">
             <!-- Profile Avatar Placeholder -->
-            <div class="profile-upload-section flex-row items-center gap-4">
+            <div class="profile-upload-section flex-row items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity" title="Avatar upload not yet supported">
                 {% include 'partials/components/user-avatar.html' with role='admin_staff' size='large' %}
                 <span class="text-xs text-gray-500">Operator avatar</span>
             </div>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Mobile App - Placeholder</title>
+  <link rel="stylesheet" href="/static/mobile/css/mobile.css">
+</head>
+<body>
+  <div id="content">{% block content %}Placeholder mobile base{% endblock %}</div>
+  <script>
+    function isNativeShell() {
+      return /(?:Android|iPhone|iPad|iPod)/i.test(navigator.userAgent || '');
+    }
+
+    var apkDownloadUrl = '{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:"" }}';
+    if (apkDownloadUrl) {
+      var nativeShell = isNativeShell();
+      if (nativeShell) {
+        var installCta = document.getElementById('downloadApkCta');
+        if (installCta) {
+          installCta.classList.add('hidden');
+        }
+      }
+    }
+  </script>
+  <script src="/static/mobile/js/app.js"></script>
+</body>
+</html>

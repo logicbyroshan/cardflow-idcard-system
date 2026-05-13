@@ -23,12 +23,10 @@ import SearchScreen from '../screens/SearchScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import GroupsScreen from '../screens/GroupsScreen';
 import StaffManageScreen from '../screens/StaffManageScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 import ClientsListScreen from '../screens/ClientsListScreen';
 import CardListScreen from '../screens/CardListScreen';
 import CameraScreen from '../screens/CameraScreen';
 import ReprintScreen from '../screens/ReprintScreen';
-import ProductCategoryDetailScreen from '../screens/ProductCategoryDetailScreen';
 import ClientGroupsScreen from '../screens/ClientGroupsScreen';
 import ReprintDetailScreen from '../screens/ReprintDetailScreen';
 import PermissionsScreen from '../screens/PermissionsScreen';
@@ -57,7 +55,6 @@ export default function AppNavigator() {
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="ProductCategoryDetail" component={ProductCategoryDetailScreen} />
           <Stack.Screen name="NoAccess" component={NoAccessScreen} />
         </>
       ) : (
@@ -67,7 +64,6 @@ export default function AppNavigator() {
           
           {/* Landing still accessible but secondary */}
           <Stack.Screen name="Landing" component={LandingScreen} />
-          <Stack.Screen name="ProductCategoryDetail" component={ProductCategoryDetailScreen} />
           <Stack.Screen name="NoAccess" component={NoAccessScreen} />
           
           {/* Management & Profile */}
@@ -75,7 +71,6 @@ export default function AppNavigator() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="TablePicker" component={TablePickerScreen} />
           <Stack.Screen name="DesktopRequired" component={DesktopRequiredScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="StaffManage" component={StaffManageScreen} />
           <Stack.Screen name="ClientsList" component={ClientsListScreen} />
           <Stack.Screen name="Permissions" component={PermissionsScreen} />

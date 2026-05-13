@@ -444,7 +444,7 @@ def dashboard(request):
     import re
     ua = request.META.get('HTTP_USER_AGENT', '')
     if re.search(r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', ua, re.I):
-        return redirect('/panel/app/')
+        return redirect('/app/')
 
     # Scope cache keys per user for admin_staff (they only see assigned clients)
     user = request.user

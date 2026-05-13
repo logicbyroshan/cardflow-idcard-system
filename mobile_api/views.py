@@ -14,25 +14,21 @@ import logging
 import time
 import hashlib
 from datetime import timedelta
-from urllib.parse import urlencode
 from functools import wraps
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.conf import settings
-from django.core.cache import cache
-from django.contrib.auth import login as auth_login
-from django.contrib.auth import logout as auth_logout
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
-from django.db import transaction
-from django.db.models import Count, Q, Max, CharField, F, Case, When, Value, IntegerField
+from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.timezone import make_aware, is_naive, localtime
+from django.utils import timezone
+from django.utils.timesince import timesince
+from django.db.models import Q, Count, Max, Min, F, Sum, Avg, CharField
 from django.db.models.functions import Cast
 from django.db.models.fields.json import KeyTextTransform
-from django.utils.dateparse import parse_date, parse_datetime
-from django.utils.timezone import make_aware, is_naive
-from django.utils import timezone
+from django.core.cache import cache
 
 from client.services import (
     ClientAccessService,
@@ -41,248 +37,42 @@ from client.services import (
     ClientImageService,
     ClientStaffService,
 )
-from client.services_client_core import ClientService
 from core.services.permission_service import PermissionService
 from idcards.models import IDCardTable, IDCard, IDCardGroup
+from mobile_app.models import MobileDevice
 from reprintcard.models import ReprintRequest
 from mediafiles.utils import get_card_photo_url
-from staff.models import Staff
-from accounts.rate_limit import rate_limit
-from accounts.rate_limit import _get_client_ip
+from accounts.rate_limit import rate_limit, _get_client_ip
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
 from core.services import StaffService, IDCardService
-from core.utils.field_utils import normalize_class_value
-from mediafiles.utils import normalize_uploaded_image
-from mediafiles.services import ImageService
-from mediafiles.services.image_thumbnail import ThumbnailService
-from mediafiles.models import CardMedia
-from mobile_app.models import MobileDevice
 
-logger = logging.getLogger(__name__)
-APP_BOOT_TS = time.time()
 MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
-MAX_REPRINT_ACTION_IDS = 200
 MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
 MOBILE_INSTALLATION_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._:-]{7,79}$')
-MOBILE_SORT_MODES = frozenset({'sr-asc', 'name-asc', 'name-desc'})
 
-
-def _truthy(value):
-    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
-
-
-def _normalize_mobile_sort_mode(value):
-    normalized = str(value or '').strip().lower()
-    if normalized in MOBILE_SORT_MODES:
-        return normalized
-    return 'sr-asc'
-
-
-def _mobile_shell_safe_int(raw_value, default=0):
+def _safe_file_url(file_field, request=None):
+    """Safely get URL from an ImageField/FileField and prefer absolute URLs for external clients."""
+    if not file_field:
+        return ''
     try:
-        return int(raw_value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _mobile_shell_safe_bool(raw_value, default=False):
-    if raw_value is None:
-        return default
-    if isinstance(raw_value, bool):
-        return raw_value
-    return _truthy(raw_value)
-
-
-def _normalize_field_name(name):
-    return str(name or '').strip().upper()
-
-
-def _field_token(name):
-    return re.sub(r'[^A-Z0-9]+', '', _normalize_field_name(name))
-
-
-def _rel_photo_slot_for_name(name):
-    normalized = _normalize_field_name(name)
-    token = _field_token(name)
-    if token in {'FATHERPHOTO', 'FPHOTO'}:
-        return 1
-    if token in {'MOTHERPHOTO', 'MPHOTO'}:
-        return 2
-
-    match = re.search(r'REL(?:ATION)?(?:NO)?([0-9]+)', token)
-    if match:
-        try:
-            slot = int(match.group(1))
-            if slot > 0:
-                return slot
-        except (TypeError, ValueError):
-            pass
-
-    match = re.search(r'REL[ _-]*NO?[ _-]*([0-9]+)', normalized)
-    if match:
-        try:
-            slot = int(match.group(1))
-            if slot > 0:
-                return slot
-        except (TypeError, ValueError):
-            pass
-    return None
-
-
-def _rel_photo_aliases_for_slot(slot):
-    if not slot or slot <= 0:
-        return []
-    aliases = [
-        f'REL_{slot}PHOTO',
-        f'REL{slot}PHOTO',
-        f'REL {slot} PHOTO',
-        f'REL NO {slot} PHOTO',
-        f'REL{slot}',
-        f'REL {slot}',
-        f'REL_{slot}',
-    ]
-    if slot == 1:
-        aliases.extend(['FATHER PHOTO', 'FATHER_PHOTO', 'F PHOTO'])
-    elif slot == 2:
-        aliases.extend(['MOTHER PHOTO', 'MOTHER_PHOTO', 'M PHOTO'])
-    return aliases
-
-
-def _get_field_value_case_insensitive(field_data, field_name):
-    if not isinstance(field_data, dict):
-        return ''
-    canonical = _normalize_field_name(field_name)
-    canonical_token = _field_token(field_name)
-    for key, value in field_data.items():
-        key_norm = _normalize_field_name(key)
-        if key_norm == canonical:
-            return value
-        if canonical_token and _field_token(key_norm) == canonical_token:
-            return value
-    return ''
-
-
-def _has_meaningful_field_value(value):
-    if value is None:
-        return False
-    text = str(value).strip()
-    return bool(text)
-
-
-def _build_field_rename_pairs(old_fields, new_fields):
-    pairs = []
-    old_seq = old_fields if isinstance(old_fields, list) else []
-    new_seq = new_fields if isinstance(new_fields, list) else []
-
-    for index in range(min(len(old_seq), len(new_seq))):
-        old_field = old_seq[index] or {}
-        new_field = new_seq[index] or {}
-        old_name = _normalize_field_name(old_field.get('name', ''))
-        new_name = _normalize_field_name(new_field.get('name', ''))
-        old_type = _normalize_field_name(old_field.get('type', 'text'))
-        new_type = _normalize_field_name(new_field.get('type', 'text'))
-        if old_name and new_name and (old_name != new_name or old_type != new_type):
-            pairs.append({
-                'old_name': old_name,
-                'new_name': new_name,
-                'old_type': old_type,
-                'new_type': new_type,
-                'old_rel_slot': _rel_photo_slot_for_name(old_name) if old_type in {'REL_PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'} else None,
-                'new_rel_slot': _rel_photo_slot_for_name(new_name) if new_type in {'REL_PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'} else None,
-            })
-    return pairs
-
-
-def _migrate_table_field_data_for_renames(table_id, rename_pairs, *, batch_size=500):
-    if not rename_pairs:
-        return 0
-
-    updated = 0
-    pending = []
-
-    qs = IDCard.objects.filter(table_id=table_id).only('id', 'field_data')
-    for card in qs.iterator(chunk_size=batch_size):
-        field_data = card.field_data if isinstance(card.field_data, dict) else {}
-        changed = False
-
-        for pair in rename_pairs:
-            old_name = pair['old_name']
-            new_name = pair['new_name']
-            old_slot = pair.get('old_rel_slot')
-
-            old_val = _get_field_value_case_insensitive(field_data, old_name)
-            if not _has_meaningful_field_value(old_val) and old_slot:
-                for alias in _rel_photo_aliases_for_slot(old_slot):
-                    old_val = _get_field_value_case_insensitive(field_data, alias)
-                    if _has_meaningful_field_value(old_val):
-                        break
-
-            new_val = _get_field_value_case_insensitive(field_data, new_name)
-
-            if _has_meaningful_field_value(old_val) and not _has_meaningful_field_value(new_val):
-                field_data[new_name] = old_val
-                changed = True
-
-        if changed:
-            card.field_data = field_data
-            pending.append(card)
-            updated += 1
-            if len(pending) >= batch_size:
-                IDCard.objects.bulk_update(pending, ['field_data'], batch_size=batch_size)
-                pending.clear()
-
-    if pending:
-        IDCard.objects.bulk_update(pending, ['field_data'], batch_size=batch_size)
-
-    return updated
-
-
-def _migrate_cardmedia_field_names_for_renames(table_id, rename_pairs):
-    if not rename_pairs:
-        return 0
-
-    updated_rows = 0
-    for pair in rename_pairs:
-        old_name = pair['old_name']
-        new_name = pair['new_name']
-        old_slot = pair.get('old_rel_slot')
-        updated_rows += CardMedia.objects.filter(
-            card__table_id=table_id,
-            field_name__iexact=old_name,
-        ).exclude(field_name=new_name).update(field_name=new_name)
-
-        if old_slot:
-            for alias in _rel_photo_aliases_for_slot(old_slot):
-                updated_rows += CardMedia.objects.filter(
-                    card__table_id=table_id,
-                    field_name__iexact=alias,
-                ).exclude(field_name=new_name).update(field_name=new_name)
-    return updated_rows
-
-
-def _mobile_shell_resolve_url(url_value, *, request=None, fallback=''):
-    raw = str(url_value or '').strip() or str(fallback or '').strip()
-    if not raw:
+        url = file_field.url
+    except ValueError:
         return ''
 
-    if raw.startswith('http://') or raw.startswith('https://'):
-        return raw
+    if not url:
+        return ''
 
-    if raw.startswith('/'):
-        if request is not None:
-            try:
-                return request.build_absolute_uri(raw)
-            except Exception:
-                pass
+    # Prefer absolute URLs for external clients if a base is configured.
+    base = str(getattr(settings, 'WEBSITE_URL', '') or getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
+    if base and not url.startswith(('http://', 'https://')):
+        if not url.startswith('/'):
+            url = f'/{url}'
+        return f'{base}{url}'
 
-        base = str(getattr(settings, 'WEBSITE_URL', '') or getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
-        if base:
-            return f'{base}{raw}'
-
-    return raw
+    return url
 
 
 def _mobile_shell_app_config_payload(*, app_build=0, request=None):
@@ -373,8 +163,8 @@ def require_mobile_client(view_func=None, allow_public=False):
             is_api_request = (request.path or '').startswith('/api/mobile/')
             ua = request.META.get('HTTP_USER_AGENT', '')
 
-            # 1. Enforce Native App User-Agent in production
-            if not getattr(settings, 'DEBUG', False) and 'AdarshMobileApp' not in ua:
+            # 1. Enforce mobile user-agent in production
+            if not getattr(settings, 'DEBUG', False) and not is_mobile(request):
                 if is_api_request:
                     return JsonResponse({'success': False, 'message': 'Invalid client source.'}, status=403)
                 return redirect('/app/no-access/?reason=invalid-source')
@@ -594,7 +384,7 @@ def _can_manage_clients_surface(user):
     if PermissionService.is_super_admin(user):
         return True
     if PermissionService.is_admin_staff(user):
-        return PermissionService.has(user, 'perm_manage_website_clients') or PermissionService.has(user, 'perm_idcard_client_list')
+        return PermissionService.has(user, 'perm_idcard_client_list')
     return PermissionService.has(user, 'perm_idcard_client_list')
 
 
@@ -1844,11 +1634,8 @@ def home(request):
     _now = _tz.now()
 
     def _safe_client_logo_url(_client_obj):
-        try:
-            _logo = getattr(_client_obj, 'logo', None)
-            return _logo.url if _logo else ''
-        except Exception:
-            return ''
+        _logo = getattr(_client_obj, 'logo', getattr(_client_obj, 'website_logo', None))
+        return _safe_file_url(_logo)
 
     _cards_scope = (
         IDCard.objects.all() if _is_admin
@@ -2792,7 +2579,7 @@ def card_list(request, table_id, status):
         section = (fd.get(section_field_name) if section_field_name else None) or fd.get('SECTION') or fd.get('section') or ''
         dob = fd.get('DOB') or fd.get('dob') or fd.get('DATE OF BIRTH') or fd.get('DATE_OF_BIRTH') or ''
 
-        primary_photo_url = card.photo.url if card.photo else None
+        primary_photo_url = _safe_file_url(card.photo) or None
         photo_slots, photo_urls = _extract_photo_slots(fd, primary_photo_url, table_fields)
         photo_url = next((_slot.get('url') for _slot in photo_slots if _slot.get('url')), None)
 
@@ -4323,7 +4110,7 @@ def staff_manage(request):
         return redirect('/app/login/')
 
     # Super admin can always manage admin staff.
-    # Client role must also hold Manage Client permission (website parity).
+    # Client role must hold appropriate staff management permissions.
     if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return redirect('mobile_app:home')
 
@@ -4586,7 +4373,7 @@ def search_page(request):
             fd = card.field_data or {}
             name = _card_display_name(card, fd)
             roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
-            photo_url = card.photo.url if card.photo else None
+            photo_url = _safe_file_url(card.photo) or None
             if not photo_url:
                 for val in fd.values():
                     if isinstance(val, str) and ('adarshimg/' in val or val.endswith(('.jpg', '.jpeg', '.png', '.webp'))):
@@ -4708,9 +4495,27 @@ def api_staff_list(request):
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     
     elif PermissionService.is_super_admin(user):
-        # Super admin sees all admin_staff (system-wide)
-        staff_data = _list_mobile_admin_staff(limit=200)
-        return JsonResponse({'success': True, 'data': {'staff': staff_data}})
+        role = request.GET.get('role', 'admin_staff')
+        if role == 'client_staff':
+            # List all client staff system-wide
+            from accounts.models import Staff
+            queryset = Staff.objects.filter(staff_type='client_staff').select_related('user', 'client').order_by('-created_at')[:200]
+            staff_data = []
+            for s in queryset:
+                staff_data.append({
+                    'id': s.id,
+                    'name': s.user.get_full_name() or s.user.username,
+                    'email': s.user.email,
+                    'phone': getattr(s.user, 'phone', ''),
+                    'is_active': s.user.is_active,
+                    'client_name': s.client.name if s.client else 'System',
+                    'created_at': s.created_at.strftime('%d %b %Y'),
+                })
+            return JsonResponse({'success': True, 'data': {'staff': staff_data}})
+        else:
+            # Super admin sees all admin_staff (system-wide)
+            staff_data = _list_mobile_admin_staff(limit=200)
+            return JsonResponse({'success': True, 'data': {'staff': staff_data}})
         
     return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
@@ -4851,10 +4656,13 @@ def api_staff_assignable_items(request, staff_id):
     try:
         staff = get_object_or_404(Staff, id=staff_id)
         # For client staff, we need their client context
+        if staff.staff_type == 'admin_staff':
+            # Operator: return all active clients
+            from client.models import Client
+            clients = Client.objects.filter(status='active').values('id', 'name').order_by('name')
+            return JsonResponse({'success': True, 'clients': list(clients)})
+
         client_id = staff.client_id
-        if not client_id:
-            # If no client, they might be admin_staff; for now mostly used for client_staff
-            return JsonResponse({'success': True, 'groups': [], 'tables': []})
 
         if not PermissionService.can_access_client(user, client_id):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
@@ -5191,7 +4999,7 @@ def api_dashboard_data(request):
             
             # Get accessible clients
             if PermissionService.is_super_admin(user):
-                # Super admins see EVERYTHING (active or not) to match website truth
+                # Super admins see EVERYTHING (active or not) to match system-wide data visibility
                 clients_qs = Client.objects.all()
             else:  # admin_staff
                 accessible_ids = PermissionService.get_accessible_client_ids(user) or []
@@ -5217,6 +5025,7 @@ def api_dashboard_data(request):
                 'download': global_counts_agg.get('download', 0),
                 'pool': global_counts_agg.get('pool', 0),
                 'total': global_counts_agg.get('total', 0),
+                'client_count': clients_qs.count(),
                 'operator_count': User.objects.filter(role='admin_staff', is_active=True).count(),
                 'assistant_count': User.objects.filter(role='client_staff', is_active=True).count(),
             }
@@ -5806,6 +5615,8 @@ def api_mobile_shell_device_summary(request):
     if not (PermissionService.is_super_admin(request.user) or PermissionService.is_pro_user(request.user)):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
 
+    from django.db.models import Count, Max
+
     include_inactive = _mobile_shell_safe_bool(request.GET.get('include_inactive'), False)
     now = timezone.now()
     base_qs = MobileDevice.objects.filter(platform='android')
@@ -5902,7 +5713,7 @@ def api_impersonate_users(request):
     mobile_allowed_ids = set(user_ids)
 
     from idcards.models import IDCard
-    from django.db.models import Count
+    from django.db.models import Count, Max
 
     # Bulk fetch counts for all mobile-allowed IDs in one query
     counts_map = {}
@@ -5932,6 +5743,59 @@ def api_impersonate_users(request):
             item['counts'] = counts_map.get(item_id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
             filtered.append(item)
     return JsonResponse({'success': True, 'users': filtered})
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_clients_list(request):
+    """Admin-only: Return all clients with full status counts for management."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
+    # Fetch all users with role 'client'
+    clients_qs = User.objects.filter(role='client').select_related('client_profile').order_by('client_profile__name', 'username')
+    
+    client_ids = list(clients_qs.values_list('id', flat=True))
+
+    from idcards.models import IDCard
+    from django.db.models import Count
+
+    # Bulk fetch counts
+    counts_map = {}
+    stats = (
+        IDCard.objects.filter(table__group__client_id__in=client_ids)
+        .values('table__group__client_id', 'status')
+        .annotate(count=Count('id'))
+    )
+    for s in stats:
+        cid = s['table__group__client_id']
+        status = s['status']
+        count = s['count']
+        if cid not in counts_map:
+            counts_map[cid] = {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
+        counts_map[cid]['total'] += count
+        if status in counts_map[cid]:
+            counts_map[cid][status] = count
+
+    users_list = []
+    for u in clients_qs:
+        profile = getattr(u, 'client_profile', None)
+        logo_url = _safe_file_url(getattr(profile, 'logo', None)) if profile else ''
+            
+        users_list.append({
+            'id': u.id,
+            'name': (profile.name if profile else '') or u.get_full_name() or u.username,
+            'email': u.email,
+            'phone': getattr(profile, 'phone', '') if profile else '',
+            'is_active': u.is_active,
+            'logo_url': logo_url,
+            'counts': counts_map.get(u.id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
+        })
+
+    return JsonResponse({'success': True, 'users': users_list})
 
 
 @require_mobile_client
@@ -6135,7 +5999,6 @@ def api_client_create(request):
         'perm_idcard_info': True,
         'perm_idcard_verify': True,
         'perm_idcard_approve': True,
-        'perm_website_view': True,
         'perm_idcard_client_list': True,
         'perm_idcard_pending_list': True,
         'perm_idcard_verified_list': True,
@@ -6172,6 +6035,15 @@ def api_client_create(request):
 
 @require_mobile_client
 @require_http_methods(['POST'])
+def api_mobile_logout(request):
+    """Logout mobile user and clear session."""
+    from django.contrib.auth import logout
+    logout(request)
+    return JsonResponse({'success': True, 'message': 'Logged out successfully'})
+
+
+@require_mobile_client
+@require_http_methods(['POST'])
 def api_client_update(request, client_id):
     """Update a client from mobile app for users with Manage Client access."""
     if not PermissionService.is_any_admin(request.user):
@@ -6197,72 +6069,6 @@ def api_client_update(request, client_id):
     })
 
 
-# ---------------------------------------------------------------------------
-# WEBSITE MANAGEMENT (Portfolio Media — mobile upload)
-# ---------------------------------------------------------------------------
-
-@require_mobile_client
-def website_manage(request):
-    """Mobile website management page: portfolio categories + unified media upload."""
-    user = request.user
-    if not PermissionService.has(user, 'perm_website_view'):
-        return render(request, 'mobile_app/no_access.html', {
-            'user_name': user.get_full_name() or user.username,
-        }, status=403)
-
-    from website.models import PortfolioCategory
-
-    # Fetch only the fields needed for JSON serialisation — no full ORM hydration
-    from django.core.cache import cache
-    if not cache.get('portfolio_defaults_ensured'):
-        PortfolioCategory.ensure_defaults()
-        cache.set('portfolio_defaults_ensured', True, 3600)
-
-    bento_rank_case = Case(
-        *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(MOBILE_PUBLIC_BENTO_ORDER)],
-        default=Value(len(MOBILE_PUBLIC_BENTO_ORDER)),
-        output_field=IntegerField(),
-    )
-
-    categories = (
-        PortfolioCategory.objects
-        .filter(is_active=True)
-        .annotate(photo_count=Count('items', filter=Q(items__is_active=True)))
-        .annotate(
-            mobile_public_bento=Case(
-                When(slug__in=MOBILE_PUBLIC_BENTO_EXCLUDE_SLUGS, then=Value(0)),
-                When(slug__in=MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS, then=Value(1)),
-                When(is_bento=True, then=Value(1)),
-                default=Value(0),
-                output_field=IntegerField(),
-            ),
-            mobile_bento_rank=bento_rank_case,
-        )
-        .order_by('-mobile_public_bento', 'mobile_bento_rank', 'order', 'name')
-        .only('id', 'name', 'icon', 'order', 'slug')
-    )
-
-    # Skip the client lookup — website_manage doesn’t need a client object
-    perms = PermissionService.get_permission_context(user)
-
-    categories_data = [
-        {
-            'id': c.id,
-            'name': c.name,
-            'icon': c.icon,
-            'count': c.photo_count,
-            'is_public_bento': bool(getattr(c, 'mobile_public_bento', 0)),
-        }
-        for c in categories
-    ]
-
-    return render(request, 'mobile_app/website_manage.html', {
-        'user_name': user.get_full_name() or user.username,
-        'categories_json': categories_data,
-        **perms,
-    })
-
-
 @require_mobile_client
 @require_http_methods(["POST"])
 def api_client_update_permissions(request, client_user_id):
@@ -6284,7 +6090,7 @@ def api_client_update_permissions(request, client_user_id):
         # Whitelist of permissions that can be toggled via mobile
         ALLOWED_TOGGLES = {
             'perm_idcard_info', 'perm_idcard_verify', 'perm_idcard_approve', 
-            'perm_idcard_download', 'perm_website_view'
+            'perm_idcard_download'
         }
 
         for key, value in updates.items():
@@ -6316,3 +6122,71 @@ def api_client_permissions(request, client_user_id):
     client_user = get_object_or_404(User, id=client_user_id)
     perms = PermissionService.get_permission_context(client_user)
     return JsonResponse({'success': True, 'data': perms.get('user_permissions', {})})
+
+@require_mobile_client(allow_public=True)
+@require_http_methods(['GET'])
+def api_website_landing_data(request):
+    """
+    Public fallback for mobile app landing screen.
+    Returns static content since the website app has been removed.
+    """
+    data = {
+        'hero_images': [
+            {
+                'id': 1,
+                'image': 'https://panel.adarshbhopal.in/static/img/landing-hero-1.jpg',
+                'title': 'Premium ID Cards',
+                'subtitle': 'High-quality PVC printing for all institutions',
+            },
+            {
+                'id': 2,
+                'image': 'https://panel.adarshbhopal.in/static/img/landing-hero-2.jpg',
+                'title': 'Secure & Fast',
+                'subtitle': 'Trusted by 1000+ organizations across India',
+            },
+        ],
+        'categories': [
+            {'id': 1, 'name': 'PVC Cards', 'icon': 'id-card', 'description': 'Standard PVC Identification Cards'},
+            {'id': 2, 'name': 'RFID Cards', 'icon': 'microchip', 'description': 'Contactless Smart Cards'},
+            {'id': 3, 'name': 'Lanyards', 'icon': 'ribbon', 'description': 'Custom Printed Lanyards'},
+        ],
+        'products': [],
+        'clients': [],
+        'business': {
+            'site_name': 'Adarsh ID Cards',
+            'tagline': 'Excellence in Identification',
+            'address': 'Bhopal, MP, India',
+            'phone': '+91-XXXXXXXXXX',
+            'email': 'info@adarshbhopal.in',
+            'whatsapp': '91XXXXXXXXXX',
+        },
+    }
+    return JsonResponse({'success': True, 'data': data})
+
+
+@require_mobile_client(allow_public=True)
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_website_contact_submit(request):
+    """
+    Fallback for contact form submission.
+    Logs the enquiry since the website service is removed.
+    """
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+
+        name = str(data.get('name', '')).strip()
+        email = str(data.get('email', '')).strip()
+        message = str(data.get('message', '')).strip()
+
+        if not all([name, email, message]):
+            return JsonResponse({'success': False, 'message': 'Required fields missing'}, status=400)
+
+        logger.info('Mobile contact enquiry received (fallback): %s <%s>', name, email)
+        return JsonResponse({'success': True, 'message': 'Thank you! We have received your message.'})
+    except Exception as e:
+        logger.error('Mobile contact fallback failed: %s', e)
+        return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)

@@ -13,6 +13,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from core.services.maintenance_service import MaintenanceService
@@ -81,7 +82,7 @@ def system_maintenance_page(request):
     """Full-screen maintenance page with countdown timer."""
     import json as _json
     status = MaintenanceService.get_status()
-    redirect_url = settings.WEBSITE_URL or '/'
+    redirect_url = reverse('dashboard')
     if not status.get('enabled'):
         return redirect(redirect_url)
     end_time_json = _json.dumps(status['end_time']) if status['end_time'] else 'null'

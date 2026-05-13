@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   appIcon: {
     width: 80,
     height: 80,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -231,21 +231,21 @@ const styles = StyleSheet.create({
   brandTitle: {
     color: colors.white,
     fontSize: typography.title,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold', 
     letterSpacing: -0.5,
   },
   brandSubtitle: {
     color: 'rgba(255,255,255,0.7)',
     fontSize: typography.lg,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular', 
     marginTop: 4,
   },
 
   // Login card
   card: {
     backgroundColor: colors.glassBg,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderTopLeftRadius: radius.sm,
+    borderTopRightRadius: radius.sm,
     paddingTop: 28,
     paddingHorizontal: 24,
     borderWidth: 1,
@@ -256,13 +256,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.gray800,
     fontSize: typography.xxxl,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold', 
     marginBottom: 4,
   },
   cardSubtitle: {
     color: colors.gray400,
     fontSize: typography.lg,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular', 
     marginBottom: 24,
   },
 
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.errorBg,
     borderWidth: 1,
     borderColor: colors.errorBorder,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginBottom: spacing.lg,
@@ -287,14 +287,14 @@ const styles = StyleSheet.create({
   // Submit button
   submitBtn: {
     marginTop: 8,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     ...shadows.lg,
   },
   helpText: {
     textAlign: 'center',
     color: colors.gray400,
     fontSize: typography.md,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular', 
     marginTop: 12,
   },
   forgotLink: {

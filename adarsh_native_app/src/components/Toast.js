@@ -68,6 +68,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#fff',
     fontSize: 14,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
   },
 });

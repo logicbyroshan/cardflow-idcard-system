@@ -172,72 +172,14 @@ export default function WelcomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Product Categories */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Our Product Range</Text>
+            <Text style={s.sectionTitle}>Institutional ID Solutions</Text>
             <View style={s.sectionLine} />
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.catScroll}
-          >
-            {(data?.categories || []).map((cat) => (
-              <TouchableOpacity key={cat.id} style={s.catCard}>
-                <View style={s.catIconWrap}>
-                  <DynamicIcon
-                    name={cat.icon || "star"}
-                    size={18}
-                    color={colors.brandPrimary}
-                  />
-                </View>
-                <Text style={s.catName}>{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Featured Products */}
-        <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Featured Products</Text>
-            <TouchableOpacity
-              onPress={() =>
-                Linking.openURL("https://adarshidcards.com/our-products")
-              }
-            >
-              <Text style={s.viewAll}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={s.productGrid}>
-            {(data?.products || []).map((prod) => (
-              <View key={prod.id} style={s.productCard}>
-                <Image
-                  source={{
-                    uri: prod.image.startsWith("http")
-                      ? prod.image
-                      : `${BASE_URL}${prod.image}`,
-                  }}
-                  style={s.productImg}
-                />
-                {prod.type === "video" && (
-                  <View style={s.playIconOverlay}>
-                    <DynamicIcon name="play" size={24} color="#fff" />
-                  </View>
-                )}
-                <LinearGradient
-                  colors={["transparent", "rgba(0,0,0,0.7)"]}
-                  style={s.productOverlay}
-                >
-                  <Text style={s.productTitle} numberOfLines={1}>
-                    {prod.title}
-                  </Text>
-                  <Text style={s.productCat}>{prod.category}</Text>
-                </LinearGradient>
-              </View>
-            ))}
-          </View>
+          <Text style={s.sectionSubText}>
+            Adarsh ID Cards provides end-to-end identification solutions for schools, colleges, and corporate organizations.
+          </Text>
         </View>
 
         {/* Contact Us */}
@@ -387,19 +329,19 @@ const s = StyleSheet.create({
   },
   logoText: {
     fontSize: 18,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     letterSpacing: 1,
   },
   headerLoginBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: radius.sm,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
   },
-  headerLoginText: { fontSize: 12, fontFamily: fontFamily.bold, color: "#fff" },
+  headerLoginText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: "#fff" },
 
   heroWrap: { height: 450, backgroundColor: colors.gray100 },
   heroItem: { width: width, height: 450 },
@@ -414,7 +356,7 @@ const s = StyleSheet.create({
   },
   heroTitle: {
     fontSize: 32,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     lineHeight: 38,
   },
@@ -422,7 +364,7 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: "rgba(255,255,255,0.8)",
     marginTop: 8,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   heroDots: {
     position: "absolute",
@@ -447,7 +389,7 @@ const s = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray800,
   },
   sectionLine: {
@@ -456,9 +398,15 @@ const s = StyleSheet.create({
     backgroundColor: colors.gray100,
     marginLeft: 15,
   },
+  sectionSubText: {
+    fontSize: 14,
+    color: colors.gray500,
+    lineHeight: 22,
+    fontFamily: 'SairaSemiCondensed-Medium',
+  },
   viewAll: {
     fontSize: 14,
-    fontFamily: fontFamily.semibold,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
     color: colors.brandPrimary,
   },
 
@@ -468,7 +416,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     backgroundColor: colors.gray50,
-    borderRadius: radius.lg,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.gray100,
   },
@@ -484,7 +432,7 @@ const s = StyleSheet.create({
   },
   catName: {
     fontSize: 11,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray600,
     textAlign: "center",
   },
@@ -493,7 +441,7 @@ const s = StyleSheet.create({
   productCard: {
     width: (width - 52) / 2,
     height: 220,
-    borderRadius: radius.lg,
+    borderRadius: radius.sm,
     overflow: "hidden",
     ...shadows.md,
   },
@@ -515,19 +463,19 @@ const s = StyleSheet.create({
     right: 0,
     padding: 12,
   },
-  productTitle: { fontSize: 14, fontFamily: fontFamily.bold, color: "#fff" },
+  productTitle: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: "#fff" },
   productCat: {
     fontSize: 11,
     color: "rgba(255,255,255,0.7)",
     marginTop: 2,
-    fontFamily: fontFamily.medium,
+    fontFamily: 'SairaSemiCondensed-Medium',
   },
 
   contactSection: { marginTop: 40 },
-  contactCard: { borderRadius: radius.xl, padding: 25, ...shadows.lg },
+  contactCard: { borderRadius: radius.md, padding: 25, ...shadows.lg },
   contactTitle: {
     fontSize: 24,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     textAlign: "center",
   },
@@ -537,14 +485,14 @@ const s = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
     marginBottom: 25,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   form: {},
   inputGroup: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     paddingHorizontal: 15,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
@@ -555,19 +503,19 @@ const s = StyleSheet.create({
     color: "#fff",
     paddingVertical: 12,
     fontSize: 14,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   textArea: { height: 80, textAlignVertical: "top", paddingTop: 12 },
   submitBtn: {
     backgroundColor: "#fff",
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     paddingVertical: 15,
     alignItems: "center",
     marginTop: 10,
   },
   submitBtnText: {
     fontSize: 14,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.brandPrimary,
     letterSpacing: 1,
   },
@@ -581,7 +529,7 @@ const s = StyleSheet.create({
   },
   footerBrand: {
     fontSize: 16,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.gray300,
     letterSpacing: 2,
   },
@@ -589,13 +537,13 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: colors.gray400,
     marginTop: 4,
-    fontFamily: fontFamily.medium,
+    fontFamily: 'SairaSemiCondensed-Medium',
   },
   socialRow: { flexDirection: "row", marginTop: 25 },
   socialIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.sm,
     backgroundColor: colors.gray50,
     alignItems: "center",
     justifyContent: "center",
@@ -604,6 +552,6 @@ const s = StyleSheet.create({
     fontSize: 10,
     color: colors.gray300,
     marginTop: 30,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
 });

@@ -790,6 +790,21 @@ class ClientCardService(BaseService):
                 }
                 card_list.append(card_data)
             
+            # Status counts for the tab bar
+            counts = {
+                'pending': IDCard.objects.filter(table=table, status='pending').count(),
+                'verified': IDCard.objects.filter(table=table, status='verified').count(),
+                'approved': IDCard.objects.filter(table=table, status='approved').count(),
+                'download': IDCard.objects.filter(table=table, status='download').count(),
+                'pool': IDCard.objects.filter(table=table, status='pool').count(),
+            }
+            # Apply row-scope if staff
+            if PermissionService.is_client_staff(user):
+                for s_key in counts:
+                    counts[s_key] = cls._apply_client_staff_row_scope(
+                        user, table, IDCard.objects.filter(table=table, status=s_key)
+                    ).count()
+
             return ServiceResult(
                 success=True,
                 data={
@@ -799,6 +814,7 @@ class ClientCardService(BaseService):
                         'name': table.name,
                         'fields': table.fields,
                     },
+                    'counts': counts,
                     'total': total_count,
                     'offset': offset,
                     'limit': limit,

@@ -158,7 +158,16 @@ INSTALLED_APPS = [
     'mobile_api',
 ]
 
+# Debug toolbar is optional; only enable if DEBUG is on and package is installed.
+_HAS_DEBUG_TOOLBAR = False
 if DEBUG and not _running_tests():
+    try:
+        import debug_toolbar  # noqa: F401
+        _HAS_DEBUG_TOOLBAR = True
+    except ImportError:
+        pass
+
+if _HAS_DEBUG_TOOLBAR:
     INSTALLED_APPS += ['debug_toolbar']
 
 SITE_ID = 1
@@ -172,7 +181,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
 ]
 
-if DEBUG and not _running_tests():
+if _HAS_DEBUG_TOOLBAR:
     MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
 
 MIDDLEWARE += [

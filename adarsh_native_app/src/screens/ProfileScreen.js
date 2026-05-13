@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, Alert,
+  StyleSheet, Alert, ActivityIndicator, RefreshControl,
+  Linking
 } from 'react-native';
-import { IconProfile, IconEdit, IconLogout, IconChevronRight, IconMail, IconPhone } from '../components/Icons';
+import { IconProfile, IconEdit, IconLogout, IconChevronRight, IconMail, IconPhone, DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { useAuth } from '../context/AuthContext';
-import { apiPost } from '../api/client';
-import { colors, radius, shadows, roleThemes } from '../theme';
+import { apiGet, apiPost } from '../api/client';
+import { colors, radius, shadows, roleThemes, gradients, fontFamily } from '../theme';
 
 export default function ProfileScreen({ navigation }) {
   const { user, refreshProfile, logout } = useAuth();
@@ -23,22 +24,57 @@ export default function ProfileScreen({ navigation }) {
   const [pwdSaving, setPwdSaving] = useState(false);
   const [pwdForm, setPwdForm] = useState({ current: '', new: '', confirm: '' });
 
-  // Fetch latest data on mount
-  React.useEffect(() => {
-    refreshProfile();
-  }, []);
-
-  // Keep form in sync with refreshed user
-  React.useEffect(() => {
-    if (user && !editing) {
-      setEditForm({ name: user.name || '', phone: user.phone || '' });
-    }
-  }, [user, editing]);
+  // Settings / Update State
+  const [refreshing, setRefreshing] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState({ 
+    loading: false, 
+    currentBuild: 'React Native', 
+    latestVersion: '-', 
+    statusText: 'Checking...', 
+    statusType: 'info' 
+  });
+  const [systemInfo, setSystemInfo] = useState(null);
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const theme = roleThemes[user?.role] || roleThemes.default;
 
   const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
+
+  const loadData = useCallback(async () => {
+    setRefreshing(true);
+    await refreshProfile();
+    await checkUpdates();
+    await loadSystemSettings();
+    setRefreshing(false);
+  }, [refreshProfile]);
+
+  const loadSystemSettings = async () => {
+    try {
+      const { ok, data } = await apiGet('/api/mobile/settings/');
+      if (ok && data?.success) setSystemInfo(data.data);
+    } catch (e) {}
+  };
+
+  const checkUpdates = async () => {
+    setUpdateStatus(p => ({ ...p, loading: true }));
+    try {
+      const { data } = await apiGet('/api/mobile/mobile-shell/config/');
+      const d = data?.success ? data.data : null;
+      setUpdateStatus({
+        loading: false,
+        currentBuild: 'React Native',
+        latestVersion: d?.latest_version || '-',
+        statusText: d?.update_required ? 'Update Required' : d?.update_recommended ? 'Update Available' : 'Up to Date',
+        statusType: d?.update_required || d?.update_recommended ? 'warn' : 'ok'
+      });
+    } catch (e) {
+      setUpdateStatus(p => ({ ...p, loading: false, statusText: 'Offline' }));
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const saveProfile = async () => {
     if (!editForm.name.trim()) { showToast('Name is required', 'error'); return; }
@@ -56,14 +92,8 @@ export default function ProfileScreen({ navigation }) {
       showToast('All fields are required', 'error');
       return;
     }
-    if (pwdForm.new !== pwdForm.confirm) {
-      showToast('New passwords do not match', 'error');
-      return;
-    }
-    if (pwdForm.new.length < 6) {
-      showToast('Password must be at least 6 characters', 'error');
-      return;
-    }
+    if (pwdForm.new !== pwdForm.confirm) { showToast('Passwords do not match', 'error'); return; }
+    if (pwdForm.new.length < 6) { showToast('Min 6 characters', 'error'); return; }
 
     setPwdSaving(true);
     try {
@@ -71,93 +101,111 @@ export default function ProfileScreen({ navigation }) {
         current_password: pwdForm.current,
         new_password: pwdForm.new
       });
-      
-      showToast(data.success ? (data.message || 'Password updated successfully') : (data.message || 'Failed to update password'), data.success ? 'success' : 'error');
-      
-      if (data.success) {
-        setPwdForm({ current: '', new: '', confirm: '' });
-      }
-    } catch (e) {
-      showToast('Network error', 'error');
-    }
+      showToast(data.success ? 'Password updated' : (data.message || 'Failed'), data.success ? 'success' : 'error');
+      if (data.success) setPwdForm({ current: '', new: '', confirm: '' });
+    } catch (e) { showToast('Network error', 'error'); }
     setPwdSaving(false);
   };
 
-  const handleLogout = () => Alert.alert('Sign Out', 'Are you sure?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign Out', style: 'destructive', onPress: () => logout() }]);
+  const handleDeleteRequest = () => {
+    Alert.alert('Delete My Data', 'This will permanently remove your account data. Proceed?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Request Deletion', style: 'destructive', onPress: async () => {
+        try {
+          const { data } = await apiPost('/api/mobile/profile/delete-request/', { confirm: true });
+          showToast(data?.message || 'Request sent', data?.success ? 'success' : 'error');
+        } catch (e) { showToast('Network error', 'error'); }
+      }}
+    ]);
+  };
 
   const initials = (user?.name || 'U').slice(0, 2).toUpperCase();
 
   return (
     <View style={s.root}>
-      <TopBar title="My Profile" onBack={() => navigation.goBack()} />
-      <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
+      <TopBar title="Profile & Settings" onBack={() => navigation.goBack()} />
+      <ScrollView 
+        style={s.scroll} 
+        contentContainerStyle={s.scrollC} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} tintColor={colors.brandPrimary} />}
+      >
         
-        {/* Profile Card */}
         <View style={s.card}>
           <LinearGradient colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatarSec}>
             <View style={s.avatar}><Text style={s.avatarTxt}>{initials}</Text></View>
             {!editing && <Text style={s.userName}>{user?.name || 'User'}</Text>}
             <View style={[s.roleBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-              <Text style={s.userRole}>
-                {user?.role === 'pro_user' ? 'PRO USER' : 
-                 (user?.role || 'User').replace('_', ' ').toUpperCase()}
-              </Text>
+              <Text style={s.userRole}>{(user?.role || 'User').replace('_', ' ').toUpperCase()}</Text>
             </View>
           </LinearGradient>
 
           {!editing ? (
             <View style={s.details}>
-              <InfoRow icon="envelope" c="#3b82f6" bg="#dbeafe" label="Email" value={user?.email || 'Not set'} />
-              <InfoRow icon="phone" c="#22c55e" bg="#dcfce7" label="Phone" value={user?.phone || 'Not set'} />
-              
-              <TouchableOpacity 
-                style={s.editProfileBtn} 
-                onPress={() => { setEditing(true); setEditForm({ name: user?.name || '', phone: user?.phone || '' }); }}
-              >
-                <IconEdit size={12} color={theme.gradient[0]} style={{ marginRight: 8 }} />
-                <Text style={[s.editProfileTxt, { color: theme.gradient[0] }]}>Edit Profile Info</Text>
+              <InfoRow icon="envelope" c="#3b82f6" bg="#eff6ff" label="Email" value={user?.email || 'Not set'} />
+              <InfoRow icon="phone" c="#10b981" bg="#ecfdf5" label="Phone" value={user?.phone || 'Not set'} />
+              <TouchableOpacity style={s.editProfileBtn} onPress={() => { setEditing(true); setEditForm({ name: user?.name || '', phone: user?.phone || '' }); }}>
+                <IconEdit size={12} color={colors.brandPrimary} style={{ marginRight: 8 }} />
+                <Text style={s.editProfileTxt}>Edit Profile</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={s.editSec}>
-              <Input label="FULL NAME" value={editForm.name} onChangeText={t => setEditForm(p => ({ ...p, name: t }))} placeholder="Your name" />
-              <Input label="PHONE" value={editForm.phone} onChangeText={t => setEditForm(p => ({ ...p, phone: t }))} placeholder="Phone number" keyboardType="phone-pad" />
+              <Input label="FULL NAME" value={editForm.name} onChangeText={t => setEditForm(p => ({ ...p, name: t }))} />
+              <Input label="PHONE" value={editForm.phone} onChangeText={t => setEditForm(p => ({ ...p, phone: t }))} keyboardType="phone-pad" />
               <View style={s.eBtns}>
-                <Button variant="secondary" onPress={() => setEditing(false)} style={s.eCancel} textStyle={s.eCancelTxt}>
-                  Cancel
-                </Button>
-                <Button onPress={saveProfile} loading={saving} style={s.eSaveW}>
-                  Save Changes
-                </Button>
+                <Button variant="secondary" onPress={() => setEditing(false)} style={s.eCancel}>Cancel</Button>
+                <Button onPress={saveProfile} loading={saving} style={s.eSaveW}>Save</Button>
               </View>
             </View>
           )}
         </View>
 
-        {/* Change Password Form (Directly Visible) */}
         <Text style={s.secTitle}>CHANGE PASSWORD</Text>
         <View style={s.pwdCard}>
-          <Input label="CURRENT PASSWORD" value={pwdForm.current} onChangeText={t => setPwdForm(p => ({ ...p, current: t }))} secureTextEntry placeholder="••••••••" />
-          <Input label="NEW PASSWORD" value={pwdForm.new} onChangeText={t => setPwdForm(p => ({ ...p, new: t }))} secureTextEntry placeholder="••••••••" />
-          <Input label="CONFIRM NEW PASSWORD" value={pwdForm.confirm} onChangeText={t => setPwdForm(p => ({ ...p, confirm: t }))} secureTextEntry placeholder="••••••••" />
-
-          <Button onPress={handleUpdatePassword} loading={pwdSaving} fullWidth style={s.updatePwdBtnW}>
-            Update Password
-          </Button>
+          <Input label="CURRENT PASSWORD" value={pwdForm.current} onChangeText={t => setPwdForm(p => ({ ...p, current: t }))} secureTextEntry />
+          <Input label="NEW PASSWORD" value={pwdForm.new} onChangeText={t => setPwdForm(p => ({ ...p, new: t }))} secureTextEntry />
+          <Input label="CONFIRM PASSWORD" value={pwdForm.confirm} onChangeText={t => setPwdForm(p => ({ ...p, confirm: t }))} secureTextEntry />
+          <Button onPress={handleUpdatePassword} loading={pwdSaving} fullWidth style={{ marginTop: 10 }}>Update Password</Button>
         </View>
 
-        {/* Account Settings */}
+        <Text style={s.secTitle}>APP & SYSTEM INFO</Text>
+        <View style={s.sysCard}>
+          <View style={s.updGrid}>
+            <View style={s.updBox}>
+              <Text style={s.updLabel}>VERSION</Text>
+              <Text style={s.updValue}>{systemInfo?.app_version || '1.0.0'}</Text>
+            </View>
+            <View style={s.updBox}>
+              <Text style={s.updLabel}>BUILD</Text>
+              <Text style={s.updValue}>RN-PROD</Text>
+            </View>
+            <View style={s.updBox}>
+              <Text style={s.updLabel}>STATUS</Text>
+              <Text style={[s.updValue, { color: updateStatus.statusType === 'warn' ? colors.brandPrimary : '#22c55e' }]}>
+                {updateStatus.statusText}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={checkUpdates} style={s.checkUpdBtn}>
+            <Text style={s.checkUpdTxt}>Check for Updates</Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={s.secTitle}>ACCOUNT SETTINGS</Text>
         <View style={s.updCard}>
-          <TouchableOpacity onPress={handleLogout} style={[s.linkRow, { borderBottomWidth: 0 }]} activeOpacity={0.6}>
-            <View style={[s.linkIcon, { backgroundColor: '#fee2e2' }]}><IconLogout size={12} color="#ef4444" /></View>
-            <Text style={[s.linkLabel, { color: '#ef4444' }]}>Sign Out</Text>
-            <IconChevronRight size={10} color={colors.gray300} />
+          <TouchableOpacity onPress={handleDeleteRequest} style={s.linkRow}>
+            <View style={[s.linkIcon, { backgroundColor: '#fee2e2' }]}><DynamicIcon name="trash" size={12} color="#ef4444" /></View>
+            <Text style={[s.linkLabel, { color: '#ef4444' }]}>Delete Data Request</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={[s.linkRow, { borderBottomWidth: 0 }]}>
+            <View style={[s.linkIcon, { backgroundColor: colors.gray50 }]}><IconLogout size={12} color={colors.gray600} /></View>
+            <Text style={s.linkLabel}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         <View style={s.footer}>
-          <Text style={s.footerText}>Secure Session · Adarsh ID Cards</Text>
+          <Text style={s.footerText}>Secure Session · Adarsh ID Cards v1.0</Text>
         </View>
 
       </ScrollView>
@@ -183,40 +231,43 @@ function InfoRow({ icon, c, bg, label, value }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   scroll: { flex: 1 }, 
-  scrollC: { paddingBottom: 32 },
-  card: { marginHorizontal: 16, marginTop: 16, backgroundColor: '#fff', borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  avatarSec: { paddingHorizontal: 24, paddingVertical: 32, alignItems: 'center' },
-  avatar: { width: 80, height: 80, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
-  avatarTxt: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  userName: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 6 },
-  roleBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  userRole: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  scrollC: { paddingBottom: 40 },
+  card: { marginHorizontal: 16, marginTop: 16, backgroundColor: '#fff', borderRadius: radius.sm, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  avatarSec: { paddingHorizontal: 24, paddingVertical: 24, alignItems: 'center' },
+  avatar: { width: 70, height: 70, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  avatarTxt: { color: '#fff', fontSize: 24, fontFamily: 'SairaSemiCondensed-Bold' },
+  userName: { color: '#fff', fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', marginBottom: 4 },
+  roleBadge: { paddingHorizontal: 10, paddingVertical: 2, borderRadius: radius.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  userRole: { color: '#fff', fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', letterSpacing: 0.5 },
   details: { padding: 16 },
   editSec: { padding: 16 },
-  pwdCard: { marginHorizontal: 16, padding: 16, backgroundColor: '#fff', borderRadius: radius.lg, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  eLabel: { fontSize: 11, fontWeight: '700', color: colors.gray500, letterSpacing: 0.8 },
-  eInput: { backgroundColor: colors.gray50, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.gray700, marginTop: 6 },
-  eBtns: { flexDirection: 'row', marginTop: 16 },
-  eCancel: { flex: 1, paddingVertical: 14, backgroundColor: colors.gray100, borderRadius: radius.md, alignItems: 'center' },
-  eCancelTxt: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
-  eSaveW: { flex: 2, borderRadius: radius.md, overflow: 'hidden' },
-  eSave: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: radius.md },
-  eSaveTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  updatePwdBtnW: { marginTop: 20, borderRadius: radius.md, overflow: 'hidden' },
-  secTitle: { fontSize: 10, fontWeight: '700', color: colors.gray400, letterSpacing: 1.2, marginHorizontal: 20, marginTop: 24, marginBottom: 8 },
-  updCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.lg, paddingHorizontal: 14, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  pwdCard: { marginHorizontal: 16, padding: 16, backgroundColor: '#fff', borderRadius: radius.sm, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  eBtns: { flexDirection: 'row', marginTop: 16, gap: 10 },
+  eCancel: { flex: 1, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gray100, borderRadius: radius.xs },
+  eSaveW: { flex: 2 },
+  secTitle: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 1.2, marginHorizontal: 20, marginTop: 24, marginBottom: 8, textTransform: 'uppercase' },
+  updCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.sm, paddingHorizontal: 14, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   linkRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  linkIcon: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  linkLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.gray700 },
-  editProfileBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, paddingVertical: 12, backgroundColor: '#f8fafc', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0' },
-  editProfileTxt: { fontSize: 13, fontWeight: '700' },
+  linkIcon: { width: 32, height: 32, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  linkLabel: { flex: 1, fontSize: 13, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray700 },
+  editProfileBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, paddingVertical: 10, backgroundColor: '#f8fafc', borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0' },
+  editProfileTxt: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
+  
+  sysCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.sm, padding: 16, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  updGrid: { flexDirection: 'row', gap: 10 },
+  updBox: { flex: 1, backgroundColor: colors.gray50, borderRadius: radius.xs, padding: 8, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+  updLabel: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400 },
+  updValue: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray700, marginTop: 2 },
+  checkUpdBtn: { marginTop: 12, alignItems: 'center' },
+  checkUpdTxt: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
+
   footer: { marginTop: 40, alignItems: 'center', paddingBottom: 20 },
-  footerText: { fontSize: 10, color: colors.gray300, fontWeight: '600', letterSpacing: 0.5 },
+  footerText: { fontSize: 10, color: colors.gray300, fontFamily: 'SairaSemiCondensed-SemiBold' },
 });
 
 const ir = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: '#f1f5f9' },
-  ic: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  lb: { fontSize: 9, fontWeight: '700', color: colors.gray400, letterSpacing: 1, textTransform: 'uppercase' },
-  val: { fontSize: 13, fontWeight: '600', color: colors.gray800, marginTop: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, borderRadius: radius.sm, padding: 10, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 8 },
+  ic: { width: 36, height: 36, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  lb: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, textTransform: 'uppercase' },
+  val: { fontSize: 12, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray800 },
 });

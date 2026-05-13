@@ -64,7 +64,7 @@ const Button = React.memo(function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     overflow: 'hidden',
   },
   fill: {
@@ -96,15 +96,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   text: {
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     fontSize: typography.lg,
   },
   primaryText: { color: colors.white },
   secondaryText: { color: colors.gray700 },
   ghostText: { color: colors.brandPrimary },
   dangerText: { color: colors.red },
-  leftIcon: { marginRight: 8 },
-  rightIcon: { marginLeft: 8 },
+  leftIcon: { marginRight: 12 },
+  rightIcon: { marginLeft: 12 },
   secondary: {
     backgroundColor: colors.gray50,
     borderWidth: 1,

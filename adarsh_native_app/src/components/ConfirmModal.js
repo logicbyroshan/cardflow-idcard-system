@@ -89,7 +89,7 @@ const s = StyleSheet.create({
     width: '100%', 
     maxWidth: 340, 
     backgroundColor: '#fff', 
-    borderRadius: radius.lg, 
+    borderRadius: radius.sm, 
     padding: 24, 
     alignItems: 'center',
     ...shadows.xl 
@@ -97,7 +97,7 @@ const s = StyleSheet.create({
   iconCircle: { 
     width: 70, 
     height: 70, 
-    borderRadius: 35, 
+    borderRadius: radius.sm, 
     borderWidth: 2, 
     alignItems: 'center', 
     justifyContent: 'center', 
@@ -105,14 +105,14 @@ const s = StyleSheet.create({
   },
   title: { 
     fontSize: 18, 
-    fontFamily: fontFamily.bold, 
+    fontFamily: 'SairaSemiCondensed-Bold', 
     color: colors.gray800, 
     textAlign: 'center', 
     marginBottom: 8 
   },
   message: { 
     fontSize: 13, 
-    fontFamily: fontFamily.regular, 
+    fontFamily: 'SairaSemiCondensed-Regular', 
     color: colors.gray500, 
     textAlign: 'center', 
     lineHeight: 18, 
@@ -127,24 +127,24 @@ const s = StyleSheet.create({
   footer: { 
     flexDirection: 'row', 
     width: '100%', 
-    
+    columnGap: 12
   },
   cancelBtn: { 
     flex: 1, 
     paddingVertical: 14, 
-    borderRadius: radius.md, 
+    borderRadius: radius.sm, 
     backgroundColor: colors.gray100, 
     alignItems: 'center', 
     justifyContent: 'center' 
   },
   cancelText: { 
     fontSize: 13, 
-    fontFamily: fontFamily.semibold, 
+    fontFamily: 'SairaSemiCondensed-SemiBold', 
     color: colors.gray600 
   },
   confirmBtnWrap: { 
     flex: 1.5, 
-    borderRadius: radius.md, 
+    borderRadius: radius.sm, 
     overflow: 'hidden' 
   },
   confirmBtn: { 
@@ -154,7 +154,7 @@ const s = StyleSheet.create({
   },
   confirmText: { 
     fontSize: 13, 
-    fontFamily: fontFamily.bold, 
+    fontFamily: 'SairaSemiCondensed-Bold', 
     color: '#fff' 
   }
 });

@@ -1,0 +1,41 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile Login - Adarsh ID Cards</title>
+  <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}">
+</head>
+<body>
+  <main>
+    <section>
+      <h1>Adarsh ID Cards Mobile Login</h1>
+      <p>Sign in to continue to the mobile app.</p>
+      <a id="downloadApkCta" href="{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:'' }}">Download APK</a>
+      <button id="installBtn" type="button">Install App</button>
+    </section>
+  </main>
+
+  <script>
+    var apkDownloadUrl = '{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:"" }}';
+    if (apkDownloadUrl) {
+      var downloadCta = document.getElementById('downloadApkCta');
+      if (downloadCta) {
+        downloadCta.href = apkDownloadUrl;
+      }
+    }
+
+    function isNativeShell() {
+      return /(?:Android|iPhone|iPad|iPod)/i.test(navigator.userAgent || '');
+    }
+
+    if (isNativeShell()) {
+      var installBtn = document.getElementById('installBtn');
+      if (installBtn) {
+        installBtn.classList.add('hidden');
+      }
+    }
+  </script>
+</body>
+</html>

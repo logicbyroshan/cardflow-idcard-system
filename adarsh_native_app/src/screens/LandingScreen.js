@@ -255,69 +255,13 @@ export default function LandingScreen({ navigation }) {
           </View>
         </View>
 
-        <View style={s.quickCatRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.quickCatScroll}
-          >
-            {landingData?.categories?.map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() =>
-                  navigation.navigate("ProductCategoryDetail", {
-                    category: cat,
-                  })
-                }
-                style={s.quickCatChip}
-              >
-                <View style={s.catIconWrap}>
-                  <DynamicIcon
-                    name={cat.icon || "star"}
-                    size={18}
-                    color={colors.brandPrimary}
-                  />
-                </View>
-                <Text style={s.quickCatText}>{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
         <View style={s.section}>
           <View style={s.sectionPadding}>
-            <Text style={s.sectionTitle}>Featured Products</Text>
+            <Text style={s.sectionTitle}>Adarsh ID Card Solutions</Text>
+            <Text style={s.sectionSub}>
+              Specialist in all types of PVC ID cards printing, RFID solutions, and custom lanyards.
+            </Text>
           </View>
-          <FlatList
-            data={landingData?.products || []}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.shelfScroll}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={s.featuredProdCard}
-                onPress={() =>
-                  navigation.navigate("ProductDetail", { product: item })
-                }
-              >
-                <Image
-                  source={{
-                    uri: item.image?.startsWith("http")
-                      ? item.image
-                      : `${BASE_URL}${item.image}`,
-                  }}
-                  style={s.featuredProdImg}
-                />
-                <View style={s.featuredProdInfo}>
-                  <Text style={s.featuredProdTag}>{item.category}</Text>
-                  <Text style={s.featuredProdTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item) => "featured-" + item.id}
-          />
         </View>
 
         <View style={s.section}>
@@ -478,6 +422,18 @@ function LandingInput({ icon, ...props }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#fff" },
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
+  loadingText: { marginTop: 10, fontSize: 12, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Bold' },
+  errorRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  errorIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.errorBg, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  slash: { position: 'absolute', width: 2, height: 40, backgroundColor: colors.red, transform: [{ rotate: '45deg' }] },
+  errorTitle: { fontSize: 20, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 8 },
+  errorMsg: { fontSize: 13, color: colors.gray500, textAlign: 'center', marginBottom: 32, fontFamily: 'SairaSemiCondensed-Regular', lineHeight: 20 },
+  retryBtn: { width: '100%', borderRadius: radius.sm, overflow: 'hidden', ...shadows.md },
+  retryBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 10 },
+  retryBtnText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff', letterSpacing: 1 },
+  errorLoginLink: { marginTop: 20 },
+  errorLoginLinkText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
+
   header: {
     position: "absolute",
     top: 0,
@@ -496,30 +452,32 @@ const s = StyleSheet.create({
   logoWrap: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     ...shadows.sm,
     overflow: "hidden",
   },
-  logoImg: { width: "80%", height: "80%" },
+  logoCircle: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center' },
   logoText: {
     fontSize: 16,
-    fontFamily: fontFamily.bold,
-    color: colors.brandLight,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.brandPrimary,
     letterSpacing: 1,
+    marginLeft: 8,
   },
-  loginBtn: { borderRadius: 20, overflow: "hidden", ...shadows.md },
+  loginBtn: { borderRadius: radius.sm, overflow: "hidden", ...shadows.md },
   loginBtnGrad: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
+    gap: 8,
   },
   loginBtnText: {
     fontSize: 10,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     letterSpacing: 0.5,
   },
@@ -537,9 +495,10 @@ const s = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
   },
+  heroContent: { paddingBottom: 10 },
   heroTitle: {
     fontSize: 32,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#fff",
     lineHeight: 38,
   },
@@ -547,13 +506,14 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: "rgba(255,255,255,0.8)",
     marginTop: 8,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
   heroDots: {
     position: "absolute",
     bottom: 20,
     left: 24,
     flexDirection: "row",
+    gap: 6,
   },
   dot: {
     width: 6,
@@ -565,16 +525,9 @@ const s = StyleSheet.create({
 
   section: { marginTop: 32 },
   sectionPadding: { paddingHorizontal: 20 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#1e293b",
     marginBottom: 16,
   },
@@ -583,18 +536,13 @@ const s = StyleSheet.create({
     color: "#64748b",
     marginTop: -8,
     marginBottom: 16,
-    fontFamily: fontFamily.regular,
-  },
-  viewAll: {
-    fontSize: 13,
-    fontFamily: fontFamily.semibold,
-    color: colors.brandLight,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
 
   featuredProdCard: {
     width: 220,
     backgroundColor: "#fff",
-    borderRadius: 20,
+    borderRadius: radius.md,
     marginRight: 15,
     overflow: "hidden",
     ...shadows.md,
@@ -605,22 +553,22 @@ const s = StyleSheet.create({
   featuredProdInfo: { padding: 15 },
   featuredProdTag: {
     fontSize: 9,
-    fontFamily: fontFamily.bold,
-    color: colors.brandLight,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.brandPrimary,
     textTransform: "uppercase",
     marginBottom: 4,
   },
   featuredProdTitle: {
     fontSize: 14,
-    fontFamily: fontFamily.bold,
+    fontFamily: 'SairaSemiCondensed-Bold',
     color: "#1e293b",
   },
 
   quickCatRow: {
     marginTop: -25,
     backgroundColor: "#fff",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
     paddingTop: 20,
   },
   quickCatScroll: { paddingHorizontal: 15, paddingBottom: 10 },
@@ -630,105 +578,26 @@ const s = StyleSheet.create({
     backgroundColor: "#f1f5f9",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: radius.sm,
+    marginRight: 10,
   },
-  quickCatText: { fontSize: 11, fontFamily: fontFamily.bold, color: "#475569" },
-
-  shelfSection: { marginTop: 24, paddingVertical: 10 },
-  shelfHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  shelfTitleWrap: { flexDirection: "row", alignItems: "center" },
-  shelfIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shelfTitle: { fontSize: 18, fontFamily: fontFamily.bold, color: "#1e293b" },
-  shelfSub: {
-    fontSize: 10,
-    color: "#94a3b8",
-    marginTop: 1,
-    fontFamily: fontFamily.semibold,
-  },
-  shelfViewAll: { flexDirection: "row", alignItems: "center" },
-  viewAllText: {
-    fontSize: 12,
-    fontFamily: fontFamily.bold,
-    color: colors.brandLight,
-  },
+  catIconWrap: { marginRight: 8 },
+  quickCatText: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: "#475569" },
 
   shelfScroll: { paddingHorizontal: 15, paddingBottom: 10 },
-  shelfCard: {
-    width: 140,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-    overflow: "hidden",
-    ...shadows.sm,
-  },
-  shelfImg: { width: 140, height: 140, backgroundColor: "#f8fafc" },
-  shelfInfo: { padding: 10 },
-  shelfProdName: {
-    fontSize: 12,
-    fontFamily: fontFamily.bold,
-    color: "#1e293b",
-  },
-
-  shelfMoreCard: {
-    width: 100,
-    height: 180,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shelfMoreCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#f1f5f9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shelfMoreText: {
-    fontSize: 11,
-    fontFamily: fontFamily.bold,
-    color: colors.brandLight,
-  },
-
-  emptyShelf: {
-    marginHorizontal: 20,
-    padding: 20,
-    backgroundColor: "#f8fafc",
-    borderRadius: 16,
-    alignItems: "center",
-    borderStyle: "dashed",
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-  },
-  emptyShelfText: {
-    fontSize: 12,
-    color: "#94a3b8",
-    fontFamily: fontFamily.semibold,
-  },
 
   clientScroll: { paddingHorizontal: 15, paddingBottom: 10 },
   clientCard: {
     width: 100,
     height: 64,
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: "#f1f5f9",
     alignItems: "center",
     justifyContent: "center",
     padding: 12,
+    marginRight: 12,
     ...shadows.sm,
   },
   clientLogo: { width: "100%", height: "100%" },
@@ -736,25 +605,25 @@ const s = StyleSheet.create({
   contactSection: { marginTop: 40, paddingHorizontal: 20, paddingBottom: 40 },
   contactCard: {
     backgroundColor: "#fff",
-    borderRadius: 24,
+    borderRadius: radius.md,
     padding: 24,
     borderWidth: 1,
     borderColor: "#f1f5f9",
     ...shadows.xl,
   },
-  contactTitle: { fontSize: 24, fontFamily: fontFamily.bold, color: "#1e293b" },
+  contactTitle: { fontSize: 24, fontFamily: 'SairaSemiCondensed-Bold', color: "#1e293b" },
   contactSub: {
     fontSize: 14,
     color: "#64748b",
     marginTop: 4,
     marginBottom: 24,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
-  form: {},
+  form: { gap: 12 },
   inputWrap: {
     flexDirection: "row",
     backgroundColor: "#f8fafc",
-    borderRadius: 12,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
@@ -765,132 +634,36 @@ const s = StyleSheet.create({
     paddingRight: 12,
     color: "#1e293b",
     fontSize: 14,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
-  submitBtn: { marginTop: 8, borderRadius: 12, overflow: "hidden" },
+  submitBtn: { borderRadius: radius.sm, overflow: "hidden", ...shadows.md },
   submitGrad: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 16,
+    gap: 10,
   },
-  submitText: { fontSize: 14, fontFamily: fontFamily.bold, color: "#fff" },
+  submitText: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: "#fff" },
 
   footer: { marginTop: 40, alignItems: "center" },
   footerText: {
     fontSize: 11,
     color: colors.gray400,
-    fontFamily: fontFamily.regular,
+    fontFamily: 'SairaSemiCondensed-Regular',
   },
-  socials: { flexDirection: "row" },
+  socials: { flexDirection: "row", gap: 20, marginTop: 16 },
 
-  benefitsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
   benefitCard: {
     flex: 1,
     backgroundColor: "#f8fafc",
-    borderRadius: 16,
+    borderRadius: radius.sm,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
-  benefitIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-    ...shadows.sm,
-  },
-  benefitTitle: {
-    fontSize: 13,
-    fontFamily: fontFamily.bold,
-    color: "#1e293b",
-    textAlign: "center",
-  },
-  benefitSub: {
-    fontSize: 10,
-    color: "#64748b",
-    textAlign: "center",
-    marginTop: 4,
-    fontFamily: fontFamily.regular,
-  },
-
-  loadingText: {
-    marginTop: 16,
-    fontSize: 12,
-    fontFamily: fontFamily.semibold,
-    color: colors.gray400,
-    letterSpacing: 1,
-  },
-  errorRoot: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-    backgroundColor: "#fff",
-  },
-  errorIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#fef2f2",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: "#fee2e2",
-  },
-  slash: {
-    position: "absolute",
-    width: 40,
-    height: 2,
-    backgroundColor: colors.red,
-    transform: [{ rotate: "45deg" }],
-  },
-  errorTitle: {
-    fontSize: 24,
-    fontFamily: fontFamily.bold,
-    color: "#1e293b",
-    marginBottom: 8,
-  },
-  errorMsg: {
-    fontSize: 14,
-    fontFamily: fontFamily.regular,
-    color: "#64748b",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  retryBtn: {
-    width: "100%",
-    borderRadius: 12,
-    overflow: "hidden",
-    ...shadows.lg,
-  },
-  retryBtnGrad: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-  },
-  retryBtnText: {
-    fontSize: 14,
-    fontFamily: fontFamily.bold,
-    color: "#fff",
-    letterSpacing: 1,
-  },
-  errorLoginLink: { marginTop: 24, padding: 12 },
-  errorLoginLinkText: {
-    fontSize: 14,
-    fontFamily: fontFamily.semibold,
-    color: colors.brandLight,
-    textDecorationLine: "underline",
-  },
+  benefitIcon: { marginBottom: 12 },
+  benefitTitle: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 4 },
+  benefitSub: { fontSize: 11, color: colors.gray500, textAlign: 'center', fontFamily: 'SairaSemiCondensed-Regular' },
 });
