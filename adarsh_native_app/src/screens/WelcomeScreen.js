@@ -32,6 +32,7 @@ export default function WelcomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [connectionError, setConnectionError] = useState(false);
   const [activeHero, setActiveHero] = useState(0);
   const heroRef = useRef(null);
 
@@ -54,13 +55,18 @@ export default function WelcomeScreen({ navigation }) {
   }, []);
 
   const loadLandingData = async () => {
+    setLoading(true);
+    setConnectionError(false);
     try {
       const { ok, data } = await apiGet('/api/mobile/pub/website/landing/');
       if (ok && data?.success) {
         setData(data);
+      } else {
+        setConnectionError(true);
       }
     } catch (e) {
       console.log("Landing data err", e);
+      setConnectionError(true);
     }
     setLoading(false);
   };
@@ -95,7 +101,21 @@ export default function WelcomeScreen({ navigation }) {
   if (loading) {
     return (
       <View style={s.loadingRoot}>
-        <ActivityIndicator size="large" color={colors.brandPrimary} />
+        <Image source={require("../../assets/logo.png")} style={s.loadingLogo} />
+        <ActivityIndicator size="small" color={colors.brandPrimary} style={{ marginTop: 20 }} />
+      </View>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <View style={s.loadingRoot}>
+        <DynamicIcon name="wifi-slash" size={48} color={colors.gray300} />
+        <Text style={s.errorTitle}>Connection Issue</Text>
+        <Text style={s.errorSub}>Unable to reach the server. Please check your internet connection.</Text>
+        <TouchableOpacity onPress={loadLandingData} style={s.retryBtn}>
+           <Text style={s.retryBtnText}>RETRY</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -134,9 +154,7 @@ export default function WelcomeScreen({ navigation }) {
           />
           <View style={s.headerContent}>
             <View style={s.logoArea}>
-              <View style={s.logoCircle}>
-                <DynamicIcon name="id-card" size={20} color="#fff" />
-              </View>
+              <Image source={require("../../assets/logo.png")} style={s.headerLogo} />
               <Text style={s.logoText}>ADARSH</Text>
             </View>
             <TouchableOpacity
@@ -303,7 +321,12 @@ export default function WelcomeScreen({ navigation }) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#fff" },
-  loadingRoot: { flex: 1, alignItems: "center", justifyContent: "center" },
+  loadingRoot: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
+  loadingLogo: { width: 80, height: 80, resizeMode: 'contain' },
+  errorTitle: { fontSize: 20, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginTop: 20 },
+  errorSub: { fontSize: 14, color: colors.gray500, textAlign: 'center', marginTop: 10, fontFamily: 'SairaSemiCondensed-Regular' },
+  retryBtn: { marginTop: 30, paddingHorizontal: 30, paddingVertical: 12, borderRadius: radius.md, backgroundColor: colors.brandPrimary },
+  retryBtnText: { color: '#fff', fontFamily: 'SairaSemiCondensed-Bold', fontSize: 14 },
   header: {
     position: "absolute",
     top: 0,
@@ -318,14 +341,11 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  logoArea: { flexDirection: "row", alignItems: "center" },
-  logoCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.brandPrimary,
-    alignItems: "center",
-    justifyContent: "center",
+  headerLogo: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+    marginRight: 8
   },
   logoText: {
     fontSize: 18,

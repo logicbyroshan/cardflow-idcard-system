@@ -33,10 +33,20 @@
             z-index: 50;
         }
         .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        .logo-img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            margin-right: 10px;
+        }
+        .logo-text {
             font-weight: 800;
             font-size: 1.25rem;
             color: var(--primary);
-            text-decoration: none;
         }
         .content {
             padding: 1rem;
@@ -48,7 +58,10 @@
 </head>
 <body>
     <header class="header">
-        <a href="/" class="logo">ADARSH</a>
+        <a href="/" class="logo">
+            <img src="/static/assets/logo.png" alt="Adarsh Logo" class="logo-img">
+            <span class="logo-text">ADARSH</span>
+        </a>
         <div class="user-menu">
             {% if user.is_authenticated %}
                 <i class="fas fa-user-circle" style="font-size: 1.5rem; color: #94a3b8;"></i>
