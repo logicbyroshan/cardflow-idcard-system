@@ -82,7 +82,7 @@ def system_maintenance_page(request):
     """Full-screen maintenance page with countdown timer."""
     import json as _json
     status = MaintenanceService.get_status()
-    redirect_url = settings.WEBSITE_URL or reverse('dashboard')
+    redirect_url = reverse('dashboard')
     if not status.get('enabled'):
         return redirect(redirect_url)
     end_time_json = _json.dumps(status['end_time']) if status['end_time'] else 'null'

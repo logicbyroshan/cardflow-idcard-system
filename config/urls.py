@@ -195,11 +195,14 @@ urlpatterns += [
     path('work/', include(('idcards.urls', 'idcards'), namespace='idcards_root')),
     path('reprint/', include(('reprintcard.urls', 'reprintcard'), namespace='reprintcard_root')),
 
-    # ==================== PWA MOBILE APP (/app/) ====================
-    path('app/', include('mobile_app.urls')),
-    path('sw.js', pwa_service_worker),
     # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
     path('api/mobile/', include('mobile_api.urls')),
+
+    # Native PWA surface mounted under /app/ plus root service-worker aliases
+    # for older clients that still request /sw.js directly.
+    path('app/', include('mobile_app.urls')),
+    path('manifest.json', pwa_manifest),
+    path('sw.js', pwa_service_worker),
 ]
 
 # Media file serving — always register the route so uploaded images/exports
