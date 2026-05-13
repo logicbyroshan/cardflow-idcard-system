@@ -1,6 +1,7 @@
 """Custom error pages for user-friendly navigation and support messaging."""
 
 import logging
+import re
 from django.shortcuts import render, redirect
 from django.conf import settings as django_settings
 
@@ -44,6 +45,12 @@ def _is_mobile_app_error(request) -> bool:
 
     urlconf = str(getattr(request, 'urlconf', '') or '')
     return urlconf.endswith('mobile_app.urls')
+
+
+def _is_legacy_root_uuid_path(request) -> bool:
+    """Return True for bare UUID-style root paths that should no longer 404."""
+    path = str(getattr(request, 'path', '') or '').strip('/')
+    return bool(re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', path))
 
 
 def _render_error(request, *, status_code: int, title: str, heading: str, message: str):
@@ -90,6 +97,9 @@ def error_403(request, exception=None):
 
 
 def error_404(request, exception=None):
+    if _is_legacy_root_uuid_path(request):
+        return redirect(_resolve_home_url(request))
+
     return _render_error(
         request,
         status_code=404,
