@@ -16,7 +16,12 @@ from django.utils import timezone
 from client.models import Client
 from idcards.models import IDCard, IDCardGroup, IDCardTable
 from staff.models import Staff
-from website.models import PortfolioCategory, PortfolioItem
+try:
+	from website.models import PortfolioCategory, PortfolioItem  # pyright: ignore[reportMissingImports]
+	WEBSITE_MODELS_AVAILABLE = True
+except ModuleNotFoundError:
+	PortfolioCategory = PortfolioItem = None
+	WEBSITE_MODELS_AVAILABLE = False
 from mobile_app.models import MobileDevice
 
 
@@ -2616,6 +2621,8 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 
 	@mock.patch('website.services.PortfolioItemService.create')
 	def test_website_upload_returns_partial_success_for_mixed_files(self, mock_create):
+		if not WEBSITE_MODELS_AVAILABLE:
+			self.skipTest('website app is not available in this branch')
 		self._login_mobile_super_admin()
 		cat = PortfolioCategory.objects.create(name='School ID Cards', icon='fas fa-id-card', is_active=True, order=1)
 
@@ -2644,6 +2651,8 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 
 	@mock.patch('website.services.PortfolioItemService.create')
 	def test_website_upload_returns_400_when_all_files_fail(self, mock_create):
+		if not WEBSITE_MODELS_AVAILABLE:
+			self.skipTest('website app is not available in this branch')
 		self._login_mobile_super_admin()
 		cat = PortfolioCategory.objects.create(name='Office Files', icon='fas fa-folder', is_active=True, order=2)
 
@@ -3042,6 +3051,8 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		mock_update.assert_called_once_with(self.client_profile.id, {'name': 'Updated Client'})
 
 	def test_api_portfolio_category_items_requires_view_permission_and_returns_items(self):
+		if not WEBSITE_MODELS_AVAILABLE:
+			self.skipTest('website app is not available in this branch')
 		category = PortfolioCategory.objects.create(name='Mobile Category', icon='fas fa-image', is_active=True, order=5)
 		item = PortfolioItem.objects.create(
 			title='Mobile Clip',
@@ -3551,12 +3562,18 @@ class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 			perm_mobile_app=True,
 		)
 
-		portfolio_category = PortfolioCategory.objects.create(
-			name='Phase1 Category',
-			icon='fas fa-image',
-			is_active=True,
-			order=11,
-		)
+		portfolio_cases = []
+		if WEBSITE_MODELS_AVAILABLE:
+			portfolio_category = PortfolioCategory.objects.create(
+				name='Phase1 Category',
+				icon='fas fa-image',
+				is_active=True,
+				order=11,
+			)
+			portfolio_cases = [
+				{'method': 'post', 'url': '/api/mobile/website/portfolio/upload/', 'payload': {'category_id': portfolio_category.id}, 'allowed': (200, 400, 403)},
+				{'method': 'get', 'url': f'/api/mobile/website/portfolio/category/{portfolio_category.id}/items/?limit=5', 'allowed': (200, 400, 403)},
+			]
 
 		api_cases = [
 			{'method': 'get', 'url': f'/api/mobile/card/{self.card.id}/detail/', 'allowed': (200, 403)},
@@ -3589,11 +3606,10 @@ class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 			{'method': 'post', 'url': f'/api/mobile/client/{managed_client.id}/toggle/', 'allowed': (200, 400, 403)},
 			{'method': 'get', 'url': f'/api/mobile/client/{self.client_profile.id}/tables/', 'allowed': (200, 400, 403)},
 			{'method': 'post', 'url': f'/api/mobile/client/{managed_client.id}/delete/', 'allowed': (200, 400, 403)},
-			{'method': 'post', 'url': '/api/mobile/website/portfolio/upload/', 'payload': {'category_id': portfolio_category.id}, 'allowed': (200, 400, 403)},
-			{'method': 'get', 'url': f'/api/mobile/website/portfolio/category/{portfolio_category.id}/items/?limit=5', 'allowed': (200, 400, 403)},
 		]
+		api_cases.extend(portfolio_cases)
 
-		self.assertEqual(len(api_cases), 32)
+		self.assertEqual(len(api_cases), 30 + len(portfolio_cases))
 
 		for case in api_cases:
 			method = case['method']
