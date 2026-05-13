@@ -13,6 +13,7 @@ Usage:
     python manage.py ensure_missing_card_thumbnails --apply --table-id 45
 """
 
+from urllib.parse import urlparse
 from typing import Set
 
 from django.core.files.storage import default_storage
@@ -81,6 +82,7 @@ class Command(BaseCommand):
         thumbs_missing = 0
         thumbs_created = 0
         errors = 0
+        created_examples = []
 
         seen_paths: Set[str] = set()
 
@@ -111,6 +113,8 @@ class Command(BaseCommand):
                         created = ThumbnailService.ensure_thumbnail_exists(path)
                         if created:
                             thumbs_created += 1
+                            if len(created_examples) < 10:
+                                created_examples.append((path, created))
                     except Exception:
                         errors += 1
 
@@ -124,6 +128,10 @@ class Command(BaseCommand):
 
         if apply:
             self.stdout.write(f"  Thumbnails created: {thumbs_created}")
+            if created_examples:
+                self.stdout.write("  Created thumbnail paths:")
+                for original_path, thumb_path in created_examples:
+                    self.stdout.write(f"    {original_path} -> /media/{thumb_path}")
             self.stdout.write(self.style.SUCCESS("\nDone. Missing thumbnails processed."))
         else:
             self.stdout.write(self.style.WARNING("\nDry-run only. Re-run with --apply to create thumbnails."))
@@ -166,6 +174,12 @@ class Command(BaseCommand):
         text = str(value).strip()
         if not text or text == "NOT_FOUND" or text.startswith("PENDING:"):
             return ""
+
+        if text.startswith(("http://", "https://")):
+            parsed = urlparse(text)
+            text = parsed.path or ""
+
+        text = text.split("?", 1)[0].split("#", 1)[0]
 
         normalized = BaseService.normalize_image_path(text)
         if not normalized:
