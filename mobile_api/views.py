@@ -6084,8 +6084,6 @@ def api_client_permissions(request, client_user_id):
     client_user = get_object_or_404(User, id=client_user_id)
     perms = PermissionService.get_permission_context(client_user)
     return JsonResponse({'success': True, 'data': perms.get('user_permissions', {})})
-<<<<<<< HEAD
-=======
 @require_mobile_client
 @require_http_methods(['POST'])
 def api_portfolio_upload(request):
@@ -6383,4 +6381,3 @@ def api_website_contact_submit(request):
     except Exception as e:
         logger.error('Mobile contact fallback failed: %s', e)
         return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
->>>>>>> c6a96ad0 (Harden mobile product URLs and keep shell tests stable)
