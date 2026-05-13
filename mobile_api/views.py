@@ -25,6 +25,33 @@ from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import make_aware, is_naive, localtime
 from django.utils import timezone
 from django.utils.timesince import timesince
+from django.db.models import Q, Count, Max, Min, F, Sum, Avg, CharField
+from django.db.models.functions import Cast
+from django.db.models.fields.json import KeyTextTransform
+from django.core.cache import cache
+
+from client.services import (
+    ClientAccessService,
+    ClientDashboardService,
+    ClientCardService,
+    ClientImageService,
+    ClientStaffService,
+)
+from core.services.permission_service import PermissionService
+from idcards.models import IDCardTable, IDCard, IDCardGroup
+from mobile_app.models import MobileDevice
+from reprintcard.models import ReprintRequest
+from mediafiles.utils import get_card_photo_url
+from accounts.rate_limit import rate_limit, _get_client_ip
+from accounts.services import AuthService
+from core.services.activity_service import ActivityService
+from core.services.cache_version_service import CacheVersionService
+from core.services import StaffService, IDCardService
+
+MAX_SEARCH_QUERY_LEN = 100
+MAX_GLOBAL_SEARCH_DB_SCAN = 100
+MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
+MOBILE_INSTALLATION_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._:-]{7,79}$')
 
 def _safe_file_url(file_field, request=None):
     """Safely get URL from an ImageField/FileField and prefer absolute URLs for external clients."""
@@ -37,13 +64,15 @@ def _safe_file_url(file_field, request=None):
 
     if not url:
         return ''
-                pass
 
-        base = str(getattr(settings, 'WEBSITE_URL', '') or getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
-        if base:
-            return f'{base}{raw}'
+    # Prefer absolute URLs for external clients if a base is configured.
+    base = str(getattr(settings, 'WEBSITE_URL', '') or getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
+    if base and not url.startswith(('http://', 'https://')):
+        if not url.startswith('/'):
+            url = f'/{url}'
+        return f'{base}{url}'
 
-    return raw
+    return url
 
 
 def _mobile_shell_app_config_payload(*, app_build=0, request=None):
