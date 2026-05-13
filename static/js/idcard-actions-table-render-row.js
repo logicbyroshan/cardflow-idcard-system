@@ -94,7 +94,8 @@ function createRowFromCard(card, index) {
         if (!p) return '';
         if (p.startsWith('http://') || p.startsWith('https://')) return p;
         if (p.startsWith('/media/')) return p;
-        return `/media/${p.replace(/^\/+/, '')}`;
+        const normalized = p.replace(/^\/media\//, '').replace(/^media\//, '').replace(/^\/+/, '');
+        return `/media/${normalized}`;
     }
 
     let html = `<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="rowCheckbox"></td>`;
