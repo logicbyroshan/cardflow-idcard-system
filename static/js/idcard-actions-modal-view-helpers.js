@@ -56,30 +56,12 @@ function getShortPathLocal(fullPath) {
     if (fullPath.startsWith && fullPath.startsWith('PENDING:')) {
         return `Pending: ${fullPath.substring(8)}`;
     }
-    let path = normalizeMediaPathLocal(fullPath);
+    let path = fullPath.replace(/^\/media\//, '');
     const parts = path.split('/');
     if (parts.length >= 2) {
         return parts.slice(-2).join('/');
     }
     return parts[parts.length - 1] || path;
-}
-
-function normalizeMediaPathLocal(fullPath) {
-    if (!fullPath) return '';
-    if (fullPath.startsWith && fullPath.startsWith('PENDING:')) {
-        return fullPath;
-    }
-
-    let path = String(fullPath).trim().replace(/\\/g, '/');
-    if (/^https?:\/\//i.test(path)) {
-        return path;
-    }
-
-    path = path.replace(/^\/media\//, '').replace(/^media\//, '').replace(/^\/+/, '');
-    while (path.indexOf('//') !== -1) {
-        path = path.replace(/\/+/g, '/');
-    }
-    return path;
 }
 
 // Helper: extract just the filename from a path
@@ -88,7 +70,7 @@ function getFilenameOnly(fullPath) {
     if (fullPath.startsWith && fullPath.startsWith('PENDING:')) {
         return fullPath.substring(8);
     }
-    let path = normalizeMediaPathLocal(fullPath);
+    let path = fullPath.replace(/^\/media\//, '');
     const parts = path.split('/');
     return parts[parts.length - 1] || path;
 }
@@ -99,7 +81,7 @@ function getPathDirectory(fullPath) {
     if (fullPath.startsWith && fullPath.startsWith('PENDING:')) {
         return '';
     }
-    let path = normalizeMediaPathLocal(fullPath);
+    let path = fullPath.replace(/^\/media\//, '');
     const parts = path.split('/');
     if (parts.length > 1) {
         return parts.slice(0, -1).join('/') + '/';
@@ -143,11 +125,10 @@ function populateFormFields(cardData) {
     if (photoPath && !isPending && photoPath !== 'NOT_FOUND') {
         // Valid image path - show the image (try thumbnail first, fallback to original)
         const cacheBuster = `?t=${Date.now()}`;
-        const normalizedPhotoPath = normalizeMediaPathLocal(photoPath);
-        const originalPath = /^https?:\/\//i.test(normalizedPhotoPath)
-            ? normalizedPhotoPath
-            : `/media/${normalizedPhotoPath}`;
-        const thumbPath = window.getThumbPath ? window.getThumbPath(normalizedPhotoPath) : null;
+        const originalPath = photoPath.startsWith('/media/') || photoPath.startsWith('http') 
+            ? photoPath 
+            : `/media/${photoPath}`;
+        const thumbPath = window.getThumbPath ? window.getThumbPath(photoPath) : null;
         const thumbSrc = thumbPath ? `/media/${thumbPath}${cacheBuster}` : null;
         const originalSrc = `${originalPath}${cacheBuster}`;
         if (formPhotoPreview) {
@@ -280,15 +261,14 @@ function populateFormFields(cardData) {
                 const imgPath = findFieldValue(fieldName);
                 const isPendingImg = imgPath && imgPath.startsWith('PENDING:');
                 const pendingRefImg = isPendingImg ? imgPath.substring(8) : null;
-                const normalizedImgPath = normalizeMediaPathLocal(imgPath);
 
                 if (imgPath && !isPendingImg && imgPath !== 'NOT_FOUND') {
                     // Valid image path - use thumbnail with fallback to original
                     const cacheBuster = `?t=${Date.now()}`;
-                    const originalPath = /^https?:\/\//i.test(normalizedImgPath)
-                        ? normalizedImgPath
-                        : `/media/${normalizedImgPath}`;
-                    const thumbPath = window.getThumbPath ? window.getThumbPath(normalizedImgPath) : null;
+                    const originalPath = imgPath.startsWith('/media/') || imgPath.startsWith('http') 
+                        ? imgPath 
+                        : `/media/${imgPath}`;
+                    const thumbPath = window.getThumbPath ? window.getThumbPath(imgPath) : null;
                     const thumbSrc = thumbPath ? `/media/${thumbPath}${cacheBuster}` : null;
                     const originalSrc = `${originalPath}${cacheBuster}`;
                     if (previewContainer) {
@@ -306,11 +286,11 @@ function populateFormFields(cardData) {
                     }
                     if (pathInput) {
                         if (pathInput.tagName === 'INPUT') {
-                            const directory = getPathDirectory(normalizedImgPath);
-                            const filename = getFilenameOnly(normalizedImgPath);
+                            const directory = getPathDirectory(imgPath);
+                            const filename = getFilenameOnly(imgPath);
                             pathInput.value = filename;
                             pathInput.dataset.directory = directory;
-                            pathInput.dataset.originalPath = normalizedImgPath;
+                            pathInput.dataset.originalPath = imgPath;
                             pathInput.classList.add('has-image');
                         } else {
                             pathInput.textContent = getShortPathLocal(originalPath);

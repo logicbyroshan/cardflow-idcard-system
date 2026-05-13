@@ -22,25 +22,12 @@
     // ==========================================
     // THUMBNAIL UTILITIES
     // ==========================================
-    function normalizeMediaPath(imagePath) {
-        if (!imagePath) return '';
-        if (String(imagePath).startsWith('PENDING:')) return String(imagePath);
-
-        var normalizedPath = String(imagePath).trim().replace(/\\/g, '/');
-        if (/^https?:\/\//i.test(normalizedPath)) return normalizedPath;
-
-        normalizedPath = normalizedPath.replace(/^\/media\//, '').replace(/^media\//, '').replace(/^\/+/, '');
-        while (normalizedPath.indexOf('//') !== -1) {
-            normalizedPath = normalizedPath.replace(/\/+/g, '/');
-        }
-        return normalizedPath;
-    }
-
     function getThumbPath(imagePath) {
         if (!imagePath || imagePath === '' || imagePath === 'NOT_FOUND') return null;
         if (imagePath.startsWith('PENDING:')) return null;
 
-        var normalizedPath = normalizeMediaPath(imagePath);
+        var normalizedPath = String(imagePath).replace(/\\/g, '/');
+        normalizedPath = normalizedPath.replace(/^\/media\//, '').replace(/^media\//, '');
 
         // Reject values that don't look like real file paths (no extension)
         if (normalizedPath.indexOf('.') === -1) return null;
@@ -65,7 +52,7 @@
         if (imagePath.startsWith('PENDING:')) {
             return { src: null, isThumbnail: false, isPlaceholder: true, isPending: true, pendingRef: imagePath.substring(8) };
         }
-        var normalizedPath = normalizeMediaPath(imagePath);
+        var normalizedPath = String(imagePath).replace(/\\/g, '/').replace(/^\/media\//, '').replace(/^media\//, '');
         var thumbPath = preferThumbnail ? getThumbPath(normalizedPath) : null;
         return {
             src: '/media/' + normalizedPath,
@@ -102,7 +89,7 @@
     function getShortPath(imagePath) {
         if (!imagePath) return '';
         if (imagePath.startsWith('PENDING:')) return 'Pending: ' + imagePath.substring(8);
-        var parts = normalizeMediaPath(imagePath).split('/');
+        var parts = imagePath.split('/');
         return parts.length >= 2 ? '../' + parts.slice(-2).join('/') : imagePath;
     }
 

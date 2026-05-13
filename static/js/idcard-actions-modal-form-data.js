@@ -9,22 +9,6 @@
 // FORM DATA COLLECTION
 // ==========================================
 
-function normalizeMediaPathLocal(fullPath) {
-    if (!fullPath) return '';
-    if (String(fullPath).startsWith('PENDING:')) return String(fullPath);
-
-    let path = String(fullPath).trim().replace(/\\/g, '/');
-    if (/^https?:\/\//i.test(path)) {
-        return path;
-    }
-
-    path = path.replace(/^\/media\//, '').replace(/^media\//, '').replace(/^\/+/, '');
-    while (path.indexOf('//') !== -1) {
-        path = path.replace(/\/+/g, '/');
-    }
-    return path;
-}
-
 function getFormData() {
     const fieldData = {};
     const imageFiles = {};
@@ -60,7 +44,7 @@ function getFormData() {
                     const pathInput = fieldCard?.querySelector('.image-path-input');
                     if (pathInput) {
                         const pathValue = (pathInput.value || '').trim();
-                        const originalPath = normalizeMediaPathLocal(pathInput.dataset.originalPath || '');
+                        const originalPath = pathInput.dataset.originalPath || '';
                         // originalFilename is the filename portion displayed in the input
                         // (stripped from the full path when modal loaded)
                         const originalFilename = originalPath ? originalPath.split('/').pop() : '';
