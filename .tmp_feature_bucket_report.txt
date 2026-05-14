@@ -1,0 +1,32 @@
+TOTAL_DIFF=865
+EXCLUDED_TOTAL=227
+REMAINING_TOTAL=638
+FEATURE_BUCKETS_ALL
+Remaining: Mobile apps/API	320
+Remaining: Templates/UI (non-website/officework/cardprint)	112
+Skipped: Engine/Cropper	84
+Remaining: Other/infra/docs/scripts	78
+Remaining: Frontend JS/CSS (non-skipped)	65
+Remaining: Backend/Auth/Permissions/APIs	56
+Skipped: Website	50
+Skipped: Guest-user concept	37
+Skipped: Officework	30
+Skipped: Cardprint	22
+Remaining: Export pipeline (pdf/word/images)	5
+Skipped: ManageWebsite/Admin Website	4
+Remaining: Reprint module	2
+FEATURE_BUCKETS_REMAINING_ONLY
+Remaining: Mobile apps/API	320
+Remaining: Templates/UI (non-website/officework/cardprint)	112
+Remaining: Other/infra/docs/scripts	78
+Remaining: Frontend JS/CSS (non-skipped)	65
+Remaining: Backend/Auth/Permissions/APIs	56
+Remaining: Export pipeline (pdf/word/images)	5
+Remaining: Reprint module	2
+EXCLUDED_BUCKETS_ONLY
+Skipped: Engine/Cropper	84
+Skipped: Website	50
+Skipped: Guest-user concept	37
+Skipped: Officework	30
+Skipped: Cardprint	22
+Skipped: ManageWebsite/Admin Website	4

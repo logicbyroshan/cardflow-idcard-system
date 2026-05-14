@@ -1,6 +1,7 @@
 {% load static %}
 <div class="flex items-center gap-[2px]">
     {% if current_status == 'download' and is_super_admin or current_status == 'download' and is_admin_staff and perm_idcard_reprint_list or current_status == 'download' and is_client and perm_idcard_reprint_list or current_status == 'download' and is_client_staff and perm_idcard_reprint_list %}
+    <div class="action-divider"></div>
     <button class="btn action-btn btn-blue" id="openReprintModalBtn" title="Request reprint from download list">
         <i class="fa-solid fa-rotate"></i>
         <span class="btn-text">Reprint</span>
