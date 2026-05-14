@@ -54,6 +54,21 @@ def _is_legacy_root_uuid_path(request) -> bool:
 
 
 def _render_error(request, *, status_code: int, title: str, heading: str, message: str):
+    is_api = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or (request.content_type or '') == 'application/json'
+        or (request.path or '').startswith('/api/')
+        or (request.path or '').startswith('/app/api/')
+    )
+    if is_api:
+        from django.http import JsonResponse
+        return JsonResponse({
+            'success': False,
+            'message': message,
+            'status_code': status_code,
+            'title': title
+        }, status=status_code)
+
     template_name = 'errors/error_mobile.html' if _is_mobile_app_error(request) else 'errors/error.html'
     return render(
         request,

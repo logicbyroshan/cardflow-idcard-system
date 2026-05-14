@@ -180,7 +180,25 @@ export async function apiGet(path, params = null) {
       data = JSON.parse(text);
     } catch (e) {
       console.warn('[API] JSON Parse Error for path:', finalPath, 'Response:', text.substring(0, 100));
-      return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid server response' : 'Server encountered an issue (' + response.status + ')' } };
+      return { 
+        ok: false, 
+        status: response.status, 
+        data: { 
+          success: false, 
+          message: response.ok ? 'Invalid server response' : 'Server encountered an issue (' + response.status + ')' 
+        } 
+      };
+    }
+
+    if (!response.ok) {
+      return { 
+        ok: false, 
+        status: response.status, 
+        data: { 
+          success: false, 
+          message: data.message || 'Server error (' + response.status + ')' 
+        } 
+      };
     }
 
     // Fallback: some mobile endpoints may return CSRF/token in JSON for native clients
@@ -217,7 +235,25 @@ export async function apiPost(path, body = {}) {
       data = JSON.parse(text);
     } catch (e) {
       console.warn('[API] JSON Parse Error for POST path:', path, 'Response:', text.substring(0, 100));
-      return { ok: false, status: response.status, data: { success: false, message: response.ok ? 'Invalid response' : 'Server error (' + response.status + ')' } };
+      return { 
+        ok: false, 
+        status: response.status, 
+        data: { 
+          success: false, 
+          message: response.ok ? 'Invalid response' : 'Server error (' + response.status + ')' 
+        } 
+      };
+    }
+
+    if (!response.ok) {
+      return { 
+        ok: false, 
+        status: response.status, 
+        data: { 
+          success: false, 
+          message: data.message || 'Server error (' + response.status + ')' 
+        } 
+      };
     }
 
     // Fallback: capture CSRF returned in JSON
