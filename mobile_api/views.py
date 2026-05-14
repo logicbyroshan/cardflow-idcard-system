@@ -48,9 +48,10 @@ from reprintcard.models import ReprintRequest
 from mediafiles.utils import get_card_photo_url
 from accounts.rate_limit import rate_limit, _get_client_ip
 from accounts.services import AuthService
+from mediafiles.services import ImageService, ThumbnailService
 from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
-from core.services import StaffService, IDCardService
+from core.services import StaffService, IDCardService, ClientService
 
 MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
