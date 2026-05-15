@@ -709,7 +709,7 @@ def api_recent_client_updates(request):
                 'downloaded': cc.get('downloaded', 0),
                 'pool': cc.get('pool', 0),
             })
-        cache.set(cache_key, results, 10)
+        cache.set(cache_key, results, 30)
 
         # Presence is always fresh (already optimized in Task 2)
         presence_payload = LiveClientPresenceService.get_live_payload_for_user(user)

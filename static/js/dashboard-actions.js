@@ -504,6 +504,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
+        const recentClientUpdatesLimit = 100;
         const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
         const showPool = headerColumns >= 6;
         setDashboardTabCount(dashboardTabCountRecentClients, 0);
@@ -513,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
-        ApiClient.get(panelUrl('/api/recent-client-updates/'))
+        ApiClient.get(panelUrl('/api/recent-client-updates/?limit=' + recentClientUpdatesLimit))
             .then(data => {
                 waitForMinDelay(skeletonStart).then(() => {
                     if (data.success && data.clients.length > 0) {
@@ -580,20 +581,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <a href="${clientLinkUrl}" class="client-name-link" onclick="event.stopPropagation()">${statusBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                 </td>
                                 <td class="text-center">
-                                    ${directUrl ? `<a href="${directUrl}?status=pending" class="count-badge pending" onclick="event.stopPropagation()">${client.pending}</a>` : `<span class="count-badge pending">${client.pending}</span>`}
+                                    ${directUrl ? `<a href="${directUrl}?status=pending" class="count-badge pending" onclick="event.stopPropagation()">${client.pending}</a>` : `<a href="${clientLinkUrl}" class="count-badge pending" onclick="event.stopPropagation()">${client.pending}</a>`}
                                 </td>
                                 <td class="text-center">
-                                    ${directUrl ? `<a href="${directUrl}?status=verified" class="count-badge verified" onclick="event.stopPropagation()">${client.verified}</a>` : `<span class="count-badge verified">${client.verified}</span>`}
+                                    ${directUrl ? `<a href="${directUrl}?status=verified" class="count-badge verified" onclick="event.stopPropagation()">${client.verified}</a>` : `<a href="${clientLinkUrl}" class="count-badge verified" onclick="event.stopPropagation()">${client.verified}</a>`}
                                 </td>
                                 <td class="text-center">
-                                    ${directUrl ? `<a href="${directUrl}?status=approved" class="count-badge approved" onclick="event.stopPropagation()">${client.approved}</a>` : `<span class="count-badge approved">${client.approved}</span>`}
+                                    ${directUrl ? `<a href="${directUrl}?status=approved" class="count-badge approved" onclick="event.stopPropagation()">${client.approved}</a>` : `<a href="${clientLinkUrl}" class="count-badge approved" onclick="event.stopPropagation()">${client.approved}</a>`}
                                 </td>
                                 <td class="text-center">
-                                    ${directUrl ? `<a href="${directUrl}?status=download" class="count-badge downloaded" onclick="event.stopPropagation()">${client.downloaded}</a>` : `<span class="count-badge downloaded">${client.downloaded}</span>`}
+                                    ${directUrl ? `<a href="${directUrl}?status=download" class="count-badge downloaded" onclick="event.stopPropagation()">${client.downloaded}</a>` : `<a href="${clientLinkUrl}" class="count-badge downloaded" onclick="event.stopPropagation()">${client.downloaded}</a>`}
                                 </td>
                                 ${showPool ? `
                                 <td class="text-center">
-                                    ${directUrl ? `<a href="${directUrl}?status=pool" class="count-badge pool" onclick="event.stopPropagation()">${client.pool}</a>` : `<span class="count-badge pool">${client.pool}</span>`}
+                                    ${directUrl ? `<a href="${directUrl}?status=pool" class="count-badge pool" onclick="event.stopPropagation()">${client.pool}</a>` : `<a href="${clientLinkUrl}" class="count-badge pool" onclick="event.stopPropagation()">${client.pool}</a>`}
                                 </td>
                                 ` : ''}
                             </tr>

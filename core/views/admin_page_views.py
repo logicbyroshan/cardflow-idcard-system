@@ -11,7 +11,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.contrib.sessions.models import Session
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Case, When, Value, BooleanField
+from django.db.models import Count, Exists, OuterRef, Q, Case, When, Value, BooleanField
 from django.utils import timezone
 from django.utils.timesince import timesince as django_timesince
 
@@ -19,6 +19,7 @@ from client.models import Client
 from staff.models import Staff
 from accounts.services import AuthService
 from idcards.models import IDCardGroup, IDCard, IDCardTable
+from mediafiles.models import CardMedia
 from mediafiles.services.image_thumbnail import ThumbnailService
 from django.core.files.storage import default_storage
 from ..models import User, Notification, EmailLog, ActivityLog
@@ -438,12 +439,11 @@ def manage_clients(request):
         .select_related('user')
         .annotate(
             group_count=Count('id_card_groups', distinct=True),
-            card_count=Count('id_card_groups__tables__id_cards', distinct=True),
-            media_count=Count('media_files', distinct=True),
+            has_media=Exists(CardMedia.objects.filter(client_id=OuterRef('pk'))),
         )
         .annotate(
             has_data=Case(
-                When(Q(group_count__gt=0) | Q(card_count__gt=0) | Q(media_count__gt=0), then=Value(True)),
+                When(Q(group_count__gt=0) | Q(has_media=True), then=Value(True)),
                 default=Value(False),
                 output_field=BooleanField(),
             )
