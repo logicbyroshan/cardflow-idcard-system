@@ -485,24 +485,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
-      confirmDeleteBtn.addEventListener('click', async function() {
-        if (!NS.selectedClientId) return;
+      if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', async function() {
+          if (!NS.selectedClientId) return;
 
-        var result = await NS.deleteClientApi(NS.selectedClientId);
-        if (result.success) {
-          showToast(result.message, 'success');
-          NS.closeDeleteModalFn();
-          NS.selectedRow.remove();
-          NS.selectedClientId = null;
-          NS.selectedRow = null;
-          NS.disableActionButtons();
-        } else {
-          showToast(result.message || 'Failed to delete client', 'error');
-        }
-      });
+          var originalHtml = confirmDeleteBtn.innerHTML;
+          confirmDeleteBtn.disabled = true;
+          confirmDeleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
+
+          try {
+            var result = await NS.deleteClientApi(NS.selectedClientId);
+            if (result && result.success) {
+              showToast(result.message || 'Client deleted successfully', 'success');
+              NS.closeDeleteModalFn();
+              if (NS.selectedRow && typeof NS.selectedRow.remove === 'function') {
+                NS.selectedRow.remove();
+              }
+              NS.selectedClientId = null;
+              NS.selectedRow = null;
+              NS.disableActionButtons();
+            } else {
+              showToast((result && result.message) || 'Failed to delete client', 'error');
+            }
+          } catch (err) {
+            showToast((err && err.message) || 'Delete request failed', 'error');
+          } finally {
+            confirmDeleteBtn.disabled = false;
+            confirmDeleteBtn.innerHTML = originalHtml;
+          }
+        });
+      }
 
       // Status change confirmation handler
-      confirmStatusBtn.addEventListener('click', async function() {
+      if (confirmStatusBtn) confirmStatusBtn.addEventListener('click', async function() {
         if (!NS.pendingStatusClientId) return;
 
         var result = await NS.toggleClientStatus(NS.pendingStatusClientId);
@@ -529,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
-      editFromViewBtn.addEventListener('click', async function() {
+      if (editFromViewBtn) editFromViewBtn.addEventListener('click', async function() {
         NS.closeViewModalFn();
         if (NS.selectedClientId) {
           var clientData = await NS.fetchClientDetails(NS.selectedClientId);
@@ -537,10 +552,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
-      closeClientDrawer.addEventListener('click', function() { NS.closeDrawerFn(); });
-      cancelClientDrawer.addEventListener('click', function() { NS.closeDrawerFn(); });
-      closeViewModal.addEventListener('click', function() { NS.closeViewModalFn(); });
-      closeViewModalBtn.addEventListener('click', function() { NS.closeViewModalFn(); });
+      if (closeClientDrawer) closeClientDrawer.addEventListener('click', function() { NS.closeDrawerFn(); });
+      if (cancelClientDrawer) cancelClientDrawer.addEventListener('click', function() { NS.closeDrawerFn(); });
+      if (closeViewModal) closeViewModal.addEventListener('click', function() { NS.closeViewModalFn(); });
+      if (closeViewModalBtn) closeViewModalBtn.addEventListener('click', function() { NS.closeViewModalFn(); });
       // Close handlers for delete/status modals now managed by Alpine @click in template
 
       if (closeGroupMessageDrawer) closeGroupMessageDrawer.addEventListener('click', closeGroupMessageDrawerFn);
@@ -967,9 +982,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = '';
       }
 
-      viewStaffBtn.addEventListener('click', openStaffDrawer);
-      closeStaffDrawer.addEventListener('click', closeStaffDrawerFn);
-      closeStaffDrawerBtn.addEventListener('click', closeStaffDrawerFn);
+      if (viewStaffBtn) viewStaffBtn.addEventListener('click', openStaffDrawer);
+      if (closeStaffDrawer) closeStaffDrawer.addEventListener('click', closeStaffDrawerFn);
+      if (closeStaffDrawerBtn) closeStaffDrawerBtn.addEventListener('click', closeStaffDrawerFn);
 
       // Close on Escape key
       document.addEventListener('keydown', function(e) {

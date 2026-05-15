@@ -730,12 +730,16 @@ class ZipExporter:
         raw = str(field_name or '').upper().strip()
         normalized = self._normalize_field_key(raw)
 
+        # Relation photos - includes mother/father and explicit rel_1photo style names.
         if normalized in ('MPHOTO', 'MOTHERPHOTO') or ('MOTHER' in raw and 'PHOTO' in raw):
             return 'MOTHER_PHOTO'
         if normalized in ('FPHOTO', 'FATHERPHOTO') or ('FATHER' in raw and 'PHOTO' in raw):
             return 'FATHER_PHOTO'
-        if 'PHOTO' in raw:
+        
+        # Generic photo matches
+        if 'PHOTO' in raw or 'IMAGE' in raw or 'PIC' in raw:
             return 'PHOTO'
+            
         return ''
 
     def _resolve_image_name_mapping(self, rename_options: Optional[Dict[str, Any]], table_fields: List[Dict[str, Any]]) -> Dict[str, List[str]]:
@@ -758,7 +762,14 @@ class ZipExporter:
 
         mapping: Dict[str, List[str]] = {}
         for raw_image_key, raw_text_field_names in raw_map.items():
-            canonical_image = self._canonical_image_key(str(raw_image_key), '')
+            # Lookup true field type from table_fields if available
+            field_type = ''
+            for f in table_fields:
+                if str(f.get('name', '')).strip() == str(raw_image_key).strip():
+                    field_type = str(f.get('type', '')).strip()
+                    break
+            
+            canonical_image = self._canonical_image_key(str(raw_image_key), field_type)
             if canonical_image not in self.RENAMEABLE_IMAGE_KEYS:
                 continue
 

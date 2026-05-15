@@ -183,6 +183,9 @@
 
       <div id="downloadImgWizardStep1" class="download-img-wizard-step">
         <div class="download-img-section-heading">Optional: Choose Mode</div>
+        
+        <!-- Inline Warning for missing data -->
+        <div id="downloadImgWizardDataWarning" class="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded text-sm mb-3" style="display: none;"></div>
         <div class="mb-2 text-left download-img-toggle-group">
           {% if perm_idcard_download_image_rename_mode %}
           <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">

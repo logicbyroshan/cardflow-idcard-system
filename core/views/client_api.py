@@ -465,21 +465,39 @@ def api_client_delete(request, client_id):
     """API endpoint to delete a client."""
     if not _has_manage_client_page_permission(request.user):
         return _manage_client_permission_denied_response()
+    
     if PermissionService.is_admin_staff(request.user):
         return JsonResponse({'success': False, 'message': 'Only super admin can delete clients'}, status=403)
+        
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
-    # Get client name before deletion for the activity log
+        
+    # Get client object with card count annotation
+    from django.db.models import Count
     from client.models import Client
+    
     try:
-        client_obj = Client.objects.get(pk=client_id)
+        client_obj = Client.objects.annotate(
+            card_count=Count('id_card_groups__tables__id_cards', distinct=True)
+        ).get(pk=client_id)
+        
         client_name = client_obj.name
+        
+        # Enforce no-cards rule
+        if client_obj.card_count > 0:
+            return JsonResponse({
+                'success': False, 
+                'message': f'Cannot delete client "{client_name}" because it has {client_obj.card_count} active ID cards. Please delete all cards belonging to this client first.'
+            }, status=400)
+            
     except Client.DoesNotExist:
-        client_name = 'Unknown'
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+        
     result = ClientService.delete(client_id)
     if result.success:
         ActivityService.log_client_delete(request, client_name, client_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
 
 
 @require_http_methods(["POST"])

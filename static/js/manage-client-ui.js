@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var idcardGroupBtn = document.getElementById('idcard-group-btn');
       
       var table = document.getElementById('clientsTable');
-      var tbody = table.querySelector('tbody');
+      var tbody = table ? table.querySelector('tbody') : null;
 
       // Phase 1: Profile photo upload removed - using avatar placeholder
 
@@ -183,7 +183,15 @@ document.addEventListener('DOMContentLoaded', function() {
       // ==================== SELECT ROW FUNCTION ====================
       NS.selectRow = function(row) {
         if (row && row.dataset.clientId) {
-          tbody.querySelectorAll('tr').forEach(function(r) { r.classList.remove('selected'); });
+          var currentTbody = tbody;
+          if (!currentTbody || !document.body.contains(currentTbody)) {
+            var currentTable = document.getElementById('clientsTable');
+            currentTbody = currentTable ? currentTable.querySelector('tbody') : null;
+            tbody = currentTbody;
+          }
+          if (currentTbody) {
+            currentTbody.querySelectorAll('tr').forEach(function(r) { r.classList.remove('selected'); });
+          }
           row.classList.add('selected');
           NS.selectedClientId = row.dataset.clientId;
           NS.selectedRow = row;
@@ -191,7 +199,14 @@ document.addEventListener('DOMContentLoaded', function() {
           if (editClientBtn) editClientBtn.disabled = false;
           if (viewClientBtn) viewClientBtn.disabled = false;
           if (viewStaffBtn) viewStaffBtn.disabled = false;
-          if (deleteClientBtn) deleteClientBtn.disabled = false;
+          if (deleteClientBtn) {
+            // Disable delete when client has existing data to prevent accidental deletion
+            if (row.dataset.clientHasData === 'true') {
+              deleteClientBtn.disabled = true;
+            } else {
+              deleteClientBtn.disabled = false;
+            }
+          }
           if (activeClientBtn) activeClientBtn.disabled = false;
           if (groupSettingBtn) groupSettingBtn.disabled = false;
           if (idcardGroupBtn) idcardGroupBtn.disabled = false;

@@ -11,7 +11,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.contrib.sessions.models import Session
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When, Value, BooleanField
 from django.utils import timezone
 from django.utils.timesince import timesince as django_timesince
 
@@ -436,7 +436,18 @@ def manage_clients(request):
         Client.objects
         .all()
         .select_related('user')
-        .annotate(group_count=Count('id_card_groups', distinct=True))
+        .annotate(
+            group_count=Count('id_card_groups', distinct=True),
+            card_count=Count('id_card_groups__tables__id_cards', distinct=True),
+            media_count=Count('media_files', distinct=True),
+        )
+        .annotate(
+            has_data=Case(
+                When(Q(group_count__gt=0) | Q(card_count__gt=0) | Q(media_count__gt=0), then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField(),
+            )
+        )
         .order_by('-id')
     )
     clients_qs = PermissionService.get_accessible_clients(user, base_qs=clients_qs)

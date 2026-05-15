@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, List
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from django.utils.timezone import localtime
 
 from core.models import User, EmailLog
@@ -457,17 +458,48 @@ class ClientService(BaseService):
                     client=client, staff_type='client_staff'
                 ).values_list('user_id', flat=True)
             )
+
+            archived_user_ids = []
+
+            def _retire_user_account(user_obj):
+                """Fallback for accounts protected by historical FK records.
+                We keep the row but deactivate and anonymize it so client deletion can continue.
+                """
+                token = secrets.token_hex(3)
+                user_obj.is_active = False
+                user_obj.username = f'deleted_client_{user_obj.pk}_{token}'
+                user_obj.email = f'deleted.client.{user_obj.pk}.{token}@noemail.local'
+                user_obj.phone = ''
+                user_obj.first_name = 'Deleted'
+                user_obj.last_name = 'Client'
+                user_obj.save(update_fields=['is_active', 'username', 'email', 'phone', 'first_name', 'last_name'])
+                archived_user_ids.append(user_obj.pk)
             
             with transaction.atomic():
                 client.delete()   # Cascades Staff records
-                user.delete()     # Delete client's own User
+                try:
+                    user.delete()     # Delete client's own User
+                except ProtectedError:
+                    _retire_user_account(user)
                 # Clean up orphaned client_staff User records
                 if staff_user_ids:
                     from django.contrib.auth import get_user_model
-                    get_user_model().objects.filter(id__in=staff_user_ids).delete()
+                    staff_users = get_user_model().objects.filter(id__in=staff_user_ids)
+                    for staff_user in staff_users:
+                        try:
+                            staff_user.delete()
+                        except ProtectedError:
+                            _retire_user_account(staff_user)
 
             cls._bump_client_cache_versions(client_id)
-            
+
+            if archived_user_ids:
+                logger.warning(
+                    'ClientService.delete: client %s deleted but archived protected user accounts: %s',
+                    client_id,
+                    archived_user_ids,
+                )
+
             return ServiceResult(
                 success=True,
                 message=f'Client "{client_name}" deleted successfully!'

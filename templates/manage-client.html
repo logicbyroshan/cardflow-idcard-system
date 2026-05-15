@@ -222,6 +222,7 @@
 
 {% block page_js %}
   <script defer src="{% static 'js/manage-client-ui.js' %}"></script>
+  <script defer src="{% static 'js/manage-client-api.js' %}"></script>
   <script defer src="{% static 'js/manage-client-handlers.js' %}"></script>
   <script defer src="{% static 'js/manage-client-login-history.js' %}"></script>
   {% if request.GET.embed == 'drawer' %}

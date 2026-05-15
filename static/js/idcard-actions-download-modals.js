@@ -372,11 +372,12 @@ function _dlSyncImageWizardUi() {
 
     if (wizardProgressEl) wizardProgressEl.style.display = hasMode ? 'grid' : 'none';
     if (wizardNavEl) wizardNavEl.style.display = hasMode ? 'flex' : 'none';
+    
     if (step1HeadingEl) {
         step1HeadingEl.textContent = hasMode ? 'Step 1: Choose Mode' : 'Optional: Choose Mode';
     }
     if (modeHelperEl) {
-        modeHelperEl.textContent = hasMode
+        modeHelperEl.textContent = hasMode 
             ? 'Choose one mode. Use Next to continue to base settings.'
             : 'Leave both unchecked to download all image columns normally.';
     }
@@ -410,6 +411,7 @@ function _dlSyncImageWizardUi() {
         confirmBtn.disabled = hasMode ? !(_dlImageWizardStep === maxStep) : false;
         confirmBtn.textContent = hasMode ? 'Download' : 'Download All Images';
     }
+    console.log('[DownloadWizard] UI synced to step ' + _dlImageWizardStep + ' (Mode: ' + (mode || 'none') + ')');
 }
 
 function _dlSyncModeUi() {
@@ -826,26 +828,61 @@ function _dlInitializeImageRenamePanel() {
 
     const canRenameMode = !!renameToggleEl && _dlCanUseRenameMode();
     const canGenerateMode = !!generateToggleEl && _dlCanUseGenerateMode();
-    const hasRenameData = _dlImageRenameState.imageFields.length > 0 && _dlImageRenameState.textFields.length > 0;
+    
+    // We only need BOTH image and text fields for Rename mode. 
+    // Generate mode only strictly needs an image field to start.
+    const hasImageFields = _dlImageRenameState.imageFields.length > 0;
+    const hasTextFields = _dlImageRenameState.textFields.length > 0;
+    const hasRenameData = hasImageFields && hasTextFields;
+
+    console.log('[DownloadWizard] Initializing rename panel...', {
+        canRenameMode,
+        canGenerateMode,
+        hasImageFields,
+        hasTextFields,
+        imageFieldCount: _dlImageRenameState.imageFields.length,
+        textFieldCount: _dlImageRenameState.textFields.length
+    });
+
+    if (!canRenameMode && !canGenerateMode) {
+        if (panelEl) {
+            panelEl.dataset.initialized = '0';
+            panelEl.style.display = 'none';
+        }
+        return;
+    }
+
+    // Always show the panel if permissions are there, so the user sees the options.
+    if (panelEl) panelEl.style.display = 'block';
+
+    const warningEl = document.getElementById('downloadImgWizardDataWarning');
+    if (warningEl) {
+        if (!hasImageFields) {
+            warningEl.textContent = 'No image columns found in this table. Rename/Generate modes are disabled.';
+            warningEl.style.display = 'block';
+        } else if (!hasTextFields && canRenameMode) {
+            warningEl.textContent = 'No text columns found to use for renaming. Rename mode is disabled.';
+            warningEl.style.display = 'block';
+        } else {
+            warningEl.style.display = 'none';
+        }
+    }
 
     if (renameToggleEl) {
         renameToggleEl.disabled = !hasRenameData || !canRenameMode;
-        if (!canRenameMode) renameToggleEl.checked = false;
+        if (!hasRenameData || !canRenameMode) renameToggleEl.checked = false;
     }
     if (generateToggleEl) {
-        generateToggleEl.disabled = !hasRenameData || !canGenerateMode;
-        if (!canGenerateMode) generateToggleEl.checked = false;
+        generateToggleEl.disabled = !hasImageFields || !canGenerateMode;
+        if (!hasImageFields || !canGenerateMode) generateToggleEl.checked = false;
     }
 
-    if ((!canRenameMode && !canGenerateMode) || !hasRenameData) {
-        if (renameToggleEl) renameToggleEl.checked = false;
-        if (generateToggleEl) generateToggleEl.checked = false;
-        _dlImageWizardStep = 1;
-        panelEl.style.display = 'none';
-        _dlImageRenameState.selectedImageField = '';
-        _dlSetSelectedNameFields([]);
-        _dlSyncModeUi();
-        return;
+    if (renameToggleEl && renameToggleEl.checked) {
+        _dlSetActiveImageMode('rename');
+    } else if (generateToggleEl && generateToggleEl.checked) {
+        _dlSetActiveImageMode('generate');
+    } else {
+        _dlSetActiveImageMode('');
     }
 
     const currentSelectedImage = _dlImageRenameState.selectedImageField;

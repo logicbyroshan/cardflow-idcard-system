@@ -23,6 +23,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods
 
 from client.models import Client
+from exports.column_spec import get_column_spec
 from core.services import IDCardService
 from core.services.activity_service import ActivityService
 from core.services.permission_service import PermissionService
@@ -341,16 +342,25 @@ def _apply_field_clear_action(request, target_ids, field_name: str):
 def _sample_rows(qs, table, limit=10):
     table_fields = list(getattr(table, 'fields', []) or [])
     columns = [
-        {'key': 'id', 'label': 'ID'},
-        {'key': 'status', 'label': 'Status'},
+        {'key': 'id', 'label': 'ID', 'th_class': 'w-[50px] min-w-[50px]', 'td_class': 'text-center'},
+        {'key': 'status', 'label': 'Status', 'th_class': 'w-[80px] min-w-[80px]', 'td_class': 'text-center'},
     ]
     seen_keys = {'id', 'status'}
 
     for field in table_fields:
-        field_name = str(field.get('name') or '').strip()
-        if not field_name or field_name in seen_keys:
+        field_name = str(field.get('name', '')).strip()
+        field_type = str(field.get('type', '')).strip()
+        if not field_name:
             continue
-        columns.append({'key': field_name, 'label': field_name})
+        
+        # Get column spec for consistency with other tables
+        spec = get_column_spec(field_name, field_type)
+        columns.append({
+            'key': field_name, 
+            'label': field_name,
+            'th_class': spec.html_th_class,
+            'td_class': spec.html_td_class
+        })
         seen_keys.add(field_name)
 
     rows = []
@@ -462,7 +472,7 @@ def api_pro_user_data_guard_preview(request):
         return filter_err
 
     match_count = qs.count()
-    columns, sample_rows = _sample_rows(qs, table, limit=10)
+    columns, sample_rows = _sample_rows(qs, table, limit=100)
     return JsonResponse({
         'success': True,
         'match_count': match_count,
