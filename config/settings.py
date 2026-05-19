@@ -820,9 +820,9 @@ def _get_app_version() -> str:
 APP_VERSION = _get_app_version()
 
 try:
-    MOBILE_PWA_CACHE_GENERATION = max(1, int(os.getenv('MOBILE_PWA_CACHE_GENERATION', '1')))
+    MOBILE_PWA_CACHE_GENERATION = max(1, int(os.getenv('MOBILE_PWA_CACHE_GENERATION', '2')))
 except ValueError:
-    MOBILE_PWA_CACHE_GENERATION = 1
+    MOBILE_PWA_CACHE_GENERATION = 2
 
 try:
     MOBILE_PWA_CACHE_ROLLBACK_WINDOW = max(1, int(os.getenv('MOBILE_PWA_CACHE_ROLLBACK_WINDOW', '2')))

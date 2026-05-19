@@ -5,37 +5,38 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mobile Login - Adarsh ID Cards</title>
-  <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}">
+  <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v={{ APP_VERSION|urlencode }}">
 </head>
 <body>
-  <main>
-    <section>
+  <main class="mobile-login-wrap">
+    <section class="mobile-login-card">
       <h1>Adarsh ID Cards Mobile Login</h1>
-      <p>Sign in to continue to the mobile app.</p>
-      <a id="downloadApkCta" href="{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:'' }}">Download APK</a>
-      <button id="installBtn" type="button">Install App</button>
+      <p class="subtitle">Sign in to continue to the mobile app.</p>
+
+      <form id="mobileLoginForm" class="login-form" novalidate>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required placeholder="you@example.com">
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter password">
+
+        <button id="loginBtn" type="submit" class="btn btn-primary">Sign In</button>
+        <p id="loginMessage" class="login-message" aria-live="polite"></p>
+      </form>
+
+      <div id="installActions" class="install-actions">
+        <a id="downloadApkCta" class="btn btn-link" href="{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:'' }}">Download APK</a>
+        <button id="installBtn" class="btn btn-secondary" type="button">Install App</button>
+      </div>
     </section>
   </main>
-
   <script>
-    var apkDownloadUrl = '{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:"" }}';
-    if (apkDownloadUrl) {
-      var downloadCta = document.getElementById('downloadApkCta');
-      if (downloadCta) {
-        downloadCta.href = apkDownloadUrl;
-      }
-    }
-
-    function isNativeShell() {
-      return /(?:Android|iPhone|iPad|iPod)/i.test(navigator.userAgent || '');
-    }
-
-    if (isNativeShell()) {
-      var installBtn = document.getElementById('installBtn');
-      if (installBtn) {
-        installBtn.classList.add('hidden');
-      }
-    }
+    window.MOBILE_LOGIN = {
+      loginApiUrl: '/app/api/auth/login/',
+      defaultRedirect: '/app/',
+      apkDownloadUrl: '{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:"" }}'
+    };
   </script>
+  <script src="{% static 'mobile/js/app.js' %}?v={{ APP_VERSION|urlencode }}"></script>
 </body>
 </html>
