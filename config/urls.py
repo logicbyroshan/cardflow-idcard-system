@@ -1,4 +1,3 @@
-from django.contrib import admin
 from django.urls import path, include, reverse
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
@@ -125,8 +124,7 @@ urlpatterns = [
     # Health check — no auth, used by load balancers / CI/CD
     path('api/health/', health_check, name='health_check'),
 
-    # Django admin
-    path('admin/', admin.site.urls),
+    # Django admin removed — project uses custom panel routes instead.
 
     # Local-only debug toolbar route.
     # Debug Toolbar is enabled in DEBUG mode only and helps inspect SQL/query

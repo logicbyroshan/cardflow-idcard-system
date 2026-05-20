@@ -137,7 +137,6 @@ PANEL_URL = os.getenv('PANEL_URL', '').rstrip('/')
 # =============================================================================
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -155,6 +154,7 @@ INSTALLED_APPS = [
     'mobile_app',
     'panel',
     # 'officework',  # Removed - app not found
+    'website',
     'mobile_api',
 ]
 

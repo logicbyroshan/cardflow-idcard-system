@@ -55,4 +55,6 @@ urlpatterns = [
     # Public Website Fallbacks (since website app was removed)
     path('pub/website/landing/', views.api_website_landing_data, name='api_website_landing_data'),
     path('pub/website/contact/', views.api_website_contact_submit, name='api_website_contact_submit'),
+    path('website/portfolio/upload/', views.api_website_portfolio_upload, name='api_website_portfolio_upload'),
+    path('website/portfolio/category/<int:category_id>/items/', views.api_website_portfolio_category_items, name='api_website_portfolio_category_items'),
 ]

@@ -55,6 +55,8 @@ from core.services.cache_version_service import CacheVersionService
 from core.services import StaffService, IDCardService
 from core.utils.field_utils import normalize_class_value
 from mediafiles.utils import normalize_uploaded_image
+from website.models import PortfolioCategory
+from website.services import PortfolioItemService
 from mediafiles.services import ImageService
 from mediafiles.services.image_thumbnail import ThumbnailService
 from mediafiles.models import CardMedia
@@ -1374,6 +1376,57 @@ def api_website_contact_submit(request):
         return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
 
 
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_website_portfolio_upload(request):
+    """Compatibility endpoint for mobile website portfolio uploads."""
+    user = request.user
+    if not (PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_website_edit')):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    category_id = request.POST.get('category_id') or request.GET.get('category_id')
+    category = None
+    if category_id:
+        try:
+            category = PortfolioCategory.objects.filter(id=int(category_id)).first()
+        except (TypeError, ValueError):
+            category = None
+
+    files = request.FILES.getlist('images') or request.FILES.getlist('files') or []
+    if not files:
+        return JsonResponse({'success': False, 'message': 'No files uploaded', 'failed_count': 0, 'failed': []}, status=400)
+
+    created = []
+    failed = []
+
+    for upload in files:
+        try:
+            item = PortfolioItemService.create(category=category, upload=upload, user=user)
+            created.append(item)
+        except Exception as exc:
+            failed.append({'name': getattr(upload, 'name', 'upload'), 'error': str(exc)})
+
+    status_code = 200 if created and not failed else 207 if created and failed else 400
+    return JsonResponse({
+        'success': bool(created),
+        'count': len(created),
+        'failed_count': len(failed),
+        'failed': failed,
+    }, status=status_code)
+
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def api_website_portfolio_category_items(request, category_id):
+    """Compatibility endpoint for mobile website portfolio category item listing."""
+    if not (PermissionService.is_super_admin(request.user) or PermissionService.has(request.user, 'perm_website_view')):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    category = get_object_or_404(PortfolioCategory, id=category_id)
+    items = list(category.items.filter(is_active=True).values('id', 'title', 'item_type', 'video_url', 'order'))
+    return JsonResponse({'success': True, 'items': items, 'count': len(items)})
+
+
 def pwa_manifest(request):
     """Serve the PWA Web App Manifest at /app/manifest.json.
     This is required for Chrome/Android to show the 'Add to Home Screen' prompt.
@@ -1705,7 +1758,7 @@ self.addEventListener('fetch', function(event) {
         .replace('__ONLINE_REQUIRED_PREFIXES_JSON__', json.dumps(online_required_prefixes))
     )
     response = HttpResponse(sw_content, content_type='application/javascript')
-    response['Service-Worker-Allowed'] = '/'
+    response['Service-Worker-Allowed'] = '/app/'
     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return response
 

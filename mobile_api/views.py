@@ -12,6 +12,7 @@ import json
 import re
 import logging
 import time
+APP_BOOT_TS = time.time()
 import hashlib
 from datetime import timedelta
 from functools import wraps
@@ -45,13 +46,17 @@ from core.services.permission_service import PermissionService
 from idcards.models import IDCardTable, IDCard, IDCardGroup
 from mobile_app.models import MobileDevice
 from reprintcard.models import ReprintRequest
-from mediafiles.utils import get_card_photo_url
+from mediafiles.utils import get_card_photo_url, normalize_uploaded_image
 from accounts.rate_limit import rate_limit, _get_client_ip
 from accounts.services import AuthService
 from mediafiles.services import ImageService, ThumbnailService
 from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
 from core.services import StaffService, IDCardService, ClientService
+from core.utils.field_utils import normalize_class_value
+from mobile_app.views import _mobile_shell_resolve_url, _normalize_mobile_sort_mode
+from website.models import PortfolioCategory
+from website.services import PortfolioItemService
 
 MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
@@ -115,6 +120,21 @@ def _mobile_shell_app_config_payload(*, app_build=0, request=None):
         'support_url': support_url,
         'server_app_version': str(getattr(settings, 'APP_VERSION', '') or ''),
     }
+
+
+def _mobile_shell_safe_int(raw_value, default=0):
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _mobile_shell_safe_bool(raw_value, default=False):
+    if raw_value is None:
+        return default
+    if isinstance(raw_value, bool):
+        return raw_value
+    return str(raw_value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
 def _mobile_shell_device_payload_hash(*, installation_id, app_build, app_version):
@@ -5687,54 +5707,46 @@ def api_mobile_shell_device_summary(request):
 
 
 @ensure_csrf_cookie
-@require_mobile_client(allow_public=True)
+@require_mobile_client
 @require_http_methods(["GET"])
 def api_server_info(request):
-    """Return lightweight server diagnostics and seed CSRF cookie.
-    Publicly accessible (protected by UA check) to allow initial handshake.
-    Sensitive diagnostic info is only returned for authenticated admins.
-    """
+    """Return lightweight server diagnostics for authenticated mobile admins only."""
     user = request.user
-    
-    # Base info for everyone (seeds CSRF via @ensure_csrf_cookie)
-    data = {
-        'success': True,
-        'version': getattr(settings, 'APP_VERSION', '1.0.0'),
-        'timestamp': timezone.now().isoformat(),
-        'authenticated': user.is_authenticated,
-    }
-    
-    # Sensitive info for admins only
-    if user.is_authenticated and PermissionService.is_super_admin(user):
-        import os
-        import platform
-        import socket
-        import shutil
-        
-        # Disk usage info
-        disk = None
-        try:
-            total, used, free = shutil.disk_usage(os.getcwd())
-            disk = {
-                'total': total,
-                'used': used,
-                'free': free,
-                'percent': round(used / total * 100, 1) if total else None,
-            }
-        except Exception:
-            pass
+    if not user.is_authenticated:
+        return JsonResponse({'success': False, 'authenticated': False, 'message': 'Authentication required'}, status=401)
 
-        data.update({
-            'hostname': socket.gethostname(),
-            'platform': platform.platform(),
-            'python_version': platform.python_version(),
-            'django_version': __import__('django').get_version(),
-            'environment': 'Development' if settings.DEBUG else 'Production',
-            'uptime': max(0, int(time.time() - APP_BOOT_TS)),
-            'disk': disk,
-        })
-        
-    return JsonResponse(data)
+    # Only super admins may view sensitive diagnostics
+    if not PermissionService.is_super_admin(user):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    import os
+    import platform
+    import socket
+    process_uptime_seconds = max(0, int(time.time() - APP_BOOT_TS))
+
+    # Disk usage info
+    try:
+        import shutil
+        total, used, free = shutil.disk_usage(os.getcwd())
+        disk = {
+            'total': total,
+            'used': used,
+            'free': free,
+            'percent': round(used / total * 100, 1) if total else None,
+        }
+    except Exception:
+        disk = None
+
+    data = {
+        'hostname': socket.gethostname(),
+        'platform': platform.platform(),
+        'python_version': platform.python_version(),
+        'django_version': __import__('django').get_version(),
+        'environment': 'Development' if settings.DEBUG else 'Production',
+        'uptime': process_uptime_seconds,
+        'disk': disk,
+    }
+    return JsonResponse({'success': True, 'data': data})
 
 
 @require_mobile_client
@@ -6237,3 +6249,60 @@ def api_website_contact_submit(request):
     except Exception as e:
         logger.error('Mobile contact fallback failed: %s', e)
         return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
+
+
+@require_mobile_client
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_website_portfolio_upload(request):
+    """Compatibility endpoint for mobile website portfolio uploads."""
+    user = request.user
+    if not (PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_website_edit')):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    category_id = request.POST.get('category_id') or request.GET.get('category_id')
+    category = None
+    if category_id:
+        try:
+            category = PortfolioCategory.objects.filter(id=int(category_id)).first()
+        except (TypeError, ValueError):
+            category = None
+
+    files = request.FILES.getlist('images') or request.FILES.getlist('files') or []
+    if not files:
+        return JsonResponse({'success': False, 'message': 'No files uploaded', 'failed_count': 0, 'failed': []}, status=400)
+
+    created = []
+    failed = []
+
+    for upload in files:
+        try:
+            item = PortfolioItemService.create(
+                category=category,
+                upload=upload,
+                user=user,
+            )
+            created.append(item)
+        except Exception as exc:
+            failed.append({'name': getattr(upload, 'name', 'upload'), 'error': str(exc)})
+
+    status_code = 200 if created and not failed else 207 if created and failed else 400
+    payload = {
+        'success': bool(created),
+        'count': len(created),
+        'failed_count': len(failed),
+        'failed': failed,
+    }
+    return JsonResponse(payload, status=status_code)
+
+
+@require_mobile_client(allow_public=True)
+@require_http_methods(['GET'])
+def api_website_portfolio_category_items(request, category_id):
+    """Compatibility endpoint for website portfolio category item listing."""
+    if not (PermissionService.is_super_admin(request.user) or PermissionService.has(request.user, 'perm_website_view')):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    category = get_object_or_404(PortfolioCategory, id=category_id)
+    items = list(category.items.filter(is_active=True).values('id', 'title', 'item_type', 'video_url', 'order'))
+    return JsonResponse({'success': True, 'items': items, 'count': len(items)})

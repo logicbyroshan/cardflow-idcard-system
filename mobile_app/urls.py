@@ -78,6 +78,10 @@ urlpatterns = [
     path('api/mobile-shell/device/ping/', views.api_mobile_shell_device_ping, name='api_mobile_shell_device_ping'),
     path('api/mobile-shell/device/summary/', views.api_mobile_shell_device_summary, name='api_mobile_shell_device_summary'),
 
+    # Website compatibility APIs
+    path('api/website/portfolio/upload/', views.api_website_portfolio_upload, name='api_website_portfolio_upload'),
+    path('api/website/portfolio/category/<int:category_id>/items/', views.api_website_portfolio_category_items, name='api_website_portfolio_category_items'),
+
     # Pro user impersonation APIs (mobile surface)
     path('api/impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),
     path('api/impersonate/start/', views.api_impersonate_start, name='api_impersonate_start'),
