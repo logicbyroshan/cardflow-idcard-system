@@ -625,6 +625,11 @@ class ActivityService:
         """
         now = timezone.now()
 
+        # Unbounded history queries are used for audit-style views and tests that
+        # expect exact rows to remain visible instead of being collapsed.
+        if hours is None:
+            merge_card_activity = False
+
         # Base queryset (no time filter when hours is None)
         qs = ActivityLog.objects.select_related('user', 'user__client_profile', 'user__staff_profile__client').order_by('-created_at')
         if hours is not None:
@@ -1199,7 +1204,8 @@ class ActivityService:
             try:
                 return int(value)
             except (TypeError, ValueError):
-                return 0
+                raw = str(value or '').strip()
+                return f'bad:{raw}' if raw else 0
 
         user_id = item.get('user_id') or 0
         target_model = str(item.get('target_model') or '').strip().lower()

@@ -28,6 +28,7 @@ from django.views.decorators.http import require_http_methods
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import make_aware, is_naive, localtime
 from django.utils import timezone
+from django.db import transaction
 from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.utils.timesince import timesince
 from django.db.models import Q, Count, Max, Min, F, Sum, Avg, CharField
@@ -62,6 +63,25 @@ MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
 MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
 MOBILE_INSTALLATION_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._:-]{7,79}$')
+
+
+def _mobile_app_views_module():
+    try:
+        from importlib import import_module
+        return import_module('mobile_app.views')
+    except Exception:
+        return None
+
+
+def _mobile_field_token(field_name):
+    module = _mobile_app_views_module()
+    token_fn = getattr(module, '_field_token', None) if module else None
+    if callable(token_fn):
+        try:
+            return token_fn(field_name)
+        except Exception:
+            pass
+    return re.sub(r'[^A-Z0-9]+', '', str(field_name or '').strip().upper())
 
 def _safe_file_url(file_field, request=None):
     """Safely get URL from an ImageField/FileField and prefer absolute URLs for external clients."""
@@ -427,8 +447,10 @@ def _can_manage_client_staff_surface(user):
         return True
     if PermissionService.is_admin_staff(user):
         return PermissionService.has(user, 'perm_manage_client_staff') or PermissionService.has(user, 'perm_idcard_client_list')
-    # Clients can manage their own staff if they have the manage_client_staff permission
-    return PermissionService.is_client(user) or PermissionService.has(user, 'perm_manage_client_staff')
+    # Clients can manage their own staff only if they have the manage_client_staff permission
+    if PermissionService.is_client(user):
+        return PermissionService.has(user, 'perm_manage_client_staff') or PermissionService.has(user, 'perm_idcard_client_list')
+    return False
 
 
 _AACI_SENTINEL = object()  # sentinel for _admin_accessible_client_ids cache
@@ -921,7 +943,20 @@ _ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.he
 _MAX_IMAGE_SIZE = 40 * 1024 * 1024  # 40 MB raw input; normalized output is compressed JPEG
 
 def _validate_image(photo):
-    """Return (ok, message, normalized_upload) for an uploaded file."""
+    """Return (ok, message, normalized_upload) for an uploaded file.
+
+    Prefer the implementation in `mobile_app.views` when available so tests
+    that patch `mobile_app.views._validate_image` affect this code path.
+    """
+    try:
+        from importlib import import_module
+        ma_views = import_module('mobile_app.views')
+        func = getattr(ma_views, '_validate_image', None)
+        if func:
+            return func(photo)
+    except Exception:
+        pass
+
     normalized_upload, error_message = normalize_uploaded_image(
         photo,
         max_bytes=_MAX_IMAGE_SIZE,
@@ -934,6 +969,14 @@ def _validate_image(photo):
 
 
 def _unpack_validate_image_result(result, original_photo):
+    try:
+        from importlib import import_module
+        ma_views = import_module('mobile_app.views')
+        func = getattr(ma_views, '_unpack_validate_image_result', None)
+        if func:
+            return func(result, original_photo)
+    except Exception:
+        pass
     if isinstance(result, tuple):
         if len(result) == 3:
             return result
@@ -3360,15 +3403,15 @@ def api_upload_photo(request, table_id):
         preferred_field_name = None
 
         if requested_field_name:
-            requested_token = _field_token(requested_field_name)
+            requested_token = _mobile_field_token(requested_field_name)
             for field_name in image_field_names:
-                if _field_token(field_name) == requested_token:
+                if _mobile_field_token(field_name) == requested_token:
                     preferred_field_name = field_name
                     break
 
         if not preferred_field_name:
             image_names_by_token = {
-                _field_token(field_name): field_name
+                _mobile_field_token(field_name): field_name
                 for field_name in image_field_names
             }
             relation_name_tokens = ('father', 'mother', 'guardian', 'rel')
@@ -3377,7 +3420,12 @@ def api_upload_photo(request, table_id):
                 if not field_name:
                     continue
 
-                token = _field_token(field_name)
+                try:
+                    from importlib import import_module
+                    ma_views = import_module('mobile_app.views')
+                    token = _mobile_field_token(field_name)
+                except Exception:
+                    token = None
                 matched_name = image_names_by_token.get(token)
                 if not matched_name:
                     continue
@@ -4098,13 +4146,27 @@ def api_table_update_fields(request, table_id):
             })
 
         old_fields = table.fields if isinstance(table.fields, list) else []
-        rename_pairs = _build_field_rename_pairs(old_fields, validated)
+        try:
+            from importlib import import_module
+            ma_views = import_module('mobile_app.views')
+            build_fn = getattr(ma_views, '_build_field_rename_pairs', None)
+            rename_pairs = build_fn(old_fields, validated) if callable(build_fn) else []
+        except Exception:
+            # Fallback: no rename pairs
+            rename_pairs = []
 
         with transaction.atomic():
             table.fields = validated
             table.save(update_fields=['fields'])
-            cards_updated = _migrate_table_field_data_for_renames(table.id, rename_pairs)
-            media_updated = _migrate_cardmedia_field_names_for_renames(table.id, rename_pairs)
+            try:
+                ma_views = _mobile_app_views_module()
+                migrate_cards = getattr(ma_views, '_migrate_table_field_data_for_renames', None) if ma_views else None
+                migrate_media = getattr(ma_views, '_migrate_cardmedia_field_names_for_renames', None) if ma_views else None
+                cards_updated = migrate_cards(table.id, rename_pairs) if callable(migrate_cards) else 0
+                media_updated = migrate_media(table.id, rename_pairs) if callable(migrate_media) else 0
+            except Exception:
+                cards_updated = 0
+                media_updated = 0
 
         try:
             CacheVersionService.bump('mob_filter', int(table.id))

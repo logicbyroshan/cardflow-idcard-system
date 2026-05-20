@@ -1,82 +1,29 @@
-{% extends 'mobile_app/base.html' %}
+{% extends "mobile_app/base.html" %}
 {% load static %}
 
-{% block title %}Mobile Access Required{% endblock %}
-
-{% block extra_css %}
-<style>
-    .access-container {
-        min-height: 80vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        text-align: center;
-        background: #f8fafc;
-    }
-    .icon-box {
-        width: 80px;
-        height: 80px;
-        background: #fee2e2;
-        color: #ef4444;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 1.5rem;
-        font-size: 2rem;
-    }
-    .title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 1rem;
-    }
-    .message {
-        color: #64748b;
-        margin-bottom: 2rem;
-        max-width: 400px;
-    }
-    .qr-box {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 1rem;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        margin-bottom: 2rem;
-    }
-    .btn-primary {
-        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        color: white;
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.5rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s;
-    }
-    .btn-primary:hover {
-        opacity: 0.9;
-        transform: translateY(-1px);
-    }
-</style>
-{% endblock %}
+{% block title %}Desktop Required - Adarsh ID Cards{% endblock %}
 
 {% block content %}
-<div class="access-container">
-    <div class="icon-box">
-        <i class="fas fa-mobile-alt"></i>
-    </div>
-    <h1 class="title">Mobile Device Required</h1>
-    <p class="message">
-        The Adarsh Panel Mobile experience is optimized for smartphones. 
-        Please access this page from your mobile device or use the dedicated mobile app.
-    </p>
-    
-    <div class="qr-box">
-        <p style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.5rem;">Scan to open on mobile</p>
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.build_absolute_uri }}" alt="QR Code">
-    </div>
+<div class="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/25 to-sky-50/35 px-4 pt-10 pb-24">
+    <div class="max-w-[430px] mx-auto">
+        <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-3xl border border-indigo-100 shadow-sm p-6 text-center">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-4">
+                <i class="fa-solid fa-desktop text-2xl"></i>
+            </div>
+            <h1 class="text-[18px] font-bold text-gray-800 leading-tight">{{ status_display }} Is Desktop Only</h1>
+            <p class="mt-2 text-[13px] text-gray-500">
+                This list is not available in the mobile app. Please open the desktop panel to continue.
+            </p>
 
-    <a href="{% url 'mobile_app:home' %}" class="btn-primary">Try Again on Mobile</a>
+            <div class="mt-5 flex flex-col gap-2.5">
+                <a href="{% url 'mobile_app:search_page' %}" class="w-full py-3 rounded-2xl border border-gray-200 text-[13px] font-semibold text-gray-700 bg-gray-50">
+                    Back To Search
+                </a>
+                <a href="/panel/" class="w-full py-3 rounded-2xl text-[13px] font-bold text-white bg-gradient-to-r from-brand-light to-brand-dark shadow">
+                    Open Desktop Panel
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

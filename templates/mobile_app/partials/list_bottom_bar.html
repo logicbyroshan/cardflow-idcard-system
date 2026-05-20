@@ -1,0 +1,191 @@
+{% load static %}
+<!-- Fixed Bottom Action Bar  navbar style -->
+<div class="fixed bottom-0 left-0 right-0 z-40"
+     style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="max-w-[430px] mx-auto relative">
+
+        <!-- Selection count strip -->
+        <div x-show="selectedIds.length > 0" x-transition
+             class="flex items-center justify-between px-4 py-1.5 bg-indigo-50 border-b border-indigo-100 rounded-t-xl">
+            <div class="flex items-center gap-1.5">
+                <div class="w-4 h-4 rounded-md bg-indigo-500 flex items-center justify-center">
+                    <i class="fa-solid fa-check text-white text-[7px]"></i>
+                </div>
+                <span class="text-[10px] font-bold text-indigo-700" x-text="selectedIds.length + ' selected'"></span>
+            </div>
+            <button @click="selectedIds=[]; selectAll=false"
+                    class="px-3 py-1.5 rounded-lg bg-white border border-indigo-200 text-[11px] font-bold text-indigo-500 hover:text-red-500 hover:border-red-200 flex items-center gap-1.5 transition active:scale-95">
+                <i class="fa-solid fa-xmark text-[10px]"></i> Clear
+            </button>
+        </div>
+
+        <!-- Nav-style action bar -->
+        <div class="bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] relative">
+            <div class="flex items-end px-1" style="height:58px;">
+                {% if has_any_list_actions %}
+
+                <!-- 1. View (1 selected) -->
+                {% if perm_idcard_info %}
+                <button @click="viewSelected()"
+                        :disabled="selectedIds.length !== 1"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length === 1 ? '{% if list_type == 'pending' %}text-amber-600{% elif list_type == 'verified' %}text-emerald-600{% elif list_type == 'approved' %}text-sky-600{% elif list_type == 'download' %}text-violet-600{% elif list_type == 'pool' %}text-rose-600{% else %}text-brand-light{% endif %}' : 'text-gray-300'">
+                    <i class="fa-solid fa-eye text-[18px]"></i>
+                    <span class="mab-nav-label">View</span>
+                </button>
+                {% endif %}
+
+                <!-- 2. Download PDF -->
+                {% if perm_idcard_bulk_download %}
+                <button @click="downloadPDF()"
+                        class="mab-nav-item flex-1"
+                        :class="studentsData.length > 0 && !loading ? '{% if list_type == 'pending' %}text-amber-600{% elif list_type == 'verified' %}text-emerald-600{% elif list_type == 'approved' %}text-sky-600{% elif list_type == 'download' %}text-violet-600{% elif list_type == 'pool' %}text-rose-600{% else %}text-violet-600{% endif %}' : 'text-gray-300'"
+                        :disabled="studentsData.length === 0 || loading">
+                    <i class="fa-solid fa-file-pdf text-[18px]"></i>
+                    <span class="mab-nav-label">Download</span>
+                </button>
+                {% endif %}
+
+                <!-- 3. Pending: combined Add/Edit button -->
+                {% if list_type == 'pending' and perm_idcard_add or list_type == 'pending' and perm_idcard_edit %}
+                <div class="flex-1 flex flex-col items-center justify-end pb-2" style="position:relative;">
+                    <button @click="selectedIds.length === 1 ? editSelected() : (selectedIds.length === 0 ? addNew() : null)"
+                            :disabled="selectedIds.length > 1{% if not perm_idcard_edit %} || selectedIds.length === 1{% endif %}{% if not perm_idcard_add %} || selectedIds.length === 0{% endif %}"
+                            class="mab-center-btn"
+                            :class="selectedIds.length > 1 ? 'mab-center-btn-disabled' : ''">
+                        <i :class="selectedIds.length === 1 ? 'fa-solid fa-pen text-[20px]' : 'fa-solid fa-plus text-[22px]'"></i>
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- 3b. Other lists: Edit-only button -->
+                {% if list_type != 'pending' and perm_idcard_edit and not pool_edit_locked %}
+                <div class="flex-1 flex flex-col items-center justify-end pb-2" style="position:relative;">
+                    <button @click="editSelected()"
+                            :disabled="selectedIds.length !== 1"
+                            class="mab-center-btn"
+                            :class="selectedIds.length === 1 ? '' : 'mab-center-btn-disabled'">
+                        <i class="fa-solid fa-pen text-[20px]"></i>
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- 4. Status specific actions -->
+                {% if list_type == 'pending' and perm_idcard_verify %}
+                <button @click="verifySelected()"
+                        :disabled="selectedIds.length === 0"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 ? 'text-amber-600' : 'text-gray-300'">
+                    <i class="fa-solid fa-circle-check text-[18px]"></i>
+                    <span class="mab-nav-label">Verify</span>
+                </button>
+                {% endif %}
+
+                {% if list_type == 'verified' and perm_idcard_approve %}
+                <button @click="approveSelected()"
+                        :disabled="selectedIds.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 && !loading ? 'text-emerald-600' : 'text-gray-300'">
+                    <i class="fa-solid fa-stamp text-[18px]"></i>
+                    <span class="mab-nav-label">Approve</span>
+                </button>
+                {% endif %}
+                {% if list_type == 'verified' and perm_idcard_verify %}
+                <button @click="unverifySelected()"
+                        :disabled="selectedIds.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 && !loading ? 'text-emerald-600' : 'text-gray-300'">
+                    <i class="fa-solid fa-rotate-left text-[18px]"></i>
+                    <span class="mab-nav-label">Unverify</span>
+                </button>
+                {% endif %}
+
+                {% if list_type == 'approved' and perm_idcard_bulk_download %}
+                <button @click="downloadXLSX()"
+                        :disabled="studentsData.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="studentsData.length > 0 && !loading ? 'text-sky-600' : 'text-gray-300'">
+                    <i class="fa-solid fa-file-excel text-[18px]"></i>
+                    <span class="mab-nav-label">XLSX</span>
+                </button>
+                {% endif %}
+                {% if list_type == 'approved' and perm_idcard_approve %}
+                <button @click="unapproveSelected()"
+                        :disabled="selectedIds.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 && !loading ? 'text-sky-600' : 'text-gray-300'">
+                    <i class="fa-solid fa-rotate-left text-[18px]"></i>
+                    <span class="mab-nav-label">Disapprove</span>
+                </button>
+                {% endif %}
+
+                {% if list_type == 'download' and perm_idcard_retrieve %}
+                <button @click="retrieveSelected()"
+                        :disabled="selectedIds.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 && !loading ? 'text-violet-600' : 'text-gray-300'">
+                    <i class="fa-solid fa-arrow-up-from-bracket text-[18px]"></i>
+                    <span class="mab-nav-label">Retrieve</span>
+                </button>
+                {% endif %}
+                {% if list_type == 'download' and perm_idcard_reprint_list %}
+                <button @click="openReprintPicker()"
+                        :disabled="studentsData.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="studentsData.length > 0 && !loading ? 'text-violet-600' : 'text-gray-300'">
+                    <i class="fa-solid fa-print text-[18px]"></i>
+                    <span class="mab-nav-label">Reprint</span>
+                </button>
+                {% endif %}
+
+                {% if list_type == 'pool' and perm_idcard_retrieve %}
+                <button @click="retrieveSelected()"
+                        :disabled="selectedIds.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 && !loading ? 'text-rose-600' : 'text-gray-300'">
+                    <i class="fa-solid fa-arrow-up-from-bracket text-[18px]"></i>
+                    <span class="mab-nav-label">Retrieve</span>
+                </button>
+                {% endif %}
+
+                <!-- 5. Delete / Permanent Delete -->
+                {% if list_type == 'pending' and perm_idcard_delete %}
+                <button @click="deleteSelected()"
+                        :disabled="selectedIds.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 && !loading ? 'text-red-500' : 'text-gray-300'">
+                    <i class="fa-solid fa-trash text-[18px]"></i>
+                    <span class="mab-nav-label">Delete</span>
+                </button>
+                {% elif list_type == 'pool' and perm_idcard_delete_from_pool %}
+                <button @click="openPermanentDeleteModal()"
+                        :disabled="selectedIds.length === 0 || loading"
+                        class="mab-nav-item flex-1"
+                        :class="selectedIds.length > 0 && !loading ? 'text-red-500' : 'text-gray-300'">
+                    <i class="fa-solid fa-triangle-exclamation text-[18px]"></i>
+                    <span class="mab-nav-label">Delete</span>
+                </button>
+                {% endif %}
+
+                {% else %}
+                <div class="w-full h-full flex items-center justify-between gap-2 px-3">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-bold text-gray-700 leading-tight">View-only access for this list</p>
+                        <p class="text-[9px] text-gray-400 leading-tight mt-0.5">Open cards to inspect details. Action buttons appear when permission is granted.</p>
+                    </div>
+                    <a href="{% url 'mobile_app:search_page' %}?table_id={{ table_id }}"
+                       class="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[10px] font-semibold text-sky-700 active:scale-95 transition-transform">
+                        <i class="fa-solid fa-magnifying-glass text-[9px]"></i>
+                        Search
+                    </a>
+                </div>
+                {% endif %}
+
+            </div>
+
+            <!-- Safe-area padding -->
+            <div style="height: env(safe-area-inset-bottom, 0px);"></div>
+        </div>
+
+    </div>
+</div>

@@ -1,0 +1,254 @@
+<!-- Permanent Delete Bottom Sheet -->
+<div x-show="permanentDeleteModal.show" x-cloak class="fixed inset-0 z-[90]" data-mobile-overlay-root>
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closePermanentDeleteModal()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto overflow-hidden"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full">
+        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-[14px] font-bold text-red-700 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Permanent Delete
+            </h3>
+            <button @click="closePermanentDeleteModal()" class="w-8 h-8 rounded-xl bg-gray-100 text-gray-500">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="px-4 py-3 space-y-3">
+            <p class="text-[12px] text-gray-700">
+                <span class="font-semibold" x-text="permanentDeleteModal.count + ' card(s)'"></span> will be deleted permanently.
+                This cannot be undone.
+            </p>
+
+            <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+                <p class="text-[11px] text-red-700 font-semibold mb-1">Type this code to confirm</p>
+                <p class="text-[18px] tracking-[0.2em] font-extrabold text-red-800" x-text="permanentDeleteModal.code"></p>
+            </div>
+
+            <div>
+                <div class="relative"
+                     @click="$refs.mobilePermanentDeleteInput.focus()">
+                    <div class="grid grid-cols-10 gap-1.5"
+                         :class="permanentDeleteModal.input.length === 10 ? (permanentDeleteModal.input === permanentDeleteModal.code ? '' : '') : ''">
+                        <template x-for="idx in 10" :key="'mobile-perm-delete-box-' + idx">
+                            <span class="h-9 rounded-lg border-2 text-[14px] font-bold tracking-normal flex items-center justify-center transition-all"
+                                  :class="permanentDeleteModal.input.length === 10
+                                      ? (permanentDeleteModal.input === permanentDeleteModal.code
+                                          ? 'border-green-300 bg-green-50 text-green-700'
+                                          : 'border-red-300 bg-red-50 text-red-700')
+                                      : (permanentDeleteModal.input.length === (idx - 1)
+                                          ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                          : (permanentDeleteModal.input[idx - 1]
+                                              ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                              : 'border-gray-200 bg-white text-gray-500'))"
+                                  x-text="permanentDeleteModal.input[idx - 1] || ''"></span>
+                        </template>
+                    </div>
+                    <input type="text"
+                           x-ref="mobilePermanentDeleteInput"
+                           x-model="permanentDeleteModal.input"
+                           inputmode="numeric"
+                           maxlength="10"
+                           @input="permanentDeleteModal.input = permanentDeleteModal.input.replace(/[^0-9]/g, '')"
+                           class="absolute inset-0 opacity-0 w-full h-full"
+                           autocomplete="off">
+                </div>
+                <p class="text-[11px] mt-1"
+                   :class="permanentDeleteModal.input === permanentDeleteModal.code && permanentDeleteModal.input.length === 10 ? 'text-green-600' : 'text-gray-400'"
+                   x-text="permanentDeleteModal.input === permanentDeleteModal.code && permanentDeleteModal.input.length === 10 ? 'Code matched' : 'Enter exact code to enable delete'"></p>
+            </div>
+        </div>
+
+        <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
+            <button @click="closePermanentDeleteModal()" class="flex-1 h-11 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600">Cancel</button>
+            <button @click="confirmPermanentDelete()"
+                    :disabled="permanentDeleteModal.submitting || permanentDeleteModal.input !== permanentDeleteModal.code || permanentDeleteModal.input.length !== 10"
+                    class="flex-1 h-11 rounded-xl text-[13px] font-semibold text-white bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                <span x-show="!permanentDeleteModal.submitting">Delete Permanently</span>
+                <span x-show="permanentDeleteModal.submitting">Deleting...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Reprint Picker Bottom Sheet -->
+<div x-show="reprintPicker.show" x-cloak class="fixed inset-0 z-[90]" data-mobile-overlay-root style="display:none;">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeReprintPicker()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto flex flex-col"
+         style="height: 82vh; height: 82dvh;"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full">
+
+        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-[14px] font-bold text-amber-700 flex items-center gap-2">
+                <i class="fa-solid fa-print"></i>
+                Reprint Picker
+            </h3>
+            <button @click="closeReprintPicker()" class="w-8 h-8 rounded-xl bg-gray-100 text-gray-500">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="px-4 py-2 border-b border-gray-100">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <input type="text"
+                       x-model="reprintPicker.query"
+                       @input="onReprintSearchInput()"
+                       placeholder="Search cards for reprint..."
+                       class="w-full pl-9 pr-3 py-2.5 text-[12px] rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-amber-300">
+            </div>
+            <p class="text-[10px] text-gray-500 mt-1" x-text="(reprintPicker.rows || []).length + ' card(s) found'"></p>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+            <template x-if="reprintPicker.loading">
+                <div class="space-y-2 py-1" aria-hidden="true">
+                    <template x-for="idx in 5" :key="'reprint-skeleton-' + idx">
+                        <div class="rounded-2xl border border-gray-200 bg-white p-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1 space-y-2">
+                                    <div class="skeleton-line h-3 w-3/5 rounded-lg"></div>
+                                    <div class="skeleton-line h-2.5 w-2/5 rounded-lg"></div>
+                                    <div class="skeleton-line h-2.5 w-1/3 rounded-lg"></div>
+                                </div>
+                                <div class="skeleton-line w-5 h-5 rounded-md mt-0.5"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+            <template x-if="!reprintPicker.loading && !(reprintPicker.rows || []).length">
+                <div class="text-center text-[12px] text-gray-400 py-8">No cards available for reprint</div>
+            </template>
+            <template x-for="card in reprintPicker.rows" :key="card.card_id">
+                <button @click="selectReprintCard(card.card_id)"
+                        class="w-full text-left rounded-2xl border p-3 transition"
+                        :class="reprintPicker.selectedId === card.card_id ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white'">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-[13px] font-bold text-gray-800 truncate" x-text="card.name || 'Unnamed'"></p>
+                            <p class="text-[11px] text-gray-500 mt-0.5">
+                                <span x-text="card.class_name || '-' "></span>
+                                <span> • </span>
+                                <span x-text="card.section || '-' "></span>
+                            </p>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Roll: <span x-text="card.roll_no || '-' "></span></p>
+                        </div>
+                        <div class="w-5 h-5 rounded-md border flex items-center justify-center mt-0.5"
+                             :class="reprintPicker.selectedId === card.card_id ? 'border-amber-500 bg-amber-500 text-white' : 'border-gray-300 text-transparent'">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                    </div>
+                </button>
+            </template>
+        </div>
+
+        <div class="px-4 py-3 border-t border-gray-100">
+            <button @click="openReprintConfirm()"
+                    :disabled="!reprintPicker.selectedId"
+                    class="w-full h-11 rounded-xl text-[13px] font-semibold text-white bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed">
+                Continue
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Reprint Confirm Bottom Sheet -->
+<div x-show="reprintConfirm.show" x-cloak class="fixed inset-0 z-[95]" data-mobile-overlay-root style="display:none;">
+    <div class="absolute inset-0 bg-black/55 backdrop-blur-sm" @click="closeReprintConfirm()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto overflow-hidden flex flex-col"
+         style="height: 84vh; height: 84dvh;"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full">
+
+        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-[14px] font-bold text-blue-700 flex items-center gap-2">
+                <i class="fa-solid fa-id-card"></i>
+                Reprint Preview
+            </h3>
+            <button @click="closeReprintConfirm()" class="w-8 h-8 rounded-xl bg-gray-100 text-gray-500">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3" x-show="reprintConfirm.card">
+            <div class="rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
+                <p class="text-[11px] text-blue-600 font-semibold uppercase tracking-wide">Selected Card</p>
+                <p class="text-[14px] font-bold text-gray-800 mt-1" x-text="reprintConfirm.card ? reprintConfirm.card.name : ''"></p>
+                <p class="text-[11px] text-gray-500 mt-0.5">
+                    Roll: <span x-text="reprintConfirm.card ? (reprintConfirm.card.roll_no || '-') : '-'"></span>
+                    • Class: <span x-text="reprintConfirm.card ? (reprintConfirm.card.class_name || '-') : '-' "></span>
+                    • Section: <span x-text="reprintConfirm.card ? (reprintConfirm.card.section || '-') : '-' "></span>
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-gray-200 bg-gray-50 p-2.5" x-show="(reprintConfirm.mediaUrls || []).length">
+                <p class="text-[11px] text-gray-500 mb-2">Card Images Preview</p>
+                <div class="flex items-start gap-2 overflow-x-auto no-scrollbar">
+                    <template x-for="(imgUrl, idx) in reprintConfirm.mediaUrls" :key="imgUrl + '_' + idx">
+                        <div class="w-[76px] h-[98px] rounded-md overflow-hidden border border-blue-200 bg-white flex-shrink-0">
+                            <img :src="imgUrl" class="w-full h-full object-cover" alt="">
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-gray-200 bg-white px-3 py-2 flex items-center justify-between gap-2">
+                <div>
+                    <p class="text-[11px] font-semibold text-gray-700">Field Edit Mode</p>
+                    <p class="text-[10px] text-gray-500" x-text="reprintConfirm.editMode ? 'Editing enabled' : 'Preview only (read-only)'"></p>
+                </div>
+                <button type="button"
+                        @click="toggleReprintEditMode()"
+                        class="h-8 px-3 rounded-md text-[11px] font-semibold border transition"
+                        :class="reprintConfirm.editMode ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-blue-50 border-blue-200 text-blue-700'"
+                        x-text="reprintConfirm.editMode ? 'Lock' : 'Edit'"></button>
+            </div>
+
+            <div class="space-y-2" x-show="(reprintConfirm.fields || []).length">
+                <template x-for="field in reprintConfirm.fields" :key="field.name">
+                    <div class="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide" x-text="field.name"></label>
+                        <input type="text"
+                               :readonly="!reprintConfirm.editMode"
+                               class="w-full mt-1 px-0 py-1.5 text-[13px] border-0 border-b border-gray-200 bg-transparent focus:outline-none"
+                               :class="reprintConfirm.editMode ? 'text-gray-800 focus:border-blue-400' : 'text-gray-500 border-gray-100 cursor-default'"
+                               :value="reprintConfirm.formData[field.name] || ''"
+                               @input="updateReprintField(field.name, $event.target.value)">
+                    </div>
+                </template>
+            </div>
+
+            <div x-show="!(reprintConfirm.fields || []).length" class="text-center text-[12px] text-gray-400 py-8">
+                No editable fields found for this card.
+            </div>
+        </div>
+
+        <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
+            <button @click="closeReprintConfirm()"
+                    :disabled="reprintConfirm.submitting"
+                    class="flex-1 h-11 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 bg-white disabled:opacity-40">
+                Cancel
+            </button>
+            <button @click="submitReprintRequest()"
+                    :disabled="reprintConfirm.submitting"
+                    class="flex-1 h-11 rounded-xl text-[13px] font-semibold text-white bg-blue-600 disabled:opacity-40">
+                <span x-show="!reprintConfirm.submitting">Save and Request</span>
+                <span x-show="reprintConfirm.submitting">Saving...</span>
+            </button>
+        </div>
+    </div>
+</div>

@@ -28,6 +28,7 @@ urlpatterns = [
     path('notifications/', views.notifications, name='notifications'),
     path('profile/', views.profile, name='profile'),
     path('permissions/', views.permissions_center, name='permissions_center'),
+    path('website/', views.website_manage, name='website_manage'),
     path('card/<int:card_id>/', views.card_detail, name='card_detail'),
     path('staff/', views.staff_manage, name='staff_manage'),
     path('groups/', views.groups_overview, name='groups_overview'),

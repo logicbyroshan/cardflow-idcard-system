@@ -1,0 +1,61 @@
+<!-- Hero Image Carousel Partial -->
+<div class="px-4 pt-2 pb-1" x-data="heroCarousel()" x-init="startAutoSlide()">
+    <div class="relative rounded-md overflow-hidden shadow-md" style="height: 18vh; min-height: 120px;">
+        <template x-for="(img, index) in images" :key="index">
+            <div
+                x-show="current === index"
+                x-transition:enter="transition ease-out duration-700"
+                x-transition:enter-start="opacity-0 scale-105"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-400"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="absolute inset-0"
+            >
+                <template x-if="img.url">
+                    <img :src="img.url" :alt="img.title" class="w-full h-full object-cover">
+                </template>
+                <template x-if="!img.url && img.gradient">
+                    <div class="w-full h-full" :style="'background:' + img.gradient">
+                        <div class="w-full h-full flex items-center justify-center">
+                            <i class="fa-solid fa-id-card text-white/20 text-6xl"></i>
+                        </div>
+                    </div>
+                </template>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                <div class="absolute bottom-3 left-4">
+                    <p class="text-white font-bold text-sm drop-shadow-md" x-text="img.title"></p>
+                    <p class="text-white/70 text-[10px]">ID Card Management System</p>
+                </div>
+            </div>
+        </template>
+        <!-- Dots -->
+        <div class="absolute bottom-2 right-3 flex gap-1.5">
+            <template x-for="(img, index) in images" :key="'dot-'+index">
+                <button
+                    @click="current = index"
+                    :class="current === index ? 'bg-white w-5' : 'bg-white/50 w-2'"
+                    class="h-2 rounded-md transition-all duration-300"
+                ></button>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+function heroCarousel() {
+    return {
+        current: 0,
+        images: [],
+        autoSlideTimer: null,
+        startAutoSlide() {
+            this.images = window.__heroImages || [];
+            if (this.images.length > 1) {
+                this.autoSlideTimer = setInterval(() => {
+                    this.current = (this.current + 1) % this.images.length;
+                }, 4000);
+            }
+        }
+    }
+}
+</script>

@@ -1,4 +1,218 @@
-{% extends 'mobile_app/base.html' %}
+{% extends "mobile_app/base.html" %}
+{% load static %}
+
+{% block title %}Search - Adarsh ID Cards{% endblock %}
+
 {% block content %}
-<div>Search placeholder</div>
+<!-- Seed JS with server-side results (present when page loaded via ?q=...) -->
+{{ results|json_script:"_search_init_results" }}
+{{ query|json_script:"_search_init_query" }}
+{{ filter_type|json_script:"_search_init_filter" }}
+{{ table_scope_id|json_script:"_search_init_table_scope" }}
+
+<!-- Hidden anchor used to build client-side card-detail URLs. 123456789 is a placeholder ID that gets stripped to extract the base path. -->
+<a id="_card_url_tmpl" href="{% url 'mobile_app:card_detail' card_id=123456789 %}" style="display:none"></a>
+
+<div class="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/25 to-sky-50/35 pb-20" x-data="searchApp()">
+    <!-- Header -->
+    <div class="pwa-page-topbar sticky top-0 z-40 bg-gradient-to-r from-brand-light to-brand-dark px-4 pb-3">
+        <div class="flex items-center gap-3">
+            <a href="{% url 'mobile_app:home' %}" onclick="return mobileGoBack(event, this.getAttribute('href'));" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+            <div class="flex-1 relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-white/60 text-[12px] pointer-events-none"></i>
+                <input type="text"
+                    x-model="query"
+                    @input="debouncedSearch()"
+                    @keydown.enter.prevent="doSearch()"
+                    placeholder="Search by name, roll no, ID..."
+                    class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/20 rounded-xl text-[13px] text-white placeholder:text-white/50 focus:outline-none focus:bg-white/30 transition"
+                    autofocus>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 mt-2.5 pl-11">
+            <select x-model="filterType"
+                    @change="doSearch()"
+                    class="min-w-[110px] px-2.5 py-1.5 bg-white/20 border border-white/20 rounded-lg text-[11px] text-white focus:outline-none focus:bg-white/30 transition">
+                <option value="all" class="text-gray-800">All Fields</option>
+                <option value="name" class="text-gray-800">Name</option>
+                <option value="address" class="text-gray-800">Address</option>
+                <option value="mobile" class="text-gray-800">Mobile</option>
+            </select>
+            <template x-if="tableScopeId">
+                <button type="button"
+                        @click="clearTableScope()"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/20 border border-white/20 text-[11px] text-white/95 font-semibold active:scale-95 transition-all">
+                    <i class="fa-solid fa-table-cells text-[10px]"></i>
+                    This Table
+                    <i class="fa-solid fa-xmark text-[9px]"></i>
+                </button>
+            </template>
+        </div>
+    </div>
+
+    <!-- Body -->
+    <div class="px-4 pt-4">
+
+        <!-- Count pill -->
+        <div class="mb-3" x-show="query.trim() && !loading" x-cloak>
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-slate-100/80 px-3 py-1.5 rounded-lg">
+                <i class="fa-solid fa-list-ul text-[9px]"></i>
+                <span x-text="results.length"></span>
+                result<span x-show="results.length !== 1">s</span> for &ldquo;<span x-text="query.trim()"></span>&rdquo;
+            </span>
+        </div>
+
+        <!-- Search skeleton -->
+        <div class="space-y-2.5" x-show="loading" x-cloak>
+            <template x-for="i in 4" :key="'search-skeleton-' + i">
+                <div class="flex items-center gap-3 bg-gradient-to-br from-white via-white to-indigo-50/40 rounded-2xl p-3.5 shadow-sm border border-slate-100/80">
+                    <div class="w-12 h-12 rounded-xl skeleton-line flex-shrink-0"></div>
+                    <div class="flex-1 min-w-0 space-y-2">
+                        <div class="h-3.5 w-2/3 rounded-lg skeleton-line"></div>
+                        <div class="h-2.5 w-1/2 rounded-lg skeleton-line"></div>
+                    </div>
+                    <div class="h-6 w-14 rounded-xl skeleton-line flex-shrink-0"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Results list -->
+        <div class="space-y-2.5" x-show="!loading">
+            <template x-for="card in results" :key="card.id">
+                <a :href="resultUrl(card)"
+                   @click.prevent="openResult(card)"
+                   class="flex items-center gap-3 bg-gradient-to-br from-white via-white to-indigo-50/40 rounded-2xl p-3.5 shadow-sm border border-slate-100/80 hover:shadow-md active:scale-[0.98] transition-all">
+                    <!-- Photo -->
+                    <div class="w-12 h-12 rounded-xl overflow-hidden bg-indigo-50/70 border border-slate-100/80 flex items-center justify-center flex-shrink-0">
+                        <img x-show="card.photo_url" :src="card.photo_url" class="w-full h-full object-cover" :alt="card.name + ' photo'">
+                        <i x-show="!card.photo_url" class="fa-solid fa-user text-gray-400 text-sm"></i>
+                    </div>
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[13px] font-bold text-gray-800 truncate" x-text="card.name"></p>
+                        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span class="text-[10px] font-medium text-gray-500" x-show="card.roll_no" x-text="card.roll_no"></span>
+                            <span class="text-[10px] text-gray-400" x-text="card.table_name"></span>
+                            <span class="text-[10px] text-gray-400" x-show="card.client_name" x-text="'\u00B7 ' + card.client_name"></span>
+                        </div>
+                    </div>
+                    <!-- Status badge -->
+                    <span class="text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex-shrink-0"
+                          :class="statusClass(card.status)"
+                          x-text="card.status.charAt(0).toUpperCase() + card.status.slice(1)"></span>
+                </a>
+            </template>
+
+            <!-- Empty: no query typed yet -->
+            <div class="flex flex-col items-center justify-center py-16 text-gray-300" x-show="!query.trim() && !loading">
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-magnifying-glass text-2xl text-gray-300"></i>
+                </div>
+                <p class="text-[13px] font-semibold text-gray-400">Search for cards</p>
+                <p class="text-[11px] text-gray-300 mt-1">Type a name, roll number, or ID</p>
+            </div>
+
+            <!-- Empty: query set but no matches -->
+            <div class="flex flex-col items-center justify-center py-16 text-gray-300" x-show="query.trim() && !loading && !results.length" x-cloak>
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-magnifying-glass text-2xl text-gray-300"></i>
+                </div>
+                <p class="text-[13px] font-semibold text-gray-400">No results found</p>
+                <p class="text-[11px] text-gray-300 mt-1">Try a different search term</p>
+            </div>
+        </div>
+    </div>
+
+    {% include "mobile_app/partials/bottom_nav.html" %}
+</div>
+
+<script>
+(function () {
+    const _API    = "{% url 'mobile_app:api_search' %}";
+    const _TMPL   = document.getElementById('_card_url_tmpl').getAttribute('href');
+    const _BASE   = _TMPL.replace('/123456789/', '/');   // e.g. "/app/card/"
+
+    const _initResults = JSON.parse(document.getElementById('_search_init_results').textContent || '[]');
+    const _initQuery   = JSON.parse(document.getElementById('_search_init_query').textContent   || '""') || '';
+    const _initFilter  = JSON.parse(document.getElementById('_search_init_filter').textContent || '"all"') || 'all';
+    const _initTableScope = JSON.parse(document.getElementById('_search_init_table_scope').textContent || 'null');
+
+    window.searchApp = function () {
+        return {
+            query:   _initQuery,
+            results: _initResults,
+            filterType: ['all', 'name', 'address', 'mobile'].includes(_initFilter) ? _initFilter : 'all',
+            tableScopeId: Number.isFinite(Number(_initTableScope)) && Number(_initTableScope) > 0 ? Number(_initTableScope) : null,
+            loading: false,
+            _timer:  null,
+
+            buildSearchUrl(q) {
+                const params = new URLSearchParams();
+                params.set('q', q);
+                if (this.filterType && this.filterType !== 'all') params.set('filter', this.filterType);
+                if (this.tableScopeId) params.set('table_id', String(this.tableScopeId));
+                return `${_API}?${params.toString()}`;
+            },
+
+            clearTableScope() {
+                this.tableScopeId = null;
+                this.doSearch();
+            },
+
+            cardUrl(id) {
+                return _BASE + id + '/';
+            },
+
+            resultUrl(card) {
+                if (!card) return '#';
+                const status = (card.status || '').toLowerCase();
+                const listStatuses = ['pending', 'verified', 'approved', 'download', 'pool'];
+                if (!card.table_id || !listStatuses.includes(status)) {
+                    return this.cardUrl(card.id);
+                }
+                return `/app/table/${card.table_id}/${status}/?focus_card=${card.id}`;
+            },
+
+            openResult(card) {
+                window.location.href = this.resultUrl(card);
+            },
+
+            statusClass(s) {
+                return {
+                    'bg-amber-50 text-amber-600':   s === 'pending',
+                    'bg-emerald-50 text-emerald-600': s === 'verified',
+                    'bg-sky-50 text-sky-600':       s === 'approved',
+                    'bg-violet-50 text-violet-600': s === 'download',
+                    'bg-rose-50 text-rose-600':     s === 'pool',
+                    'bg-gray-50 text-gray-600':     !['pending','verified','approved','download','pool'].includes(s),
+                };
+            },
+
+            debouncedSearch() {
+                clearTimeout(this._timer);
+                const q = this.query.trim();
+                if (!q || q.length < 2) { this.results = []; return; }
+                this._timer = setTimeout(() => this.doSearch(), 350);
+            },
+
+            async doSearch() {
+                const q = this.query.trim();
+                if (!q || q.length < 2) return;
+                this.loading = true;
+                try {
+                    const res  = await fetch(this.buildSearchUrl(q));
+                    const json = await res.json();
+                    if (json.success) this.results = json.data.results;
+                } catch (e) {
+                    // silently ignore network errors
+                } finally {
+                    this.loading = false;
+                }
+            },
+        };
+    };
+}());
+</script>
 {% endblock %}

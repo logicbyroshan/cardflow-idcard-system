@@ -31,6 +31,14 @@ settings.DATABASES = {
 import django
 django.setup()
 
+import builtins
+from staff.models import Staff
+
+builtins.Staff = Staff
+
+# Note: pytest-django sets up the test environment; avoid calling
+# `setup_test_environment()` at import time to prevent repeated-initialization errors.
+
 # After Django setup, remove debug_toolbar from MIDDLEWARE and INSTALLED_APPS if present
 if 'debug_toolbar' in settings.INSTALLED_APPS:
     settings.INSTALLED_APPS = tuple(
@@ -46,9 +54,13 @@ if 'debug_toolbar.middleware.DebugToolbarMiddleware' in settings.MIDDLEWARE:
 # Will run migrations via pytest_configure hook instead
 
 def pytest_configure(config):
-	"""Initialize test database with migrations."""
-	from django.core.management import call_command
-	call_command('migrate', verbosity=0, interactive=False)
+    """Initialize test database with migrations."""
+    # Running migrations here causes pytest-django to raise "Database access not allowed"
+    # because database access is blocked until the proper fixtures are used. Rely on
+    # pytest-django to manage the test database lifecycle via its fixtures instead.
+    # If an explicit migrate run is required, run tests with a dedicated option
+    # or implement a session-scoped fixture that uses the `django_db_blocker`.
+    return
 
 # Marker lanes are applied centrally so we don't need to touch hundreds of test files.
 SLOW_NODEID_PREFIXES = (

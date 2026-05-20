@@ -615,8 +615,9 @@ def _can_manage_client_staff_surface(user):
         return True
     if PermissionService.is_admin_staff(user):
         return PermissionService.has(user, 'perm_manage_client_staff') or PermissionService.has(user, 'perm_idcard_client_list')
-    # Clients can manage their own staff if they have the manage_client_staff permission
-    return PermissionService.is_client(user) or PermissionService.has(user, 'perm_manage_client_staff')
+    if PermissionService.is_client(user):
+        return PermissionService.has(user, 'perm_idcard_client_list') or PermissionService.has(user, 'perm_manage_client_staff')
+    return PermissionService.has(user, 'perm_manage_client_staff') or PermissionService.has(user, 'perm_idcard_client_list')
 
 
 _AACI_SENTINEL = object()  # sentinel for _admin_accessible_client_ids cache
@@ -1514,6 +1515,7 @@ def pwa_service_worker(request):
     ]
     online_required_prefixes = [
         '/app/api/',
+        '/api/mobile/',
         '/app/camera/',
         '/app/table/',
         '/app/reprint/',
@@ -1699,6 +1701,15 @@ self.addEventListener('fetch', function(event) {
     }
 
     if (url.pathname.indexOf('/app/api/') === 0) {
+        event.respondWith(
+            fetch(event.request).catch(function() {
+                return offlineJsonResponse();
+            })
+        );
+        return;
+    }
+
+    if (url.pathname.indexOf('/api/mobile/') === 0) {
         event.respondWith(
             fetch(event.request).catch(function() {
                 return offlineJsonResponse();
@@ -3543,6 +3554,49 @@ def permissions_center(request):
     return render(request, 'mobile_app/permissions.html', {
         'user_name': user.get_full_name() or user.username,
         'client': client,
+        **perms,
+    })
+
+
+@require_mobile_client
+def website_manage(request):
+    """Mobile website management page with portfolio categories."""
+    user = request.user
+    if not (PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_website_view')):
+        return render(request, 'mobile_app/no_access.html', {
+            'user_name': user.get_full_name() or user.username,
+        }, status=403)
+
+    client, perms = _client_ctx(user)
+
+    if not cache.get('portfolio_defaults_ensured'):
+        ensure_defaults = getattr(PortfolioCategory, 'ensure_defaults', None)
+        if callable(ensure_defaults):
+            ensure_defaults()
+        cache.set('portfolio_defaults_ensured', True, 3600)
+
+    categories = list(
+        PortfolioCategory.objects.filter(is_active=True)
+        .annotate(photo_count=Count('items', filter=Q(items__is_active=True)))
+        .order_by('order', 'id')
+        .only('id', 'name', 'icon', 'order')
+    )
+
+    categories_data = [
+        {
+            'id': c.id,
+            'name': c.name,
+            'icon': c.icon,
+            'count': c.photo_count,
+            'is_public_bento': False,
+        }
+        for c in categories
+    ]
+
+    return render(request, 'mobile_app/website_manage.html', {
+        'user_name': user.get_full_name() or user.username,
+        'client': client,
+        'categories_json': categories_data,
         **perms,
     })
 

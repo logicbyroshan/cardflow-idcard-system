@@ -1,8 +1,690 @@
-{% extends 'mobile_app/base.html' %}
+{% extends "mobile_app/base.html" %}
+{% load static %}
+
+{% block title %}Settings - Adarsh ID Cards{% endblock %}
+
 {% block content %}
-<div class="mobile-settings">
-  <h1>Settings</h1>
-  <button id="update-app">Update App</button>
-  <div id="app-update-status">No update</div>
+<div x-data="settingsApp()" class="flex flex-col bg-gradient-to-b from-slate-50 via-indigo-50/25 to-sky-50/35" style="min-height:100dvh;">
+
+    <!-- HEADER + TAB BAR -->
+    <div class="flex-shrink-0">
+
+        <!-- Title row -->
+        <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3.5 bg-gradient-to-r from-brand-light to-brand-dark">
+            <a href="{% url 'mobile_app:home' %}"
+                    onclick="return mobileGoBack(event, this.getAttribute('href'));"
+               class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors flex-shrink-0">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+            <div class="flex-1 min-w-0">
+                <h1 class="text-white font-bold text-[14px] leading-tight">Settings</h1>
+                <p class="text-white/70 text-[10px]">App configuration &amp; info</p>
+            </div>
+        </div>
+
+        <!-- Tab bar -->
+        <div class="mx-4 mt-2 flex bg-white rounded-2xl border border-slate-100 shadow-sm p-1.5">
+                <button @click="setTab('notifications')"
+                    :class="tab==='notifications' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors relative">
+                <i class="fa-solid fa-bell text-[14px]"></i>
+                <span>Notify</span>
+                {% if unread_system_count > 0 %}
+                <span class="absolute top-1.5 left-[calc(50%+4px)] w-3.5 h-3.5 bg-red-500 rounded-md text-[7px] text-white flex items-center justify-center font-bold leading-none">{{ unread_system_count }}</span>
+                {% endif %}
+            </button>
+                <button @click="setTab('logs')"
+                    :class="tab==='logs' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors">
+                <i class="fa-solid fa-clock-rotate-left text-[14px]"></i>
+                <span>Logs</span>
+            </button>
+                <button @click="setTab('email')"
+                    :class="tab==='email' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors">
+                <i class="fa-solid fa-envelope text-[14px]"></i>
+                <span>Email</span>
+            </button>
+            {% if is_super_admin %}
+            <button @click="setTab('system')"
+                    :class="tab==='system' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors">
+                <i class="fa-solid fa-circle-info text-[14px]"></i>
+                <span>System</span>
+            </button>
+            <button @click="setTab('server')"
+                    :class="tab==='server' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors">
+                <i class="fa-solid fa-server text-[14px]"></i>
+                <span>Server</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SCROLLABLE CONTENT AREA -->
+    <div class="flex-1 overflow-y-auto" style="-webkit-overflow-scrolling:touch; padding-bottom:calc(env(safe-area-inset-bottom,0px) + 70px);">
+
+        <!-- ======== TAB: NOTIFICATIONS ======== -->
+        <div x-show="tab==='notifications'">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">System Notifications</p>
+                {% if unread_system_count > 0 %}
+                <span class="text-[10px] font-semibold text-brand-light">{{ unread_system_count }} unread</span>
+                {% else %}
+                <span class="text-[10px] text-gray-400">All caught up</span>
+                {% endif %}
+            </div>
+
+            {% if system_notifications %}
+            <div class="px-4 flex flex-col gap-2 pb-4">
+                {% for notif in system_notifications %}
+                <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl border shadow-sm overflow-hidden
+                            {% if not notif.is_read %}border-l-4 border-l-brand-light border-slate-100/80{% else %}border-slate-100/80{% endif %}">
+                    <div class="flex items-start gap-3 p-4">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                             style="background-color:{{ notif.priority_color }}20;">
+                            <i class="fa-solid {{ notif.icon_class }} text-[13px]"
+                               style="color:{{ notif.priority_color }};"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="text-[12px] font-bold text-gray-800 leading-snug">{{ notif.title }}</p>
+                                {% if not notif.is_read %}
+                                <span class="w-2 h-2 rounded-sm bg-brand-light flex-shrink-0 mt-1"></span>
+                                {% endif %}
+                            </div>
+                            <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">{{ notif.message }}</p>
+                            <div class="flex items-center gap-2 mt-1.5">
+                                <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-lg"
+                                      style="background-color:{{ notif.priority_color }}18;color:{{ notif.priority_color }};">
+                                    {{ notif.priority|title }}
+                                </span>
+                                <span class="text-[9px] text-gray-400">{{ notif.category }}</span>
+                                <span class="text-[9px] text-gray-300 ml-auto">{{ notif.created_at }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-bell-slash text-2xl text-gray-400"></i>
+                </div>
+                <p class="text-[13px] font-semibold text-gray-500">No notifications</p>
+                <p class="text-[11px] text-gray-400 mt-1">System announcements will appear here</p>
+            </div>
+            {% endif %}
+
+            <div class="px-4 pb-4">
+                <a href="{% url 'mobile_app:notifications' %}"
+                   class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[12px] font-semibold border border-brand-light/30 text-brand-light active:bg-indigo-50 transition-colors">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    View Activity Notifications
+                </a>
+            </div>
+        </div>
+
+
+        <!-- ======== TAB: LOGS ======== -->
+        <div x-show="tab==='logs'" style="display:none;">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Recent Card Activity</p>
+                <span class="text-[10px] text-gray-400">Last {{ log_activities|length }} events</span>
+            </div>
+
+            {% if log_activities %}
+            <div class="bg-gradient-to-br from-white via-white to-indigo-50/30 mx-4 rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden mb-4">
+                <div class="flex items-center px-3 py-2 bg-indigo-50/70 border-b border-indigo-100">
+                    <span class="w-7 flex-shrink-0 mr-2"></span>
+                    <span class="flex-[3] text-[9px] font-bold text-gray-400 uppercase tracking-wider pr-2">Name</span>
+                    <span class="w-[68px] text-[9px] font-bold text-gray-400 uppercase tracking-wider text-center">Status</span>
+                    <span class="flex-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider text-right">Time</span>
+                </div>
+                {% for act in log_activities %}
+                <div class="flex items-center px-3 py-2.5 border-b border-gray-50 last:border-b-0">
+                    <div class="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2
+                        {% if act.status == 'verified' %}bg-emerald-50 text-emerald-500
+                        {% elif act.status == 'approved' %}bg-sky-50 text-sky-500
+                        {% elif act.status == 'download' %}bg-violet-50 text-violet-500
+                        {% elif act.status == 'pending' %}bg-amber-50 text-amber-500
+                        {% elif act.status == 'pool' %}bg-red-50 text-red-500
+                        {% else %}bg-gray-50 text-gray-400{% endif %}">
+                        <i class="fa-solid text-[10px]
+                            {% if act.status == 'verified' %}fa-circle-check
+                            {% elif act.status == 'approved' %}fa-check-double
+                            {% elif act.status == 'download' %}fa-download
+                            {% elif act.status == 'pending' %}fa-clock
+                            {% elif act.status == 'pool' %}fa-layer-group
+                            {% else %}fa-circle-info{% endif %}"></i>
+                    </div>
+                    <div class="flex-[3] min-w-0 pr-2">
+                        <p class="text-[11px] font-semibold text-gray-800 truncate leading-tight">{{ act.name }}</p>
+                        <p class="text-[9px] text-gray-400 mt-0.5 truncate leading-none">{{ act.group_name }} &rsaquo; {{ act.table_name }}</p>
+                    </div>
+                    <div class="w-[68px] flex justify-center">
+                        <span class="pwa-status-badge
+                            {% if act.status == 'verified' %}pwa-badge-verified
+                            {% elif act.status == 'approved' %}pwa-badge-approved
+                            {% elif act.status == 'download' %}pwa-badge-download
+                            {% elif act.status == 'pending' %}pwa-badge-pending
+                            {% elif act.status == 'pool' %}pwa-badge-pool
+                            {% else %}pwa-badge-gray{% endif %}">
+                            {{ act.status_display }}
+                        </span>
+                    </div>
+                    <div class="flex-1 text-right">
+                        <span class="text-[9px] text-gray-400">{{ act.updated_at }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-clock-rotate-left text-2xl text-gray-400"></i>
+                </div>
+                <p class="text-[13px] font-semibold text-gray-500">No activity yet</p>
+                <p class="text-[11px] text-gray-400 mt-1">Card status changes will appear here</p>
+            </div>
+            {% endif %}
+        </div>
+
+
+        <!-- ======== TAB: EMAIL ======== -->
+        <div x-show="tab==='email'" style="display:none;">
+            <div class="px-4 pt-4 flex flex-col gap-3">
+
+                <div class="bg-gradient-to-br from-white via-white to-sky-50/35 rounded-2xl border border-sky-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
+                            <i class="fa-solid fa-user text-indigo-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Account Info</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Full Name</span>
+                            <span class="text-[12px] font-semibold text-gray-800">{{ user_name }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Email Address</span>
+                            <span class="text-[12px] font-semibold text-gray-800 truncate max-w-[180px]">{{ user_email|default:" - " }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Role</span>
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-lg
+                                {% if is_super_admin %}bg-violet-100 text-violet-600
+                                {% elif is_admin_staff %}bg-indigo-100 text-indigo-600
+                                {% elif is_client %}bg-sky-100 text-sky-600
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {% if is_super_admin %}Super Admin
+                                {% elif is_admin_staff %}Operator
+                                {% elif is_client %}Client Admin
+                                {% else %}Assistent{% endif %}
+                            </span>
+                        </div>
+                        {% if client %}
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Organization</span>
+                            <span class="text-[12px] font-semibold text-gray-800 truncate max-w-[180px]">{{ client.name }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if client and client.email %}
+                <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl border border-indigo-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-xl bg-orange-50 flex items-center justify-center">
+                            <i class="fa-solid fa-envelope text-orange-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Client Contact</p>
+                    </div>
+                    <div class="px-4 py-3">
+                        <p class="text-[11px] text-gray-500 mb-1">Registered email for this client</p>
+                        <p class="text-[13px] font-semibold text-gray-800">{{ client.email }}</p>
+                        {% if client.phone %}
+                        <p class="text-[11px] text-gray-500 mt-2.5 mb-0.5">Phone</p>
+                        <p class="text-[13px] font-semibold text-gray-800">{{ client.phone }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="bg-gradient-to-br from-white via-white to-slate-50 rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100/70 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-xl bg-gray-100 flex items-center justify-center">
+                            <i class="fa-solid fa-gear text-gray-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Account Actions</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <a href="/panel/auth/change-password/"
+                           class="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                                    <i class="fa-solid fa-lock text-amber-500 text-[11px]"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-gray-800">Change Password</p>
+                                    <p class="text-[10px] text-gray-400">Update your login credentials</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                        </a>
+                        {% if is_super_admin or is_admin_staff %}
+                        <a href="/"
+                           class="flex items-center justify-between px-4 py-3.5 active:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
+                                    <i class="fa-solid fa-desktop text-gray-500 text-[11px]"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-gray-800">Desktop Panel</p>
+                                    <p class="text-[10px] text-gray-400">Full management interface</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-gray-300 text-xs"></i>
+                        </a>
+                        {% endif %}
+                                <a href="/panel/auth/logout/" onclick="return window.mobileLogout(event);"
+                           class="flex items-center justify-between px-4 py-3.5 active:bg-red-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+                                    <i class="fa-solid fa-right-from-bracket text-red-500 text-[11px]"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-red-600">Logout</p>
+                                    <p class="text-[10px] text-gray-400">Sign out of app</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+
+                {% if is_client or is_client_staff %}
+                <div class="bg-gradient-to-br from-white via-white to-indigo-50/30 rounded-2xl border border-indigo-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-indigo-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
+                            <i class="fa-solid fa-shield-halved text-indigo-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Feature Access</p>
+                    </div>
+                    <div class="px-4 py-3">
+                        <p class="text-[11px] text-gray-500 leading-relaxed">Some actions are hidden based on your role permissions. You can still search, view groups, and track notifications from mobile.</p>
+                        <div class="mt-3 grid grid-cols-2 gap-2">
+                            <a href="{% url 'mobile_app:search_page' %}"
+                               class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-2 text-[10px] font-semibold text-sky-700 active:scale-95 transition-transform">
+                                <i class="fa-solid fa-magnifying-glass text-[10px]"></i>
+                                Search
+                            </a>
+                            <a href="{% url 'mobile_app:groups_overview' %}"
+                               class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-[10px] font-semibold text-indigo-700 active:scale-95 transition-transform">
+                                <i class="fa-solid fa-layer-group text-[10px]"></i>
+                                Groups
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+
+        {% if is_super_admin %}
+        <!-- ======== TAB: SYSTEM INFO ======== -->
+        <div x-show="tab==='system'" style="display:none;">
+            <div class="px-4 pt-4 flex flex-col gap-3 pb-4">
+
+                <!-- App version card -->
+                 <div class="rounded-2xl overflow-hidden shadow-md"
+                     style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
+                    <div class="px-5 py-4 flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center border border-white/30 flex-shrink-0">
+                            <i class="fa-solid fa-id-card text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-white font-bold leading-tight mobile-sidebar-brand-title">Adarsh ID Cards</p>
+                            <p class="text-white/70 text-[12px] mt-0.5">Mobile PWA</p>
+                            <p class="text-white/90 text-[13px] font-mono font-bold mt-1">{{ app_version }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform info -->
+                <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100/70 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
+                            <i class="fa-solid fa-server text-indigo-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Platform</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Django</span>
+                            <span class="text-[12px] font-semibold text-gray-800 font-mono">{{ django_version }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Python</span>
+                            <span class="text-[12px] font-semibold text-gray-800 font-mono">{{ python_version }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <span class="text-[11px] text-gray-500">Environment</span>
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-lg
+                                {% if debug_mode %}bg-amber-100 text-amber-600{% else %}bg-green-100 text-green-600{% endif %}">
+                                {% if debug_mode %}Development{% else %}Production{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform stats -->
+                <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100/70 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-xl bg-green-50 flex items-center justify-center">
+                            <i class="fa-solid fa-chart-pie text-green-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">
+                            {% if is_super_admin or is_admin_staff %}Platform Stats{% else %}Your Data{% endif %}
+                        </p>
+                    </div>
+                    {% if is_super_admin or is_admin_staff %}
+                    <div class="grid grid-cols-2">
+                        <div class="flex flex-col items-center justify-center py-4 border-b border-r border-gray-100">
+                            <p class="text-[22px] font-extrabold text-sky-500 leading-none">{{ admin_client_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Active Clients</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4 border-b border-gray-100">
+                            <p class="text-[22px] font-extrabold text-emerald-500 leading-none">{{ admin_staff_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Team Members</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4 border-r border-gray-100">
+                            <p class="text-[22px] font-extrabold text-violet-500 leading-none">{{ admin_table_count|default:0 }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Active Tables</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <p class="text-[22px] font-extrabold text-amber-500 leading-none">{{ admin_total_cards|default:0 }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Total ID Cards</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="grid grid-cols-3 divide-x divide-gray-100">
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <p class="text-[20px] font-extrabold text-indigo-500 leading-none">{{ group_count }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Groups</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <p class="text-[20px] font-extrabold text-green-500 leading-none">{{ table_count }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Tables</p>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <p class="text-[20px] font-extrabold text-purple-500 leading-none">{{ total_cards }}</p>
+                            <p class="text-[9px] text-gray-400 mt-1 font-medium">Cards</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+        {% endif %}
+
+        {% if is_super_admin %}
+        <div x-show="tab==='server'" style="display:none;">
+            <div class="px-4 pt-4 flex flex-col gap-3 pb-4">
+                <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100/70 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center">
+                                <i class="fa-solid fa-server text-sky-500 text-[11px]"></i>
+                            </div>
+                            <p class="text-[12px] font-bold text-gray-700">Server Diagnostics</p>
+                        </div>
+                        <button type="button"
+                                @click="fetchServerInfo()"
+                                class="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-brand-light/30 text-brand-light active:bg-indigo-50 transition-colors">
+                            Refresh
+                        </button>
+                    </div>
+
+                    <template x-if="serverLoading">
+                        <div class="px-4 py-3 space-y-3" aria-hidden="true">
+                            <template x-for="i in 6" :key="'server-skeleton-' + i">
+                                <div class="flex items-center justify-between gap-4 py-1">
+                                    <div class="skeleton-line h-2.5 w-20 rounded-lg"></div>
+                                    <div class="skeleton-line h-2.5 w-32 rounded-lg"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="!serverLoading && serverError">
+                        <div class="px-4 py-6 text-center">
+                            <p class="text-[12px] font-semibold text-red-500" x-text="serverError"></p>
+                        </div>
+                    </template>
+
+                    <template x-if="!serverLoading && !serverError && serverInfo">
+                        <div class="divide-y divide-gray-50">
+                            <div class="flex items-center justify-between px-4 py-3">
+                                <span class="text-[11px] text-gray-500">Environment</span>
+                                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-lg"
+                                      :class="serverInfo.environment === 'Production' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'"
+                                      x-text="serverInfo.environment"></span>
+                            </div>
+                            <div class="flex items-center justify-between px-4 py-3">
+                                <span class="text-[11px] text-gray-500">Hostname</span>
+                                <span class="text-[12px] font-semibold text-gray-800 font-mono max-w-[210px] truncate" x-text="serverInfo.hostname || '-' "></span>
+                            </div>
+                            <div class="flex items-center justify-between px-4 py-3">
+                                <span class="text-[11px] text-gray-500">Platform</span>
+                                <span class="text-[11px] font-semibold text-gray-800 max-w-[210px] truncate" x-text="serverInfo.platform || '-' "></span>
+                            </div>
+                            <div class="flex items-center justify-between px-4 py-3">
+                                <span class="text-[11px] text-gray-500">Python</span>
+                                <span class="text-[12px] font-semibold text-gray-800 font-mono" x-text="serverInfo.python_version || '-' "></span>
+                            </div>
+                            <div class="flex items-center justify-between px-4 py-3">
+                                <span class="text-[11px] text-gray-500">Django</span>
+                                <span class="text-[12px] font-semibold text-gray-800 font-mono" x-text="serverInfo.django_version || '-' "></span>
+                            </div>
+                            <div class="flex items-center justify-between px-4 py-3">
+                                <span class="text-[11px] text-gray-500">Process ID</span>
+                                <span class="text-[12px] font-semibold text-gray-800 font-mono" x-text="serverInfo.process_id ?? '-' "></span>
+                            </div>
+                            <div class="flex items-center justify-between px-4 py-3">
+                                <span class="text-[11px] text-gray-500">Uptime</span>
+                                <span class="text-[12px] font-semibold text-gray-800 font-mono" x-text="formatUptime(serverInfo.process_uptime_seconds)"></span>
+                            </div>
+                            <div class="flex items-center justify-between px-4 py-3">
+                                <span class="text-[11px] text-gray-500">Working Dir</span>
+                                <span class="text-[11px] font-semibold text-gray-800 max-w-[210px] truncate" x-text="serverInfo.cwd || '-' "></span>
+                            </div>
+                            <template x-if="serverInfo.disk">
+                                <div class="flex flex-col gap-1 px-4 py-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] text-gray-500">Disk Usage</span>
+                                        <span class="text-[11px] font-semibold text-gray-800">
+                                            <span x-text="(serverInfo.disk.used/1024/1024/1024).toFixed(2)"></span> GB /
+                                            <span x-text="(serverInfo.disk.total/1024/1024/1024).toFixed(2)"></span> GB
+                                            (<span x-text="serverInfo.disk.percent"></span>%)
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-2 bg-gray-100 rounded-md overflow-hidden mt-1">
+                                        <div class="h-2 bg-sky-400" :style="'width:' + serverInfo.disk.percent + '%'" style="transition:width 0.5s;"></div>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px] text-gray-400 mt-0.5">
+                                        <span x-text="'Free: ' + (serverInfo.disk.free/1024/1024/1024).toFixed(2) + ' GB'"></span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.memory">
+                                <div class="flex flex-col gap-1 px-4 py-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] text-gray-500">Memory Usage</span>
+                                        <span class="text-[11px] font-semibold text-gray-800">
+                                            <span x-text="serverInfo.memory.used_human || formatBytes(serverInfo.memory.used_bytes)"></span> /
+                                            <span x-text="serverInfo.memory.total_human || formatBytes(serverInfo.memory.total_bytes)"></span>
+                                            (<span x-text="serverInfo.memory.used_pct ?? '-' "></span>%)
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-2 bg-gray-100 rounded-md overflow-hidden mt-1">
+                                        <div class="h-2 bg-indigo-400" :style="'width:' + Math.min(100, Math.max(0, Number(serverInfo.memory.used_pct || 0))) + '%'" style="transition:width 0.5s;"></div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.database">
+                                <div class="flex items-center justify-between px-4 py-3">
+                                    <span class="text-[11px] text-gray-500">Database Size</span>
+                                    <span class="text-[12px] font-semibold text-gray-800 font-mono" x-text="serverInfo.database.size_human || formatBytes(serverInfo.database.size_bytes)"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.storage && serverInfo.storage.tracked_total_human">
+                                <div class="flex items-center justify-between px-4 py-3">
+                                    <span class="text-[11px] text-gray-500">Tracked Folders Total</span>
+                                    <span class="text-[12px] font-semibold text-gray-800 font-mono" x-text="serverInfo.storage.tracked_total_human"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.usage_breakdown && serverInfo.usage_breakdown.length">
+                                <div class="px-4 py-3">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Used Disk Breakdown</p>
+                                    <div class="space-y-2">
+                                        <template x-for="item in serverInfo.usage_breakdown" :key="item.name">
+                                            <div class="rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-[11px] font-semibold text-gray-700" x-text="item.name"></span>
+                                                    <span class="text-[10px] text-gray-500 font-mono" x-text="item.size_human || formatBytes(item.size_bytes)"></span>
+                                                </div>
+                                                <div class="w-full h-1.5 bg-gray-200 rounded-md mt-1.5 overflow-hidden">
+                                                    <div class="h-1.5 bg-sky-400" :style="'width:' + Math.min(100, Math.max(0, Number(item.pct_of_used_disk || 0))) + '%'" style="transition:width 0.4s;"></div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="serverInfo.path_usage && serverInfo.path_usage.length">
+                                <div class="px-4 py-3">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Tracked Folder Usage</p>
+                                    <div class="space-y-2">
+                                        <template x-for="item in serverInfo.path_usage.slice(0, 10)" :key="'path-' + item.name">
+                                            <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+                                                <span class="text-[11px] text-gray-600 truncate" x-text="item.name"></span>
+                                                <span class="text-[10px] font-semibold text-gray-800 font-mono" x-text="item.size_human || formatBytes(item.size_bytes)"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        </div>
+
+    </div><!-- /scroll area -->
+
+    {% include "mobile_app/partials/bottom_nav.html" %}
+
 </div>
+
+<script>
+function settingsApp() {
+    return {
+        tab: 'notifications',
+        isAdmin: {{ is_super_admin|yesno:'true,false' }},
+        serverLoading: false,
+        serverInfo: null,
+        serverError: '',
+        setTab(nextTab) {
+            this.tab = nextTab;
+            if (nextTab === 'server' && this.isAdmin && !this.serverInfo && !this.serverLoading) {
+                this.fetchServerInfo();
+            }
+        },
+        async fetchServerInfo() {
+            if (!this.isAdmin) return;
+            this.serverLoading = true;
+            this.serverError = '';
+            try {
+                const res = await fetch('/app/api/server-info/?force_refresh=1', { cache: 'no-store' });
+                const data = await res.json();
+                if (!data.success) {
+                    this.serverError = data.message || 'Failed to fetch server info';
+                    this.serverInfo = null;
+                    return;
+                }
+                const snapshot = data.snapshot || data.data || {};
+                const diskFromStorage = snapshot.storage
+                    ? {
+                        total: snapshot.storage.total_bytes || 0,
+                        used: snapshot.storage.used_bytes || 0,
+                        free: snapshot.storage.free_bytes || 0,
+                        percent: snapshot.storage.used_pct || 0,
+                    }
+                    : null;
+
+                this.serverInfo = {
+                    environment: snapshot.environment || '-',
+                    hostname: snapshot.host || snapshot.hostname || '-',
+                    platform: snapshot.platform || '-',
+                    python_version: snapshot.python_version || '-',
+                    django_version: snapshot.django_version || '{{ django_version|escapejs }}',
+                    process_id: snapshot.process_id ?? '-',
+                    process_uptime_seconds: snapshot.process_uptime_seconds,
+                    cwd: snapshot.cwd || '-',
+                    disk: snapshot.disk || diskFromStorage,
+                    storage: snapshot.storage || null,
+                    memory: snapshot.memory || null,
+                    database: snapshot.database || null,
+                    usage_breakdown: Array.isArray(snapshot.usage_breakdown) ? snapshot.usage_breakdown : [],
+                    path_usage: Array.isArray(snapshot.path_usage) ? snapshot.path_usage : [],
+                };
+            } catch (err) {
+                this.serverError = 'Network error while loading server info';
+                this.serverInfo = null;
+            } finally {
+                this.serverLoading = false;
+            }
+        },
+        formatBytes(bytes) {
+            const size = Number(bytes || 0);
+            if (!size || size < 0) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let value = size;
+            let unitIdx = 0;
+            while (value >= 1024 && unitIdx < units.length - 1) {
+                value /= 1024;
+                unitIdx += 1;
+            }
+            return `${value.toFixed(value >= 10 ? 1 : 2)} ${units[unitIdx]}`;
+        },
+        formatUptime(seconds) {
+            if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return '-';
+            const total = Math.max(0, Number(seconds));
+            const d = Math.floor(total / 86400);
+            const h = Math.floor((total % 86400) / 3600);
+            const m = Math.floor((total % 3600) / 60);
+            const s = Math.floor(total % 60);
+            if (d > 0) return `${d}d ${h}h ${m}m`;
+            if (h > 0) return `${h}h ${m}m ${s}s`;
+            if (m > 0) return `${m}m ${s}s`;
+            return `${s}s`;
+        },
+    };
+}
+</script>
 {% endblock %}

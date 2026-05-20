@@ -1,1 +1,19 @@
-<div>List toast placeholder</div>
+<!-- Toast Notification -->
+<div
+    x-show="toast.show"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 translate-y-4"
+    x-transition:enter-end="opacity-100 translate-y-0"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100 translate-y-0"
+    x-transition:leave-end="opacity-0 translate-y-4"
+    class="fixed top-4 left-1/2 -translate-x-1/2 z-[120] max-w-[90%] pointer-events-none"
+>
+    <div
+        :class="{'bg-green-500': toast.type==='success', 'bg-red-500': toast.type==='error', 'bg-gradient-to-r from-brand-light to-brand-dark': toast.type==='info'}"
+        class="text-white text-xs font-medium px-4 py-2.5 rounded-md shadow-lg flex items-center gap-2"
+    >
+        <i :class="{'fa-solid fa-circle-check': toast.type==='success', 'fa-solid fa-circle-exclamation': toast.type==='error', 'fa-solid fa-circle-info': toast.type==='info'}"></i>
+        <span x-text="toast.message"></span>
+    </div>
+</div>

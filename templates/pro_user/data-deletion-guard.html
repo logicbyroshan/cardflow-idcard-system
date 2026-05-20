@@ -703,13 +703,13 @@
               <i class="fa-solid fa-trash-can"></i> Delete Filtered Data
             </button>
             <button type="button" class="btn btn-sm btn-danger" id="guardDeletePendingImgBtn" disabled>
-              <i class="fa-solid fa-image"></i> Clear Pending Image Path
+              <i class="fa-solid fa-image"></i> Delete Pending Images
             </button>
             <button type="button" class="btn btn-sm btn-danger" id="guardDeleteCompletedImgBtn" disabled>
-              <i class="fa-solid fa-images"></i> Delete Image + Path
+              <i class="fa-solid fa-images"></i> Delete Completed Images
             </button>
             <button type="button" class="btn btn-sm btn-danger" id="guardDeleteByColumnBtn" disabled>
-              <i class="fa-solid fa-columns"></i> Clear Column Value
+              <i class="fa-solid fa-columns"></i> Delete By Column
             </button>
           </div>
           <div class="guard-danger-hint" id="guardDeleteHint">Run a preview first to enable the field-clear actions.</div>
@@ -961,9 +961,9 @@
   }
 
   function selectedActionLabel(actionType) {
-    if (actionType === 'delete_pending_images') return 'Clear Pending Image Path';
-    if (actionType === 'delete_completed_images') return 'Delete Image + Path';
-    if (actionType === 'delete_by_column') return 'Clear Column Value';
+    if (actionType === 'delete_pending_images') return 'Delete Pending Images';
+    if (actionType === 'delete_completed_images') return 'Delete Completed Images';
+    if (actionType === 'delete_by_column') return 'Delete By Column';
     return 'Delete Filtered Data';
   }
 

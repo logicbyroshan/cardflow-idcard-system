@@ -1,0 +1,698 @@
+{% extends "mobile_app/base.html" %}
+{% load static %}
+
+{% block title %}Manage Website &ndash; Adarsh ID Cards{% endblock %}
+
+{% block content %}
+<div class="flex flex-col" style="min-height:100dvh;" x-data="websiteManageApp()" x-init="init()">
+
+    <!--  TOP NAV + TABS  -->
+    <div class="flex-shrink-0" style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
+
+        <!-- Header row -->
+        <div class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-1">
+            <a href="{% url 'mobile_app:home' %}" onclick="return mobileGoBack(event, this.getAttribute('href'));" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors flex-shrink-0">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+            <div class="flex-1 min-w-0">
+                <h1 class="text-white font-bold text-[15px] leading-tight">Manage Website</h1>
+                <p class="text-white/60 text-[10px]">Portfolio Media</p>
+            </div>
+        </div>
+    </div>
+
+    <!--  SCROLLABLE CONTENT  -->
+    <div class="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50 via-indigo-50/20 to-sky-50/30">
+
+        <!--  PORTFOLIO MEDIA  -->
+        <div>
+            <div class="px-3 pt-3 pb-24">
+            <p class="text-[11px] text-gray-400 mb-3 font-medium">{% if perm_website_edit %}Tap a category to upload photos or reels. Bento categories are shown first.{% else %}Your portfolio categories{% endif %}</p>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <template x-for="cat in categories" :key="cat.id">
+                        <button {% if perm_website_edit %}@click="openUploadSheet(cat)"{% endif %}
+                                class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl p-4 text-left shadow-sm border border-slate-100/80 {% if perm_website_edit %}active:scale-95{% endif %} transition-transform relative">
+                            <!-- icon -->
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white mb-2.5"
+                                   style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
+                                <i :class="cat.icon + ' text-sm'"></i>
+                            </div>
+                            <!-- name -->
+                            <p class="text-[12px] font-bold text-gray-800 leading-tight truncate" x-text="cat.name"></p>
+                            <!-- count badge -->
+                            <p class="text-[10px] text-gray-400 mt-0.5" x-text="cat.count + ' item' + (cat.count !== 1 ? 's' : '')"></p>
+                            <template x-if="cat.is_public_bento">
+                                <span class="inline-flex items-center gap-1 mt-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100/70 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide">
+                                    <i class="fa-solid fa-grip text-[7px]"></i>
+                                    Bento
+                                </span>
+                            </template>
+                            <!-- upload arrow -->
+                            {% if perm_website_edit %}
+                            <div class="absolute top-3 right-3 w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100/70 flex items-center justify-center">
+                                <i class="fa-solid fa-plus text-indigo-400 text-[9px]"></i>
+                            </div>
+                            {% endif %}
+
+                            <div class="absolute bottom-3 right-3">
+                                <span @click.stop="openCategoryPreview(cat)" class="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-1 text-[9px] font-semibold text-gray-600">
+                                    <i class="fa-solid fa-eye text-[8px]"></i>Preview
+                                </span>
+                            </div>
+                        </button>
+                    </template>
+                </div>
+                <template x-if="categories.length === 0">
+                    <div class="text-center py-16">
+                        <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-folder-open text-2xl text-gray-400"></i>
+                        </div>
+                        <p class="text-[13px] font-semibold text-gray-500">No categories found</p>
+                        <p class="text-[11px] text-gray-400 mt-1">Portfolio categories will appear here</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 
+         PORTFOLIO UPLOAD SHEET
+     -->
+        <div x-show="uploadSheetOpen" x-cloak
+            class="fixed inset-0 z-[80] flex flex-col justify-end"
+            data-mobile-overlay-root
+         @keydown.escape.window="closeUploadSheet()">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeUploadSheet()"></div>
+
+        <!-- Sheet panel -->
+        <div class="relative bg-white rounded-t-3xl max-h-[90vh] flex flex-col">
+            <!-- Handle -->
+            <div class="flex justify-center pt-3 pb-1">
+                <div class="w-10 h-1.5 rounded-md bg-gray-300"></div>
+            </div>
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 pb-3 border-b border-slate-100/70">
+                <div>
+                    <h3 class="text-[14px] font-bold text-gray-800" x-text="activeCategory ? activeCategory.name : 'Upload Media'"></h3>
+                    <p class="text-[10px] text-gray-400">Choose source to add photos or reels</p>
+                </div>
+                <button @click="closeUploadSheet()" class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Scrollable body -->
+            <div class="overflow-y-auto flex-1 px-4 pt-4 pb-6 space-y-4">
+
+                <!-- Source buttons -->
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Camera -->
+                    <label @click.prevent="pickPortfolioFromCamera($event)" class="flex flex-col items-center justify-center gap-2 rounded-xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-indigo-200 bg-indigo-50">
+                        <div class="w-11 h-11 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-200">
+                            <i class="fa-solid fa-camera text-white text-base"></i>
+                        </div>
+                        <span class="text-[12px] font-bold text-indigo-700">Camera</span>
+                           <span class="text-[10px] text-indigo-400">Take a photo</span>
+                           <input type="file" x-ref="portfolioCameraInput" class="hidden" accept="image/*" capture="environment"
+                               @change="handlePortfolioFiles($event)">
+                    </label>
+
+                    <!-- Gallery -->
+                    <label @click.prevent="pickPortfolioFromGallery($event)" class="flex flex-col items-center justify-center gap-2 rounded-xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-teal-200 bg-teal-50">
+                        <div class="w-11 h-11 rounded-2xl bg-teal-500 flex items-center justify-center shadow-md shadow-teal-200">
+                            <i class="fa-solid fa-images text-white text-base"></i>
+                        </div>
+                        <span class="text-[12px] font-bold text-teal-700">Gallery</span>
+                        <span class="text-[10px] text-teal-400">Photos or videos</span>
+                           <input type="file" x-ref="portfolioGalleryInput" class="hidden" accept="image/*,video/*" multiple
+                               @change="handlePortfolioFiles($event)">
+                    </label>
+                </div>
+
+                <!-- Pending previews -->
+                <div x-show="pendingFiles.length > 0">
+                    <p class="text-[11px] text-gray-500 font-medium mb-2"
+                       x-text="pendingFiles.length + ' file(s) ready'"></p>
+                    <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        <template x-for="(pf, idx) in pendingFiles" :key="idx">
+                            <div class="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                                <template x-if="pf.kind === 'image' && pf.preview">
+                                    <img :src="pf.preview" class="w-full h-full object-cover" alt="">
+                                </template>
+                                <template x-if="pf.kind === 'video'">
+                                    <div class="w-full h-full bg-gradient-to-br from-indigo-500 to-sky-600 text-white flex flex-col items-center justify-center">
+                                        <i class="fa-solid fa-film text-sm"></i>
+                                        <span class="text-[9px] mt-1 px-1 text-center truncate w-full" x-text="pf.file ? pf.file.name : 'Video'"></span>
+                                    </div>
+                                </template>
+                                <button @click.stop="removeFile(idx)"
+                                        class="absolute top-0.5 right-0.5 w-5 h-5 rounded-lg bg-red-500 flex items-center justify-center shadow">
+                                    <i class="fa-solid fa-xmark text-white text-[8px]"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Upload progress bar -->
+                <div x-show="uploading" class="w-full space-y-1">
+                    <div class="w-full h-1.5 rounded-md bg-gray-100 overflow-hidden">
+                        <div class="h-full rounded-md bg-gradient-to-r from-brand-light to-brand-dark transition-all duration-300" :style="'width:' + uploadPct + '%'"></div>
+                    </div>
+                    <p class="text-[10px] text-gray-500" x-text="uploadStatus || ('Uploading... ' + uploadPct + '%')"></p>
+                </div>
+
+                <!-- Upload button -->
+                <button x-show="pendingFiles.length > 0"
+                        @click="uploadPortfolioFiles()"
+                        :disabled="uploading"
+                        :class="uploading ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'"
+                        class="w-full py-3.5 rounded-xl text-white font-bold text-sm transition-transform flex items-center justify-center gap-2"
+                        style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
+                    <template x-if="uploading">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin"></i>Uploading...
+                        </span>
+                    </template>
+                    <template x-if="!uploading">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            Upload <span x-text="pendingFiles.length"></span> File(s)
+                        </span>
+                    </template>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!--  Toast  -->
+    <div x-show="toast.show" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-2"
+         class="fixed top-16 left-4 right-4 z-[100] rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-xl flex items-center gap-2.5"
+         :class="toast.ok ? 'bg-green-500' : 'bg-red-500'">
+        <i :class="toast.ok ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-xmark'" class="text-base flex-shrink-0"></i>
+        <span x-text="toast.msg" class="flex-1"></span>
+    </div>
+
+    <!-- Portfolio category images preview -->
+    <div x-show="categoryPreview.open" x-cloak class="fixed inset-0 z-[95] flex flex-col justify-end" data-mobile-overlay-root @keydown.escape.window="closeCategoryPreview()">
+        <div class="absolute inset-0 bg-black/55 backdrop-blur-[2px]" @click="closeCategoryPreview()"></div>
+        <div class="relative bg-white rounded-t-3xl max-h-[88vh] flex flex-col">
+            <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1.5 rounded-md bg-gray-300"></div></div>
+            <div class="px-4 pb-3 border-b border-slate-100/70 flex items-center justify-between">
+                <div>
+                    <p class="text-[14px] font-bold text-gray-800" x-text="categoryPreview.name || 'Media'"></p>
+                    <p class="text-[10px] text-gray-400" x-text="(categoryPreview.items ? categoryPreview.items.length : 0) + ' item(s)'"></p>
+                </div>
+                <button @click="closeCategoryPreview()" class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark text-xs"></i></button>
+            </div>
+            <div class="overflow-y-auto p-3 pb-6">
+                <template x-if="categoryPreview.loading">
+                    <div class="grid grid-cols-3 gap-2 py-2" aria-hidden="true">
+                        <template x-for="i in 9" :key="'cat-preview-skeleton-' + i">
+                            <div class="skeleton-line aspect-square rounded-xl"></div>
+                        </template>
+                    </div>
+                </template>
+                <template x-if="!categoryPreview.loading && (!categoryPreview.items || categoryPreview.items.length === 0)">
+                    <div class="py-12 text-center text-gray-400 text-xs">No uploaded media found.</div>
+                </template>
+                <div class="grid grid-cols-3 gap-2" x-show="!categoryPreview.loading && categoryPreview.items && categoryPreview.items.length > 0">
+                    <template x-for="img in categoryPreview.items" :key="img.id">
+                        <div class="w-full aspect-square rounded-xl border border-slate-100/80 overflow-hidden">
+                            <template x-if="img.type === 'image' && img.url">
+                                <img :src="img.url" :alt="img.title" class="w-full h-full object-cover" loading="lazy" decoding="async">
+                            </template>
+                            <template x-if="img.type !== 'image' || !img.url">
+                                <div class="w-full h-full bg-gradient-to-br from-indigo-500 to-sky-600 text-white flex flex-col items-center justify-center">
+                                    <i class="fa-solid fa-film text-sm"></i>
+                                    <span class="text-[9px] mt-1 px-1 text-center truncate w-full" x-text="img.title || 'Video'"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include "mobile_app/partials/bottom_nav.html" %}
+
+</div><!-- /x-data -->
+
+{# S1: json_script escapes </script> sequences; |safe does not. #}
+{{ categories_json|json_script:"categories-json-data" }}
+<script>
+// Data injected from Django
+const CATEGORIES_DATA = JSON.parse(document.getElementById('categories-json-data').textContent);
+const CSRF_TOKEN = (document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken=')) || '').split('=')[1]
+    || '{{ csrf_token|escapejs }}';
+
+function websiteManageApp() {
+    return {
+        categories: [],
+
+        // Portfolio upload
+        uploadSheetOpen: false,
+        activeCategory: null,
+        pendingFiles: [],
+        pickerBusy: false,
+        uploading: false,
+        uploadPct: 0,
+        uploadStatus: '',
+
+        categoryPreview: { open: false, loading: false, id: null, name: '', items: [] },
+        toast: { show: false, ok: true, msg: '' },
+        overlayTokens: {},
+
+        init() {
+            this.categories = CATEGORIES_DATA;
+
+            this.$watch('uploadSheetOpen', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('uploadSheet', () => {
+                        this.closeUploadSheet();
+                        this._closeOverlay('uploadSheet', true);
+                    });
+                } else {
+                    this._closeOverlay('uploadSheet', false);
+                }
+            });
+
+            this.$watch('categoryPreview.open', (isOpen) => {
+                if (isOpen) {
+                    this._openOverlay('categoryPreview', () => {
+                        this.closeCategoryPreview();
+                        this._closeOverlay('categoryPreview', true);
+                    });
+                } else {
+                    this._closeOverlay('categoryPreview', false);
+                }
+            });
+        },
+
+        _openOverlay(key, closeFn) {
+            if (this.overlayTokens[key] || !window.mobileOverlay) return;
+            this.overlayTokens[key] = window.mobileOverlay.open(() => {
+                if (typeof closeFn === 'function') closeFn();
+            });
+        },
+
+        _closeOverlay(key, fromPopstate) {
+            const token = this.overlayTokens[key];
+            if (!token) return;
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(token, { fromPopstate: !!fromPopstate });
+            }
+            delete this.overlayTokens[key];
+        },
+
+        showToast(msg, ok = true) {
+            this.toast = { show: true, ok, msg };
+            setTimeout(() => { this.toast.show = false; }, 3200);
+        },
+
+        /*  PORTFOLIO  */
+        openUploadSheet(cat) {
+            this.activeCategory = cat;
+            this.clearPendingFiles();
+            this.uploadSheetOpen = true;
+        },
+        closeUploadSheet() {
+            this.uploadSheetOpen = false;
+            this.activeCategory = null;
+            this.clearPendingFiles();
+            this.uploadPct = 0;
+            this.uploadStatus = '';
+        },
+        clearPendingFiles() {
+            this.pendingFiles.forEach(pf => {
+                if (pf && pf.objectUrl && typeof URL !== 'undefined') {
+                    try { URL.revokeObjectURL(pf.objectUrl); } catch (_) {}
+                }
+            });
+            this.pendingFiles = [];
+        },
+        handlePortfolioFiles(e) {
+            const source = (e && e.target === this.$refs.portfolioCameraInput) ? 'camera' : 'gallery';
+            this.addPortfolioFiles(Array.from((e && e.target && e.target.files) || []), { source });
+            if (e && e.target) e.target.value = '';
+        },
+        async pickPortfolioWithTimeout(source, quality, timeoutMs) {
+            const bridge = window.adarshDeviceBridge;
+            if (!(bridge && typeof bridge.pickImage === 'function')) return null;
+
+            const timeoutPromise = new Promise((resolve) => {
+                setTimeout(() => resolve({ __timeout: true }), timeoutMs);
+            });
+
+            const picked = await Promise.race([
+                bridge.pickImage({ source: source, quality: quality, timeoutMs: timeoutMs }),
+                timeoutPromise,
+            ]);
+
+            if (picked && picked.__timeout) {
+                throw new Error('Camera/Gallery is taking too long. Please try again.');
+            }
+            return picked || null;
+        },
+        _blobToPortfolioFile(blob, fallbackName) {
+            if (!(blob instanceof Blob)) return null;
+            const mime = String(blob.type || '').toLowerCase();
+            let ext = 'jpg';
+            if (mime.includes('png')) ext = 'png';
+            else if (mime.includes('webp')) ext = 'webp';
+            else if (mime.includes('gif')) ext = 'gif';
+            else if (mime.includes('heic') || mime.includes('heif')) ext = 'heic';
+            const name = String(fallbackName || '').trim() || ('portfolio_' + Date.now() + '.' + ext);
+            return new File([blob], name, { type: blob.type || 'image/jpeg' });
+        },
+        async normalizePortfolioPickedFile(picked) {
+            if (!picked) return null;
+            if (picked instanceof File) return picked;
+            if (picked instanceof Blob) return this._blobToPortfolioFile(picked);
+
+            const wrappedFile = picked.file || picked.blob || picked.data || null;
+            if (wrappedFile instanceof File) return wrappedFile;
+            if (wrappedFile instanceof Blob) return this._blobToPortfolioFile(wrappedFile, picked.name);
+
+            const rawDataUrl = typeof picked.dataUrl === 'string'
+                ? picked.dataUrl
+                : (typeof picked.base64 === 'string' ? picked.base64 : '');
+            if (rawDataUrl && /^data:image\//i.test(rawDataUrl)) {
+                try {
+                    const dataRes = await fetch(rawDataUrl);
+                    if (dataRes.ok) {
+                        const dataBlob = await dataRes.blob();
+                        const fromData = this._blobToPortfolioFile(dataBlob, picked.name);
+                        if (fromData) return fromData;
+                    }
+                } catch (err) {}
+            }
+
+            const candidates = [];
+            ['webPath', 'path', 'uri', 'url'].forEach((key) => {
+                const value = typeof picked[key] === 'string' ? picked[key].trim() : '';
+                if (value) candidates.push(value);
+            });
+
+            const cap = window.Capacitor;
+            if (cap && typeof cap.convertFileSrc === 'function') {
+                const convertedCandidates = [];
+                candidates.forEach((candidate) => {
+                    if (/^(https?:|data:|blob:)/i.test(candidate)) return;
+                    try {
+                        const converted = cap.convertFileSrc(candidate);
+                        if (converted) convertedCandidates.push(converted);
+                    } catch (err) {}
+                });
+                convertedCandidates.forEach((converted) => {
+                    if (!candidates.includes(converted)) candidates.push(converted);
+                });
+            }
+
+            for (const candidate of candidates) {
+                try {
+                    const res = await fetch(candidate);
+                    if (!res.ok) continue;
+                    const blob = await res.blob();
+                    const fetchedFile = this._blobToPortfolioFile(blob, picked.name);
+                    if (fetchedFile) return fetchedFile;
+                } catch (err) {}
+            }
+            return null;
+        },
+        addPortfolioFiles(files, options) {
+            const MAX_FILES = 20;
+            const MAX_IMAGE_MB = 15;
+            const MAX_VIDEO_MB = 100;
+            const opts = options || {};
+            const source = String(opts.source || 'gallery').toLowerCase();
+            const incoming = Array.isArray(files) ? files : [];
+            const skippedCameraVideos = incoming.filter(f => {
+                if (source !== 'camera') return false;
+                const mime = String(f && f.type || '').toLowerCase();
+                if (mime.startsWith('video/')) return true;
+                const name = String(f && f.name || '').toLowerCase();
+                return /\.(mp4|mov|mkv|webm|3gp|avi)$/i.test(name);
+            });
+
+            if (skippedCameraVideos.length) {
+                this.showToast('Camera returned video. Please switch to Photo mode and try again.', false);
+            }
+
+            const eligibleIncoming = incoming.filter(f => !skippedCameraVideos.includes(f));
+
+            if (!eligibleIncoming.length) {
+                return;
+            }
+
+            if (this.pendingFiles.length + eligibleIncoming.length > MAX_FILES) {
+                this.showToast(`Maximum ${MAX_FILES} files per upload`, false);
+                return;
+            }
+            const oversized = eligibleIncoming.filter(f => {
+                const isVideo = (f.type || '').toLowerCase().startsWith('video/');
+                const maxBytes = (isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB) * 1024 * 1024;
+                return f.size > maxBytes;
+            });
+            if (oversized.length) {
+                this.showToast(`${oversized.length} file(s) exceeded size limits and were skipped`, false);
+            }
+            eligibleIncoming.filter(f => {
+                const isVideo = (f.type || '').toLowerCase().startsWith('video/');
+                const maxBytes = (isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB) * 1024 * 1024;
+                return f.size <= maxBytes;
+            }).forEach(file => {
+                const isVideo = (file.type || '').toLowerCase().startsWith('video/');
+                const objectUrl = isVideo ? null : URL.createObjectURL(file);
+                this.pendingFiles.push({
+                    file,
+                    kind: isVideo ? 'video' : 'image',
+                    preview: objectUrl,
+                    objectUrl,
+                });
+            });
+        },
+        async pickPortfolioFromCamera() {
+            if (this.pickerBusy || this.uploading) return;
+            const bridge = window.adarshDeviceBridge;
+            if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
+                this.pickerBusy = true;
+                try {
+                    const picked = await this.pickPortfolioWithTimeout('camera', 92, 15000);
+                    if (picked) {
+                        const pickedFile = await this.normalizePortfolioPickedFile(picked);
+                        if (!pickedFile) {
+                            this.showToast('Selected image could not be read. Please try another photo.', false);
+                        } else {
+                            this.addPortfolioFiles([pickedFile], { source: 'camera' });
+                        }
+                    }
+                    return;
+                } catch (err) {
+                    this.showToast(err && err.message ? err.message : 'Unable to open camera', false);
+                    return;
+                } finally {
+                    this.pickerBusy = false;
+                }
+            }
+            if (this.$refs.portfolioCameraInput) {
+                this.$refs.portfolioCameraInput.click();
+            }
+        },
+        async pickPortfolioFromGallery() {
+            if (this.pickerBusy || this.uploading) return;
+            const bridge = window.adarshDeviceBridge;
+            if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
+                this.pickerBusy = true;
+                try {
+                    const picked = await this.pickPortfolioWithTimeout('gallery', 92, 15000);
+                    if (picked) {
+                        const pickedFile = await this.normalizePortfolioPickedFile(picked);
+                        if (!pickedFile) {
+                            this.showToast('Selected image could not be read. Please try another photo.', false);
+                        } else {
+                            this.addPortfolioFiles([pickedFile], { source: 'gallery' });
+                        }
+                    }
+                    return;
+                } catch (err) {
+                    this.showToast(err && err.message ? err.message : 'Unable to open gallery', false);
+                    return;
+                } finally {
+                    this.pickerBusy = false;
+                }
+            }
+            if (this.$refs.portfolioGalleryInput) {
+                this.$refs.portfolioGalleryInput.click();
+            }
+        },
+        removeFile(idx) {
+            const removed = this.pendingFiles.splice(idx, 1);
+            if (removed.length && removed[0].objectUrl && typeof URL !== 'undefined') {
+                try { URL.revokeObjectURL(removed[0].objectUrl); } catch (_) {}
+            }
+        },
+        async openCategoryPreview(cat) {
+            this.categoryPreview = { open: true, loading: true, id: cat.id, name: cat.name, items: [] };
+            try {
+                const res = await fetch('/app/api/website/portfolio/category/' + cat.id + '/items/?limit=60');
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to load media', false);
+                    this.categoryPreview.loading = false;
+                    return;
+                }
+                this.categoryPreview.items = data.items || [];
+            } catch (err) {
+                this.showToast('Could not load media', false);
+            } finally {
+                this.categoryPreview.loading = false;
+            }
+        },
+        closeCategoryPreview() {
+            this.categoryPreview.open = false;
+        },
+        async uploadPortfolioBatch(files, timeoutMs = 120000) {
+            const categoryId = this.activeCategory.id;
+
+            const buildFormData = () => {
+                const fd = new FormData();
+                fd.append('category_id', categoryId);
+                files.forEach(pf => fd.append('files', pf.file));
+                return fd;
+            };
+
+            const bridge = window.adarshDeviceBridge;
+            if (bridge && typeof bridge.uploadFormDataWithRetry === 'function') {
+                const uploadResult = await bridge.uploadFormDataWithRetry(
+                    '/app/api/website/portfolio/upload/',
+                    buildFormData,
+                    {
+                        headers: { 'X-CSRFToken': CSRF_TOKEN },
+                        retries: 2,
+                        retryDelayMs: 900,
+                        queueKey: 'portfolio_upload_' + categoryId,
+                    }
+                );
+                const payload = uploadResult && uploadResult.data ? uploadResult.data : {};
+                if (uploadResult && uploadResult.deferred) {
+                    payload._deferred = true;
+                }
+                return payload;
+            }
+
+            const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+            try {
+                const res = await fetch('/app/api/website/portfolio/upload/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN },
+                    body: buildFormData(),
+                    signal: controller ? controller.signal : undefined,
+                });
+                const data = await res.json();
+                if (!res.ok && !data.success) {
+                    throw new Error(data.message || 'Upload failed');
+                }
+                return data;
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        },
+        async uploadPortfolioFiles() {
+            if (!this.pendingFiles.length || !this.activeCategory || this.uploading) return;
+            this.uploading = true;
+            this.uploadPct = 0;
+            this.uploadStatus = 'Preparing upload...';
+            try {
+                const BATCH_SIZE = 4;
+                const RETRIES = 1;
+                const total = this.pendingFiles.length;
+                let completed = 0;
+                let uploadedCount = 0;
+                let deferredCount = 0;
+                const failedCarry = [];
+
+                for (let i = 0; i < this.pendingFiles.length; i += BATCH_SIZE) {
+                    const batch = this.pendingFiles.slice(i, i + BATCH_SIZE);
+                    this.uploadStatus = `Uploading ${Math.min(i + batch.length, total)}/${total}...`;
+
+                    let batchData = null;
+                    let lastErr = null;
+                    for (let attempt = 0; attempt <= RETRIES; attempt++) {
+                        try {
+                            batchData = await this.uploadPortfolioBatch(batch);
+                            break;
+                        } catch (err) {
+                            lastErr = err;
+                            if (attempt < RETRIES) {
+                                await new Promise(r => setTimeout(r, 700));
+                            }
+                        }
+                    }
+
+                    if (!batchData) {
+                        batch.forEach(pf => failedCarry.push(pf));
+                        completed += batch.length;
+                        this.uploadPct = Math.min(100, Math.round((completed / total) * 100));
+                        if (lastErr) this.uploadStatus = lastErr.message || 'Retrying...';
+                        continue;
+                    }
+
+                    if (batchData._deferred) {
+                        deferredCount += Number(batchData.count || batch.length || 0);
+                    }
+
+                    uploadedCount += (batchData.count || 0);
+                    const failedNames = new Set((batchData.failed || []).map(x => x.name));
+                    batch.forEach(pf => {
+                        if (failedNames.has(pf.file.name)) {
+                            failedCarry.push(pf);
+                        } else if (pf.objectUrl && typeof URL !== 'undefined') {
+                            try { URL.revokeObjectURL(pf.objectUrl); } catch (_) {}
+                        }
+                    });
+
+                    completed += batch.length;
+                    this.uploadPct = Math.min(100, Math.round((completed / total) * 100));
+                }
+
+                const cat = this.categories.find(c => c.id === this.activeCategory.id);
+                if (cat) cat.count += uploadedCount;
+
+                this.pendingFiles = failedCarry;
+
+                if (deferredCount > 0 && this.pendingFiles.length === 0) {
+                    this.showToast(deferredCount + ' file(s) saved offline. Sync is running in background.');
+                    this.closeUploadSheet();
+                } else if (uploadedCount > 0 && this.pendingFiles.length === 0) {
+                    this.showToast(uploadedCount + ' file(s) uploaded successfully!');
+                    this.closeUploadSheet();
+                } else if (uploadedCount > 0 && this.pendingFiles.length > 0) {
+                    this.showToast(uploadedCount + ' uploaded, ' + this.pendingFiles.length + ' failed. Retry failed files.', false);
+                } else if (this.pendingFiles.length > 0) {
+                    this.showToast('Upload failed. Please retry with fewer files.', false);
+                } else {
+                    this.showToast('Upload failed', false);
+                }
+            } catch (err) {
+                this.showToast('Network error  -  please try again', false);
+            } finally {
+                this.uploading = false;
+                this.uploadPct = 0;
+                this.uploadStatus = '';
+            }
+        },
+    };
+}
+</script>
+{% endblock %}

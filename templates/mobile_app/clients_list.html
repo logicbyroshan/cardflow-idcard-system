@@ -1,4 +1,785 @@
-{% extends 'mobile_app/base.html' %}
+{% extends "mobile_app/base.html" %}
+{% load static %}
+
+{% block title %}Clients  Adarsh ID Cards{% endblock %}
+
 {% block content %}
-<div>Clients list placeholder</div>
+<div class="flex flex-col bg-white" style="min-height:100dvh;"
+     x-data="clientsApp()">
+
+    <!-- Header -->
+    <div class="flex-shrink-0 z-40 shadow-sm" style="padding-top: env(safe-area-inset-top, 0px);">
+        <!-- Gradient bar -->
+        <div class="flex items-center gap-2 px-4 bg-gradient-to-r from-brand-light to-brand-dark"
+             style="padding-top: 12px; padding-bottom: 12px;">
+            <a href="{% url 'mobile_app:home' %}"
+                    onclick="return mobileGoBack(event, this.getAttribute('href'));"
+               class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+            <div class="flex-1 min-w-0">
+                <h1 class="text-white font-bold text-sm leading-tight">{% if is_admin_staff %}Assigned Clients{% else %}Clients{% endif %}</h1>
+                <p class="text-white/60 text-[10px]" x-text="filteredClients.length + ' client(s) found'"></p>
+            </div>
+            {% if can_manage_clients %}
+            <button type="button"
+                    @click="openAddForm()"
+                    class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all flex-shrink-0"
+                    aria-label="Manage client">
+                <i class="fa-solid fa-plus text-xs"></i>
+            </button>
+            {% endif %}
+    <!-- Impersonation Banner -->
+    {% if is_impersonating %}
+    <div class="flex items-center justify-between px-4 py-2 bg-amber-50 border-b border-amber-100 flex-shrink-0">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                <i class="fa-solid fa-user-secret text-xs"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-amber-800 leading-none">Impersonating Client</p>
+                <p class="text-[9px] text-amber-600 mt-0.5">As <b>{{ user_name }}</b> (Original: {{ impersonation_original_name }})</p>
+            </div>
+        </div>
+        <button type="button"
+                @click="window.dispatchEvent(new CustomEvent('stop-mobile-impersonation'))"
+                class="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-[10px] font-bold active:scale-95 transition-all shadow-sm">
+            STOP
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Filter dropdown -->
+            <div class="relative flex-shrink-0">
+                <select x-model="filterStatus"
+                        class="appearance-none text-[10px] font-bold pl-3 pr-7 py-2 rounded-xl transition-all bg-white/20 text-white border border-white/30 focus:outline-none focus:bg-white/30 cursor-pointer">
+                    <option value="all" style="color:var(--color-gray-700);">All Clients</option>
+                    <option value="active" style="color:var(--color-gray-700);">Active Only</option>
+                    <option value="inactive" style="color:var(--color-gray-700);">Inactive Only</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-white text-[8px] pointer-events-none"></i>
+            </div>
+        </div>
+        <!-- Search bar -->
+        <div class="px-3 py-2.5 bg-white border-b border-gray-100">
+            <div class="relative">
+                  <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 text-xs"></i>
+                <input type="text" x-model="searchQuery"
+                       placeholder="Search clients by name..."
+                      class="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs text-gray-800 placeholder:text-gray-500 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-cloak x-transition
+         class="fixed top-16 inset-x-4 z-[200] px-4 py-3 rounded-2xl shadow-lg text-white text-xs font-bold flex items-center gap-2"
+         :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'">
+        <i :class="toast.type === 'success' ? 'fa-solid fa-circle-check' : 'fa-solid fa-xmark-circle'"></i>
+        <span x-text="toast.message"></span>
+    </div>
+
+    <!-- Client List -->
+    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-2.5"
+         style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 80px)">
+
+        <template x-for="c in filteredClients" :key="c.id">
+                  <div class="rounded-2xl m-pop-card m-pop-card-indigo border border-slate-100/80 overflow-hidden transition-all duration-200"
+                      :class="isExpanded(c.id) ? 'shadow-lg ring-2 ring-indigo-200/70' : 'shadow-sm'">
+
+                     <!-- Client Row (tap to expand) -->
+                     <div class="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none active:bg-indigo-50/40 transition-colors"
+                     @click="toggleExpand(c.id)">
+                    <!-- Avatar/logo -->
+                    <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm overflow-hidden"
+                         :style="!c.logo_url && c.status === 'active' ? 'box-shadow: 0 8px 16px rgba(10,146,221,0.28)' : !c.logo_url ? 'box-shadow: 0 8px 16px rgba(71,85,105,0.24)' : ''">
+                        <template x-if="c.logo_url">
+                            <img :src="c.logo_url" :alt="(c.name || 'Client') + ' logo'" class="w-full h-full object-contain bg-white">
+                        </template>
+                        <template x-if="!c.logo_url">
+                            <div class="w-full h-full flex items-center justify-center"
+                                 :style="c.status === 'active' ? 'background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark));' : 'background: linear-gradient(135deg, var(--color-slate-400), var(--color-slate-500));'">
+                                <span x-text="(c.name || 'C').substring(0,1).toUpperCase()"></span>
+                            </div>
+                        </template>
+                    </div>
+                    <!-- Name + meta -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="text-[13px] font-bold text-gray-900 truncate" x-text="c.name"></p>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-lg"
+                                                                :class="c.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-700'">
+                                <span x-text="c.status === 'active' ? ' Active' : ' Inactive'"></span>
+                            </span>
+                            <span class="text-[10px] text-gray-600" x-text="(c.tables_count || 0) + ' tables  ' + (c.cards_count || 0) + ' cards'"></span>
+                        </div>
+                    </div>
+                    <!-- Chevron -->
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                        :class="isExpanded(c.id) ? 'bg-indigo-200' : 'bg-white/90 border border-slate-200/70'">
+                        <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200"
+                           :class="isExpanded(c.id) ? 'rotate-180 text-indigo-700' : 'text-gray-600'"></i>
+                    </div>
+                    {% if can_manage_clients %}
+                    <div class="flex items-center gap-1.5 ml-1" @click.stop>
+                        <button type="button" @click="openEditForm(c.id)"
+                                class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 border border-blue-100 flex items-center justify-center active:scale-95 transition-all"
+                                title="Edit client">
+                            <i class="fa-solid fa-pen text-[10px]"></i>
+                        </button>
+                        {% if is_pro_user %}
+                        <button type="button" @click="startImpersonation(c)"
+                                class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 border border-indigo-100 flex items-center justify-center active:scale-95 transition-all"
+                                title="Login as client">
+                            <i class="fa-solid fa-user-secret text-[10px]"></i>
+                        </button>
+                        {% endif %}
+                        <button type="button" @click="toggleClientStatus(c)"
+                                class="w-8 h-8 rounded-lg border flex items-center justify-center active:scale-95 transition-all"
+                                :class="c.status === 'active' ? 'bg-amber-100 text-amber-700 border-amber-100' : 'bg-green-100 text-green-700 border-green-100'"
+                                :title="c.status === 'active' ? 'Deactivate client' : 'Activate client'">
+                            <i class="text-[10px]" :class="c.status === 'active' ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
+                        </button>
+                        {% if can_delete_clients %}
+                        <button type="button" @click="deleteClient(c)"
+                                class="w-8 h-8 rounded-lg bg-red-100 text-red-700 border border-red-100 flex items-center justify-center active:scale-95 transition-all"
+                                title="Delete client">
+                            <i class="fa-solid fa-trash text-[10px]"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Expanded: Tables with Pending/Verified/Approved/Download counts -->
+                 <div x-show="isExpanded(c.id)"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 -translate-y-2"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     class="bg-indigo-50/50">
+
+                    <!-- Header row -->
+                    <div class="flex items-center px-4 py-2 border-b border-indigo-100/50">
+                        <p class="flex-1 text-[9px] font-bold text-indigo-700 uppercase tracking-widest">Table</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-amber-700 uppercase tracking-wide">Pending</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-emerald-700 uppercase tracking-wide">Verified</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-sky-700 uppercase tracking-wide">Approved</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-violet-700 uppercase tracking-wide">Download</p>
+                    </div>
+
+                    <!-- Loading state -->
+                    <template x-if="loadingTables[c.id]">
+                        <div class="px-4 py-3 space-y-2.5">
+                            <template x-for="idx in 3" :key="'table-skeleton-' + c.id + '-' + idx">
+                                <div class="flex items-center gap-2 py-1">
+                                    <div class="w-7 h-7 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="flex-1 min-w-0 space-y-1.5">
+                                        <div class="h-2.5 w-2/3 rounded-lg skeleton-line"></div>
+                                        <div class="h-2 w-1/2 rounded-lg skeleton-line"></div>
+                                    </div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="!loadingTables[c.id] && c.tables && c.tables.length > 0">
+                        <div>
+                            <template x-for="t in c.tables" :key="t.id">
+                                <div class="flex items-center gap-2 px-4 py-2 border-b border-indigo-50/80 last:border-b-0">
+                                    <!-- Table icon -->
+                                    <div class="w-7 h-7 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-slate-100">
+                                        <i class="fa-solid fa-table-list text-indigo-700 text-[9px]"></i>
+                                    </div>
+                                    <!-- Table name + group -->
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[11px] font-semibold text-gray-800 truncate" x-text="t.name"></p>
+                                        <p class="text-[9px] text-gray-600 truncate" x-text="t.group_name"></p>
+                                    </div>
+                                    <!-- Pending badge -->
+                                    <a :href="'/app/table/' + t.id + '/pending/'"
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-lg bg-amber-100 text-amber-700 border border-transparent active:scale-95 transition-all flex-shrink-0">
+                                        <span class="mobile-chip-count" x-text="t.pending_count"></span>
+                                    </a>
+                                    <!-- Verified badge -->
+                                    <a :href="'/app/table/' + t.id + '/verified/'"
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-lg bg-emerald-100 text-emerald-700 border border-transparent active:scale-95 transition-all flex-shrink-0">
+                                        <span class="mobile-chip-count" x-text="t.verified_count"></span>
+                                    </a>
+                                    <!-- Approved badge -->
+                                    <a :href="'/app/table/' + t.id + '/approved/'"
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-lg bg-sky-100 text-sky-700 border border-transparent active:scale-95 transition-all flex-shrink-0">
+                                        <span class="mobile-chip-count" x-text="t.approved_count || 0"></span>
+                                    </a>
+                                    <!-- Download badge -->
+                                    <a :href="'/app/table/' + t.id + '/download/'"
+                                       class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-lg bg-violet-100 text-violet-700 border border-transparent active:scale-95 transition-all flex-shrink-0">
+                                        <span class="mobile-chip-count" x-text="t.download_count || 0"></span>
+                                    </a>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="!loadingTables[c.id] && (!c.tables || c.tables.length === 0)">
+                        <div class="px-4 py-5 flex flex-col items-center gap-1.5 text-center">
+                            <i class="fa-solid fa-table-list text-indigo-300 text-2xl"></i>
+                            <p class="text-[11px] font-semibold text-gray-500">No active tables for this client</p>
+                        </div>
+                    </template>
+                </div>
+
+            </div>
+        </template>
+
+        <!-- Empty state -->
+        <div x-show="filteredClients.length === 0"
+             class="flex flex-col items-center justify-center py-14 text-gray-600 gap-3 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+                <i class="fa-solid fa-building text-3xl text-gray-300"></i>
+            </div>
+            <p class="text-[13px] font-semibold text-gray-400">No clients found</p>
+            <p class="text-[11px] text-gray-300">Try adjusting your search</p>
+        </div>
+    </div>
+
+    {% if can_manage_clients %}
+    <div x-show="showForm" x-cloak class="fixed inset-0 z-[120]" data-mobile-overlay-root>
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeForm()" x-transition></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl flex flex-col max-w-[430px] mx-auto"
+             style="height: 88vh; height: 88dvh;"
+             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+             x-transition:leave="transition ease-in duration-250" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+            <div class="flex justify-center pt-3 pb-1 flex-shrink-0"><div class="w-10 h-1.5 rounded-md bg-gray-300"></div></div>
+            <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl flex items-center justify-center"
+                         :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-br from-brand-light to-brand-dark'">
+                        <i class="text-white text-xs" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-plus'"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-gray-800" x-text="editMode ? 'Edit Client' : 'Create Client'"></h3>
+                </div>
+                <button type="button" @click="closeForm()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                  <div class="space-y-1">
+                      <label class="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Client Name <span class="text-red-500">*</span></label>
+                    <input type="text" x-model="form.name" placeholder="Client name"
+                          class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+                <div class="space-y-1">
+                      <label class="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Email <span class="text-red-500">*</span></label>
+                    <input type="email" x-model="form.email" placeholder="client@example.com" :disabled="editMode"
+                          class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition disabled:opacity-60">
+                </div>
+                <div class="space-y-1">
+                      <label class="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Phone</label>
+                    <input type="tel" x-model="form.phone" placeholder="9876543210"
+                          class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                </div>
+                <div class="space-y-1">
+                      <label class="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Address</label>
+                    <textarea x-model="form.address" rows="2" placeholder="Address"
+                          class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3" x-show="!editMode" x-cloak>
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Password Option</label>
+                        <select x-model="form.passwordOption"
+                                class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-800 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                            <option value="phone">Use Phone Number</option>
+                            <option value="custom">Custom Password</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1" x-show="form.passwordOption === 'custom'" x-cloak>
+                        <label class="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Custom Password <span class="text-red-500">*</span></label>
+                        <input :type="form.showPassword ? 'text' : 'password'"
+                               x-model="form.password"
+                               placeholder="Enter password"
+                               class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                    </div>
+                </div>
+                <label class="flex items-center justify-between p-2 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer" x-show="!editMode && form.passwordOption === 'custom'" x-cloak>
+                    <span class="text-xs font-semibold text-gray-700">Show Password</span>
+                    <div class="toggle-switch-sm">
+                        <input type="checkbox" x-model="form.showPassword">
+                        <span class="toggle-slider-sm"></span>
+                    </div>
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
+                    <span class="text-xs font-semibold text-gray-700">Active Status</span>
+                    <div class="toggle-switch-sm">
+                        <input type="checkbox" x-model="form.is_active">
+                        <span class="toggle-slider-sm"></span>
+                    </div>
+                </label>
+
+                <div class="pt-2">
+                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Permissions</p>
+                    <div class="space-y-2">
+                        <template x-for="group in permissionGroups" :key="group.title">
+                            <div class="rounded-xl border border-gray-200 bg-gray-50/75 p-2">
+                                <p class="text-[10px] font-bold text-gray-600 uppercase tracking-wider px-1 pb-1" x-text="group.title"></p>
+                                <div class="space-y-1">
+                                    <template x-for="perm in group.items" :key="perm.key">
+                                        <label class="flex items-center justify-between p-2 bg-white rounded-xl cursor-pointer hover:bg-gray-50 transition border border-gray-100">
+                                            <span class="text-xs text-gray-700" x-text="perm.label"></span>
+                                            <div class="toggle-switch-sm">
+                                                <input type="checkbox" x-model="form.permissions[perm.key]">
+                                                <span class="toggle-slider-sm"></span>
+                                            </div>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="sticky bottom-0 z-10 flex gap-2 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+22px)] bg-white/95 backdrop-blur-sm border-t border-gray-100">
+                    <button type="button" @click="closeForm()" class="flex-1 py-3 text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-xl active:scale-[0.98] transition-all">Cancel</button>
+                    <button type="button" @click="setTempPassword()" x-show="editMode" x-cloak
+                            class="py-3 px-3 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-200 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-key text-[10px]"></i>
+                        Temp Pass
+                    </button>
+                    <button type="button" @click="submitClientForm()" :disabled="formLoading"
+                            class="flex-[2] py-3 text-xs font-semibold text-white rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                            :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-r from-brand-light to-brand-dark'">
+                        <i class="fa-solid fa-spinner fa-spin text-[10px]" x-show="formLoading"></i>
+                        <span x-text="editMode ? 'Update Client' : 'Create Client'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% include "mobile_app/partials/bottom_nav.html" %}
+    {% include "mobile_app/partials/hamburger_drawer.html" %}
+    {% include "mobile_app/partials/notification_drawer.html" %}
+</div>
+
+{% csrf_token %}
+{{ clients_json|json_script:"clients-json-data" }}
+<script>
+function getCookie(name) {
+    let v = null;
+    document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) v = decodeURIComponent(c.substring(name.length + 1));
+    });
+    return v;
+}
+
+const CSRF = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+const CAN_MANAGE_CLIENTS = {{ can_manage_clients|yesno:"true,false" }};
+const CAN_DELETE_CLIENTS = {{ can_delete_clients|yesno:"true,false" }};
+const CLIENT_PERMISSION_KEYS = [
+    'perm_idcard_client_list',
+    'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
+    'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list',
+    'perm_reprint_request_list', 'perm_confirmed_list',
+    'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_reprint_list',
+    'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
+    'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
+    'perm_idcard_download_image_rename_mode', 'perm_idcard_download_image_generate_mode',
+    'perm_mobile_app', 'perm_set_temp_password',
+];
+
+const CLIENTS_DATA = JSON.parse(document.getElementById('clients-json-data').textContent);
+function clientsApp() {
+    return {
+        clients: CLIENTS_DATA,
+        filterStatus: 'all',
+        searchQuery: '',
+        expandedState: {},
+        loadingTables: {},
+        toast: { show: false, message: '', type: 'success' },
+        canManageClients: CAN_MANAGE_CLIENTS,
+        canDeleteClients: CAN_DELETE_CLIENTS,
+        showForm: false,
+        formOverlayToken: null,
+        editMode: false,
+        editingClientId: null,
+        formLoading: false,
+        form: {
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            passwordOption: 'phone',
+            password: '',
+            showPassword: false,
+            is_active: true,
+            permissions: {},
+        },
+        permissionGroups: [
+            {
+                title: 'Group Settings',
+                items: [
+                    { key: 'perm_idcard_setting_add', label: 'Create Template' },
+                    { key: 'perm_idcard_setting_edit', label: 'Edit Template' },
+                    { key: 'perm_idcard_setting_list', label: 'View Template' },
+                    { key: 'perm_idcard_setting_delete', label: 'Delete Template' },
+                    { key: 'perm_idcard_setting_status', label: 'Status Template' },
+                ],
+            },
+            {
+                title: 'ID Card Action List',
+                items: [
+                    { key: 'perm_idcard_pending_list', label: 'Pending List' },
+                    { key: 'perm_idcard_verified_list', label: 'Verified List' },
+                    { key: 'perm_idcard_pool_list', label: 'Pool List' },
+                    { key: 'perm_idcard_approved_list', label: 'Approved List' },
+                    { key: 'perm_idcard_download_list', label: 'Download List' },
+                ],
+            },
+            {
+                title: 'Print & Reprint Lists',
+                items: [
+                    { key: 'perm_reprint_request_list', label: 'Request List (Reprint)' },
+                    { key: 'perm_confirmed_list', label: 'Confirmed List (Reprint)' },
+                ],
+            },
+            {
+                title: 'Card Actions',
+                items: [
+                    { key: 'perm_idcard_add', label: 'Add Card' },
+                    { key: 'perm_idcard_edit', label: 'Edit Card' },
+                    { key: 'perm_idcard_info', label: 'View Card Info' },
+                    { key: 'perm_idcard_delete', label: 'Delete Card' },
+                    { key: 'perm_idcard_approve', label: 'Approve Card' },
+                    { key: 'perm_idcard_verify', label: 'Verify Card' },
+                    { key: 'perm_idcard_reprint_list', label: 'Reprint Cards' },
+                    { key: 'perm_idcard_updated_at', label: 'Last Updated & Updated By' },
+                    { key: 'perm_idcard_retrieve', label: 'Retrieve from Pool' },
+                ],
+            },
+            {
+                title: 'Bulk Actions',
+                items: [
+                    { key: 'perm_idcard_bulk_upload', label: 'Bulk Upload (XLSX / ZIP)' },
+                    { key: 'perm_idcard_bulk_download', label: 'Bulk Download (PDF)' },
+                    { key: 'perm_idcard_download_image_rename_mode', label: 'Download Images: Rename Mode' },
+                    { key: 'perm_idcard_download_image_generate_mode', label: 'Download Images: Generate Mode' },
+                ],
+            },
+            {
+                title: 'Other Actions',
+                items: [
+                    { key: 'perm_mobile_app', label: 'Mobile App Access' },
+                    { key: 'perm_idcard_client_list', label: 'Manage Client' },
+                    { key: 'perm_set_temp_password', label: 'Set Temp Password (Staff)' },
+                ],
+            },
+        ],
+        init() {
+            this.resetForm();
+            this.$watch('showForm', (isOpen) => {
+                if (isOpen) {
+                    if (!this.formOverlayToken && window.mobileOverlay) {
+                        this.formOverlayToken = window.mobileOverlay.open(() => {
+                            this.closeForm();
+                            this._closeFormOverlay(true);
+                        });
+                    }
+                } else {
+                    this._closeFormOverlay(false);
+                }
+            });
+            const params = new URLSearchParams(window.location.search);
+            if (this.canManageClients && params.get('action') === 'add') {
+                this.openAddForm();
+            }
+        },
+        get filteredClients() {
+            let list = this.clients;
+            if (this.filterStatus === 'active') list = list.filter(c => c.status === 'active');
+            if (this.filterStatus === 'inactive') list = list.filter(c => c.status !== 'active');
+            const q = this.searchQuery.trim().toLowerCase();
+            if (q) list = list.filter(c => c.name.toLowerCase().includes(q));
+            return list;
+        },
+        resetForm() {
+            const perms = {};
+            CLIENT_PERMISSION_KEYS.forEach((key) => { perms[key] = false; });
+            this.form = {
+                name: '',
+                email: '',
+                phone: '',
+                address: '',
+                passwordOption: 'phone',
+                password: '',
+                showPassword: false,
+                is_active: true,
+                permissions: perms,
+            };
+        },
+        isExpanded(id) {
+            return !!this.expandedState[id];
+        },
+        async toggleExpand(id) {
+            const shouldOpen = !this.isExpanded(id);
+            this.expandedState = { ...this.expandedState, [id]: shouldOpen };
+            if (!shouldOpen) return;
+            const client = this.clients.find(c => c.id === id);
+            if (client && client.tables === null && !this.loadingTables[id]) {
+                this.loadingTables = { ...this.loadingTables, [id]: true };
+                try {
+                    const res = await fetch(`/app/api/client/${id}/tables/`);
+                    const data = await res.json();
+                    if (data.success) {
+                        client.tables = data.tables;
+                    } else {
+                        client.tables = [];
+                        this.showToast('Failed to load tables', 'error');
+                    }
+                } catch (e) {
+                    client.tables = [];
+                    this.showToast('Network error', 'error');
+                }
+                this.loadingTables = { ...this.loadingTables, [id]: false };
+            }
+        },
+        openAddForm() {
+            if (!this.canManageClients) return;
+            this.editMode = false;
+            this.editingClientId = null;
+            this.resetForm();
+            this.showForm = true;
+        },
+        async openEditForm(clientId) {
+            if (!this.canManageClients) return;
+            this.editMode = true;
+            this.editingClientId = clientId;
+            this.resetForm();
+            this.showForm = true;
+            this.formLoading = true;
+            try {
+                const res = await fetch(`/app/api/client/${clientId}/`);
+                const data = await res.json();
+                if (!data.success || !data.client) {
+                    this.showToast(data.message || 'Failed to load client details', 'error');
+                    this.closeForm();
+                    return;
+                }
+                const c = data.client;
+                this.form.name = c.name || '';
+                this.form.email = c.email || '';
+                this.form.phone = c.phone || '';
+                this.form.address = c.address || '';
+                this.form.is_active = c.status === 'active';
+                CLIENT_PERMISSION_KEYS.forEach((key) => {
+                    this.form.permissions[key] = !!c[key];
+                });
+            } catch (e) {
+                this.showToast('Network error while loading client', 'error');
+                this.closeForm();
+            } finally {
+                this.formLoading = false;
+            }
+        },
+        closeForm() {
+            this.showForm = false;
+            this.editMode = false;
+            this.editingClientId = null;
+            this.formLoading = false;
+        },
+        _closeFormOverlay(fromPopstate) {
+            if (!this.formOverlayToken) return;
+            if (window.mobileOverlay) {
+                window.mobileOverlay.close(this.formOverlayToken, { fromPopstate: !!fromPopstate });
+            }
+            this.formOverlayToken = null;
+        },
+        buildPayload() {
+            const payload = {
+                name: this.form.name.trim(),
+                email: this.form.email.trim(),
+                phone: this.form.phone.trim(),
+                address: this.form.address.trim(),
+                is_active: !!this.form.is_active,
+            };
+            if (!this.editMode) {
+                payload.password_option = this.form.passwordOption;
+                if (this.form.passwordOption === 'custom' && this.form.password.trim()) {
+                    payload.password = this.form.password.trim();
+                }
+            }
+            CLIENT_PERMISSION_KEYS.forEach((key) => {
+                payload[key] = !!this.form.permissions[key];
+            });
+            return payload;
+        },
+        normalizeClient(clientPayload) {
+            return {
+                id: clientPayload.id,
+                name: clientPayload.name,
+                tables_count: clientPayload.tables_count || 0,
+                cards_count: clientPayload.cards_count || 0,
+                status: clientPayload.status || 'inactive',
+                tables: null,
+            };
+        },
+        upsertClient(clientPayload) {
+            const next = this.normalizeClient(clientPayload);
+            const idx = this.clients.findIndex((c) => c.id === next.id);
+            if (idx >= 0) {
+                this.clients.splice(idx, 1, { ...this.clients[idx], ...next });
+            } else {
+                this.clients.unshift(next);
+            }
+        },
+        async submitClientForm() {
+            if (!this.canManageClients) return;
+            if (!this.form.name.trim()) { this.showToast('Client name is required', 'error'); return; }
+            if (!this.editMode && !this.form.email.trim()) { this.showToast('Email is required', 'error'); return; }
+            if (!this.editMode && this.form.passwordOption === 'custom' && !this.form.password.trim()) {
+                this.showToast('Custom password is required', 'error');
+                return;
+            }
+
+            this.formLoading = true;
+            const url = this.editMode
+                ? `/app/api/client/${this.editingClientId}/update/`
+                : '/app/api/client/create/';
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify(this.buildPayload()),
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to save client', 'error');
+                    return;
+                }
+                if (data.client) {
+                    this.upsertClient(data.client);
+                }
+                this.showToast(data.message || 'Client saved successfully', 'success');
+                this.closeForm();
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            } finally {
+                this.formLoading = false;
+            }
+        },
+        async setTempPassword() {
+            if (!this.canManageClients || !this.editMode || !this.editingClientId) return;
+            const password = prompt('Enter new temporary password');
+            if (password === null) return;
+            if (!String(password).trim()) {
+                this.showToast('Password cannot be empty', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(`/panel/api/client/${this.editingClientId}/set-temp-password/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ password: String(password).trim() }),
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to set temporary password', 'error');
+                    return;
+                }
+                this.showToast(data.message || 'Temporary password set', 'success');
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            }
+        },
+        async toggleClientStatus(client) {
+            if (!this.canManageClients) return;
+            try {
+                const res = await fetch(`/app/api/client/${client.id}/toggle/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: '{}',
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to update status', 'error');
+                    return;
+                }
+                client.status = data.new_status || (client.status === 'active' ? 'inactive' : 'active');
+                this.showToast(data.message || 'Status updated', 'success');
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            }
+        },
+        async deleteClient(client) {
+            if (!this.canDeleteClients) return;
+            if (!confirm(`Delete ${client.name}? This cannot be undone.`)) return;
+            try {
+                const res = await fetch(`/app/api/client/${client.id}/delete/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: '{}',
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    this.showToast(data.message || 'Failed to delete client', 'error');
+                    return;
+                }
+                this.clients = this.clients.filter(c => c.id !== client.id);
+                if (this.expandedState[client.id]) {
+                    const nextExpanded = { ...this.expandedState };
+                    delete nextExpanded[client.id];
+                    this.expandedState = nextExpanded;
+                }
+                this.showToast(data.message || 'Client deleted', 'success');
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            }
+        },
+        async startImpersonation(client) {
+            if (!client.user_id) {
+                this.showToast('Client has no linked user account', 'error');
+                return;
+            }
+            const ok = await showConfirm({
+                title: 'Switch to Client?',
+                text: `Act as "${client.name}"? You can switch back using the top banner.`,
+                icon: 'fa-solid fa-user-secret',
+                confirmLabel: 'Switch',
+                confirmColor: '#4f46e5'
+            });
+            if (!ok) return;
+
+            try {
+                const res = await fetch('/app/api/impersonate/start/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                    body: JSON.stringify({ user_id: client.user_id }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showToast(data.message || 'Switched successfully', 'success');
+                    setTimeout(() => window.location.href = '/app/', 800);
+                } else {
+                    this.showToast(data.message || 'Failed to switch', 'error');
+                }
+            } catch (e) {
+                this.showToast('Network error', 'error');
+            }
+        },
+        showToast(msg, type = 'success') {
+            this.toast = { show: true, message: msg, type };
+            setTimeout(() => { this.toast.show = false; }, 2800);
+        },
+    };
+}
+</script>
 {% endblock %}

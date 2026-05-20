@@ -588,52 +588,44 @@ def api_pro_user_data_guard_delete(request):
                 'message': f'Permanently deleted {deleted_total} record(s).',
             })
 
-        if action_type in {'delete_pending_images', 'delete_completed_images'}:
-            if not normalized.get('image_column'):
-                return JsonResponse({'success': False, 'message': 'Select an image column first.'}, status=400)
-            success, affected_count, error_message = _apply_field_clear_action(request, target_ids, normalized['image_column'])
-            if not success:
-                return JsonResponse({'success': False, 'message': error_message, 'partial_deleted_count': affected_count}, status=500)
+        if action_type in {'delete_pending_images', 'delete_completed_images', 'delete_by_column'}:
+            # These action types delete records (not just clear fields)
+            deleted_total = 0
+            chunk_size = 400
+            for start in range(0, len(target_ids), chunk_size):
+                chunk = target_ids[start:start + chunk_size]
+                result = IDCardService.bulk_delete(table.id, chunk, delete_all=False)
+                if not result.success:
+                    logger.error('Pro data guard delete failed on chunk: table=%s message=%s', table.id, result.message)
+                    return JsonResponse({
+                        'success': False,
+                        'message': result.message or 'Delete failed during execution.',
+                        'partial_deleted_count': deleted_total,
+                    }, status=500)
+                deleted_total += int((result.data or {}).get('deleted_count') or 0)
+
+            action_desc = ''
+            if action_type == 'delete_pending_images':
+                action_desc = f'deleted ID cards with pending images (column "{normalized["image_column"]}") from table "{table.name}"'
+            elif action_type == 'delete_completed_images':
+                action_desc = f'deleted ID cards with completed images (column "{normalized["image_column"]}") from table "{table.name}"'
+            else:  # delete_by_column
+                action_desc = f'deleted ID cards matching column "{normalized["filter_column"]}" = "{normalized["filter_value"]}" from table "{table.name}"'
 
             ActivityService.log_bulk_delete(
                 request,
-                f'cleared image field "{normalized["image_column"]}" on cards in table "{table.name}" ({filter_summary})',
-                affected_count,
+                action_desc + f' ({filter_summary})',
+                deleted_total,
             )
 
             return JsonResponse({
                 'success': True,
-                'deleted_count': affected_count,
+                'deleted_count': deleted_total,
                 'table_name': table.name,
                 'client_name': table.group.client.name if table.group_id and table.group.client_id else '',
                 'action_type': action_type,
                 'filter_summary': filter_summary,
-                'message': f'Cleared image field on {affected_count} record(s).',
-            })
-
-        if action_type == 'delete_by_column':
-            column_name = str(normalized.get('filter_column') or '').strip()
-            if not column_name:
-                return JsonResponse({'success': False, 'message': 'Select a column to clear.'}, status=400)
-
-            success, affected_count, error_message = _apply_field_clear_action(request, target_ids, column_name)
-            if not success:
-                return JsonResponse({'success': False, 'message': error_message, 'partial_deleted_count': affected_count}, status=500)
-
-            ActivityService.log_bulk_delete(
-                request,
-                f'cleared column "{column_name}" on cards in table "{table.name}" ({filter_summary})',
-                affected_count,
-            )
-
-            return JsonResponse({
-                'success': True,
-                'deleted_count': affected_count,
-                'table_name': table.name,
-                'client_name': table.group.client.name if table.group_id and table.group.client_id else '',
-                'action_type': action_type,
-                'filter_summary': filter_summary,
-                'message': f'Cleared column value on {affected_count} record(s).',
+                'message': f'Permanently deleted {deleted_total} record(s).',
             })
 
         return JsonResponse({'success': False, 'message': 'Unsupported action type.'}, status=400)

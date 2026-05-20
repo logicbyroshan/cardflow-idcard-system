@@ -335,15 +335,15 @@ class PermissionService:
             if client_profile.status != 'active':
                 return False
 
-            # ID card lists, actions, and client management are auto-granted to active clients
-            if (perm_key in cls.IDCARD_LIST_PERMISSIONS or 
-                perm_key in cls.IDCARD_CLIENT_PERMISSIONS or
-                perm_key in cls.IDCARD_ACTION_PERMISSIONS):
-                return True
+            # ID card lists are controlled by the client profile toggle.
+            if perm_key in cls.IDCARD_LIST_PERMISSIONS:
+                return bool(getattr(client_profile, perm_key, False))
 
-            # Client role is the owner of their staff members - implicitly grant management access
-            if perm_key == 'perm_manage_client_staff':
-                return True
+            # Client management access is also controlled by the client profile toggle.
+            if perm_key in cls.IDCARD_CLIENT_PERMISSIONS or perm_key == 'perm_manage_client_staff':
+                if hasattr(client_profile, perm_key):
+                    return bool(getattr(client_profile, perm_key, False))
+                return False
 
             if not hasattr(client_profile, perm_key):
                 logger.warning("PermissionService.has: unknown perm_key '%s' for client user %s", perm_key, user.pk)
