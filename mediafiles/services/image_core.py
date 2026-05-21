@@ -330,11 +330,27 @@ class ImageCoreMixin:
                     # the same filename or overwrite on save; deleting in that
                     # case would remove the newly-saved image.
                     if default_storage.exists(existing_path):
-                        if saved_path != existing_path:
+                        try:
+                            # Normalize both paths before comparison to avoid
+                            # accidental deletion when storage returns
+                            # semantically-equal but string-different paths.
+                            def _norm(p):
+                                return os.path.normcase(os.path.normpath(str(p).replace('\\', '/')))
+
+                            saved_norm = _norm(saved_path)
+                            existing_norm = _norm(existing_path)
+                        except Exception:
+                            saved_norm = str(saved_path)
+                            existing_norm = str(existing_path)
+
+                        if saved_norm != existing_norm:
                             default_storage.delete(existing_path)
                             logger.debug("Deleted old image: %s", existing_path)
                         else:
-                            logger.debug("Existing image path equals saved path; skipping delete: %s", existing_path)
+                            logger.debug(
+                                "Skipped deleting old image because normalized paths match: %s",
+                                existing_path,
+                            )
                     # Also delete old thumbnail
                     ThumbnailService.delete_thumbnail(existing_path)
                 except Exception as del_err:
