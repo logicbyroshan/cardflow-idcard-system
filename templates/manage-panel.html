@@ -43,7 +43,7 @@
           window.__mpQueuedCalls.push({ name: name, args: Array.prototype.slice.call(args) });
         }
 
-        stubs.switchTab = function () { console.warn('switchTab called before manage-panel.js loaded'); _push('switchTab', arguments); };
+        stubs.switchTab = function () { _push('switchTab', arguments); };
         stubs.initSessionsTab = function () { _push('initSessionsTab', arguments); };
         stubs.loadEmailLogs = function () { _push('loadEmailLogs', arguments); };
         stubs.loadOperationsFeed = function () { _push('loadOperationsFeed', arguments); };
