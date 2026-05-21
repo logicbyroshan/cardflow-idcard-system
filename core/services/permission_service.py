@@ -93,6 +93,11 @@ class PermissionService:
         'perm_pro_data_deletion_guard', # Data Deletion Guard
     ]
 
+    # Permissions that admin staff should always have regardless of their
+    # per-staff-profile toggles. This ensures admin users can use "pro"
+    # functionality without requiring a separate 'pro_user' role.
+    ADMIN_STAFF_AUTO_PERMS: set = set(PRO_FEATURE_PERMISSIONS) | {'perm_reupload_idcard_image'}
+
     # All known perm keys (computed once at class-load time)
     ALL_PERMISSION_KEYS: List[str] = (
         IDCARD_CLIENT_PERMISSIONS
@@ -159,7 +164,14 @@ class PermissionService:
     @staticmethod
     def is_pro_user(user) -> bool:
         """Check if user is the pro user."""
-        return user.is_authenticated and user.role == 'pro_user'
+        # Treat any admin (super_admin or admin_staff) as effectively having
+        # "pro" status for UI feature-gating purposes.
+        if not getattr(user, 'is_authenticated', False):
+            return False
+        if user.role == 'pro_user':
+            return True
+        # Any admin (super_admin or admin_staff) should be treated as pro
+        return PermissionService.is_any_admin(user)
 
     @staticmethod
     def is_super_admin(user) -> bool:
@@ -287,10 +299,7 @@ class PermissionService:
                 return False
 
         # --- Permissions auto-granted to admin_staff (no profile toggle needed) ---
-        ADMIN_STAFF_AUTO_PERMS = {
-            'perm_reupload_idcard_image',  # Single card reupload always available to admin staff
-        }
-        if cls.is_admin_staff(user) and perm_key in ADMIN_STAFF_AUTO_PERMS:
+        if cls.is_admin_staff(user) and perm_key in cls.ADMIN_STAFF_AUTO_PERMS:
             return True
 
         # --- 1. Super admin always passes ---
@@ -536,9 +545,8 @@ class PermissionService:
             # Admin staff: read booleans from staff_profile in one shot
             staff = getattr(user, 'staff_profile', None)
             # Permissions auto-granted to admin_staff regardless of profile value
-            ADMIN_STAFF_AUTO_PERMS = {'perm_reupload_idcard_image'}
             for perm in cls.ALL_PERMISSION_KEYS:
-                if perm in ADMIN_STAFF_AUTO_PERMS:
+                if perm in cls.ADMIN_STAFF_AUTO_PERMS:
                     context[perm] = True
                 elif perm in cls.STAFF_BLOCKED_PERMS:
                     # Intentionally absent from Staff model — super_admin-only
