@@ -151,7 +151,6 @@ INSTALLED_APPS = [
     'staff',
     'idcards',
     'reprintcard',
-    'mobile_app',
     'panel',
     # 'officework',  # Removed - app not found
     'website',
@@ -221,7 +220,6 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.permissions',  # Permission-based UI visibility
-                'mobile_app.context_processors.mobile_globals',  # PWA notification count + admin stats
             ],
         },
     },

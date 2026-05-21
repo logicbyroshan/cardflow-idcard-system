@@ -3,7 +3,6 @@ from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from core.views.health import health_check
 from core import views as core_views
-from mobile_app.views import pwa_manifest, pwa_service_worker
 
 
 
@@ -195,12 +194,6 @@ urlpatterns += [
 
     # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
     path('api/mobile/', include('mobile_api.urls')),
-
-    # Native PWA surface mounted under /app/ plus root service-worker aliases
-    # for older clients that still request /sw.js directly.
-    path('app/', include('mobile_app.urls')),
-    path('manifest.json', pwa_manifest),
-    path('sw.js', pwa_service_worker),
 ]
 
 # Media file serving — always register the route so uploaded images/exports

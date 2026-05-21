@@ -45,7 +45,6 @@ from client.services import (
 )
 from core.services.permission_service import PermissionService
 from idcards.models import IDCardTable, IDCard, IDCardGroup
-from mobile_app.models import MobileDevice
 from reprintcard.models import ReprintRequest
 from mediafiles.utils import get_card_photo_url, normalize_uploaded_image
 from accounts.rate_limit import rate_limit, _get_client_ip
@@ -55,7 +54,6 @@ from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
 from core.services import StaffService, IDCardService, ClientService
 from core.utils.field_utils import normalize_class_value
-from mobile_app.views import _normalize_mobile_sort_mode
 from website.models import PortfolioCategory
 from website.services import PortfolioItemService
 
@@ -63,6 +61,14 @@ MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
 MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
 MOBILE_INSTALLATION_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._:-]{7,79}$')
+MOBILE_SORT_MODES = frozenset({'sr-asc', 'name-asc', 'name-desc'})
+
+
+def _normalize_mobile_sort_mode(value):
+    normalized = str(value or '').strip().lower()
+    if normalized in MOBILE_SORT_MODES:
+        return normalized
+    return 'sr-asc'
 
 
 def _mobile_app_views_module():
