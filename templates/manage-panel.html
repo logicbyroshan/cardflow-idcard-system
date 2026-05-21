@@ -67,6 +67,48 @@
         {% endif %}
       </div>
 
+      <script>
+        (function () {
+          // Safe tab click handler: toggles active classes without relying on
+          // globally-exposed functions. If the real `switchTab` exists it will
+          // be invoked; otherwise we perform the DOM-only activation so the UI
+          // responds immediately.
+          function activateTabDom(tabName) {
+            try {
+              var tabBtn = document.querySelector('.panel-tab[data-tab="' + tabName + '"]');
+              var tabPane = document.getElementById('tab-' + tabName);
+              if (!tabBtn || !tabPane) return false;
+              document.querySelectorAll('.panel-tab').forEach(function (t) { t.classList.remove('active'); });
+              document.querySelectorAll('.panel-tab-content').forEach(function (c) { c.classList.remove('active'); c.style.removeProperty('display'); });
+              tabBtn.classList.add('active');
+              tabPane.classList.add('active');
+              return true;
+            } catch (e) { return false; }
+          }
+
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest && e.target.closest('.panel-tab');
+            if (!btn) return;
+            var tab = btn.getAttribute('data-tab');
+            if (!tab) return;
+            // Perform immediate DOM activation
+            activateTabDom(tab);
+            // If the full script exposes switchTab, call it to run lazy-load logic.
+            try {
+              if (typeof window.switchTab === 'function') {
+                window.switchTab(tab);
+              } else {
+                // Queue the call for later if manage-panel script sets up a queue
+                window.__mpQueuedCalls = window.__mpQueuedCalls || [];
+                window.__mpQueuedCalls.push({ name: 'switchTab', args: [tab] });
+              }
+            } catch (err) {
+              // swallow errors to avoid breaking click behavior
+            }
+          }, false);
+        })();
+      </script>
+
       {% if is_super_admin %}{% include 'partials/panel/tab-notifications.html' %}{% endif %}
       {% if is_super_admin or is_pro_user %}{% include 'partials/panel/tab-sessions.html' %}{% endif %}
       {% if is_super_admin or perm_manage_panel_email %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
