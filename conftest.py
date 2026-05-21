@@ -13,13 +13,16 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 # Import settings BEFORE django.setup() so we can override them
 from django.conf import settings
+import tempfile
 
-# Override database to use in-memory SQLite for tests to avoid file-locking contention
-# MUST be done BEFORE django.setup() to take effect
+# Override database to use a file-based SQLite for tests to avoid in-memory
+# connection-scoping issues where migrations are not applied to the same
+# connection used by the test runner. Use a per-process temp file.
+_pytest_temp_db = os.path.join(tempfile.gettempdir(), f"pytest_db_{os.getpid()}.sqlite3")
 settings.DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
+        'NAME': _pytest_temp_db,
         'ATOMIC_REQUESTS': True,
         'OPTIONS': {
             'timeout': 20,
