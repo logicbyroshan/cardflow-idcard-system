@@ -377,6 +377,39 @@ function switchTab(tabName) {
   return true;
 }
 
+/* Expose select functions to global scope for inline onclick handlers (defensive) */
+(function () {
+  try {
+    if (typeof switchTab === 'function') window.switchTab = switchTab;
+    if (typeof initSessionsTab === 'function') window.initSessionsTab = initSessionsTab;
+    if (typeof initServerInfoTab === 'function') window.initServerInfoTab = initServerInfoTab;
+    if (typeof loadEmailLogs === 'function') window.loadEmailLogs = loadEmailLogs;
+    if (typeof loadOperationsFeed === 'function') window.loadOperationsFeed = loadOperationsFeed;
+    if (typeof loadTemplates === 'function') window.loadTemplates = loadTemplates;
+  } catch (err) {
+    // ignore; we'll retry shortly
+  }
+
+  // Defensive: if some module system or bundler wraps definitions, re-check soon
+  // and ensure globals are assigned once functions become available.
+  try {
+    setTimeout(function () {
+      try {
+        if (typeof switchTab === 'function') window.switchTab = switchTab;
+        if (typeof initSessionsTab === 'function') window.initSessionsTab = initSessionsTab;
+        if (typeof initServerInfoTab === 'function') window.initServerInfoTab = initServerInfoTab;
+        if (typeof loadEmailLogs === 'function') window.loadEmailLogs = loadEmailLogs;
+        if (typeof loadOperationsFeed === 'function') window.loadOperationsFeed = loadOperationsFeed;
+        if (typeof loadTemplates === 'function') window.loadTemplates = loadTemplates;
+      } catch (e) {
+        // final no-op
+      }
+    }, 0);
+  } catch (e) {
+    // ignore
+  }
+})();
+
 /* ============ Load Notifications ============ */
 async function loadNotifications(page) {
   if (page !== undefined && page !== null) {
