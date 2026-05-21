@@ -375,27 +375,6 @@ The system supports domain split routing via middleware.
 
 ---
 
-## PWA Mobile App
-
-Mobile app is served from /app/ and is permission-gated by perm_mobile_app.
-
-Capabilities include:
-
-- role-aware dashboard
-- group/table/card navigation
-- card actions and status transitions
-- camera-based upload flows
-- profile and notification pages
-- staff/client operations per role permissions
-
-Operational details:
-
-- uses shared backend services (no duplicate business logic)
-- cache generation and rollback controls exist in settings
-- Android shell min/latest/force update policy is environment-driven
-
----
-
 ## Face Cropper Engine
 
 Standalone Windows service architecture:

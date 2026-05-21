@@ -19,6 +19,16 @@ from core.services.permission_service import PermissionService
 logger = logging.getLogger(__name__)
 
 
+def _resolve_mobile_android_download_url(request):
+    """Return the configured Android app download URL or empty string.
+
+    This used to be provided by the removed `mobile_app` app. Provide a
+    safe fallback so templates and debug toolbar don't crash when it is
+    referenced.
+    """
+    return getattr(settings, 'MOBILE_ANDROID_APP_DOWNLOAD_URL', '')
+
+
 def permissions(request):
     """
     Inject permission context into ALL templates.
