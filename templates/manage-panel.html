@@ -86,26 +86,43 @@
             } catch (e) { return false; }
           }
 
+          // Use a capturing listener so we can intercept clicks before the
+          // inline `onclick` attribute runs (which historically caused
+          // `ReferenceError: switchTab is not defined`). We remove the
+          // inline handler here so the event won't trigger it, then perform
+          // the DOM activation and either call the real `switchTab` or queue
+          // the call for later.
           document.addEventListener('click', function (e) {
             var btn = e.target.closest && e.target.closest('.panel-tab');
             if (!btn) return;
             var tab = btn.getAttribute('data-tab');
             if (!tab) return;
-            // Perform immediate DOM activation
+            try {
+              // Remove any inline onclick to avoid ReferenceError when the
+              // bundle hasn't yet defined the referenced function.
+              try { btn.removeAttribute('onclick'); } catch (x) {}
+              try { btn.onclick = null; } catch (x) {}
+            } catch (ignored) {}
+            // Prevent the original inline handler from running and stop
+            // further propagation so we fully control the behaviour.
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Immediate DOM activation
             activateTabDom(tab);
+
             // If the full script exposes switchTab, call it to run lazy-load logic.
             try {
               if (typeof window.switchTab === 'function') {
                 window.switchTab(tab);
               } else {
-                // Queue the call for later if manage-panel script sets up a queue
                 window.__mpQueuedCalls = window.__mpQueuedCalls || [];
                 window.__mpQueuedCalls.push({ name: 'switchTab', args: [tab] });
               }
             } catch (err) {
               // swallow errors to avoid breaking click behavior
             }
-          }, false);
+          }, true);
         })();
       </script>
 
