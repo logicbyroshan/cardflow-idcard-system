@@ -54,8 +54,13 @@ from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
 from core.services import StaffService, IDCardService, ClientService
 from core.utils.field_utils import normalize_class_value
-from website.models import PortfolioCategory
-from website.services import PortfolioItemService
+
+try:
+    from website.models import PortfolioCategory
+    from website.services import PortfolioItemService
+except ImportError:
+    PortfolioCategory = None
+    PortfolioItemService = None
 
 MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
@@ -6096,6 +6101,9 @@ def api_website_contact_submit(request):
 @require_http_methods(['POST'])
 def api_website_portfolio_upload(request):
     """Compatibility endpoint for mobile website portfolio uploads."""
+    if PortfolioCategory is None or PortfolioItemService is None:
+        return JsonResponse({'success': False, 'message': 'Website portfolio features are unavailable in this build.'}, status=410)
+
     user = request.user
     if not (PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_website_edit')):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
@@ -6140,6 +6148,9 @@ def api_website_portfolio_upload(request):
 @require_http_methods(['GET'])
 def api_website_portfolio_category_items(request, category_id):
     """Compatibility endpoint for website portfolio category item listing."""
+    if PortfolioCategory is None:
+        return JsonResponse({'success': False, 'message': 'Website portfolio features are unavailable in this build.'}, status=410)
+
     if not (PermissionService.is_super_admin(request.user) or PermissionService.has(request.user, 'perm_website_view')):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 

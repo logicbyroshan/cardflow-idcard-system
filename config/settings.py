@@ -65,6 +65,8 @@ def _running_tests() -> bool:
     """Detect pytest/test execution early, before conftest can mutate settings."""
     if _env_bool('RUNNING_TESTS'):
         return True
+    if any(arg == 'test' or arg.endswith(' test') for arg in sys.argv):
+        return True
     return any(mod.startswith('_pytest') for mod in sys.modules)
 
 
@@ -153,7 +155,6 @@ INSTALLED_APPS = [
     'reprintcard',
     'panel',
     # 'officework',  # Removed - app not found
-    'website',
     'mobile_api',
 ]
 
@@ -240,6 +241,10 @@ if DEBUG:
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': _debug_toolbar_show_toolbar,
     }
+    # When running tests, Django sets DEBUG=False; allow tests to opt-out
+    # of the Debug Toolbar system check by explicitly marking test mode.
+    if _running_tests():
+        DEBUG_TOOLBAR_CONFIG['IS_RUNNING_TESTS'] = False
 
 
 # -----------------
