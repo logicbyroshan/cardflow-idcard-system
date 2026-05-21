@@ -696,6 +696,28 @@ class IDCardListSearchTests(TestCase):
             'CLASS': '6',
             'PHOTO': 'adarshimg/LIST-PHOTO-SEARCH-777.jpg',
         })
+        self.charlie_card = _create_card(self.table, {'NAME': 'CHARLIE', 'CLASS': '7'})
+
+    @staticmethod
+    def _card_name(card):
+        return card.get('name') or card.get('field_data', {}).get('NAME')
+
+    def test_list_sort_by_name_asc_and_desc(self):
+        self.client.login(username='list-admin@test.com', password='adminpass1')
+
+        asc_response = self.client.get(f'/panel/api/table/{self.table.id}/cards/?sort=name-asc')
+        self.assertEqual(asc_response.status_code, 200)
+        asc_payload = asc_response.json()
+        self.assertTrue(asc_payload.get('success'))
+        asc_names = [self._card_name(card) for card in asc_payload.get('cards', [])[:3]]
+        self.assertEqual(asc_names, ['ALPHA', 'BRAVO', 'CHARLIE'])
+
+        desc_response = self.client.get(f'/panel/api/table/{self.table.id}/cards/?sort=name-desc')
+        self.assertEqual(desc_response.status_code, 200)
+        desc_payload = desc_response.json()
+        self.assertTrue(desc_payload.get('success'))
+        desc_names = [self._card_name(card) for card in desc_payload.get('cards', [])[:3]]
+        self.assertEqual(desc_names, ['CHARLIE', 'BRAVO', 'ALPHA'])
 
     def test_list_search_matches_image_filename_basename(self):
         self.client.login(username='list-admin@test.com', password='adminpass1')
@@ -2052,6 +2074,51 @@ class SecurityApiRegressionTests(TestCase):
         self.assertTrue(recent_payload.get('success'))
         self.assertEqual(len(recent_payload.get('clients', [])), Client.objects.count())
         self.assertGreater(len(recent_payload.get('clients', [])), 100)
+
+    def test_manage_client_view_and_edit_endpoints_work(self):
+        from client.models import Client
+
+        managed_user = User.objects.create_user(
+            username='sec-manage-client@test.com',
+            email='sec-manage-client@test.com',
+            password='pass1234',
+            role='client',
+        )
+        managed_client = Client.objects.create(
+            user=managed_user,
+            name='View Edit Client',
+            status='inactive',
+            address='Old Address',
+        )
+
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+
+        detail_resp = self.client.get(reverse('api_client_get', args=[managed_client.id]))
+        self.assertEqual(detail_resp.status_code, 200)
+        detail_payload = detail_resp.json()
+        self.assertTrue(detail_payload.get('success'))
+        self.assertEqual(detail_payload.get('client', {}).get('name'), 'View Edit Client')
+
+        update_resp = self.client.post(
+            reverse('api_client_update', args=[managed_client.id]),
+            data=json.dumps({
+                'name': 'View Edit Client Updated',
+                'phone': '9998887777',
+                'address': 'New Address',
+                'is_active': True,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(update_resp.status_code, 200)
+        update_payload = update_resp.json()
+        self.assertTrue(update_payload.get('success'))
+        self.assertEqual(update_payload.get('client', {}).get('name'), 'View Edit Client Updated')
+
+        managed_client.refresh_from_db()
+        managed_user.refresh_from_db()
+        self.assertEqual(managed_client.name, 'View Edit Client Updated')
+        self.assertEqual(managed_client.address, 'New Address')
+        self.assertTrue(managed_user.is_active)
 
     def test_live_presence_count_respects_admin_staff_scope(self):
         from staff.models import Staff

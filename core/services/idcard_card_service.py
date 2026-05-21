@@ -558,10 +558,11 @@ class IDCardCardService(BaseService):
                 name_field = cls._get_name_field(table)
                 if name_field:
                     cards_query = cards_query.annotate(
-                        _name_raw=KeyTextTransform(name_field, 'field_data'),
+                        _name_raw=Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
                         _name_sort=Lower(Coalesce(
-                            KeyTextTransform(name_field, 'field_data'),
+                            Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
                             Value(''),
+                            output_field=CharField(),
                         )),
                         _name_empty=Case(
                             When(
