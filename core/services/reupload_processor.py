@@ -291,6 +291,10 @@ def process_reupload_images(task):
             task.mark_failed("Failed to read ZIP file. Please verify the ZIP and try again.")
             return
 
+        # If duplicates exist at the path-key level, treat this as an error
+        # condition: duplicate path keys make deterministic matching impossible
+        # for some images, so fail-fast and instruct the user to provide a
+        # ZIP without ambiguous path entries.
         if zip_stats.get('duplicate_name_keys', 0) > 0:
             logger.warning(
                 "Reupload ZIP has %d duplicate stem keys; falling back to path-aware matching where possible.",
@@ -298,11 +302,16 @@ def process_reupload_images(task):
             )
 
         if zip_stats.get('duplicate_path_keys', 0) > 0:
-            logger.warning(
-                "Reupload ZIP has %d duplicate path keys; they will be skipped. "
-                "Processing remaining unique files.",
+            # Reject when duplicate path keys exist — safer than picking
+            # a random file and silently producing wrong images.
+            logger.error(
+                "Reupload ZIP has %d duplicate path keys; aborting reupload.",
                 zip_stats.get('duplicate_path_keys', 0),
             )
+            task.mark_failed(
+                "Reupload ZIP contains multiple files with the same normalized path; please deduplicate the ZIP and try again."
+            )
+            return
 
         preflight = _run_reupload_preflight(
             cards_qs=cards_qs,
@@ -450,9 +459,11 @@ def process_reupload_images(task):
                 logger.error("Error processing card %d: %s", card.pk, card_err)
             
             # Flush bulk updates + CardMedia + progress every FLUSH_EVERY cards
-            # Use only modulo check; avoid `idx == total_cards - 1` which can fail
-            # if iterator returns fewer rows than total_cards (e.g., cards deleted mid-iteration)
-            if (idx + 1) % FLUSH_EVERY == 0:
+            # Flush when modulo matches OR when we've reached the last known
+            # card index. Using both checks prevents losing the final batch
+            # if the queryset iterator yields fewer rows than the original
+            # `total_cards` count due to concurrent deletes.
+            if (idx + 1) % FLUSH_EVERY == 0 or idx == total_cards - 1:
                 _flush_batch(
                     pending_updates, pending_media_deletes,
                     pending_media_creates,
@@ -549,8 +560,23 @@ def _flush_batch(
                     pending_updates, ['field_data', 'updated_at'], batch_size=100
                 )
 
-            # 2. Batch-create NEW CardMedia BEFORE deleting old
-            # (preserves old records until new ones safely in DB)
+            # 2. Delete old CardMedia first, then create NEW CardMedia.
+            # This ordering ensures we do not temporarily exceed storage
+            # quotas or duplicate logical ownership rows when DB-level
+            # uniqueness constraints exist on (card, field_name, file).
+            if pending_media_deletes:
+                from django.db.models import Q
+                q = Q()
+                for card_pk, field_name in pending_media_deletes:
+                    q |= Q(card_id=card_pk, field_name=field_name)
+                deleted_count, _ = CardMedia.objects.filter(q).delete()
+                if deleted_count != len(pending_media_deletes):
+                    logger.warning(
+                        "CardMedia delete count mismatch: expected %d, deleted %d. Possible orphaned records.",
+                        len(pending_media_deletes), deleted_count
+                    )
+
+            # 3. Create new CardMedia records after old ones removed
             if pending_media_creates:
                 objs = []
                 for item in pending_media_creates:
@@ -562,20 +588,6 @@ def _flush_batch(
                         field_name=item['field_name'],
                     ))
                 CardMedia.objects.bulk_create(objs, batch_size=100)
-
-            # 3. NOW delete old CardMedia (only after new ones safely created)
-            if pending_media_deletes:
-                from django.db.models import Q
-                q = Q()
-                for card_pk, field_name in pending_media_deletes:
-                    q |= Q(card_id=card_pk, field_name=field_name)
-                deleted_count, _ = CardMedia.objects.filter(q).delete()
-                if deleted_count != len(pending_media_deletes):
-                    logger.warning(
-                        "CardMedia delete count mismatch: expected %d, deleted %d. "
-                        "Possible orphaned records.",
-                        len(pending_media_deletes), deleted_count
-                    )
 
     try:
         _db_retry(_do_flush)
