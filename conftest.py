@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 
 # CRITICAL: Set RUNNING_TESTS BEFORE DJANGO IMPORTS
@@ -64,7 +64,6 @@ def pytest_configure(config):
 
 # Marker lanes are applied centrally so we don't need to touch hundreds of test files.
 SLOW_NODEID_PREFIXES = (
-    "mobile_app/tests.py::",
     "exports/tests.py::",
 )
 
@@ -95,4 +94,6 @@ def pytest_collection_modifyitems(items):
 
         if any(token in nodeid for token in IMPORTANT_NODEID_CONTAINS):
             item.add_marker(pytest.mark.important)
+
+
 

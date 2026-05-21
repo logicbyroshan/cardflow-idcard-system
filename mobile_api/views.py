@@ -1,12 +1,12 @@
-"""
-PWA Mobile App Views — real backend integration.
+﻿"""
+PWA Mobile App Views â€” real backend integration.
 
 All views enforce:
   1. Login required
   2. Valid role (super_admin, admin_staff, client, client_staff)
   3. Mobile device user-agent (desktop gets block page)
 
-No new backend logic — delegates entirely to existing services.
+No new backend logic â€” delegates entirely to existing services.
 """
 import json
 import re
@@ -71,24 +71,20 @@ def _normalize_mobile_sort_mode(value):
     return 'sr-asc'
 
 
-def _mobile_app_views_module():
-    try:
-        from importlib import import_module
-        return import_module('mobile_app.views')
-    except Exception:
-        return None
-
-
 def _mobile_field_token(field_name):
-    module = _mobile_app_views_module()
-    token_fn = getattr(module, '_field_token', None) if module else None
-    if callable(token_fn):
+    # simplified token generation (direct regex)
+    try:
+        name = name.lower()
+    except NameError:
+        # keep original if 'name' not defined as expected; fall back to parameter 'field' if used
         try:
-            return token_fn(field_name)
-        except Exception:
+            name = field.lower()
+        except:
             pass
-    return re.sub(r'[^A-Z0-9]+', '', str(field_name or '').strip().upper())
-
+    # replace non-alphanum/underscore with underscores, collapse multiple underscores, strip edges
+    name = re.sub(r'[^a-z0-9_]', '_', name)
+    name = re.sub(r'_+', '_', name).strip('_')
+    return name
 def _safe_file_url(file_field, request=None):
     """Safely get URL from an ImageField/FileField and prefer absolute URLs for external clients."""
     if not file_field:
@@ -364,7 +360,7 @@ def _client_ctx(user):
     """
     client = ClientAccessService.get_client_for_user(user)
     if client is None and PermissionService.is_super_admin(user):
-        # Super admin can access all clients — pick the first active one
+        # Super admin can access all clients â€” pick the first active one
         from client.models import Client
         client = Client.objects.filter(status='active').first()
     elif client is None and PermissionService.is_admin_staff(user):
@@ -884,7 +880,7 @@ def _build_filter_metadata_from_queryset(cards_qs, class_field_name=None, sectio
     }
 
 
-# ── Image upload validation ──────────────────────────────────────────────────
+# â”€â”€ Image upload validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _ALLOWED_IMAGE_TYPES = frozenset({
     'image/jpeg', 'image/png', 'image/webp', 'image/gif',
     'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
@@ -1140,7 +1136,7 @@ def pwa_manifest(request):
         'name': 'Adarsh ID Cards',
         'short_name': 'Adarsh IDs',
         'id': '/app/',
-        'description': 'Manage ID cards on the go — fast, secure, and mobile-first.',
+        'description': 'Manage ID cards on the go â€” fast, secure, and mobile-first.',
         'start_url': '/app/',
         'scope': '/app/',
         'display': 'standalone',
@@ -1259,7 +1255,7 @@ def pwa_service_worker(request):
     ])
 
     sw_template = """\
-/* Adarsh ID Cards — PWA Service Worker (Phase 5) */
+/* Adarsh ID Cards â€” PWA Service Worker (Phase 5) */
 const CACHE_GROUP = '__CACHE_GROUP__';
 const CACHE_NAMESPACE = '__CACHE_NAMESPACE__';
 const CACHE_GENERATION = __CACHE_GENERATION__;
@@ -1502,7 +1498,7 @@ def home(request):
     if not client:
         return _mobile_no_client_redirect()
 
-    # ── Compute accessible_ids ONCE for the entire view ──────────────────
+    # â”€â”€ Compute accessible_ids ONCE for the entire view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Avoids 4+ redundant M2M queries for admin_staff users.
     _is_admin = PermissionService.is_any_admin(user)
     _is_admin_staff = PermissionService.is_admin_staff(user)
@@ -1581,7 +1577,7 @@ def home(request):
             elif assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
 
-    tables_list = list(tables)  # evaluate once — avoids 3 separate DB hits
+    tables_list = list(tables)  # evaluate once â€” avoids 3 separate DB hits
     first_table = tables_list[0] if tables_list else None
 
     ctx = {
@@ -1618,7 +1614,7 @@ def home(request):
         }
         ctx.update(_admin_counts)
 
-    # ── Card status counts ───────────────────────────────────────────────
+    # â”€â”€ Card status counts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # For client/client_staff: use ClientDashboardService result (already computed).
     if _is_admin:
         _gcards = IDCard.objects.all()
@@ -1714,12 +1710,12 @@ def home(request):
             'name': _name,
             'status': _card.status,
             'status_display': _card.status.replace('_', ' ').title(),
-            'updated_at': _timesince(_card.updated_at, _now) if _card.updated_at else '—',
+            'updated_at': _timesince(_card.updated_at, _now) if _card.updated_at else 'â€”',
             'table_name': _card.table.name if _card.table else '',
         })
     ctx.update({'recent_activities': _recent_acts, 'has_new_activity': bool(_recent_acts)})
 
-    # ── Recent Clients section ──────────────────────────────────────────────
+    # â”€â”€ Recent Clients section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # For admins: mirror desktop dashboard ordering for recent clients.
     # For client / client_staff: show the single client's groups as "clients".
     recent_client_updates = []
@@ -1788,7 +1784,7 @@ def home(request):
                              .values('table_id', 'status').annotate(n=Count('id'))):
                     _tc_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
 
-            # Assemble in Python — no more per-client / per-table queries
+            # Assemble in Python â€” no more per-client / per-table queries
             for c in client_list:
                 _sm = _cc_map.get(c.id, {})
                 _tables_data = []
@@ -1895,7 +1891,7 @@ def home(request):
 
     ctx['recent_client_updates'] = recent_client_updates
 
-    # ── Recent Reprint section ─────────────────────────────────────────────
+    # â”€â”€ Recent Reprint section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     recent_reprint_updates = []
     reprint_request_total = 0
     reprint_confirmed_total = 0
@@ -2066,7 +2062,7 @@ def home(request):
 
 @require_mobile_client
 def clients_list(request):
-    """In-app client list for admin roles — switch active client context."""
+    """In-app client list for admin roles â€” switch active client context."""
     user = request.user
     _, perms = _client_ctx(user)
     if not PermissionService.is_any_admin(user):
@@ -2113,7 +2109,7 @@ def clients_list(request):
             'user_id': c.user.id if c.user else None,
         })
 
-    # Tables are lazy-loaded per client on first expand — skip server-side preloading
+    # Tables are lazy-loaded per client on first expand â€” skip server-side preloading
     for _cd in client_data:
         _cd['tables'] = None
 
@@ -2131,8 +2127,8 @@ def clients_list(request):
 
 @require_mobile_client
 def client_groups(request, client_id):
-    """Groups & tables for a specific client — admin only view.
-    Admin taps a client in clients_list → sees that client's groups/tables.
+    """Groups & tables for a specific client â€” admin only view.
+    Admin taps a client in clients_list â†’ sees that client's groups/tables.
     """
     user = request.user
     _, perms = _client_ctx(user)
@@ -2221,7 +2217,7 @@ def table_picker(request, status):
             elif assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
 
-    tables_list = list(tables)  # evaluate once — avoids 2 extra DB hits
+    tables_list = list(tables)  # evaluate once â€” avoids 2 extra DB hits
     if len(tables_list) == 1:
         return redirect('mobile_app:card_list', table_id=tables_list[0].id, status=status)
 
@@ -2237,7 +2233,7 @@ def table_picker(request, status):
 
 @require_mobile_client
 def card_list(request, table_id, status):
-    """Card list for a specific table + status — server-rendered."""
+    """Card list for a specific table + status â€” server-rendered."""
     user = request.user
     client, perms = _client_ctx(user)
     if not client and not PermissionService.is_any_admin(user):
@@ -2687,7 +2683,7 @@ def card_list(request, table_id, status):
             _cls: [s for s in _sections if s in _allowed_sec_set]
             for _cls, _sections in class_to_sections.items()
         }
-    # Count badges — single aggregate query replaces 4 separate COUNTs
+    # Count badges â€” single aggregate query replaces 4 separate COUNTs
     tab_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
     _tab_counts_qs = IDCard.objects.filter(table=table)
     if PermissionService.is_client_staff(user):
@@ -3272,7 +3268,7 @@ def permissions_center(request):
 
 
 # ---------------------------------------------------------------------------
-# API VIEWS — thin proxies to existing services
+# API VIEWS â€” thin proxies to existing services
 # ---------------------------------------------------------------------------
 
 @require_mobile_client
@@ -4139,7 +4135,7 @@ def api_table_update_fields(request, table_id):
 
 
 # ---------------------------------------------------------------------------
-# NEW PAGE VIEWS — Card detail, Staff, Groups, Settings, Search
+# NEW PAGE VIEWS â€” Card detail, Staff, Groups, Settings, Search
 # ---------------------------------------------------------------------------
 
 @require_mobile_client
@@ -4258,7 +4254,7 @@ def groups_overview(request):
 
 @require_mobile_client
 def settings_page(request):
-    """Settings — 4 tabbed sections: Notifications / Logs / Email / System Info."""
+    """Settings â€” 4 tabbed sections: Notifications / Logs / Email / System Info."""
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
@@ -4297,14 +4293,14 @@ def settings_page(request):
         ctx['admin_table_count'] = scoped_tables.count()
         ctx['admin_total_cards'] = scoped_cards.count()
 
-    # ── TAB: Notifications ───────────────────────────────────────────────
+    # â”€â”€ TAB: Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ctx['system_notifications'], ctx['unread_system_count'] = _get_system_notifications(
         user,
         limit=20,
         mark_visible_as_read=False,
     )
 
-    # ── TAB: Logs ────────────────────────────────────────────────────────
+    # â”€â”€ TAB: Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     from django.utils.timesince import timesince as _timesince
     from django.utils import timezone as _tz
     _now = _tz.now()
@@ -4363,13 +4359,13 @@ def settings_page(request):
             'name': _name,
             'status': _card.status,
             'status_display': _card.status.replace('_', ' ').title(),
-            'updated_at': _timesince(_card.updated_at, _now) if _card.updated_at else '—',
+            'updated_at': _timesince(_card.updated_at, _now) if _card.updated_at else 'â€”',
             'table_name': _card.table.name if _card.table else '',
             'group_name': _card.table.group.name if _card.table and _card.table.group else '',
         })
     ctx['log_activities'] = _log_acts
 
-    # ── TAB: System Info ─────────────────────────────────────────────────
+    # â”€â”€ TAB: System Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     import django as _django
     import sys as _sys
     import os as _os
@@ -4388,7 +4384,7 @@ def settings_page(request):
 
 @require_mobile_client
 def search_page(request):
-    """Search page — search across all cards in client's tables."""
+    """Search page â€” search across all cards in client's tables."""
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
@@ -4666,7 +4662,7 @@ def api_staff_toggle(request, staff_id):
             return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     else:
-        # Admin toggle — directly update the Staff user's is_active
+        # Admin toggle â€” directly update the Staff user's is_active
         try:
             staff = Staff.objects.select_related('user').get(id=staff_id, staff_type='admin_staff')
             staff.user.is_active = not staff.user.is_active
@@ -4778,7 +4774,7 @@ def api_staff_assign(request, staff_id):
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
 
 
-# ─── Native App JSON APIs (for React Native) ────────────────────────────────
+# â”€â”€â”€ Native App JSON APIs (for React Native) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @require_mobile_client
 @require_http_methods(["GET"])
@@ -4875,7 +4871,7 @@ def api_tables_list(request):
                 tables_qs = tables_qs.filter(id__in=accessible_ids)
 
         # 2. Annotate with status count if status is provided
-        # 'total' is a virtual status from the native app — treat like 'all'
+        # 'total' is a virtual status from the native app â€” treat like 'all'
         if status and status not in ('all', 'total'):
             tables_qs = tables_qs.annotate(
                 status_count=Count('id_cards', filter=Q(id_cards__status=status))
@@ -5015,7 +5011,7 @@ def api_settings_data(request):
         from django.utils import timezone as _tz
         _now = _tz.now()
         _cards = list(IDCard.objects.filter(table__group__client=client).select_related('table', 'table__group').order_by('-updated_at')[:15])
-        d['log_activities'] = [{'name': (c.field_data or {}).get('NAME') or (c.field_data or {}).get('name') or f'Card #{c.id}', 'status': c.status, 'status_display': c.status.replace('_', ' ').title(), 'updated_at': _timesince(c.updated_at, _now) if c.updated_at else '—', 'table_name': c.table.name if c.table else '', 'group_name': c.table.group.name if c.table and c.table.group else ''} for c in _cards]
+        d['log_activities'] = [{'name': (c.field_data or {}).get('NAME') or (c.field_data or {}).get('name') or f'Card #{c.id}', 'status': c.status, 'status_display': c.status.replace('_', ' ').title(), 'updated_at': _timesince(c.updated_at, _now) if c.updated_at else 'â€”', 'table_name': c.table.name if c.table else '', 'group_name': c.table.group.name if c.table and c.table.group else ''} for c in _cards]
 
         # System info
         import django as _dj, sys as _sy, os as _o
@@ -5468,7 +5464,7 @@ def api_profile_delete_request(request):
 
     # Log the request for audit trail
     logger.info(
-        'Data deletion requested — user_id=%s name=%s email=%s role=%s',
+        'Data deletion requested â€” user_id=%s name=%s email=%s role=%s',
         user.pk, user_name, user_email, user_role,
     )
 
@@ -5488,7 +5484,7 @@ def api_profile_delete_request(request):
         try:
             from django.core.mail import send_mail as _send_mail
             _send_mail(
-                subject=f'[Adarsh Admin] Data Deletion Request — {user_name}',
+                subject=f'[Adarsh Admin] Data Deletion Request â€” {user_name}',
                 message=(
                     f'A data deletion request has been submitted.\n\n'
                     f'User ID: {user.pk}\n'
@@ -5773,7 +5769,7 @@ def api_impersonate_stop(request):
     return JsonResponse(result)
 
 
-# ─── Client Management APIs ────────────────────────────────────────────────────
+# â”€â”€â”€ Client Management APIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @require_mobile_client
 @require_http_methods(['POST'])

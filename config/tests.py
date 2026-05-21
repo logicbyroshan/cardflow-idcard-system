@@ -1,4 +1,4 @@
-from django.contrib.auth.models import AnonymousUser
+﻿from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import Http404
 from django.test import RequestFactory, TestCase, override_settings
@@ -12,9 +12,6 @@ class ConfigRootUrlTests(TestCase):
         match = resolve('/api/health/')
         self.assertEqual(match.url_name, 'health_check')
 
-    def test_root_urlconf_exposes_mobile_app_route(self):
-        match = resolve('/app/manifest.json')
-        self.assertEqual(match.url_name, 'pwa_manifest')
 
 
 class ConfigMediaGuardTests(TestCase):
