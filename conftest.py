@@ -68,10 +68,14 @@ def pytest_configure(config):
 # Marker lanes are applied centrally so we don't need to touch hundreds of test files.
 SLOW_NODEID_PREFIXES = (
     "exports/tests.py::",
+    "core/tests.py::",
+    "client/tests.py::",
+    "panel/tests.py::",
+    "reprintcard/tests.py::",
+    "staff/tests.py::",
 )
 
 VERY_SLOW_NODEID_CONTAINS = (
-    "mobile_app/tests.py::MobileAppPhase1SmokeAndVisualTests::",
 )
 
 IMPORTANT_NODEID_CONTAINS = (

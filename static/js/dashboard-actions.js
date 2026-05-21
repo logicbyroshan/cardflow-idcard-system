@@ -504,7 +504,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
-        const recentClientUpdatesLimit = 100;
         const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
         const showPool = headerColumns >= 6;
         setDashboardTabCount(dashboardTabCountRecentClients, 0);
@@ -514,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
-        ApiClient.get(panelUrl('/api/recent-client-updates/?limit=' + recentClientUpdatesLimit))
+        ApiClient.get(panelUrl('/api/recent-client-updates/'))
             .then(data => {
                 waitForMinDelay(skeletonStart).then(() => {
                     if (data.success && data.clients.length > 0) {

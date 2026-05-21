@@ -2028,6 +2028,31 @@ class SecurityApiRegressionTests(TestCase):
         self.assertTrue(recent_payload.get('success'))
         self.assertIn(self.client_a.id, recent_payload.get('active_assistant_client_ids', []))
 
+    def test_recent_client_updates_returns_all_clients_by_default(self):
+        from client.models import Client
+
+        for idx in range(101):
+            user = User.objects.create_user(
+                username=f'sec-recents-client-{idx}@test.com',
+                email=f'sec-recents-client-{idx}@test.com',
+                password='pass1234',
+                role='client',
+            )
+            Client.objects.create(
+                user=user,
+                name=f'Recent Client {idx:03d}',
+                status='active',
+            )
+
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+        recent_resp = self.client.get(reverse('api_recent_client_updates'))
+
+        self.assertEqual(recent_resp.status_code, 200)
+        recent_payload = recent_resp.json()
+        self.assertTrue(recent_payload.get('success'))
+        self.assertEqual(len(recent_payload.get('clients', [])), Client.objects.count())
+        self.assertGreater(len(recent_payload.get('clients', [])), 100)
+
     def test_live_presence_count_respects_admin_staff_scope(self):
         from staff.models import Staff
 

@@ -589,13 +589,16 @@ def api_recent_client_updates(request):
     Client results are cached for 10 seconds; live presence is always fresh.
     """
     try:
-        limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
+        raw_limit = request.GET.get('limit')
+        limit = None
+        if raw_limit not in (None, '', 'all'):
+            limit = _parse_dashboard_limit(raw_limit, default=500, max_limit=500)
         user = request.user
 
         # Cache the heavy client-results portion (raw SQL aggregation)
         is_scoped = PermissionService.is_admin_staff(user)
         cache_suffix = f':{user.pk}' if is_scoped else ''
-        cache_key = f'api_recent_client_updates{cache_suffix}'
+        cache_key = f'api_recent_client_updates{cache_suffix}:{"all" if limit is None else limit}'
 
         # Fast path: return cached results + fresh presence
         cached_results = cache.get(cache_key)
@@ -622,7 +625,9 @@ def api_recent_client_updates(request):
             F('latest_approved').desc(nulls_last=True),
             F('created_at').desc(nulls_last=True),
             F('id').desc(),
-        )[:limit]
+        )
+        if limit is not None:
+            clients_qs = clients_qs[:limit]
 
         # Materialize only fields needed by dashboard to keep compatibility with
         # DBs that may not yet have newer optional Client columns.

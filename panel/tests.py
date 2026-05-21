@@ -1113,7 +1113,7 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
             total=10,
         )
 
-        self.client.login(username='panel-super@test.com', password='pass1234')
+        self.client.login(username='panel-client@test.com', password='pass1234')
         response = self.client.post(
             f'/panel/api/task-cancel/{task.id}/',
             data=json.dumps({'latest_only': True}),
