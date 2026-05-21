@@ -24,37 +24,7 @@
     {% include 'partials/panel/topbar.html' %}
 
     <!-- Panel Content -->
-    <!-- Inline safe-stubs: queue actions when the manage-panel.js hasn't executed yet.
-         This preserves user clicks that happen before the script loads and replays
-         them once the real implementations are available. No console noise. -->
-    <script>
-      (function () {
-        window.__mpQueuedCalls = window.__mpQueuedCalls || [];
-        var stubs = {};
-        function _push(name, args) {
-          try {
-            if (typeof window[name] === 'function' && window[name] !== stubs[name]) {
-              return window[name].apply(null, args);
-            }
-          } catch (e) {
-            // ignore and queue
-          }
-          window.__mpQueuedCalls.push({ name: name, args: Array.prototype.slice.call(args) });
-        }
-
-        stubs.switchTab = function () { _push('switchTab', arguments); };
-        stubs.initSessionsTab = function () { _push('initSessionsTab', arguments); };
-        stubs.loadEmailLogs = function () { _push('loadEmailLogs', arguments); };
-        stubs.loadOperationsFeed = function () { _push('loadOperationsFeed', arguments); };
-        stubs.initServerInfoTab = function () { _push('initServerInfoTab', arguments); };
-
-        if (!window.switchTab) window.switchTab = stubs.switchTab;
-        if (!window.initSessionsTab) window.initSessionsTab = stubs.initSessionsTab;
-        if (!window.loadEmailLogs) window.loadEmailLogs = stubs.loadEmailLogs;
-        if (!window.loadOperationsFeed) window.loadOperationsFeed = stubs.loadOperationsFeed;
-        if (!window.initServerInfoTab) window.initServerInfoTab = stubs.initServerInfoTab;
-      })();
-    </script>
+    <!-- Temporary click-stubs removed: functions are now exposed by the bundle. -->
     <div class="panel-content">
 
       <!-- Panel Tabs -->
