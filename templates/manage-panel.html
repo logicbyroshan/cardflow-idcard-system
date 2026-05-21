@@ -30,38 +30,38 @@
       <!-- Panel Tabs -->
       <div class="panel-tabs">
         {% if is_super_admin %}
-        <button class="panel-tab active" data-tab="notifications" onclick="switchTab('notifications')">
+        <button class="panel-tab active" data-tab="notifications">
           <i class="fa-solid fa-bell"></i> Notifications
         </button>
         {% endif %}
         {% if is_super_admin or is_pro_user %}
-        <button class="panel-tab" data-tab="sessions" onclick="switchTab('sessions'); initSessionsTab();">
+        <button class="panel-tab" data-tab="sessions">
           <i class="fa-solid fa-right-from-bracket"></i> Sessions
         </button>
         {% endif %}
         {% if is_super_admin or perm_manage_panel_email %}
-        <button class="panel-tab" data-tab="email-logs" onclick="switchTab('email-logs'); loadEmailLogs();">
+        <button class="panel-tab" data-tab="email-logs">
           <i class="fa-solid fa-envelope"></i> Email Management
         </button>
         {% endif %}
         {% if is_super_admin %}
-        <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history'); loadOperationsFeed();">
+        <button class="panel-tab" data-tab="log-history">
           <i class="fa-solid fa-wave-square"></i> Logs &amp; Updates
         </button>
         {% endif %}
-        <button class="panel-tab" data-tab="batch-jobs" onclick="switchTab('batch-jobs')">
+        <button class="panel-tab" data-tab="batch-jobs">
           <i class="fa-solid fa-bars-progress"></i> Batch Jobs
         </button>
         {% if is_super_admin or perm_manage_panel_backup %}
-        <button class="panel-tab" data-tab="backups" onclick="switchTab('backups')">
+        <button class="panel-tab" data-tab="backups">
           <i class="fa-solid fa-database"></i> Backups
         </button>
         {% endif %}
         {% if is_super_admin %}
-        <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
+        <button class="panel-tab" data-tab="download-templates">
           <i class="fa-solid fa-file-arrow-down"></i> Download Templates
         </button>
-        <button class="panel-tab" data-tab="server-info" onclick="switchTab('server-info'); initServerInfoTab();">
+        <button class="panel-tab" data-tab="server-info">
           <i class="fa-solid fa-server"></i> System &amp; Server
         </button>
         {% endif %}
