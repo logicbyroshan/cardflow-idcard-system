@@ -831,25 +831,6 @@ except ValueError:
 
 
 # =============================================================================
-# ANDROID MOBILE SHELL POLICY
-# =============================================================================
-
-MOBILE_SHELL_ANDROID_MIN_BUILD = max(1, int(os.getenv('MOBILE_SHELL_ANDROID_MIN_BUILD', '1')))
-MOBILE_SHELL_ANDROID_LATEST_BUILD = max(
-    MOBILE_SHELL_ANDROID_MIN_BUILD,
-    int(os.getenv('MOBILE_SHELL_ANDROID_LATEST_BUILD', '5')),
-)
-MOBILE_SHELL_ANDROID_LATEST_VERSION = os.getenv('MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.4').strip() or '1.0.4'
-MOBILE_SHELL_ANDROID_FORCE_UPDATE = _env_bool('MOBILE_SHELL_ANDROID_FORCE_UPDATE', False)
-MOBILE_SHELL_ANDROID_UPDATE_URL = os.getenv('MOBILE_SHELL_ANDROID_UPDATE_URL', '/static/website/apk/adarsh-admin.apk').strip()
-# Keep push bootstrap disabled by default until Firebase is correctly wired
-# in the Android app (google-services.json + FCM project).
-MOBILE_SHELL_PUSH_ENABLED = _env_bool('MOBILE_SHELL_PUSH_ENABLED', False)
-MOBILE_SHELL_PRIVACY_URL = os.getenv('MOBILE_SHELL_PRIVACY_URL', SITE_URL).strip()
-MOBILE_SHELL_SUPPORT_URL = os.getenv('MOBILE_SHELL_SUPPORT_URL', SITE_URL).strip()
-
-
-# =============================================================================
 # PERFORMANCE MONITORING THRESHOLDS
 # =============================================================================
 

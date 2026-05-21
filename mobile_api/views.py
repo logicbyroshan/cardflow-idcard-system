@@ -55,7 +55,7 @@ from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
 from core.services import StaffService, IDCardService, ClientService
 from core.utils.field_utils import normalize_class_value
-from mobile_app.views import _mobile_shell_resolve_url, _normalize_mobile_sort_mode
+from mobile_app.views import _normalize_mobile_sort_mode
 from website.models import PortfolioCategory
 from website.services import PortfolioItemService
 
@@ -104,62 +104,6 @@ def _safe_file_url(file_field, request=None):
 
     return url
 
-
-def _mobile_shell_app_config_payload(*, app_build=0, request=None):
-    app_build = max(0, _mobile_shell_safe_int(app_build, 0))
-    min_build = int(getattr(settings, 'MOBILE_SHELL_ANDROID_MIN_BUILD', 1) or 1)
-    latest_build = int(getattr(settings, 'MOBILE_SHELL_ANDROID_LATEST_BUILD', min_build) or min_build)
-    latest_build = max(min_build, latest_build)
-    force_toggle = bool(getattr(settings, 'MOBILE_SHELL_ANDROID_FORCE_UPDATE', False))
-
-    update_required = force_toggle or (app_build > 0 and app_build < min_build)
-    update_recommended = app_build > 0 and app_build < latest_build
-    update_url = _mobile_shell_resolve_url(
-        getattr(settings, 'MOBILE_SHELL_ANDROID_UPDATE_URL', ''),
-        request=request,
-        fallback='/static/website/apk/adarsh-admin.apk',
-    )
-    support_url = _mobile_shell_resolve_url(
-        getattr(settings, 'MOBILE_SHELL_SUPPORT_URL', ''),
-        request=request,
-        fallback='/app/profile/',
-    )
-    push_enabled = bool(getattr(settings, 'MOBILE_SHELL_PUSH_ENABLED', False))
-
-    return {
-        'platform': 'android',
-        'app_name': 'Adarsh Panel',
-        'min_supported_build': min_build,
-        'latest_build': latest_build,
-        'latest_version': str(getattr(settings, 'MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.0') or '1.0.0'),
-        'update_required': update_required,
-        'update_recommended': update_recommended,
-        'update_url': update_url,
-        'push_enabled': push_enabled,
-        'privacy_url': str(getattr(settings, 'MOBILE_SHELL_PRIVACY_URL', '') or ''),
-        'support_url': support_url,
-        'server_app_version': str(getattr(settings, 'APP_VERSION', '') or ''),
-    }
-
-
-def _mobile_shell_safe_int(raw_value, default=0):
-    try:
-        return int(raw_value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _mobile_shell_safe_bool(raw_value, default=False):
-    if raw_value is None:
-        return default
-    if isinstance(raw_value, bool):
-        return raw_value
-    return str(raw_value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
-
-
-def _mobile_shell_device_payload_hash(*, installation_id, app_build, app_version):
-    seed = f'{installation_id}|{app_build}|{app_version}'.encode('utf-8', errors='ignore')
-    return hashlib.sha256(seed).hexdigest()[:20]
 
 MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS = [
     'certificates',
@@ -5311,6 +5255,51 @@ def api_dashboard_data(request):
         return JsonResponse({'success': False, 'message': 'Unable to load dashboard.'}, status=500)
 
 
+
+
+@ensure_csrf_cookie
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_server_info(request):
+    """Return lightweight server diagnostics for authenticated mobile admins only."""
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({'success': False, 'authenticated': False, 'message': 'Authentication required'}, status=401)
+
+    # Only super admins may view sensitive diagnostics
+    if not PermissionService.is_super_admin(user):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    import os
+    import platform
+    import socket
+    process_uptime_seconds = max(0, int(time.time() - APP_BOOT_TS))
+
+    # Disk usage info
+    try:
+        import shutil
+        total, used, free = shutil.disk_usage(os.getcwd())
+        disk = {
+            'total': total,
+            'used': used,
+            'free': free,
+            'percent': round(used / total * 100, 1) if total else None,
+        }
+    except Exception:
+        disk = None
+
+    data = {
+        'hostname': socket.gethostname(),
+        'platform': platform.platform(),
+        'python_version': platform.python_version(),
+        'django_version': __import__('django').get_version(),
+        'environment': 'Development' if settings.DEBUG else 'Production',
+        'uptime': process_uptime_seconds,
+        'disk': disk,
+    }
+    return JsonResponse({'success': True, 'data': data})
+
+
 @require_mobile_client
 @require_http_methods(["GET"])
 def api_reprint_data(request, client_id):
@@ -5596,219 +5585,6 @@ def api_search(request):
     return JsonResponse({'success': True, 'data': {'results': results, 'count': len(results)}})
 
 
-@require_mobile_client
-@require_http_methods(["GET"])
-def api_mobile_shell_config(request):
-    """Returns Android shell policy (version/update/support URLs) for runtime checks."""
-    app_build = _mobile_shell_safe_int(request.GET.get('app_build'), 0)
-    payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
-    return JsonResponse({'success': True, 'data': payload})
-
-
-@require_mobile_client
-@require_http_methods(["POST"])
-def api_mobile_shell_device_register(request):
-    """Upserts Android shell device metadata and optional push token."""
-    try:
-        data = json.loads(request.body or '{}')
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
-
-    installation_id = str(data.get('installation_id') or '').strip()
-    if not MOBILE_INSTALLATION_ID_RE.match(installation_id):
-        return JsonResponse({'success': False, 'message': 'Valid installation_id is required.'}, status=400)
-
-    platform_name = str(data.get('platform') or 'android').strip().lower() or 'android'
-    if platform_name != 'android':
-        return JsonResponse({'success': False, 'message': 'Only android platform is supported in current rollout.'}, status=400)
-
-    app_build = max(0, _mobile_shell_safe_int(data.get('app_build'), 0))
-    app_version = str(data.get('app_version') or '').strip()[:32]
-    push_token = str(data.get('push_token') or '').strip()[:255]
-    device_model = str(data.get('device_model') or '').strip()[:120]
-    os_version = str(data.get('os_version') or '').strip()[:50]
-    device_language = str(data.get('device_language') or '').strip()[:32]
-
-    defaults = {
-        'push_token': push_token,
-        'app_build': app_build,
-        'app_version': app_version,
-        'device_model': device_model,
-        'os_version': os_version,
-        'device_language': device_language,
-        'last_ip': _get_client_ip(request),
-        'is_active': True,
-    }
-
-    device_obj, _ = MobileDevice.objects.update_or_create(
-        user=request.user,
-        platform='android',
-        installation_id=installation_id,
-        defaults=defaults,
-    )
-
-    # Invalidate dashboard cache on app update to ensure fresh stats on next load
-    # This prevents stale zero-stats after app reload
-    try:
-        from core.services.cache_version_service import CacheVersionService
-        from client.services_access import ClientAccessService
-        
-        client = ClientAccessService.get_client_for_user(request.user)
-        if client:
-            CacheVersionService.bump('client_dash_counts', f'client:{client.id}')
-            CacheVersionService.bump('client_staff', f'client:{client.id}')
-    except Exception as exc:
-        logger.debug('Failed to invalidate dashboard cache after device registration: %s', exc)
-
-    config_payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
-    return JsonResponse({
-        'success': True,
-        'data': {
-            'device_id': device_obj.id,
-            'device_signature': _mobile_shell_device_payload_hash(
-                installation_id=installation_id,
-                app_build=app_build,
-                app_version=app_version,
-            ),
-            'config': config_payload,
-        },
-    })
-
-
-@require_mobile_client
-@require_http_methods(["POST"])
-def api_mobile_shell_device_ping(request):
-    """Heartbeat endpoint to keep mobile device records active and up to date."""
-    try:
-        data = json.loads(request.body or '{}')
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
-
-    installation_id = str(data.get('installation_id') or '').strip()
-    if not MOBILE_INSTALLATION_ID_RE.match(installation_id):
-        return JsonResponse({'success': False, 'message': 'Valid installation_id is required.'}, status=400)
-
-    app_build = max(0, _mobile_shell_safe_int(data.get('app_build'), 0))
-    app_version = str(data.get('app_version') or '').strip()[:32]
-
-    updated = MobileDevice.objects.filter(
-        user=request.user,
-        platform='android',
-        installation_id=installation_id,
-    ).update(
-        app_build=app_build,
-        app_version=app_version,
-        last_ip=_get_client_ip(request),
-        is_active=True,
-    )
-
-    if not updated:
-        MobileDevice.objects.create(
-            user=request.user,
-            platform='android',
-            installation_id=installation_id,
-            app_build=app_build,
-            app_version=app_version,
-            last_ip=_get_client_ip(request),
-            is_active=True,
-        )
-
-    # Invalidate dashboard cache if app build/version changed
-    # This ensures fresh stats on next dashboard load after app updates
-    try:
-        from core.services.cache_version_service import CacheVersionService
-        from client.services_access import ClientAccessService
-        
-        # Only invalidate if this is a new app version/build (to avoid excessive cache busting)
-        old_device = MobileDevice.objects.filter(
-            user=request.user,
-            platform='android',
-            installation_id=installation_id,
-        ).first()
-        if old_device and (old_device.app_build != app_build or old_device.app_version != app_version):
-            client = ClientAccessService.get_client_for_user(request.user)
-            if client:
-                CacheVersionService.bump('client_dash_counts', f'client:{client.id}')
-                CacheVersionService.bump('client_staff', f'client:{client.id}')
-    except Exception as exc:
-        logger.debug('Failed to invalidate dashboard cache after device ping: %s', exc)
-
-    config_payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
-    return JsonResponse({'success': True, 'data': {'config': config_payload}})
-
-
-@require_mobile_client
-@require_http_methods(["GET"])
-def api_mobile_shell_device_summary(request):
-    """Rollout monitoring snapshot for shell devices (super/pro admin only)."""
-    if not (PermissionService.is_super_admin(request.user) or PermissionService.is_pro_user(request.user)):
-        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-
-    from django.db.models import Count, Max
-
-    include_inactive = _mobile_shell_safe_bool(request.GET.get('include_inactive'), False)
-    now = timezone.now()
-    base_qs = MobileDevice.objects.filter(platform='android')
-    if not include_inactive:
-        base_qs = base_qs.filter(is_active=True)
-
-    summary = {
-        'total_devices': base_qs.count(),
-        'active_24h': base_qs.filter(last_seen_at__gte=now - timedelta(hours=24)).count(),
-        'active_7d': base_qs.filter(last_seen_at__gte=now - timedelta(days=7)).count(),
-        'stale_30d': base_qs.filter(last_seen_at__lt=now - timedelta(days=30)).count(),
-        'last_seen_at': base_qs.aggregate(last_seen=Max('last_seen_at')).get('last_seen'),
-        'top_builds': list(
-            base_qs.exclude(app_build__lte=0)
-            .values('app_build', 'app_version')
-            .annotate(total=Count('id'))
-            .order_by('-app_build', '-total')[:5]
-        ),
-    }
-    return JsonResponse({'success': True, 'data': summary})
-
-
-@ensure_csrf_cookie
-@require_mobile_client
-@require_http_methods(["GET"])
-def api_server_info(request):
-    """Return lightweight server diagnostics for authenticated mobile admins only."""
-    user = request.user
-    if not user.is_authenticated:
-        return JsonResponse({'success': False, 'authenticated': False, 'message': 'Authentication required'}, status=401)
-
-    # Only super admins may view sensitive diagnostics
-    if not PermissionService.is_super_admin(user):
-        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-
-    import os
-    import platform
-    import socket
-    process_uptime_seconds = max(0, int(time.time() - APP_BOOT_TS))
-
-    # Disk usage info
-    try:
-        import shutil
-        total, used, free = shutil.disk_usage(os.getcwd())
-        disk = {
-            'total': total,
-            'used': used,
-            'free': free,
-            'percent': round(used / total * 100, 1) if total else None,
-        }
-    except Exception:
-        disk = None
-
-    data = {
-        'hostname': socket.gethostname(),
-        'platform': platform.platform(),
-        'python_version': platform.python_version(),
-        'django_version': __import__('django').get_version(),
-        'environment': 'Development' if settings.DEBUG else 'Production',
-        'uptime': process_uptime_seconds,
-        'disk': disk,
-    }
-    return JsonResponse({'success': True, 'data': data})
 
 
 @require_mobile_client

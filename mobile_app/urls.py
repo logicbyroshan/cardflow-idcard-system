@@ -74,10 +74,6 @@ urlpatterns = [
     path('api/settings/', views.api_settings_data, name='api_settings_data'),
     path('api/dashboard/', views.api_dashboard_data, name='api_dashboard_data'),
     path('api/reprint/<int:client_id>/', views.api_reprint_data, name='api_reprint_data'),
-    path('api/mobile-shell/config/', views.api_mobile_shell_config, name='api_mobile_shell_config'),
-    path('api/mobile-shell/device/register/', views.api_mobile_shell_device_register, name='api_mobile_shell_device_register'),
-    path('api/mobile-shell/device/ping/', views.api_mobile_shell_device_ping, name='api_mobile_shell_device_ping'),
-    path('api/mobile-shell/device/summary/', views.api_mobile_shell_device_summary, name='api_mobile_shell_device_summary'),
 
     # Website compatibility APIs
     path('api/website/portfolio/upload/', views.api_website_portfolio_upload, name='api_website_portfolio_upload'),
