@@ -356,7 +356,7 @@ def _enrich_recent_activities_for_dashboard(user, activities):
 @login_required
 def login_as_user_page(request):
     """Dedicated page for Pro User impersonation."""
-    if not (getattr(request.user, 'is_authenticated', False) and str(getattr(request.user, 'role', '')).strip().lower() == 'pro_user'):
+    if not PermissionService.is_pro_user(request.user):
         return redirect('dashboard')
     context = {
         'active_page': 'impersonate',
@@ -369,7 +369,7 @@ def login_as_user_page(request):
 @login_required
 def pro_user_activity_logs_page(request):
     """Backward-compatible URL for the merged Pro User User Options page."""
-    if not (getattr(request.user, 'is_authenticated', False) and str(getattr(request.user, 'role', '')).strip().lower() == 'pro_user'):
+    if not PermissionService.is_pro_user(request.user):
         return redirect('dashboard')
     return redirect('login_as_user')
 
@@ -377,7 +377,7 @@ def pro_user_activity_logs_page(request):
 @login_required
 def pro_user_log_deletion_guard_page(request):
     """Dedicated page for Pro User guarded activity-log deletion controls."""
-    if not (getattr(request.user, 'is_authenticated', False) and str(getattr(request.user, 'role', '')).strip().lower() == 'pro_user'):
+    if not PermissionService.is_pro_user(request.user):
         return redirect('dashboard')
     context = {
         'active_page': 'pro_user_log_deletion_guard',
@@ -389,7 +389,7 @@ def pro_user_log_deletion_guard_page(request):
 @login_required
 def pro_user_data_deletion_guard_page(request):
     """Dedicated page for Pro User guarded permanent data deletion controls."""
-    if not (getattr(request.user, 'is_authenticated', False) and str(getattr(request.user, 'role', '')).strip().lower() == 'pro_user'):
+    if not PermissionService.is_pro_user(request.user):
         return redirect('dashboard')
 
     context = {
@@ -402,7 +402,7 @@ def pro_user_data_deletion_guard_page(request):
 @login_required
 def pro_user_super_mode_page(request):
     """Dedicated page for Pro User Super Mode assignment and self controls."""
-    if not (getattr(request.user, 'is_authenticated', False) and str(getattr(request.user, 'role', '')).strip().lower() == 'pro_user'):
+    if not PermissionService.is_pro_user(request.user):
         return redirect('dashboard')
 
     self_status = SuperModeService.build_status(request.user)

@@ -932,7 +932,7 @@ def api_operations_feed(request):
     include_backups = source in ('all', 'tasks', 'task', 'backups', 'backup')
     include_logs = source in ('all', 'logs', 'log', 'activity')
 
-    allow_latest_cancel = PermissionService.is_pro_user(request.user)
+    allow_latest_cancel = PermissionService.can_manage_pro_features(request.user)
     latest_active_background_task_id = None
     if allow_latest_cancel:
         latest_active_background_task_id = (

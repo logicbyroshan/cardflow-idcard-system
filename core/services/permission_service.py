@@ -100,9 +100,15 @@ class PermissionService:
     ]
 
     # Permissions that admin staff should always have regardless of their
-    # per-staff-profile toggles. This ensures admin users can use "pro"
-    # functionality without requiring a separate 'pro_user' role.
-    ADMIN_STAFF_AUTO_PERMS: set = set(PRO_FEATURE_PERMISSIONS) | {'perm_reupload_idcard_image'}
+    # per-staff-profile toggles. We provide a minimal, deliberate set so
+    # operational admin users retain essential capabilities without being
+    # full "pro" users. Grant two pro-feature flags: impersonation and
+    # log deletion guard, plus the legacy reupload perm.
+    ADMIN_STAFF_AUTO_PERMS: set = {
+        'perm_reupload_idcard_image',
+        'perm_pro_user_options',
+        'perm_pro_log_deletion_guard',
+    }
 
     # All known perm keys (computed once at class-load time)
     ALL_PERMISSION_KEYS: List[str] = (
@@ -171,14 +177,20 @@ class PermissionService:
     @staticmethod
     def is_pro_user(user) -> bool:
         """Check if user is the pro user."""
-        # Treat any admin (super_admin or admin_staff) as effectively having
-        # "pro" status for UI feature-gating purposes.
         if not getattr(user, 'is_authenticated', False):
             return False
-        if user.role == 'pro_user':
-            return True
-        # Any admin (super_admin or admin_staff) should be treated as pro
-        return PermissionService.is_any_admin(user)
+        return getattr(user, 'role', None) == 'pro_user'
+
+    @staticmethod
+    def can_manage_pro_features(user) -> bool:
+        """Return True if the user may manage or operate pro feature management.
+
+        This is broader than `is_pro_user` and allows the Pro User and
+        Super Admin roles to perform management tasks (assignments, toggles).
+        """
+        if not getattr(user, 'is_authenticated', False):
+            return False
+        return user.role in {'pro_user', 'super_admin'} or getattr(user, 'is_superuser', False)
 
     @staticmethod
     def is_super_admin(user) -> bool:

@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
 from core.models import User
+from core.services.permission_service import PermissionService
 from core.services.super_mode_service import SuperModeService
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 def _require_pro_user(request):
     user = getattr(request, 'user', None)
-    if not (user and user.is_authenticated and str(getattr(user, 'role', '')).strip().lower() == 'pro_user'):
-        return JsonResponse({'success': False, 'message': 'Pro User access required.'}, status=403)
+    if not PermissionService.can_manage_pro_features(user):
+        return JsonResponse({'success': False, 'message': 'Pro User or Super Admin access required.'}, status=403)
     return None
 
 

@@ -17,7 +17,7 @@ class SuperModeService:
     """Single authority for Super Mode assignment and runtime state."""
 
     MANAGEABLE_ROLES = {'super_admin', 'admin_staff'}
-    SUPPORTED_ROLES = {'pro_user'}
+    SUPPORTED_ROLES = {'pro_user', 'super_admin'}
     _TRANSFER_RATE_LIMIT_KEYS = {'bulk_upload', 'reupload', 'export', 'export_all'}
 
     @classmethod
@@ -57,7 +57,7 @@ class SuperModeService:
 
     @classmethod
     def can_manage_assignments(cls, user: User) -> bool:
-        return bool(user and user.is_authenticated and cls._role(user) == 'pro_user')
+        return bool(user and user.is_authenticated and cls._role(user) in {'pro_user', 'super_admin'})
 
     @classmethod
     def _get_assignment(cls, user: User) -> Optional[SuperModeAssignment]:
@@ -86,7 +86,7 @@ class SuperModeService:
         effective_enabled = bool(is_assigned and is_enabled and ram_mb > 0)
 
         can_toggle = False
-        if role == 'pro_user':
+        if role in {'pro_user', 'super_admin'}:
             can_toggle = is_assigned and ram_mb > 0
 
         message = ''
@@ -94,7 +94,7 @@ class SuperModeService:
             message = 'Super Mode is not available for this account type.'
         elif role in {'super_admin', 'admin_staff'}:
             message = 'Super Mode is not available for this account type.'
-        elif role == 'pro_user' and not is_assigned:
+        elif role in {'pro_user', 'super_admin'} and not is_assigned:
             message = 'Configure your own Super Mode RAM allocation from Pro Feature.'
 
         return {
@@ -304,8 +304,8 @@ class SuperModeService:
     def configure_pro_user_self(cls, actor: User, *, enabled: bool, ram_mb: int) -> SuperModeAssignment:
         """Configure Pro User self allocation (up to 750 MB) and runtime state."""
         role = cls._role(actor)
-        if role != 'pro_user':
-            raise PermissionError('Only Pro User can configure self Super Mode settings.')
+        if role not in {'pro_user', 'super_admin'}:
+            raise PermissionError('Only Pro User or Super Admin can configure self Super Mode settings.')
 
         ram_val = cls._validate_ram_for_role(role, ram_mb)
 
