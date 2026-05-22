@@ -176,6 +176,27 @@ class PanelNotificationApiTests(PanelBaseTestCase):
         returned_ids = {item['id'] for item in payload['notifications']}
         self.assertIn(self.notif_expired.id, returned_ids)
 
+    def test_user_notifications_hide_items_older_than_24h(self):
+        old_notification = Notification.objects.create(
+            title='Too old',
+            message='Should never appear to users',
+            target='all',
+            created_by=self.super_admin,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        Notification.objects.filter(id=old_notification.id).update(
+            created_at=timezone.now() - timedelta(hours=25)
+        )
+
+        self.client.login(username='panel-client@test.com', password='pass1234')
+        response = self.client.get('/panel/api/notifications/list/?limit=20&offset=0&include_expired=true')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        returned_ids = {item['id'] for item in payload['notifications']}
+        self.assertNotIn(old_notification.id, returned_ids)
+
     def test_mark_read_updates_unread_count(self):
         self.client.login(username='panel-client@test.com', password='pass1234')
 
