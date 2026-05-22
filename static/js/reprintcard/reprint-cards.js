@@ -544,8 +544,72 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
 }
 
 function getCsrfToken() {
+  if (typeof window.getCSRFToken === 'function') {
+    return window.getCSRFToken();
+  }
+
+  var meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+
+  var hidden = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (hidden && hidden.value) return hidden.value;
+
   var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
+}
+
+function getSessionRefreshUrl() {
+  if (typeof window.getSessionRefreshUrl === 'function') {
+    return window.getSessionRefreshUrl();
+  }
+
+  if (window.location.pathname.indexOf('/panel/') === 0) {
+    return '/panel/auth/api/auth/session-refresh/';
+  }
+  if (window.location.pathname.indexOf('/app/') === 0) {
+    return '/app/auth/api/auth/session-refresh/';
+  }
+  return '/auth/api/auth/session-refresh/';
+}
+
+function applyCsrfToken(token) {
+  if (!token) return;
+
+  var meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta) meta.setAttribute('content', token);
+
+  var hiddenInputs = document.querySelectorAll('input[name="csrfmiddlewaretoken"]');
+  for (var i = 0; i < hiddenInputs.length; i += 1) {
+    hiddenInputs[i].value = token;
+  }
+}
+
+async function refreshSessionToken() {
+  try {
+    var resp = await fetch(getSessionRefreshUrl(), {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin'
+    });
+
+    if (!resp.ok) return '';
+
+    var data = await resp.json().catch(function() { return {}; });
+    if (data && data.csrf_token) {
+      applyCsrfToken(data.csrf_token);
+      return data.csrf_token;
+    }
+  } catch (_e) {}
+
+  return '';
+}
+
+function isSessionExpiredError(status, message) {
+  if (status === 401) return true;
+  if (status !== 403) return false;
+  return /session expired|security token expired/i.test(String(message || ''));
 }
 
 function parseFilenameFromDisposition(disposition, fallbackExt) {
@@ -596,7 +660,8 @@ function decodeBase64ToBlob(base64Str, mimeType) {
   return new Blob([arr], { type: mimeType || 'application/octet-stream' });
 }
 
-async function postJsonForBlob(url, body) {
+async function postJsonForBlob(url, body, retried) {
+  retried = !!retried;
   var resp = await fetch(url, {
     method: 'POST',
     headers: {
@@ -617,6 +682,14 @@ async function postJsonForBlob(url, body) {
         errText = await resp.text();
       } catch (_e2) {}
     }
+
+    if (!retried && isSessionExpiredError(resp.status, errText)) {
+      var freshToken = await refreshSessionToken();
+      if (freshToken) {
+        return postJsonForBlob(url, body, true);
+      }
+    }
+
     throw new Error(errText);
   }
 
@@ -1498,8 +1571,9 @@ function confirmedListStep() {
     });
   }
 
-  function fetchImageZip(body) {
-    return fetch(ENDPOINTS.downloadImages, {
+  async function fetchImageZip(body, retried) {
+      retried = !!retried;
+      var resp = await fetch(ENDPOINTS.downloadImages, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1507,14 +1581,20 @@ function confirmedListStep() {
         'X-Requested-With': 'XMLHttpRequest'
       },
       body: JSON.stringify(body)
-    }).then(function(resp) {
-      return resp.json().then(function(data) {
-        if (!resp.ok || !data.success) {
-          throw new Error((data && data.message) || 'Image download failed');
-        }
-        return data;
       });
-    });
+
+      var data = await resp.json().catch(function() { return {}; });
+      if (!resp.ok || !data.success) {
+        var message = (data && data.message) || 'Image download failed';
+        if (!retried && isSessionExpiredError(resp.status, message)) {
+          var freshToken = await refreshSessionToken();
+          if (freshToken) {
+            return fetchImageZip(body, true);
+          }
+        }
+        throw new Error(message);
+      }
+      return data;
   }
 
   function runConfirmedDownload(exportType) {

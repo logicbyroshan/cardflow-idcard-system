@@ -19,9 +19,21 @@
 
     // ── Configuration ──
     var REFRESH_INTERVAL_MS = 5 * 60 * 1000;  // 5 minutes
-    var REFRESH_URL = '/panel/auth/api/auth/session-refresh/';
     var LOGIN_URL = '/panel/auth/login/';
     var CHANNEL_NAME = 'adarsh_session_sync';
+
+    function getRefreshUrl() {
+        if (typeof window.getSessionRefreshUrl === 'function') {
+            return window.getSessionRefreshUrl();
+        }
+        if (window.location.pathname.indexOf('/panel/') === 0) {
+            return '/panel/auth/api/auth/session-refresh/';
+        }
+        if (window.location.pathname.indexOf('/app/') === 0) {
+            return '/app/auth/api/auth/session-refresh/';
+        }
+        return '/auth/api/auth/session-refresh/';
+    }
 
     // Skip on login page
     if (window.location.pathname.indexOf('/auth/login') !== -1) return;
@@ -131,7 +143,7 @@
         _isRefreshing = true;
 
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', REFRESH_URL, true);
+        xhr.open('GET', getRefreshUrl(), true);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.timeout = 10000;
 

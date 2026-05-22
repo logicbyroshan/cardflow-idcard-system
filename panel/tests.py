@@ -176,6 +176,27 @@ class PanelNotificationApiTests(PanelBaseTestCase):
         returned_ids = {item['id'] for item in payload['notifications']}
         self.assertIn(self.notif_expired.id, returned_ids)
 
+    def test_user_notifications_hide_items_older_than_24h(self):
+        old_notification = Notification.objects.create(
+            title='Too old',
+            message='Should never appear to users',
+            target='all',
+            created_by=self.super_admin,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        Notification.objects.filter(id=old_notification.id).update(
+            created_at=timezone.now() - timedelta(hours=25)
+        )
+
+        self.client.login(username='panel-client@test.com', password='pass1234')
+        response = self.client.get('/panel/api/notifications/list/?limit=20&offset=0&include_expired=true')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        returned_ids = {item['id'] for item in payload['notifications']}
+        self.assertNotIn(old_notification.id, returned_ids)
+
     def test_mark_read_updates_unread_count(self):
         self.client.login(username='panel-client@test.com', password='pass1234')
 
@@ -1250,7 +1271,7 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
         )
 
     def test_data_deletion_guard_page_requires_pro_user(self):
-        self.client.login(username='panel-super@test.com', password='pass1234')
+        self.client.login(username='panel-client@test.com', password='pass1234')
         denied = self.client.get('/panel/pro-user/data-deletion-guard/')
         self.assertIn(denied.status_code, (302, 403))
 
@@ -1261,6 +1282,35 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
         self.assertContains(allowed, 'Delete Pending Images')
         self.assertContains(allowed, 'Delete Completed Images')
         self.assertContains(allowed, 'Delete By Column')
+
+    def test_data_deletion_guard_page_denies_admin_staff(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        denied = self.client.get('/panel/pro-user/data-deletion-guard/')
+        self.assertIn(denied.status_code, (302, 403))
+
+    def test_data_deletion_guard_page_allows_super_admin(self):
+        super_admin = User.objects.create_user(
+            username='panel-super-admin@test.com',
+            email='panel-super-admin@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+        self.client.login(username='panel-super-admin@test.com', password='pass1234')
+        allowed = self.client.get('/panel/pro-user/data-deletion-guard/')
+        self.assertEqual(allowed.status_code, 200)
+        self.assertContains(allowed, 'Delete Filtered Data')
+
+    def test_log_deletion_guard_page_denies_admin_staff(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        denied = self.client.get('/panel/pro-user/log-deletion-guard/')
+        self.assertIn(denied.status_code, (302, 403))
+
+    def test_log_deletion_guard_page_allows_super_admin(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        allowed = self.client.get('/panel/pro-user/log-deletion-guard/')
+        self.assertEqual(allowed.status_code, 200)
+        self.assertContains(allowed, 'Two-Step Activity Log Deletion')
 
     def test_data_guard_clients_api_is_pro_only(self):
         self.client.login(username='panel-super@test.com', password='pass1234')

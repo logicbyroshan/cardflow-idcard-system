@@ -100,9 +100,11 @@ class PermissionService:
     ]
 
     # Permissions that admin staff should always have regardless of their
-    # per-staff-profile toggles. This ensures admin users can use "pro"
-    # functionality without requiring a separate 'pro_user' role.
-    ADMIN_STAFF_AUTO_PERMS: set = set(PRO_FEATURE_PERMISSIONS) | {'perm_reupload_idcard_image'}
+    # per-staff-profile toggles. Keep this limited to legacy operational
+    # access only; pro features are reserved for pro_user and super_admin.
+    ADMIN_STAFF_AUTO_PERMS: set = {
+        'perm_reupload_idcard_image',
+    }
 
     # All known perm keys (computed once at class-load time)
     ALL_PERMISSION_KEYS: List[str] = (
@@ -171,14 +173,20 @@ class PermissionService:
     @staticmethod
     def is_pro_user(user) -> bool:
         """Check if user is the pro user."""
-        # Treat any admin (super_admin or admin_staff) as effectively having
-        # "pro" status for UI feature-gating purposes.
         if not getattr(user, 'is_authenticated', False):
             return False
-        if user.role == 'pro_user':
-            return True
-        # Any admin (super_admin or admin_staff) should be treated as pro
-        return PermissionService.is_any_admin(user)
+        return getattr(user, 'role', None) == 'pro_user'
+
+    @staticmethod
+    def can_manage_pro_features(user) -> bool:
+        """Return True if the user may manage or operate pro feature management.
+
+        This is broader than `is_pro_user` and allows the Pro User and
+        Super Admin roles to perform management tasks (assignments, toggles).
+        """
+        if not getattr(user, 'is_authenticated', False):
+            return False
+        return user.role in {'pro_user', 'super_admin'} or getattr(user, 'is_superuser', False)
 
     @staticmethod
     def is_super_admin(user) -> bool:
@@ -320,6 +328,8 @@ class PermissionService:
                 logger.warning("PermissionService.has: admin_staff user %s has no staff_profile", user.pk)
                 return False
             if not user.is_active:
+                return False
+            if perm_key in cls.PRO_FEATURE_PERMISSIONS:
                 return False
             # Perms intentionally removed from Staff model (super_admin-only) — silent False
             if perm_key in cls.STAFF_BLOCKED_PERMS:
@@ -553,7 +563,9 @@ class PermissionService:
             staff = getattr(user, 'staff_profile', None)
             # Permissions auto-granted to admin_staff regardless of profile value
             for perm in cls.ALL_PERMISSION_KEYS:
-                if perm in cls.ADMIN_STAFF_AUTO_PERMS:
+                if perm in cls.PRO_FEATURE_PERMISSIONS:
+                    context[perm] = False
+                elif perm in cls.ADMIN_STAFF_AUTO_PERMS:
                     context[perm] = True
                 elif perm in cls.STAFF_BLOCKED_PERMS:
                     # Intentionally absent from Staff model — super_admin-only
@@ -657,17 +669,17 @@ class PermissionService:
     @classmethod
     def can_use_pro_user_options(cls, user) -> bool:
         """Check if user can use User Options (impersonation)."""
-        return cls.has(user, 'perm_pro_user_options')
+        return cls.has(user, 'perm_pro_user_options') or cls.is_super_admin(user)
 
     @classmethod
     def can_use_pro_log_deletion_guard(cls, user) -> bool:
         """Check if user can use Log Deletion Guard."""
-        return cls.has(user, 'perm_pro_log_deletion_guard')
+        return cls.has(user, 'perm_pro_log_deletion_guard') or cls.is_super_admin(user)
 
     @classmethod
     def can_use_pro_data_deletion_guard(cls, user) -> bool:
         """Check if user can use Data Deletion Guard."""
-        return cls.has(user, 'perm_pro_data_deletion_guard')
+        return cls.has(user, 'perm_pro_data_deletion_guard') or cls.is_super_admin(user)
 
     # ==================== Debug / Self-Check ====================
 

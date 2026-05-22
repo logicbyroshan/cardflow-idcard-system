@@ -53,8 +53,7 @@ def _guard_confirm_phrase() -> str:
 
 
 def _is_pro_user(user) -> bool:
-    # This workflow is strictly reserved for literal Pro User accounts.
-    return bool(user and user.is_authenticated and str(getattr(user, 'role', '')).strip().lower() == 'pro_user')
+    return PermissionService.is_pro_user(user)
 
 
 def _require_pro_user(request):

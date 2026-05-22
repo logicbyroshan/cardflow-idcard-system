@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     """Service for creating, querying, and managing notifications."""
 
+    MAX_VISIBLE_HOURS = 24
+
     # ── creation ────────────────────────────────────────────
 
     @classmethod
@@ -66,13 +68,17 @@ class NotificationService:
             return ServiceResult(success=False, message='Select at least one user.')
 
         expires_at = None
-        if visibility_hours is not None:
-            try:
-                visibility_hours = int(visibility_hours)
-            except (TypeError, ValueError):
-                return ServiceResult(success=False, message='Visibility duration must be a number of hours.')
-            visibility_hours = max(24, min(visibility_hours, 24 * 365))
-            expires_at = timezone.now() + timedelta(hours=visibility_hours)
+        if visibility_hours is None:
+            visibility_hours = cls.MAX_VISIBLE_HOURS
+        try:
+            visibility_hours = int(visibility_hours)
+        except (TypeError, ValueError):
+            return ServiceResult(success=False, message='Visibility duration must be a number of hours.')
+
+        # Hard cap user-facing visibility at 24 hours. This keeps new and
+        # existing notifications aligned with the global retention policy.
+        visibility_hours = max(1, min(visibility_hours, cls.MAX_VISIBLE_HOURS))
+        expires_at = timezone.now() + timedelta(hours=visibility_hours)
 
         try:
             recipient_user_ids = []
@@ -146,7 +152,9 @@ class NotificationService:
         Returns list of dicts with 'is_read' flag and 'time_ago' string.
         """
         now = timezone.now()
+        visible_cutoff = now - timedelta(hours=cls.MAX_VISIBLE_HOURS)
         qs = Notification.objects.filter(is_active=True)
+        qs = qs.filter(created_at__gte=visible_cutoff)
         if not include_expired:
             qs = qs.filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
         qs = qs.select_related('created_by')
@@ -197,8 +205,10 @@ class NotificationService:
             return cached
 
         now = timezone.now()
+        visible_cutoff = now - timedelta(hours=cls.MAX_VISIBLE_HOURS)
         qs = Notification.objects.filter(is_active=True).filter(
-            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+            Q(created_at__gte=visible_cutoff)
+            & (Q(expires_at__isnull=True) | Q(expires_at__gt=now))
         )
 
         role_filter = Q(target='all') | Q(target=user.role)
@@ -250,7 +260,9 @@ class NotificationService:
     @classmethod
     def mark_all_as_read(cls, user):
         """Mark all user-visible notifications as read, including historical expired items."""
-        qs = Notification.objects.filter(is_active=True)
+        now = timezone.now()
+        visible_cutoff = now - timedelta(hours=cls.MAX_VISIBLE_HOURS)
+        qs = Notification.objects.filter(is_active=True).filter(created_at__gte=visible_cutoff)
         role_filter = Q(target='all') | Q(target=user.role)
         selected_filter = Q(target='selected', target_users=user)
         qs = qs.filter(role_filter | selected_filter).distinct()

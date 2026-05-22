@@ -92,6 +92,16 @@ class BackgroundWorker:
             self.super_heavy_task_concurrency,
         )
 
+
+class _BackgroundWorkerProxy:
+    """Lazy proxy that preserves the historic `background_worker` import."""
+
+    def __getattr__(self, name):
+        return getattr(get_background_worker(), name)
+
+    def __bool__(self):
+        return True
+
     def _resolve_task_lane(self, task_id: int) -> str:
         """Return task lane (normal/super) based on task metadata or live assignment state."""
         from core.models import BackgroundTask
@@ -320,7 +330,18 @@ class BackgroundWorker:
 
 
 # Singleton instance
-background_worker = BackgroundWorker()
+_background_worker = None
+
+
+def get_background_worker():
+    """Return the singleton BackgroundWorker instance (lazy-initialized)."""
+    global _background_worker
+    if _background_worker is None:
+        _background_worker = BackgroundWorker()
+    return _background_worker
+
+
+background_worker = _BackgroundWorkerProxy()
 
 
 def ensure_temp_directory():

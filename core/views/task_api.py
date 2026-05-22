@@ -413,7 +413,7 @@ def api_task_cancel(request, task_id):
         latest_only = str(latest_only_raw).strip().lower() in {'1', 'true', 'yes', 'on'}
 
         if latest_only:
-            if not PermissionService.is_pro_user(request.user):
+            if not PermissionService.can_manage_pro_features(request.user):
                 return JsonResponse({
                     'success': False,
                     'message': 'Latest-only cancel is available for pro user only.'

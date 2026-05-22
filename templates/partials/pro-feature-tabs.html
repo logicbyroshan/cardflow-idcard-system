@@ -1,8 +1,10 @@
 <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
+  {% if is_pro_user or is_super_admin %}
   <a href="{% url 'login_as_user' %}" class="pro-feature-tab{% if pro_tab == 'user_options' or pro_tab == 'login_as_user' or pro_tab == 'pro_user_activity_logs' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'user_options' or pro_tab == 'login_as_user' or pro_tab == 'pro_user_activity_logs' %}true{% else %}false{% endif %}">
     <i class="fa-solid fa-user-gear"></i> Impersonate User
   </a>
-  {% if user.role == 'pro_user' %}
+  {% endif %}
+  {% if is_pro_user or is_super_admin %}
   <a href="{% url 'pro_user_super_mode' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_super_mode' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_super_mode' %}true{% else %}false{% endif %}">
     <i class="fa-solid fa-gauge-high"></i> Super Mode
   </a>
@@ -10,12 +12,9 @@
     <i class="fa-solid fa-shield"></i> Log Deletion Guard
   </a>
   {% endif %}
+  {% if is_pro_user or is_super_admin %}
   <a href="{% url 'pro_user_data_deletion_guard' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_data_deletion_guard' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_data_deletion_guard' %}true{% else %}false{% endif %}">
     <i class="fa-solid fa-database"></i> Data Deletion Guard
-  </a>
-  {% if user.role == 'pro_user' %}
-  <a href="{% url 'manage_superadmin_pro_features' %}" class="pro-feature-tab{% if pro_tab == 'manage_superadmin' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'manage_superadmin' %}true{% else %}false{% endif %}">
-    <i class="fa-solid fa-user-shield"></i> Manage Superadmin
   </a>
   {% endif %}
 </div>
