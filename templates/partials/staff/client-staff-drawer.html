@@ -4,13 +4,13 @@ Contains: Side drawer for adding/editing assistent with form fields and permissi
 Mirrors operator-drawer.html but with Group Assignment instead of Client Assignment
 {% endcomment %}
 
-<!-- Staff Drawer Start -->
+<!-- Assistent Drawer Start -->
 <div class="drawer-overlay" id="staff-drawer-overlay"></div>
 <aside class="side-drawer" id="staff-drawer">
     <div class="drawer-header">
         <h2 class="drawer-title" id="drawer-title">
             <i class="fa-solid fa-user-plus" id="drawer-icon"></i>
-            <span id="drawer-title-text">Add New Staff</span>
+            <span id="drawer-title-text">Add New Assistent</span>
         </h2>
         <button type="button" class="drawer-close" id="drawer-close-btn" title="Close">
             <i class="fa-solid fa-xmark"></i>
@@ -24,7 +24,7 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
             <!-- Profile Avatar Placeholder -->
             <div class="profile-upload-section flex-row items-center gap-4">
                 {% include 'partials/components/user-avatar.html' with role='client_staff' size='large' %}
-                <span class="text-gray-500 text-sm">Staff avatar</span>
+                <span class="text-gray-500 text-sm">Assistent avatar</span>
             </div>
 
             <!-- Group Assignment Section (Assistent Only) -->
@@ -52,7 +52,7 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
                             </div>
                         </div>
                     </div>
-                    <small class="field-hint">Select one group for this staff. Remove it from the chip if needed.</small>
+                    <small class="field-hint">Select one group for this assistent. Remove it from the chip if needed.</small>
                 </div>
             </div>
 
@@ -105,15 +105,15 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
                 </div>
             </div>
             
-            <!-- Staff Information Section -->
+            <!-- Assistent Information Section -->
             <div class="form-section" id="staff-info-section">
                 <h3 class="section-title">
-                    <i class="fa-solid fa-circle-info"></i> Staff Information
+                    <i class="fa-solid fa-circle-info"></i> Assistent Information
                 </h3>
                 
                 <div class="form-group">
-                    <label class="form-label" for="staff-name">Staff Name <span class="required">*</span></label>
-                    <input type="text" id="staff-name" name="name" class="form-input" placeholder="Enter staff name" required>
+                    <label class="form-label" for="staff-name">Assistent Name <span class="required">*</span></label>
+                    <input type="text" id="staff-name" name="name" class="form-input" placeholder="Enter assistent name" required>
                 </div>
                 
                 <div class="form-row">
@@ -298,10 +298,10 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
                 <i class="fa-solid fa-key"></i> Set Temp Password
             </button>
             {% endif %}
-            <button type="submit" class="btn btn-md btn-primary" id="drawer-submit-btn">
-                <i class="fa-solid fa-floppy-disk"></i> <span id="submit-btn-text">Add Staff</span>
+                <button type="submit" class="btn btn-md btn-primary" id="drawer-submit-btn">
+                    <i class="fa-solid fa-floppy-disk"></i> <span id="submit-btn-text">Add Assistent</span>
             </button>
         </div>
     </form>
 </aside>
-<!-- Staff Drawer End -->
+<!-- Assistent Drawer End -->

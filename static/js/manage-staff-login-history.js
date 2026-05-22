@@ -15,12 +15,26 @@
     return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
   }
 
+  function isClientStaffPage() {
+    return window.location.pathname.indexOf('/manage-client-staff/') !== -1 || !!document.querySelector('.client-staff-history-trigger');
+  }
+
   function staffHistoryApiUrl(staffId) {
+    if (isClientStaffPage()) {
+      return panelBasePath() + '/api/client-staff/' + encodeURIComponent(String(staffId)) + '/login-history/?limit=80';
+    }
     return panelBasePath() + '/api/staff/' + encodeURIComponent(String(staffId)) + '/login-history/?limit=80';
   }
 
   function staffAssignmentHistoryApiUrl(staffId) {
+    if (isClientStaffPage()) {
+      return panelBasePath() + '/api/client-staff/' + encodeURIComponent(String(staffId)) + '/assignment-timeline/?limit=80';
+    }
     return panelBasePath() + '/api/staff/' + encodeURIComponent(String(staffId)) + '/assignment-timeline/?limit=80';
+  }
+
+  function pageRoleLabel() {
+    return isClientStaffPage() ? 'Assistent' : 'Operator';
   }
 
   function ensureStaffHistoryDrawer() {
@@ -37,7 +51,7 @@
     drawer.innerHTML = '' +
       '<div class="drawer-header card-history-header">' +
         '<div>' +
-          '<div class="card-history-title">Operator Login History</div>' +
+          '<div class="card-history-title">' + pageRoleLabel() + ' Login History</div>' +
           '<div class="card-history-subtitle" id="staffHistorySubtitle">Login, logout, and devices</div>' +
         '</div>' +
         '<button type="button" class="drawer-close card-history-close" id="staffHistoryClose" aria-label="Close history">' +
@@ -45,7 +59,7 @@
         '</button>' +
       '</div>' +
       '<div class="drawer-body card-history-body" id="staffHistoryBody">' +
-        '<div class="card-history-empty">Select an operator to view login history.</div>' +
+        '<div class="card-history-empty">Select an ' + pageRoleLabel().toLowerCase() + ' to view login history.</div>' +
       '</div>';
 
     document.body.appendChild(overlay);
@@ -85,7 +99,7 @@
     var subtitle = document.getElementById('staffHistorySubtitle');
     var body = document.getElementById('staffHistoryBody');
 
-    if (subtitle) subtitle.textContent = staffName ? 'Operator: ' + staffName : 'Loading';
+    if (subtitle) subtitle.textContent = staffName ? pageRoleLabel() + ': ' + staffName : 'Loading';
     if (body) {
       body.innerHTML = '<div class="card-history-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading login history...</div>';
     }
@@ -153,12 +167,12 @@
     var activeDesktop = Number(surfaceCounts.desktop || 0);
     var activeMobile = Number(surfaceCounts.mobile || 0);
     if (subtitle) {
-      subtitle.textContent = (staffName || 'Operator') + ' - Active devices: ' + activeDevices + ' (Desktop: ' + activeDesktop + ', Mobile: ' + activeMobile + ')';
+      subtitle.textContent = (staffName || pageRoleLabel()) + ' - Active devices: ' + activeDevices + ' (Desktop: ' + activeDesktop + ', Mobile: ' + activeMobile + ')';
     }
 
     var events = Array.isArray(payload.events) ? payload.events : [];
     if (!events.length) {
-      body.innerHTML = '<div class="card-history-empty">No login history available for this operator yet.</div>';
+      body.innerHTML = '<div class="card-history-empty">No login history available for this ' + pageRoleLabel().toLowerCase() + ' yet.</div>';
       return;
     }
 
@@ -229,13 +243,13 @@
         });
       })
       .then(function(data) {
-        var resolvedName = staffName || (data.staff && data.staff.name) || 'Operator';
+        var resolvedName = staffName || (data.staff && data.staff.name) || pageRoleLabel();
         renderStaffHistory(resolvedName, data);
       })
       .catch(function(err) {
         renderStaffHistoryError(err && err.message ? err.message : 'Failed to load login history.');
         if (typeof window.showToast === 'function') {
-          window.showToast('Unable to load operator login history', 'error');
+          window.showToast('Unable to load ' + pageRoleLabel().toLowerCase() + ' login history', 'error');
         }
       });
   }
@@ -254,7 +268,7 @@
     drawer.innerHTML = '' +
       '<div class="drawer-header card-history-header">' +
         '<div>' +
-          '<div class="card-history-title">Operator Assignment Timeline</div>' +
+          '<div class="card-history-title">' + pageRoleLabel() + ' Assignment Timeline</div>' +
           '<div class="card-history-subtitle" id="staffAssignmentHistorySubtitle">Assignment changes and ownership updates</div>' +
         '</div>' +
         '<button type="button" class="drawer-close card-history-close" id="staffAssignmentHistoryClose" aria-label="Close assignment timeline">' +
@@ -262,7 +276,7 @@
         '</button>' +
       '</div>' +
       '<div class="drawer-body card-history-body" id="staffAssignmentHistoryBody">' +
-        '<div class="card-history-empty">Select an operator to view assignment timeline.</div>' +
+        '<div class="card-history-empty">Select an ' + pageRoleLabel().toLowerCase() + ' to view assignment timeline.</div>' +
       '</div>';
 
     document.body.appendChild(overlay);
@@ -302,7 +316,7 @@
     var subtitle = document.getElementById('staffAssignmentHistorySubtitle');
     var body = document.getElementById('staffAssignmentHistoryBody');
 
-    if (subtitle) subtitle.textContent = staffName ? 'Operator: ' + staffName : 'Loading';
+    if (subtitle) subtitle.textContent = staffName ? pageRoleLabel() + ': ' + staffName : 'Loading';
     if (body) {
       body.innerHTML = '<div class="card-history-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading assignment timeline...</div>';
     }
@@ -321,7 +335,7 @@
     if (!body) return;
 
     if (subtitle) {
-      subtitle.textContent = (staffName || 'Operator') + ' - Assignment timeline';
+      subtitle.textContent = (staffName || pageRoleLabel()) + ' - Assignment timeline';
     }
 
     var events = Array.isArray(payload.events) ? payload.events : [];
@@ -374,13 +388,13 @@
         });
       })
       .then(function(data) {
-        var resolvedName = staffName || (data.staff && data.staff.name) || 'Operator';
+        var resolvedName = staffName || (data.staff && data.staff.name) || pageRoleLabel();
         renderStaffAssignmentHistory(resolvedName, data);
       })
       .catch(function(err) {
         renderStaffAssignmentHistoryError(err && err.message ? err.message : 'Failed to load assignment timeline.');
         if (typeof window.showToast === 'function') {
-          window.showToast('Unable to load operator assignment timeline', 'error');
+          window.showToast('Unable to load ' + pageRoleLabel().toLowerCase() + ' assignment timeline', 'error');
         }
       });
   }
@@ -390,7 +404,7 @@
     if (!tableContainer || tableContainer.dataset.operatorHistoryBound === '1') return;
 
     tableContainer.addEventListener('click', function(e) {
-      var btn = e.target.closest('.operator-history-trigger');
+      var btn = e.target.closest('.operator-history-trigger, .client-staff-history-trigger');
       if (!btn) return;
 
       e.preventDefault();
@@ -405,7 +419,7 @@
     });
 
     tableContainer.addEventListener('click', function(e) {
-      var btn = e.target.closest('.operator-assignment-history-trigger');
+      var btn = e.target.closest('.operator-assignment-history-trigger, .client-staff-assignment-history-trigger');
       if (!btn) return;
 
       e.preventDefault();
