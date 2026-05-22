@@ -320,7 +320,15 @@ class BackgroundWorker:
 
 
 # Singleton instance
-background_worker = BackgroundWorker()
+_background_worker = None
+
+
+def get_background_worker():
+    """Return the singleton BackgroundWorker instance (lazy-initialized)."""
+    global _background_worker
+    if _background_worker is None:
+        _background_worker = BackgroundWorker()
+    return _background_worker
 
 
 def ensure_temp_directory():
