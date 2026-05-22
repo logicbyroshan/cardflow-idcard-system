@@ -1570,7 +1570,6 @@ let _templateSearchText = '';
 let _templatePage = 1;
 let _templatePerPage = 25;
 let _templatePagerBound = false;
-let _templateEditorBound = false;
 
 function _setTemplateRowsDropdownValue(value) {
   const rowsText = document.getElementById('templateRowsSelectedText');

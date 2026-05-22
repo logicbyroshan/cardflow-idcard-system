@@ -198,7 +198,7 @@
     window.API_BASE_URL = "{{ API_BASE_URL|default:'' }}";
   </script>
   <script defer src="{% static 'js/core/unified-select-dropdown.js' %}"></script>
-  <script src="{% static 'js/manage-panel.js' %}"></script>
+  <script src="{% static 'js/manage-panel.js' %}?v={{ APP_VERSION|default:'v4.18.1' }}"></script>
   <script>
     (function () {
       try {

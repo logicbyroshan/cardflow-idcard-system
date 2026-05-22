@@ -544,6 +544,16 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
 }
 
 function getCsrfToken() {
+  if (typeof window.getCSRFToken === 'function') {
+    return window.getCSRFToken();
+  }
+
+  var meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+
+  var hidden = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (hidden && hidden.value) return hidden.value;
+
   var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
 }
