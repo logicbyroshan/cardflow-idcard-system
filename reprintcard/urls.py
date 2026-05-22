@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/step-counts/', views.api_reprint_step_counts, name='api_reprint_step_counts'),
     path('api/table/<int:table_id>/reprint-list/', views.api_reprint_list, name='api_reprint_list'),
     path('api/table/<int:table_id>/confirm/', views.api_reprint_confirm, name='api_reprint_confirm'),
+    path('api/table/<int:table_id>/retrieve/', views.api_reprint_retrieve, name='api_reprint_retrieve'),
     path('api/table/<int:table_id>/reject/', views.api_reprint_reject, name='api_reprint_reject'),
     path('api/table/<int:table_id>/confirmed-list/', views.api_confirmed_list, name='api_confirmed_list'),
     path('api/table/<int:table_id>/mark-downloaded/', views.api_reprint_mark_downloaded, name='api_reprint_mark_downloaded'),

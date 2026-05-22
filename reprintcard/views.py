@@ -403,13 +403,8 @@ def _get_reprint_step_counts(table):
     request_count = int(status_counts.get('request_count') or 0)
     confirmed_count = int(status_counts.get('confirmed_count') or 0)
 
-    # Exclude cards that already have any reprint request from the "download" count.
-    busy_card_count = (
-        ReprintRequest.objects.filter(table=table).values('card_id').distinct().count()
-    )
-
     return {
-        'download_list': max(0, int(source_cards_count) - int(busy_card_count)),
+        'download_list': int(source_cards_count),
         'reprint_list': source_cards_count,
         'request_list': request_count,
         'confirmed': confirmed_count,
@@ -691,6 +686,43 @@ def api_reprint_confirm(request, table_id):
             'status': 'ok',
             'message': result.message,
             'confirmed_count': result.data.get('updated_count', 0),
+        })
+    return JsonResponse({'status': 'error', 'message': result.message}, status=400)
+
+
+@require_http_methods(["POST"])
+@login_required
+def api_reprint_retrieve(request, table_id):
+    """Move confirmed reprint requests back to requested status.
+    Body: { "rr_ids": [1, 2, 3] }
+    """
+    perm_err = _require_reprint_scope(request.user, 'confirmed')
+    if perm_err:
+        return perm_err
+
+    admin_err = _require_admin_role(request.user)
+    if admin_err:
+        return admin_err
+    table, err = _check_reprint_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
+
+    rr_ids = body.get('rr_ids', [])
+    if not rr_ids:
+        return JsonResponse({'status': 'error', 'message': 'No reprint IDs provided'}, status=400)
+
+    result = ReprintWorkflowService.bulk_transition(table, rr_ids, 'requested', user=request.user)
+
+    if result.success:
+        return JsonResponse({
+            'status': 'ok',
+            'message': result.message,
+            'requested_count': result.data.get('updated_count', 0),
+            'moved_ids': result.data.get('updated_ids', rr_ids),
         })
     return JsonResponse({'status': 'error', 'message': result.message}, status=400)
 

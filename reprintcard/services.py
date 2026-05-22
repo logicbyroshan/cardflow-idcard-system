@@ -28,7 +28,7 @@ class ReprintWorkflowService:
 
     ALLOWED_TRANSITIONS: Dict[str, List[str]] = {
         'requested':  ['confirmed'],
-        'confirmed':  ['downloaded'],
+        'confirmed':  ['requested', 'downloaded'],
         'downloaded': [],
     }
 
@@ -164,7 +164,7 @@ class ReprintWorkflowService:
         return ServiceResult(
             success=True,
             message=f'{updated} reprint(s) updated to {target_status}.',
-            data={'updated_count': updated}
+            data={'updated_count': updated, 'updated_ids': eligible_ids}
         )
 
     # ── Create / reject ─────────────────────────────────────────────

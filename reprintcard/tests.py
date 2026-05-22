@@ -145,6 +145,31 @@ class ReprintWorkflowServiceTests(TestCase):
 		self.assertEqual(self.rr_requested.status, 'confirmed')
 		self.assertEqual(rr_confirmed.status, 'confirmed')
 
+	def test_bulk_transition_allows_confirmed_back_to_requested(self):
+		from reprintcard.services import ReprintWorkflowService
+		from reprintcard.models import ReprintRequest
+
+		rr_confirmed = ReprintRequest.objects.create(
+			card=self.card_download_2,
+			table=self.table,
+			status='confirmed',
+			requested_by=self.owner,
+		)
+
+		result = ReprintWorkflowService.bulk_transition(
+			table=self.table,
+			rr_ids=[self.rr_requested.id, rr_confirmed.id],
+			target_status='requested',
+			user=self.owner,
+		)
+
+		self.assertTrue(result.success)
+		self.assertEqual(result.data['updated_count'], 1)
+		self.rr_requested.refresh_from_db()
+		rr_confirmed.refresh_from_db()
+		self.assertEqual(self.rr_requested.status, 'requested')
+		self.assertEqual(rr_confirmed.status, 'requested')
+
 	def test_bulk_transition_updates_updated_at(self):
 		from reprintcard.services import ReprintWorkflowService
 		from reprintcard.models import ReprintRequest
@@ -357,8 +382,26 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		payload = response.json()
 		self.assertEqual(payload['status'], 'ok')
-		self.assertEqual(payload['download_list'], 2)
+		self.assertEqual(payload['download_list'], 3)
 		self.assertEqual(payload['request_list'], 1)
+
+	def test_step_counts_do_not_subtract_request_or_confirmed_cards_from_download_list(self):
+		from reprintcard.models import ReprintRequest
+
+		ReprintRequest.objects.create(
+			card=self.card_b,
+			table=self.table,
+			status='confirmed',
+			requested_by=self.super_admin,
+		)
+
+		self.client.force_login(self.assigned_staff_user)
+		response = self.client.get(self._url('api_reprint_step_counts'))
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['download_list'], 3)
+		self.assertEqual(payload['request_list'], 1)
+		self.assertEqual(payload['confirmed'], 1)
 
 	def test_reprint_request_create_invalid_json(self):
 		self.client.force_login(self.super_admin)
@@ -805,6 +848,29 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertIn(self.rr_requested.id, rr_ids)
 
 		self.assertTrue(ReprintRequest.objects.filter(id=self.rr_requested.id, status='downloaded').exists())
+
+	def test_confirmed_list_retrieve_moves_back_to_request(self):
+		from reprintcard.models import ReprintRequest
+
+		self.client.force_login(self.super_admin)
+		confirm_response = self.client.post(
+			self._url('api_reprint_confirm'),
+			data=json.dumps({'rr_ids': [self.rr_requested.id]}),
+			content_type='application/json',
+		)
+		self.assertEqual(confirm_response.status_code, 200)
+
+		retrieve_response = self.client.post(
+			self._url('api_reprint_retrieve'),
+			data=json.dumps({'rr_ids': [self.rr_requested.id]}),
+			content_type='application/json',
+		)
+		self.assertEqual(retrieve_response.status_code, 200)
+		self.assertEqual(retrieve_response.json().get('requested_count'), 1)
+
+		self.rr_requested.refresh_from_db()
+		self.assertEqual(self.rr_requested.status, 'requested')
+		self.assertTrue(ReprintRequest.objects.filter(id=self.rr_requested.id, status='requested').exists())
 
 	def test_reject_keeps_card_in_download(self):
 		self.client.force_login(self.super_admin)

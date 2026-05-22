@@ -32,6 +32,7 @@
       requestList: '{% url "reprintcard:api_request_list" table.id %}',
       confirmedList: '{% url "reprintcard:api_confirmed_list" table.id %}',
       sendToPrint: '{% url "reprintcard:api_reprint_send_to_print" table.id %}',
+      retrieve: '{% url "reprintcard:api_reprint_retrieve" table.id %}',
       reject: '{% url "reprintcard:api_reprint_reject" table.id %}',
       downloadPdf: '{% url "api_idcard_download_pdf" table.id %}',
       downloadDocx: '{% url "api_idcard_download_docx" table.id %}',

@@ -1491,8 +1491,51 @@ function confirmedListStep() {
     });
   }
 
+  function removeRowsByIds(rrIds) {
+    rrIds.forEach(function(id) {
+      var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
+      if (row) row.remove();
+    });
+
+    if (!tableBody.querySelector('tr:not(.no-data-row)')) {
+      updateEmptyTable(tableBody, 'fa-solid fa-clipboard-check', 'No items in Confirmed List', totalCountEl, showingRange);
+      var pBar = document.getElementById('confirmedPaginationBar');
+      if (pBar) pBar.style.display = 'none';
+    } else if (paginator) {
+      paginator.paginate();
+    }
+
+    updateSelectionUI();
+  }
+
+  function performRetrieve(rrIds) {
+    ApiClient.post(ENDPOINTS.retrieve, { rr_ids: rrIds })
+      .then(function(data) {
+        if (data.status !== 'ok') {
+          showToast(data.message || 'Could not retrieve selected requests', 'error');
+          return;
+        }
+        var movedIds = Array.isArray(data.moved_ids) && data.moved_ids.length ? data.moved_ids : rrIds;
+        removeRowsByIds(movedIds);
+        refreshStepCounts();
+        showToast(data.message || 'Retrieved back to Request List', 'success');
+      })
+      .catch(function(err) {
+        showToast((err && err.message) ? err.message : 'Request failed. Please try again.', 'error');
+        console.error('[ConfirmedList] retrieve failed:', err);
+      });
+  }
+
   tableBody.addEventListener('change', function(e) {
     if (e.target.classList.contains('confirmedRowCheckbox')) updateSelectionUI();
+  });
+
+  tableBody.addEventListener('click', function(e) {
+    var retrieveSingle = e.target.closest('.btn-retrieve-single');
+    if (retrieveSingle) {
+      var rrId = parseInt(retrieveSingle.dataset.rrId, 10);
+      if (rrId) performRetrieve([rrId]);
+    }
   });
 
   if (viewBtn) {
@@ -1710,6 +1753,7 @@ function confirmedListStep() {
       html += renderOrderedFields(item.ordered_fields, confirmedFieldSchema);
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">' + escapeHtml(item.confirmed_at || '-') + '</td>';
+      html += '<td class="w-[74px] px-[1px] py-1 text-center align-middle"><button class="row-action-btn retrieve-row-btn btn-retrieve-single" data-rr-id="' + item.rr_id + '" data-card-id="' + item.card_id + '" title="Retrieve back to Request list">Retrieve</button></td>';
       html += '</tr>';
     });
 

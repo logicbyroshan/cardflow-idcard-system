@@ -119,6 +119,7 @@
                     {% endfor %}
                     <th class="w-[65px] min-w-[65px] px-[1px] py-1 text-center align-middle">Requested By</th>
                     <th class="w-[90px] min-w-[90px] px-[1px] py-1 text-center align-middle">Confirmed At</th>
+                    <th class="w-[74px] min-w-[74px] px-[1px] py-1 text-center align-middle">Action</th>
                 </tr>
             </thead>
             <tbody id="confirmedTableBody" class="divide-y divide-gray-200">
@@ -167,10 +168,13 @@
                     {% endfor %}
                     <td class="w-[65px] px-[1px] py-1 align-middle user-cell whitespace-normal break-words text-center">{{ item.requested_by_name }}</td>
                     <td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">{{ item.confirmed_at|date:"d-M-Y H:i" }}</td>
+                    <td class="w-[74px] px-[1px] py-1 text-center align-middle">
+                        <button class="row-action-btn retrieve-row-btn btn-retrieve-single" data-rr-id="{{ item.rr_id }}" data-card-id="{{ item.card_id }}" title="Retrieve back to Request list" aria-label="Retrieve back to Request list">Retrieve</button>
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="50">
+                    <td colspan="51">
                         <div class="empty-state">
                             <i class="fa-solid fa-clipboard-check"></i>
                             <h3>No Items in Confirmed List</h3>
