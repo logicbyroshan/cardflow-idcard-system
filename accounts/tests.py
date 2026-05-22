@@ -1251,6 +1251,32 @@ class ImpersonationApiTests(TestCase):
         self.assertTrue(stop_payload['success'])
         self.assertNotIn('_pro_original_user_id', self.client.session)
 
+    def test_super_admin_can_start_and_stop_impersonation(self):
+        super_admin = User.objects.create_user(
+            username='super-admin-imp@example.com',
+            email='super-admin-imp@example.com',
+            password='testpass123',
+            role='super_admin',
+        )
+
+        self.client.login(username='super-admin-imp@example.com', password='testpass123')
+
+        start = self.client.post(
+            '/panel/api/auth/impersonate/start/',
+            data=json.dumps({'user_id': self.target_user.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(start.status_code, 200)
+        start_payload = start.json()
+        self.assertTrue(start_payload['success'])
+        self.assertIn('_pro_original_user_id', self.client.session)
+
+        stop = self.client.post('/panel/api/auth/impersonate/stop/', data='{}', content_type='application/json')
+        self.assertEqual(stop.status_code, 200)
+        stop_payload = stop.json()
+        self.assertTrue(stop_payload['success'])
+        self.assertNotIn('_pro_original_user_id', self.client.session)
+
     def test_impersonation_start_requires_user_id(self):
         self.client.login(username='pro-user-imp@example.com', password='testpass123')
         response = self.client.post(

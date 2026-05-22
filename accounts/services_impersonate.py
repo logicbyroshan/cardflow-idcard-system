@@ -128,9 +128,9 @@ class ImpersonateService:
             return {'success': False, 'message': 'Not currently impersonating.'}
 
         try:
-            original_user = User.objects.get(pk=original_user_id, role='pro_user')
+            original_user = User.objects.get(pk=original_user_id)
         except User.DoesNotExist:
-            return {'success': False, 'message': 'Original Pro User account not found.'}
+            return {'success': False, 'message': 'Original account not found.'}
 
         impersonated_name = request.user.get_full_name() or request.user.username
 
@@ -151,7 +151,7 @@ class ImpersonateService:
         )
 
         from .services import DASHBOARD_URLS
-        redirect_url = DASHBOARD_URLS.get('pro_user', '/panel/')
+        redirect_url = DASHBOARD_URLS.get(getattr(original_user, 'role', 'pro_user'), '/panel/')
         
         # If a safe next_url is provided, use it
         if next_url and next_url.startswith('/'):
