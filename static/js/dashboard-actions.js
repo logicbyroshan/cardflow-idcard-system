@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let recentClientUpdatesLiveClientIds = new Set();
     let recentClientUpdatesLiveAssistantClientIds = new Set();
     let dashboardPresenceSyncTimer = null;
+    let dashboardPresenceRefreshTimer = null;
     let removeDashboardRealtimeListener = null;
     let recentClientUpdatesSortKey = '';
     let reprintOverviewSortKey = '';
@@ -434,7 +435,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const tableNames = subRows
                 .map(subRow => (subRow.querySelector('.sub-row-name')?.textContent || '').trim().toLowerCase())
                 .join(' ');
-            const searchable = `${clientName} ${tableNames}`.trim();
+            const rowText = (row.textContent || '').trim().toLowerCase();
+            const searchable = `${clientName} ${tableNames} ${rowText}`.trim();
             const isMatch = !query || searchable.includes(query);
 
             if (!isMatch) {
@@ -653,6 +655,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }, DASHBOARD_PRESENCE_SYNC_DEBOUNCE_MS);
     }
 
+    function startLivePresenceRefresh() {
+        if (!isAdminRecentUpdatesContext || dashboardPresenceRefreshTimer || document.hidden) return;
+
+        function scheduleNext() {
+            dashboardPresenceRefreshTimer = window.setTimeout(function() {
+                dashboardPresenceRefreshTimer = null;
+                if (document.hidden || (typeof navigator.onLine !== 'undefined' && !navigator.onLine)) {
+                    return;
+                }
+                refreshLivePresenceSnapshot();
+                scheduleNext();
+            }, jitteredRefreshMs());
+        }
+
+        scheduleNext();
+    }
+
+    function stopLivePresenceRefresh() {
+        if (!dashboardPresenceRefreshTimer) return;
+        window.clearTimeout(dashboardPresenceRefreshTimer);
+        dashboardPresenceRefreshTimer = null;
+    }
+
     function handleDashboardRealtimePacket(packet) {
         if (!packet || typeof packet !== 'object') return;
 
@@ -681,6 +706,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) return;
             scheduleLivePresenceSnapshotSync();
+            refreshLivePresenceSnapshot();
+            startLivePresenceRefresh();
         });
 
         window.addEventListener('beforeunload', function() {
@@ -688,6 +715,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.clearTimeout(dashboardPresenceSyncTimer);
                 dashboardPresenceSyncTimer = null;
             }
+            stopLivePresenceRefresh();
             if (typeof removeDashboardRealtimeListener === 'function') {
                 removeDashboardRealtimeListener();
                 removeDashboardRealtimeListener = null;
@@ -698,6 +726,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load recent client updates on page load
     loadRecentClientUpdates();
     initDashboardPresenceRealtime();
+    refreshLivePresenceSnapshot();
+    startLivePresenceRefresh();
 
     // ====================
     // Live Dashboard Stats (Auto Refresh)

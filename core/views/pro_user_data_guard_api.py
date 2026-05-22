@@ -53,12 +53,12 @@ def _guard_confirm_phrase() -> str:
 
 
 def _is_pro_user(user) -> bool:
-    return bool(user and user.is_authenticated and str(getattr(user, 'role', '')).strip().lower() == 'pro_user')
+    return bool(user and user.is_authenticated and str(getattr(user, 'role', '')).strip().lower() in {'pro_user', 'super_admin', 'admin_staff'})
 
 
 def _require_pro_user(request):
     if not _is_pro_user(getattr(request, 'user', None)):
-        return JsonResponse({'success': False, 'message': 'Pro User access required.'}, status=403)
+        return JsonResponse({'success': False, 'message': 'Admin access required.'}, status=403)
     return None
 
 

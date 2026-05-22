@@ -26,8 +26,10 @@ class ImpersonateService:
 
     @classmethod
     def can_impersonate(cls, user) -> bool:
-        """Only pro_user role can impersonate."""
-        return user.is_authenticated and user.role == 'pro_user'
+        """Allow admin users with Pro access to impersonate operational accounts."""
+        from core.services.permission_service import PermissionService
+
+        return bool(user and user.is_authenticated and PermissionService.is_pro_user(user))
 
     @classmethod
     def is_impersonating(cls, request) -> bool:
@@ -168,6 +170,7 @@ class ImpersonateService:
             .filter(is_active=True)
             .select_related('client_profile', 'staff_profile__client')
             .exclude(pk=request.user.pk)
+            .exclude(role__in=['pro_user', 'super_admin'])
             .order_by('role', 'first_name', 'username')
         )
 
@@ -181,6 +184,8 @@ class ImpersonateService:
             elif u.role == 'client_staff':
                 staff_profile = getattr(u, 'staff_profile', None)
                 client_name = getattr(getattr(staff_profile, 'client', None), 'name', '') or ''
+            elif u.role == 'admin_staff':
+                client_name = ''
 
             result.append({
                 'id': u.id,

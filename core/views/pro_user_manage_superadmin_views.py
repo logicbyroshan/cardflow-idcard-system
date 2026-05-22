@@ -18,7 +18,7 @@ from core.views.admin_page_views import _apply_drawer_embed_frame_headers
 def manage_superadmin_pro_features(request):
     """View to manage pro features for admin/superadmin users - Pro User only"""
     
-    # Only pro users can access this
+    # Only Pro User can access this pro-feature hub.
     if request.user.role != 'pro_user':
         return redirect('dashboard')
     

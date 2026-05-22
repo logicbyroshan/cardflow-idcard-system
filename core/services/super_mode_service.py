@@ -17,7 +17,7 @@ class SuperModeService:
     """Single authority for Super Mode assignment and runtime state."""
 
     MANAGEABLE_ROLES = {'super_admin', 'admin_staff'}
-    SUPPORTED_ROLES = {'pro_user', 'super_admin', 'admin_staff'}
+    SUPPORTED_ROLES = {'pro_user'}
     _TRANSFER_RATE_LIMIT_KEYS = {'bulk_upload', 'reupload', 'export', 'export_all'}
 
     @classmethod
@@ -88,14 +88,12 @@ class SuperModeService:
         can_toggle = False
         if role == 'pro_user':
             can_toggle = is_assigned and ram_mb > 0
-        elif role in {'super_admin', 'admin_staff'}:
-            can_toggle = is_assigned and ram_mb > 0
 
         message = ''
         if not supported:
             message = 'Super Mode is not available for this account type.'
-        elif role in {'super_admin', 'admin_staff'} and not is_assigned:
-            message = 'Super Mode access has not been assigned by Pro User.'
+        elif role in {'super_admin', 'admin_staff'}:
+            message = 'Super Mode is not available for this account type.'
         elif role == 'pro_user' and not is_assigned:
             message = 'Configure your own Super Mode RAM allocation from Pro Feature.'
 
@@ -254,7 +252,7 @@ class SuperModeService:
     ) -> SuperModeAssignment:
         """Assign or revoke Super Mode for super_admin/admin_staff users."""
         if not cls.can_manage_assignments(actor):
-            raise PermissionError('Only Pro User can manage Super Mode assignments.')
+            raise PermissionError('Only admin users with Pro access can manage Super Mode assignments.')
 
         role = cls._role(target_user)
         if role not in cls.MANAGEABLE_ROLES:
@@ -309,7 +307,7 @@ class SuperModeService:
         if role != 'pro_user':
             raise PermissionError('Only Pro User can configure self Super Mode settings.')
 
-        ram_val = cls._validate_ram_for_role('pro_user', ram_mb)
+        ram_val = cls._validate_ram_for_role(role, ram_mb)
 
         assignment = cls._get_or_create_assignment(actor)
         assignment.is_assigned = True

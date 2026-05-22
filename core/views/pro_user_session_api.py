@@ -25,7 +25,7 @@ def _require_pro_user_or_super(request):
     user = getattr(request, 'user', None)
     if not (user and user.is_authenticated):
         return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=403)
-    # Allow Pro Users and Super Admins to manage sessions
+    # Allow Pro User and Super Admin to manage sessions.
     if PermissionService.is_pro_user(user) or PermissionService.is_super_admin(user):
         return None
     return JsonResponse({'success': False, 'message': 'Pro User or Super Admin access required.'}, status=403)

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}User Options  -  Adarsh ID Cards{% endblock %}
+{% block title %}Impersonate User  -  Adarsh ID Cards{% endblock %}
 {% block main_class %}main-scrollable-page{% endblock %}
 
 {% block extra_css %}
@@ -423,7 +423,7 @@
 {% block breadcrumb %}
 <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
 <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-<span class="breadcrumb-item active">User Options</span>
+<span class="breadcrumb-item active">Impersonate User</span>
 {% endblock %}
 
 {% block topbar_right %}
@@ -448,11 +448,9 @@
         </div>
         <div class="imp-pills" id="impPills">
           <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All <span class="imp-pill-count">0</span></button>
-          <button class="imp-pill" data-role="pro_user" onclick="__impSetRole('pro_user',this)">Pro User <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistant <span class="imp-pill-count">0</span></button>
-          <button class="imp-pill" data-role="super_admin" onclick="__impSetRole('super_admin',this)">Super Admin <span class="imp-pill-count">0</span></button>
         </div>
       </div>
       <div class="action-right">
@@ -465,7 +463,7 @@
   <div class="imp-grid-wrap">
     <div class="imp-table-shell">
       <div class="imp-table-wrap">
-        <table class="imp-table" aria-label="User options table">
+        <table class="imp-table" aria-label="Impersonation table">
           <thead>
             <tr>
               <th style="width:6%;text-align:center;">Sr no.</th>
@@ -506,7 +504,7 @@
   var _page = 1;
   var _perPage = 25;
   var _pagerBound = false;
-  var COLORS = { pro_user:'#e11d48', super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
+  var COLORS = { admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
   var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant' };
 
   function _displayRole(role, fallback) {
@@ -520,7 +518,7 @@
   }
 
   function _updateRolePillCounts() {
-    var counts = { all: 0, pro_user: 0, super_admin: 0, admin_staff: 0, client: 0, client_staff: 0 };
+    var counts = { all: 0, admin_staff: 0, client: 0, client_staff: 0 };
     _users.forEach(function(u) {
       counts.all += 1;
       if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
