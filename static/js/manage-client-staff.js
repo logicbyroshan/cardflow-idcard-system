@@ -8,6 +8,22 @@ document.addEventListener('DOMContentLoaded', function () {
         return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
     }
 
+    function apiBasePath() {
+        var base = (typeof window.API_BASE_URL === 'string' && window.API_BASE_URL.trim())
+            ? window.API_BASE_URL.trim()
+            : panelBasePath();
+        if (base.length > 1 && base.charAt(base.length - 1) === '/') {
+            base = base.slice(0, -1);
+        }
+        return base;
+    }
+
+    function apiPath(path) {
+        var normalized = String(path || '');
+        if (!normalized.startsWith('/')) normalized = '/' + normalized;
+        return apiBasePath() + normalized;
+    }
+
     // ==================== CLASS/SECTION MULTI-SELECT ====================
     var allClasses = [];
     var allSections = [];
@@ -44,9 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function fetchAssignableClients() {
         if (allClients.length) return;
         try {
-            var resp = await fetch(panelBasePath() + '/api/client-staff/clients/', { credentials: 'same-origin' });
-            if (!resp.ok) return;
-            var data = await resp.json();
+            var data = await ApiClient.get(apiPath('/api/client-staff/clients/'));
             if (data && data.success) {
                 allClients = Array.isArray(data.clients) ? data.clients : [];
             }
@@ -302,11 +316,9 @@ document.addEventListener('DOMContentLoaded', function () {
     async function fetchStaffDetailById(staffId) {
         if (!staffId) return null;
         try {
-            var resp = await fetch(panelBasePath() + '/api/client-staff/' + staffId + '/', { credentials: 'same-origin' });
-            if (!resp.ok) return null;
-            var json = await resp.json();
+            var json = await ApiClient.get(apiPath('/api/client-staff/' + staffId + '/'));
             if (!json.success) return null;
-            return json.data || null;
+            return json.staff || json.data || null;
         } catch (_) {
             return null;
         }
@@ -342,8 +354,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function _buildGroupScopedOptionsUrl(groupIds) {
         var normalized = _normalizeGroupIds(groupIds);
-        if (!normalized.length) return '/client/api/class-section-options/';
-        var url = '/client/api/class-section-options/?group_ids=' + encodeURIComponent(normalized.join(','));
+        if (!normalized.length) return apiPath('/client/api/class-section-options/');
+        var url = apiPath('/client/api/class-section-options/?group_ids=' + encodeURIComponent(normalized.join(',')));
         if (assignmentIdSource === 'group' || assignmentIdSource === 'table') {
             url += '&id_source=' + encodeURIComponent(assignmentIdSource);
         }
@@ -395,9 +407,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            var resp = await fetch(_buildGroupScopedOptionsUrl(normalized), { credentials: 'same-origin' });
-            if (!resp.ok) return;
-            var data = await resp.json();
+            var data = await ApiClient.get(_buildGroupScopedOptionsUrl(normalized));
             if (data.success) {
                 csOptionsCache[cacheKey] = {
                     classes: data.classes || [],
@@ -671,9 +681,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!chip || chip.optionsLoaded) return;
         try {
             await loadAssignGroups();
-            var resp = await fetch(_buildGroupScopedOptionsUrl([chip.groupId]), { credentials: 'same-origin' });
-            if (!resp.ok) return;
-            var data = await resp.json();
+            var data = await ApiClient.get(_buildGroupScopedOptionsUrl([chip.groupId]));
             if (!data.success) return;
 
             chip.classOptions = _normalizeStringList(data.classes || []);
@@ -1245,9 +1253,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function loadAssignGroups() {
         if (_assignmentGroupsLoaded) return;
         try {
-            var resp = await fetch('/client/api/groups/active/', { credentials: 'same-origin' });
-            if (!resp.ok) return;
-            var data = await resp.json();
+            var data = await ApiClient.get(apiPath('/client/api/groups/active/'));
             if (data.success) {
                 _assignmentGroupsLoaded = true;
                 var groups = data.groups || [];
@@ -1336,7 +1342,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Assignment: groups
         assignment: {
             prefix:          'group',
-            apiUrl:          '/client/api/groups/active/',
+            apiUrl:          apiPath('/client/api/groups/active/'),
             responseKey:     'groups',
             payloadKey:      'assigned_groups',
             preselectedKey:  '__none__',
@@ -1371,14 +1377,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // API endpoints (RESTful)
         api: {
-            fetchUrl:          function (id) { return panelBasePath() + '/api/client-staff/' + id + '/'; },
-            fetchResponseKey:  'data',
+            fetchUrl:          function (id) { return apiPath('/api/client-staff/' + id + '/'); },
+            fetchResponseKey:  'staff',
             errorKey:          'error',
-            createUrl:         panelBasePath() + '/api/client-staff/create/',
+            createUrl:         apiPath('/api/client-staff/create/'),
             createMethod:      'post',
-            updateEndpoint:    function (id) { return { url: panelBasePath() + '/api/client-staff/' + id + '/update/', method: 'put' }; },
-            deleteEndpoint:    function (id) { return { url: panelBasePath() + '/api/client-staff/' + id + '/delete/', method: 'delete' }; },
-            toggleUrl:         function (id) { return panelBasePath() + '/api/client-staff/' + id + '/toggle-status/'; },
+            updateEndpoint:    function (id) { return { url: apiPath('/api/client-staff/' + id + '/update/'), method: 'put' }; },
+            deleteEndpoint:    function (id) { return { url: apiPath('/api/client-staff/' + id + '/delete/'), method: 'delete' }; },
+            toggleUrl:         function (id) { return apiPath('/api/client-staff/' + id + '/toggle-status/'); },
         },
 
         onDrawerReset: function () {
@@ -1674,7 +1680,7 @@ document.addEventListener('DOMContentLoaded', function () {
         saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
         try {
-            var result = await ApiClient.post('/client/api/staff/' + tempPwTargetId + '/set-temp-password/', {
+            var result = await ApiClient.post(apiPath('/api/client-staff/' + tempPwTargetId + '/set-temp-password/'), {
                 password: password,
             });
             if (result && result.success) {
