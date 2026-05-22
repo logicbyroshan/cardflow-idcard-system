@@ -97,7 +97,13 @@ window._StaffCommonAPI = {
      */
     fetchAssignmentItems: async function (cfg) {
         try {
-            var data = await ApiClient.get(cfg.assignment.apiUrl);
+            var assignmentUrl = cfg.assignment && cfg.assignment.apiUrl;
+            if (typeof assignmentUrl === 'function') {
+                assignmentUrl = assignmentUrl();
+            }
+            if (!assignmentUrl) return [];
+
+            var data = await ApiClient.get(assignmentUrl);
             if (data.success) return data[cfg.assignment.responseKey] || [];
         } catch (_) { /* swallow */ }
         return [];

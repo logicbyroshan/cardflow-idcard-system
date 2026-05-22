@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     var allClients = [];
     var selectedClientId = null;
+    var activeAssignmentClientId = null;
     var selectedClasses = new Set();
     var selectedSections = new Set();
     var selectedBranches = new Set();
@@ -149,14 +150,34 @@ document.addEventListener('DOMContentLoaded', function () {
     function setSelectedClientId(clientId) {
         selectedClientId = clientId ? parseInt(clientId, 10) : null;
         if (!Number.isFinite(selectedClientId)) selectedClientId = null;
+        setActiveAssignmentClientId(selectedClientId);
         updateClientSelectionText();
         renderClientDropdown(document.getElementById('client-search-input') ? document.getElementById('client-search-input').value : '');
     }
 
     function resetClientSelection() {
         selectedClientId = null;
+        setActiveAssignmentClientId(null);
         updateClientSelectionText();
         closeClientDropdown();
+    }
+
+    function setActiveAssignmentClientId(clientId) {
+        var nextId = clientId ? parseInt(clientId, 10) : null;
+        if (!Number.isFinite(nextId) || nextId <= 0) nextId = null;
+        if (activeAssignmentClientId === nextId) return;
+
+        activeAssignmentClientId = nextId;
+        csOptionsCache = {};
+        _assignmentGroupsLoaded = false;
+        assignmentGroupsById = {};
+        assignmentGroupMetaById = {};
+    }
+
+    function getActiveAssignmentClientId() {
+        if (Number.isFinite(activeAssignmentClientId) && activeAssignmentClientId > 0) return activeAssignmentClientId;
+        if (Number.isFinite(selectedClientId) && selectedClientId > 0) return selectedClientId;
+        return null;
     }
 
     var clientToggle = document.getElementById('client-multiselect-toggle');
@@ -353,9 +374,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function _buildGroupScopedOptionsUrl(groupIds) {
+        var clientId = getActiveAssignmentClientId();
+        if (!clientId) return null;
+
         var normalized = _normalizeGroupIds(groupIds);
-        if (!normalized.length) return apiPath('/client/api/class-section-options/');
-        var url = apiPath('/client/api/class-section-options/?group_ids=' + encodeURIComponent(normalized.join(',')));
+        if (!normalized.length) return apiPath('/api/client/' + clientId + '/class-section-options/');
+        var url = apiPath('/api/client/' + clientId + '/class-section-options/?group_ids=' + encodeURIComponent(normalized.join(',')));
         if (assignmentIdSource === 'group' || assignmentIdSource === 'table') {
             url += '&id_source=' + encodeURIComponent(assignmentIdSource);
         }
@@ -398,6 +422,20 @@ document.addEventListener('DOMContentLoaded', function () {
             await loadAssignGroups();
         }
 
+        var optionsUrl = _buildGroupScopedOptionsUrl(groupIds);
+        if (!optionsUrl) {
+            _applyClassSectionOptions({
+                classes: [],
+                sections: [],
+                branches: [],
+                class_sections: {},
+                class_counts: {},
+                section_counts: {},
+                class_section_counts: {}
+            });
+            return;
+        }
+
         var normalized = _normalizeGroupIds(groupIds);
         var cacheKey = (assignmentIdSource || 'auto') + ':' + (normalized.length ? normalized.join(',') : 'all');
 
@@ -407,7 +445,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            var data = await ApiClient.get(_buildGroupScopedOptionsUrl(normalized));
+            var data = await ApiClient.get(optionsUrl);
             if (data.success) {
                 csOptionsCache[cacheKey] = {
                     classes: data.classes || [],
@@ -681,7 +719,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!chip || chip.optionsLoaded) return;
         try {
             await loadAssignGroups();
-            var data = await ApiClient.get(_buildGroupScopedOptionsUrl([chip.groupId]));
+            var scopedUrl = _buildGroupScopedOptionsUrl([chip.groupId]);
+            if (!scopedUrl) return;
+            var data = await ApiClient.get(scopedUrl);
             if (!data.success) return;
 
             chip.classOptions = _normalizeStringList(data.classes || []);
@@ -1252,8 +1292,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var _assignmentGroupsLoaded = false;
     async function loadAssignGroups() {
         if (_assignmentGroupsLoaded) return;
+        var clientId = getActiveAssignmentClientId();
+        if (!clientId) return;
+
         try {
-            var data = await ApiClient.get(apiPath('/client/api/groups/active/'));
+            var data = await ApiClient.get(apiPath('/api/client/' + clientId + '/groups/'));
             if (data.success) {
                 _assignmentGroupsLoaded = true;
                 var groups = data.groups || [];
@@ -1342,7 +1385,11 @@ document.addEventListener('DOMContentLoaded', function () {
         // Assignment: groups
         assignment: {
             prefix:          'group',
-            apiUrl:          apiPath('/client/api/groups/active/'),
+            apiUrl:          function () {
+                var clientId = getActiveAssignmentClientId();
+                if (!clientId) return null;
+                return apiPath('/api/client/' + clientId + '/groups/');
+            },
             responseKey:     'groups',
             payloadKey:      'assigned_groups',
             preselectedKey:  '__none__',
@@ -1551,9 +1598,8 @@ document.addEventListener('DOMContentLoaded', function () {
         },
     });
 
-    // Init assignment source mode + class/section on page load for "add" drawer
-    loadAssignGroups();
-    fetchClassSectionOptions([]);
+    // Do not fetch assignment APIs on page load.
+    // These endpoints depend on selected/active client context and should run lazily.
 
     // Temp password modal (client portal staff only)
     var tempPwVerificationCode = '';
