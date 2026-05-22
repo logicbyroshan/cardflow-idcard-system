@@ -32,6 +32,16 @@
     if (typeof window.API_BASE_URL !== 'string') {
         window.API_BASE_URL = window.location.pathname.startsWith('/panel/') ? '/panel' : (window.location.pathname.startsWith('/app/') ? '/app' : '');
     }
+    function _getSessionRefreshUrl() {
+        var prefix = '';
+        if (window.location.pathname.startsWith('/panel/')) {
+            prefix = '/panel';
+        } else if (window.location.pathname.startsWith('/app/')) {
+            prefix = '/app';
+        }
+        return prefix + '/auth/api/auth/session-refresh/';
+    }
+    window.getSessionRefreshUrl = _getSessionRefreshUrl;
     /** True when the current page is the login page itself. */
     var _isLoginPage = window.location.pathname.indexOf('/auth/login') !== -1;
 
@@ -157,7 +167,7 @@
 
         _csrfRefreshPromise = new Promise(function (resolve) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', (window.API_BASE_URL || '/panel') + '/auth/api/auth/session-refresh/', true);
+            xhr.open('GET', _getSessionRefreshUrl(), true);
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             xhr.timeout = 8000;
 
