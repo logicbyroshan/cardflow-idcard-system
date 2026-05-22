@@ -16,8 +16,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var cancelStaffDrawer = document.getElementById('drawer-cancel-btn');
 
     // ==================== BUTTON HANDLERS ====================
-    if (addStaffBtn) {
+    if (addStaffBtn && !addStaffBtn.dataset.drawerAttached) {
         addStaffBtn.addEventListener('click', function() { NS.openDrawer('add'); });
+        addStaffBtn.dataset.drawerAttached = '1';
     }
 
     if (editStaffBtn) {

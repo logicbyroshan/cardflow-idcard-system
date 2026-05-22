@@ -91,8 +91,10 @@
         function startHeartbeat() {
             if (heartbeatTimer) return;
             heartbeatTimer = window.setInterval(function () {
-                if (document.hidden) return;
-                postPresence('heartbeat', tabId, false);
+                // Always send periodic heartbeats. When the page is backgrounded,
+                // prefer beacon transport so the OS can deliver them reliably.
+                var useBeacon = !!document.hidden;
+                postPresence('heartbeat', tabId, useBeacon);
             }, heartbeatMs);
         }
 
@@ -107,11 +109,10 @@
 
         document.addEventListener('visibilitychange', function () {
             if (document.hidden) {
-                // Keep the session live for background tabs; only close on real page exit.
+                // Send an immediate beaconed heartbeat when backgrounding.
                 postPresence('heartbeat', tabId, true);
-                if (isMobileSurface) {
-                    stopHeartbeat();
-                }
+                // Keep the interval running so periodic beacon heartbeats continue
+                // while backgrounded (important for long-running work).
                 return;
             }
             postPresence('heartbeat', tabId, false);
@@ -125,9 +126,8 @@
 
         window.addEventListener('pagehide', function () {
             stopHeartbeat();
-            if (!isMobileSurface) {
-                postPresence('stop', tabId, true);
-            }
+            // Always attempt to send a stop via beacon so server marks session closed.
+            postPresence('stop', tabId, true);
         });
 
         if (!isMobileSurface) {

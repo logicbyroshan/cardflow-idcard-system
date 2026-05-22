@@ -34,9 +34,13 @@ function getFormData() {
                 if (input._croppedFile) {
                     // Use cropped file if DataTransfer fallback was used
                     imageFiles[fieldName] = input._croppedFile;
+                    // Clear any marked-for-removal state when a new file is present
+                    try { input.dataset.markedRemoved = ''; } catch (e) {}
                 } else if (input.files && input.files[0]) {
                     // New file selected - add to imageFiles
                     imageFiles[fieldName] = input.files[0];
+                    // Clear any marked-for-removal state when a new file is present
+                    try { input.dataset.markedRemoved = ''; } catch (e) {}
                 } else {
                     // No file selected - send existing path or empty for removal
                     // Backend handles PENDING detection and file validation
@@ -61,6 +65,16 @@ function getFormData() {
                             // Backend will validate: if file exists  store path,
                             // if not  mark as PENDING:{value}
                             fieldData[fieldName] = pathValue;
+                        }
+                    } else {
+                        // No admin path input present (client/client_staff view).
+                        // Check for a client-side explicit removal marker on the file input.
+                        try {
+                            if (input.dataset && (input.dataset.markedRemoved === '1' || input.dataset.markedRemoved === 'true')) {
+                                fieldData[fieldName] = '';
+                            }
+                        } catch (e) {
+                            // noop
                         }
                     }
                 }
@@ -229,6 +243,15 @@ async function getPreviewDataUrl(file) {
     if (!isHeifLikeFile(file)) {
         return fileToDataUrl(file);
     }
+    // Prefer server-side conversion to avoid creating blob-based web workers
+    // which may be blocked by a restrictive Content Security Policy. Fall
+    // back to the in-browser `heic2any` decoder only if the server path
+    // fails or times out.
+    try {
+        return await convertHeifPreviewViaServer(file);
+    } catch (err) {
+        console.warn('Server HEIF preview conversion failed or timed out; falling back to client conversion.', err);
+    }
 
     if (typeof window.heic2any === 'function') {
         try {
@@ -243,14 +266,8 @@ async function getPreviewDataUrl(file) {
                 return blobToDataUrl(convertedBlob);
             }
         } catch (err) {
-            console.warn('HEIF preview conversion failed, using direct browser preview fallback.', err);
+            console.warn('HEIF preview conversion failed in browser fallback.', err);
         }
-    }
-
-    try {
-        return await convertHeifPreviewViaServer(file);
-    } catch (err) {
-        console.warn('Server HEIF preview conversion failed, trying browser fallback.', err);
     }
 
     return fileToDataUrl(file);
@@ -341,6 +358,8 @@ function applyImageToField(input, file) {
     if (downloadBtn) {
         downloadBtn.style.display = 'none';
     }
+    // Clear any marked-for-removal flag when a new file is applied
+    try { input.dataset.markedRemoved = ''; } catch (e) {}
 }
 
 /**
@@ -428,6 +447,10 @@ function initFormDataHandlers() {
             // Clear file input
             if (fileInput) {
                 fileInput.value = '';
+                try { fileInput._croppedFile = null; } catch (e) {}
+                // Mark this input as explicitly removed so client views (which
+                // don't show the admin path input) still send removal markers
+                try { fileInput.dataset.markedRemoved = '1'; } catch (e) {}
             }
             
             // Reset preview

@@ -20,7 +20,7 @@
       {% else %}
       <a href="{% url 'manage_clients' %}" class="breadcrumb-item">Manage Clients</a>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %}</span>
+      <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' and show_inactive_in_breadcrumb %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %}</span>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <span class="breadcrumb-item active">Reprint - {{ table.name }}</span>

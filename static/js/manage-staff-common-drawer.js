@@ -405,7 +405,10 @@ window._StaffDrawerSetup = function (cfg, ctx) {
     }
 
     // ==================== BUTTON EVENT HANDLERS ====================
-    if (addStaffBtn)  addStaffBtn.addEventListener('click', function () { openDrawer('add'); });
+    if (addStaffBtn && !addStaffBtn.dataset.drawerAttached)  {
+        addStaffBtn.addEventListener('click', function () { openDrawer('add'); });
+        addStaffBtn.dataset.drawerAttached = '1';
+    }
     if (editStaffBtn) editStaffBtn.addEventListener('click', async function () {
         if (!ctx.selectedStaffId) return;
         var d = await ctx._api.fetchStaffDetails(cfg, ctx.selectedStaffId);

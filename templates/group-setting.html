@@ -28,7 +28,7 @@
   <a href="{% url 'manage_clients' %}" class="breadcrumb-item">Manage Clients</a>
   <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
   {% if client %}
-  <span class="breadcrumb-item active">{{ client.name }}{% if client.status != 'active' %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %} - Group Settings</span>
+  <span class="breadcrumb-item active">{{ client.name }}{% if client.status != 'active' and show_inactive_in_breadcrumb %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %} - Group Settings</span>
   {% else %}
   <span class="breadcrumb-item active">Group Settings</span>
   {% endif %}

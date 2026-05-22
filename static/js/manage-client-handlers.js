@@ -330,7 +330,10 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       // ==================== EVENT HANDLERS ====================
-      if (addClientBtn) addClientBtn.addEventListener('click', function() { NS.openDrawer('add'); });
+      if (addClientBtn && !addClientBtn.dataset.drawerAttached) {
+        addClientBtn.addEventListener('click', function() { NS.openDrawer('add'); });
+        addClientBtn.dataset.drawerAttached = '1';
+      }
       if (openGroupMessageBtn) {
         openGroupMessageBtn.addEventListener('click', function() {
           openGroupMessageDrawerFn();
@@ -433,6 +436,16 @@ document.addEventListener('DOMContentLoaded', function() {
             var el = document.getElementById(field);
             if (el) formData[field] = el.checked;
           });
+        }
+
+        // Include client logo removal flag if set (remove_logo). If a new file is selected, ignore remove flag.
+        try {
+          var logoRemoveEl = document.getElementById('clientLogoRemove');
+          var removeLogoVal = logoRemoveEl ? (logoRemoveEl.value === '1' || logoRemoveEl.value === 'true') : false;
+          if (NS.selectedProfileFile) removeLogoVal = false;
+          formData.remove_logo = removeLogoVal;
+        } catch (ex) {
+          // noop
         }
 
         var result;

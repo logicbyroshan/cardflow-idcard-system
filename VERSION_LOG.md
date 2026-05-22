@@ -2,6 +2,7 @@
 
 | Date | Platform Version | Mobile Version | Mobile Build | Key Changes |
 | :--- | :--- | :--- | :--- | :--- |
+| **2026-05-22** | **v4.18.1** | **1.0.45** | **45** | **Card image removal persistence; HEIF preview CSP-safe fallback; drawer+binding fixes; misc UI/permission tweaks** |
 | **2026-05-11** | **v3.20.0** | **1.0.45** | **45** | **Google Play API 35 Requirement Fix** |
 | 2026-05-11 | v3.20.0 | 1.0.44 | 44 | SVG Icon Stabilization, Crash Fix, Release Signing |
 | 2026-05-08 | v3.19.0 | 1.0.43 | 43 | Role-based UI logic and initial native build |
