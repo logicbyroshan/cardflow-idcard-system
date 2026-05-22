@@ -369,7 +369,9 @@ def login_as_user_page(request):
 @login_required
 def pro_user_activity_logs_page(request):
     """Backward-compatible URL for the merged Pro User User Options page."""
-    if not PermissionService.is_pro_user(request.user):
+    # Allow access to the activity logs landing for users who may use
+    # the Pro User options (pro_user and super_admin via can_use_pro_user_options).
+    if not PermissionService.can_use_pro_user_options(request.user):
         return redirect('dashboard')
     return redirect('login_as_user')
 
