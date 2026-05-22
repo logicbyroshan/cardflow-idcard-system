@@ -168,7 +168,11 @@
 {% endblock %}
 
 {% block page_js %}
+  <script defer src="{% static 'js/manage-staff-common-api.js' %}"></script>
+  <script defer src="{% static 'js/manage-staff-common-drawer.js' %}"></script>
+  <script defer src="{% static 'js/manage-staff-common-list.js' %}"></script>
   <script defer src="{% static 'js/manage-client-staff.js' %}"></script>
+  <script defer src="{% static 'js/manage-staff-login-history.js' %}"></script>
   {% if request.GET.embed == 'drawer' %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {

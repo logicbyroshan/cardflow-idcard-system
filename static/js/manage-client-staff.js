@@ -4,6 +4,10 @@
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
+    function panelBasePath() {
+        return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+    }
+
     // ==================== CLASS/SECTION MULTI-SELECT ====================
     var allClasses = [];
     var allSections = [];
@@ -17,6 +21,8 @@ document.addEventListener('DOMContentLoaded', function () {
         hasSection: false,
         hasBranch: false,
     };
+    var allClients = [];
+    var selectedClientId = null;
     var selectedClasses = new Set();
     var selectedSections = new Set();
     var selectedBranches = new Set();
@@ -33,6 +39,143 @@ document.addEventListener('DOMContentLoaded', function () {
         if (isNaN(d.getTime())) d = new Date();
         var pad = function (n) { return String(n).padStart(2, '0'); };
         return pad(d.getDate()) + '-' + pad(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    async function fetchAssignableClients() {
+        if (allClients.length) return;
+        try {
+            var resp = await fetch(panelBasePath() + '/api/client-staff/clients/', { credentials: 'same-origin' });
+            if (!resp.ok) return;
+            var data = await resp.json();
+            if (data && data.success) {
+                allClients = Array.isArray(data.clients) ? data.clients : [];
+            }
+        } catch (_) {}
+    }
+
+    function updateClientSelectionText() {
+        var textEl = document.getElementById('client-multiselect-text');
+        if (!textEl) return;
+
+        if (!selectedClientId) {
+            textEl.textContent = 'Select client...';
+            textEl.classList.remove('has-selection');
+            return;
+        }
+
+        var selected = allClients.find(function (item) {
+            return String(item && item.id) === String(selectedClientId);
+        });
+        textEl.textContent = selected ? selected.name : 'Selected client';
+        textEl.classList.add('has-selection');
+    }
+
+    function closeClientDropdown() {
+        var dropdown = document.getElementById('client-multiselect-dropdown');
+        var toggle = document.getElementById('client-multiselect-toggle');
+        if (!dropdown || !toggle) return;
+        dropdown.style.display = 'none';
+        toggle.classList.remove('open');
+    }
+
+    function renderClientDropdown(filterText) {
+        var listEl = document.getElementById('client-multiselect-list');
+        var emptyEl = document.getElementById('client-multiselect-empty');
+        if (!listEl) return;
+
+        var term = String(filterText || '').toLowerCase().trim();
+        var filtered = allClients.filter(function (item) {
+            var name = String(item && item.name ? item.name : '').toLowerCase();
+            return !term || name.indexOf(term) !== -1;
+        });
+
+        filtered.sort(function (a, b) {
+            var aSelected = String(a && a.id) === String(selectedClientId) ? 0 : 1;
+            var bSelected = String(b && b.id) === String(selectedClientId) ? 0 : 1;
+            if (aSelected !== bSelected) return aSelected - bSelected;
+            return String(a && a.name ? a.name : '').localeCompare(String(b && b.name ? b.name : ''));
+        });
+
+        listEl.innerHTML = '';
+        if (!filtered.length) {
+            if (emptyEl) emptyEl.style.display = '';
+            return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        filtered.forEach(function (item) {
+            var row = document.createElement('div');
+            row.className = 'client-multiselect-item' + (String(item.id) === String(selectedClientId) ? ' selected' : '');
+            row.innerHTML = '<input type="radio" name="client-selection" ' + (String(item.id) === String(selectedClientId) ? 'checked' : '') + '><span class="client-name">' + _esc(item.name) + '</span>';
+            row.addEventListener('click', function (e) {
+                e.stopPropagation();
+                selectedClientId = item.id;
+                updateClientSelectionText();
+                renderClientDropdown(document.getElementById('client-search-input') ? document.getElementById('client-search-input').value : '');
+                closeClientDropdown();
+            });
+            listEl.appendChild(row);
+        });
+    }
+
+    function openClientDropdown() {
+        var dropdown = document.getElementById('client-multiselect-dropdown');
+        var toggle = document.getElementById('client-multiselect-toggle');
+        var searchInput = document.getElementById('client-search-input');
+        if (!dropdown || !toggle) return;
+        dropdown.style.display = '';
+        toggle.classList.add('open');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+        }
+        renderClientDropdown('');
+    }
+
+    function setSelectedClientId(clientId) {
+        selectedClientId = clientId ? parseInt(clientId, 10) : null;
+        if (!Number.isFinite(selectedClientId)) selectedClientId = null;
+        updateClientSelectionText();
+        renderClientDropdown(document.getElementById('client-search-input') ? document.getElementById('client-search-input').value : '');
+    }
+
+    function resetClientSelection() {
+        selectedClientId = null;
+        updateClientSelectionText();
+        closeClientDropdown();
+    }
+
+    var clientToggle = document.getElementById('client-multiselect-toggle');
+    var clientSearchInput = document.getElementById('client-search-input');
+    if (clientToggle) {
+        clientToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var dropdown = document.getElementById('client-multiselect-dropdown');
+            if (dropdown && dropdown.style.display !== 'none') closeClientDropdown();
+            else openClientDropdown();
+        });
+    }
+    if (clientSearchInput) {
+        clientSearchInput.addEventListener('input', function () {
+            renderClientDropdown(clientSearchInput.value);
+        });
+        clientSearchInput.addEventListener('click', function (e) { e.stopPropagation(); });
+    }
+    document.addEventListener('click', function (e) {
+        var container = document.getElementById('client-multiselect');
+        var dropdown = document.getElementById('client-multiselect-dropdown');
+        if (dropdown && dropdown.style.display !== 'none' && container && !container.contains(e.target)) {
+            closeClientDropdown();
+        }
+    });
+
+    async function initClientAssignment(clientId) {
+        var section = document.getElementById('client-assignment-section');
+        if (section) section.style.display = '';
+        if (allClients.length === 0) {
+            await fetchAssignableClients();
+        }
+        setSelectedClientId(clientId);
     }
 
     function _normalizeStringListForTable(values) {
@@ -159,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function fetchStaffDetailById(staffId) {
         if (!staffId) return null;
         try {
-            var resp = await fetch('/client/api/staff/' + staffId + '/', { credentials: 'same-origin' });
+            var resp = await fetch(panelBasePath() + '/api/client-staff/' + staffId + '/', { credentials: 'same-origin' });
             if (!resp.ok) return null;
             var json = await resp.json();
             if (!json.success) return null;
@@ -268,6 +411,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 _applyClassSectionOptions(csOptionsCache[cacheKey]);
             }
         } catch (_) { /* silently fail */ }
+    }
+
+    function showClientAssignmentSection() {
+        var section = document.getElementById('client-assignment-section');
+        if (section) section.style.display = '';
     }
 
     function _pruneSelectedValues(selectedSet, allowedValues) {
@@ -1223,22 +1371,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // API endpoints (RESTful)
         api: {
-            fetchUrl:          function (id) { return '/client/api/staff/' + id + '/'; },
+            fetchUrl:          function (id) { return panelBasePath() + '/api/client-staff/' + id + '/'; },
             fetchResponseKey:  'data',
             errorKey:          'error',
-            createUrl:         '/client/api/staff/',
+            createUrl:         panelBasePath() + '/api/client-staff/create/',
             createMethod:      'post',
-            updateEndpoint:    function (id) { return { url: '/client/api/staff/' + id + '/', method: 'put' }; },
-            deleteEndpoint:    function (id) { return { url: '/client/api/staff/' + id + '/', method: 'delete' }; },
-            toggleUrl:         function (id) { return '/client/api/staff/' + id + '/toggle-status/'; },
+            updateEndpoint:    function (id) { return { url: panelBasePath() + '/api/client-staff/' + id + '/update/', method: 'put' }; },
+            deleteEndpoint:    function (id) { return { url: panelBasePath() + '/api/client-staff/' + id + '/delete/', method: 'delete' }; },
+            toggleUrl:         function (id) { return panelBasePath() + '/api/client-staff/' + id + '/toggle-status/'; },
         },
 
         onDrawerReset: function () {
+            resetClientSelection();
+            showClientAssignmentSection();
             resetClassSection();
             assignmentScopeChips = {};
             renderAssignmentScopeChips();
         },
         onPopulateForm: function (data, meta) {
+            initClientAssignment(data && (data.client_id || (Array.isArray(data.assigned_client_ids) ? data.assigned_client_ids[0] : null)));
             if (!meta || meta.mode !== 'assign') return;
 
             hydrateChipsFromStaffData(data);
@@ -1312,6 +1463,11 @@ document.addEventListener('DOMContentLoaded', function () {
             updateCurrentChipActionLabel();
         },
         onBeforeSubmit: function (formData, meta) {
+            if (!meta || meta.mode !== 'assign') {
+                formData.client_id = selectedClientId;
+                return;
+            }
+
             if (!meta || meta.mode !== 'assign') return;
 
             var payload = getAssignmentPayloadFromChips();
@@ -1325,7 +1481,15 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.assignment_scopes = payload.assignment_scopes;
         },
         onSetStatus:        null,
-        onEnableFormInputs: null,
+        onEnableFormInputs: function (enable) {
+            var toggle = document.getElementById('client-multiselect-toggle');
+            if (!toggle) return;
+            toggle.style.pointerEvents = enable ? '' : 'none';
+            toggle.style.opacity = enable ? '' : '0.6';
+            if (!enable) {
+                closeClientDropdown();
+            }
+        },
         onStatusToggle:     null,
 
         // Delete modal
