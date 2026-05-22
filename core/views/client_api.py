@@ -624,7 +624,9 @@ def api_admin_client_staff_clients(request):
         return _manage_client_staff_permission_denied_response()
 
     clients_qs = Client.objects.select_related('user').order_by('name')
-    if PermissionService.is_admin_staff(request.user) and not PermissionService.has(request.user, 'perm_idcard_client_list'):
+    if PermissionService.is_super_admin(request.user):
+        pass
+    else:
         accessible_ids = PermissionService.get_accessible_client_ids(request.user)
         clients_qs = clients_qs.filter(id__in=accessible_ids)
 

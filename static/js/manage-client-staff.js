@@ -124,9 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row.innerHTML = '<input type="radio" name="client-selection" ' + (String(item.id) === String(selectedClientId) ? 'checked' : '') + '><span class="client-name">' + _esc(item.name) + '</span>';
             row.addEventListener('click', function (e) {
                 e.stopPropagation();
-                selectedClientId = item.id;
-                updateClientSelectionText();
-                renderClientDropdown(document.getElementById('client-search-input') ? document.getElementById('client-search-input').value : '');
+                setSelectedClientId(item.id);
                 closeClientDropdown();
             });
             listEl.appendChild(row);
@@ -153,6 +151,9 @@ document.addEventListener('DOMContentLoaded', function () {
         setActiveAssignmentClientId(selectedClientId);
         updateClientSelectionText();
         renderClientDropdown(document.getElementById('client-search-input') ? document.getElementById('client-search-input').value : '');
+        if (window._staffDrawerApi && typeof window._staffDrawerApi.refreshAssignmentItems === 'function') {
+            window._staffDrawerApi.refreshAssignmentItems();
+        }
     }
 
     function resetClientSelection() {
@@ -1381,6 +1382,15 @@ document.addEventListener('DOMContentLoaded', function () {
         nameColumnIndex: 1,
         skipHiddenInputs: false,
         respectDisabledPerms: true,
+        labels: {
+            addTitle: 'Add New Assistent',
+            editTitle: 'Edit Assistent',
+            viewTitle: 'View Assistent Details',
+            assignTitle: 'Assign Assistent Groups, Classes & Sections',
+            addSubmit: 'Add Assistent',
+            editSubmit: 'Save Assistent',
+            assignSubmit: 'Save Assignment',
+        },
 
         // Assignment: groups
         assignment: {
@@ -1440,6 +1450,12 @@ document.addEventListener('DOMContentLoaded', function () {
             resetClassSection();
             assignmentScopeChips = {};
             renderAssignmentScopeChips();
+            fetchAssignableClients().then(function () {
+                renderClientDropdown(document.getElementById('client-search-input') ? document.getElementById('client-search-input').value : '');
+            });
+        },
+        onBeforeAssignmentInit: function (data) {
+            setActiveAssignmentClientId(data && data.client_id ? data.client_id : null);
         },
         onPopulateForm: function (data, meta) {
             initClientAssignment(data && (data.client_id || (Array.isArray(data.assigned_client_ids) ? data.assigned_client_ids[0] : null)));

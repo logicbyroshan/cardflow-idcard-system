@@ -3451,6 +3451,19 @@ class AdminClientStaffManagementTests(TestCase):
         self.assertIn(self.client_a.id, returned_ids)
         self.assertIn(self.client_b.id, returned_ids)
 
+    def test_admin_staff_dropdown_is_scoped_to_assigned_clients(self):
+        self.admin_staff_profile.assigned_clients.add(self.client_a)
+
+        self.client.login(username='client-staff-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/client-staff/clients/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        returned_ids = {item['id'] for item in payload.get('clients', [])}
+        self.assertIn(self.client_a.id, returned_ids)
+        self.assertNotIn(self.client_b.id, returned_ids)
+
     def test_create_client_staff_saves_selected_client_and_permissions(self):
         from staff.models import Staff
 

@@ -113,6 +113,7 @@ window.initStaffPage = function (cfg) {
 
     // ==================== DRAWER SETUP ====================
     var drawerApi = window._StaffDrawerSetup(cfg, ctx);
+    window._staffDrawerApi = drawerApi;
 
     // ==================== FILTER & SEARCH ====================
     var dropdownToggle  = document.getElementById('statusToggle');

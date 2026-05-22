@@ -12,6 +12,8 @@
 
 window._StaffDrawerSetup = function (cfg, ctx) {
 
+    var labels = cfg.labels || {};
+
     // ==================== DRAWER ELEMENTS ====================
     const staffDrawer   = document.getElementById('staff-drawer');
     const staffOverlay  = document.getElementById('staff-drawer-overlay');
@@ -64,6 +66,18 @@ window._StaffDrawerSetup = function (cfg, ctx) {
 
     async function fetchItems() {
         allItems = await ctx._api.fetchAssignmentItems(cfg);
+    }
+
+    async function refreshAssignmentItems(preselectedIds) {
+        await fetchItems();
+
+        var nextSelectedIds = Array.isArray(preselectedIds) ? preselectedIds : Array.from(selectedIds);
+        selectedIds = new Set((nextSelectedIds || []).map(function (id) { return parseInt(id, 10); }).filter(function (id) { return Number.isFinite(id); }));
+        updateSelectionText();
+        renderList(msSearch ? msSearch.value : '');
+        if (typeof cfg.onAssignmentSelectionChange === 'function') {
+            cfg.onAssignmentSelectionChange(Array.from(selectedIds), { mode: currentMode });
+        }
     }
 
     function renderList(filter) {
@@ -297,9 +311,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         var submitBtnText = document.getElementById('submit-btn-text');
 
         if (mode === 'add') {
-            drawerTitle.textContent = 'Add New Staff';
+            drawerTitle.textContent = labels.addTitle || 'Add New Staff';
             drawerIcon.className = 'fa-solid fa-user-plus';
-            if (submitBtnText) submitBtnText.textContent = 'Add Staff';
+            if (submitBtnText) submitBtnText.textContent = labels.addSubmit || 'Add Staff';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
             // Show password option for new staff
@@ -309,9 +323,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             if (tempPwBtn) tempPwBtn.style.display = 'none';
             // Permissions stay OFF by default for new staff (already reset above)
         } else if (mode === 'edit') {
-            drawerTitle.textContent = 'Edit Staff';
+            drawerTitle.textContent = labels.editTitle || 'Edit Staff';
             drawerIcon.className = 'fa-solid fa-pen-to-square';
-            if (submitBtnText) submitBtnText.textContent = 'Save Changes';
+            if (submitBtnText) submitBtnText.textContent = labels.editSubmit || 'Save Changes';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
             // Hide password option when editing
@@ -324,9 +338,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
                 setDrawerSectionVisibility(mode);
             }
         } else if (mode === 'assign') {
-            drawerTitle.textContent = 'Assign Groups, Classes & Sections';
+            drawerTitle.textContent = labels.assignTitle || 'Assign Groups, Classes & Sections';
             drawerIcon.className = 'fa-solid fa-link';
-            if (submitBtnText) submitBtnText.textContent = 'Save Assignment';
+            if (submitBtnText) submitBtnText.textContent = labels.assignSubmit || 'Save Assignment';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
             // Hide password option in assign mode
@@ -336,7 +350,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             if (tempPwBtn) tempPwBtn.style.display = 'none';
             if (staffData) populateForm(staffData);
         } else if (mode === 'view') {
-            drawerTitle.textContent = 'View Staff Details';
+            drawerTitle.textContent = labels.viewTitle || 'View Staff Details';
             drawerIcon.className = 'fa-solid fa-eye';
             submitBtn.style.display = 'none';
             enableFormInputs(false);
@@ -374,6 +388,11 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             var api = f.replace(/-/g, '_');
             if (el) el.checked = d[api] === true;
         });
+
+        if (cfg.onBeforeAssignmentInit) {
+            cfg.onBeforeAssignmentInit(d, { mode: currentMode });
+        }
+
         initAssignment(d[cfg.assignment.preselectedKey] || []);
 
         // Allow page-specific extensions to populate custom fields
@@ -574,6 +593,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         openDrawer:  openDrawer,
         closeDrawer: closeDrawer,
         clearAssignmentSelection: clearAssignmentSelection,
+        refreshAssignmentItems: refreshAssignmentItems,
     };
 };
 
