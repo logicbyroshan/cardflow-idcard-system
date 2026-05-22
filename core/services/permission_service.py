@@ -558,6 +558,11 @@ class PermissionService:
         if is_sa:
             for perm in cls.ALL_PERMISSION_KEYS:
                 context[perm] = True
+            # But explicit exception: actual "super_admin" (or django superuser)
+            # who is NOT a `pro_user` should NOT receive the Log Deletion Guard
+            # permission by default. Pro users retain their pro-feature flags.
+            if not cls.is_pro_user(user):
+                context['perm_pro_log_deletion_guard'] = False
         elif is_as:
             # Admin staff: read booleans from staff_profile in one shot
             staff = getattr(user, 'staff_profile', None)
@@ -674,7 +679,9 @@ class PermissionService:
     @classmethod
     def can_use_pro_log_deletion_guard(cls, user) -> bool:
         """Check if user can use Log Deletion Guard."""
-        return cls.has(user, 'perm_pro_log_deletion_guard') or cls.is_super_admin(user)
+        # Only users with the explicit perm or `pro_user` role may use this.
+        # Do NOT grant to super_admin implicitly.
+        return cls.has(user, 'perm_pro_log_deletion_guard') or cls.is_pro_user(user)
 
     @classmethod
     def can_use_pro_data_deletion_guard(cls, user) -> bool:
