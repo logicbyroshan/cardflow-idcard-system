@@ -94,8 +94,8 @@
       <i class="fa-solid fa-sliders"></i><span>Manage Panel</span>
     </a>
     {% endif %}
-    {% if is_pro_user %}
-    <a href="{% url 'login_as_user' %}" class="{% if active_page == 'impersonate' or active_page == 'pro_user_activity_logs' or active_page == 'pro_user_log_deletion_guard' or active_page == 'pro_user_data_deletion_guard' or active_page == 'pro_user_super_mode' %}active{% endif %}">
+    {% if is_pro_user or is_super_admin %}
+    <a href="{% url 'login_as_user' %}" class="{% if active_page == 'impersonate' or active_page == 'pro_user_activity_logs' or active_page == 'pro_user_log_deletion_guard' or active_page == 'pro_user_data_deletion_guard' or active_page == 'pro_user_super_mode' or active_page == 'manage_superadmin_pro_features' %}active{% endif %}">
       <i class="fa-solid fa-gem"></i><span>Pro Features</span>
     </a>
     

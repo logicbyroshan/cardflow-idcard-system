@@ -1,4 +1,4 @@
-"""Manage Superadmin Pro Features - Pro users can grant pro features to admins/superadmins"""
+"""Manage Superadmin Pro Features - pro_user and super_admin can manage admin pro features"""
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
@@ -16,10 +16,10 @@ from core.views.admin_page_views import _apply_drawer_embed_frame_headers
 
 @login_required
 def manage_superadmin_pro_features(request):
-    """View to manage pro features for admin/superadmin users - Pro User only"""
+    """View to manage pro features for admin/superadmin users."""
     
-    # Only Pro User can access this pro-feature hub.
-    if not PermissionService.is_pro_user(request.user):
+    # Allow the pro-user hub and super-admins; keep admin_staff excluded.
+    if not PermissionService.can_manage_pro_features(request.user):
         return redirect('dashboard')
     
     DEFAULT_PER_PAGE = 25
@@ -87,9 +87,9 @@ def manage_superadmin_pro_features(request):
 @login_required
 @require_http_methods(["POST"])
 def api_toggle_admin_pro_feature(request, staff_id, feature_name):
-    """API to toggle pro features for an admin/superadmin - Pro User only"""
+    """API to toggle pro features for an admin/superadmin."""
     
-    if not PermissionService.is_pro_user(request.user):
+    if not PermissionService.can_manage_pro_features(request.user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
     try:
@@ -133,9 +133,9 @@ def api_toggle_admin_pro_feature(request, staff_id, feature_name):
 @login_required
 @require_http_methods(["POST"])
 def api_grant_all_admin_pro_features(request, staff_id):
-    """API to grant all pro features to an admin - Pro User only"""
+    """API to grant all pro features to an admin."""
     
-    if not PermissionService.is_pro_user(request.user):
+    if not PermissionService.can_manage_pro_features(request.user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
     try:
@@ -166,9 +166,9 @@ def api_grant_all_admin_pro_features(request, staff_id):
 @login_required
 @require_http_methods(["POST"])
 def api_revoke_all_admin_pro_features(request, staff_id):
-    """API to revoke all pro features from an admin - Pro User only"""
+    """API to revoke all pro features from an admin."""
     
-    if not PermissionService.is_pro_user(request.user):
+    if not PermissionService.can_manage_pro_features(request.user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
     try:

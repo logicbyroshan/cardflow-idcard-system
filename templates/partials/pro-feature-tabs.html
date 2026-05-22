@@ -13,7 +13,7 @@
   <a href="{% url 'pro_user_data_deletion_guard' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_data_deletion_guard' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_data_deletion_guard' %}true{% else %}false{% endif %}">
     <i class="fa-solid fa-database"></i> Data Deletion Guard
   </a>
-  {% if user.role == 'pro_user' %}
+  {% if is_super_admin or is_pro_user %}
   <a href="{% url 'manage_superadmin_pro_features' %}" class="pro-feature-tab{% if pro_tab == 'manage_superadmin' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'manage_superadmin' %}true{% else %}false{% endif %}">
     <i class="fa-solid fa-user-shield"></i> Manage Superadmin
   </a>
