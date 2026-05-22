@@ -1271,7 +1271,7 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
         )
 
     def test_data_deletion_guard_page_requires_pro_user(self):
-        self.client.login(username='panel-super@test.com', password='pass1234')
+        self.client.login(username='panel-client@test.com', password='pass1234')
         denied = self.client.get('/panel/pro-user/data-deletion-guard/')
         self.assertIn(denied.status_code, (302, 403))
 
@@ -1282,6 +1282,11 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
         self.assertContains(allowed, 'Delete Pending Images')
         self.assertContains(allowed, 'Delete Completed Images')
         self.assertContains(allowed, 'Delete By Column')
+
+    def test_data_deletion_guard_page_denies_admin_staff(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        denied = self.client.get('/panel/pro-user/data-deletion-guard/')
+        self.assertIn(denied.status_code, (302, 403))
 
     def test_data_deletion_guard_page_allows_super_admin(self):
         super_admin = User.objects.create_user(
@@ -1295,6 +1300,17 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
         allowed = self.client.get('/panel/pro-user/data-deletion-guard/')
         self.assertEqual(allowed.status_code, 200)
         self.assertContains(allowed, 'Delete Filtered Data')
+
+    def test_log_deletion_guard_page_denies_admin_staff(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        denied = self.client.get('/panel/pro-user/log-deletion-guard/')
+        self.assertIn(denied.status_code, (302, 403))
+
+    def test_log_deletion_guard_page_allows_super_admin(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        allowed = self.client.get('/panel/pro-user/log-deletion-guard/')
+        self.assertEqual(allowed.status_code, 200)
+        self.assertContains(allowed, 'Two-Step Activity Log Deletion')
 
     def test_data_guard_clients_api_is_pro_only(self):
         self.client.login(username='panel-super@test.com', password='pass1234')

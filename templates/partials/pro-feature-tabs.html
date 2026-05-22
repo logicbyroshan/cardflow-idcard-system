@@ -4,7 +4,7 @@
     <i class="fa-solid fa-user-gear"></i> Impersonate User
   </a>
   {% endif %}
-  {% if user.role == 'pro_user' %}
+  {% if is_pro_user or is_super_admin %}
   <a href="{% url 'pro_user_super_mode' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_super_mode' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_super_mode' %}true{% else %}false{% endif %}">
     <i class="fa-solid fa-gauge-high"></i> Super Mode
   </a>

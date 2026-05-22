@@ -377,7 +377,7 @@ def pro_user_activity_logs_page(request):
 @login_required
 def pro_user_log_deletion_guard_page(request):
     """Dedicated page for Pro User guarded activity-log deletion controls."""
-    if not PermissionService.is_pro_user(request.user):
+    if not PermissionService.can_use_pro_log_deletion_guard(request.user):
         return redirect('dashboard')
     context = {
         'active_page': 'pro_user_log_deletion_guard',

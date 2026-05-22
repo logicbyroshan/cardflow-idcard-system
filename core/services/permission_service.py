@@ -674,7 +674,7 @@ class PermissionService:
     @classmethod
     def can_use_pro_log_deletion_guard(cls, user) -> bool:
         """Check if user can use Log Deletion Guard."""
-        return cls.has(user, 'perm_pro_log_deletion_guard')
+        return cls.has(user, 'perm_pro_log_deletion_guard') or cls.is_super_admin(user)
 
     @classmethod
     def can_use_pro_data_deletion_guard(cls, user) -> bool:
