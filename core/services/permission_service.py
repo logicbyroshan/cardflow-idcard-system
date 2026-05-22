@@ -669,7 +669,7 @@ class PermissionService:
     @classmethod
     def can_use_pro_user_options(cls, user) -> bool:
         """Check if user can use User Options (impersonation)."""
-        return cls.has(user, 'perm_pro_user_options')
+        return cls.has(user, 'perm_pro_user_options') or cls.is_super_admin(user)
 
     @classmethod
     def can_use_pro_log_deletion_guard(cls, user) -> bool:
@@ -679,7 +679,7 @@ class PermissionService:
     @classmethod
     def can_use_pro_data_deletion_guard(cls, user) -> bool:
         """Check if user can use Data Deletion Guard."""
-        return cls.has(user, 'perm_pro_data_deletion_guard')
+        return cls.has(user, 'perm_pro_data_deletion_guard') or cls.is_super_admin(user)
 
     # ==================== Debug / Self-Check ====================
 

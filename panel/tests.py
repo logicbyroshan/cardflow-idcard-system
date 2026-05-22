@@ -1283,6 +1283,19 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
         self.assertContains(allowed, 'Delete Completed Images')
         self.assertContains(allowed, 'Delete By Column')
 
+    def test_data_deletion_guard_page_allows_super_admin(self):
+        super_admin = User.objects.create_user(
+            username='panel-super-admin@test.com',
+            email='panel-super-admin@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+        self.client.login(username='panel-super-admin@test.com', password='pass1234')
+        allowed = self.client.get('/panel/pro-user/data-deletion-guard/')
+        self.assertEqual(allowed.status_code, 200)
+        self.assertContains(allowed, 'Delete Filtered Data')
+
     def test_data_guard_clients_api_is_pro_only(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
         denied = self.client.get('/panel/api/pro-user/data-guard/clients/')
