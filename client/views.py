@@ -43,3 +43,5 @@ from .views_shared_pages import (
     client_group_settings,
     client_api_create_table_from_xlsx,
 )
+
+from reprintcard.views import reprint_cards

@@ -26,7 +26,7 @@ from idcards.models import IDCard, IDCardTable
 from core.services import IDCardService
 from core.services.permission_service import PermissionService, api_require_permission
 from core.services.activity_service import ActivityService
-from core.views.base import get_user_role, require_any_admin
+from core.views.base import get_user_role
 from core.views.idcard_helpers import _get_class_section_field_names, _build_class_filter_q
 
 from .models import ReprintRequest
@@ -416,7 +416,6 @@ def _get_reprint_step_counts(table):
 # ---------------------------------------------------------------------------
 
 @login_required
-@require_any_admin
 def reprint_cards(request, table_id):
     """Reprint Cards page — Reprint List → Request List → Confirmed."""
     table = get_object_or_404(

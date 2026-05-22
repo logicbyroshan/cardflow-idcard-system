@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.utils import timezone
 
 User = get_user_model()
@@ -240,6 +241,8 @@ class ReprintApiIntegrationTests(TestCase):
 		from staff.models import Staff
 		from reprintcard.models import ReprintRequest
 
+		cache.clear()
+
 		self.super_admin = User.objects.create_user(
 			username='super-reprint@test.com',
 			email='super-reprint@test.com',
@@ -256,6 +259,7 @@ class ReprintApiIntegrationTests(TestCase):
 		self.client_obj = Client.objects.create(
 			user=self.client_user,
 			name='Reprint Client',
+			perm_idcard_download_list=True,
 			perm_idcard_reprint_list=True,
 		)
 
@@ -291,6 +295,11 @@ class ReprintApiIntegrationTests(TestCase):
 			field_data={'Name': 'Beta', 'Class': '10', 'Section': 'B'},
 			status='download',
 		)
+		self.card_c = IDCard.objects.create(
+			table=self.table,
+			field_data={'Name': 'Gamma', 'Class': '10', 'Section': 'C'},
+			status='download',
+		)
 
 		self.rr_requested = ReprintRequest.objects.create(
 			card=self.card_a,
@@ -308,7 +317,10 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assigned_staff = Staff.objects.create(
 			user=self.assigned_staff_user,
 			staff_type='admin_staff',
+			perm_idcard_download_list=True,
+			perm_idcard_reprint_list=True,
 			perm_reprint_request_list=True,
+			perm_confirmed_list=True,
 		)
 		self.assigned_staff.assigned_clients.add(self.client_obj)
 
@@ -380,6 +392,83 @@ class ReprintApiIntegrationTests(TestCase):
 		list_response = self.client.get(self._url('api_request_list'))
 		self.assertEqual(list_response.status_code, 200)
 		self.assertGreaterEqual(len(list_response.json()['items']), 2)
+
+	def test_download_list_reprint_button_and_modal_work_for_client_admin_and_operator(self):
+		from django.urls import reverse
+
+		page_urls = [
+			(self.super_admin, reverse('idcard_actions', args=[self.table.id]) + '?status=download'),
+			(self.client_user, reverse('client:idcard_actions', args=[self.table.id]) + '?status=download'),
+			(self.assigned_staff_user, reverse('idcard_actions', args=[self.table.id]) + '?status=download'),
+		]
+		for label, user, url in [
+			('super_admin', self.super_admin, page_urls[0][1]),
+			('client', self.client_user, page_urls[1][1]),
+			('operator', self.assigned_staff_user, page_urls[2][1]),
+		]:
+			with self.subTest(role=label):
+				self.client.force_login(user)
+				response = self.client.get(url)
+				self.assertEqual(response.status_code, 200)
+				self.assertContains(response, 'id="openReprintModalBtn"')
+				self.assertContains(response, 'id="reprintPickerModal"')
+
+		self.client.force_login(self.client_user)
+		plain_response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({
+				'card_ids': [self.card_c.id],
+				'reason': 'Need reprint',
+			}),
+			content_type='application/json',
+		)
+		self.assertEqual(plain_response.status_code, 200)
+		self.assertEqual(plain_response.json().get('created_count'), 1)
+
+		request_list_response = self.client.get(self._url('api_request_list'))
+		self.assertEqual(request_list_response.status_code, 200)
+		request_payload = request_list_response.json()
+		self.assertEqual(request_payload.get('total'), 2)
+		plain_item = next((item for item in request_payload.get('items', []) if item.get('card_id') == self.card_c.id), None)
+		self.assertIsNotNone(plain_item)
+		plain_name_field = next((field for field in plain_item.get('ordered_fields', []) if str(field.get('name', '')).lower() == 'name'), None)
+		self.assertIsNotNone(plain_name_field)
+		self.assertEqual(str(plain_name_field.get('value')).strip(), 'Gamma')
+
+		edit_response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({
+				'card_ids': [self.card_b.id],
+				'inline_field_data': {
+					'Name': 'Beta Edited',
+					'Class': '10',
+					'Section': 'B',
+				},
+			}),
+			content_type='application/json',
+		)
+		self.assertEqual(edit_response.status_code, 200)
+		self.assertEqual(edit_response.json().get('created_count'), 1)
+
+		request_list_response = self.client.get(self._url('api_request_list'))
+		self.assertEqual(request_list_response.status_code, 200)
+		request_payload = request_list_response.json()
+		self.assertEqual(request_payload.get('total'), 3)
+		edited_item = next((item for item in request_payload.get('items', []) if item.get('card_id') == self.card_b.id), None)
+		self.assertIsNotNone(edited_item)
+		edited_name_field = next((field for field in edited_item.get('ordered_fields', []) if str(field.get('name', '')).lower() == 'name'), None)
+		self.assertIsNotNone(edited_name_field)
+		self.assertEqual(str(edited_name_field.get('value') or '').strip().upper(), 'BETA EDITED')
+
+		download_list_response = self.client.get(self._url('api_reprint_list'))
+		self.assertEqual(download_list_response.status_code, 200)
+		download_payload = download_list_response.json()
+		self.assertEqual(download_payload.get('total'), 3)
+		download_item = next((item for item in download_payload.get('items', []) if item.get('card_id') == self.card_b.id), None)
+		self.assertIsNotNone(download_item)
+		download_name_field = next((field for field in download_item.get('ordered_fields', []) if str(field.get('name', '')).lower() == 'name'), None)
+		self.assertIsNotNone(download_name_field)
+		self.assertEqual(str(download_name_field.get('value') or '').strip().upper(), 'BETA EDITED')
 
 	def test_reprint_request_create_allows_inline_edit_for_client_reprint_flow(self):
 		self.client.force_login(self.client_user)

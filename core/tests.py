@@ -484,6 +484,24 @@ class PermissionTests(TestCase):
         response = self.client.get(f'/panel/client/table/{self.table.id}/cards/')
         self.assertIn(response.status_code, [200, 302])
 
+    def test_permission_context_includes_reprint_flags(self):
+        from core.services.permission_service import PermissionService
+
+        self.client_obj.perm_idcard_reprint_list = True
+        self.client_obj.perm_reprint_request_list = True
+        self.client_obj.perm_confirmed_list = True
+        self.client_obj.save(update_fields=[
+            'perm_idcard_reprint_list',
+            'perm_reprint_request_list',
+            'perm_confirmed_list',
+        ])
+
+        ctx = PermissionService.get_permission_context(self.user)
+
+        self.assertTrue(ctx['perm_idcard_reprint_list'])
+        self.assertTrue(ctx['perm_reprint_request_list'])
+        self.assertTrue(ctx['perm_confirmed_list'])
+
 
 class PermissionValidationMiddlewareTests(TestCase):
     def setUp(self):

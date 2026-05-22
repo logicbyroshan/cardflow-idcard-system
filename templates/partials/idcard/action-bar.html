@@ -310,16 +310,8 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
         {% endif %}
     </div>
 
-    <!-- Right Buttons (Pool Danger Zone only) -->
-    <div class="flex items-center gap-[2px]">
-
-        {% if current_status == 'pool' and perm_idcard_delete_from_pool %}
-        <div class="pool-danger-zone">
-            <button class="btn action-btn btn-danger-zone" id="deletePermanentBtnP" disabled title="DANGER: Permanently delete - Cannot be undone!">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <span class="btn-text">Delete Permanent</span>
-            </button>
-        </div>
-        {% endif %}
+    <!-- Right Buttons -->
+    <div class="flex items-center gap-[2px] ml-auto">
+        {% include 'partials/idcard/action-bar-right.html' %}
     </div>
 </div>

@@ -60,6 +60,12 @@ class PermissionService:
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list',
+        'perm_idcard_reprint_list',
+    ]
+    
+    REPRINT_LIST_PERMISSIONS = [
+        'perm_reprint_request_list',
+        'perm_confirmed_list',
     ]
 
     IDCARD_ACTION_PERMISSIONS = [
@@ -104,6 +110,7 @@ class PermissionService:
         + ADMIN_USER_MANAGEMENT_PERMISSIONS
         + IDCARD_SETTING_PERMISSIONS
         + IDCARD_LIST_PERMISSIONS
+        + REPRINT_LIST_PERMISSIONS
         + IDCARD_ACTION_PERMISSIONS
         + MANAGE_PANEL_PERMISSIONS
         + MOBILE_APP_PERMISSIONS

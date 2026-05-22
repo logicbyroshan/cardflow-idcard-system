@@ -45,6 +45,9 @@ urlpatterns = [
     
     # ID Card Actions (shows cards, status tabs)
     path('table/<int:table_id>/actions/', views.client_idcard_actions, name='idcard_actions'),
+
+    # Shared reprint workflow page used from the download list action bar.
+    path('table/<int:table_id>/reprint/', views.reprint_cards, name='reprint_cards'),
     
     # ==========================================================================
     # API ENDPOINTS - Dashboard
