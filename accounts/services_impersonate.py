@@ -29,12 +29,10 @@ class ImpersonateService:
         """Allow admin users with Pro access to impersonate operational accounts."""
         from core.services.permission_service import PermissionService
 
-        # Allow admin_staff users to impersonate as part of the minimal
-        # operational pro-features set while still preferring explicit
-        # permission flags when present on the staff profile.
         return bool(
             user and user.is_authenticated and (
-                PermissionService.can_use_pro_user_options(user) or PermissionService.is_admin_staff(user)
+                PermissionService.can_use_pro_user_options(user)
+                or PermissionService.is_super_admin(user)
             )
         )
 

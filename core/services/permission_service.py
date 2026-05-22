@@ -100,14 +100,10 @@ class PermissionService:
     ]
 
     # Permissions that admin staff should always have regardless of their
-    # per-staff-profile toggles. We provide a minimal, deliberate set so
-    # operational admin users retain essential capabilities without being
-    # full "pro" users. Grant two pro-feature flags: impersonation and
-    # log deletion guard, plus the legacy reupload perm.
+    # per-staff-profile toggles. Keep this limited to legacy operational
+    # access only; pro features are reserved for pro_user and super_admin.
     ADMIN_STAFF_AUTO_PERMS: set = {
         'perm_reupload_idcard_image',
-        'perm_pro_user_options',
-        'perm_pro_log_deletion_guard',
     }
 
     # All known perm keys (computed once at class-load time)
@@ -332,6 +328,8 @@ class PermissionService:
                 logger.warning("PermissionService.has: admin_staff user %s has no staff_profile", user.pk)
                 return False
             if not user.is_active:
+                return False
+            if perm_key in cls.PRO_FEATURE_PERMISSIONS:
                 return False
             # Perms intentionally removed from Staff model (super_admin-only) — silent False
             if perm_key in cls.STAFF_BLOCKED_PERMS:
@@ -565,7 +563,9 @@ class PermissionService:
             staff = getattr(user, 'staff_profile', None)
             # Permissions auto-granted to admin_staff regardless of profile value
             for perm in cls.ALL_PERMISSION_KEYS:
-                if perm in cls.ADMIN_STAFF_AUTO_PERMS:
+                if perm in cls.PRO_FEATURE_PERMISSIONS:
+                    context[perm] = False
+                elif perm in cls.ADMIN_STAFF_AUTO_PERMS:
                     context[perm] = True
                 elif perm in cls.STAFF_BLOCKED_PERMS:
                     # Intentionally absent from Staff model — super_admin-only
