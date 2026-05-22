@@ -151,8 +151,10 @@ document.addEventListener('DOMContentLoaded', function () {
         setActiveAssignmentClientId(selectedClientId);
         updateClientSelectionText();
         renderClientDropdown(document.getElementById('client-search-input') ? document.getElementById('client-search-input').value : '');
+        // Clear any previously selected groups when changing client so
+        // class/section filters don't show for the previously-selected group.
         if (window._staffDrawerApi && typeof window._staffDrawerApi.refreshAssignmentItems === 'function') {
-            window._staffDrawerApi.refreshAssignmentItems();
+            window._staffDrawerApi.refreshAssignmentItems([]);
         }
     }
 
