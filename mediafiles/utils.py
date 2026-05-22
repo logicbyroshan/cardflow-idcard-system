@@ -363,12 +363,25 @@ def get_card_photo_url(card, field_data: Optional[dict] = None) -> Optional[str]
 
     fd = field_data if field_data is not None else (card.field_data or {})
 
+    def _looks_like_image_field_key(key: str) -> bool:
+        normalized = re.sub(r'[^A-Z0-9]+', '', str(key or '').upper())
+        if not normalized:
+            return False
+        return any(token in normalized for token in (
+            'PHOTO', 'IMAGE', 'PICTURE', 'PIC', 'SIGNATURE', 'BARCODE', 'QRCODE'
+        ))
+
     # 1. Check image fields in field_data (canonical source)
     #    Try well-known photo field names first, then scan all values
     for key in ('PHOTO', 'Photo', 'photo'):
         val = fd.get(key, '')
         if val and is_valid_image_path(val):
             return _ensure_media_url(val, settings.MEDIA_URL)
+
+    # If the card explicitly carries image-like field keys, treat blank values
+    # as a deliberate removal instead of falling back to the legacy ImageField.
+    if any(_looks_like_image_field_key(key) for key in fd.keys()):
+        return None
 
     # Scan remaining fields for image-like paths
     for val in fd.values():

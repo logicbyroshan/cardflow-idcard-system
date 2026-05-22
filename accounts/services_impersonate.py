@@ -170,7 +170,7 @@ class ImpersonateService:
             .filter(is_active=True)
             .select_related('client_profile', 'staff_profile__client')
             .exclude(pk=request.user.pk)
-            .exclude(role__in=['pro_user', 'super_admin'])
+            .exclude(role='pro_user')
             .order_by('role', 'first_name', 'username')
         )
 

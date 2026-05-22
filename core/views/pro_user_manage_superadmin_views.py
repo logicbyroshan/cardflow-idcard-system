@@ -19,7 +19,7 @@ def manage_superadmin_pro_features(request):
     """View to manage pro features for admin/superadmin users - Pro User only"""
     
     # Only Pro User can access this pro-feature hub.
-    if request.user.role != 'pro_user':
+    if not PermissionService.is_pro_user(request.user):
         return redirect('dashboard')
     
     DEFAULT_PER_PAGE = 25
@@ -89,7 +89,7 @@ def manage_superadmin_pro_features(request):
 def api_toggle_admin_pro_feature(request, staff_id, feature_name):
     """API to toggle pro features for an admin/superadmin - Pro User only"""
     
-    if request.user.role != 'pro_user':
+    if not PermissionService.is_pro_user(request.user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
     try:
@@ -135,7 +135,7 @@ def api_toggle_admin_pro_feature(request, staff_id, feature_name):
 def api_grant_all_admin_pro_features(request, staff_id):
     """API to grant all pro features to an admin - Pro User only"""
     
-    if request.user.role != 'pro_user':
+    if not PermissionService.is_pro_user(request.user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
     try:
@@ -168,7 +168,7 @@ def api_grant_all_admin_pro_features(request, staff_id):
 def api_revoke_all_admin_pro_features(request, staff_id):
     """API to revoke all pro features from an admin - Pro User only"""
     
-    if request.user.role != 'pro_user':
+    if not PermissionService.is_pro_user(request.user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
     try:

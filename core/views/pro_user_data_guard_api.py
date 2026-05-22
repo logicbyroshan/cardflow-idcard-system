@@ -53,7 +53,8 @@ def _guard_confirm_phrase() -> str:
 
 
 def _is_pro_user(user) -> bool:
-    return bool(user and user.is_authenticated and str(getattr(user, 'role', '')).strip().lower() in {'pro_user', 'super_admin', 'admin_staff'})
+    # This workflow is strictly reserved for literal Pro User accounts.
+    return bool(user and user.is_authenticated and str(getattr(user, 'role', '')).strip().lower() == 'pro_user')
 
 
 def _require_pro_user(request):

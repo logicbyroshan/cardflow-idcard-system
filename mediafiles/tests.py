@@ -461,6 +461,19 @@ class MediafilesUtilsTests(TestCase):
         url = get_card_photo_url(FakeCard())
         self.assertEqual(url, '/media/adarshimg/CODE/new.jpg')
 
+    def test_get_card_photo_url_does_not_fall_back_after_explicit_removal(self):
+        from mediafiles.utils import get_card_photo_url
+
+        class FakePhoto:
+            url = '/media/id_photos/legacy.jpg'
+
+        class FakeCard:
+            def __init__(self):
+                self.field_data = {'PHOTO': ''}
+                self.photo = FakePhoto()
+
+        self.assertIsNone(get_card_photo_url(FakeCard()))
+
     def test_get_card_photo_url_handles_legacy_photo_url_errors(self):
         from mediafiles.utils import get_card_photo_url
 

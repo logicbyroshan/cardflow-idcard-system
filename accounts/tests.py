@@ -1213,6 +1213,25 @@ class ImpersonationApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_admin_staff_can_start_impersonation(self):
+        admin_staff = User.objects.create_user(
+            username='admin-staff-imp@example.com',
+            email='admin-staff-imp@example.com',
+            password='testpass123',
+            role='admin_staff',
+        )
+
+        self.client.login(username='admin-staff-imp@example.com', password='testpass123')
+        response = self.client.post(
+            '/panel/api/auth/impersonate/start/',
+            data=json.dumps({'user_id': self.target_user.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertIn('_pro_original_user_id', self.client.session)
+
     def test_pro_user_can_start_and_stop_impersonation(self):
         self.client.login(username='pro-user-imp@example.com', password='testpass123')
 

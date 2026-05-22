@@ -340,7 +340,9 @@ class SuperModeService:
     def toggle_runtime(cls, user: User, *, enabled: bool) -> SuperModeAssignment:
         """Toggle runtime Super Mode state for current user."""
         role = cls._role(user)
-        if role not in cls.SUPPORTED_ROLES:
+        # Allow toggling runtime for Pro Users, and for manageable roles
+        # (super_admin/admin_staff) when they have an assigned Super Mode.
+        if role not in cls.SUPPORTED_ROLES and role not in cls.MANAGEABLE_ROLES:
             raise PermissionError('Super Mode is not available for this account.')
 
         assignment = cls._get_assignment(user)

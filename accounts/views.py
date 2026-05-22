@@ -613,7 +613,7 @@ class ImpersonateStartAPIView(LoginRequiredMixin, View):
 
     def post(self, request):
         from .services_impersonate import ImpersonateService
-        if getattr(request.user, 'role', None) != 'pro_user':
+        if not ImpersonateService.can_impersonate(request.user):
             return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
         try:
             actor_user = request.user

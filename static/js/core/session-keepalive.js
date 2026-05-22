@@ -196,7 +196,9 @@
     });
 
     // ── Initialization ──
-    // Start keepalive immediately (first refresh after REFRESH_INTERVAL_MS)
+    // Refresh once on load so an already-stale session is detected early.
+    // Then continue with the normal 5-minute keepalive interval.
+    _refreshSession();
     _startKeepalive();
 
     // Expose for external use (e.g., api.js CSRF recovery)

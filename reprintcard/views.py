@@ -403,8 +403,13 @@ def _get_reprint_step_counts(table):
     request_count = int(status_counts.get('request_count') or 0)
     confirmed_count = int(status_counts.get('confirmed_count') or 0)
 
+    # Exclude cards that already have any reprint request from the "download" count.
+    busy_card_count = (
+        ReprintRequest.objects.filter(table=table).values('card_id').distinct().count()
+    )
+
     return {
-        'download_list': source_cards_count,
+        'download_list': max(0, int(source_cards_count) - int(busy_card_count)),
         'reprint_list': source_cards_count,
         'request_list': request_count,
         'confirmed': confirmed_count,
