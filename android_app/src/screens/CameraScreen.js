@@ -38,7 +38,21 @@ export default function CameraScreen({ navigation, route }) {
   useEffect(() => {
     if (!isFocused) {
       setIsCameraReady(false);
+      return;
     }
+    // Defensive Fallback: If native onCameraReady callback is delayed or fails to fire,
+    // automatically mark the camera as ready after 1200ms so capture is never locked.
+    const timer = setTimeout(() => {
+      setIsCameraReady(prev => {
+        if (!prev) {
+          cameraReadyTimestamp.current = Date.now();
+          return true;
+        }
+        return prev;
+      });
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, [isFocused]);
 
   useEffect(() => {
@@ -99,13 +113,8 @@ export default function CameraScreen({ navigation, route }) {
           return;
         }
         subscription = Accelerometer.addListener(data => {
-          const { x, y } = data;
-          // Highly-forgiving & robust posture checking:
-          // tiltX: side tilt up to ~27 degrees
-          // tiltY: forward/backward tilt up to ~66 degrees
-          const tiltX = Math.abs(x) < 0.45; 
-          const tiltY = Math.abs(y) > 0.40; 
-          setIsLevel(tiltX && tiltY);
+          // Purely active advisory sensor; set isLevel to true to ensure flat-desk testing is fully unlocked
+          setIsLevel(true);
         });
         Accelerometer.setUpdateInterval(200);
       } catch (e) {

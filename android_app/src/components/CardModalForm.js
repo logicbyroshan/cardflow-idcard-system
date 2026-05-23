@@ -187,7 +187,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       // Modern Android (13+) utilizes system Photo Picker which does not require media permissions.
       // Directly call launchImageLibraryAsync for maximum compatibility.
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions?.Images || 'images',
+        mediaTypes: ['images'],
         quality: 0.7,
         allowsEditing: true,
         aspect: [3, 4]
