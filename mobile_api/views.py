@@ -5490,6 +5490,7 @@ def api_reprint_data(request, client_id):
                 'name': t.name,
                 'group_name': t.group.name,
                 'client_name': t.group.client.name if t.group and t.group.client else '',
+                'client_id': t.group.client_id if t.group else 0,
                 'requested': requested,
                 'confirmed': confirmed
             })
@@ -5779,11 +5780,14 @@ def api_clients_list(request):
     if not PermissionService.is_any_admin(request.user):
         return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
 
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
+    from client.models import Client
     
-    # Fetch all users with role 'client'
-    clients_qs = User.objects.filter(role='client').select_related('client_profile').order_by('client_profile__name', 'username')
+    # Fetch all clients based on permissions
+    if PermissionService.is_super_admin(request.user):
+        clients_qs = Client.objects.select_related('user').all().order_by('name')
+    else:  # admin_staff (operators)
+        accessible_ids = PermissionService.get_accessible_client_ids(request.user) or []
+        clients_qs = Client.objects.filter(id__in=accessible_ids).select_related('user').order_by('name')
     
     client_ids = list(clients_qs.values_list('id', flat=True))
 
@@ -5808,18 +5812,24 @@ def api_clients_list(request):
             counts_map[cid][status] = count
 
     users_list = []
-    for u in clients_qs:
-        profile = getattr(u, 'client_profile', None)
-        logo_url = _safe_file_url(getattr(profile, 'logo', None)) if profile else ''
+    for c in clients_qs:
+        try:
+            u = c.user
+            if not u:
+                continue
+        except Exception:
+            continue
+        logo_url = _safe_file_url(c.logo) if c.logo else ''
             
         users_list.append({
-            'id': u.id,
-            'name': (profile.name if profile else '') or u.get_full_name() or u.username,
+            'id': c.id,       # Client model ID — used by toggle/delete/update endpoints
+            'user_id': u.id,  # User model ID — used by impersonation endpoint
+            'name': c.name,
             'email': u.email,
-            'phone': getattr(profile, 'phone', '') if profile else '',
+            'phone': getattr(u, 'phone', '') or '',
             'is_active': u.is_active,
             'logo_url': logo_url,
-            'counts': counts_map.get(u.id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
+            'counts': counts_map.get(c.id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
         })
 
     return JsonResponse({'success': True, 'users': users_list})

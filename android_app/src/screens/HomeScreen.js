@@ -37,11 +37,10 @@ function ClientMiniStat({ label, count, color, bg, onPress }) {
     <TouchableOpacity 
       style={s.clientMiniStat} 
       onPress={onPress} 
-      activeOpacity={onPress ? 0.6 : 1}
-      disabled={!onPress || count === 0}
+      activeOpacity={0.6}
     >
-      <Text style={[s.clientMiniStatLabel, { color, opacity: count > 0 ? 1 : 0.4 }]}>{label}</Text>
-      <View style={[s.clientMiniStatBadge, { backgroundColor: bg, opacity: count > 0 ? 1 : 0.3 }]}>
+      <Text style={[s.clientMiniStatLabel, { color }]}>{label}</Text>
+      <View style={[s.clientMiniStatBadge, { backgroundColor: bg }]}>
         <Text style={[s.clientMiniStatCount, { color }]}>{count || 0}</Text>
       </View>
     </TouchableOpacity>
@@ -159,15 +158,18 @@ export default function HomeScreen({ navigation }) {
   }, [user, isSuperAdmin, isOperator, isClient, isAssistant]);
 
   const handleBadgePress = (client, statusKey) => {
-    const statusMap = { PENDING: 'p', VERIFIED: 'v', APPROVED: 'a', DOWNLOAD: 'd', POOL: 'po' };
     const statusValue = { PENDING: 'pending', VERIFIED: 'verified', APPROVED: 'approved', DOWNLOAD: 'download', POOL: 'pool' };
+    const tables = client.tables || [];
     
-    const tablesWithStatus = (client.tables || []).filter(t => t[statusMap[statusKey]] > 0);
+    if (tables.length === 0) {
+      // Expand client to show "no tables" state instead of silently ignoring
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpandedClient(expandedClient?.id === client.id ? null : { id: client.id });
+      return;
+    }
     
-    if (tablesWithStatus.length === 0) return;
-    
-    if (tablesWithStatus.length === 1) {
-      navigation.navigate('CardList', { tableId: tablesWithStatus[0].id, status: statusValue[statusKey] });
+    if (tables.length === 1) {
+      navigation.navigate('CardList', { tableId: tables[0].id, status: statusValue[statusKey] });
     } else {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       if (expandedClient?.id === client.id) {
@@ -439,22 +441,20 @@ export default function HomeScreen({ navigation }) {
                                       { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg },
                                       { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
                                     ].map((stBtn) => {
-                                      const hasCards = stBtn.count > 0;
                                       return (
                                         <TouchableOpacity
                                           key={stBtn.key}
                                           style={[
                                             s.stBtnBelow,
                                             { 
-                                              backgroundColor: hasCards ? stBtn.bg : '#f8fafc',
-                                              borderColor: hasCards ? stBtn.color + '60' : '#e2e8f0',
-                                              opacity: hasCards ? 1 : 0.5
+                                              backgroundColor: stBtn.bg,
+                                              borderColor: stBtn.color + '60',
                                             }
                                           ]}
                                           activeOpacity={0.7}
                                           onPress={() => navigation.navigate('CardList', { tableId: table.id, status: stBtn.key })}
                                         >
-                                          <Text style={[s.stBtnTextBelow, { color: hasCards ? stBtn.color : '#94a3b8' }]}>
+                                          <Text style={[s.stBtnTextBelow, { color: stBtn.color }]}>
                                             {stBtn.label} ({stBtn.count})
                                           </Text>
                                         </TouchableOpacity>

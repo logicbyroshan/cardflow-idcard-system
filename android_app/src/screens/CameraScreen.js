@@ -24,9 +24,20 @@ export default function CameraScreen({ navigation, route }) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [hasSensor, setHasSensor] = useState(true);
   const [facing, setFacing] = useState('back');
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const cameraRef = useRef(null);
 
   const isReady = isLevel;
+
+  useEffect(() => {
+    if (!isFocused) {
+      setIsCameraReady(false);
+    }
+  }, [isFocused]);
+
+  useEffect(() => {
+    setIsCameraReady(false);
+  }, [facing]);
 
   const scanAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -118,17 +129,41 @@ export default function CameraScreen({ navigation, route }) {
     );
   }
 
+  const cameraReadyTimestamp = React.useRef(0);
+
+  const onCameraReady = React.useCallback(() => {
+    setIsCameraReady(true);
+    cameraReadyTimestamp.current = Date.now();
+  }, []);
+
   const takePicture = async () => {
-    if (!cameraRef.current || isCapturing) return;
+    if (!cameraRef.current || !isCameraReady || isCapturing) return;
+    // Wait at least 400ms after camera ready before capturing to avoid init errors
+    const elapsed = Date.now() - cameraReadyTimestamp.current;
+    if (elapsed < 400) {
+      await new Promise(resolve => setTimeout(resolve, 400 - elapsed));
+    }
     setIsCapturing(true);
-    try {
-      const p = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-      });
-      if (p) setPhoto(p);
-    } catch (e) {
-      console.log('Capture error', e);
-      alert('Camera error. Please try again.');
+    let attempts = 3;
+    while (attempts > 0) {
+      try {
+        const p = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+        });
+        if (p) {
+          setPhoto(p);
+          break;
+        }
+      } catch (e) {
+        console.log(`Capture error (attempts left: ${attempts - 1})`, e);
+        attempts -= 1;
+        if (attempts === 0) {
+          alert('Camera error: ' + (e.message || e || 'Please try again.'));
+        } else {
+          // Wait 300ms before retrying
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
     }
     setTimeout(() => setIsCapturing(false), 500);
   };
@@ -177,7 +212,7 @@ export default function CameraScreen({ navigation, route }) {
             style={s.camera} 
             ref={cameraRef} 
             facing={facing}
-            onCameraReady={() => console.log('Camera Ready')}
+            onCameraReady={onCameraReady}
           />
         )}
       </View>
@@ -264,7 +299,11 @@ export default function CameraScreen({ navigation, route }) {
           <Text style={s.controlLabel}>Flip</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.captureBtnMain} onPress={takePicture} disabled={isCapturing}>
+        <TouchableOpacity 
+          style={[s.captureBtnMain, (!isCameraReady || isCapturing) && { opacity: 0.5 }]} 
+          onPress={takePicture} 
+          disabled={!isCameraReady || isCapturing}
+        >
            <View style={s.captureBtnOuter}>
               <View style={s.captureBtnInnerMain} />
            </View>

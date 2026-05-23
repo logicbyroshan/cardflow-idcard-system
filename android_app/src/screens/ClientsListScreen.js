@@ -132,8 +132,8 @@ export default function ClientsListScreen({ navigation, route }) {
       color: colors.brandPrimary,
       onConfirm: async () => {
         setConfirmModal(p => ({ ...p, visible: false }));
-        setImpersonatingId(client.id);
-        const result = await startImpersonation(client.id);
+        setImpersonatingId(client.user_id || client.id);
+        const result = await startImpersonation(client.user_id || client.id);
         setImpersonatingId(null);
         if (result.success) {
           showToast('Switched to ' + client.name, 'success');
@@ -188,9 +188,9 @@ export default function ClientsListScreen({ navigation, route }) {
       </View>
 
       <View style={s.cardActions}>
-        <TouchableOpacity style={s.actionBtn} onPress={() => handleImpersonate(item)} disabled={impersonatingId === item.id}>
+        <TouchableOpacity style={s.actionBtn} onPress={() => handleImpersonate(item)} disabled={impersonatingId === (item.user_id || item.id)}>
           <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
-            {impersonatingId === item.id ? <ActivityIndicator size="small" color="#3b82f6" /> : <><DynamicIcon name="users" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>SWITCH</Text></>}
+            {impersonatingId === (item.user_id || item.id) ? <ActivityIndicator size="small" color="#3b82f6" /> : <><DynamicIcon name="users" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>SWITCH</Text></>}
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>

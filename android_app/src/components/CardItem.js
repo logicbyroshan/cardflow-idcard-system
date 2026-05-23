@@ -1,11 +1,23 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
 import { DynamicIcon, IconClock, IconWarning, IconCheck, IconEdit, IconTrash } from './Icons';
 import { colors, shadows, radius, spacing, typography, fontFamily, gradients } from '../theme';
 import { HStack } from './Stack';
 import { cleanFieldValue } from '../utils/data';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
+
+const getFieldValueCaseInsensitive = (obj, key) => {
+  if (!obj) return '';
+  if (obj[key] !== undefined) return obj[key];
+  const upperKey = key.toUpperCase();
+  for (const k in obj) {
+    if (k.toUpperCase() === upperKey) {
+      return obj[k];
+    }
+  }
+  return '';
+};
 
 const CardItem = React.memo(function CardItem({ 
   item, 
@@ -28,8 +40,20 @@ const CardItem = React.memo(function CardItem({
   // 1. Process Fields
   if (orderedFields.length > 0) {
     orderedFields.forEach(f => {
-      const val = fd[f.name] || '';
-      if (f.type === 'image' || f.type === 'photo') {
+      const val = getFieldValueCaseInsensitive(fd, f.name);
+      const typeLower = (f.type || '').toLowerCase();
+      const nameUpper = (f.name || '').toUpperCase();
+      const isImageField = [
+        'photo', 'rel_photo', 'mother_photo', 'father_photo', 
+        'barcode', 'qr_code', 'signature', 'image'
+      ].includes(typeLower) || 
+      nameUpper.includes('PHOTO') || 
+      nameUpper.includes('SIGN') || 
+      nameUpper.includes('IMAGE') ||
+      nameUpper.includes('PIC') ||
+      String(val).match(/\.(jpg|jpeg|png|webp|gif)$/i);
+
+      if (isImageField) {
         imageFields.push({ name: f.name, value: val });
       } else {
         textFields.push({ name: f.name, value: val, label: f.label || f.name });
@@ -108,11 +132,18 @@ const CardItem = React.memo(function CardItem({
 
   return (
     <View style={[s.card, isSelected && s.cardSelected]}>
-      <View style={s.cardBody}>
-        <View style={s.imagesColumn}>
+      {/* Images strip - horizontal scroll when multiple images */}
+      {imageFields.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.imagesStrip}
+          style={s.imagesStripWrapper}
+        >
           {imageFields.map(renderImage)}
-        </View>
-
+        </ScrollView>
+      )}
+      <View style={s.cardBody}>
         <View style={s.fieldsList}>
           {textFields.map((f, i) => (
             <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
@@ -231,12 +262,13 @@ const CardItem = React.memo(function CardItem({
 const s = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: radius.xs, marginBottom: 10, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, overflow: 'hidden' },
   cardSelected: { borderColor: colors.brandPrimary, backgroundColor: '#f8fafc' },
+  imagesStripWrapper: { borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: '#fafafa' },
+  imagesStrip: { flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 8, gap: 8 },
   cardBody: { flexDirection: 'row', padding: 8 },
-  imagesColumn: { width: 50, gap: 10, marginRight: 12 },
   imgBoxWrap: { alignItems: 'center' },
-  imgBox: { width: 50, height: 60, borderRadius: radius.xs, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+  imgBox: { width: 64, height: 72, borderRadius: radius.xs, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
   actualImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  imgBoxLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginTop: 2, textTransform: 'uppercase' },
+  imgBoxLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginTop: 2, textTransform: 'uppercase', maxWidth: 64, textAlign: 'center' },
   fieldsList: { flex: 1, justifyContent: 'center' },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
   fieldLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, textTransform: 'uppercase' },
