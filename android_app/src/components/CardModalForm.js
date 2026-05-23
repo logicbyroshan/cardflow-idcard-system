@@ -4,23 +4,16 @@ import { useNavigation } from '@react-navigation/native';
 import { DynamicIcon } from './Icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { apiGet, apiPostForm, BASE_URL, getSessionCookies } from '../api/client';
+import { apiGet, apiPostForm, BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 
 const resolveImageSource = (val) => {
-  if (!val) return null;
-  if (val.startsWith('http') || val.startsWith('file://') || val.startsWith('content://') || val.startsWith('data:image')) {
-    return { uri: val };
-  }
-  let url = val;
-  if (val.startsWith('/media/')) {
-    url = `${BASE_URL}${val}`;
-  } else if (val.startsWith('media/')) {
-    url = `${BASE_URL}/${val}`;
-  } else {
-    url = val.startsWith('/') ? `${BASE_URL}${val}` : `${BASE_URL}/${val}`;
+  const resolved = resolveAdarshImageUrl(val);
+  if (!resolved) return null;
+  if (resolved.startsWith('file://') || resolved.startsWith('content://') || resolved.startsWith('data:image')) {
+    return { uri: resolved };
   }
   return {
-    uri: url,
+    uri: resolved,
     headers: {
       Cookie: getSessionCookies()
     }

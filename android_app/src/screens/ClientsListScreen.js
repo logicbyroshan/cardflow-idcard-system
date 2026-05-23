@@ -7,7 +7,7 @@ import Toast from '../components/Toast';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import ConfirmModal from '../components/ConfirmModal';
-import { apiGet, apiPost, BASE_URL, getSessionCookies } from '../api/client';
+import { apiGet, apiPost, BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
@@ -150,7 +150,7 @@ export default function ClientsListScreen({ navigation, route }) {
           {item.logo_url ? (
             <Image 
               source={{ 
-                uri: item.logo_url.startsWith('http') ? item.logo_url : `${BASE_URL}${item.logo_url}`,
+                uri: resolveAdarshImageUrl(item.logo_url),
                 headers: {
                   Cookie: getSessionCookies()
                 }

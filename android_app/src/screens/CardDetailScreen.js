@@ -11,7 +11,7 @@ import Toast from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
 import { DetailSkeleton } from '../components/Skeleton';
 import CardModalForm from '../components/CardModalForm';
-import { apiGet, apiPost, BASE_URL, getSessionCookies } from '../api/client';
+import { apiGet, apiPost, BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 import { colors, radius, shadows, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
@@ -124,7 +124,7 @@ export default function CardDetailScreen({ navigation, route }) {
               {isComplete ? (
                 <Image 
                   source={{ 
-                    uri: card.photo_url.startsWith('http') ? card.photo_url : `${BASE_URL}${card.photo_url}`,
+                    uri: resolveAdarshImageUrl(card.photo_url),
                     headers: {
                       Cookie: getSessionCookies()
                     }

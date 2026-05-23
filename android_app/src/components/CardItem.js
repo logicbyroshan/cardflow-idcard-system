@@ -5,7 +5,7 @@ import { colors, shadows, radius, spacing, typography, fontFamily, gradients } f
 import { HStack } from './Stack';
 import { cleanFieldValue } from '../utils/data';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BASE_URL, getSessionCookies } from '../api/client';
+import { BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 
 const CardItem = React.memo(function CardItem({ 
   item, 
@@ -63,24 +63,7 @@ const CardItem = React.memo(function CardItem({
     const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined' || val.trim() === '';
     const hasError = imageErrors[field.name];
     
-    let imageUrl = null;
-    if (!isPending && !isEmpty) {
-      if (val.startsWith('http') || val.startsWith('file://') || val.startsWith('content://') || val.startsWith('data:image')) {
-        imageUrl = val;
-      } else if (val.startsWith('/media/')) {
-        imageUrl = `${BASE_URL}${val}`;
-      } else if (val.startsWith('media/')) {
-        imageUrl = `${BASE_URL}/${val}`;
-      } else if (val.includes('/media/')) {
-        const idx = val.indexOf('/media/');
-        imageUrl = `${BASE_URL}${val.substring(idx)}`;
-      } else if (val.includes('media/')) {
-        const idx = val.indexOf('media/');
-        imageUrl = `${BASE_URL}/${val.substring(idx)}`;
-      } else {
-        imageUrl = val.startsWith('/') ? `${BASE_URL}${val}` : `${BASE_URL}/${val}`;
-      }
-    }
+    const imageUrl = isPending || isEmpty ? null : resolveAdarshImageUrl(val);
 
     const showImage = !isPending && !isEmpty && imageUrl && !hasError;
     

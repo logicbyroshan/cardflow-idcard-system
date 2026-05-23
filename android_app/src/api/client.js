@@ -323,3 +323,42 @@ export function getSessionCookies() {
   return cachedCookies;
 }
 
+export function resolveAdarshImageUrl(val) {
+  const url = String(val || '').trim();
+  if (!url || url === 'NOT_FOUND' || url === 'null' || url === 'undefined') {
+    return '';
+  }
+  if (url.startsWith('file://') || url.startsWith('content://') || url.startsWith('data:image')) {
+    return url;
+  }
+  
+  // 1. If it contains /media/ or media/
+  if (url.includes('/media/')) {
+    const idx = url.indexOf('/media/');
+    return `${BASE_URL}${url.substring(idx)}`;
+  }
+  if (url.includes('media/')) {
+    const idx = url.indexOf('media/');
+    return `${BASE_URL}/${url.substring(idx)}`;
+  }
+
+  // 2. If it is a static asset url
+  if (url.includes('/static/')) {
+    const idx = url.indexOf('/static/');
+    return `${BASE_URL}${url.substring(idx)}`;
+  }
+  if (url.includes('static/')) {
+    const idx = url.indexOf('static/');
+    return `${BASE_URL}/${url.substring(idx)}`;
+  }
+
+  // 3. If it starts with http/https but does not have /media/ or /static/
+  if (url.startsWith('http')) {
+    return url;
+  }
+
+  // 4. Otherwise, treat it as a relative media path (e.g., adarshimg/..., clients_imgs/...)
+  const cleanPath = url.startsWith('/') ? url.substring(1) : url;
+  return `${BASE_URL}/media/${cleanPath}`;
+}
+

@@ -7,7 +7,7 @@ import Toast from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
 import { CardListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
-import { apiGet, apiPost, BASE_URL, getSessionCookies } from '../api/client';
+import { apiGet, apiPost, BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
@@ -91,10 +91,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
     const photoUrl = item.photo_url || '';
     const isUpdating = updating === item.id;
 
-    let finalPhotoUrl = photoUrl;
-    if (photoUrl && !photoUrl.startsWith('http') && !photoUrl.startsWith('file://')) {
-      finalPhotoUrl = photoUrl.startsWith('/') ? `${BASE_URL}${photoUrl}` : `${BASE_URL}/${photoUrl}`;
-    }
+    const finalPhotoUrl = resolveAdarshImageUrl(photoUrl);
 
     return (
       <View style={s.card}>
