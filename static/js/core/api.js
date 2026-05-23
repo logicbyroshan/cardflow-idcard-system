@@ -46,8 +46,9 @@
     var _isLoginPage = window.location.pathname.indexOf('/auth/login') !== -1;
 
     window.fetch = function (url, options) {
-        // Prepend global API prefix if it exists and URL is a root-relative API call
-        if (typeof url === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && typeof window.API_BASE_URL === 'string' && !url.startsWith(window.API_BASE_URL)) {
+        // Prepend global API prefix if it exists and URL is a root-relative API call.
+        // Do NOT prefix client-scoped or app-scoped API routes — they are intentionally root-scoped.
+        if (typeof url === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && typeof window.API_BASE_URL === 'string' && !url.startsWith(window.API_BASE_URL) && !url.startsWith('/client/') && !url.startsWith('/app/')) {
             url = window.API_BASE_URL + url;
         }
 
@@ -201,8 +202,9 @@
     // LOW-LEVEL FETCH WRAPPER
     // ------------------------------------------
     async function _request(url, method, data, options) {
-        // Prepend global API prefix if it exists and URL is a root-relative API call
-        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && !url.startsWith(window.API_BASE_URL)) {
+        // Prepend global API prefix if it exists and URL is a root-relative API call.
+        // Skip prefixing for client-/app-scoped routes which intentionally start with those prefixes.
+        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && !url.startsWith(window.API_BASE_URL) && !url.startsWith('/client/') && !url.startsWith('/app/')) {
             url = window.API_BASE_URL + url;
         }
 
@@ -307,8 +309,9 @@
     function _upload(url, formData, options) {
         options = options || {};
         
-        // Prepend global API prefix if it exists and URL is a root-relative API call
-        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && !url.startsWith(window.API_BASE_URL)) {
+        // Prepend global API prefix if it exists and URL is a root-relative API call.
+        // Skip prefixing for client-/app-scoped routes which intentionally start with those prefixes.
+        if (typeof window.API_BASE_URL === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && !url.startsWith(window.API_BASE_URL) && !url.startsWith('/client/') && !url.startsWith('/app/')) {
             url = window.API_BASE_URL + url;
         }
 

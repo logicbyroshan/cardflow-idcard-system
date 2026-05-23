@@ -420,7 +420,7 @@ def pro_user_super_mode_page(request):
 @login_required
 def pro_user_activity_logs_detail_page(request, user_id):
     """Dedicated detail page for a selected user's deep history (Pro User only)."""
-    if not PermissionService.is_pro_user(request.user):
+    if not PermissionService.can_use_pro_user_options(request.user):
         return redirect('dashboard')
 
     target_user = get_object_or_404(User, id=user_id)

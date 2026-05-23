@@ -71,8 +71,16 @@ def require_client_staff_manager(view_func):
     @login_required(login_url='/panel/auth/login/')
     def wrapper(request, *args, **kwargs):
         user = request.user
-        if not (PermissionService.is_client_role(user) and PermissionService.has(user, 'perm_idcard_client_list')):
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        # Allow either the legacy client-list toggle or the newer manage-staff flag
+        if not (PermissionService.is_client_role(user) and (
+                PermissionService.has(user, 'perm_idcard_client_list') or
+                PermissionService.has(user, 'perm_manage_client_staff'))):
+            # Treat API routes and AJAX/JSON-accepting requests as API calls
+            accept = request.META.get('HTTP_ACCEPT', '') or request.headers.get('Accept', '')
+            is_api_path = str(request.path or '').startswith('/panel/client/api/')
+            is_json_accept = 'application/json' in str(accept).lower()
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            if is_api_path or is_ajax or is_json_accept:
                 return JsonResponse({
                     'success': False,
                     'message': 'Client staff management access required'

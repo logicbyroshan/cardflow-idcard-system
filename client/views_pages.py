@@ -175,8 +175,9 @@ def manage_staff(request):
     if not client:
         return redirect('/panel/auth/login/')
     
-    # Check permission
-    if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
+    # Check permission: allow either client-list toggle or explicit manage-staff flag
+    if not (PermissionService.has_permission(user, 'perm_idcard_client_list')
+            or PermissionService.has_permission(user, 'perm_manage_client_staff')):
         return redirect(reverse('client:dashboard'))
     
     # Get Staff QuerySet directly for server-side table rendering

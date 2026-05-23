@@ -378,9 +378,15 @@ def get_card_photo_url(card, field_data: Optional[dict] = None) -> Optional[str]
         if val and is_valid_image_path(val):
             return _ensure_media_url(val, settings.MEDIA_URL)
 
-    # If the card explicitly carries image-like field keys, treat blank values
-    # as a deliberate removal instead of falling back to the legacy ImageField.
-    if any(_looks_like_image_field_key(key) for key in fd.keys()):
+    # If the card explicitly carries image-like field keys, prefer their values
+    # when present; otherwise treat explicit blank values as a deliberate
+    # removal instead of falling back to the legacy ImageField.
+    image_keys = [k for k in fd.keys() if _looks_like_image_field_key(k)]
+    if image_keys:
+        for k in image_keys:
+            val = fd.get(k, '')
+            if isinstance(val, str) and is_valid_image_path(val):
+                return _ensure_media_url(val, settings.MEDIA_URL)
         return None
 
     # Scan remaining fields for image-like paths

@@ -281,8 +281,10 @@ class ClientStaffService(BaseService):
         """
         if not PermissionService.is_client(user):
             return False
-        
-        return PermissionService.has(user, 'perm_idcard_client_list')
+
+        # Allow either the legacy client-list toggle or the newer manage-staff flag
+        return (PermissionService.has(user, 'perm_idcard_client_list')
+                or PermissionService.has(user, 'perm_manage_client_staff'))
     
     @classmethod
     def list_staff(cls, user) -> ServiceResult:

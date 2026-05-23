@@ -60,6 +60,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchAssignableClients() {
         if (allClients.length) return;
+
+        // If we're on the client portal, avoid calling the admin-only
+        // `/panel/api/client-staff/clients/` endpoint which returns 403.
+        if (String(window.location.pathname || '').indexOf('/panel/client/') === 0) {
+            allClients = [];
+            return;
+        }
+
         try {
             var data = await ApiClient.get(apiPath('/api/client-staff/clients/'));
             if (data && data.success) {
@@ -340,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function fetchStaffDetailById(staffId) {
         if (!staffId) return null;
         try {
-            var json = await ApiClient.get(apiPath('/api/client-staff/' + staffId + '/'));
+            var json = await ApiClient.get('/client/api/staff/' + staffId + '/');
             if (!json.success) return null;
             return json.staff || json.data || null;
         } catch (_) {
@@ -1434,17 +1442,17 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         defaultOnPerms: [],
 
-        // API endpoints (RESTful)
-        api: {
-            fetchUrl:          function (id) { return apiPath('/api/client-staff/' + id + '/'); },
-            fetchResponseKey:  'staff',
-            errorKey:          'error',
-            createUrl:         apiPath('/api/client-staff/create/'),
-            createMethod:      'post',
-            updateEndpoint:    function (id) { return { url: apiPath('/api/client-staff/' + id + '/update/'), method: 'put' }; },
-            deleteEndpoint:    function (id) { return { url: apiPath('/api/client-staff/' + id + '/delete/'), method: 'delete' }; },
-            toggleUrl:         function (id) { return apiPath('/api/client-staff/' + id + '/toggle-status/'); },
-        },
+            // API endpoints (client-scoped)
+            api: {
+                fetchUrl:          function (id) { return '/client/api/staff/' + id + '/'; },
+                fetchResponseKey:  'data',
+                errorKey:          'error',
+                createUrl:         '/client/api/staff/',
+                createMethod:      'post',
+                updateEndpoint:    function (id) { return { url: '/client/api/staff/' + id + '/', method: 'put' }; },
+                deleteEndpoint:    function (id) { return { url: '/client/api/staff/' + id + '/', method: 'delete' }; },
+                toggleUrl:         function (id) { return '/client/api/staff/' + id + '/toggle-status/'; },
+            },
 
         onDrawerReset: function () {
             resetClientSelection();
@@ -1744,7 +1752,7 @@ document.addEventListener('DOMContentLoaded', function () {
         saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
         try {
-            var result = await ApiClient.post(apiPath('/api/client-staff/' + tempPwTargetId + '/set-temp-password/'), {
+            var result = await ApiClient.post('/client/api/staff/' + tempPwTargetId + '/set-temp-password/', {
                 password: password,
             });
             if (result && result.success) {

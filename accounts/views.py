@@ -22,6 +22,7 @@ from django.utils.timesince import timesince
 from django.db.models import Q, Count, Max
 from core.models import ActivityLog
 from core.services.activity_service import ActivityService
+from core.services.permission_service import PermissionService
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 
@@ -699,7 +700,7 @@ class ProUserAuditUsersAPIView(LoginRequiredMixin, View):
     login_url = '/panel/auth/login/'
 
     def get(self, request):
-        if getattr(request.user, 'role', None) != 'pro_user':
+        if not PermissionService.can_use_pro_user_options(request.user):
             return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
 
         search = str(request.GET.get('search', '') or '').strip()
@@ -807,7 +808,7 @@ class ProUserAuditHistoryAPIView(LoginRequiredMixin, View):
         }
 
     def get(self, request):
-        if getattr(request.user, 'role', None) != 'pro_user':
+        if not PermissionService.can_use_pro_user_options(request.user):
             return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
 
         try:
@@ -933,7 +934,7 @@ class ProUserAuditActionsAPIView(LoginRequiredMixin, View):
     login_url = '/panel/auth/login/'
 
     def get(self, request):
-        if getattr(request.user, 'role', None) != 'pro_user':
+        if not PermissionService.can_use_pro_user_options(request.user):
             return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
 
         actions = [

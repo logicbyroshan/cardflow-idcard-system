@@ -1049,6 +1049,12 @@ class ProUserAuditApiTests(TestCase):
             password='testpass123',
             role='pro_user',
         )
+        self.super_admin = User.objects.create_user(
+            username='super-admin@example.com',
+            email='super-admin@example.com',
+            password='testpass123',
+            role='super_admin',
+        )
         self.target_user = User.objects.create_user(
             username='target-user@example.com',
             email='target-user@example.com',
@@ -1130,6 +1136,18 @@ class ProUserAuditApiTests(TestCase):
         payload = response.json()
         self.assertTrue(payload['success'])
         self.assertTrue(any(entry['value'] == 'login' for entry in payload['actions']))
+
+    def test_super_admin_can_access_audit_endpoints(self):
+        self.client.login(username='super-admin@example.com', password='testpass123')
+
+        users_response = self.client.get('/panel/api/auth/user-audit/users/')
+        self.assertEqual(users_response.status_code, 200)
+
+        history_response = self.client.get(f'/panel/api/auth/user-audit/history/?user_id={self.target_user.id}')
+        self.assertEqual(history_response.status_code, 200)
+
+        actions_response = self.client.get('/panel/api/auth/user-audit/actions/')
+        self.assertEqual(actions_response.status_code, 200)
 
 
 class ImpersonationApiTests(TestCase):

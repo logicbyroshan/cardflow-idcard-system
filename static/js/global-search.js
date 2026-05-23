@@ -262,29 +262,52 @@
         const assignmentClientsUrl = panelUrl('/api/client-staff/clients/');
         const activeUrl = panelUrl('/api/clients/active/');
 
-        clientQuickListPromise = ApiClient.get(allClientsUrl)
-            .then(function (data) {
-                if (!data || !data.success) throw new Error('Failed to load clients');
-                clientQuickListCache = normalizeClientList(data);
-                return clientQuickListCache;
-            })
-            .catch(function () {
-                return ApiClient.get(assignmentClientsUrl).then(function (data) {
+        // If we're on a client-scoped page, skip the admin-only assignmentClientsUrl
+        // which attempts `/panel/api/client-staff/clients/` and returns 403 for client users.
+        const isClientPage = String(window.location.pathname || '').indexOf('/panel/client/') === 0;
+
+        if (isClientPage) {
+            clientQuickListPromise = ApiClient.get(allClientsUrl)
+                .then(function (data) {
                     if (!data || !data.success) throw new Error('Failed to load clients');
                     clientQuickListCache = normalizeClientList(data);
                     return clientQuickListCache;
+                })
+                .catch(function () {
+                    return ApiClient.get(activeUrl).then(function (data) {
+                        if (!data || !data.success) throw new Error('Failed to load clients');
+                        clientQuickListCache = normalizeClientList(data);
+                        return clientQuickListCache;
+                    });
+                })
+                .finally(function () {
+                    clientQuickListPromise = null;
                 });
-            })
-            .catch(function () {
-                return ApiClient.get(activeUrl).then(function (data) {
+        } else {
+            clientQuickListPromise = ApiClient.get(allClientsUrl)
+                .then(function (data) {
                     if (!data || !data.success) throw new Error('Failed to load clients');
                     clientQuickListCache = normalizeClientList(data);
                     return clientQuickListCache;
+                })
+                .catch(function () {
+                    return ApiClient.get(assignmentClientsUrl).then(function (data) {
+                        if (!data || !data.success) throw new Error('Failed to load clients');
+                        clientQuickListCache = normalizeClientList(data);
+                        return clientQuickListCache;
+                    });
+                })
+                .catch(function () {
+                    return ApiClient.get(activeUrl).then(function (data) {
+                        if (!data || !data.success) throw new Error('Failed to load clients');
+                        clientQuickListCache = normalizeClientList(data);
+                        return clientQuickListCache;
+                    });
+                })
+                .finally(function () {
+                    clientQuickListPromise = null;
                 });
-            })
-            .finally(function () {
-                clientQuickListPromise = null;
-            });
+        }
 
         return clientQuickListPromise;
     }
