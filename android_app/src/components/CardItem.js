@@ -209,25 +209,21 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Download List Action Buttons */}
-          {currentStatus === 'download' && (
-            <>
-              {onStatusChange && hasPerm('perm_idcard_retrieve') && (
-                <TouchableOpacity 
-                  style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
-                  onPress={() => onStatusChange('pending')}
-                >
-                  <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
-                </TouchableOpacity>
-              )}
-              {onReprint && (hasPerm('perm_idcard_reprint_list') || hasPerm('perm_reprint_request_list')) && (
-                <TouchableOpacity 
-                  style={[s.outlineBtn, { borderColor: colors.yellow }]} 
-                  onPress={() => onReprint(item)}
-                >
-                  <Text style={[s.outlineBtnText, { color: colors.yellow }]}>REPRINT</Text>
-                </TouchableOpacity>
-              )}
-            </>
+          {currentStatus === 'download' && onStatusChange && hasPerm('perm_idcard_retrieve') && (
+            <TouchableOpacity 
+              style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
+              onPress={() => onStatusChange('pending')}
+            >
+              <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
+            </TouchableOpacity>
+          )}
+          {currentStatus === 'download' && onReprint && (hasPerm('perm_idcard_reprint_list') || hasPerm('perm_reprint_request_list')) && (
+            <TouchableOpacity 
+              style={[s.outlineBtn, { borderColor: colors.yellow }]} 
+              onPress={() => onReprint(item)}
+            >
+              <Text style={[s.outlineBtnText, { color: colors.yellow }]}>REPRINT</Text>
+            </TouchableOpacity>
           )}
 
           {/* Pool List Action Button */}

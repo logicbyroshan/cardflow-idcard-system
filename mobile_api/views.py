@@ -5279,11 +5279,11 @@ def api_dashboard_data(request):
             recent_reprints = []
             if is_admin:
                 from reprintcard.models import ReprintRequest
-                reprints_qs = ReprintRequest.objects.select_related('card', 'table', 'requested_by', 'table__group__client').order_by('-created_at')
+                reprints_qs = ReprintRequest.objects.filter(status__in=['requested', 'confirmed']).select_related('card', 'table', 'requested_by', 'table__group__client').order_by('-created_at')
                 if not PermissionService.is_super_admin(user):
                     reprints_qs = reprints_qs.filter(table__group__client_id__in=accessible_ids)
                 
-                for r in reprints_qs[:100]:
+                for r in reprints_qs[:1000]:
                     recent_reprints.append({
                         'id': r.id,
                         'card_id': r.card_id,

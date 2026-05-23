@@ -530,7 +530,7 @@ export default function HomeScreen({ navigation }) {
                   if (rep.status === 'requested') clientReprintMap[cid].tables[tid].requested += 1;
                   else if (rep.status === 'confirmed') clientReprintMap[cid].tables[tid].confirmed += 1;
                 });
-                const reprintClients = Object.values(clientReprintMap);
+                const reprintClients = Object.values(clientReprintMap).sort((a, b) => b.requested - a.requested);
 
                 const handleReprintBadgePress = (client) => {
                   const tableList = Object.values(client.tables || {});

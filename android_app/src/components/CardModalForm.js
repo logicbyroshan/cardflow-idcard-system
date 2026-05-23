@@ -184,14 +184,14 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
 
   const handlePickFromGallery = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        showToast(`Permission to access gallery was denied`, 'error');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, allowsEditing: true, aspect: [3, 4] });
+      // Modern Android (13+) utilizes system Photo Picker which does not require media permissions.
+      // Directly call launchImageLibraryAsync for maximum compatibility.
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images || 'images',
+        quality: 0.7,
+        allowsEditing: true,
+        aspect: [3, 4]
+      });
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const uri = result.assets[0].uri;
