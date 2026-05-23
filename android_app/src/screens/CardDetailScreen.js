@@ -92,6 +92,7 @@ export default function CardDetailScreen({ navigation, route }) {
 
   const allowedStatuses = useMemo(() => {
     const perms = user?.permissions || {};
+    const isSuperAdmin = user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin';
     return [
       { key: 'pending', label: 'Pending', perm: 'perm_idcard_pending_list' },
       { key: 'verified', label: 'Verified', perm: 'perm_idcard_verified_list' },
@@ -99,7 +100,7 @@ export default function CardDetailScreen({ navigation, route }) {
       { key: 'download', label: 'Download', perm: 'perm_idcard_download_list' },
       { key: 'reprint', label: 'Reprint', perm: 'perm_idcard_reprint_list' },
       { key: 'pool', label: 'Pool', perm: 'perm_idcard_pool_list' },
-    ].filter(opt => !opt.perm || perms[opt.perm]);
+    ].filter(opt => isSuperAdmin || !opt.perm || perms[opt.perm]);
   }, [user]);
 
   const photoVal = card.photo_url || '';

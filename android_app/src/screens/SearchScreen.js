@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { IconSearch, IconFilter, IconCheck, IconProfile, IconMail, IconPhone } from '../components/Icons';
 import CardItem from '../components/CardItem';
@@ -50,7 +50,11 @@ export default function SearchScreen({ navigation }) {
   };
 
   const { user } = useAuth();
-  const perms = user?.permissions || {};
+  const perms = useMemo(() => ({
+    ...(user?.permissions || {}),
+    isSuperAdmin: !!(user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin'),
+    role: user?.role,
+  }), [user]);
 
   const renderItem = ({ item }) => (
     <TouchableOpacity 

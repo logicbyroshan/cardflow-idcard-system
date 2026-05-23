@@ -33,7 +33,11 @@ const STATUS_OPTIONS = [
 export default function CardListScreen({ navigation, route }) {
   const { tableId, status: initialStatus } = route?.params || {};
   const { user } = useAuth();
-  const perms = useMemo(() => user?.permissions || {}, [user]);
+  const perms = useMemo(() => ({
+    ...(user?.permissions || {}),
+    isSuperAdmin: !!(user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin'),
+    role: user?.role,
+  }), [user]);
   const insets = useSafeAreaInsets();
 
   const allowedStatuses = useMemo(() => {
@@ -232,6 +236,28 @@ export default function CardListScreen({ navigation, route }) {
       setSelectAllLoading(false);
     }
   }, [cards, selectedIds, totalCount, currentStatus, searchQuery, activeFilters, tableId, showToast]);
+  
+  // Helper to update local list and counts after a successful card action
+  const updateCardStateLocally = useCallback((idsArray, fromStatus, toStatus) => {
+    // 1. Remove the IDs from the cards array
+    setCards(prev => prev.filter(c => !idsArray.includes(c.id)));
+    
+    // 2. Adjust total count
+    setTotalCount(prev => Math.max(0, prev - idsArray.length));
+    
+    // 3. Update tableCounts locally
+    setTableCounts(prev => {
+      const next = { ...prev };
+      const count = idsArray.length;
+      if (fromStatus && next[fromStatus] !== undefined) {
+        next[fromStatus] = Math.max(0, next[fromStatus] - count);
+      }
+      if (toStatus && next[toStatus] !== undefined) {
+        next[toStatus] = (next[toStatus] || 0) + count;
+      }
+      return next;
+    });
+  }, []);
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   const handleBulkStatus = useCallback((newStatus) => {
@@ -267,13 +293,14 @@ export default function CardListScreen({ navigation, route }) {
         setConfirmModal(p => ({ ...p, visible: false }));
         setBulkLoading(true);
         try {
+          const idsArray = Array.from(selectedIds);
           const { data } = await apiPost(`/api/mobile/table/${tableId}/bulk-status/`, {
-            card_ids: Array.from(selectedIds),
+            card_ids: idsArray,
             status: statusStr,
           });
           if (data?.success) {
             showToast(data.message || 'Updated successfully', 'success');
-            onRefresh();
+            updateCardStateLocally(idsArray, currentStatus, statusStr);
             exitSelectMode();
           } else {
             showToast(data?.message || 'Update failed', 'error');
@@ -285,16 +312,19 @@ export default function CardListScreen({ navigation, route }) {
         }
       },
     });
-  }, [selectedIds, currentStatus, tableId, showToast, onRefresh, exitSelectMode]);
+  }, [selectedIds, currentStatus, tableId, showToast, exitSelectMode, updateCardStateLocally]);
 
   // ── Single card actions ───────────────────────────────────────────────────
   const handleSingleStatus = useCallback(async (id, newStatus) => {
     try {
       const { data } = await apiPost(`/api/mobile/card/${id}/status/`, { status: newStatus });
-      if (data?.success) { showToast(data.message || 'Updated', 'success'); onRefresh(); }
+      if (data?.success) { 
+        showToast(data.message || 'Updated', 'success'); 
+        updateCardStateLocally([id], currentStatus, newStatus);
+      }
       else showToast(data?.message || 'Failed', 'error');
     } catch (_e) { showToast('Network error', 'error'); }
-  }, [showToast, onRefresh]);
+  }, [showToast, currentStatus, updateCardStateLocally]);
 
   const handleSingleDelete = useCallback((id) => {
     setConfirmModal({
@@ -307,12 +337,53 @@ export default function CardListScreen({ navigation, route }) {
         setConfirmModal(p => ({ ...p, visible: false }));
         try {
           const { data } = await apiPost(`/api/mobile/card/${id}/delete/`, {});
-          if (data?.success) { showToast('Moved to Pool', 'success'); onRefresh(); }
+          if (data?.success) { 
+            showToast('Moved to Pool', 'success'); 
+            updateCardStateLocally([id], currentStatus, 'pool');
+          }
           else showToast(data?.message || 'Failed', 'error');
         } catch (_e) { showToast('Network error', 'error'); }
       },
     });
-  }, [currentStatus, showToast, onRefresh]);
+  }, [currentStatus, showToast, updateCardStateLocally]);
+
+  const handleSingleReprint = useCallback((card) => {
+    const fd = card.field_data || {};
+    const cardName = card.name || fd.NAME || fd.Name || fd.name || `Card #${card.id}`;
+    
+    setConfirmModal({
+      visible: true,
+      title: 'Reprint Card?',
+      message: `Are you sure you want to create a reprint request for ${cardName}?`,
+      icon: 'redo',
+      color: colors.yellow,
+      statusFrom: currentStatus,
+      statusTo: 'reprint',
+      note: 'This will move the card to the Reprint Request list.',
+      onConfirm: async () => {
+        setConfirmModal(p => ({ ...p, visible: false }));
+        try {
+          const { data } = await apiPost(`/reprint/api/table/${tableId}/request/`, {
+            card_ids: [card.id],
+            reason: '',
+          });
+          if (data?.status === 'ok') {
+            showToast(data.message || 'Reprint request created', 'success');
+            // Reprint request created successfully. Does not change download status,
+            // but increments reprint tab counts.
+            setTableCounts(prev => ({
+              ...prev,
+              reprint: (prev.reprint || 0) + 1,
+            }));
+          } else {
+            showToast(data?.message || 'Failed to create reprint request', 'error');
+          }
+        } catch (_e) {
+          showToast('Network error', 'error');
+        }
+      },
+    });
+  }, [tableId, currentStatus, showToast]);
 
   const handleStatusChange = useCallback((id, newStatus) => {
     const statusStr = typeof newStatus === 'string' ? newStatus : (newStatus?.status || 'pending');
@@ -374,9 +445,10 @@ export default function CardListScreen({ navigation, route }) {
       currentStatus={currentStatus}
       onStatusChange={s => handleStatusChange(item.id, s)}
       onDelete={perms.perm_idcard_delete ? () => handleSingleDelete(item.id) : undefined}
+      onReprint={(perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
       permissions={perms}
     />
-  ), [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete]);
+  ), [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

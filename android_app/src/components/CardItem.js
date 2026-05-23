@@ -16,6 +16,7 @@ const CardItem = React.memo(function CardItem({
   currentStatus, 
   onStatusChange, 
   onDelete, 
+  onReprint,
   permissions = {} 
 }) {
   const [imageErrors, setImageErrors] = React.useState({});
@@ -51,7 +52,10 @@ const CardItem = React.memo(function CardItem({
     imageFields.unshift({ name: 'PHOTO', value: item.photo_url || item.photo });
   }
 
-  const hasPerm = (key) => !!permissions[key];
+  const hasPerm = (key) => {
+    if (permissions?.isSuperAdmin || permissions?.role === 'super_admin' || permissions?.role === 'admin') return true;
+    return !!permissions[key];
+  };
 
   const renderImage = (field) => {
     const val = String(field.value || '');
@@ -190,14 +194,26 @@ const CardItem = React.memo(function CardItem({
             </TouchableOpacity>
           )}
 
-          {/* Download List Action Button */}
-          {currentStatus === 'download' && onStatusChange && hasPerm('perm_idcard_retrieve') && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
-              onPress={() => onStatusChange('pending')}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
-            </TouchableOpacity>
+          {/* Download List Action Buttons */}
+          {currentStatus === 'download' && (
+            <>
+              {onStatusChange && hasPerm('perm_idcard_retrieve') && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
+                  onPress={() => onStatusChange('pending')}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
+                </TouchableOpacity>
+              )}
+              {onReprint && (hasPerm('perm_idcard_reprint_list') || hasPerm('perm_reprint_request_list')) && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.yellow }]} 
+                  onPress={() => onReprint(item)}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.yellow }]}>REPRINT</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
 
           {/* Pool List Action Button */}
