@@ -7,7 +7,7 @@ import Toast from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
 import { CardListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
-import { apiGet, apiPost } from '../api/client';
+import { apiGet, apiPost, BASE_URL, getSessionCookies } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
@@ -91,12 +91,25 @@ export default function ReprintDetailScreen({ navigation, route }) {
     const photoUrl = item.photo_url || '';
     const isUpdating = updating === item.id;
 
+    let finalPhotoUrl = photoUrl;
+    if (photoUrl && !photoUrl.startsWith('http') && !photoUrl.startsWith('file://')) {
+      finalPhotoUrl = photoUrl.startsWith('/') ? `${BASE_URL}${photoUrl}` : `${BASE_URL}/${photoUrl}`;
+    }
+
     return (
       <View style={s.card}>
         <TouchableOpacity style={s.cardTop} activeOpacity={0.7} onPress={() => navigation.navigate('CardDetail', { cardId: item.id })}>
           <View style={s.photoWrap}>
             {photoUrl ? (
-              <Image source={{ uri: photoUrl }} style={s.photo} />
+              <Image 
+                source={{ 
+                  uri: finalPhotoUrl,
+                  headers: {
+                    Cookie: getSessionCookies()
+                  }
+                }} 
+                style={s.photo} 
+              />
             ) : (
               <View style={s.photoPlaceholder}><DynamicIcon name="user" size={14} color={colors.gray300} /></View>
             )}

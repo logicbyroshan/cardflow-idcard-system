@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions, Linking, Image } from 'react-native';
-import { IconSearch, IconFilter, IconPlus, IconTrash, IconEdit, IconUsers, IconList, IconClose, IconCheck, IconMail, IconPhone } from '../components/Icons';
+import { IconSearch, IconFilter, IconPlus, IconTrash, IconEdit, IconUsers, IconList, IconClose, IconCheck, IconMail, IconPhone, DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
 import { ListSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import ConfirmModal from '../components/ConfirmModal';
-import { apiGet, apiPost, BASE_URL } from '../api/client';
+import { apiGet, apiPost, BASE_URL, getSessionCookies } from '../api/client';
 import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
@@ -148,7 +148,15 @@ export default function ClientsListScreen({ navigation, route }) {
       <View style={s.cardTop}>
         <View style={s.logoCircle}>
           {item.logo_url ? (
-            <Image source={{ uri: item.logo_url.startsWith('http') ? item.logo_url : `${BASE_URL}${item.logo_url}` }} style={s.logo} />
+            <Image 
+              source={{ 
+                uri: item.logo_url.startsWith('http') ? item.logo_url : `${BASE_URL}${item.logo_url}`,
+                headers: {
+                  Cookie: getSessionCookies()
+                }
+              }} 
+              style={s.logo} 
+            />
           ) : (
             <Text style={s.logoText}>{(item.name || 'C').charAt(0).toUpperCase()}</Text>
           )}
@@ -173,10 +181,10 @@ export default function ClientsListScreen({ navigation, route }) {
       </View>
       
       <View style={s.cardStats}>
-        <StatPill label="PENDING" count={item.counts.pending} color="#f59e0b" />
-        <StatPill label="VERIFIED" count={item.counts.verified} color="#10b981" />
-        <StatPill label="APPROVED" count={item.counts.approved} color="#3b82f6" />
-        <StatPill label="DOWNLOAD" count={item.counts.download} color="#8b5cf6" />
+        <StatPill label="PENDING" count={item.counts?.pending} color="#f59e0b" />
+        <StatPill label="VERIFIED" count={item.counts?.verified} color="#10b981" />
+        <StatPill label="APPROVED" count={item.counts?.approved} color="#3b82f6" />
+        <StatPill label="DOWNLOAD" count={item.counts?.download} color="#8b5cf6" />
       </View>
 
       <View style={s.cardActions}>

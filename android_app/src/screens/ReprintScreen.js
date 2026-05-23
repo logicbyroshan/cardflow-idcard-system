@@ -11,12 +11,11 @@ import useRefreshableResource from '../hooks/useRefreshableResource';
 
 export default function ReprintScreen({ navigation, route }) {
   const { user } = useAuth();
-  const clientId = route?.params?.clientId || user?.client_id;
-  const [activeTab, setActiveTab] = useState('request_list');
+  const clientId = route?.params?.clientId;
 
   const loadData = useCallback(async () => {
     try {
-      if (!clientId) {
+      if (clientId === undefined || clientId === null) {
         return { tables: [], totals: { request: 0, confirmed: 0, download: 0 } };
       }
       const { ok, data } = await apiGet(`/api/mobile/reprint/${clientId}/`);
@@ -24,9 +23,9 @@ export default function ReprintScreen({ navigation, route }) {
         return {
           tables: data.data?.tables || [],
           totals: {
-          request: data.data?.request_total || 0,
-          confirmed: data.data?.confirmed_total || 0,
-          download: data.data?.download_total || 0,
+            request: data.data?.request_total || 0,
+            confirmed: data.data?.confirmed_total || 0,
+            download: data.data?.download_total || 0,
           },
         };
       } else {
@@ -45,27 +44,41 @@ export default function ReprintScreen({ navigation, route }) {
   const totals = data.totals || { request: 0, confirmed: 0, download: 0 };
 
   const renderItem = ({ item }) => {
-    const count = activeTab === 'request_list' ? item.requested : item.confirmed;
     return (
-      <TouchableOpacity 
-        style={s.card} 
-        activeOpacity={0.7} 
-        onPress={() => navigation.navigate('ReprintDetail', { tableId: item.id })}
-      >
-        <View style={s.cardLeft}>
-          <View style={s.tableIcon}><DynamicIcon name="redo" size={12} color="#f59e0b" /></View>
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={s.clientIcon}><DynamicIcon name="building" size={14} color="#3b82f6" /></View>
           <View style={s.info}>
-            <Text style={s.tableName} numberOfLines={1}>{item.name}</Text>
-            <Text style={s.groupName}>{item.group_name}</Text>
+            <Text style={s.clientName} numberOfLines={1}>
+              {item.client_name || 'Client'}
+            </Text>
+            <Text style={s.tableName} numberOfLines={1}>
+              {item.name} • {item.group_name}
+            </Text>
           </View>
         </View>
-        <View style={s.countBadge}>
-          <Text style={s.countText}>{count}</Text>
+        
+        <View style={s.clientStatsRow}>
+          <ClientMiniStat 
+            label="REQUEST LIST" 
+            count={item.requested} 
+            color="#f59e0b" 
+            bg="#fef3c7" 
+            onPress={item.requested > 0 ? () => navigation.navigate('ReprintDetail', { tableId: item.id }) : undefined} 
+          />
+          <ClientMiniStat 
+            label="CONFIRMED" 
+            count={item.confirmed} 
+            color="#10b981" 
+            bg="#ecfdf5" 
+            onPress={item.confirmed > 0 ? () => navigation.navigate('ReprintDetail', { tableId: item.id }) : undefined} 
+          />
         </View>
-        <DynamicIcon name="chevron-right" size={10} color={colors.gray300} style={{ marginLeft: 8 }} />
-      </TouchableOpacity>
+      </View>
     );
   };
+
+  const filteredTables = tables.filter(t => t.requested > 0 || t.confirmed > 0);
 
   return (
     <View style={s.root}>
@@ -78,28 +91,24 @@ export default function ReprintScreen({ navigation, route }) {
         <SummaryBox icon="download" color="#8b5cf6" bg="#ede9fe" label="Download" value={totals.download} />
       </View>
 
-      {/* Tabs */}
-      <View style={s.tabs}>
-        <TouchableOpacity style={[s.tab, activeTab === 'request_list' && s.tabActive]} onPress={() => setActiveTab('request_list')} activeOpacity={0.7}>
-          <Text style={[s.tabText, activeTab === 'request_list' && s.tabTextActive]}>Request List ({totals.request})</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.tab, activeTab === 'confirmed' && s.tabActive]} onPress={() => setActiveTab('confirmed')} activeOpacity={0.7}>
-          <Text style={[s.tabText, activeTab === 'confirmed' && s.tabTextActive]}>Confirmed ({totals.confirmed})</Text>
-        </TouchableOpacity>
-      </View>
-
       {error && <ErrorBanner message={error} onDismiss={() => {}} onRetry={refresh} />}
       {loading ? (
         <ListSkeleton rows={4} />
       ) : (
         <FlatList
-          data={tables.filter(t => activeTab === 'request_list' ? t.requested > 0 : t.confirmed > 0)}
+          data={filteredTables}
           renderItem={renderItem}
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
-          ListEmptyComponent={<View style={s.empty}><View style={s.emptyIcon}><DynamicIcon name="redo" size={24} color={colors.gray300} /></View><Text style={s.emptyTitle}>No {activeTab === 'request_list' ? 'requested' : 'confirmed'} reprints</Text></View>}
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <View style={s.emptyIcon}><DynamicIcon name="redo" size={24} color={colors.gray300} /></View>
+              <Text style={s.emptyTitle}>No reprints</Text>
+              <Text style={s.emptySub}>All reprint requests have been processed</Text>
+            </View>
+          }
         />
       )}
     </View>
@@ -116,29 +125,45 @@ function SummaryBox({ icon, color, bg, label, value }) {
   );
 }
 
+function ClientMiniStat({ label, count, color, bg, onPress }) {
+  return (
+    <TouchableOpacity 
+      style={s.clientMiniStat} 
+      onPress={onPress} 
+      activeOpacity={onPress ? 0.6 : 1}
+      disabled={!onPress || count === 0}
+    >
+      <Text style={[s.clientMiniStatLabel, { color, opacity: count > 0 ? 1 : 0.4 }]}>{label}</Text>
+      <View style={[s.clientMiniStatBadge, { backgroundColor: bg, opacity: count > 0 ? 1 : 0.3 }]}>
+        <Text style={[s.clientMiniStatCount, { color }]}>{count || 0}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   loadWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  summaryRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12 },
-  summaryBox: { flex: 1, backgroundColor: '#fff', borderRadius: radius.lg, padding: 12, alignItems: 'center', borderWidth: 1, ...shadows.sm },
+  summaryRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 10 },
+  summaryBox: { flex: 1, backgroundColor: '#fff', borderRadius: radius.sm, padding: 12, alignItems: 'center', borderWidth: 1, ...shadows.sm },
   summaryIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   summaryValue: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold' },
   summaryLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray400, marginTop: 1 },
-  tabs: { flexDirection: 'row', marginHorizontal: 16, marginTop: 12, backgroundColor: '#fff', borderRadius: radius.md, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' },
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  tabActive: { backgroundColor: 'rgba(51,183,239,0.08)' },
-  tabText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray400 },
-  tabTextActive: { color: colors.brandLight, fontFamily: 'SairaSemiCondensed-Bold' },
   list: { padding: 16, paddingBottom: 32 },
-  card: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: radius.lg, padding: 14, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
-  cardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  tableIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' },
+  card: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm },
+  cardTop: { flexDirection: 'row', alignItems: 'center' },
+  clientIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   info: { flex: 1, minWidth: 0 },
-  tableName: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
-  groupName: { fontSize: 10, color: colors.gray400, marginTop: 2, fontFamily: 'SairaSemiCondensed-Medium' },
-  countBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.xs, minWidth: 36, alignItems: 'center' },
-  countText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: '#b45309' },
+  clientName: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  tableName: { fontSize: 10, color: colors.gray400, marginTop: 2, fontFamily: 'SairaSemiCondensed-Medium' },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   emptyTitle: { fontSize: 13, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray400 },
+  
+  // Stacking Client mini badges
+  clientStatsRow: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  clientMiniStat: { alignItems: 'center', flex: 1 },
+  clientMiniStatLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', marginBottom: 4, letterSpacing: 0.3 },
+  clientMiniStatBadge: { width: '100%', paddingHorizontal: 2, paddingVertical: 6, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
+  clientMiniStatCount: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
 });

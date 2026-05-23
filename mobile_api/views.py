@@ -5485,7 +5485,14 @@ def api_reprint_data(request, client_id):
             request_total += requested
             confirmed_total += confirmed
             download_total += int(download_map.get(t.id, 0) or 0)
-            items.append({'id': t.id, 'name': t.name, 'group_name': t.group.name, 'requested': requested, 'confirmed': confirmed})
+            items.append({
+                'id': t.id,
+                'name': t.name,
+                'group_name': t.group.name,
+                'client_name': t.group.client.name if t.group and t.group.client else '',
+                'requested': requested,
+                'confirmed': confirmed
+            })
 
         return JsonResponse({'success': True, 'data': {'tables': items, 'request_total': request_total, 'confirmed_total': confirmed_total, 'download_total': download_total}})
     except Exception:

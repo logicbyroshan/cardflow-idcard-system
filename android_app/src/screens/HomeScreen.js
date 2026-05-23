@@ -170,20 +170,34 @@ export default function HomeScreen({ navigation }) {
       navigation.navigate('CardList', { tableId: tablesWithStatus[0].id, status: statusValue[statusKey] });
     } else {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      if (expandedClient?.id === client.id && expandedClient?.status === statusKey) {
+      if (expandedClient?.id === client.id) {
         setExpandedClient(null);
       } else {
-        setExpandedClient({ id: client.id, status: statusKey });
+        setExpandedClient({ id: client.id });
       }
     }
   };
 
   if (loading) return (
     <View style={s.root}>
-      <LinearGradient colors={gradients.brand} style={[s.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={s.headerTitle}>Loading Dashboard...</Text>
+      <LinearGradient colors={gradients.brandFull} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={[s.header, { paddingTop: insets.top + 12 }]}>
+        <View style={s.headerRow}>
+          <View style={s.logoSquare}>
+            <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
+          </View>
+          <View style={s.headerCenter}><Text style={s.brandName}>Adarsh ID Cards</Text></View>
+          <View style={s.profileSquare}>
+            <IconProfile size={14} color="#fff" />
+          </View>
+        </View>
+        <View style={s.searchBar}>
+          <IconSearch size={13} color="rgba(255,255,255,0.5)" />
+          <Text style={s.searchPlaceholder}>Search cards, names, numbers...</Text>
+        </View>
       </LinearGradient>
-      <DashboardSkeleton />
+      <ScrollView style={s.scroll}>
+        <DashboardSkeleton />
+      </ScrollView>
     </View>
   );
 
@@ -385,10 +399,18 @@ export default function HomeScreen({ navigation }) {
                     <View key={client.id} style={s.clientCardWrapper}>
                       <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
                         <View style={s.clientCard}>
-                          <View style={s.clientHeader}>
+                          <TouchableOpacity 
+                            style={s.clientHeader} 
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                              setExpandedClient(expandedClient?.id === client.id ? null : { id: client.id });
+                            }}
+                          >
                             <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="building" size={14} color={theme.primary} /></View>
                             <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text></View>
-                          </View>
+                            <DynamicIcon name={expandedClient?.id === client.id ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
+                          </TouchableOpacity>
                           <View style={s.clientStatsRow}>
                             <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={() => handleBadgePress(client, 'PENDING')} />
                             <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={() => handleBadgePress(client, 'VERIFIED')} />
@@ -397,29 +419,49 @@ export default function HomeScreen({ navigation }) {
                             <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={() => handleBadgePress(client, 'POOL')} />
                           </View>
 
-                          {isExpanded && (
+                          {expandedClient?.id === client.id && (
                             <View style={s.expandedContent}>
                               <View style={s.expandedHeader}>
-                                <Text style={s.expandedTitle}>{expandedStatus} LISTS</Text>
+                                <Text style={s.expandedTitle}>TABLES / LISTS</Text>
                                 <TouchableOpacity onPress={() => setExpandedClient(null)}><DynamicIcon name="times" size={10} color={colors.gray400} /></TouchableOpacity>
                               </View>
-                              {(client.tables || []).filter(t => t[statusMap[expandedStatus]] > 0).map(table => (
-                                <TouchableOpacity 
-                                  key={table.id} 
-                                  style={s.expandedItem}
-                                  onPress={() => navigation.navigate('CardList', { tableId: table.id, status: statusValueMap[expandedStatus] })}
-                                >
-                                  <View style={s.expandedItemInfo}>
+                              {(client.tables || []).map(table => (
+                                <View key={table.id} style={s.expandedItem}>
+                                  <View style={s.expandedItemHeader}>
                                     <Text style={s.expandedItemName}>{table.name}</Text>
                                     <Text style={s.expandedItemGroup}>{table.group}</Text>
                                   </View>
-                                  <View style={s.expandedBadge}>
-                                    <Text style={[s.expandedBadgeText, { color: colors[statusValueMap[expandedStatus]]?.text || colors.brandPrimary }]}>
-                                      {table[statusMap[expandedStatus]]}
-                                    </Text>
+                                  <View style={s.statusButtonsRowBelow}>
+                                    {[
+                                      { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
+                                      { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
+                                      { key: 'approved', label: 'Approved', count: table.a || 0, color: colors.approved.text, bg: colors.approved.bg },
+                                      { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg },
+                                      { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
+                                    ].map((stBtn) => {
+                                      const hasCards = stBtn.count > 0;
+                                      return (
+                                        <TouchableOpacity
+                                          key={stBtn.key}
+                                          style={[
+                                            s.stBtnBelow,
+                                            { 
+                                              backgroundColor: hasCards ? stBtn.bg : '#f8fafc',
+                                              borderColor: hasCards ? stBtn.color : '#e2e8f0',
+                                              opacity: hasCards ? 1 : 0.4
+                                            }
+                                          ]}
+                                          disabled={!hasCards}
+                                          onPress={() => navigation.navigate('CardList', { tableId: table.id, status: stBtn.key })}
+                                        >
+                                          <Text style={[s.stBtnTextBelow, { color: hasCards ? stBtn.color : '#94a3b8' }]}>
+                                            {stBtn.label} ({stBtn.count})
+                                          </Text>
+                                        </TouchableOpacity>
+                                      );
+                                    })}
                                   </View>
-                                  <DynamicIcon name="chevron-right" size={8} color={colors.gray300} />
-                                </TouchableOpacity>
+                                </View>
                               ))}
                             </View>
                           )}
@@ -653,12 +695,13 @@ const s = StyleSheet.create({
   expandedContent: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   expandedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   expandedTitle: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 0.5 },
-  expandedItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
-  expandedItemInfo: { flex: 1 },
-  expandedItemName: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray700 },
-  expandedItemGroup: { fontSize: 9, color: colors.gray400, marginTop: 1 },
-  expandedBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.xs, backgroundColor: '#f8fafc', marginRight: 10 },
-  expandedBadgeText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
+  expandedItem: { flexDirection: 'column', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  expandedItemHeader: { marginBottom: 6 },
+  expandedItemName: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  expandedItemGroup: { fontSize: 9, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium' },
+  statusButtonsRowBelow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  stBtnBelow: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stBtnTextBelow: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
   activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   activityIcon: { width: 36, height: 36, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   activityInfo: { flex: 1, paddingLeft: 12 },

@@ -4,7 +4,28 @@ import { useNavigation } from '@react-navigation/native';
 import { DynamicIcon } from './Icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { apiGet, apiPostForm } from '../api/client';
+import { apiGet, apiPostForm, BASE_URL, getSessionCookies } from '../api/client';
+
+const resolveImageSource = (val) => {
+  if (!val) return null;
+  if (val.startsWith('http') || val.startsWith('file://') || val.startsWith('content://') || val.startsWith('data:image')) {
+    return { uri: val };
+  }
+  let url = val;
+  if (val.startsWith('/media/')) {
+    url = `${BASE_URL}${val}`;
+  } else if (val.startsWith('media/')) {
+    url = `${BASE_URL}/${val}`;
+  } else {
+    url = val.startsWith('/') ? `${BASE_URL}${val}` : `${BASE_URL}/${val}`;
+  }
+  return {
+    uri: url,
+    headers: {
+      Cookie: getSessionCookies()
+    }
+  };
+};
 import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import Toast from './Toast';
@@ -246,7 +267,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                                 activeOpacity={0.7}
                               >
                                 {hasImage ? (
-                                  <Image source={{ uri: val }} style={s.photoImg} />
+                                  <Image source={resolveImageSource(val)} style={s.photoImg} />
                                 ) : (
                                   <View style={s.photoPlaceholder}>
                                     <DynamicIcon name="camera" size={24} color={colors.gray300} />

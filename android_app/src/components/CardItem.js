@@ -5,7 +5,7 @@ import { colors, shadows, radius, spacing, typography, fontFamily, gradients } f
 import { HStack } from './Stack';
 import { cleanFieldValue } from '../utils/data';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BASE_URL } from '../api/client';
+import { BASE_URL, getSessionCookies } from '../api/client';
 
 const CardItem = React.memo(function CardItem({ 
   item, 
@@ -97,7 +97,12 @@ const CardItem = React.memo(function CardItem({
         <View style={[s.imgBox, { backgroundColor: boxBg }]}>
           {showImage ? (
             <Image 
-              source={{ uri: imageUrl }} 
+              source={{ 
+                uri: imageUrl,
+                headers: {
+                  Cookie: getSessionCookies()
+                }
+              }} 
               style={s.actualImg} 
               onError={() => setImageErrors(p => ({ ...p, [field.name]: true }))}
             />

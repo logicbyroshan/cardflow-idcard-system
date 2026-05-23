@@ -78,7 +78,7 @@ export default function TopBar({ title, subtitle, onBack, rightAction, secondary
         {secondaryAction && (
           <TouchableOpacity
             onPress={secondaryAction.onPress}
-            style={[styles.rightBtn, { marginRight: 8 }]}
+            style={styles.rightBtn}
             activeOpacity={0.7}
           >
             <RightIcon iconName={secondaryAction.icon} size={13} color={colors.white} />
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 10,
   },
   titleWrap: {
     flex: 1,
@@ -137,6 +138,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 8,
   },
   addBtn: {
     flexDirection: 'row',
@@ -146,6 +148,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 8,
   },
   addBtnText: {
     color: colors.white,
@@ -159,6 +162,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 8,
   },
   rightBtn: {
     width: 32,
@@ -167,6 +171,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 8,
   },
 });
 

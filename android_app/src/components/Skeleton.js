@@ -42,40 +42,61 @@ export default Skeleton;
 
 // ─── Preset Skeleton Layouts ────────────────────────────────────────────────
 
-/** Card list skeleton — shows 6 card placeholders */
+/** Card list skeleton — matches the premium card layout perfectly */
 export const CardListSkeleton = React.memo(function CardListSkeleton() {
   return (
     <View style={presets.listWrap}>
       {[0, 1, 2, 3, 4, 5].map(i => (
-        <View key={i} style={presets.cardRow}>
-          <Skeleton circle size={48} />
-          <View style={presets.cardInfo}>
-            <Skeleton width="70%" height={13} />
-            <Skeleton width="45%" height={10} style={{ marginTop: 6 }} />
+        <View key={i} style={presets.skeletonCard}>
+          <View style={presets.skeletonCardBody}>
+            {/* Left Image Placeholder */}
+            <View style={presets.skeletonImagesColumn}>
+              <Skeleton width={50} height={60} radius={4} />
+              <Skeleton width={32} height={8} style={{ marginTop: 4 }} />
+            </View>
+            {/* Right Fields List */}
+            <View style={presets.skeletonFieldsList}>
+              {[0, 1, 2].map(j => (
+                <View key={j} style={presets.skeletonFieldRow}>
+                  <Skeleton width="30%" height={9} />
+                  <Skeleton width="40%" height={9} />
+                </View>
+              ))}
+            </View>
           </View>
-          <Skeleton width={56} height={22} radius={6} />
+          {/* Bottom Actions Bar */}
+          <View style={presets.skeletonCardActions}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Skeleton width={14} height={14} radius={3} />
+              <Skeleton width={36} height={10} style={{ marginLeft: 6 }} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <Skeleton width={44} height={20} radius={4} />
+              <Skeleton width={26} height={20} radius={4} />
+            </View>
+          </View>
         </View>
       ))}
     </View>
   );
 });
 
-/** Dashboard skeleton — stat cards + grid */
+/** Dashboard skeleton — stat cards + grid with vertical spacing */
 export const DashboardSkeleton = React.memo(function DashboardSkeleton() {
   return (
     <View style={presets.dashWrap}>
       {/* Summary card */}
-      <Skeleton width="100%" height={80} radius={20} style={{ marginBottom: 16 }} />
+      <Skeleton width="100%" height={80} radius={16} style={{ marginBottom: 16 }} />
       <View style={presets.grid}>
         {[0, 1, 2, 3, 4, 5].map(i => (
-          <Skeleton key={i} width="31%" height={80} radius={12} />
+          <Skeleton key={i} width="31%" height={80} radius={12} style={{ marginBottom: 10 }} />
         ))}
       </View>
-      {/* Quick actions */}
-      <Skeleton width="100%" height={48} radius={16} style={{ marginTop: 16 }} />
-      <View style={[presets.grid, { marginTop: 12 }]}>
+      {/* Quick actions separator */}
+      <Skeleton width="100%" height={48} radius={16} style={{ marginTop: 6, marginBottom: 16 }} />
+      <View style={presets.grid}>
         {[0, 1, 2, 3, 4, 5].map(i => (
-          <Skeleton key={i} width="30%" height={56} radius={12} />
+          <Skeleton key={i} width="30%" height={56} radius={12} style={{ marginBottom: 10 }} />
         ))}
       </View>
     </View>
@@ -88,24 +109,26 @@ export const DetailSkeleton = React.memo(function DetailSkeleton() {
     <View style={presets.detailWrap}>
       {/* Hero card */}
       <View style={presets.heroRow}>
-        <Skeleton width={80} height={100} radius={12} />
+        <Skeleton width={90} height={110} radius={6} />
         <View style={presets.heroInfo}>
-          <Skeleton width="80%" height={16} />
+          <Skeleton width="80%" height={18} />
           <Skeleton width="50%" height={12} style={{ marginTop: 8 }} />
-          <Skeleton width="60%" height={10} style={{ marginTop: 8 }} />
-          <Skeleton width="40%" height={10} style={{ marginTop: 4 }} />
+          <Skeleton width="60%" height={10} style={{ marginTop: 12 }} />
         </View>
       </View>
       {/* Fields */}
-      {[0, 1, 2, 3].map(i => (
+      {[0, 1, 2, 3, 4].map(i => (
         <View key={i} style={presets.fieldRow}>
           <Skeleton width="35%" height={11} />
           <Skeleton width="55%" height={11} />
         </View>
       ))}
       {/* Actions */}
-      <Skeleton width="100%" height={48} radius={20} style={{ marginTop: 20 }} />
-      <Skeleton width="100%" height={48} radius={20} style={{ marginTop: 10 }} />
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+        <Skeleton width="48%" height={44} radius={6} />
+        <Skeleton width="48%" height={44} radius={6} />
+      </View>
+      <Skeleton width="100%" height={44} radius={6} style={{ marginTop: 12 }} />
     </View>
   );
 });
@@ -158,15 +181,54 @@ const styles = StyleSheet.create({
 });
 
 const presets = StyleSheet.create({
-  listWrap: { padding: 16 },
+  listWrap: { paddingHorizontal: 0, paddingVertical: 8 },
+  skeletonCard: { 
+    backgroundColor: '#fff', 
+    borderRadius: radius.xs, 
+    marginHorizontal: 12, 
+    marginBottom: 10, 
+    borderWidth: 1, 
+    borderColor: '#f1f5f9',
+    overflow: 'hidden'
+  },
+  skeletonCardBody: { 
+    flexDirection: 'row', 
+    padding: 8 
+  },
+  skeletonImagesColumn: { 
+    width: 50, 
+    alignItems: 'center',
+    marginRight: 12 
+  },
+  skeletonFieldsList: { 
+    flex: 1, 
+    justifyContent: 'center' 
+  },
+  skeletonFieldRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    paddingVertical: 4, 
+    borderBottomWidth: 1, 
+    borderColor: '#f8fafc' 
+  },
+  skeletonCardActions: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 10, 
+    paddingVertical: 6, 
+    borderTopWidth: 1, 
+    borderColor: '#f1f5f9', 
+    backgroundColor: '#fafafa' 
+  },
   cardRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#f1f5f9' },
   cardInfo: { flex: 1 },
   dashWrap: { padding: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   detailWrap: { padding: 16 },
-  heroRow: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 16 },
-  heroInfo: { flex: 1, paddingTop: 4 },
-  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
+  heroRow: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: radius.sm, padding: 16, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 16 },
+  heroInfo: { flex: 1, paddingLeft: 16, justifyContent: 'center' },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
   profileWrap: { padding: 16 },
   settingsWrap: { padding: 16 },
 });

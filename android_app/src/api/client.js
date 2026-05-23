@@ -318,3 +318,8 @@ export async function clearAuth() {
     STORAGE_KEYS.cookies,
   ]);
 }
+
+export function getSessionCookies() {
+  return cachedCookies;
+}
+

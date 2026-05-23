@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { DynamicIcon, IconSearch, IconCheck } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CardItem from '../components/CardItem';
 import TopBar from '../components/TopBar';
 import { CardListSkeleton } from '../components/Skeleton';
@@ -33,6 +34,7 @@ export default function CardListScreen({ navigation, route }) {
   const { tableId, status: initialStatus } = route?.params || {};
   const { user } = useAuth();
   const perms = useMemo(() => user?.permissions || {}, [user]);
+  const insets = useSafeAreaInsets();
 
   const allowedStatuses = useMemo(() => {
     return STATUS_OPTIONS.filter(opt => {
@@ -423,8 +425,7 @@ export default function CardListScreen({ navigation, route }) {
           />
         </View>
         <TouchableOpacity onPress={() => setShowFilterDrawer(true)} style={s.filterBtn}>
-          <DynamicIcon name="filter" size={14} color={colors.brandPrimary} style={{ marginRight: 6 }} />
-          <Text style={s.filterBtnText}>FILTER</Text>
+          <DynamicIcon name="filter" size={14} color={colors.brandPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -474,18 +475,22 @@ export default function CardListScreen({ navigation, route }) {
 
       {/* Bulk action floating bar */}
       {selectMode && (
-        <View style={s.floatingBar}>
+        <View style={[s.floatingBar, { bottom: Math.max(insets.bottom, 16) + 16 }]}>
           <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.floatingGradient}>
             <View style={s.floatingInfo}>
               <Text style={s.floatingCount}>{selectedIds.size} SELECTED</Text>
-              <TouchableOpacity onPress={exitSelectMode} disabled={bulkLoading}>
-                <Text style={s.floatingCancel}>{bulkLoading ? 'PROCESSING...' : 'CANCEL'}</Text>
+              <TouchableOpacity onPress={exitSelectMode} disabled={bulkLoading} style={s.floatingCancelIconBtn}>
+                {bulkLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <DynamicIcon name="times" size={14} color="#fff" />
+                )}
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.fActions}>
-              {currentStatus === 'pending'  && perms.perm_idcard_verify  && <FBtn icon="check"        label="VERIFY"  disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
-              {currentStatus === 'verified' && perms.perm_idcard_approve && <FBtn icon="check-double" label="APPROVE" disabled={bulkLoading} onPress={() => handleBulkStatus('approved')} />}
-              {perms.perm_idcard_delete && <FBtn icon="trash" label="DELETE" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
+              {currentStatus === 'pending'  && perms.perm_idcard_verify  && <FBtn icon="check"        label="VERIFY SELECTED"  disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
+              {currentStatus === 'verified' && perms.perm_idcard_approve && <FBtn icon="check-double" label="APPROVE SELECTED" disabled={bulkLoading} onPress={() => handleBulkStatus('approved')} />}
+              {perms.perm_idcard_delete && <FBtn icon="trash" label="DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
             </ScrollView>
           </LinearGradient>
         </View>
@@ -550,8 +555,7 @@ const s = StyleSheet.create({
   headerActions:       { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8 },
   searchWrap:          { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 44, borderRadius: radius.sm, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm, marginRight: 10 },
   searchInput:         { flex: 1, marginLeft: 8, fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800 },
-  filterBtn:           { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 44, paddingHorizontal: 12, borderRadius: radius.sm, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
-  filterBtnText:       { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary, marginLeft: 4 },
+  filterBtn:           { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: radius.sm, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
   summaryRow:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   selectAllBtn:        { flexDirection: 'row', alignItems: 'center' },
   checkboxSmall:       { width: 14, height: 14, borderRadius: 3, borderWidth: 1, borderColor: colors.gray300, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
@@ -566,6 +570,7 @@ const s = StyleSheet.create({
   floatingInfo:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   floatingCount:       { color: '#fff', fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold' },
   floatingCancel:      { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
+  floatingCancelIconBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   fActions:            { flexDirection: 'row', gap: 10 },
   fBtn:                { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.xs, gap: 6 },
   fBtnText:            { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
