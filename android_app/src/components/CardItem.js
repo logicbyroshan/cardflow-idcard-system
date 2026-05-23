@@ -163,25 +163,21 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Verified List Action Buttons */}
-          {currentStatus === 'verified' && onStatusChange && (
-            <>
-              {hasPerm('perm_idcard_approve') && (
-                <TouchableOpacity 
-                  style={[s.outlineBtn, { borderColor: colors.green }]} 
-                  onPress={() => onStatusChange('approved')}
-                >
-                  <Text style={[s.outlineBtnText, { color: colors.green }]}>APPROVE</Text>
-                </TouchableOpacity>
-              )}
-              {hasPerm('perm_idcard_verify') && (
-                <TouchableOpacity 
-                  style={[s.outlineBtn, { borderColor: colors.red }]} 
-                  onPress={() => onStatusChange('pending')}
-                >
-                  <Text style={[s.outlineBtnText, { color: colors.red }]}>UNVERIFY</Text>
-                </TouchableOpacity>
-              )}
-            </>
+          {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_approve') && (
+            <TouchableOpacity 
+              style={[s.outlineBtn, { borderColor: colors.green }]} 
+              onPress={() => onStatusChange('approved')}
+            >
+              <Text style={[s.outlineBtnText, { color: colors.green }]}>APPROVE</Text>
+            </TouchableOpacity>
+          )}
+          {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_verify') && (
+            <TouchableOpacity 
+              style={[s.outlineBtn, { borderColor: colors.red }]} 
+              onPress={() => onStatusChange('pending')}
+            >
+              <Text style={[s.outlineBtnText, { color: colors.red }]}>UNVERIFY</Text>
+            </TouchableOpacity>
           )}
 
           {/* Approved List Action Button */}
@@ -234,7 +230,7 @@ const CardItem = React.memo(function CardItem({
 });
 
 const s = StyleSheet.create({
-  card: { backgroundColor: '#fff', borderRadius: radius.xs, marginHorizontal: 12, marginBottom: 10, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, overflow: 'hidden' },
+  card: { backgroundColor: '#fff', borderRadius: radius.xs, marginBottom: 10, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.sm, overflow: 'hidden' },
   cardSelected: { borderColor: colors.brandPrimary, backgroundColor: '#f8fafc' },
   cardBody: { flexDirection: 'row', padding: 8 },
   imagesColumn: { width: 50, gap: 10, marginRight: 12 },

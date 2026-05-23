@@ -455,7 +455,7 @@ export default function HomeScreen({ navigation }) {
                                           onPress={() => navigation.navigate('CardList', { tableId: table.id, status: stBtn.key })}
                                         >
                                           <Text style={[s.stBtnTextBelow, { color: hasCards ? stBtn.color : '#94a3b8' }]}>
-                                            {stBtn.label.slice(0, 3).toUpperCase()} {stBtn.count}
+                                            {stBtn.label} ({stBtn.count})
                                           </Text>
                                         </TouchableOpacity>
                                       );
@@ -699,9 +699,9 @@ const s = StyleSheet.create({
   expandedItemHeader: { marginBottom: 4 },
   expandedItemName: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
   expandedItemGroup: { fontSize: 8, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium' },
-  statusButtonsRowBelow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 5 },
-  stBtnBelow: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 3, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  stBtnTextBelow: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold' },
+  statusButtonsRowBelow: { flexDirection: 'row', gap: 4, marginTop: 5, width: '100%' },
+  stBtnBelow: { flex: 1, paddingVertical: 4, borderRadius: 3, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stBtnTextBelow: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', textAlign: 'center' },
   activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   activityIcon: { width: 36, height: 36, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   activityInfo: { flex: 1, paddingLeft: 12 },
