@@ -3407,6 +3407,16 @@ class AdminClientStaffManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'staff-table-body')
 
+    @patch('whitenoise.storage.CompressedManifestStaticFilesStorage.hashed_name', new=lambda self, name, *a, **k: name)
+    @override_settings(STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage')
+    def test_manage_client_staff_page_includes_client_picker_for_admins(self):
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.get('/panel/manage-client-staff/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'client-assignment-section')
+        self.assertContains(response, 'Select clients...')
+
     def test_manage_client_staff_can_filter_by_client(self):
         from staff.models import Staff
 
@@ -3501,6 +3511,26 @@ class AdminClientStaffManagementTests(TestCase):
         self.assertTrue(staff_obj.perm_idcard_add)
         self.assertTrue(staff_obj.perm_mobile_app)
         self.assertFalse(staff_obj.perm_idcard_approve)
+
+    def test_create_client_staff_requires_client_selection(self):
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.post(
+            '/panel/api/client-staff/create/',
+            data=json.dumps({
+                'name': 'Missing Client Assistant',
+                'email': 'missing-client-assistant@test.com',
+                'phone': '9999999999',
+                'address': 'Missing client smoke test',
+                'is_active': True,
+                'perm_idcard_pending_list': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+        self.assertEqual(payload.get('message'), 'Please select a client')
 
     def test_client_staff_detail_api_includes_assignment_payload(self):
         from staff.models import Staff

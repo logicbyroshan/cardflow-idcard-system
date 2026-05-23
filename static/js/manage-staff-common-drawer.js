@@ -552,7 +552,14 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             }
 
             // Allow page-specific extensions to add custom data
-            if (cfg.onBeforeSubmit) cfg.onBeforeSubmit(formData, { mode: currentMode });
+            try {
+                if (cfg.onBeforeSubmit) cfg.onBeforeSubmit(formData, { mode: currentMode });
+            } catch (err) {
+                showToast(err.message || 'Please complete the required fields', 'error');
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                return;
+            }
 
             var result;
             try {

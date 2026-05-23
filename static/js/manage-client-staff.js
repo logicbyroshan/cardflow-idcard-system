@@ -1543,6 +1543,9 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         onBeforeSubmit: function (formData, meta) {
             if (!meta || meta.mode !== 'assign') {
+                if (!selectedClientId) {
+                    throw new Error('Please select a client before creating the assistent');
+                }
                 formData.client_id = selectedClientId;
                 return;
             }
