@@ -1314,8 +1314,9 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
 
     def test_data_guard_clients_api_is_pro_only(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
-        denied = self.client.get('/panel/api/pro-user/data-guard/clients/')
-        self.assertEqual(denied.status_code, 403)
+        allowed_super = self.client.get('/panel/api/pro-user/data-guard/clients/')
+        self.assertEqual(allowed_super.status_code, 200)
+        self.assertTrue(allowed_super.json().get('success'))
 
         self.client.login(username=self.pro_user.username, password='pass1234')
         allowed = self.client.get('/panel/api/pro-user/data-guard/clients/')
@@ -1323,6 +1324,10 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
         payload = allowed.json()
         self.assertTrue(payload.get('success'))
         self.assertTrue(any(row.get('id') == self.client_profile.id for row in payload.get('clients', [])))
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        denied_admin_staff = self.client.get('/panel/api/pro-user/data-guard/clients/')
+        self.assertEqual(denied_admin_staff.status_code, 403)
 
     def test_data_guard_tables_api_returns_fields_and_image_fields(self):
         self.client.login(username=self.pro_user.username, password='pass1234')
@@ -1521,18 +1526,18 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
         self.assertEqual(second.status_code, 400)
         self.assertFalse(second.json().get('success'))
 
-    def test_data_guard_sensitive_apis_are_pro_only(self):
+    def test_data_guard_sensitive_apis_allow_super_admin_and_pro_user(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
 
-        preview_denied = self.client.post(
+        preview_allowed = self.client.post(
             '/panel/api/pro-user/data-guard/preview/',
             data=json.dumps({'table_id': self.table.id, 'action_type': 'filtered_delete'}),
             content_type='application/json',
         )
-        self.assertEqual(preview_denied.status_code, 403)
+        self.assertEqual(preview_allowed.status_code, 200)
 
-        code_denied = self.client.get('/panel/api/pro-user/data-guard/generate-code/')
-        self.assertEqual(code_denied.status_code, 403)
+        code_allowed = self.client.get('/panel/api/pro-user/data-guard/generate-code/')
+        self.assertEqual(code_allowed.status_code, 200)
 
         delete_denied = self.client.post(
             '/panel/api/pro-user/data-guard/delete/',
@@ -1544,4 +1549,12 @@ class PanelProDataDeletionGuardTests(PanelBaseTestCase):
             }),
             content_type='application/json',
         )
-        self.assertEqual(delete_denied.status_code, 403)
+        self.assertEqual(delete_denied.status_code, 400)
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        preview_denied = self.client.post(
+            '/panel/api/pro-user/data-guard/preview/',
+            data=json.dumps({'table_id': self.table.id, 'action_type': 'filtered_delete'}),
+            content_type='application/json',
+        )
+        self.assertEqual(preview_denied.status_code, 403)

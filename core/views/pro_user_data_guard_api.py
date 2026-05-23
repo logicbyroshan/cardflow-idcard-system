@@ -52,13 +52,13 @@ def _guard_confirm_phrase() -> str:
     return phrase or 'PERMANENT DELETE'
 
 
-def _is_pro_user(user) -> bool:
-    return PermissionService.is_pro_user(user)
+def _can_use_data_guard(user) -> bool:
+    return PermissionService.can_use_pro_data_deletion_guard(user)
 
 
 def _require_pro_user(request):
-    if not _is_pro_user(getattr(request, 'user', None)):
-        return JsonResponse({'success': False, 'message': 'Admin access required.'}, status=403)
+    if not _can_use_data_guard(getattr(request, 'user', None)):
+        return JsonResponse({'success': False, 'message': 'Super admin or pro user access required.'}, status=403)
     return None
 
 
