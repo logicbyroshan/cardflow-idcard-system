@@ -146,11 +146,11 @@ export default function HomeScreen({ navigation }) {
       actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', onPress: () => setShowClientForm(true) });
       actions.push({ label: 'REPRINT', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: 0 } });
     } else if (isClient || isAssistant) {
-      actions.push({ label: 'NOTIFICATIONS', icon: 'bell', color: '#f59e0b', bg: '#fffbeb', screen: 'Notifications' });
+      actions.push({ label: 'MESSAGE', icon: 'bell', color: '#f59e0b', bg: '#fffbeb', screen: 'Notifications' });
       if (hasReprintPerm) {
         actions.push({ label: 'REPRINT', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: user?.client_id } });
       }
-      if (isClient && perms.perm_manage_client_staff) {
+      if ((isClient || isAssistant) && perms.perm_manage_client_staff) {
         actions.push({ label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', screen: 'StaffManage' });
       }
     }
@@ -306,41 +306,85 @@ export default function HomeScreen({ navigation }) {
           })}
         </View>
 
-        {(isSuperAdmin || isOperator) && (
+        {quickActions.length > 0 && (
           <View style={s.homeSectionWrap}>
-            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} snapToInterval={width}
-              decelerationRate="fast" style={s.slideScroll} onMomentumScrollEnd={(e) => setCurrentSlide(Math.round(e.nativeEvent.contentOffset.x / width))}>
-              
-              {/* SLIDE 0: HOME SECTION (Tabs as Cards) */}
-              <View style={s.slidePage}>
-                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
-                  <Text style={s.slideHeaderTitle}>HOME SECTION</Text>
-                </LinearGradient>
-                <View style={s.slideContent}>
-                  <View style={s.quickActionsRow}>
-                    {[
-                      { label: 'CLIENTS', icon: 'building', color: '#6366f1', bg: '#eef2ff', tab: 'clients' },
-                      { label: 'ACTIVITY', icon: 'history', color: '#ec4899', bg: '#fdf2f8', tab: 'activity' },
-                      { label: 'REPRINTS', icon: 'redo', color: '#f59e0b', bg: '#fffbeb', tab: 'reprints' },
-                    ].map((act, i) => (
-                      <TouchableOpacity key={i} style={[s.quickActionBtn, activeTab === act.tab && { borderColor: act.color, borderWidth: 1.5 }]} 
-                        onPress={() => setActiveTab(act.tab)}>
-                        <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
-                        <Text style={[s.qaLabel, activeTab === act.tab && { color: act.color }]}>{act.label}</Text>
-                      </TouchableOpacity>
-                    ))}
+            {isSuperAdmin || isOperator ? (
+              <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} snapToInterval={width}
+                decelerationRate="fast" style={s.slideScroll} onMomentumScrollEnd={(e) => setCurrentSlide(Math.round(e.nativeEvent.contentOffset.x / width))}>
+                
+                {/* SLIDE 0: HOME SECTION (Tabs as Cards) */}
+                <View style={s.slidePage}>
+                  <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
+                    <Text style={s.slideHeaderTitle}>HOME SECTION</Text>
+                  </LinearGradient>
+                  <View style={s.slideContent}>
+                    <View style={s.quickActionsRow}>
+                      {[
+                        { label: 'CLIENTS', icon: 'building', color: '#6366f1', bg: '#eef2ff', tab: 'clients' },
+                        { label: 'ACTIVITY', icon: 'history', color: '#ec4899', bg: '#fdf2f8', tab: 'activity' },
+                        { label: 'REPRINTS', icon: 'redo', color: '#f59e0b', bg: '#fffbeb', tab: 'reprints' },
+                      ].map((act, i) => (
+                        <TouchableOpacity key={i} style={[s.quickActionBtn, activeTab === act.tab && { borderColor: act.color, borderWidth: 1.5 }]} 
+                          onPress={() => setActiveTab(act.tab)}>
+                          <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
+                          <Text style={[s.qaLabel, activeTab === act.tab && { color: act.color }]}>{act.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </View>
                 </View>
-              </View>
 
-              {/* SLIDE 1: QUICK ACTIONS */}
+                {/* SLIDE 1: QUICK ACTIONS */}
+                <View style={s.slidePage}>
+                  <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
+                    <Text style={s.slideHeaderTitle}>QUICK ACTIONS</Text>
+                  </LinearGradient>
+                  <View style={s.slideContent}>
+                    <View style={s.quickActionsRow}>
+                      {quickActions.slice(0, 3).map((act, i) => (
+                        <TouchableOpacity key={i} style={s.quickActionBtn} onPress={act.onPress || (() => navigation.navigate(act.screen, act.params))}>
+                          <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
+                          <Text style={s.qaLabel}>{act.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+
+                {/* SLIDE 2: USERS OVERVIEW */}
+                <View style={s.slidePage}>
+                  <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
+                    <Text style={s.slideHeaderTitle}>USERS OVERVIEW</Text>
+                  </LinearGradient>
+                  <View style={s.slideContent}>
+                    <View style={s.quickActionsRow}>
+                      {[
+                        { label: 'CLIENTS', icon: 'building', color: '#10b981', bg: '#ecfdf5', count: counts.client_count || 0, screen: 'ClientsList' },
+                        { label: 'OPERATORS', icon: 'user-tie', color: '#3b82f6', bg: '#eff6ff', count: counts.operator_count || 0, screen: 'StaffManage', params: { role: 'admin_staff' } },
+                        { label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', count: counts.assistant_count || 0, screen: 'StaffManage', params: { role: 'client_staff' } },
+                      ].map((act, i) => (
+                        <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => navigation.navigate(act.screen, act.params)}>
+                          <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
+                          <View style={s.qaLabelRow}>
+                            <Text style={s.qaLabelSmall}>{act.label}</Text>
+                            <View style={[s.qaBadge, { backgroundColor: act.color }]}>
+                              <Text style={s.qaBadgeText}>{act.count}</Text>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </ScrollView>
+            ) : (
               <View style={s.slidePage}>
                 <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
                   <Text style={s.slideHeaderTitle}>QUICK ACTIONS</Text>
                 </LinearGradient>
                 <View style={s.slideContent}>
                   <View style={s.quickActionsRow}>
-                    {quickActions.slice(0, 3).map((act, i) => (
+                    {quickActions.map((act, i) => (
                       <TouchableOpacity key={i} style={s.quickActionBtn} onPress={act.onPress || (() => navigation.navigate(act.screen, act.params))}>
                         <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
                         <Text style={s.qaLabel}>{act.label}</Text>
@@ -349,36 +393,13 @@ export default function HomeScreen({ navigation }) {
                   </View>
                 </View>
               </View>
-
-              {/* SLIDE 2: USERS OVERVIEW */}
-              <View style={s.slidePage}>
-                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.slideHeader}>
-                  <Text style={s.slideHeaderTitle}>USERS OVERVIEW</Text>
-                </LinearGradient>
-                <View style={s.slideContent}>
-                  <View style={s.quickActionsRow}>
-                    {[
-                      { label: 'CLIENTS', icon: 'building', color: '#10b981', bg: '#ecfdf5', count: counts.client_count || 0, screen: 'ClientsList' },
-                      { label: 'OPERATORS', icon: 'user-tie', color: '#3b82f6', bg: '#eff6ff', count: counts.operator_count || 0, screen: 'StaffManage', params: { role: 'admin_staff' } },
-                      { label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', count: counts.assistant_count || 0, screen: 'StaffManage', params: { role: 'client_staff' } },
-                    ].map((act, i) => (
-                      <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => navigation.navigate(act.screen, act.params)}>
-                        <View style={[s.qaIcon, { backgroundColor: act.bg }]}><DynamicIcon name={act.icon} size={18} color={act.color} /></View>
-                        <View style={s.qaLabelRow}>
-                          <Text style={s.qaLabelSmall}>{act.label}</Text>
-                          <View style={[s.qaBadge, { backgroundColor: act.color }]}>
-                            <Text style={s.qaBadgeText}>{act.count}</Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
+            )}
+            
+            {(isSuperAdmin || isOperator) && (
+              <View style={s.dotRow}>
+                {[0, 1, 2].map(i => <View key={i} style={[s.dot, currentSlide === i && s.dotActive]} />)}
               </View>
-            </ScrollView>
-            <View style={s.dotRow}>
-              {[0, 1, 2].map(i => <View key={i} style={[s.dot, currentSlide === i && s.dotActive]} />)}
-            </View>
+            )}
           </View>
         )}
 
@@ -647,19 +668,28 @@ export default function HomeScreen({ navigation }) {
               </LinearGradient>
               <View style={s.secContent}>
               {counts.tables?.length > 0 ? counts.tables.map(table => (
-                <TouchableOpacity key={table.id} style={s.tableCard} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'all' })}>
-                  <View style={s.tableCardTop}>
-                    <View style={[s.tableIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="table" size={14} color={theme.primary} /></View>
-                    <Text style={s.tableName}>{table.name}</Text>
-                  </View>
-                    {['P', 'V', 'A', 'D'].map((st, idx) => (
-                      <View key={st} style={[s.statBadge, { backgroundColor: [colors.brandPrimary, '#10b981', '#3b82f6', '#8b5cf6'][idx] + '15', borderColor: [colors.brandPrimary, '#10b981', '#3b82f6', '#8b5cf6'][idx] }]}>
-                        <Text style={[s.statBadgeText, { color: [colors.brandPrimary, '#10b981', '#3b82f6', '#8b5cf6'][idx] }]}>
-                          {st}: {table[st.toLowerCase()] || 0}
-                        </Text>
+                <View key={table.id} style={s.clientCardWrapper}>
+                  <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
+                    <View style={s.clientCard}>
+                      <TouchableOpacity 
+                        style={s.clientHeader} 
+                        activeOpacity={0.7}
+                        onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'all' })}
+                      >
+                        <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="table" size={14} color={theme.primary} /></View>
+                        <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{table.name}</Text></View>
+                        <DynamicIcon name="chevron-right" size={10} color={colors.gray400} />
+                      </TouchableOpacity>
+                      <View style={s.clientStatsRow}>
+                        <ClientMiniStat label="PENDING" count={table.p || 0} color={colors.pending.text} bg={colors.pending.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pending' })} />
+                        <ClientMiniStat label="VERIFIED" count={table.v || 0} color={colors.verified.text} bg={colors.verified.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'verified' })} />
+                        <ClientMiniStat label="APPROVED" count={table.a || 0} color={colors.approved.text} bg={colors.approved.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'approved' })} />
+                        <ClientMiniStat label="DOWNLOAD" count={table.d || 0} color={colors.download.text} bg={colors.download.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'download' })} />
+                        <ClientMiniStat label="POOL" count={table.po || 0} color={colors.pool.text} bg={colors.pool.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pool' })} />
                       </View>
-                    ))}
-                </TouchableOpacity>
+                    </View>
+                  </LinearGradient>
+                </View>
               )) : <View style={s.emptyState}><Text style={s.emptyText}>No tables found</Text></View>}
               </View>
             </>
