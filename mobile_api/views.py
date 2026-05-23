@@ -5216,9 +5216,9 @@ def api_dashboard_data(request):
             }
             
             clients_data = []
-            
+
             # Order clients identically to the dashboard: latest approved cards first, then latest created.
-            ordered_clients = clients_qs.annotate(
+            ordered_clients = list(clients_qs.annotate(
                 latest_approved=Max(
                     'id_card_groups__tables__id_cards__updated_at',
                     filter=Q(id_card_groups__tables__id_cards__status='approved')
@@ -5227,53 +5227,72 @@ def api_dashboard_data(request):
                 F('latest_approved').desc(nulls_last=True),
                 F('created_at').desc(nulls_last=True),
                 F('id').desc(),
-            )[:100]
-            
-            for client in ordered_clients:
-                tables_qs = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
-                if not PermissionService.is_super_admin(user):
-                    tables_qs = tables_qs.filter(is_active=True)
-                
-                table_ids = list(tables_qs.values_list('id', flat=True))
-                
-                client_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
-                if table_ids:
-                    status_agg = IDCard.objects.filter(table_id__in=table_ids).values('status').annotate(n=Count('id'))
-                    for row in status_agg:
-                        st = row['status']
-                        if st in client_counts:
-                            client_counts[st] = row['n']
-                
-                tables_data = []
-                # For nested list, include counts and group info for intelligent navigation
-                tables_with_counts = tables_qs.filter(is_active=True).annotate(
+            )[:100])
+
+            # Batch-fetch tables and card counts to avoid N+1 queries per client
+            client_ids = [c.id for c in ordered_clients]
+
+            # Tables with per-table counts
+            tables_qs = (
+                IDCardTable.objects
+                .filter(group__client_id__in=client_ids, deleted_by_client=False)
+                .annotate(
                     cnt_p=Count('id_cards', filter=Q(id_cards__status='pending')),
                     cnt_v=Count('id_cards', filter=Q(id_cards__status='verified')),
                     cnt_a=Count('id_cards', filter=Q(id_cards__status='approved')),
                     cnt_d=Count('id_cards', filter=Q(id_cards__status='download')),
                     cnt_po=Count('id_cards', filter=Q(id_cards__status='pool')),
-                ).select_related('group')[:20]
+                )
+                .select_related('group')
+            )
+            if not PermissionService.is_super_admin(user):
+                tables_qs = tables_qs.filter(is_active=True)
 
-                for t in tables_with_counts:
+            from collections import defaultdict
+            tables_by_client = defaultdict(list)
+            for t in tables_qs:
+                # group__client_id should be present via select_related on group
+                client_id = getattr(t.group, 'client_id', None) if getattr(t, 'group', None) else None
+                if client_id is None:
+                    # Fallback: try group__client_id via attribute access
+                    client_id = getattr(t, 'group_id', None)
+                tables_by_client[client_id].append(t)
+
+            # Aggregate card status counts per client in one query
+            status_rows = IDCard.objects.filter(table__group__client_id__in=client_ids).values('table__group__client_id', 'status').annotate(n=Count('id'))
+            client_counts_map = {cid: {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0} for cid in client_ids}
+            for row in status_rows:
+                cid = row.get('table__group__client_id')
+                st = row.get('status')
+                if cid in client_counts_map and st in client_counts_map[cid]:
+                    client_counts_map[cid][st] = row.get('n', 0)
+
+            for client in ordered_clients:
+                client_counts = client_counts_map.get(client.id, {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
+
+                tables_data = []
+                tables_for_client = tables_by_client.get(client.id, [])
+                # Limit to 20 as before; tables_qs is already filtered by is_active when needed
+                for t in tables_for_client[:20]:
                     tables_data.append({
                         'id': t.id,
                         'name': t.name,
                         'group': t.group.name if t.group else '',
-                        'p': t.cnt_p,
-                        'v': t.cnt_v,
-                        'a': t.cnt_a,
-                        'd': t.cnt_d,
-                        'po': t.cnt_po,
+                        'p': getattr(t, 'cnt_p', 0),
+                        'v': getattr(t, 'cnt_v', 0),
+                        'a': getattr(t, 'cnt_a', 0),
+                        'd': getattr(t, 'cnt_d', 0),
+                        'po': getattr(t, 'cnt_po', 0),
                     })
-                
+
                 clients_data.append({
                     'id': client.id,
                     'name': getattr(client, 'business_name', client.name),
-                    'pending': client_counts['pending'],
-                    'verified': client_counts['verified'],
-                    'approved': client_counts['approved'],
-                    'download': client_counts['download'],
-                    'pool': client_counts['pool'],
+                    'pending': client_counts.get('pending', 0),
+                    'verified': client_counts.get('verified', 0),
+                    'approved': client_counts.get('approved', 0),
+                    'download': client_counts.get('download', 0),
+                    'pool': client_counts.get('pool', 0),
                     'tables': tables_data,
                 })
             

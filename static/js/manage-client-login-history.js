@@ -136,10 +136,18 @@
     var surfaceCounts = payload && payload.active_surface_counts ? payload.active_surface_counts : {};
     var activeDesktop = Number(surfaceCounts.desktop || 0);
     var activeMobile = Number(surfaceCounts.mobile || 0);
-    var rows = [
-      '<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-desktop"></i> Website: ' + activeDesktop + '</span>',
-      '<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ' + activeMobile + '</span>'
-    ];
+    var rows = [];
+
+    if (activeDesktop > 0) {
+      rows.push('<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-desktop"></i> Desktop active</span>');
+    }
+    if (activeMobile > 0) {
+      rows.push('<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile active</span>');
+    }
+
+    if (!rows.length) {
+      rows.push('<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-circle-info"></i> No active sessions</span>');
+    }
 
     var devices = Array.isArray(payload.active_devices_info) ? payload.active_devices_info : [];
     devices.slice(0, 6).forEach(function(device) {
@@ -166,7 +174,12 @@
     var activeDesktop = Number(surfaceCounts.desktop || 0);
     var activeMobile = Number(surfaceCounts.mobile || 0);
     if (subtitle) {
-      subtitle.textContent = (clientName || 'Client') + ' - Active devices: ' + activeDevices + ' (Desktop: ' + activeDesktop + ', Mobile: ' + activeMobile + ')';
+      var activeSurfaces = [];
+      if (activeDesktop > 0) activeSurfaces.push('Desktop');
+      if (activeMobile > 0) activeSurfaces.push('Mobile');
+      subtitle.textContent = activeSurfaces.length
+        ? (clientName || 'Client') + ' - Active on ' + activeSurfaces.join(', ')
+        : (clientName || 'Client') + ' - No active sessions';
     }
 
     var events = Array.isArray(payload.events) ? payload.events : [];
@@ -211,8 +224,8 @@
             '<span class="client-history-chip client-history-chip--action"><i class="fa-solid ' + icon + '"></i> ' + actionLabel + '</span>' +
             deviceChip +
             '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-network-wired"></i> ' + ip + '</span>' +
-            '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-desktop"></i> Website: ' + activeDesktop + '</span>' +
-            '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ' + activeMobile + '</span>' +
+            (activeDesktop > 0 ? '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-desktop"></i> Desktop active</span>' : '') +
+            (activeMobile > 0 ? '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile active</span>' : '') +
             fpChips +
           '</div>' +
         '</div>';

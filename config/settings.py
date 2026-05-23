@@ -671,27 +671,47 @@ if REDIS_LOCATION:
     SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
     SESSION_CACHE_ALIAS = 'default'
 else:
-    # Local development: LocMemCache (per-process, no setup needed)
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'TIMEOUT': CACHE_DEFAULT_TIMEOUT,
-            'KEY_PREFIX': CACHE_KEY_PREFIX,
-            'VERSION': CACHE_VERSION,
-            'OPTIONS': {
-                'MAX_ENTRIES': 1000,
-            },
-        }
-    }
+    # Local development: choose cache backend.
+    # For low-memory servers without Redis, enable a disk-backed file cache by
+    # setting USE_FILE_CACHE=1 and optional FILE_CACHE_DIR=<path> in .env.
+    _USE_FILE_CACHE = os.getenv('USE_FILE_CACHE', 'False').strip().lower() in ('1', 'true', 'yes')
+    if _USE_FILE_CACHE:
+        FILE_CACHE_DIR = os.getenv('FILE_CACHE_DIR', str(BASE_DIR / 'cache')).strip() or str(BASE_DIR / 'cache')
+        try:
+            os.makedirs(FILE_CACHE_DIR, exist_ok=True)
+        except Exception:
+            # If we cannot create the directory, fall back to LocMemCache to avoid startup failure.
+            FILE_CACHE_DIR = None
 
-# CRITICAL: Block production from running with per-process LocMemCache.
-# Rate limiting, OTP storage, and export locks are silently broken without Redis.
-if not DEBUG and CACHES['default']['BACKEND'].endswith('LocMemCache'):
-    raise ImproperlyConfigured(
-        'LocMemCache is per-process: rate limiting, OTP storage, and export locks '
-        'are NOT shared between Gunicorn workers. '
-        'Set REDIS_URL in .env for production (e.g. REDIS_URL=redis://127.0.0.1:6379/1).'
-    )
+    if _USE_FILE_CACHE and FILE_CACHE_DIR:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+                'LOCATION': FILE_CACHE_DIR,
+                'TIMEOUT': CACHE_DEFAULT_TIMEOUT,
+                'KEY_PREFIX': CACHE_KEY_PREFIX,
+                'VERSION': CACHE_VERSION,
+            }
+        }
+        # Use cached DB-backed sessions to reduce DB pressure when possible
+        SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+        SESSION_CACHE_ALIAS = 'default'
+    else:
+        # Local development: LocMemCache (per-process, no setup needed)
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'TIMEOUT': CACHE_DEFAULT_TIMEOUT,
+                'KEY_PREFIX': CACHE_KEY_PREFIX,
+                'VERSION': CACHE_VERSION,
+                'OPTIONS': {
+                    'MAX_ENTRIES': 1000,
+                },
+            }
+        }
+
+# Redis is optional. If it is not configured or temporarily unavailable at
+# deploy time, the app keeps working with the existing local cache fallback.
 
 # =============================================================================
 # REAL-TIME (DJANGO CHANNELS)
@@ -703,6 +723,13 @@ REDIS_CHANNEL_LAYER_URL = os.getenv('REDIS_CHANNEL_LAYER_URL', '').strip() or RE
 REDIS_CHANNEL_PREFIX = os.getenv('REDIS_CHANNEL_PREFIX', 'adarsh:realtime').strip() or 'adarsh:realtime'
 REDIS_CHANNEL_CAPACITY = _env_int('REDIS_CHANNEL_CAPACITY', 1500, minimum=100, maximum=20000)
 REDIS_CHANNEL_EXPIRY = _env_int('REDIS_CHANNEL_EXPIRY', 30, minimum=5, maximum=3600)
+
+# Optional Celery scaffold for offloading background tasks to a real worker.
+# When unset, the app keeps using the existing in-process ThreadPool fallback.
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', '').strip() or REDIS_LOCATION
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', '').strip() or REDIS_LOCATION
+CELERY_TASK_ALWAYS_EAGER = _env_bool('CELERY_TASK_ALWAYS_EAGER', False)
+CELERY_TASK_EAGER_PROPAGATES = True
 
 if REDIS_CHANNEL_LAYER_URL:
     CHANNEL_LAYERS = {

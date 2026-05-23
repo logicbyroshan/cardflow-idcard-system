@@ -513,58 +513,97 @@ class PdfExporter:
             filename = generate_export_filename(table.name, 'pdf', client_name=institution_name, status=status)
 
             # Generate PDF using WeasyPrint or xhtml2pdf fallback
-            if _weasyprint_available and WeasyHTML:
-                # WeasyPrint — no link_callback needed; images are file:// URIs
-                base_url = _path_to_file_uri(str(settings.BASE_DIR))
-                pdf_bytes = WeasyHTML(string=html_string, base_url=base_url).write_pdf()
-            else:
-                # xhtml2pdf fallback
-                from xhtml2pdf import pisa
-                pdf_buffer = io.BytesIO()
-                # xhtml2pdf needs a link_callback to resolve local file paths
-                def link_callback(uri, rel):
-                    """Convert relative paths to absolute paths for xhtml2pdf.
-                    S2: validates resolved path stays inside BASE_DIR to prevent
-                    path traversal attacks (e.g. /../../etc/passwd).
-                    """
-                    if uri.startswith('file://'):
-                        # Strip file:// prefix
-                        path = uri[7:]
-                        if path.startswith('/') and len(path) > 2 and path[2] == ':':
-                            # Windows path like /C:/... → C:/...
-                            path = path[1:]
-                        return path.replace('/', os.sep)
-                    if uri.startswith('/'):
-                        base = os.path.realpath(str(settings.BASE_DIR))
-                        resolved = os.path.realpath(os.path.join(base, uri.lstrip('/')))
-                        # Block traversal: resolved path must stay inside BASE_DIR
-                        if not resolved.startswith(base + os.sep) and resolved != base:
-                            logger.warning('link_callback: blocked path traversal attempt: %r', uri)
-                            return os.path.join(base, 'static', 'assets', 'no-image-placeholder.png')
-                        return resolved
-                    return uri
-                
-                pisa_status = pisa.CreatePDF(
-                    io.BytesIO(html_string.encode('utf-8')),
-                    dest=pdf_buffer,
-                    link_callback=link_callback
+            # Write directly to a temp file on disk to avoid large in-memory blobs.
+            import tempfile as _tempfile
+            import os as _os
+            from django.http import StreamingHttpResponse
+
+            tmpf = _tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+            tmpf_path = tmpf.name
+            tmpf.close()
+
+            try:
+                if _weasyprint_available and WeasyHTML:
+                    # WeasyPrint — write directly to file path
+                    base_url = _path_to_file_uri(str(settings.BASE_DIR))
+                    WeasyHTML(string=html_string, base_url=base_url).write_pdf(target=tmpf_path)
+                else:
+                    # xhtml2pdf fallback — write to file-like object
+                    from xhtml2pdf import pisa
+
+                    def link_callback(uri, rel):
+                        """Convert relative paths to absolute paths for xhtml2pdf.
+                        Validates resolved path stays inside BASE_DIR to prevent traversal.
+                        """
+                        if uri.startswith('file://'):
+                            path = uri[7:]
+                            if path.startswith('/') and len(path) > 2 and path[2] == ':':
+                                path = path[1:]
+                            return path.replace('/', _os.sep)
+                        if uri.startswith('/'):
+                            base = _os.path.realpath(str(settings.BASE_DIR))
+                            resolved = _os.path.realpath(_os.path.join(base, uri.lstrip('/')))
+                            if not resolved.startswith(base + _os.sep) and resolved != base:
+                                logger.warning('link_callback: blocked path traversal attempt: %r', uri)
+                                return _os.path.join(base, 'static', 'assets', 'no-image-placeholder.png')
+                            return resolved
+                        return uri
+
+                    with open(tmpf_path, 'wb') as _out:
+                        pisa_status = pisa.CreatePDF(
+                            io.BytesIO(html_string.encode('utf-8')),
+                            dest=_out,
+                            link_callback=link_callback
+                        )
+                        if pisa_status.err:
+                            logger.error("xhtml2pdf errors: %s", pisa_status.err)
+                            try:
+                                _os.unlink(tmpf_path)
+                            except Exception:
+                                pass
+                            return PdfExportResult(success=False, message='PDF generation failed. Please try again.')
+
+                # Stream the temp file as a StreamingHttpResponse and clean up after
+                file_size = 0
+                try:
+                    file_size = int(_os.path.getsize(tmpf_path) or 0)
+                except Exception:
+                    file_size = 0
+
+                def _iter_file(chunk_size=1024 * 1024):
+                    try:
+                        with open(tmpf_path, 'rb') as fh:
+                            while True:
+                                chunk = fh.read(chunk_size)
+                                if not chunk:
+                                    break
+                                yield chunk
+                    finally:
+                        try:
+                            _os.unlink(tmpf_path)
+                        except Exception:
+                            pass
+
+                response = StreamingHttpResponse(_iter_file(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                if file_size:
+                    response['Content-Length'] = str(file_size)
+
+                return PdfExportResult(
+                    success=True,
+                    response=response,
+                    filename=filename,
+                    card_count=len(cards_list)
                 )
-                if pisa_status.err:
-                    logger.error("xhtml2pdf errors: %s", pisa_status.err)
-                    return PdfExportResult(
-                        success=False,
-                        message='PDF generation failed. Please try again.'
-                    )
-                pdf_bytes = pdf_buffer.getvalue()
-
-            response = stream_file_response(pdf_bytes, filename, 'application/pdf', user=user)
-
-            return PdfExportResult(
-                success=True,
-                response=response,
-                filename=filename,
-                card_count=len(cards_list)
-            )
+            except Exception as e:
+                # Cleanup temp file on unexpected error
+                try:
+                    if _os.path.exists(tmpf_path):
+                        _os.unlink(tmpf_path)
+                except Exception:
+                    pass
+                logger.exception("PDF export failed: %s", e)
+                return PdfExportResult(success=False, message='PDF export failed. Please try again or contact support.')
 
         except Exception as e:
             logger.error("PDF export failed: %s", e, exc_info=True)

@@ -9,6 +9,8 @@ Required context:
 {% endcomment %}
 {% load custom_filters %}
 
+{% comment %}Cache this table per-user and query params for short TTL to reduce DB load{% endcomment %}
+{% cache 20 client_table request.user.id request.GET.page request.GET.per_page request.GET.search request.GET.status %}
 <!-- Table -->
 <div class="table-wrapper">
     <table class="data-table" id="clientsTable">
@@ -73,6 +75,8 @@ Required context:
         </tbody>
     </table>
 </div>
+
+{% endcache %}
 
 <!-- HTMX Pagination -->
 {% if page_obj %}

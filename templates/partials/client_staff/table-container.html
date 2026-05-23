@@ -1,3 +1,6 @@
+{% comment %}Cache staff table per-user and query params for short TTL to reduce DB load{% endcomment %}
+{% cache 20 client_staff_table request.user.id request.GET.page request.GET.per_page request.GET.search request.GET.status request.GET.client_id %}
+
 {% load static %}
 
 {% include 'partials/client_staff/table.html' %}
@@ -71,3 +74,5 @@
         {% include 'components/filter-dropdown.html' with dropdown_id='rowsDropdown' dropdown_class='rows-dropdown' toggle_id='rowsToggle' options_id='rowsOptions' selected_text_id='rowsSelectedText' default_label=per_page options_template='partials/client_staff/table-rows-options.html' %}
     </div>
 </div>
+
+{% endcache %}

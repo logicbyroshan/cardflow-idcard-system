@@ -703,7 +703,7 @@ function _updateDomainNotFoundUi(status) {
   const websiteStatusEl = document.getElementById('websiteStatusText');
   if (websiteStatusEl) {
     const iconCls = websiteStatusRaw === 'live' ? 'fa-globe' : 'fa-eye-slash';
-    websiteStatusEl.innerHTML = '<i class="fa-solid ' + iconCls + '"></i> Website: ' + escHtml(websiteStatusText);
+    websiteStatusEl.innerHTML = '<i class="fa-solid ' + iconCls + '"></i> Website status: ' + escHtml(websiteStatusText);
   }
 
   const toggleBtn = document.getElementById('domainModeToggleBtn');

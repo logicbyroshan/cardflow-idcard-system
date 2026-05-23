@@ -45,6 +45,7 @@ from core.services.background_worker import (
     save_uploaded_file_to_disk,
     cleanup_temp_file,
 )
+from core.services.task_queue import dispatch_background_task
 from core.utils.folder_image_ingest import (
     build_zip_from_uploaded_folder_files,
     build_zip_from_folder_path,
@@ -815,8 +816,8 @@ def api_create_bulk_upload_task(request, table_id):
         # Task owns these files after creation.
         keep_uploaded_files = True
         
-        # Submit to background worker
-        background_worker.submit_task(task.id)
+        # Submit to the queue dispatcher (Celery if configured, otherwise local worker)
+        dispatch_background_task(task.id)
         
         return JsonResponse({
             'success': True,
@@ -965,8 +966,8 @@ def api_create_reupload_task(request, table_id):
                 'message': error_msg
             }, status=429)
         
-        # Submit to background worker
-        background_worker.submit_task(task.id)
+        # Submit to the queue dispatcher (Celery if configured, otherwise local worker)
+        dispatch_background_task(task.id)
         
         return JsonResponse({
             'success': True,
@@ -1123,8 +1124,8 @@ def api_create_export_task(request, table_id):
 
             return JsonResponse(response, status=429)
         
-        # Submit to background worker
-        background_worker.submit_task(task.id)
+        # Submit to the queue dispatcher (Celery if configured, otherwise local worker)
+        dispatch_background_task(task.id)
         
         return JsonResponse({
             'success': True,

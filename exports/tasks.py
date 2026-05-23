@@ -105,7 +105,7 @@ class BackgroundExportManager:
         string contract with callers is preserved.
         """
         from core.models import BackgroundTask
-        from core.services.background_worker import background_worker
+        from core.services.task_queue import dispatch_background_task
         from core.services.super_mode_service import SuperModeService
 
         metadata: Dict[str, Any] = {
@@ -143,7 +143,7 @@ class BackgroundExportManager:
                 total=len(card_ids) if card_ids else 0,
             )
 
-        background_worker.submit_task(task.id)
+        dispatch_background_task(task.id)
 
         logger.info(
             "PDF export enqueued: user=%s table=%d cards=%d task_id=%d",
@@ -161,7 +161,7 @@ class BackgroundExportManager:
     ) -> str:
         """Enqueue an Excel export and return a task_id string."""
         from core.models import BackgroundTask
-        from core.services.background_worker import background_worker
+        from core.services.task_queue import dispatch_background_task
         from core.services.super_mode_service import SuperModeService
 
         metadata: Dict[str, Any] = {
@@ -189,7 +189,7 @@ class BackgroundExportManager:
                 total=len(card_ids) if card_ids else 0,
             )
 
-        background_worker.submit_task(task.id)
+        dispatch_background_task(task.id)
         logger.info(
             "XLSX export enqueued: user=%s table=%d cards=%d task_id=%d",
             user.id, table_id, len(card_ids) if card_ids else 0, task.id,
@@ -208,7 +208,7 @@ class BackgroundExportManager:
     ) -> str:
         """Enqueue a Word export and return a task_id string."""
         from core.models import BackgroundTask
-        from core.services.background_worker import background_worker
+        from core.services.task_queue import dispatch_background_task
         from core.services.super_mode_service import SuperModeService
 
         metadata: Dict[str, Any] = {
@@ -238,7 +238,7 @@ class BackgroundExportManager:
                 total=len(card_ids) if card_ids else 0,
             )
 
-        background_worker.submit_task(task.id)
+        dispatch_background_task(task.id)
         logger.info(
             "DOCX export enqueued: user=%s table=%d cards=%d task_id=%d",
             user.id, table_id, len(card_ids) if card_ids else 0, task.id,

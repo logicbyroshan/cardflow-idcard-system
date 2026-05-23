@@ -310,4 +310,5 @@ class Client(models.Model):
         indexes = [
             models.Index(fields=['status', '-created_at']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['status', 'created_at'], name='core_client_status_created_idx'),
         ]
