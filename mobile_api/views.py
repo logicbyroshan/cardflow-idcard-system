@@ -892,10 +892,11 @@ def _build_filter_metadata_from_queryset(cards_qs, class_field_name=None, sectio
 
 # â”€â”€ Image upload validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _ALLOWED_IMAGE_TYPES = frozenset({
-    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
     'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+    'image/bmp', 'application/octet-stream',  # Android camera can send these
 })
-_ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.hei'})
+_ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.hei', '.bmp'})
 _MAX_IMAGE_SIZE = 40 * 1024 * 1024  # 40 MB raw input; normalized output is compressed JPEG
 
 def _validate_image(photo):

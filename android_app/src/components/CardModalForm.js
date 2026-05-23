@@ -147,8 +147,13 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
           // It's a picked local image
           let filename = val.split('/').pop() || 'photo.jpg';
           const match = /\.(\w+)$/.exec(filename);
-          let type = match ? `image/${match[1]}` : `image/jpeg`;
-          if (!match) filename += '.jpg';
+          let ext = match ? match[1].toLowerCase() : 'jpg';
+          // Normalize extension aliases to correct MIME types
+          const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif' };
+          let type = mimeMap[ext] || 'image/jpeg';
+          if (!match) { filename += '.jpg'; ext = 'jpg'; }
+          // Ensure filename always ends with a proper extension
+          if (!filename.includes('.')) { filename = filename + '.' + ext; }
           
           // Use image_ prefix for dynamic fields to match backend expectation
           // PHOTO is a special field name in some tables, while others use lowercase photo

@@ -187,11 +187,18 @@ def normalize_uploaded_image(
     ext = os.path.splitext(name)[1].lower()
     ct = _content_type_base(getattr(uploaded_file, 'content_type', '') or '')
 
+    # Normalize non-standard but common MIME aliases sent by Android camera
+    if ct == 'image/jpg':
+        ct = 'image/jpeg'
+
     allowed_exts = {str(v).lower() for v in (allowed_extensions or [])}
     allowed_mimes = {str(v).lower() for v in (allowed_mime_types or [])}
 
     if ext and ext not in allowed_exts:
         return None, 'Only JPG, PNG, WEBP, GIF, HEIC, and HEIF images are allowed'
+    # Allow application/octet-stream (generic Android binary) if ext is a valid image ext
+    if ct == 'application/octet-stream' and ext in allowed_exts:
+        ct = ''  # treat as unspecified so we skip MIME check
     if ct and ct not in allowed_mimes:
         return None, 'Unsupported image content type'
 
