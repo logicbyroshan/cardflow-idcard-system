@@ -447,15 +447,15 @@ export default function HomeScreen({ navigation }) {
                                             s.stBtnBelow,
                                             { 
                                               backgroundColor: hasCards ? stBtn.bg : '#f8fafc',
-                                              borderColor: hasCards ? stBtn.color : '#e2e8f0',
-                                              opacity: hasCards ? 1 : 0.4
+                                              borderColor: hasCards ? stBtn.color + '60' : '#e2e8f0',
+                                              opacity: hasCards ? 1 : 0.5
                                             }
                                           ]}
-                                          disabled={!hasCards}
+                                          activeOpacity={0.7}
                                           onPress={() => navigation.navigate('CardList', { tableId: table.id, status: stBtn.key })}
                                         >
                                           <Text style={[s.stBtnTextBelow, { color: hasCards ? stBtn.color : '#94a3b8' }]}>
-                                            {stBtn.label} ({stBtn.count})
+                                            {stBtn.label.slice(0, 3).toUpperCase()} {stBtn.count}
                                           </Text>
                                         </TouchableOpacity>
                                       );
@@ -695,13 +695,13 @@ const s = StyleSheet.create({
   expandedContent: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   expandedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   expandedTitle: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 0.5 },
-  expandedItem: { flexDirection: 'column', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  expandedItemHeader: { marginBottom: 6 },
-  expandedItemName: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
-  expandedItemGroup: { fontSize: 9, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium' },
-  statusButtonsRowBelow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  stBtnBelow: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  stBtnTextBelow: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
+  expandedItem: { flexDirection: 'column', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  expandedItemHeader: { marginBottom: 4 },
+  expandedItemName: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  expandedItemGroup: { fontSize: 8, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium' },
+  statusButtonsRowBelow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 5 },
+  stBtnBelow: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 3, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stBtnTextBelow: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold' },
   activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: radius.sm, marginBottom: 8, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   activityIcon: { width: 36, height: 36, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   activityInfo: { flex: 1, paddingLeft: 12 },
