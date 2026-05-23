@@ -1,4 +1,4 @@
-﻿"""
+"""
 PWA Mobile App Views â€” real backend integration.
 
 All views enforce:
@@ -53,7 +53,12 @@ from mediafiles.services import ImageService, ThumbnailService
 from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
 from core.services import StaffService, IDCardService, ClientService
-from core.utils.field_utils import normalize_class_value
+from core.utils.field_utils import (
+    normalize_class_value,
+    normalize_compact_text_value,
+    CLASS_ORDER,
+    CLASS_ORDER_UNKNOWN,
+)
 
 try:
     from website.models import PortfolioCategory
@@ -3528,6 +3533,8 @@ def api_cards(request, table_id):
     sort_mode = _normalize_mobile_sort_mode(request.GET.get('sort', 'sr-asc'))
     class_filter = (request.GET.get('class') or '').strip()
     section_filter = (request.GET.get('section') or '').strip()
+    course_filter = (request.GET.get('course') or '').strip()
+    branch_filter = (request.GET.get('branch') or '').strip()
     try:
         page = max(int(request.GET.get('page', 1)), 1)
         per_page = max(1, min(int(request.GET.get('per_page', 50)), 200))
@@ -3545,6 +3552,8 @@ def api_cards(request, table_id):
             to_date=to_date,
             class_filter=class_filter or None,
             section_filter=section_filter or None,
+            course_filter=course_filter or None,
+            branch_filter=branch_filter or None,
             photo_filter=photo_filter or None,
             sort_order=sort_mode,
         )
@@ -3589,6 +3598,8 @@ def api_all_card_ids(request, table_id):
     to_date = (request.GET.get('to') or '').strip()
     selected_class = (request.GET.get('class') or '').strip()
     selected_section = (request.GET.get('section') or '').strip()
+    selected_course = (request.GET.get('course') or '').strip()
+    selected_branch = (request.GET.get('branch') or '').strip()
     photo_filter = str(request.GET.get('photo', '') or '').strip().lower()
     if photo_filter not in ('complete', 'pending', 'incomplete', 'with', 'without'):
         photo_filter = ''
@@ -3630,7 +3641,9 @@ def api_all_card_ids(request, table_id):
                 if parsed_to_d is not None:
                     cards_qs = cards_qs.filter(downloaded_at__date__lte=parsed_to_d)
 
-    class_field_name, section_field_name, _ = ClientCardService._get_class_section_branch_fields(table)
+    class_field_name, section_field_name, course_field_name, branch_field_name = (
+        IDCardService._get_class_section_course_branch_field_names(table)
+    )
 
     if selected_class:
         selected_class_norm = normalize_class_value(selected_class)
@@ -3676,12 +3689,45 @@ def api_all_card_ids(request, table_id):
             else:
                 cards_qs = cards_qs.filter(_filter_sec__in=matching_sections)
 
+    if selected_course and course_field_name:
+        cards_qs = IDCardService._apply_compact_text_filter(
+            cards_qs,
+            selected_course,
+            course_field_name,
+            table_id=table_id,
+            alias='_course_cmp',
+        )
+
+    if selected_branch and branch_field_name:
+        cards_qs = IDCardService._apply_compact_text_filter(
+            cards_qs,
+            selected_branch,
+            branch_field_name,
+            table_id=table_id,
+            alias='_branch_cmp',
+        )
+
     if photo_filter:
         matching_photo_ids = []
-        for _photo_card in cards_qs.only('id', 'photo', 'field_data').iterator(chunk_size=500):
-            _has_photo = bool(get_card_photo_url(_photo_card, _photo_card.field_data or {}))
-            if (photo_filter == 'with' and _has_photo) or (photo_filter == 'without' and not _has_photo):
-                matching_photo_ids.append(_photo_card.id)
+        for _card in cards_qs.only('id', 'photo', 'field_data').iterator(chunk_size=500):
+            fd = _card.field_data or {}
+            has_valid_photo = bool(get_card_photo_url(_card, fd))
+            is_pending_placeholder = False
+            for val in fd.values():
+                if isinstance(val, str) and val.startswith('PENDING:'):
+                    is_pending_placeholder = True
+                    break
+
+            matched = False
+            if photo_filter in ('complete', 'with'):
+                matched = has_valid_photo
+            elif photo_filter == 'pending':
+                matched = is_pending_placeholder
+            elif photo_filter in ('incomplete', 'without'):
+                matched = not has_valid_photo and not is_pending_placeholder
+
+            if matched:
+                matching_photo_ids.append(_card.id)
 
         if not matching_photo_ids:
             cards_qs = cards_qs.none()
@@ -3699,7 +3745,7 @@ def api_all_card_ids(request, table_id):
 @require_mobile_client
 @require_http_methods(["GET"])
 def api_filter_options(request, table_id):
-    """Return full-dataset class/section filter options for a table status scope."""
+    """Return distinct class/section/course/branch values for filter dropdowns on mobile."""
     status_filter = str(request.GET.get('status', '') or '').strip().lower()
     if not status_filter:
         return JsonResponse({'success': False, 'message': 'status is required'}, status=400)
@@ -3724,15 +3770,6 @@ def api_filter_options(request, table_id):
     if needed_perm and not PermissionService.has(request.user, needed_perm):
         return JsonResponse({'success': False, 'message': 'No permission to view this list'}, status=403)
 
-    search = _sanitize_search_query(request.GET.get('search', ''))
-    from_date = (request.GET.get('from') or '').strip()
-    to_date = (request.GET.get('to') or '').strip()
-    selected_class = (request.GET.get('class') or '').strip()
-    selected_section = (request.GET.get('section') or '').strip()
-    photo_filter = str(request.GET.get('photo', '') or '').strip().lower()
-    if photo_filter not in ('with', 'without'):
-        photo_filter = ''
-
     if status_filter == 'download':
         cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
@@ -3744,103 +3781,182 @@ def api_filter_options(request, table_id):
 
     cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs)
 
-    if search:
-        cards_qs = IDCardService._apply_search_filter(cards_qs, search, table=table)
-
-    if status_filter == 'download':
-        if from_date:
-            parsed_from_dt = parse_datetime(from_date)
-            if parsed_from_dt is not None:
-                if is_naive(parsed_from_dt):
-                    parsed_from_dt = make_aware(parsed_from_dt)
-                cards_qs = cards_qs.filter(downloaded_at__gte=parsed_from_dt)
-            else:
-                parsed_from_d = parse_date(from_date)
-                if parsed_from_d is not None:
-                    cards_qs = cards_qs.filter(downloaded_at__date__gte=parsed_from_d)
-
-        if to_date:
-            parsed_to_dt = parse_datetime(to_date)
-            if parsed_to_dt is not None:
-                if is_naive(parsed_to_dt):
-                    parsed_to_dt = make_aware(parsed_to_dt)
-                cards_qs = cards_qs.filter(downloaded_at__lte=parsed_to_dt)
-            else:
-                parsed_to_d = parse_date(to_date)
-                if parsed_to_d is not None:
-                    cards_qs = cards_qs.filter(downloaded_at__date__lte=parsed_to_d)
-
-    class_field_name, section_field_name, _ = ClientCardService._get_class_section_branch_fields(table)
-
-    if selected_class:
-        selected_class_norm = normalize_class_value(selected_class)
-        if not class_field_name or not selected_class_norm:
-            cards_qs = cards_qs.none()
-        else:
-            cards_qs = cards_qs.annotate(_filter_cls=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
-            raw_classes = list(
-                cards_qs
-                .exclude(_filter_cls__isnull=True)
-                .exclude(_filter_cls='')
-                .values_list('_filter_cls', flat=True)
-                .distinct()
-            )
-            matching_classes = [
-                raw_value for raw_value in raw_classes
-                if normalize_class_value(raw_value) == selected_class_norm
-            ]
-            if not matching_classes:
-                cards_qs = cards_qs.none()
-            else:
-                cards_qs = cards_qs.filter(_filter_cls__in=matching_classes)
-
-    if selected_section:
-        if not section_field_name:
-            cards_qs = cards_qs.none()
-        else:
-            cards_qs = cards_qs.annotate(_filter_sec=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
-            target_section = selected_section.strip().lower()
-            raw_sections = list(
-                cards_qs
-                .exclude(_filter_sec__isnull=True)
-                .exclude(_filter_sec='')
-                .values_list('_filter_sec', flat=True)
-                .distinct()
-            )
-            matching_sections = [
-                raw_value for raw_value in raw_sections
-                if str(raw_value).strip().lower() == target_section
-            ]
-            if not matching_sections:
-                cards_qs = cards_qs.none()
-            else:
-                cards_qs = cards_qs.filter(_filter_sec__in=matching_sections)
-
-    if photo_filter:
-        matching_photo_ids = []
-        for _photo_card in cards_qs.only('id', 'photo', 'field_data').iterator(chunk_size=500):
-            _has_photo = bool(get_card_photo_url(_photo_card, _photo_card.field_data or {}))
-            if (photo_filter == 'with' and _has_photo) or (photo_filter == 'without' and not _has_photo):
-                matching_photo_ids.append(_photo_card.id)
-
-        if not matching_photo_ids:
-            cards_qs = cards_qs.none()
-        else:
-            cards_qs = cards_qs.filter(id__in=matching_photo_ids)
-
-    filter_meta = _build_filter_metadata_from_queryset(
-        cards_qs,
-        class_field_name=class_field_name,
-        section_field_name=section_field_name,
+    class_field_name, section_field_name, course_field_name, branch_field_name = (
+        IDCardService._get_class_section_course_branch_field_names(table)
     )
+
+    from collections import defaultdict
+    class_values = []
+    section_values = []
+    course_values = []
+    branch_values = []
+    course_display_map = {}
+    branch_display_map = {}
+    class_to_sections = {}
+    course_to_branches = {}
+
+    if class_field_name:
+        # Get distinct raw values WITH counts
+        raw_with_counts = (
+            cards_qs.annotate(_cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+            .exclude(_cv__isnull=True).exclude(_cv='')
+            .order_by()
+            .values('_cv')
+            .annotate(cnt=Count('id'))
+        )
+
+        # Group by canonical form → pick most common raw as display
+        groups = defaultdict(list)  # canonical → [(raw, count)]
+        for entry in raw_with_counts:
+            raw = entry['_cv'].strip()
+            canonical = normalize_class_value(raw)
+            groups[canonical].append((raw, entry['cnt']))
+
+        for canonical, variants in groups.items():
+            best_display = max(variants, key=lambda x: x[1])[0]
+            total_count = sum(v[1] for v in variants)
+            class_values.append({
+                'value': canonical,
+                'display': best_display,
+                'count': total_count,
+            })
+
+        # Sort by class order
+        class_values.sort(
+            key=lambda x: (CLASS_ORDER.get(x['value'], CLASS_ORDER_UNKNOWN), x['value'])
+        )
+
+    if section_field_name:
+        section_values = sorted(
+            [
+                str(v) for v in
+                cards_qs.annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
+                .exclude(_sv__isnull=True).exclude(_sv='')
+                .order_by()
+                .values_list('_sv', flat=True).distinct()
+                if v is not None
+            ],
+        )
+
+    if course_field_name:
+        raw_with_counts = (
+            cards_qs.annotate(_coursev=Cast(KeyTextTransform(course_field_name, 'field_data'), CharField()))
+            .exclude(_coursev__isnull=True).exclude(_coursev='')
+            .order_by()
+            .values('_coursev')
+            .annotate(cnt=Count('id'))
+        )
+
+        grouped = {}
+        for entry in raw_with_counts:
+            raw = str(entry['_coursev']).strip()
+            normalized = normalize_compact_text_value(raw)
+            if not normalized:
+                continue
+            prev = grouped.get(normalized)
+            if prev is None or entry['cnt'] > prev[1]:
+                grouped[normalized] = (raw, entry['cnt'])
+
+        course_display_map = {normalized: data[0] for normalized, data in grouped.items()}
+        course_values = sorted(course_display_map.values(), key=lambda x: x.lower())
+
+    if branch_field_name:
+        raw_with_counts = (
+            cards_qs.annotate(_branchv=Cast(KeyTextTransform(branch_field_name, 'field_data'), CharField()))
+            .exclude(_branchv__isnull=True).exclude(_branchv='')
+            .order_by()
+            .values('_branchv')
+            .annotate(cnt=Count('id'))
+        )
+
+        grouped = {}
+        for entry in raw_with_counts:
+            raw = str(entry['_branchv']).strip()
+            normalized = normalize_compact_text_value(raw)
+            if not normalized:
+                continue
+            prev = grouped.get(normalized)
+            if prev is None or entry['cnt'] > prev[1]:
+                grouped[normalized] = (raw, entry['cnt'])
+
+        branch_display_map = {normalized: data[0] for normalized, data in grouped.items()}
+        branch_values = sorted(branch_display_map.values(), key=lambda x: x.lower())
+
+    if class_field_name and section_field_name:
+        pair_rows = (
+            cards_qs.annotate(
+                _cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()),
+                _sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()),
+            )
+            .exclude(_cv__isnull=True).exclude(_cv='')
+            .exclude(_sv__isnull=True).exclude(_sv='')
+            .order_by()
+            .values_list('_cv', '_sv')
+            .distinct()
+        )
+
+        class_section_sets = defaultdict(set)
+        for raw_class, raw_section in pair_rows:
+            canonical_class = normalize_class_value(str(raw_class).strip())
+            section_text = str(raw_section).strip()
+            if not canonical_class or not section_text:
+                continue
+            class_section_sets[canonical_class].add(section_text)
+
+        # Build canonical → display mapping so class_to_sections keys match what classes list returns
+        canonical_to_display = {c['value']: c['display'] for c in class_values}
+
+        class_to_sections = {
+            canonical_to_display.get(cls, cls): sorted(list(sections))
+            for cls, sections in class_section_sets.items()
+        }
+
+    if course_field_name and branch_field_name:
+        pair_rows = (
+            cards_qs.annotate(
+                _coursev=Cast(KeyTextTransform(course_field_name, 'field_data'), CharField()),
+                _branchv=Cast(KeyTextTransform(branch_field_name, 'field_data'), CharField()),
+            )
+            .exclude(_coursev__isnull=True).exclude(_coursev='')
+            .exclude(_branchv__isnull=True).exclude(_branchv='')
+            .order_by()
+            .values_list('_coursev', '_branchv')
+            .distinct()
+        )
+
+        course_branch_sets = defaultdict(set)
+        for raw_course, raw_branch in pair_rows:
+            course_text = str(raw_course).strip()
+            branch_text = str(raw_branch).strip()
+            course_norm = normalize_compact_text_value(course_text)
+            branch_norm = normalize_compact_text_value(branch_text)
+            if not course_norm or not branch_norm:
+                continue
+            if course_norm not in course_display_map:
+                course_display_map[course_norm] = course_text
+            if branch_norm not in branch_display_map:
+                branch_display_map[branch_norm] = branch_text
+
+            course_branch_sets[course_norm].add(branch_norm)
+
+        course_to_branches = {
+            course_display_map.get(course, course): sorted(
+                [branch_display_map.get(branch, branch) for branch in branches],
+                key=lambda x: x.lower(),
+            )
+            for course, branches in course_branch_sets.items()
+        }
 
     return JsonResponse({
         'success': True,
         'data': {
             'fields': table.fields,
-            'classes': list(filter_meta.get('all_classes') or []),
-            'sections': list(filter_meta.get('all_sections') or []),
-            'class_to_sections': dict(filter_meta.get('class_to_sections') or {}),
+            'classes': [c['display'] for c in class_values] if class_values else [],
+            'sections': list(section_values),
+            'courses': list(course_values),
+            'branches': list(branch_values),
+            'class_to_sections': class_to_sections,
+            'course_to_branches': course_to_branches,
             'total': cards_qs.count(),
         },
     })

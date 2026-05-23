@@ -1,6 +1,6 @@
 # Ignore everything except the native app
 /*
-!adarsh_native_app/
+!android_app/
 
 # Basic ignores
 node_modules/

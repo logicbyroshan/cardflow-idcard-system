@@ -512,6 +512,8 @@ class ClientCardService(BaseService):
         to_date: Optional[str] = None,
         class_filter: Optional[str] = None,
         section_filter: Optional[str] = None,
+        course_filter: Optional[str] = None,
+        branch_filter: Optional[str] = None,
         photo_filter: Optional[str] = None,
         sort_order: Optional[str] = None,
     ) -> ServiceResult:
@@ -613,8 +615,12 @@ class ClientCardService(BaseService):
 
             class_filter_value = str(class_filter or '').strip()
             section_filter_value = str(section_filter or '').strip()
-            if class_filter_value or section_filter_value:
-                class_field_name, section_field_name, _ = cls._get_class_section_branch_fields(table)
+            course_filter_value = str(course_filter or '').strip()
+            branch_filter_value = str(branch_filter or '').strip()
+            if class_filter_value or section_filter_value or course_filter_value or branch_filter_value:
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    IDCardService._get_class_section_course_branch_field_names(table)
+                )
 
                 if class_filter_value:
                     if not class_field_name:
@@ -668,6 +674,24 @@ class ClientCardService(BaseService):
                             cards_query = cards_query.none()
                         else:
                             cards_query = cards_query.filter(_filter_sec__in=matching_sections)
+
+                if course_filter_value and course_field_name:
+                    cards_query = IDCardService._apply_compact_text_filter(
+                        cards_query,
+                        course_filter_value,
+                        course_field_name,
+                        table_id=table_id,
+                        alias='_course_cmp',
+                    )
+
+                if branch_filter_value and branch_field_name:
+                    cards_query = IDCardService._apply_compact_text_filter(
+                        cards_query,
+                        branch_filter_value,
+                        branch_field_name,
+                        table_id=table_id,
+                        alias='_branch_cmp',
+                    )
 
             photo_filter_value = str(photo_filter or '').strip().lower()
             if photo_filter_value in ('complete', 'pending', 'incomplete', 'with', 'without'):

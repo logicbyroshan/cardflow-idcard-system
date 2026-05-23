@@ -263,15 +263,15 @@ mobile_shell_app/
 /secrets/
 
 # Backup and local signing artifacts
-adarsh_native_app/android_backup/
-adarsh_native_app/.expo/
-adarsh_native_app/node_modules/
-adarsh_native_app/dist/
-adarsh_native_app/downloads/
-adarsh_native_app/scratch/
-adarsh_native_app/*.txt
-adarsh_native_app/*.png
-adarsh_native_app/.env
+android_app/android_backup/
+android_app/.expo/
+android_app/node_modules/
+android_app/dist/
+android_app/downloads/
+android_app/scratch/
+android_app/*.txt
+android_app/*.png
+android_app/.env
 
 # Upload certificate (PEM)
 upload_certificate.pem
