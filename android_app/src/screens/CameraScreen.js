@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Dimensions, Platform, StatusBar, Animated } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
@@ -26,6 +26,12 @@ export default function CameraScreen({ navigation, route }) {
   const [facing, setFacing] = useState('back');
   const [isCameraReady, setIsCameraReady] = useState(false);
   const cameraRef = useRef(null);
+  const cameraReadyTimestamp = useRef(0);
+
+  const onCameraReady = useCallback(() => {
+    setIsCameraReady(true);
+    cameraReadyTimestamp.current = Date.now();
+  }, []);
 
   const isReady = isLevel;
 
@@ -128,13 +134,6 @@ export default function CameraScreen({ navigation, route }) {
       </View>
     );
   }
-
-  const cameraReadyTimestamp = React.useRef(0);
-
-  const onCameraReady = React.useCallback(() => {
-    setIsCameraReady(true);
-    cameraReadyTimestamp.current = Date.now();
-  }, []);
 
   const takePicture = async () => {
     if (!cameraRef.current || !isCameraReady || isCapturing) return;

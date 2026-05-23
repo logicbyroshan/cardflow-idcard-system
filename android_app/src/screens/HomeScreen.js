@@ -5,7 +5,7 @@ import {
   LayoutAnimation, Platform, UIManager
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   IconSearch, IconProfile, IconPending, IconVerified, IconApproved,
@@ -60,11 +60,10 @@ export default function HomeScreen({ navigation }) {
     }
   }, []);
 
+  const [, requestCameraPermission] = useCameraPermissions();
+
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      if (status !== 'granted') console.log('Camera permission denied');
-    })();
+    requestCameraPermission();
   }, []);
 
   const isSuperAdmin = user?.role === 'admin' || user?.isSuperAdmin;
@@ -91,6 +90,7 @@ export default function HomeScreen({ navigation }) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [expandedClient, setExpandedClient] = useState(null); // { id, status }
+  const [expandedReprint, setExpandedReprint] = useState(null); // { id } for reprints tab
 
   const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '' });
@@ -498,20 +498,123 @@ export default function HomeScreen({ navigation }) {
                 </View>
               </View>
             ) : (
-              <View>
-                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
-                  <Text style={s.secTitleWhite}>RECENT REPRINTS</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('Reprint')}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
-                </LinearGradient>
-                <View style={s.secContent}>
-                {counts.recent_reprints?.length > 0 ? counts.recent_reprints.map(rep => (
-                  <TouchableOpacity key={rep.id} style={s.reprintCard} onPress={() => navigation.navigate('Reprint', { clientId: 0 })}>
-                    <View style={[s.reprintIcon, { backgroundColor: rep.status === 'requested' ? '#fffbeb' : '#ecfdf5' }]}><DynamicIcon name="redo" size={12} color={rep.status === 'requested' ? '#f59e0b' : '#10b981'} /></View>
-                    <View style={s.reprintInfo}><Text style={s.reprintTitle}>#{rep.card_id} - {rep.client_name}</Text><Text style={s.reprintSub}>{rep.status.toUpperCase()}</Text></View>
-                  </TouchableOpacity>
-                )) : <View style={s.emptyState}><Text style={s.emptyText}>No recent reprints</Text></View>}
-                </View>
-              </View>
+              // REPRINTS TAB — client accordion with REQUESTED/CONFIRMED badges
+              (() => {
+                // Group recent_reprints by client
+                const reprints = counts.recent_reprints || [];
+                const clientReprintMap = {};
+                reprints.forEach(rep => {
+                  const cid = rep.client_id || 0;
+                  if (!clientReprintMap[cid]) {
+                    clientReprintMap[cid] = {
+                      id: cid,
+                      name: rep.client_name || 'Unknown Client',
+                      requested: 0,
+                      confirmed: 0,
+                      tables: {},
+                    };
+                  }
+                  if (rep.status === 'requested') clientReprintMap[cid].requested += 1;
+                  else if (rep.status === 'confirmed') clientReprintMap[cid].confirmed += 1;
+                  // Group by table
+                  const tid = rep.table_name || 'Unknown Table';
+                  if (!clientReprintMap[cid].tables[tid]) {
+                    clientReprintMap[cid].tables[tid] = { table_id: rep.table_id || 0, name: tid, requested: 0, confirmed: 0 };
+                  }
+                  if (rep.status === 'requested') clientReprintMap[cid].tables[tid].requested += 1;
+                  else if (rep.status === 'confirmed') clientReprintMap[cid].tables[tid].confirmed += 1;
+                });
+                const reprintClients = Object.values(clientReprintMap);
+
+                return (
+                  <View>
+                    <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+                      <Text style={s.secTitleWhite}>REPRINT REQUESTS</Text>
+                      <TouchableOpacity onPress={() => navigation.navigate('Reprint', { clientId: 0 })}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
+                    </LinearGradient>
+                    <View style={s.secContent}>
+                      {reprintClients.length > 0 ? reprintClients.map(client => {
+                        const isExpanded = expandedReprint?.id === client.id;
+                        const tableList = Object.values(client.tables || {});
+                        return (
+                          <View key={client.id} style={s.clientCardWrapper}>
+                            <LinearGradient colors={['#fffbeb', '#fef3c7']} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
+                              <View style={s.clientCard}>
+                                <TouchableOpacity
+                                  style={s.clientHeader}
+                                  activeOpacity={0.7}
+                                  onPress={() => {
+                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                    setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
+                                  }}
+                                >
+                                  <View style={[s.clientIcon, { backgroundColor: '#fef3c7' }]}><DynamicIcon name="redo" size={14} color="#f59e0b" /></View>
+                                  <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text></View>
+                                  <DynamicIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
+                                </TouchableOpacity>
+                                <View style={s.clientStatsRow}>
+                                  <ClientMiniStat
+                                    label="REQUESTED"
+                                    count={client.requested}
+                                    color="#f59e0b"
+                                    bg="#fef3c7"
+                                    onPress={() => {
+                                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                      setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
+                                    }}
+                                  />
+                                  <ClientMiniStat
+                                    label="CONFIRMED"
+                                    count={client.confirmed}
+                                    color="#10b981"
+                                    bg="#ecfdf5"
+                                    onPress={() => {
+                                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                      setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
+                                    }}
+                                  />
+                                </View>
+
+                                {isExpanded && (
+                                  <View style={s.expandedContent}>
+                                    <View style={s.expandedHeader}>
+                                      <Text style={s.expandedTitle}>TABLES / LISTS</Text>
+                                      <TouchableOpacity onPress={() => setExpandedReprint(null)}><DynamicIcon name="times" size={10} color={colors.gray400} /></TouchableOpacity>
+                                    </View>
+                                    {tableList.map((table, ti) => (
+                                      <View key={ti} style={s.expandedItem}>
+                                        <View style={s.expandedItemHeader}>
+                                          <Text style={s.expandedItemName}>{table.name}</Text>
+                                        </View>
+                                        <View style={s.statusButtonsRowBelow}>
+                                          <TouchableOpacity
+                                            style={[s.stBtnBelow, { backgroundColor: '#fef3c7', borderColor: '#f59e0b60' }]}
+                                            activeOpacity={0.7}
+                                            onPress={() => navigation.navigate('Reprint', { clientId: client.id })}
+                                          >
+                                            <Text style={[s.stBtnTextBelow, { color: '#f59e0b' }]}>Requested ({table.requested})</Text>
+                                          </TouchableOpacity>
+                                          <TouchableOpacity
+                                            style={[s.stBtnBelow, { backgroundColor: '#ecfdf5', borderColor: '#10b98160' }]}
+                                            activeOpacity={0.7}
+                                            onPress={() => navigation.navigate('Reprint', { clientId: client.id })}
+                                          >
+                                            <Text style={[s.stBtnTextBelow, { color: '#10b981' }]}>Confirmed ({table.confirmed})</Text>
+                                          </TouchableOpacity>
+                                        </View>
+                                      </View>
+                                    ))}
+                                  </View>
+                                )}
+                              </View>
+                            </LinearGradient>
+                          </View>
+                        );
+                      }) : <View style={s.emptyState}><Text style={s.emptyText}>No recent reprints</Text></View>}
+                    </View>
+                  </View>
+                );
+              })()
             )
           ) : (
             <>
