@@ -5291,6 +5291,7 @@ def api_dashboard_data(request):
                         'client_name': getattr(r.table.group.client, 'business_name', r.table.group.client.name) if r.table and r.table.group and r.table.group.client else 'Unknown',
                         'table_id': r.table_id,
                         'table_name': r.table.name if r.table else 'Unknown Table',
+                        'group_name': r.table.group.name if r.table and r.table.group else 'Unknown Group',
                         'status': r.status,
                         'reason': r.reason,
                         'requested_by': r.requested_by.get_full_name() if r.requested_by else 'Unknown',

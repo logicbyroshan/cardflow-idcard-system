@@ -519,12 +519,33 @@ export default function HomeScreen({ navigation }) {
                   // Group by table
                   const tid = rep.table_name || 'Unknown Table';
                   if (!clientReprintMap[cid].tables[tid]) {
-                    clientReprintMap[cid].tables[tid] = { table_id: rep.table_id || 0, name: tid, requested: 0, confirmed: 0 };
+                    clientReprintMap[cid].tables[tid] = { 
+                      table_id: rep.table_id || 0, 
+                      name: tid, 
+                      group_name: rep.group_name || 'Unknown Group',
+                      requested: 0, 
+                      confirmed: 0 
+                    };
                   }
                   if (rep.status === 'requested') clientReprintMap[cid].tables[tid].requested += 1;
                   else if (rep.status === 'confirmed') clientReprintMap[cid].tables[tid].confirmed += 1;
                 });
                 const reprintClients = Object.values(clientReprintMap);
+
+                const handleReprintBadgePress = (client) => {
+                  const tableList = Object.values(client.tables || {});
+                  if (tableList.length === 0) {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
+                    return;
+                  }
+                  if (tableList.length === 1) {
+                    navigation.navigate('ReprintDetail', { tableId: tableList[0].table_id });
+                  } else {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
+                  }
+                };
 
                 return (
                   <View>
@@ -538,7 +559,7 @@ export default function HomeScreen({ navigation }) {
                         const tableList = Object.values(client.tables || {});
                         return (
                           <View key={client.id} style={s.clientCardWrapper}>
-                            <LinearGradient colors={['#fffbeb', '#fef3c7']} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
+                            <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
                               <View style={s.clientCard}>
                                 <TouchableOpacity
                                   style={s.clientHeader}
@@ -548,7 +569,7 @@ export default function HomeScreen({ navigation }) {
                                     setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
                                   }}
                                 >
-                                  <View style={[s.clientIcon, { backgroundColor: '#fef3c7' }]}><DynamicIcon name="redo" size={14} color="#f59e0b" /></View>
+                                  <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="redo" size={14} color={theme.primary} /></View>
                                   <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text></View>
                                   <DynamicIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
                                 </TouchableOpacity>
@@ -558,20 +579,14 @@ export default function HomeScreen({ navigation }) {
                                     count={client.requested}
                                     color="#f59e0b"
                                     bg="#fef3c7"
-                                    onPress={() => {
-                                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                      setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
-                                    }}
+                                    onPress={() => handleReprintBadgePress(client)}
                                   />
                                   <ClientMiniStat
                                     label="CONFIRMED"
                                     count={client.confirmed}
                                     color="#10b981"
                                     bg="#ecfdf5"
-                                    onPress={() => {
-                                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                      setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
-                                    }}
+                                    onPress={() => handleReprintBadgePress(client)}
                                   />
                                 </View>
 
@@ -585,22 +600,30 @@ export default function HomeScreen({ navigation }) {
                                       <View key={ti} style={s.expandedItem}>
                                         <View style={s.expandedItemHeader}>
                                           <Text style={s.expandedItemName}>{table.name}</Text>
+                                          <Text style={s.expandedItemGroup}>{table.group_name}</Text>
                                         </View>
                                         <View style={s.statusButtonsRowBelow}>
-                                          <TouchableOpacity
-                                            style={[s.stBtnBelow, { backgroundColor: '#fef3c7', borderColor: '#f59e0b60' }]}
-                                            activeOpacity={0.7}
-                                            onPress={() => navigation.navigate('Reprint', { clientId: client.id })}
-                                          >
-                                            <Text style={[s.stBtnTextBelow, { color: '#f59e0b' }]}>Requested ({table.requested})</Text>
-                                          </TouchableOpacity>
-                                          <TouchableOpacity
-                                            style={[s.stBtnBelow, { backgroundColor: '#ecfdf5', borderColor: '#10b98160' }]}
-                                            activeOpacity={0.7}
-                                            onPress={() => navigation.navigate('Reprint', { clientId: client.id })}
-                                          >
-                                            <Text style={[s.stBtnTextBelow, { color: '#10b981' }]}>Confirmed ({table.confirmed})</Text>
-                                          </TouchableOpacity>
+                                          {[
+                                            { key: 'requested', label: 'Requested', count: table.requested || 0, color: '#f59e0b', bg: '#fef3c7' },
+                                            { key: 'confirmed', label: 'Confirmed', count: table.confirmed || 0, color: '#10b981', bg: '#ecfdf5' },
+                                          ].map((stBtn) => (
+                                            <TouchableOpacity
+                                              key={stBtn.key}
+                                              style={[
+                                                s.stBtnBelow,
+                                                { 
+                                                  backgroundColor: stBtn.bg,
+                                                  borderColor: stBtn.color + '60',
+                                                }
+                                              ]}
+                                              activeOpacity={0.7}
+                                              onPress={() => navigation.navigate('ReprintDetail', { tableId: table.table_id })}
+                                            >
+                                              <Text style={[s.stBtnTextBelow, { color: stBtn.color }]}>
+                                                {stBtn.label} ({stBtn.count})
+                                              </Text>
+                                            </TouchableOpacity>
+                                          ))}
                                         </View>
                                       </View>
                                     ))}
