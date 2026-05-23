@@ -14,7 +14,7 @@ from idcards.models import IDCardTable
 from core.services.permission_service import PermissionService
 from core.models import ClientMessage, NotificationRead
 
-from .views_decorators import require_client_user, require_client_admin
+from .views_decorators import require_client_user, require_client_admin, require_client_staff_manager
 from .services import ClientAccessService, ClientDashboardService
 
 
@@ -162,7 +162,7 @@ def print_table(request, table_id):
     return redirect(reverse('client:idcard_group'))
 
 
-@require_client_admin
+@require_client_staff_manager
 def manage_staff(request):
     """
     Manage client staff members.
@@ -191,9 +191,9 @@ def manage_staff(request):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
         'client': client,
-        'is_client_admin': True,
+        'is_client_admin': PermissionService.is_client(user),
         'active_page': 'staff',
         'staff_list': staff_list,
         **permissions,

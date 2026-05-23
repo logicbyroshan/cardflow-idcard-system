@@ -1390,6 +1390,26 @@ class ClientApiIntegrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_api_staff_list_create_allows_client_staff_with_client_list_permission(self):
+        self.staff_profile.perm_idcard_client_list = True
+        self.staff_profile.save(update_fields=['perm_idcard_client_list'])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/client/api/staff/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+    def test_client_staff_manage_page_allows_client_list_permission(self):
+        self.staff_profile.perm_idcard_client_list = True
+        self.staff_profile.save(update_fields=['perm_idcard_client_list'])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/client/staff/')
+
+        self.assertEqual(response.status_code, 200)
+
     @mock.patch('client.views_api.ClientStaffService.create_staff')
     def test_api_staff_create_caps_assignment_payload_sizes(self, mock_create_staff):
         from core.services.base import ServiceResult

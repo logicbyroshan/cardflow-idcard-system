@@ -21,7 +21,7 @@ from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
 from core.services.session_revalidation import get_user_revalidation_marker
 
-from .views_decorators import require_client_user, require_client_admin
+from .views_decorators import require_client_user, require_client_admin, require_client_staff_manager
 from .services import (
     ClientAccessService,
     ClientDashboardService,
@@ -303,7 +303,7 @@ def api_messages_drawer(request):
 # API VIEWS - Staff Management
 
 
-@require_client_admin
+@require_client_staff_manager
 @require_http_methods(["GET", "POST"])
 def api_staff_list_create(request):
     """
@@ -390,7 +390,7 @@ def api_staff_list_create(request):
     }, status=status_code)
 
 
-@require_client_admin
+@require_client_staff_manager
 @require_http_methods(["GET", "PUT", "DELETE"])
 @rate_limit(max_requests=90, window_seconds=60, key_prefix='client_staff_detail')
 def api_staff_detail(request, staff_id):
@@ -522,7 +522,7 @@ def api_staff_detail(request, staff_id):
     }, status=status_code)
 
 
-@require_client_admin
+@require_client_staff_manager
 @require_http_methods(["POST"])
 def api_staff_toggle_status(request, staff_id):
     """
@@ -565,7 +565,7 @@ def api_staff_toggle_status(request, staff_id):
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
-@require_client_admin
+@require_client_staff_manager
 @require_http_methods(["POST"])
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='client_staff_temp_pw')
 def api_staff_set_temp_password(request, staff_id):
@@ -622,7 +622,7 @@ def api_staff_set_temp_password(request, staff_id):
     return JsonResponse(result.to_response_dict(), status=status_code)
 
 
-@require_client_admin
+@require_client_staff_manager
 @require_http_methods(["GET"])
 def api_client_groups_list(request):
     """

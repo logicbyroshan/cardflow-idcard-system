@@ -60,6 +60,28 @@ def require_client_admin(view_func):
     return wrapper
 
 
+def require_client_staff_manager(view_func):
+    """
+    Decorator for client staff-management surfaces.
+
+    Allows either a client user with client list access or a client_staff user
+    whose client and staff profile both grant manage-staff access.
+    """
+    @wraps(view_func)
+    @login_required(login_url='/panel/auth/login/')
+    def wrapper(request, *args, **kwargs):
+        user = request.user
+        if not (PermissionService.is_client_role(user) and PermissionService.has(user, 'perm_idcard_client_list')):
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Client staff management access required'
+                }, status=403)
+            return redirect(reverse('client:dashboard'))
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
 def _get_client_for_request(user):
     """Helper to get client profile for the logged-in client/client_staff user."""
     return ClientAccessService.get_client_for_user(user)
