@@ -24,6 +24,17 @@ export default function StaffManageScreen({ navigation, route }) {
   const targetRole = route.params?.role || 'client_staff';
   const isOperatorMode = targetRole === 'admin_staff';
   const pageTitle = isOperatorMode ? 'OPERATORS' : 'ASSISTANTS';
+  const perms = useMemo(() => {
+    const isSuper = !!(user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin');
+    const canManage = isOperatorMode 
+      ? isSuper
+      : (isSuper || user?.role === 'admin_staff' || (user?.permissions?.perm_manage_client_staff));
+      
+    return {
+      canManage,
+      isSuper,
+    };
+  }, [user, isOperatorMode]);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -160,28 +171,35 @@ export default function StaffManageScreen({ navigation, route }) {
           <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
           <Text style={s.cardEmail} numberOfLines={1}>{item.email}</Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => toggleStatus(item)} style={[s.statusPill, { backgroundColor: item.is_active ? '#ecfdf5' : '#fef2f2' }]}>
+        <TouchableOpacity 
+          activeOpacity={perms.canManage ? 0.7 : 1} 
+          disabled={!perms.canManage}
+          onPress={() => toggleStatus(item)} 
+          style={[s.statusPill, { backgroundColor: item.is_active ? '#ecfdf5' : '#fef2f2' }]}
+        >
           <View style={[s.statusDotSmall, { backgroundColor: item.is_active ? '#10b981' : '#ef4444' }]} />
           <Text style={[s.statusPillText, { color: item.is_active ? '#065f46' : '#991b1b' }]}>{item.is_active ? 'ACTIVE' : 'INACTIVE'}</Text>
         </TouchableOpacity>
       </View>
-      <View style={s.cardActions}>
-        <TouchableOpacity style={s.actionBtn} onPress={() => openAssign(item)}>
-          <LinearGradient colors={['#f5f3ff', '#ede9fe']} style={s.actionBtnInner}>
-            <DynamicIcon name="filter" size={12} color="#8b5cf6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#8b5cf6' }]}>{isOperatorMode ? 'CLIENTS' : 'ASSIGN'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
-          <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
-            <DynamicIcon name="edit" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>EDIT</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtn} onPress={() => deleteStaff(item)}>
-          <LinearGradient colors={['#fef2f2', '#fee2e2']} style={s.actionBtnInner}>
-            <DynamicIcon name="trash" size={12} color="#ef4444" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#ef4444' }]}>DEL</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      {perms.canManage && (
+        <View style={s.cardActions}>
+          <TouchableOpacity style={s.actionBtn} onPress={() => openAssign(item)}>
+            <LinearGradient colors={['#f5f3ff', '#ede9fe']} style={s.actionBtnInner}>
+              <DynamicIcon name="filter" size={12} color="#8b5cf6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#8b5cf6' }]}>{isOperatorMode ? 'CLIENTS' : 'ASSIGN'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
+            <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
+              <DynamicIcon name="edit" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>EDIT</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.actionBtn} onPress={() => deleteStaff(item)}>
+            <LinearGradient colors={['#fef2f2', '#fee2e2']} style={s.actionBtnInner}>
+              <DynamicIcon name="trash" size={12} color="#ef4444" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#ef4444' }]}>DEL</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
@@ -193,9 +211,11 @@ export default function StaffManageScreen({ navigation, route }) {
           <IconSearch size={14} color={colors.gray400} />
           <TextInput style={s.searchInput} value={search} onChangeText={setSearch} placeholder="Search..." placeholderTextColor={colors.gray400} />
         </View>
-        <TouchableOpacity style={s.addBtn} onPress={openCreate}>
-          <LinearGradient colors={gradients.brand} style={s.addBtnInner}><IconPlus size={16} color="#fff" /></LinearGradient>
-        </TouchableOpacity>
+        {perms.canManage && (
+          <TouchableOpacity style={s.addBtn} onPress={openCreate}>
+            <LinearGradient colors={gradients.brand} style={s.addBtnInner}><IconPlus size={16} color="#fff" /></LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
 
       {error ? <ErrorBanner message={error} onRetry={refresh} /> : loading && !refreshing ? <ListSkeleton count={6} /> : (

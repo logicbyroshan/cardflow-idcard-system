@@ -47,6 +47,7 @@ MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024
 ALLOWED_IMAGE_UPLOAD_MIMES = {
     'image/jpeg', 'image/png', 'image/webp',
     'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+    'application/octet-stream', 'image/octet-stream',
 }
 ALLOWED_IMAGE_UPLOAD_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.hei'}
 

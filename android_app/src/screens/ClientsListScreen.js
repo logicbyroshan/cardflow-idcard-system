@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Switch, RefreshControl, Modal, ScrollView, Dimensions, Linking, Image } from 'react-native';
 import { IconSearch, IconFilter, IconPlus, IconTrash, IconEdit, IconUsers, IconList, IconClose, IconCheck, IconMail, IconPhone, DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,7 +16,10 @@ const { width } = Dimensions.get('window');
 
 export default function ClientsListScreen({ navigation, route }) {
   const { user, startImpersonation } = useAuth();
-  const [clients, setClients] = useState([]);
+  const perms = useMemo(() => ({
+    ...(user?.permissions || {}),
+    isSuperAdmin: !!(user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin'),
+  }), [user]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); 
   const deferredSearch = useDeferredValue(search);
@@ -34,13 +37,13 @@ export default function ClientsListScreen({ navigation, route }) {
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     const { ok, data } = await apiGet('/api/mobile/clients/');
-    if (ok && data?.success) setClients(data.users || []);
-    else throw new Error(data?.message || 'Failed to load clients');
-  };
+    if (ok && data?.success) return data.users || [];
+    throw new Error(data?.message || 'Failed to load clients');
+  }, []);
 
-  const { loading, refreshing, error, refresh } = useRefreshableResource(loadClients, { initialData: [] });
+  const { data: clients = [], loading, refreshing, error, refresh } = useRefreshableResource(loadClients, { initialData: [] });
 
   useEffect(() => {
     if (route.params?.openForm) openCreate();
@@ -59,25 +62,44 @@ export default function ClientsListScreen({ navigation, route }) {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ name: '', email: '', phone: '', password: '' });
+    setForm({ name: '', email: '', phone: '', password: '', is_active: true });
     setShowForm(true);
   };
 
   const openEdit = (client) => {
     setEditingId(client.id);
-    setForm({ name: client.name || '', email: client.email || '', phone: client.phone || '', password: '' });
+    setForm({ 
+      name: client.name || '', 
+      email: client.email || '', 
+      phone: client.phone || '', 
+      password: '', 
+      is_active: client.is_active ?? true 
+    });
     setShowForm(true);
   };
 
   const saveClient = async () => {
-    if (!form.name || !form.email || (!editingId && !form.password)) {
-      showToast('Please fill required fields', 'error');
+    if (!form.name || !form.email) {
+      showToast('Please fill required fields (Name & Email)', 'error');
       return;
     }
     setSaving(true);
     try {
       const url = editingId ? `/api/mobile/client/${editingId}/update/` : '/api/mobile/client/create/';
-      const { ok, data } = await apiPost(url, form);
+      const payload = {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        is_active: form.is_active,
+      };
+      if (form.password) {
+        if (editingId) {
+          payload.temp_password = form.password;
+        } else {
+          payload.password = form.password;
+        }
+      }
+      const { ok, data } = await apiPost(url, payload);
       if (ok && data.success) {
         showToast(editingId ? 'Client updated' : 'Client created', 'success');
         setShowForm(false);
@@ -126,7 +148,7 @@ export default function ClientsListScreen({ navigation, route }) {
   const handleImpersonate = (client) => {
     setConfirmModal({
       visible: true,
-      title: 'Switch to Client?',
+      title: 'Impersonate Client?',
       message: `Act as "${client.name}"? You can switch back anytime from the dashboard.`,
       icon: 'users',
       color: colors.brandPrimary,
@@ -174,7 +196,12 @@ export default function ClientsListScreen({ navigation, route }) {
             </View>
           )}
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => toggleClient(item)} style={[s.statusPill, { backgroundColor: item.is_active ? '#ecfdf5' : '#fef2f2' }]}>
+        <TouchableOpacity 
+          activeOpacity={(perms.isSuperAdmin || perms.perm_idcard_client_list) ? 0.7 : 1} 
+          disabled={!(perms.isSuperAdmin || perms.perm_idcard_client_list)}
+          onPress={() => toggleClient(item)} 
+          style={[s.statusPill, { backgroundColor: item.is_active ? '#ecfdf5' : '#fef2f2' }]}
+        >
           <View style={[s.statusDotSmall, { backgroundColor: item.is_active ? '#10b981' : '#ef4444' }]} />
           <Text style={[s.statusPillText, { color: item.is_active ? '#065f46' : '#991b1b' }]}>{item.is_active ? 'ACTIVE' : 'INACTIVE'}</Text>
         </TouchableOpacity>
@@ -185,24 +212,31 @@ export default function ClientsListScreen({ navigation, route }) {
         <StatPill label="VERIFIED" count={item.counts?.verified} color="#10b981" />
         <StatPill label="APPROVED" count={item.counts?.approved} color="#3b82f6" />
         <StatPill label="DOWNLOAD" count={item.counts?.download} color="#8b5cf6" />
+        <StatPill label="POOL" count={item.counts?.pool} color="#ec4899" />
       </View>
 
       <View style={s.cardActions}>
-        <TouchableOpacity style={s.actionBtn} onPress={() => handleImpersonate(item)} disabled={impersonatingId === (item.user_id || item.id)}>
-          <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
-            {impersonatingId === (item.user_id || item.id) ? <ActivityIndicator size="small" color="#3b82f6" /> : <><DynamicIcon name="users" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>SWITCH</Text></>}
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
-          <LinearGradient colors={['#f8fafc', '#f1f5f9']} style={s.actionBtnInner}>
-            <DynamicIcon name="edit" size={12} color={colors.gray600} style={s.actionIcon} /><Text style={[s.actionBtnText, { color: colors.gray600 }]}>EDIT</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtn} onPress={() => deleteClient(item)}>
-          <LinearGradient colors={['#fef2f2', '#fee2e2']} style={s.actionBtnInner}>
-            <DynamicIcon name="trash" size={12} color="#ef4444" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#ef4444' }]}>DEL</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        {(perms.isSuperAdmin || perms.perm_idcard_client_list) && (
+          <TouchableOpacity style={s.actionBtn} onPress={() => handleImpersonate(item)} disabled={impersonatingId === (item.user_id || item.id)}>
+            <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
+              {impersonatingId === (item.user_id || item.id) ? <ActivityIndicator size="small" color="#3b82f6" /> : <><DynamicIcon name="users" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>IMPERSONATE</Text></>}
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+        {(perms.isSuperAdmin || perms.perm_idcard_client_list) && (
+          <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
+            <LinearGradient colors={['#f8fafc', '#f1f5f9']} style={s.actionBtnInner}>
+              <DynamicIcon name="edit" size={12} color={colors.gray600} style={s.actionIcon} /><Text style={[s.actionBtnText, { color: colors.gray600 }]}>EDIT</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+        {perms.isSuperAdmin && (
+          <TouchableOpacity style={s.actionBtn} onPress={() => deleteClient(item)}>
+            <LinearGradient colors={['#fef2f2', '#fee2e2']} style={s.actionBtnInner}>
+              <DynamicIcon name="trash" size={12} color="#ef4444" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#ef4444' }]}>DEL</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -215,9 +249,11 @@ export default function ClientsListScreen({ navigation, route }) {
           <IconSearch size={14} color={colors.gray400} />
           <TextInput style={s.searchInput} value={search} onChangeText={setSearch} placeholder="Search clients..." placeholderTextColor={colors.gray400} />
         </View>
-        <TouchableOpacity style={s.addBtn} onPress={openCreate}>
-          <LinearGradient colors={gradients.brand} style={s.addBtnInner}><IconPlus size={16} color="#fff" /></LinearGradient>
-        </TouchableOpacity>
+        {(perms.isSuperAdmin || perms.perm_idcard_client_list) && (
+          <TouchableOpacity style={s.addBtn} onPress={openCreate}>
+            <LinearGradient colors={gradients.brand} style={s.addBtnInner}><IconPlus size={16} color="#fff" /></LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
 
       {error ? <ErrorBanner message={error} onRetry={refresh} /> : loading && !refreshing ? <ListSkeleton count={6} /> : (
@@ -236,7 +272,21 @@ export default function ClientsListScreen({ navigation, route }) {
               <FormField label="CLIENT NAME *" value={form.name} onChangeText={t => setForm(f => ({ ...f, name: t }))} />
               <FormField label="EMAIL *" value={form.email} onChangeText={t => setForm(f => ({ ...f, email: t }))} keyboardType="email-address" />
               <FormField label="PHONE" value={form.phone} onChangeText={t => setForm(f => ({ ...f, phone: t }))} keyboardType="phone-pad" />
-              {!editingId && <FormField label="PASSWORD *" value={form.password} onChangeText={t => setForm(f => ({ ...f, password: t }))} secureTextEntry />}
+              <FormField 
+                label={editingId ? "TEMP PASSWORD (OPTIONAL)" : "PASSWORD (OPTIONAL)"} 
+                value={form.password} 
+                onChangeText={t => setForm(f => ({ ...f, password: t }))} 
+                secureTextEntry 
+              />
+              <View style={s.switchRow}>
+                <Text style={s.switchLabel}>ACTIVE STATUS</Text>
+                <Switch 
+                  value={form.is_active} 
+                  onValueChange={v => setForm(f => ({ ...f, is_active: v }))} 
+                  trackColor={{ false: '#e2e8f0', true: colors.brandPrimary }}
+                  thumbColor={form.is_active ? '#fff' : '#f4f3f4'}
+                />
+              </View>
             </ScrollView>
             <View style={s.modalFooter}>
               <TouchableOpacity style={s.modalCancel} onPress={() => setShowForm(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
@@ -319,4 +369,6 @@ const s = StyleSheet.create({
   modalSaveText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
   empty: { padding: 60, alignItems: 'center' },
   emptyText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingHorizontal: 2, paddingVertical: 8 },
+  switchLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500 },
 });

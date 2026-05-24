@@ -15,7 +15,7 @@ import { apiGet, apiPost } from '../api/client';
 import { colors, radius, shadows, roleThemes, gradients, fontFamily } from '../theme';
 
 export default function ProfileScreen({ navigation }) {
-  const { user, refreshProfile, logout } = useAuth();
+  const { user, refreshProfile, logout, isImpersonating, stopImpersonation } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ name: user?.name || '', phone: user?.phone || '' });
@@ -194,6 +194,23 @@ export default function ProfileScreen({ navigation }) {
 
         <Text style={s.secTitle}>ACCOUNT SETTINGS</Text>
         <View style={s.updCard}>
+          {isImpersonating && (
+            <TouchableOpacity 
+              onPress={async () => {
+                const res = await stopImpersonation();
+                if (res.success) {
+                  showToast(res.message, 'success');
+                  navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+                } else {
+                  showToast(res.message, 'error');
+                }
+              }} 
+              style={s.linkRow}
+            >
+              <View style={[s.linkIcon, { backgroundColor: '#fef3c7' }]}><DynamicIcon name="user-check" size={12} color="#d97706" /></View>
+              <Text style={[s.linkLabel, { color: '#d97706' }]}>Exit Impersonation</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={handleDeleteRequest} style={s.linkRow}>
             <View style={[s.linkIcon, { backgroundColor: '#fee2e2' }]}><DynamicIcon name="trash" size={12} color="#ef4444" /></View>
             <Text style={[s.linkLabel, { color: '#ef4444' }]}>Delete Data Request</Text>

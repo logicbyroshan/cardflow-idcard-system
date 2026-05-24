@@ -59,6 +59,11 @@ export default function LoginScreen({ navigation }) {
                 const retry = await login(email.trim(), password, true);
                 if (!retry.success) {
                   setError(retry.data?.message || 'Login failed.');
+                } else {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Home' }],
+                  });
                 }
                 setLoading(false);
               },
@@ -75,6 +80,11 @@ export default function LoginScreen({ navigation }) {
         }
 
         setError(data.message || 'Invalid email or password.');
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
       }
     } catch (e) {
       setError('Network error — please try again.');

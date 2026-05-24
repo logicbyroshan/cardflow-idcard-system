@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Image, Animated, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DynamicIcon } from './Icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,6 +31,7 @@ import { cleanFieldData, cleanFieldValue } from '../utils/data';
  */
 export default function CardModalForm({ visible, onClose, tableId, cardId, onSuccess }) {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const isEdit = !!cardId;
   const [fields, setFields] = useState([]);
   const [values, setValues] = useState({});
@@ -188,20 +190,34 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
   };
 
   const handlePickFromGallery = async () => {
+    const fieldName = photoMenu.field; // Capture BEFORE closing menu (avoids stale closure)
     try {
-      // Modern Android (13+) utilizes system Photo Picker which does not require media permissions.
-      // Directly call launchImageLibraryAsync for maximum compatibility.
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showToast('Permission to access gallery is required', 'error');
+        return;
+      }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.7,
-        allowsEditing: true,
-        aspect: [3, 4]
+        quality: 0.8,
+        allowsEditing: false, // Bypass system crop; use our custom crop screen
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        const uri = result.assets[0].uri;
-        setValues(prev => ({ ...prev, [photoMenu.field]: uri }));
+        const asset = result.assets[0];
+        const uri = asset.uri;
+        const width = asset.width || 1000;
+        const height = asset.height || 1000;
+
         setPhotoMenu(p => ({ ...p, visible: false }));
+
+        // Navigate to Camera screen for custom cropping
+        navigation.navigate('Camera', {
+          imageUri: uri,
+          imageWidth: width,
+          imageHeight: height,
+          onCapture: (croppedUri) => setValues(prev => ({ ...prev, [fieldName]: croppedUri }))
+        });
       }
     } catch (e) {
       showToast('Error picking image', 'error');
@@ -324,7 +340,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                   </ScrollView>
 
                   {/* Fixed Footer at bottom of sheet */}
-                  <View style={s.footerContainer}>
+                  <View style={[s.footerContainer, { paddingBottom: (insets.bottom || 0) > 0 ? (insets.bottom || 0) + 12 : 28 }]}>
                     <HStack spacing={12} style={s.footer} align="center">
                       <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
                         <Text style={s.cancelBtnText}>Discard</Text>
@@ -357,9 +373,10 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
               
               <HStack spacing={14} style={s.menuItem} align="center" onStartShouldSetResponder={() => false}>
                 <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
+                const captureField = photoMenu.field; // Capture BEFORE closing menu
                 setPhotoMenu(p => ({ ...p, visible: false }));
                 navigation.navigate('Camera', { 
-                  onCapture: (uri) => setValues(prev => ({ ...prev, [photoMenu.field]: uri })) 
+                  onCapture: (uri) => setValues(prev => ({ ...prev, [captureField]: uri })) 
                 });
                 }}>
                   <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><DynamicIcon name="camera" size={14} color="#6366f1" /></View>

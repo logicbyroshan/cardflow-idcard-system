@@ -88,7 +88,41 @@ export default function CardDetailScreen({ navigation, route }) {
 
   const fd = card.field_data || {};
   const cardName = card.name || fd.NAME || fd.Name || fd.name || fd.FULL_NAME || fd.full_name || `Card #${card.id}`;
-  const isLocked = ['pool'].includes(card.status) && (user?.isClient || user?.isAssistant);
+  const isLocked = (user?.isClient || user?.isAssistant) && ['approved', 'download', 'pool'].includes(card.status);
+
+  const canTransitionTo = useCallback((targetStatus) => {
+    if (isLocked) return false;
+    if (card.status === targetStatus) return true;
+    
+    const allowed = {
+      'pending':  ['verified', 'pool'],
+      'verified': ['approved', 'pending', 'pool'],
+      'approved': ['download', 'verified', 'pending', 'pool'],
+      'download': ['approved', 'pending'],
+      'pool':     ['pending'],
+      'reprint':  ['download', 'verified', 'approved', 'pending'],
+    }[card.status] || [];
+    
+    if (!allowed.includes(targetStatus)) return false;
+    
+    const isSuperAdmin = user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin';
+    if (isSuperAdmin) return true;
+    
+    const perms = user?.permissions || {};
+    if (['pool', 'download'].includes(card.status) && targetStatus === 'pending') {
+      return !!perms.perm_idcard_retrieve;
+    }
+    
+    const requiredPerm = {
+      'verified': 'perm_idcard_verify',
+      'approved': 'perm_idcard_approve',
+      'download': 'perm_idcard_approve',
+      'pending':  'perm_idcard_verify',
+      'pool':     'perm_idcard_delete',
+    }[targetStatus];
+    
+    return !!perms[requiredPerm];
+  }, [card.status, isLocked, user]);
 
   const allowedStatuses = useMemo(() => {
     const perms = user?.permissions || {};
@@ -202,19 +236,22 @@ export default function CardDetailScreen({ navigation, route }) {
           )}
 
           <View style={s.statusGrid}>
-            {allowedStatuses.map(opt => (
-              <TouchableOpacity 
-                key={opt.key} 
-                onPress={() => updateStatus(opt.key)} 
-                disabled={updating} 
-                style={s.statusOption}
-              >
-                <StatusBadge status={opt.key} variant={card.status === opt.key ? 'solid' : 'glass'} />
-              </TouchableOpacity>
-            ))}
+            {allowedStatuses.map(opt => {
+              const canTransition = card.status === opt.key || canTransitionTo(opt.key);
+              return (
+                <TouchableOpacity 
+                  key={opt.key} 
+                  onPress={() => updateStatus(opt.key)} 
+                  disabled={updating || isLocked || !canTransition} 
+                  style={[s.statusOption, !canTransition && { opacity: 0.3 }]}
+                >
+                  <StatusBadge status={opt.key} variant={card.status === opt.key ? 'solid' : 'glass'} />
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {user?.permissions?.perm_idcard_delete && (
+          {user?.permissions?.perm_idcard_delete && card.status === 'pending' && (
             <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
               <IconTrash size={12} color={colors.red} />
               <Text style={s.deleteBtnText}>Move to Pool</Text>
@@ -228,22 +265,26 @@ export default function CardDetailScreen({ navigation, route }) {
               <Text style={s.sectionTitle}>CHANGE STATUS</Text>
             </View>
             <View style={s.statusButtonsWrap}>
-              {allowedStatuses.map((opt, idx) => (
-                <TouchableOpacity 
-                  key={opt.key} 
-                  onPress={() => updateStatus(opt.key)} 
-                  disabled={updating} 
-                  activeOpacity={0.75}
-                  style={[
-                    s.statusBtn,
-                    card.status === opt.key && s.statusBtnActive,
-                    { backgroundColor: card.status === opt.key ? opt.perm?.split('_').pop() === 'list' ? colors.brandPrimary : colors.brandPrimary : '#f8fafc', borderColor: card.status === opt.key ? colors.brandPrimary : colors.gray100 }
-                  ]}
-                >
-                  <DetailStatusIcon status={opt.key} size={11} color={card.status === opt.key ? '#fff' : colors.gray600} />
-                  <Text style={[s.statusBtnText, card.status === opt.key && s.statusBtnTextActive]}>{opt.label}</Text>
-                </TouchableOpacity>
-              ))}
+              {allowedStatuses.map((opt, idx) => {
+                const canTransition = card.status === opt.key || canTransitionTo(opt.key);
+                return (
+                  <TouchableOpacity 
+                    key={opt.key} 
+                    onPress={() => updateStatus(opt.key)} 
+                    disabled={updating || isLocked || !canTransition} 
+                    activeOpacity={0.75}
+                    style={[
+                      s.statusBtn,
+                      card.status === opt.key && s.statusBtnActive,
+                      { backgroundColor: card.status === opt.key ? colors.brandPrimary : '#f8fafc', borderColor: card.status === opt.key ? colors.brandPrimary : colors.gray100 },
+                      !canTransition && { opacity: 0.3 }
+                    ]}
+                  >
+                    <DetailStatusIcon status={opt.key} size={11} color={card.status === opt.key ? '#fff' : colors.gray600} />
+                    <Text style={[s.statusBtnText, card.status === opt.key && s.statusBtnTextActive, !canTransition && { color: colors.gray300 }]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -266,7 +307,7 @@ export default function CardDetailScreen({ navigation, route }) {
               </TouchableOpacity>
             )}
 
-            {user?.permissions?.perm_idcard_delete && (
+            {user?.permissions?.perm_idcard_delete && card.status === 'pending' && (
               <TouchableOpacity onPress={deleteCard} activeOpacity={0.85} style={s.actionBtnFull}>
                 <View style={s.deleteActionBtn}>
                   <IconTrash size={14} color={colors.red} />

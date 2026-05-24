@@ -35,6 +35,9 @@ from django.db.models import Q, Count, Max, Min, F, Sum, Avg, CharField
 from django.db.models.functions import Cast, Coalesce
 from django.db.models.fields.json import KeyTextTransform
 from django.core.cache import cache
+from urllib.parse import urlencode
+from staff.models import Staff
+MAX_REPRINT_ACTION_IDS = 200
 
 from client.services import (
     ClientAccessService,
@@ -83,18 +86,47 @@ def _normalize_mobile_sort_mode(value):
 
 def _mobile_field_token(field_name):
     # simplified token generation (direct regex)
-    try:
-        name = name.lower()
-    except NameError:
-        # keep original if 'name' not defined as expected; fall back to parameter 'field' if used
-        try:
-            name = field.lower()
-        except:
-            pass
+    name = str(field_name or '').lower()
     # replace non-alphanum/underscore with underscores, collapse multiple underscores, strip edges
     name = re.sub(r'[^a-z0-9_]', '_', name)
     name = re.sub(r'_+', '_', name).strip('_')
     return name
+
+
+def _has_meaningful_field_value(value):
+    if not value:
+        return False
+    val_str = str(value).strip()
+    if val_str.upper() in ('', 'NULL', 'NONE', 'N/A', 'NA', 'N.A.', '-'):
+        return False
+    if val_str.startswith('PENDING:'):
+        return False
+    return True
+
+
+def _get_field_value_case_insensitive(field_data, field_name):
+    return ClientCardService._get_field_value_case_insensitive(field_data, field_name)
+
+
+def _rel_photo_slot_for_name(name):
+    name_lower = str(name or '').lower()
+    if 'father' in name_lower:
+        return 'father'
+    if 'mother' in name_lower:
+        return 'mother'
+    if 'student' in name_lower or 'photo' in name_lower or 'image' in name_lower:
+        return 'student'
+    return None
+
+
+def _rel_photo_aliases_for_slot(slot):
+    if slot == 'father':
+        return ['father_photo', 'father photo', 'father image', 'father_image', 'father']
+    if slot == 'mother':
+        return ['mother_photo', 'mother photo', 'mother image', 'mother_image', 'mother']
+    if slot == 'student':
+        return ['photo', 'student_photo', 'student photo', 'student_image', 'student image', 'image']
+    return []
 def _safe_file_url(file_field, request=None):
     """Safely get URL from an ImageField/FileField and prefer absolute URLs for external clients."""
     if not file_field:
@@ -894,7 +926,7 @@ def _build_filter_metadata_from_queryset(cards_qs, class_field_name=None, sectio
 _ALLOWED_IMAGE_TYPES = frozenset({
     'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
     'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
-    'image/bmp', 'application/octet-stream',  # Android camera can send these
+    'image/bmp', 'application/octet-stream', 'image/octet-stream',  # Android camera can send these
 })
 _ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.hei', '.bmp'})
 _MAX_IMAGE_SIZE = 40 * 1024 * 1024  # 40 MB raw input; normalized output is compressed JPEG
@@ -4227,7 +4259,11 @@ def api_table_update_fields(request, table_id):
             table.fields = validated
             table.save(update_fields=['fields'])
             try:
-                ma_views = _mobile_app_views_module()
+                try:
+                    from importlib import import_module
+                    ma_views = import_module('mobile_app.views')
+                except ImportError:
+                    ma_views = None
                 migrate_cards = getattr(ma_views, '_migrate_table_field_data_for_renames', None) if ma_views else None
                 migrate_media = getattr(ma_views, '_migrate_cardmedia_field_names_for_renames', None) if ma_views else None
                 cards_updated = migrate_cards(table.id, rename_pairs) if callable(migrate_cards) else 0
@@ -6116,6 +6152,22 @@ def api_client_update(request, client_id):
         data = json.loads(request.body or '{}')
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    # Handle temporary password if provided
+    temp_pw = data.get('temp_password', '').strip()
+    if temp_pw:
+        if len(temp_pw) < 8:
+            return JsonResponse({'success': False, 'message': 'Password must be at least 8 characters'}, status=400)
+        from django.contrib.auth.password_validation import validate_password
+        try:
+            validate_password(temp_pw)
+        except Exception as validation_error:
+            return JsonResponse({'success': False, 'message': '; '.join(validation_error.messages)}, status=400)
+            
+        from client.services_client_core import ClientService
+        pw_result = ClientService.set_temp_password(client_id, temp_pw, request=request)
+        if not pw_result.success:
+            return JsonResponse({'success': False, 'message': pw_result.message or 'Failed to set password'}, status=400)
 
     result = ClientService.update(client_id, data)
     if not result.success:

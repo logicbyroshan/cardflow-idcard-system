@@ -196,8 +196,8 @@ def normalize_uploaded_image(
 
     if ext and ext not in allowed_exts:
         return None, 'Only JPG, PNG, WEBP, GIF, HEIC, and HEIF images are allowed'
-    # Allow application/octet-stream (generic Android binary) if ext is a valid image ext
-    if ct == 'application/octet-stream' and ext in allowed_exts:
+    # Allow application/octet-stream or image/octet-stream (generic Android binary) if ext is a valid image ext
+    if ct in ('application/octet-stream', 'image/octet-stream') and ext in allowed_exts:
         ct = ''  # treat as unspecified so we skip MIME check
     if ct and ct not in allowed_mimes:
         return None, 'Unsupported image content type'

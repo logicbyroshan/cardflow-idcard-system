@@ -435,29 +435,40 @@ export default function CardListScreen({ navigation, route }) {
     [cards, selectedIds],
   );
 
-  const renderItem = useCallback(({ item }) => (
-    <CardItem
-      item={item}
-      showCheckbox={true}
-      isSelected={selectedIds.has(item.id)}
-      onToggleSelect={() => toggleSelect(item.id)}
-      onEdit={perms.perm_idcard_edit ? () => { setEditingCardId(item.id); setShowForm(true); } : undefined}
-      currentStatus={currentStatus}
-      onStatusChange={s => handleStatusChange(item.id, s)}
-      onDelete={perms.perm_idcard_delete ? () => handleSingleDelete(item.id) : undefined}
-      onReprint={(perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
-      permissions={perms}
-    />
-  ), [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint]);
+  const isClientRole = perms.role === 'client' || perms.role === 'client_staff';
+
+  const renderItem = useCallback(({ item }) => {
+    const isClient = perms.role === 'client' || perms.role === 'client_staff';
+    const canEdit = perms.perm_idcard_edit && (!isClient || ['pending', 'verified'].includes(currentStatus));
+    const canDelete = perms.perm_idcard_delete && currentStatus === 'pending' && !isClient;
+    const statusChangeHandler = isClient && ['approved', 'download', 'pool'].includes(currentStatus)
+      ? undefined
+      : (s => handleStatusChange(item.id, s));
+
+    return (
+      <CardItem
+        item={item}
+        showCheckbox={!isClient || perms.perm_idcard_verify || perms.perm_idcard_approve}
+        isSelected={selectedIds.has(item.id)}
+        onToggleSelect={() => toggleSelect(item.id)}
+        onEdit={canEdit ? () => { setEditingCardId(item.id); setShowForm(true); } : undefined}
+        currentStatus={currentStatus}
+        onStatusChange={statusChangeHandler}
+        onDelete={canDelete ? () => handleSingleDelete(item.id) : undefined}
+        onReprint={(perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
+        permissions={perms}
+      />
+    );
+  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={s.root}>
       <TopBar
-        title={selectMode ? `${selectedIds.size} SELECTED` : `${currentStatus.toUpperCase()} LIST`}
+        title={(selectMode && (!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve)) ? `${selectedIds.size} SELECTED` : `${currentStatus.toUpperCase()} LIST`}
         subtitle={tableName}
-        onBack={selectMode ? exitSelectMode : () => navigation.goBack()}
-        onAdd={perms.perm_idcard_add ? () => { setEditingCardId(null); setShowForm(true); } : undefined}
+        onBack={(selectMode && (!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve)) ? exitSelectMode : () => navigation.goBack()}
+        onAdd={(currentStatus === 'pending' && perms.perm_idcard_add) ? () => { setEditingCardId(null); setShowForm(true); } : undefined}
       />
 
       {/* Status tabs */}
@@ -502,27 +513,29 @@ export default function CardListScreen({ navigation, route }) {
       </View>
 
       {/* Select-all bar */}
-      <View style={s.summaryRow}>
-        <TouchableOpacity style={s.selectAllBtn} onPress={handleSelectAll} disabled={selectAllLoading}>
-          {selectAllLoading
-            ? <ActivityIndicator size="small" color={colors.brandPrimary} style={{ marginRight: 8 }} />
-            : <View style={[s.checkboxSmall, allSelected && s.checkboxCheckedSmall]}>
-                {allSelected && <IconCheck size={8} color="#fff" />}
-              </View>
-          }
-          <Text style={s.selectAllText}>
-            {/* eslint-disable-next-line no-nested-ternary */}
+      {(!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve) && (
+        <View style={s.summaryRow}>
+          <TouchableOpacity style={s.selectAllBtn} onPress={handleSelectAll} disabled={selectAllLoading}>
             {selectAllLoading
-              ? 'SELECTING...'
-              : (selectedIds.size === totalCount && totalCount > 0)
-                ? 'DESELECT ALL'
-                : selectedIds.size > 0
-                  ? `${selectedIds.size} SELECTED`
-                  : 'SELECT ALL'}
-          </Text>
-        </TouchableOpacity>
-        <Text style={s.totalText}>{totalCount} RECORDS</Text>
-      </View>
+              ? <ActivityIndicator size="small" color={colors.brandPrimary} style={{ marginRight: 8 }} />
+              : <View style={[s.checkboxSmall, allSelected && s.checkboxCheckedSmall]}>
+                  {allSelected && <IconCheck size={8} color="#fff" />}
+                </View>
+            }
+            <Text style={s.selectAllText}>
+              {/* eslint-disable-next-line no-nested-ternary */}
+              {selectAllLoading
+                ? 'SELECTING...'
+                : (selectedIds.size === totalCount && totalCount > 0)
+                  ? 'DESELECT ALL'
+                  : selectedIds.size > 0
+                    ? `${selectedIds.size} SELECTED`
+                    : 'SELECT ALL'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={s.totalText}>{totalCount} RECORDS</Text>
+        </View>
+      )}
 
       {/* Card list */}
       {error
@@ -546,7 +559,7 @@ export default function CardListScreen({ navigation, route }) {
       }
 
       {/* Bulk action floating bar */}
-      {selectMode && (
+      {(!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve) && selectMode && (
         <View style={[s.floatingBar, { bottom: Math.max(insets.bottom, 16) + 16 }]}>
           <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.floatingGradient}>
             <View style={s.floatingInfo}>

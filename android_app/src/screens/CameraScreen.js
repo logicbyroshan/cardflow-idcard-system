@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Dimensions, Platform, StatusBar, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Dimensions, Platform, StatusBar, Animated, PanResponder } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useIsFocused } from '@react-navigation/native';
 import { Accelerometer } from 'expo-sensors';
 import { DynamicIcon } from '../components/Icons';
@@ -19,7 +20,26 @@ export default function CameraScreen({ navigation, route }) {
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
-  const [photo, setPhoto] = useState(null);
+  const [photo, setPhoto] = useState(() => {
+    if (route?.params?.imageUri) {
+      return {
+        uri: route.params.imageUri,
+        width: route.params.imageWidth || Dimensions.get('window').width,
+        height: route.params.imageHeight || Dimensions.get('window').height,
+      };
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (route?.params?.imageUri) {
+      setPhoto({
+        uri: route.params.imageUri,
+        width: route.params.imageWidth || Dimensions.get('window').width,
+        height: route.params.imageHeight || Dimensions.get('window').height,
+      });
+    }
+  }, [route?.params?.imageUri, route?.params?.imageWidth, route?.params?.imageHeight]);
   const [isLevel, setIsLevel] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
   const [hasSensor, setHasSensor] = useState(true);
@@ -124,25 +144,176 @@ export default function CameraScreen({ navigation, route }) {
     };
     subscribe();
     return () => {
-      if (subscription) subscription.remove();
+      try {
+        if (subscription && typeof subscription.remove === 'function') {
+          subscription.remove();
+        }
+      } catch (e) {}
     };
   }, []);
 
-  if (!permission) return <View style={s.center}><ActivityIndicator color={colors.brandPrimary} /></View>;
-  if (!permission.granted) {
-    return (
-      <View style={s.center}>
-        <DynamicIcon name="camera" size={48} color={colors.gray600} style={{ marginBottom: 20 }} />
-        <Text style={s.errorText}>Camera permission is required</Text>
-        <TouchableOpacity style={s.grantBtn} onPress={requestPermission}>
-          <Text style={s.grantBtnText}>Enable Camera</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
-          <Text style={{ color: colors.gray400 }}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const previewHeight = height - 160 - Math.max(insets.bottom, 20);
+  const previewWidth = width;
+
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
+  const [cropW, setCropW] = useState(0);
+  const [cropH, setCropH] = useState(0);
+  const [cropping, setCropping] = useState(false);
+
+  const cropRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
+
+  const updateCrop = (x, y, w, h) => {
+    cropRef.current = { x, y, w, h };
+    setCropX(x);
+    setCropY(y);
+    setCropW(w);
+    setCropH(h);
+  };
+
+  useEffect(() => {
+    if (photo) {
+      const imageAspect = photo.width / photo.height;
+      let dW = previewWidth;
+      let dH = previewWidth / imageAspect;
+      if (dH > previewHeight) {
+        dH = previewHeight;
+        dW = previewHeight * imageAspect;
+      }
+      const oX = (previewWidth - dW) / 2;
+      const oY = (previewHeight - dH) / 2;
+
+      const w = dW * 0.8;
+      const h = dH * 0.8;
+      const x = oX + (dW - w) / 2;
+      const y = oY + (dH - h) / 2;
+
+      updateCrop(x, y, w, h);
+    }
+  }, [photo]);
+
+  const panStartRef = useRef({ cx: 0, cy: 0 });
+  const boxPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panStartRef.current = {
+          cx: cropRef.current.x,
+          cy: cropRef.current.y,
+        };
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (!photo) return;
+        const imageAspect = photo.width / photo.height;
+        let dW = previewWidth;
+        let dH = previewWidth / imageAspect;
+        if (dH > previewHeight) {
+          dH = previewHeight;
+          dW = previewHeight * imageAspect;
+        }
+        const oX = (previewWidth - dW) / 2;
+        const oY = (previewHeight - dH) / 2;
+
+        let newX = panStartRef.current.cx + gestureState.dx;
+        let newY = panStartRef.current.cy + gestureState.dy;
+
+        const cw = cropRef.current.w;
+        const ch = cropRef.current.h;
+
+        if (newX < oX) newX = oX;
+        if (newX + cw > oX + dW) newX = oX + dW - cw;
+        if (newY < oY) newY = oY;
+        if (newY + ch > oY + dH) newY = oY + dH - ch;
+
+        updateCrop(newX, newY, cw, ch);
+      },
+    })
+  ).current;
+
+  const resizeStartRef = useRef({ cw: 0, ch: 0 });
+  const resizePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        resizeStartRef.current = {
+          cw: cropRef.current.w,
+          ch: cropRef.current.h,
+        };
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (!photo) return;
+        const imageAspect = photo.width / photo.height;
+        let dW = previewWidth;
+        let dH = previewWidth / imageAspect;
+        if (dH > previewHeight) {
+          dH = previewHeight;
+          dW = previewHeight * imageAspect;
+        }
+        const oX = (previewWidth - dW) / 2;
+        const oY = (previewHeight - dH) / 2;
+
+        let newW = resizeStartRef.current.cw + gestureState.dx;
+        let newH = resizeStartRef.current.ch + gestureState.dy;
+
+        if (newW < 60) newW = 60;
+        if (newH < 60) newH = 60;
+
+        const cx = cropRef.current.x;
+        const cy = cropRef.current.y;
+
+        if (cx + newW > oX + dW) newW = oX + dW - cx;
+        if (cy + newH > oY + dH) newH = oY + dH - cy;
+
+        updateCrop(cx, cy, newW, newH);
+      },
+    })
+  ).current;
+
+  const handleConfirm = async () => {
+    if (!photo) return;
+    setCropping(true);
+    try {
+      const imageAspect = photo.width / photo.height;
+      let dW = previewWidth;
+      let dH = previewWidth / imageAspect;
+      if (dH > previewHeight) {
+        dH = previewHeight;
+        dW = previewHeight * imageAspect;
+      }
+      const oX = (previewWidth - dW) / 2;
+      const oY = (previewHeight - dH) / 2;
+
+      const scale = photo.width / dW;
+      const originX = Math.round((cropRef.current.x - oX) * scale);
+      const originY = Math.round((cropRef.current.y - oY) * scale);
+      const cropWidth = Math.round(cropRef.current.w * scale);
+      const cropHeight = Math.round(cropRef.current.h * scale);
+
+      const manipulated = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [
+          {
+            crop: {
+              originX: Math.max(0, originX),
+              originY: Math.max(0, originY),
+              width: Math.min(photo.width - originX, cropWidth),
+              height: Math.min(photo.height - originY, cropHeight),
+            },
+          },
+        ],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      if (route.params?.onCapture) {
+        route.params.onCapture(manipulated.uri);
+      }
+      navigation.goBack();
+    } catch (err) {
+      alert("Error cropping image: " + err.message);
+    } finally {
+      setCropping(false);
+    }
+  };
 
   const takePicture = async () => {
     if (!cameraRef.current || !isCameraReady || isCapturing) return;
@@ -176,33 +347,124 @@ export default function CameraScreen({ navigation, route }) {
     setTimeout(() => setIsCapturing(false), 500);
   };
 
-  const handleConfirm = () => {
-    if (route.params?.onCapture) {
-      route.params.onCapture(photo.uri);
-    }
-    navigation.goBack();
-  };
-
+  // Check if we already have a photo to crop (e.g. from gallery pick)
+  // before demanding camera permissions.
   if (photo) {
     return (
-      <View style={s.root}>
-        <Image source={{ uri: photo.uri }} style={s.fullPreview} />
-        <View style={[s.reviewOverlay, { paddingBottom: Math.max(insets.bottom, 20) + 20 }]}>
-           <Text style={s.reviewTitle}>Confirm Photo</Text>
+      <View style={[s.root, { justifyContent: 'flex-start' }]}>
+        <View style={{ width: previewWidth, height: previewHeight, backgroundColor: '#000', position: 'relative' }}>
+          <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: cropY, backgroundColor: 'rgba(0,0,0,0.6)' }} />
+          <View style={{ position: 'absolute', top: cropY + cropH, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} />
+          <View style={{ position: 'absolute', top: cropY, left: 0, width: cropX, height: cropH, backgroundColor: 'rgba(0,0,0,0.6)' }} />
+          <View style={{ position: 'absolute', top: cropY, left: cropX + cropW, right: 0, height: cropH, backgroundColor: 'rgba(0,0,0,0.6)' }} />
+
+          <View
+            style={[
+              s.cropBox,
+              {
+                position: 'absolute',
+                top: cropY,
+                left: cropX,
+                width: cropW,
+                height: cropH,
+                borderColor: '#fff',
+                borderWidth: 2,
+                backgroundColor: 'rgba(255,255,255,0.05)',
+              },
+            ]}
+            {...boxPanResponder.panHandlers}
+          >
+            <View style={[s.cropCorner, { top: -2, left: -2, borderLeftWidth: 3, borderTopWidth: 3 }]} />
+            <View style={[s.cropCorner, { top: -2, right: -2, borderRightWidth: 3, borderTopWidth: 3 }]} />
+            <View style={[s.cropCorner, { bottom: -2, left: -2, borderLeftWidth: 3, borderBottomWidth: 3 }]} />
+            <View style={[s.cropCorner, { bottom: -2, right: -2, borderRightWidth: 3, borderBottomWidth: 3 }]} />
+
+            <View style={{ position: 'absolute', left: '33.3%', top: 0, bottom: 0, width: 0.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            <View style={{ position: 'absolute', left: '66.6%', top: 0, bottom: 0, width: 0.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            <View style={{ position: 'absolute', top: '33.3%', left: 0, right: 0, height: 0.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            <View style={{ position: 'absolute', top: '66.6%', left: 0, right: 0, height: 0.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+
+            <View
+              style={{
+                position: 'absolute',
+                bottom: -15,
+                right: -15,
+                width: 35,
+                height: 35,
+                backgroundColor: 'transparent',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 99,
+              }}
+              {...resizePanResponder.panHandlers}
+            >
+              <View
+                style={{
+                  width: 14,
+                  height: 14,
+                  backgroundColor: '#fff',
+                  borderRadius: 7,
+                  borderWidth: 2,
+                  borderColor: '#22c55e',
+                }}
+              />
+            </View>
+          </View>
+        </View>
+
+        <View style={[s.reviewOverlay, { position: 'relative', flex: 1, justifyContent: 'center', paddingBottom: Math.max(insets.bottom, 20) + 10 }]}>
+           <Text style={[s.reviewTitle, { fontSize: 13, marginBottom: 12 }]}>Drag box to move • Corner dot to crop</Text>
            <View style={s.reviewActions}>
-              <TouchableOpacity style={s.retakeBtn} onPress={() => setPhoto(null)}>
-                <DynamicIcon name="redo" size={16} color="#fff" />
-                <Text style={s.btnText}>Retake</Text>
+              <TouchableOpacity
+                style={s.retakeBtn}
+                onPress={() => {
+                  if (route.params?.imageUri) {
+                    navigation.goBack();
+                  } else {
+                    setPhoto(null);
+                  }
+                }}
+                disabled={cropping}
+              >
+                <DynamicIcon name={route.params?.imageUri ? "times" : "redo"} size={16} color="#fff" />
+                <Text style={s.btnText}>{route.params?.imageUri ? "Cancel" : "Retake"}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm}>
-                <DynamicIcon name="check" size={16} color="#fff" />
-                <Text style={s.btnText}>Use Photo</Text>
+              <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm} disabled={cropping}>
+                {cropping ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <DynamicIcon name="check" size={16} color="#fff" />
+                    <Text style={s.btnText}>Crop & Use</Text>
+                  </>
+                )}
               </TouchableOpacity>
            </View>
         </View>
       </View>
     );
   }
+
+  if (!permission) return <View style={s.center}><ActivityIndicator color={colors.brandPrimary} /></View>;
+  if (!permission.granted) {
+    return (
+      <View style={s.center}>
+        <DynamicIcon name="camera" size={48} color={colors.gray600} style={{ marginBottom: 20 }} />
+        <Text style={s.errorText}>Camera permission is required</Text>
+        <TouchableOpacity style={s.grantBtn} onPress={requestPermission}>
+          <Text style={s.grantBtnText}>Enable Camera</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+          <Text style={{ color: colors.gray400 }}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+
+
 
   // Stencil position values
   const ovalCx = width / 2;
@@ -401,4 +663,18 @@ const s = StyleSheet.create({
   cornerBL: { position: 'absolute', bottom: 0, left: 0, width: 24, height: 24, borderLeftWidth: 3, borderBottomWidth: 3, borderBottomLeftRadius: radius.xs },
   cornerBR: { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRightWidth: 3, borderBottomWidth: 3, borderBottomRightRadius: radius.xs },
   laserLine: { position: 'absolute', left: 15, right: 15, height: 2, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 4, elevation: 3, opacity: 0.8 },
+  cropBox: {
+    borderStyle: 'solid',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  cropCorner: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderColor: '#fff',
+  },
 });

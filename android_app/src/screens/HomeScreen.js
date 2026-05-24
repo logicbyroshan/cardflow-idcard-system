@@ -49,7 +49,7 @@ function ClientMiniStat({ label, count, color, bg, onPress }) {
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, isImpersonating, stopImpersonation } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
   const [activeTab, setActiveTab] = useState('clients'); // 'clients', 'activity', 'reprints'
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -70,6 +70,7 @@ export default function HomeScreen({ navigation }) {
   const isOperator = user?.role === 'admin_staff';
   const isClient = user?.role === 'client';
   const isAssistant = user?.role === 'client_staff';
+  const isAdminOrOperator = isSuperAdmin || isOperator;
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -276,6 +277,32 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </LinearGradient>
 
+      {isImpersonating && (
+        <View style={s.impersonateBanner}>
+          <View style={s.impersonateBannerLeft}>
+            <DynamicIcon name="user-check" size={14} color="#854d0e" style={{ marginRight: 8 }} />
+            <Text style={s.impersonateBannerText}>
+              Impersonating: <Text style={{ fontFamily: 'SairaSemiCondensed-Bold' }}>{user?.name || user?.email}</Text>
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={s.impersonateExitBtn} 
+            activeOpacity={0.7}
+            onPress={async () => {
+              const res = await stopImpersonation();
+              if (res.success) {
+                showToast(res.message, 'success');
+                refresh();
+              } else {
+                showToast(res.message, 'error');
+              }
+            }}
+          >
+            <Text style={s.impersonateExitText}>EXIT</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}>
 
@@ -283,8 +310,10 @@ export default function HomeScreen({ navigation }) {
           {STATUS_CONFIG.map(st => {
             const val = st.key === 'total' ? totalCards : (counts[st.key] || 0);
             return (
-              <TouchableOpacity key={st.key} style={s.statusCardOuter} activeOpacity={0.8}
+              <TouchableOpacity key={st.key} style={s.statusCardOuter} activeOpacity={isAdminOrOperator ? 1 : 0.8}
+                disabled={isAdminOrOperator}
                 onPress={() => {
+                  if (isAdminOrOperator) return;
                   const statusMap = { pending: 'p', verified: 'v', approved: 'a', download: 'd', pool: 'po' };
                   const tableKey = statusMap[st.key] || st.key;
                   const tablesWithStatus = (counts.tables || []).filter(t => (t[tableKey] || 0) > 0);
@@ -896,4 +925,35 @@ const s = StyleSheet.create({
   modalSave: { flex: 2, height: 44, borderRadius: radius.xs },
   modalSaveBtn: { flex: 1, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   modalSaveText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
+  impersonateBanner: {
+    backgroundColor: '#fef9c3',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fef08a',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  impersonateBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  impersonateBannerText: {
+    color: '#854d0e',
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Medium',
+  },
+  impersonateExitBtn: {
+    backgroundColor: '#ca8a04',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.xs,
+  },
+  impersonateExitText: {
+    color: '#fff',
+    fontSize: 10,
+    fontFamily: 'SairaSemiCondensed-Bold',
+  },
 });
