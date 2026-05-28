@@ -42,6 +42,7 @@
   </script>
 </head>
 <body x-data="layoutState" x-init="init">
+  {% include 'partials/impersonate-bar.html' %}
   {% include 'partials/sidebar.html' %}
   <main class="main idcard-actions-page reprint-cards-page">
     {% include 'reprintcard/partials/topbar.html' %}

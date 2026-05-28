@@ -421,6 +421,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% if status_tone %}status-{{ status_tone }}{% elif status_code %}status-{{ status_code }}{% else %}status-500{% endif %}{% endblock %}">
+    {% include 'partials/impersonate-bar.html' %}
     <main class="problem-shell">
         <section class="problem-card">
             <div class="top-row">

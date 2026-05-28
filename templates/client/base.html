@@ -22,6 +22,9 @@
   <!-- Shared Alpine runtime loader -->
   {% include 'partials/common/alpine-loader.html' %}
 </head>
+  <!-- Impersonation Banner (Pro User) -->
+  {% include 'partials/impersonate-bar.html' %}
+
 <body data-user-role="{{ request.user.role|default:'' }}" x-data="layoutState" x-init="init">
 
   <!-- Impersonation Banner (Pro User) -->
