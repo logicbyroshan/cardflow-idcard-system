@@ -16,7 +16,7 @@
     display: flex;
     flex-direction: column;
     background: linear-gradient(180deg, #f5f8fc 0%, #edf3fb 100%);
-    overflow: hidden;
+    overflow: visible;
   }
 
   .guest-page .pro-feature-tabs {
@@ -29,12 +29,14 @@
     border-left: 0;
     border-right: 0;
     background: var(--color-white);
+    z-index: 5;
   }
 
   .guest-shell {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: visible;
     padding: 16px 20px 24px;
   }
 
@@ -44,6 +46,8 @@
   }
 
   .guest-card {
+    position: relative;
+    z-index: 1;
     border: 1px solid #dbe5f1;
     border-radius: 8px;
     background: #fff;
