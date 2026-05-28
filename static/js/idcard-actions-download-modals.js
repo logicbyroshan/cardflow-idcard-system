@@ -171,6 +171,10 @@ function _dlSetProgressVisible(type, visible) {
     var modal = document.getElementById(cfg.modalId);
     var body = modal ? modal.querySelector(cfg.bodySelector) : null;
     var step = document.getElementById(cfg.stepId);
+    // Ensure modal remains visible when showing progress step.
+    if (modal && visible) {
+        modal.style.display = 'flex';
+    }
     if (body) body.style.display = visible ? 'none' : '';
     if (step) step.style.display = visible ? 'block' : 'none';
     _dlSetStepperState(type, visible ? 2 : 1);
@@ -259,9 +263,11 @@ window.IDCardApp.downloadProgressPresenter = {
     },
     setType: function(type) {
         _dlProgressState.type = type || '';
+        console.debug('[DL TRACE] presenter.setType ->', _dlProgressState.type);
     },
     prepare: function(message, progress, onCancel) {
         if (!_dlProgressState.type) return;
+        console.debug('[DL TRACE] presenter.prepare type=', _dlProgressState.type, 'message=', message);
         _dlSetProgressVisible(_dlProgressState.type, true);
         _dlSetFooterCancelLabel(_dlProgressState.type, 'Cancel Download');
         var cfgPrepare = _dlGetProgressModalConfig(_dlProgressState.type);
@@ -272,31 +278,37 @@ window.IDCardApp.downloadProgressPresenter = {
     },
     update: function(message, progress, etaText, onCancel) {
         if (!_dlProgressState.type) return;
+        console.debug('[DL TRACE] presenter.update type=', _dlProgressState.type, 'msg=', message, 'pct=', progress, 'eta=', etaText);
         if (typeof onCancel === 'function') _dlProgressState.cancelFn = onCancel;
         _dlUpdateProgressUi(_dlProgressState.type, message || 'Downloading...', typeof progress === 'number' ? progress : -1, etaText || '--');
     },
     complete: function(message) {
         if (!_dlProgressState.type) return;
+        console.debug('[DL TRACE] presenter.complete type=', _dlProgressState.type, 'msg=', message);
         _dlFinishProgressUi(_dlProgressState.type, message || 'Download complete', false);
     },
     error: function(message) {
         if (!_dlProgressState.type) return;
+        console.debug('[DL TRACE] presenter.error type=', _dlProgressState.type, 'msg=', message);
         _dlFinishProgressUi(_dlProgressState.type, message || 'Download failed', true);
     },
     cancel: function() {
         if (typeof _dlProgressState.cancelFn === 'function') {
             var cancelFn = _dlProgressState.cancelFn;
             _dlProgressState.cancelFn = null;
+            console.debug('[DL TRACE] presenter.cancel -> calling cancelFn');
             cancelFn();
             return;
         }
         if (_dlProgressState.type) {
+            console.debug('[DL TRACE] presenter.cancel -> clearing UI for type', _dlProgressState.type);
             _dlClearProgressUi(_dlProgressState.type);
             _dlProgressState.type = '';
         }
     },
     clear: function() {
         if (_dlProgressState.type) {
+            console.debug('[DL TRACE] presenter.clear for type', _dlProgressState.type);
             _dlClearProgressUi(_dlProgressState.type);
         }
         _dlProgressState.type = '';
@@ -2708,6 +2720,12 @@ function openDownloadDocxModal(cardIds, format) {
 
 function closeDownloadDocxModal() {
     const modal = document.getElementById('downloadDocxModal');
+    // If a bulk-download flow was just initiated, avoid closing the modal immediately.
+    if (window.IDCardApp && window.IDCardApp._nextBulkUiLock) {
+        try { console.log('[DL] skip closeDownloadDocxModal due to _nextBulkUiLock'); } catch (e) {}
+        return;
+    }
+
     if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
         window.IDCardApp.downloadProgressPresenter.cancel();
     }
@@ -2739,10 +2757,14 @@ function initDownloadDocxHandlers() {
     // Docx template modal handlers
     document.getElementById('downloadDocxCancel')?.addEventListener('click', closeDownloadDocxModal);
     document.getElementById('downloadDocxClose')?.addEventListener('click', closeDownloadDocxModal);
-    document.getElementById('downloadDocxConfirm')?.addEventListener('click', function() {
+    document.getElementById('downloadDocxConfirm')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         const templateSelect = document.getElementById('downloadDocxTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
         if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+            // Ensure presenter type is set before preparing so isActive() returns true
+            try { window.IDCardApp.downloadProgressPresenter.setType('docx'); } catch (err) {}
             window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
         }
         markNextBulkUiLock();
@@ -2800,6 +2822,11 @@ function openDownloadXlsxModal(cardIds) {
 }
 
 function closeDownloadXlsxModal() {
+    if (window.IDCardApp && window.IDCardApp._nextBulkUiLock) {
+        try { console.log('[DL] skip closeDownloadXlsxModal due to _nextBulkUiLock'); } catch (e) {}
+        return;
+    }
+
     if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
         window.IDCardApp.downloadProgressPresenter.cancel();
     }
@@ -2836,11 +2863,14 @@ function initDownloadXlsxHandlers() {
     // Modal button handlers
     document.getElementById('downloadXlsxCancel')?.addEventListener('click', closeDownloadXlsxModal);
     document.getElementById('downloadXlsxClose')?.addEventListener('click', closeDownloadXlsxModal);
-    document.getElementById('downloadXlsxConfirm')?.addEventListener('click', function() {
+    document.getElementById('downloadXlsxConfirm')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         const includeImagesEl = document.getElementById('downloadXlsxIncludeImages');
         const includeImagesZip = !!(includeImagesEl && includeImagesEl.checked);
         const cardIds = Array.isArray(pendingDownloadCardIds) ? pendingDownloadCardIds.slice() : [];
         if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+            try { window.IDCardApp.downloadProgressPresenter.setType('xlsx'); } catch (err) {}
             window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
         }
         markNextBulkUiLock();
@@ -2936,6 +2966,11 @@ function openDownloadPdfModal(cardIds) {
 }
 
 function closeDownloadPdfModal() {
+    if (window.IDCardApp && window.IDCardApp._nextBulkUiLock) {
+        try { console.log('[DL] skip closeDownloadPdfModal due to _nextBulkUiLock'); } catch (e) {}
+        return;
+    }
+
     if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
         window.IDCardApp.downloadProgressPresenter.cancel();
     }
@@ -2975,7 +3010,9 @@ function initDownloadPdfHandlers() {
     // Modal button handlers
     document.getElementById('downloadPdfCancel')?.addEventListener('click', closeDownloadPdfModal);
     document.getElementById('downloadPdfClose')?.addEventListener('click', closeDownloadPdfModal);
-    document.getElementById('downloadPdfConfirm')?.addEventListener('click', function() {
+    document.getElementById('downloadPdfConfirm')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         const templateSelect = document.getElementById('downloadPdfTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
         var fontMode = 'auto';
@@ -2986,6 +3023,7 @@ function initDownloadPdfHandlers() {
         var breakMode = readPdfBreakModeSelection();
         var cardIdsToDownload = Array.isArray(pendingPdfCardIds) ? pendingPdfCardIds.slice() : [];
         if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+            try { window.IDCardApp.downloadProgressPresenter.setType('pdf'); } catch (err) {}
             window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
         }
         markNextBulkUiLock();

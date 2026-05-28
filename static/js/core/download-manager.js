@@ -766,6 +766,12 @@
         var id = _nextId++;
         var name = options.name || 'Download #' + id;
         var presenter = _getDownloadProgressPresenter();
+        // If caller explicitly provided a modalType, activate presenter for that type
+        try {
+            if (options && options.modalType && presenter && typeof presenter.setType === 'function') {
+                presenter.setType(options.modalType);
+            }
+        } catch (e) { console.error('DownloadManager: failed to set presenter type', e); }
         var useModalProgress = !!(presenter && presenter.isActive && presenter.isActive());
 
         // Create toast immediately
@@ -859,6 +865,11 @@
         var id = _nextId++;
         var name = options.name || 'Images Download';
         var presenter = _getDownloadProgressPresenter();
+        try {
+            if (options && options.modalType && presenter && typeof presenter.setType === 'function') {
+                presenter.setType(options.modalType);
+            }
+        } catch (e) { console.error('DownloadManager: failed to set presenter type', e); }
         var useModalProgress = !!(presenter && presenter.isActive && presenter.isActive());
         var toastEl = useModalProgress ? null : _createToast(id, name);
 

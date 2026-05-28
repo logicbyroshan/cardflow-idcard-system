@@ -687,11 +687,8 @@ function downloadDocx(cardIds, format, templateId) {
         return;
     }
     
-    // Close modals via DOM (modal state functions are in UI sub-module)
-    var _docFormatOverlay = document.getElementById('docFormatModalOverlay');
-    if (_docFormatOverlay) { _docFormatOverlay.classList.remove('active'); document.body.style.overflow = ''; }
-    var _docxModal = document.getElementById('downloadDocxModal');
-    if (_docxModal) _docxModal.style.display = 'none';
+    // Do not close/hide the modal here; if a modal presenter is active
+    // it will manage the UI. Keep modal open so the stepper stays visible.
 
     const effectiveCount = _getEffectiveExportCount(cardIds);
     if (effectiveCount >= _ASYNC_EXPORT_THRESHOLD) {
@@ -727,6 +724,7 @@ function downloadDocx(cardIds, format, templateId) {
             url: `/api/table/${tableId}/cards/download-docx/`,
             body: Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters()),
             lockUi: true,
+            modalType: 'docx',
             fallbackExt: format,
             completeMessage: 'Document downloaded successfully!',
             onComplete: function() {
@@ -863,6 +861,7 @@ function downloadXlsx(cardIds, options) {
             url: `/api/table/${tableId}/cards/download-xlsx/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters()),
             lockUi: true,
+            modalType: 'xlsx',
             fallbackExt: 'xlsx',
             completeMessage: 'Excel file downloaded successfully!',
             onComplete: function() {
@@ -1000,6 +999,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles, breakMode) {
             url: `/api/table/${tableId}/cards/download-pdf/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles, break_mode: breakMode, prefer_sync: true }, _getActiveFilters()),
             lockUi: true,
+            modalType: 'pdf',
             fallbackExt: 'pdf',
             completeMessage: 'PDF file downloaded successfully!',
             onComplete: function() {

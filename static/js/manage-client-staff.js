@@ -1543,11 +1543,38 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         onBeforeSubmit: function (formData, meta) {
             if (!meta || meta.mode !== 'assign') {
-                if (!selectedClientId) {
-                    throw new Error('Please select a client before creating the assistent');
-                }
-                formData.client_id = selectedClientId;
-                return;
+                    if (!selectedClientId) {
+                        // Try to auto-resolve the client id from common contexts (impersonation, client page, single-client list)
+                        var autoClientId = null;
+                        if (typeof window.CLIENT_ID !== 'undefined' && window.CLIENT_ID) {
+                            autoClientId = parseInt(window.CLIENT_ID, 10);
+                        }
+                        if (!Number.isFinite(autoClientId)) {
+                            var el = document.querySelector('[data-client-id]');
+                            if (el) {
+                                autoClientId = parseInt(el.getAttribute('data-client-id'), 10);
+                            }
+                        }
+                        if (!Number.isFinite(autoClientId) && Array.isArray(allClients) && allClients.length === 1) {
+                            autoClientId = parseInt(allClients[0].id, 10);
+                        }
+
+                        if (!Number.isFinite(autoClientId)) {
+                            // No client could be auto-resolved on the frontend.
+                            // Previously we threw an error here requiring manual
+                            // client selection. Instead, allow the backend to
+                            // auto-assign the creating client (server-side).
+                            selectedClientId = null;
+                        } else {
+                            selectedClientId = autoClientId;
+                        }
+                    }
+
+                    if (Number.isFinite(selectedClientId)) {
+                        formData.client_id = selectedClientId;
+                    }
+
+                    return;
             }
 
             if (!meta || meta.mode !== 'assign') return;
