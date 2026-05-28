@@ -26,4 +26,11 @@
     <i class="fa-solid fa-database"></i> Data Deletion Guard
   </a>
   {% endif %}
+
+  {# Guest Users — visible to pro_user and super_admin #}
+  {% if is_pro_user or is_super_admin %}
+  <a href="{% url 'pro_user_guest_users' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_guest_users' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_guest_users' %}true{% else %}false{% endif %}">
+    <i class="fa-solid fa-user-secret"></i> Manage Guest Users
+  </a>
+  {% endif %}
 </div>

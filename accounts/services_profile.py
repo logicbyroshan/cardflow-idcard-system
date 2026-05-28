@@ -42,13 +42,49 @@ class UserProfileService:
         return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
 
     @staticmethod
-    def update_profile(user, data):
+    def update_profile(user, data, request=None):
         """
         Update user profile fields.
         data: dict with optional keys: first_name, last_name, username, email, phone.
         Returns (success: bool, message: str, profile_data: dict|None).
         """
         from core.models import User
+
+        # For guest/sandbox users we keep profile changes session-scoped
+        if getattr(user, 'role', '') == 'guest_user' and request is not None:
+            try:
+                sandbox_key = f'guest_sandbox:{user.id}'
+                overrides = request.session.get(sandbox_key, {}) or {}
+                # Only allow these fields to be overridden in-session
+                allowed = {'first_name', 'last_name', 'username', 'email', 'phone'}
+                for k in allowed:
+                    if k in data:
+                        val = data[k].strip() if isinstance(data[k], str) else data[k]
+                        if val:
+                            overrides[k] = val
+                        else:
+                            overrides.pop(k, None)
+                request.session[sandbox_key] = overrides
+                request.session.modified = True
+
+                # Build profile payload from session overrides merged with real user
+                merged = {
+                    'first_name': overrides.get('first_name', user.first_name),
+                    'last_name': overrides.get('last_name', user.last_name),
+                    'username': overrides.get('username', user.username),
+                    'email': overrides.get('email', user.email),
+                    'phone': overrides.get('phone', getattr(user, 'phone', '') or ''),
+                }
+                full_name = (merged.get('first_name') or '') + ' ' + (merged.get('last_name') or '')
+                full_name = full_name.strip() or merged.get('username')
+                return True, 'Profile updated (sandbox)', {
+                    'full_name': full_name,
+                    'email': merged.get('email') or '',
+                    'username': merged.get('username') or '',
+                }
+            except Exception as e:
+                logger.exception('Guest sandbox profile update failed: %s', e)
+                return False, 'Failed to update sandbox profile', None
 
         with transaction.atomic():
             if 'first_name' in data:
@@ -172,6 +208,41 @@ class UserProfileService:
             'two_factor_enabled': two_factor_enabled,
             'login_notifications_enabled': login_notifications_enabled,
             'session_timeout_minutes': session_timeout_minutes,
+        }
+
+    @staticmethod
+    def get_profile(user, request=None):
+        """Return merged profile data, applying session sandbox overrides for guests."""
+        # If a guest user with a session sandbox exists, merge overrides
+        if getattr(user, 'role', '') == 'guest_user' and request is not None:
+            sandbox_key = f'guest_sandbox:{user.id}'
+            overrides = request.session.get(sandbox_key, {}) or {}
+            first_name = overrides.get('first_name', user.first_name)
+            last_name = overrides.get('last_name', user.last_name)
+            username = overrides.get('username', user.username)
+            email = overrides.get('email', user.email)
+            phone = overrides.get('phone', getattr(user, 'phone', '') or '')
+        else:
+            first_name = user.first_name
+            last_name = user.last_name
+            username = user.username
+            email = user.email
+            phone = getattr(user, 'phone', '') or ''
+
+        full_name = (first_name or '') + ' ' + (last_name or '')
+        full_name = full_name.strip() or username
+
+        return {
+            'username': username,
+            'email': email or '',
+            'first_name': first_name or '',
+            'last_name': last_name or '',
+            'full_name': full_name,
+            'phone': phone,
+            'role': getattr(user, 'role', 'client'),
+            'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else getattr(user, 'role', 'client'),
+            'profile_image': None,
+            'member_since': user.date_joined.strftime('%b %Y') if getattr(user, 'date_joined', None) else '',
         }
 
     @staticmethod

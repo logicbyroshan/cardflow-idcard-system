@@ -78,6 +78,7 @@ class Client(models.Model):
     
     # Basic Information
     name = models.CharField(max_length=200, db_index=True)
+    is_guest = models.BooleanField(default=False, db_index=True)
     # Logo for panel branding
     logo = models.ImageField(upload_to='client_logos/', null=True, blank=True)
     

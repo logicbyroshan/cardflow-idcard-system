@@ -418,6 +418,19 @@ def pro_user_super_mode_page(request):
 
 
 @login_required
+def pro_user_guest_users_page(request):
+    """Dedicated page for Pro User guest sandbox account management."""
+    if not PermissionService.can_manage_pro_features(request.user):
+        return redirect('dashboard')
+
+    context = {
+        'active_page': 'pro_user_guest_users',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'pro_user/guest-users.html', context)
+
+
+@login_required
 def pro_user_activity_logs_detail_page(request, user_id):
     """Dedicated detail page for a selected user's deep history (Pro User only)."""
     if not PermissionService.can_use_pro_user_options(request.user):

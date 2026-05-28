@@ -232,7 +232,7 @@ def api_staff_toggle_status(request, staff_id):
 @api_require_super_admin
 def api_active_clients_list(request):
     """API endpoint to get list of active clients for staff assignment dropdown"""
-    clients = Client.objects.filter(status='active').order_by('name').values('id', 'name')
+    clients = Client.objects.filter(status='active', is_guest=False).order_by('name').values('id', 'name')
     return JsonResponse({
         'success': True,
         'clients': list(clients)
@@ -244,7 +244,7 @@ def api_active_clients_list(request):
 def api_all_clients_for_assignment(request):
     """API endpoint to get ALL clients (active + inactive) for staff assignment dropdown.
     Super admin can assign any client to admin staff, regardless of status."""
-    clients = Client.objects.order_by('status', 'name').values('id', 'name', 'status')
+    clients = Client.objects.filter(is_guest=False).order_by('status', 'name').values('id', 'name', 'status')
     return JsonResponse({
         'success': True,
         'clients': list(clients)

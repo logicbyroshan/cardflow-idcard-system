@@ -29,25 +29,12 @@ logger = logging.getLogger(__name__)
 def api_get_profile(request):
     """Get current user's profile data."""
     user = request.user
+    profile = UserProfileService.get_profile(user, request)
     security_settings = UserProfileService.get_security_settings(user)
     super_mode = SuperModeService.build_status(user)
-    return JsonResponse({
-        'success': True,
-        'profile': {
-            'username': user.username,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'full_name': user.get_full_name() or user.username,
-            'phone': getattr(user, 'phone', '') or '',
-            'role': getattr(user, 'role', 'client'),
-            'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else user.role,
-            'profile_image': None,  # profile_image removed in Phase 1 refactor
-            'member_since': user.date_joined.strftime('%b %Y') if user.date_joined else '',
-            'security_settings': security_settings,
-            'super_mode': super_mode,
-        }
-    })
+    profile['security_settings'] = security_settings
+    profile['super_mode'] = super_mode
+    return JsonResponse({'success': True, 'profile': profile})
 
 
 @login_required
@@ -56,7 +43,7 @@ def api_update_profile(request):
     """Update current user's profile data."""
     try:
         data = json.loads(request.body)
-        success, message, profile_data = UserProfileService.update_profile(request.user, data)
+        success, message, profile_data = UserProfileService.update_profile(request.user, data, request=request)
         if not success:
             return JsonResponse({'success': False, 'message': message})
         return JsonResponse({

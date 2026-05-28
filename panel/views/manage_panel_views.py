@@ -111,12 +111,14 @@ def manage_panel(request):
     user_counts = User.objects.filter(is_active=True).aggregate(
         total=Count('id'),
         admin_staff=Count('id', filter=Q(role='admin_staff')),
+        guest_users=Count('id', filter=Q(role='guest_user')),
         client_staff=Count('id', filter=Q(role='client_staff')),
     )
     context['can_manage_panel_backup'] = PermissionService.has(request.user, 'perm_manage_panel_backup')
     context['can_manage_panel_email'] = PermissionService.has(request.user, 'perm_manage_panel_email')
     context['total_users'] = user_counts['total']
     context['total_admin_staff'] = user_counts['admin_staff']
+    context['total_guest_users'] = user_counts['guest_users']
     context['total_client_staff'] = user_counts['client_staff']
     return render(request, 'manage-panel.html', context)
 

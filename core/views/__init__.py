@@ -32,6 +32,7 @@ from .base import (
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
     pro_user_super_mode_page,
+    pro_user_guest_users_page,
     dashboard,
     api_presence_track,
     api_live_client_presence,
@@ -200,6 +201,12 @@ from .pro_user_super_mode_api import (
     api_pro_user_super_mode_users,
     api_pro_user_super_mode_assign,
     api_pro_user_super_mode_self,
+)
+from .pro_user_guest_users_api import (
+    api_pro_user_guest_users,
+    api_pro_user_guest_source_clients,
+    api_pro_user_guest_user_create,
+    api_pro_user_guest_user_convert,
 )
 from .pro_user_session_api import (
     api_pro_user_revoke_sessions,

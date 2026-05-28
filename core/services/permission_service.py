@@ -201,7 +201,12 @@ class PermissionService:
     @staticmethod
     def is_client(user) -> bool:
         """Check if user is a client."""
-        return user.is_authenticated and user.role == 'client'
+        return user.is_authenticated and user.role in ('client', 'guest_user')
+
+    @staticmethod
+    def is_guest_user(user) -> bool:
+        """Check if user is a guest/sandbox account."""
+        return user.is_authenticated and user.role == 'guest_user'
 
     @staticmethod
     def is_client_staff(user) -> bool:
@@ -219,7 +224,7 @@ class PermissionService:
     @staticmethod
     def is_client_role(user) -> bool:
         """Check if user is client or client_staff."""
-        return user.is_authenticated and user.role in ('client', 'client_staff')
+        return user.is_authenticated and user.role in ('client', 'guest_user', 'client_staff')
 
     # ==================== Profile Lookup ====================
 
@@ -524,6 +529,7 @@ class PermissionService:
                 'is_super_admin': False,
                 'is_admin_staff': False,
                 'is_client': False,
+                'is_guest_user': False,
                 'is_client_staff': False,
                 'user_role': None,
             }
@@ -543,6 +549,7 @@ class PermissionService:
         is_sa = cls.is_super_admin(user)
         is_as = cls.is_admin_staff(user)
         is_cl = cls.is_client(user)
+        is_guest = cls.is_guest_user(user)
         is_cs = cls.is_client_staff(user)
 
         context: Dict[str, bool] = {
@@ -550,6 +557,7 @@ class PermissionService:
             'is_super_admin': is_sa,
             'is_admin_staff': is_as,
             'is_client': is_cl,
+            'is_guest_user': is_guest,
             'is_client_staff': is_cs,
             'user_role': user.role if user.is_authenticated else None,
         }
@@ -708,6 +716,7 @@ class PermissionService:
             'is_super_admin': cls.is_super_admin(user),
             'is_admin_staff': cls.is_admin_staff(user),
             'is_client': cls.is_client(user),
+            'is_guest_user': cls.is_guest_user(user),
             'is_client_staff': cls.is_client_staff(user),
             'accessible_client_ids': cls.get_accessible_client_ids(user),
             'effective_permissions': {},

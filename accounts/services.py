@@ -32,6 +32,7 @@ ROLE_MAPPING = {
     'super_admin': 'super_admin',
     'admin_staff': 'admin_staff',
     'client': 'client',
+    'guest_user': 'guest_user',
     'client_staff': 'client_staff',
 }
 
@@ -41,6 +42,7 @@ GROUP_NAMES = {
     'super_admin': 'SUPER_ADMIN',
     'admin_staff': 'ADMIN_STAFF',
     'client': 'CLIENT',
+    'guest_user': 'GUEST_USER',
     'client_staff': 'CLIENT_STAFF',
 }
 
@@ -52,6 +54,7 @@ DASHBOARD_URLS = {
     'super_admin': '/panel/',
     'admin_staff': '/panel/',
     'client': '/panel/client/dashboard/',
+    'guest_user': '/panel/client/dashboard/',
     'client_staff': '/panel/client/dashboard/',
 }
 
@@ -1164,6 +1167,7 @@ class RoleService:
             'super_admin': 'Super Admin',
             'admin_staff': 'Admin Staff',
             'client': 'Client',
+            'guest_user': 'Guest User',
             'client_staff': 'Client Staff',
         }
         return role_display.get(role, role)

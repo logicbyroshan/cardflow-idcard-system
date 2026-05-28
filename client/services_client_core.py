@@ -80,6 +80,7 @@ class ClientService(BaseService):
         data = {
             'id': client.id,
             'name': client.name,
+            'is_guest': bool(getattr(client, 'is_guest', False)),
             'email': cls._public_email(client.user.email),
             'phone': client.user.phone or '',
             'address': client.address or '',
@@ -181,6 +182,10 @@ class ClientService(BaseService):
             # Password policy:
             # - if custom password is provided, use it
             # - otherwise phone number is required and used as password
+            role = str(data.get('role', 'client') or 'client').strip().lower()
+            if role not in {'client', 'guest_user'}:
+                role = 'client'
+
             phone = str(data.get('phone') or '').strip()
             password = str(data.get('password') or '').strip()
             if not password:
@@ -202,6 +207,10 @@ class ClientService(BaseService):
             create_as_active = cls.parse_bool(data.get('is_active', False))
             
             with transaction.atomic():
+                if not email:
+                    slug = re.sub(r'[^a-z0-9]+', '.', (username or name or 'guest').strip().lower()).strip('.') or 'guest'
+                    email = f'{role}.{slug}.{secrets.token_hex(4)}@noemail.local'
+
                 # Create user — honour admin's active/inactive choice
                 user = User.objects.create_user(
                     username=username,
@@ -210,21 +219,22 @@ class ClientService(BaseService):
                     first_name=name_parts[0] if name_parts else '',
                     last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
                     phone=data.get('phone', ''),
-                    role='client',
+                    role=role,
                     is_active=create_as_active,
                 )
-                
+
                 # Build client kwargs
                 client_kwargs = {
                     'user': user,
                     'name': name,
+                    'is_guest': role == 'guest_user',
                     'address': data.get('address', ''),
                     'city': data.get('city', ''),
                     'state': data.get('state', ''),
                     'pincode': data.get('pincode', ''),
                     'status': 'active' if create_as_active else 'inactive',
                 }
-                
+
                 # Default permissions set to Auto-ON for new clients
                 DEFAULT_ACTIVE_PERMISSIONS = {
                     'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_approved_list',
@@ -233,24 +243,24 @@ class ClientService(BaseService):
                     'perm_idcard_updated_at', 'perm_idcard_retrieve', 'perm_idcard_bulk_download',
                     'perm_idcard_client_list', 'perm_set_temp_password'
                 }
-                
+
                 # Add permissions
                 for perm in cls.PERMISSION_FIELDS:
                     if perm in data:
                         client_kwargs[perm] = cls.parse_bool(data[perm])
                     else:
                         client_kwargs[perm] = (perm in DEFAULT_ACTIVE_PERMISSIONS)
-                
+
                 client = Client.objects.create(**client_kwargs)
 
                 # Set logo if provided
                 if photo:
                     client.logo = photo
                     client.save(update_fields=['logo'])
-                
+
                 # Queue welcome email only when it is actually needed:
-                # - active now and a real email exists
-                if create_as_active and email_was_provided:
+                # - active now, a real email exists, and this is not a guest sandbox
+                if create_as_active and email_was_provided and role != 'guest_user':
                     EmailLog.objects.create(
                         recipient_name=name or 'Client',
                         recipient_email=email,
@@ -258,10 +268,10 @@ class ClientService(BaseService):
                         email_type=EmailLog.EMAIL_TYPE_WELCOME,
                         status=EmailLog.STATUS_ON_HOLD,
                     )
-            
-            # Send welcome email in background thread if created as active
-            # This prevents the API response from being blocked by SMTP
-            if create_as_active and email_was_provided:
+
+            # Send welcome email in background thread if created as active.
+            # This prevents the API response from being blocked by SMTP.
+            if create_as_active and email_was_provided and role != 'guest_user':
                 _user_pk = user.pk
                 _email = email
                 _name = name
@@ -288,7 +298,7 @@ class ClientService(BaseService):
                         name=_name or _full_name,
                         email=_email,
                         password=password,
-                        role='client',
+                        role=role,
                         phone=_phone,
                         on_success=_on_email_success,
                         on_failure=_on_email_failure,
@@ -296,27 +306,55 @@ class ClientService(BaseService):
                 except Exception as email_err:
                     logger.warning('Welcome email scheduling failed for new active client %s: %s', _email, email_err)
                     _on_email_failure(str(email_err))
-            
+
             message = 'Client created successfully!'
             if create_as_active:
                 if email_was_provided:
-                    message += ' Welcome email queued for delivery.'
+                    if role != 'guest_user':
+                        message += ' Welcome email queued for delivery.'
                 else:
                     message += ' No email provided, so welcome email was skipped.'
             else:
                 message += ' Account is inactive; activate it to allow login with the configured password.'
-            
+
             return ServiceResult(
                 success=True,
                 message=message,
                 data={
                     'client': cls.serialize(client, include_permissions=False),
-                    'email_sent': create_as_active,
+                    'email_sent': create_as_active and email_was_provided and role != 'guest_user',
                 }
             )
-            
+
         except Exception as e:
             return cls._unexpected_error_result('create', e)
+
+    @classmethod
+    def create_guest_from_client(cls, client_id: int, request=None) -> ServiceResult:
+        """Convert an existing client into a guest sandbox client."""
+        try:
+            client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
+            user = client.user
+
+            if client.is_guest or user.role == 'guest_user':
+                return ServiceResult(success=False, message='This account is already a guest user.')
+
+            with transaction.atomic():
+                client.is_guest = True
+                client.status = 'active'
+                user.role = 'guest_user'
+                user.is_active = True
+                user.save(update_fields=['role', 'is_active'])
+                client.save(update_fields=['is_guest', 'status', 'updated_at'])
+
+            cls._bump_client_cache_versions(client.id)
+            return ServiceResult(
+                success=True,
+                message=f'Client "{client.name}" converted to guest user successfully!',
+                data={'client': cls.serialize(client, include_permissions=False)},
+            )
+        except Exception as e:
+            return cls._unexpected_error_result('create_guest_from_client', e)
     
     @classmethod
     def get(cls, client_id: int, include_permissions: bool = True) -> ServiceResult:

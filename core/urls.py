@@ -87,6 +87,7 @@ urlpatterns = [
     path('pro-user/log-deletion-guard/', views.pro_user_log_deletion_guard_page, name='pro_user_log_deletion_guard'),
     path('pro-user/data-deletion-guard/', views.pro_user_data_deletion_guard_page, name='pro_user_data_deletion_guard'),
     path('pro-user/super-mode/', views.pro_user_super_mode_page, name='pro_user_super_mode'),
+    path('pro-user/guest-users/', views.pro_user_guest_users_page, name='pro_user_guest_users'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
     
     # Manage Panel
@@ -244,6 +245,10 @@ urlpatterns = [
     path('api/pro-user/super-mode/users/', views.api_pro_user_super_mode_users, name='api_pro_user_super_mode_users'),
     path('api/pro-user/super-mode/assign/', views.api_pro_user_super_mode_assign, name='api_pro_user_super_mode_assign'),
     path('api/pro-user/super-mode/self/', views.api_pro_user_super_mode_self, name='api_pro_user_super_mode_self'),
+    path('api/pro-user/guest-users/', views.api_pro_user_guest_users, name='api_pro_user_guest_users'),
+    path('api/pro-user/guest-users/clients/', views.api_pro_user_guest_source_clients, name='api_pro_user_guest_source_clients'),
+    path('api/pro-user/guest-users/create/', views.api_pro_user_guest_user_create, name='api_pro_user_guest_user_create'),
+    path('api/pro-user/guest-users/convert/', views.api_pro_user_guest_user_convert, name='api_pro_user_guest_user_convert'),
     path('api/pro-user/sessions/revoke/', views.api_pro_user_revoke_sessions, name='api_pro_user_revoke_sessions'),
     path('api/pro-user/sessions/list/', views.api_pro_user_list_sessions, name='api_pro_user_list_sessions'),
     path('api/pro-user/sessions/revoke-single/', views.api_pro_user_revoke_session_key, name='api_pro_user_revoke_session_key'),

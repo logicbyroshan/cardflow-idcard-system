@@ -40,6 +40,7 @@ class User(AbstractUser):
         ('super_admin', 'Super Admin'),
         ('admin_staff', 'Admin Staff'),
         ('client', 'Client'),
+        ('guest_user', 'Guest User'),
         ('client_staff', 'Client Staff'),
     ]
     
@@ -129,7 +130,11 @@ class User(AbstractUser):
     
     @property
     def is_client(self):
-        return self.role == 'client'
+        return self.role in ('client', 'guest_user')
+
+    @property
+    def is_guest_user(self):
+        return self.role == 'guest_user'
     
     @property
     def is_client_staff(self):
