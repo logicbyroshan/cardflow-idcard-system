@@ -256,6 +256,12 @@ function _dlClearProgressUi(type) {
     _dlSetStepperState(type, 1);
 }
 
+function _dlHideProgressModal(type) {
+    var cfg = _dlGetProgressModalConfig(type);
+    var modal = document.getElementById(cfg.modalId);
+    if (modal) modal.style.display = 'none';
+}
+
 window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.downloadProgressPresenter = {
     isActive: function() {
@@ -285,7 +291,15 @@ window.IDCardApp.downloadProgressPresenter = {
     complete: function(message) {
         if (!_dlProgressState.type) return;
         console.debug('[DL TRACE] presenter.complete type=', _dlProgressState.type, 'msg=', message);
-        _dlFinishProgressUi(_dlProgressState.type, message || 'Download complete', false);
+        var completedType = _dlProgressState.type;
+        _dlFinishProgressUi(completedType, message || 'Download complete', false);
+        setTimeout(function() {
+            if (_dlProgressState.type !== completedType) return;
+            _dlClearProgressUi(completedType);
+            _dlHideProgressModal(completedType);
+            _dlProgressState.type = '';
+            _dlProgressState.cancelFn = null;
+        }, 1200);
     },
     error: function(message) {
         if (!_dlProgressState.type) return;
