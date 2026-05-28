@@ -1,8 +1,9 @@
 {% if is_impersonating %}
 <!-- Impersonation Banner  -  fixed at top when Pro User is impersonating another user -->
 <div id="impersonateBar"
-     class="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-3 px-4 py-2 text-white text-sm"
-     style="background: linear-gradient(90deg, #e53e3e 0%, #c53030 100%); box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+  class="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-3 px-4 py-2 text-white text-sm"
+  role="status" aria-live="polite"
+  style="background: linear-gradient(90deg, #e53e3e 0%, #c53030 100%); box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
   <div class="flex items-center gap-2">
     <i class="fa-solid fa-mask"></i>
     <span>
@@ -16,9 +17,25 @@
   </button>
 </div>
 <style>
-  /* Push grid layout down when impersonation bar is visible */
-  body.impersonating .sidebar { top: 36px; height: calc(100vh - 36px); }
-  body.impersonating .main { margin-top: 36px; height: calc(100vh - 36px); }
+  /* Make the impersonation bar reserve vertical space across the app
+     by adding top padding to the document body. This avoids overlaying
+     fixed headers/sidebars and ensures the banner is visible on all pages. */
+  #impersonateBar { height: 44px; }
+  body.impersonating { padding-top: 44px; }
+
+  /* Ensure sidebar and other fixed elements are shifted if they rely on top offsets */
+  body.impersonating .sidebar { top: 44px; height: calc(100vh - 44px); }
+
+  /* If pages had previously applied main margin-top, prefer padding on body
+     so we don't need to update every layout; keep main flow unaffected. */
+  body.impersonating .main { margin-top: 0; }
+
+  /* Small screens: increase bar height for readability */
+  @media (max-width: 640px) {
+    #impersonateBar { height: 56px; padding-top: 8px; padding-bottom: 8px; }
+    body.impersonating { padding-top: 56px; }
+    body.impersonating .sidebar { top: 56px; height: calc(100vh - 56px); }
+  }
 </style>
 <script>
   document.body.classList.add('impersonating');
