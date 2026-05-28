@@ -1006,9 +1006,13 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         requested_break_mode = str(data.get('break_mode') or '').strip().lower()
         if requested_break_mode in ('class_only', 'class_section'):
             break_mode = requested_break_mode
+        prefer_sync = bool(data.get('prefer_sync', False))
+    else:
+        prefer_sync = False
     
-    # Route large PDF exports to async path automatically
-    if len(card_ids) > _ASYNC_EXPORT_THRESHOLD:
+    # Route large PDF exports to async path automatically unless the caller
+    # explicitly prefers the stable synchronous path.
+    if not prefer_sync and len(card_ids) > _ASYNC_EXPORT_THRESHOLD:
         from .tasks import BackgroundExportManager
         task_id = BackgroundExportManager.start_pdf_export(
             user=request.user,

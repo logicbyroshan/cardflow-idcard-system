@@ -47,6 +47,14 @@ urlpatterns = [
     path('client/<int:client_id>/toggle/', views.api_client_toggle, name='api_client_toggle'),
     path('client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
     path('client/<int:client_id>/tables/', views.api_client_tables, name='api_client_tables'),
+    path('client/<int:client_id>/groups/', views.api_client_groups_detail, name='api_client_groups_detail'),
+    path('client/<int:client_id>/group/create/', views.api_group_create, name='api_group_create'),
+    path('group/<int:group_id>/update/', views.api_group_update, name='api_group_update'),
+    path('group/<int:group_id>/delete/', views.api_group_delete, name='api_group_delete'),
+    path('group/<int:group_id>/table/create/', views.api_table_create, name='api_table_create'),
+    path('table/<int:table_id>/rename/', views.api_table_rename, name='api_table_rename'),
+    path('table/<int:table_id>/delete/', views.api_table_delete, name='api_table_delete'),
+    path('table/<int:table_id>/fields/', views.api_table_fields_get, name='api_table_fields_get'),
     
     # Public Website Fallbacks (since website app was removed)
     path('pub/website/landing/', views.api_website_landing_data, name='api_website_landing_data'),

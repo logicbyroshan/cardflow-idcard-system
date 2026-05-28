@@ -8,6 +8,7 @@ Required context:
   - search_query, status_filter
 {% endcomment %}
 {% load custom_filters %}
+{% load cache %}
 
 {% comment %}Cache this table per-user and query params for short TTL to reduce DB load{% endcomment %}
 {% cache 20 client_table request.user.id request.GET.page request.GET.per_page request.GET.search request.GET.status %}

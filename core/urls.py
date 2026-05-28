@@ -56,10 +56,9 @@ urlpatterns = [
     
     # Staff Management
     path('manage-staff/', views.manage_staff, name='manage_staff'),
-
-    # Client Staff Management
+    # Keep a named route for legacy references; the view redirects to `manage_staff`.
     path('manage-client-staff/', views.manage_client_staff, name='manage_client_staff'),
-    
+
     # Client Management
     path('manage-clients/', views.manage_clients, name='manage_clients'),
 
@@ -147,21 +146,13 @@ urlpatterns = [
     path('api/client/<int:client_id>/logo/delete/', views.api_client_logo_delete, name='api_client_logo_delete'),
     path('api/client/<int:client_id>/messages/', views.api_client_messages, name='api_client_messages'),
     path('api/client/<int:client_id>/messages/send/', views.api_client_message_send, name='api_client_message_send'),
-    path('api/client/<int:client_id>/class-section-options/', views.api_admin_client_class_section_options, name='api_admin_client_class_section_options'),
-    path('api/client/<int:client_id>/groups/', views.api_admin_client_groups_list, name='api_admin_client_groups_list'),
     path('api/client/messages/targets/', views.api_client_message_targets, name='api_client_message_targets'),
     path('api/client/messages/group-send/', views.api_client_messages_group_send, name='api_client_messages_group_send'),
     path('api/client/<int:client_id>/messages/<int:message_id>/delete/', views.api_client_message_delete, name='api_client_message_delete'),
     path('api/client/<int:client_id>/login-history/', views.api_client_login_history, name='api_client_login_history'),
     path('api/client-staff/<int:staff_id>/login-history/', views.api_client_staff_login_history, name='api_client_staff_login_history'),
     path('api/client-staff/<int:staff_id>/assignment-timeline/', views.api_client_staff_assignment_timeline, name='api_client_staff_assignment_timeline'),
-    path('api/client-staff/clients/', views.api_admin_client_staff_clients, name='api_admin_client_staff_clients'),
-    path('api/client-staff/create/', views.api_admin_client_staff_create, name='api_admin_client_staff_create'),
-    path('api/client-staff/<int:staff_id>/', views.api_admin_client_staff_get, name='api_admin_client_staff_get'),
-    path('api/client-staff/<int:staff_id>/update/', views.api_admin_client_staff_update, name='api_admin_client_staff_update'),
-    path('api/client-staff/<int:staff_id>/delete/', views.api_admin_client_staff_delete, name='api_admin_client_staff_delete'),
-    path('api/client-staff/<int:staff_id>/toggle-status/', views.api_admin_client_staff_toggle_status, name='api_admin_client_staff_toggle_status'),
-    path('api/client-staff/<int:staff_id>/set-temp-password/', views.api_admin_client_staff_set_temp_password, name='api_admin_client_staff_set_temp_password'),
+    # NOTE: Admin-side Manage Assistant pages and APIs removed — client-side assistant features remain.
     
     # Staff APIs
     path('api/staff/create/', views.api_staff_create, name='api_staff_create'),

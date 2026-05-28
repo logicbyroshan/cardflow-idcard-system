@@ -8,6 +8,7 @@ Required context:
   - search_query, status_filter
 {% endcomment %}
 {% comment %}Cache staff table per-user and query params briefly to reduce DB hits{% endcomment %}
+{% load cache %}
 {% cache 20 staff_table request.user.id request.GET.page request.GET.per_page request.GET.search request.GET.status %}
 
 {% load static %}

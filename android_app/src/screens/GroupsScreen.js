@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
-import { ListSkeleton } from '../components/Skeleton';
+import { GroupsSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import StatusBadge from '../components/StatusBadge';
 import { apiGet } from '../api/client';
@@ -72,7 +72,7 @@ export default function GroupsScreen({ navigation }) {
       <TopBar title="Groups & Tables" subtitle="Manage your groups" onBack={() => navigation.goBack()} />
       {error && <ErrorBanner message={error} onDismiss={() => refresh()} onRetry={() => refresh()} />}
       {loading ? (
-        <ListSkeleton rows={5} />
+        <GroupsSkeleton />
       ) : (
         <FlatList
           data={tables}

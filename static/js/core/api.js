@@ -46,6 +46,17 @@
     var _isLoginPage = window.location.pathname.indexOf('/auth/login') !== -1;
 
     window.fetch = function (url, options) {
+        if (typeof url === 'string' && window.IS_CLIENT_USER === true) {
+            if (url.startsWith('/api/card/') && url.indexOf('/status/') !== -1) {
+                url = '/client' + url;
+            } else if (url.startsWith('/api/table/') && url.indexOf('/cards/bulk-status/') !== -1) {
+                url = '/client' + url;
+            } else if (url.startsWith('/panel/api/table/') && url.indexOf('/cards/bulk-status/') !== -1) {
+                url = url.replace('/panel/api/table/', '/panel/client/api/table/');
+            } else if (url.startsWith('/panel/api/card/') && url.indexOf('/status/') !== -1) {
+                url = url.replace('/panel/api/card/', '/panel/client/api/card/');
+            }
+        }
         // Prepend global API prefix if it exists and URL is a root-relative API call.
         // Do NOT prefix client-scoped or app-scoped API routes — they are intentionally root-scoped.
         if (typeof url === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && typeof window.API_BASE_URL === 'string' && !url.startsWith(window.API_BASE_URL) && !url.startsWith('/client/') && !url.startsWith('/app/')) {
@@ -202,6 +213,17 @@
     // LOW-LEVEL FETCH WRAPPER
     // ------------------------------------------
     async function _request(url, method, data, options) {
+        if (typeof url === 'string' && window.IS_CLIENT_USER === true) {
+            if (url.startsWith('/api/card/') && url.indexOf('/status/') !== -1) {
+                url = '/client' + url;
+            } else if (url.startsWith('/api/table/') && url.indexOf('/cards/bulk-status/') !== -1) {
+                url = '/client' + url;
+            } else if (url.startsWith('/panel/api/table/') && url.indexOf('/cards/bulk-status/') !== -1) {
+                url = url.replace('/panel/api/table/', '/panel/client/api/table/');
+            } else if (url.startsWith('/panel/api/card/') && url.indexOf('/status/') !== -1) {
+                url = url.replace('/panel/api/card/', '/panel/client/api/card/');
+            }
+        }
         // Prepend global API prefix if it exists and URL is a root-relative API call.
         // Skip prefixing for client-/app-scoped routes which intentionally start with those prefixes.
         if (typeof window.API_BASE_URL === 'string' && url.startsWith('/') && url.indexOf('/api/') !== -1 && !url.startsWith(window.API_BASE_URL) && !url.startsWith('/client/') && !url.startsWith('/app/')) {

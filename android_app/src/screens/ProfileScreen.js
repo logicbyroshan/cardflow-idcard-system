@@ -200,7 +200,7 @@ export default function ProfileScreen({ navigation }) {
                 const res = await stopImpersonation();
                 if (res.success) {
                   showToast(res.message, 'success');
-                  navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+                  navigation.reset({ index: 0, routes: [{ name: 'ClientsList' }] });
                 } else {
                   showToast(res.message, 'error');
                 }
@@ -215,9 +215,29 @@ export default function ProfileScreen({ navigation }) {
             <View style={[s.linkIcon, { backgroundColor: '#fee2e2' }]}><DynamicIcon name="trash" size={12} color="#ef4444" /></View>
             <Text style={[s.linkLabel, { color: '#ef4444' }]}>Delete Data Request</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={logout} style={[s.linkRow, { borderBottomWidth: 0 }]}>
-            <View style={[s.linkIcon, { backgroundColor: colors.gray50 }]}><IconLogout size={12} color={colors.gray600} /></View>
-            <Text style={s.linkLabel}>Sign Out</Text>
+          <TouchableOpacity 
+            onPress={async () => {
+              if (isImpersonating) {
+                // Exit impersonation instead of full sign-out
+                const res = await stopImpersonation();
+                if (res.success) {
+                  showToast('Impersonation ended', 'success');
+                  navigation.reset({ index: 0, routes: [{ name: 'ClientsList' }] });
+                } else {
+                  showToast(res.message || 'Failed to exit impersonation', 'error');
+                }
+              } else {
+                logout();
+              }
+            }} 
+            style={[s.linkRow, { borderBottomWidth: 0 }]}
+          >
+            <View style={[s.linkIcon, { backgroundColor: isImpersonating ? '#fef3c7' : colors.gray50 }]}>
+              <IconLogout size={12} color={isImpersonating ? '#d97706' : colors.gray600} />
+            </View>
+            <Text style={[s.linkLabel, isImpersonating && { color: '#d97706' }]}>
+              {isImpersonating ? 'Exit Impersonation & Sign Out' : 'Sign Out'}
+            </Text>
           </TouchableOpacity>
         </View>
 

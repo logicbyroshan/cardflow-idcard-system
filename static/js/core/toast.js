@@ -31,6 +31,10 @@
     var _progressCancelCb = null;  // cancel callback for progress toast
     var _progressSkeletonStart = 0;
 
+    function _getDownloadProgressPresenter() {
+        return window.IDCardApp && window.IDCardApp.downloadProgressPresenter ? window.IDCardApp.downloadProgressPresenter : null;
+    }
+
     // ------------------------------------------
     // ICON MAP
     // ------------------------------------------
@@ -161,6 +165,16 @@
     // PROGRESS TOAST
     // ------------------------------------------
     function showProgressToast(message, progress, onCancel) {
+        var presenter = _getDownloadProgressPresenter();
+        if (presenter && typeof presenter.isActive === 'function' && presenter.isActive()) {
+            if (typeof presenter.prepare === 'function' && progress < 0) {
+                presenter.prepare(message, progress, onCancel);
+            } else if (typeof presenter.update === 'function') {
+                presenter.update(message, progress, '', onCancel);
+            }
+            return;
+        }
+
         if (progress === undefined) progress = -1;
         if (_progressTimeout) { clearTimeout(_progressTimeout); _progressTimeout = null; }
 
@@ -215,6 +229,12 @@
     // COMPLETE TOAST
     // ------------------------------------------
     function showDownloadComplete(message) {
+        var presenter = _getDownloadProgressPresenter();
+        if (presenter && typeof presenter.isActive === 'function' && presenter.isActive()) {
+            if (typeof presenter.complete === 'function') presenter.complete(message);
+            return;
+        }
+
         message = message || 'Successfully downloaded!';
         if (_progressTimeout) { clearTimeout(_progressTimeout); _progressTimeout = null; }
         _progressCancelCb = null;
@@ -254,6 +274,12 @@
     // HIDE
     // ------------------------------------------
     function hideToast() {
+        var presenter = _getDownloadProgressPresenter();
+        if (presenter && typeof presenter.isActive === 'function' && presenter.isActive()) {
+            if (typeof presenter.clear === 'function') presenter.clear();
+            return;
+        }
+
         var toast = document.getElementById('toast');
         if (toast) toast.classList.remove('show');
         if (_toastTimeout)    { clearTimeout(_toastTimeout);    _toastTimeout    = null; }

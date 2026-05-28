@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   RefreshControl, Dimensions, Image, Modal, ActivityIndicator, TextInput,
-  LayoutAnimation, Platform, UIManager
+  LayoutAnimation, Platform, UIManager, Switch
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCameraPermissions } from 'expo-camera';
@@ -32,7 +32,7 @@ const STATUS_CONFIG = [
 
 
 
-function ClientMiniStat({ label, count, color, bg, onPress }) {
+const ClientMiniStat = React.memo(function ClientMiniStat({ label, count, color, bg, onPress }) {
   return (
     <TouchableOpacity 
       style={s.clientMiniStat} 
@@ -45,7 +45,7 @@ function ClientMiniStat({ label, count, color, bg, onPress }) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -60,11 +60,13 @@ export default function HomeScreen({ navigation }) {
     }
   }, []);
 
-  const [, requestCameraPermission] = useCameraPermissions();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   useEffect(() => {
-    requestCameraPermission();
-  }, []);
+    if (cameraPermission && !cameraPermission.granted && cameraPermission.canAskAgain && typeof requestCameraPermission === 'function') {
+      requestCameraPermission().catch(err => console.log('Camera permission request error:', err));
+    }
+  }, [cameraPermission, requestCameraPermission]);
 
   const isSuperAdmin = user?.role === 'admin' || user?.isSuperAdmin;
   const isOperator = user?.role === 'admin_staff';
@@ -93,44 +95,129 @@ export default function HomeScreen({ navigation }) {
   const [expandedClient, setExpandedClient] = useState(null); // { id, status }
   const [expandedReprint, setExpandedReprint] = useState(null); // { id } for reprints tab
 
-  const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '', address: '', password: '', is_active: false });
+  const [passOption, setPassOption] = useState('phone');
   const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '' });
+
+  // Client picker for Super Admin creating Assistants
+  const [clientPickerList, setClientPickerList] = useState([]);
+  const [clientPickerLoading, setClientPickerLoading] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const [clientPickerSearch, setClientPickerSearch] = useState('');
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
   const handleSaveClient = async () => {
-    if (!clientForm.name || !clientForm.email || !clientForm.password) {
-      showToast('Please fill required fields', 'error'); return;
+    if (!clientForm.name || !clientForm.email) {
+      showToast('Please fill required fields (Name & Email)', 'error'); return;
+    }
+    if (passOption === 'custom' && !clientForm.password.trim()) {
+      showToast('Please enter a custom password', 'error'); return;
+    }
+    if (passOption === 'phone' && !clientForm.phone) {
+      showToast('Phone number is required to use it as a password', 'error'); return;
     }
     setSaving(true);
     try {
-      const { ok, data } = await apiPost('/api/mobile/client/create/', clientForm);
+      const payload = {
+        name: clientForm.name,
+        email: clientForm.email,
+        phone: clientForm.phone,
+        address: clientForm.address,
+        is_active: clientForm.is_active,
+      };
+      
+      if (passOption === 'phone') {
+        payload.password = clientForm.phone;
+      } else if (clientForm.password) {
+        payload.password = clientForm.password;
+      }
+
+      const { ok, data } = await apiPost('/api/mobile/client/create/', payload);
       if (ok && data.success) {
         showToast('Client created successfully', 'success');
         setShowClientForm(false);
-        setClientForm({ name: '', email: '', phone: '', password: '' });
+        setClientForm({ name: '', email: '', phone: '', address: '', password: '', is_active: false });
+        setPassOption('phone');
         refresh();
       } else showToast(data.message || 'Error creating client', 'error');
     } catch (e) { showToast('Network error', 'error'); }
     setSaving(false);
   };
 
+  const handleActivityPress = useCallback((act) => {
+    const model = (act.target_model || '').toLowerCase();
+    const id = act.target_id;
+    const action = (act.action || '').toLowerCase();
+
+    if (model === 'idcard' && id) {
+      // For card activities, navigate to the card's list/detail
+      // Try to use tableId from activity metadata if present
+      if (act.table_id) {
+        const statusMap = {
+          'card_status': act.card_status || 'pending',
+          'card_bulk_status': act.card_status || 'pending',
+          'card_create': 'pending',
+          'card_update': 'pending',
+        };
+        navigation.navigate('CardList', { tableId: act.table_id, status: statusMap[action] || 'all' });
+      } else {
+        navigation.navigate('CardDetail', { cardId: id });
+      }
+    } else if (model === 'client' && id) {
+      navigation.navigate('ClientsList');
+    } else if (model === 'staff' && id) {
+      navigation.navigate('StaffManage', { role: act.actor_role === 'client_staff' ? 'client_staff' : 'admin_staff' });
+    } else if (action.includes('reprint') || model === 'reprint') {
+      navigation.navigate('Reprint', { clientId: act.client_id || 0 });
+    } else if (model === 'idcardtable' || model === 'table') {
+      if (id) navigation.navigate('CardList', { tableId: id, status: 'all' });
+    }
+  }, [navigation]);
+
   const handleSaveStaff = async () => {
     if (!staffForm.first_name || !staffForm.email || !staffForm.password) {
       showToast('Please fill required fields', 'error'); return;
     }
+    if (isSuperAdmin && staffRole === 'client_staff' && !selectedClientId) {
+      showToast('Please select a client for this assistant', 'error'); return;
+    }
     setSaving(true);
     try {
-      const { ok, data } = await apiPost('/api/mobile/staff/create/', { ...staffForm, role: staffRole });
+      const payload = { ...staffForm, role: staffRole };
+      if (isSuperAdmin && staffRole === 'client_staff' && selectedClientId) {
+        payload.client_id = selectedClientId;
+      }
+      const { ok, data } = await apiPost('/api/mobile/staff/create/', payload);
       if (ok && data.success) {
         showToast((staffRole === 'admin_staff' ? 'Operator' : 'Assistant') + ' created', 'success');
         setShowStaffForm(false);
         setStaffForm({ first_name: '', last_name: '', email: '', phone: '', password: '' });
+        setSelectedClientId(null);
+        setClientPickerSearch('');
         refresh();
       } else showToast(data.message || 'Error creating staff', 'error');
     } catch (e) { showToast('Network error', 'error'); }
     setSaving(false);
   };
+
+  const loadClientsForPicker = useCallback(async () => {
+    setClientPickerLoading(true);
+    try {
+      const { ok, data } = await apiGet('/api/mobile/clients/');
+      if (ok && data?.users) {
+        // api_clients_list returns 'users' array with {id, name} per client
+        setClientPickerList(data.users.map(u => ({ id: u.id, name: u.name })));
+      } else {
+        // Fallback: use recent_clients from dashboard data
+        setClientPickerList((counts.recent_clients || []).map(c => ({ id: c.id, name: c.name })));
+      }
+    } catch (e) {
+      setClientPickerList((counts.recent_clients || []).map(c => ({ id: c.id, name: c.name })));
+    }
+    setClientPickerLoading(false);
+  }, [counts.recent_clients]);
+
   const totalCards = counts.total || STATUS_CONFIG.filter(s => s.key !== 'total' && s.key !== 'pool').reduce((sum, s) => sum + (counts[s.key] || 0), 0);
   
   const quickActions = useMemo(() => {
@@ -140,7 +227,7 @@ export default function HomeScreen({ navigation }) {
 
     if (isSuperAdmin) {
       actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', onPress: () => setShowClientForm(true) });
-      actions.push({ label: 'ADD ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', onPress: () => { setStaffRole('client_staff'); setShowStaffForm(true); } });
+      actions.push({ label: 'ADD ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', onPress: () => { setStaffRole('client_staff'); setSelectedClientId(null); setClientPickerSearch(''); setShowStaffForm(true); loadClientsForPicker(); } });
       actions.push({ label: 'ADD OPERATOR', icon: 'user-tie', color: '#10b981', bg: '#ecfdf5', onPress: () => { setStaffRole('admin_staff'); setShowStaffForm(true); } });
       actions.push({ label: 'REPRINTS', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: 0 } });
     } else if (isOperator) {
@@ -158,14 +245,14 @@ export default function HomeScreen({ navigation }) {
     return actions;
   }, [user, isSuperAdmin, isOperator, isClient, isAssistant]);
 
-  const handleBadgePress = (client, statusKey) => {
+  const handleBadgePress = useCallback((client, statusKey) => {
     const statusValue = { PENDING: 'pending', VERIFIED: 'verified', APPROVED: 'approved', DOWNLOAD: 'download', POOL: 'pool' };
     const tables = client.tables || [];
     
     if (tables.length === 0) {
       // Expand client to show "no tables" state instead of silently ignoring
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setExpandedClient(expandedClient?.id === client.id ? null : { id: client.id });
+      setExpandedClient(prev => prev?.id === client.id ? null : { id: client.id });
       return;
     }
     
@@ -173,13 +260,9 @@ export default function HomeScreen({ navigation }) {
       navigation.navigate('CardList', { tableId: tables[0].id, status: statusValue[statusKey] });
     } else {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      if (expandedClient?.id === client.id) {
-        setExpandedClient(null);
-      } else {
-        setExpandedClient({ id: client.id });
-      }
+      setExpandedClient(prev => prev?.id === client.id ? null : { id: client.id });
     }
-  };
+  }, [navigation, setExpandedClient]);
 
   if (loading) return (
     <View style={s.root}>
@@ -213,45 +296,11 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 
-  const mapIcon = (faClass) => {
-    if (!faClass) return 'history';
-    const c = (faClass || '').toLowerCase();
-    if (c.includes('check') || c.includes('verify') || c.includes('approve')) return 'check-circle';
-    if (c.includes('trash') || c.includes('delete') || c.includes('remove')) return 'trash-2';
-    if (c.includes('edit') || c.includes('update')) return 'edit-3';
-    if (c.includes('user') || c.includes('staff')) return 'users';
-    if (c.includes('building') || c.includes('client')) return 'building';
-    if (c.includes('refresh') || c.includes('redo') || c.includes('history')) return 'history';
-    if (c.includes('image') || c.includes('photo')) return 'image';
-    if (c.includes('download')) return 'download';
-    if (c.includes('login') || c.includes('bracket')) return 'log-in';
-    if (c.includes('logout')) return 'log-out';
-    if (c.includes('plus') || c.includes('add')) return 'plus-circle';
-    if (c.includes('key')) return 'key';
-    if (c.includes('print')) return 'printer';
-    if (c.includes('gear') || c.includes('setting')) return 'settings';
-    if (c.includes('envelope')) return 'mail';
-    if (c.includes('bell')) return 'bell';
-    if (c.includes('database') || c.includes('vault')) return 'database';
-    return 'activity';
-  };
-
-  const mapColor = (c) => {
-    if (!c) return colors.brandPrimary;
-    const low = c.toLowerCase();
-    if (low === 'add') return colors.green;
-    if (low === 'edit') return colors.blue;
-    if (low === 'delete') return colors.red;
-    if (low === 'verify') return colors.purple;
-    if (low === 'approve') return colors.teal;
-    return c;
-  };
-
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
-  };
+  }, [refresh]);
 
   return (
     <View style={s.root}>
@@ -277,32 +326,6 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </LinearGradient>
 
-      {isImpersonating && (
-        <View style={s.impersonateBanner}>
-          <View style={s.impersonateBannerLeft}>
-            <DynamicIcon name="user-check" size={14} color="#854d0e" style={{ marginRight: 8 }} />
-            <Text style={s.impersonateBannerText}>
-              Impersonating: <Text style={{ fontFamily: 'SairaSemiCondensed-Bold' }}>{user?.name || user?.email}</Text>
-            </Text>
-          </View>
-          <TouchableOpacity 
-            style={s.impersonateExitBtn} 
-            activeOpacity={0.7}
-            onPress={async () => {
-              const res = await stopImpersonation();
-              if (res.success) {
-                showToast(res.message, 'success');
-                refresh();
-              } else {
-                showToast(res.message, 'error');
-              }
-            }}
-          >
-            <Text style={s.impersonateExitText}>EXIT</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}>
 
@@ -310,17 +333,7 @@ export default function HomeScreen({ navigation }) {
           {STATUS_CONFIG.map(st => {
             const val = st.key === 'total' ? totalCards : (counts[st.key] || 0);
             return (
-              <TouchableOpacity key={st.key} style={s.statusCardOuter} activeOpacity={isAdminOrOperator ? 1 : 0.8}
-                disabled={isAdminOrOperator}
-                onPress={() => {
-                  if (isAdminOrOperator) return;
-                  const statusMap = { pending: 'p', verified: 'v', approved: 'a', download: 'd', pool: 'po' };
-                  const tableKey = statusMap[st.key] || st.key;
-                  const tablesWithStatus = (counts.tables || []).filter(t => (t[tableKey] || 0) > 0);
-                  if (st.key === 'total') navigation.navigate('Groups');
-                  else if (tablesWithStatus.length === 1) navigation.navigate('CardList', { tableId: tablesWithStatus[0].id, status: st.key });
-                  else navigation.navigate('TablePicker', { status: st.key });
-                }}>
+              <View key={st.key} style={s.statusCardOuter}>
                 <LinearGradient colors={[st.bg, st.bg2]} start={{x:0, y:0}} end={{x:1, y:1}} style={s.statusCard}>
                   <View style={s.statusCardContent}>
                     <View style={s.statusIconCircle}><st.Svg size={16} color="#fff" /></View>
@@ -330,7 +343,7 @@ export default function HomeScreen({ navigation }) {
                     </View>
                   </View>
                 </LinearGradient>
-              </TouchableOpacity>
+              </View>
             );
           })}
         </View>
@@ -435,293 +448,35 @@ export default function HomeScreen({ navigation }) {
         <View style={s.mainContent}>
           {isSuperAdmin || isOperator ? (
             activeTab === 'clients' ? (
-              <View>
-                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
-                  <Text style={s.secTitleWhite}>RECENT CLIENTS</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('ClientsList')}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
-                </LinearGradient>
-                <View style={s.secContent}>
-                {counts.recent_clients?.length > 0 ? counts.recent_clients.map(client => {
-                  const isExpanded = expandedClient?.id === client.id;
-                  const expandedStatus = expandedClient?.status;
-                  const statusMap = { PENDING: 'p', VERIFIED: 'v', APPROVED: 'a', DOWNLOAD: 'd', POOL: 'po' };
-                  const statusValueMap = { PENDING: 'pending', VERIFIED: 'verified', APPROVED: 'approved', DOWNLOAD: 'download', POOL: 'pool' };
-                  
-                  return (
-                    <View key={client.id} style={s.clientCardWrapper}>
-                      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
-                        <View style={s.clientCard}>
-                          <TouchableOpacity 
-                            style={s.clientHeader} 
-                            activeOpacity={0.7}
-                            onPress={() => {
-                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                              setExpandedClient(expandedClient?.id === client.id ? null : { id: client.id });
-                            }}
-                          >
-                            <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="building" size={14} color={theme.primary} /></View>
-                            <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text></View>
-                            <DynamicIcon name={expandedClient?.id === client.id ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
-                          </TouchableOpacity>
-                          <View style={s.clientStatsRow}>
-                            <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={() => handleBadgePress(client, 'PENDING')} />
-                            <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={() => handleBadgePress(client, 'VERIFIED')} />
-                            <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={() => handleBadgePress(client, 'APPROVED')} />
-                            <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={() => handleBadgePress(client, 'DOWNLOAD')} />
-                            <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={() => handleBadgePress(client, 'POOL')} />
-                          </View>
-
-                          {expandedClient?.id === client.id && (
-                            <View style={s.expandedContent}>
-                              <View style={s.expandedHeader}>
-                                <Text style={s.expandedTitle}>TABLES / LISTS</Text>
-                                <TouchableOpacity onPress={() => setExpandedClient(null)}><DynamicIcon name="times" size={10} color={colors.gray400} /></TouchableOpacity>
-                              </View>
-                              {(client.tables || []).map(table => (
-                                <View key={table.id} style={s.expandedItem}>
-                                  <View style={s.expandedItemHeader}>
-                                    <Text style={s.expandedItemName}>{table.name}</Text>
-                                    <Text style={s.expandedItemGroup}>{table.group}</Text>
-                                  </View>
-                                  <View style={s.statusButtonsRowBelow}>
-                                    {[
-                                      { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
-                                      { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
-                                      { key: 'approved', label: 'Approved', count: table.a || 0, color: colors.approved.text, bg: colors.approved.bg },
-                                      { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg },
-                                      { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
-                                    ].map((stBtn) => {
-                                      return (
-                                        <TouchableOpacity
-                                          key={stBtn.key}
-                                          style={[
-                                            s.stBtnBelow,
-                                            { 
-                                              backgroundColor: stBtn.bg,
-                                              borderColor: stBtn.color + '60',
-                                            }
-                                          ]}
-                                          activeOpacity={0.7}
-                                          onPress={() => navigation.navigate('CardList', { tableId: table.id, status: stBtn.key })}
-                                        >
-                                          <Text style={[s.stBtnTextBelow, { color: stBtn.color }]}>
-                                            {stBtn.label} ({stBtn.count})
-                                          </Text>
-                                        </TouchableOpacity>
-                                      );
-                                    })}
-                                  </View>
-                                </View>
-                              ))}
-                            </View>
-                          )}
-                        </View>
-                      </LinearGradient>
-                    </View>
-                  );
-                }) : <View style={s.emptyState}><Text style={s.emptyText}>No recent clients</Text></View>}
-                </View>
-              </View>
+              <RecentClientsSection
+                recentClients={counts.recent_clients}
+                expandedClient={expandedClient}
+                setExpandedClient={setExpandedClient}
+                handleBadgePress={handleBadgePress}
+                navigation={navigation}
+                theme={theme}
+              />
             ) : activeTab === 'activity' ? (
-              <View>
-                <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
-                  <Text style={s.secTitleWhite}>RECENT ACTIVITY</Text>
-                </LinearGradient>
-                <View style={s.secContent}>
-                {counts.recent_activity?.length > 0 ? (
-                  counts.recent_activity.slice(0, 15).map(act => (
-                    <View key={act.id} style={s.activityCard}>
-                      <View style={[s.activityIcon, { backgroundColor: mapColor(act.icon_color) + '15' }]}>
-                        <DynamicIcon name={mapIcon(act.icon_class)} size={14} color={mapColor(act.icon_color)} />
-                      </View>
-                      <View style={s.activityInfo}>
-                        <Text style={s.activityText} numberOfLines={2}>{act.display_text}</Text>
-                        <View style={s.activityMeta}>
-                          <Text style={s.activityTime}>{act.time_ago} ago</Text>
-                          <Text style={s.activityDot}>•</Text>
-                          <Text style={s.activityActor}>{act.actor}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  ))
-                ) : <View style={s.emptyState}><Text style={s.emptyText}>No activity found</Text></View>}
-                </View>
-              </View>
+              <RecentActivitySection
+                recentActivity={counts.recent_activity}
+                handleActivityPress={handleActivityPress}
+              />
             ) : (
-              // REPRINTS TAB — client accordion with REQUESTED/CONFIRMED badges
-              (() => {
-                // Group recent_reprints by client
-                const reprints = counts.recent_reprints || [];
-                const clientReprintMap = {};
-                reprints.forEach(rep => {
-                  const cid = rep.client_id || 0;
-                  if (!clientReprintMap[cid]) {
-                    clientReprintMap[cid] = {
-                      id: cid,
-                      name: rep.client_name || 'Unknown Client',
-                      requested: 0,
-                      confirmed: 0,
-                      tables: {},
-                    };
-                  }
-                  if (rep.status === 'requested') clientReprintMap[cid].requested += 1;
-                  else if (rep.status === 'confirmed') clientReprintMap[cid].confirmed += 1;
-                  // Group by table
-                  const tid = rep.table_name || 'Unknown Table';
-                  if (!clientReprintMap[cid].tables[tid]) {
-                    clientReprintMap[cid].tables[tid] = { 
-                      table_id: rep.table_id || 0, 
-                      name: tid, 
-                      group_name: rep.group_name || 'Unknown Group',
-                      requested: 0, 
-                      confirmed: 0 
-                    };
-                  }
-                  if (rep.status === 'requested') clientReprintMap[cid].tables[tid].requested += 1;
-                  else if (rep.status === 'confirmed') clientReprintMap[cid].tables[tid].confirmed += 1;
-                });
-                const reprintClients = Object.values(clientReprintMap).sort((a, b) => b.requested - a.requested);
-
-                const handleReprintBadgePress = (client) => {
-                  const tableList = Object.values(client.tables || {});
-                  if (tableList.length === 0) {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
-                    return;
-                  }
-                  if (tableList.length === 1) {
-                    navigation.navigate('ReprintDetail', { tableId: tableList[0].table_id });
-                  } else {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
-                  }
-                };
-
-                return (
-                  <View>
-                    <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
-                      <Text style={s.secTitleWhite}>REPRINT REQUESTS</Text>
-                      <TouchableOpacity onPress={() => navigation.navigate('Reprint', { clientId: 0 })}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
-                    </LinearGradient>
-                    <View style={s.secContent}>
-                      {reprintClients.length > 0 ? reprintClients.map(client => {
-                        const isExpanded = expandedReprint?.id === client.id;
-                        const tableList = Object.values(client.tables || {});
-                        return (
-                          <View key={client.id} style={s.clientCardWrapper}>
-                            <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
-                              <View style={s.clientCard}>
-                                <TouchableOpacity
-                                  style={s.clientHeader}
-                                  activeOpacity={0.7}
-                                  onPress={() => {
-                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                    setExpandedReprint(expandedReprint?.id === client.id ? null : { id: client.id });
-                                  }}
-                                >
-                                  <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="redo" size={14} color={theme.primary} /></View>
-                                  <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text></View>
-                                  <DynamicIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
-                                </TouchableOpacity>
-                                <View style={s.clientStatsRow}>
-                                  <ClientMiniStat
-                                    label="REQUESTED"
-                                    count={client.requested}
-                                    color="#f59e0b"
-                                    bg="#fef3c7"
-                                    onPress={() => handleReprintBadgePress(client)}
-                                  />
-                                  <ClientMiniStat
-                                    label="CONFIRMED"
-                                    count={client.confirmed}
-                                    color="#10b981"
-                                    bg="#ecfdf5"
-                                    onPress={() => handleReprintBadgePress(client)}
-                                  />
-                                </View>
-
-                                {isExpanded && (
-                                  <View style={s.expandedContent}>
-                                    <View style={s.expandedHeader}>
-                                      <Text style={s.expandedTitle}>TABLES / LISTS</Text>
-                                      <TouchableOpacity onPress={() => setExpandedReprint(null)}><DynamicIcon name="times" size={10} color={colors.gray400} /></TouchableOpacity>
-                                    </View>
-                                    {tableList.map((table, ti) => (
-                                      <View key={ti} style={s.expandedItem}>
-                                        <View style={s.expandedItemHeader}>
-                                          <Text style={s.expandedItemName}>{table.name}</Text>
-                                          <Text style={s.expandedItemGroup}>{table.group_name}</Text>
-                                        </View>
-                                        <View style={s.statusButtonsRowBelow}>
-                                          {[
-                                            { key: 'requested', label: 'Requested', count: table.requested || 0, color: '#f59e0b', bg: '#fef3c7' },
-                                            { key: 'confirmed', label: 'Confirmed', count: table.confirmed || 0, color: '#10b981', bg: '#ecfdf5' },
-                                          ].map((stBtn) => (
-                                            <TouchableOpacity
-                                              key={stBtn.key}
-                                              style={[
-                                                s.stBtnBelow,
-                                                { 
-                                                  backgroundColor: stBtn.bg,
-                                                  borderColor: stBtn.color + '60',
-                                                }
-                                              ]}
-                                              activeOpacity={0.7}
-                                              onPress={() => navigation.navigate('ReprintDetail', { tableId: table.table_id })}
-                                            >
-                                              <Text style={[s.stBtnTextBelow, { color: stBtn.color }]}>
-                                                {stBtn.label} ({stBtn.count})
-                                              </Text>
-                                            </TouchableOpacity>
-                                          ))}
-                                        </View>
-                                      </View>
-                                    ))}
-                                  </View>
-                                )}
-                              </View>
-                            </LinearGradient>
-                          </View>
-                        );
-                      }) : <View style={s.emptyState}><Text style={s.emptyText}>No recent reprints</Text></View>}
-                    </View>
-                  </View>
-                );
-              })()
+              <ReprintRequestsSection
+                recentReprints={counts.recent_reprints}
+                recentClients={counts.recent_clients}
+                expandedReprint={expandedReprint}
+                setExpandedReprint={setExpandedReprint}
+                navigation={navigation}
+                theme={theme}
+              />
             )
           ) : (
-            <>
-              <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
-                <Text style={s.secTitleWhite}>MY TABLES</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Groups')}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
-              </LinearGradient>
-              <View style={s.secContent}>
-              {counts.tables?.length > 0 ? counts.tables.map(table => (
-                <View key={table.id} style={s.clientCardWrapper}>
-                  <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
-                    <View style={s.clientCard}>
-                      <TouchableOpacity 
-                        style={s.clientHeader} 
-                        activeOpacity={0.7}
-                        onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'all' })}
-                      >
-                        <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="table" size={14} color={theme.primary} /></View>
-                        <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{table.name}</Text></View>
-                        <DynamicIcon name="chevron-right" size={10} color={colors.gray400} />
-                      </TouchableOpacity>
-                      <View style={s.clientStatsRow}>
-                        <ClientMiniStat label="PENDING" count={table.p || 0} color={colors.pending.text} bg={colors.pending.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pending' })} />
-                        <ClientMiniStat label="VERIFIED" count={table.v || 0} color={colors.verified.text} bg={colors.verified.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'verified' })} />
-                        <ClientMiniStat label="APPROVED" count={table.a || 0} color={colors.approved.text} bg={colors.approved.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'approved' })} />
-                        <ClientMiniStat label="DOWNLOAD" count={table.d || 0} color={colors.download.text} bg={colors.download.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'download' })} />
-                        <ClientMiniStat label="POOL" count={table.po || 0} color={colors.pool.text} bg={colors.pool.bg} onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pool' })} />
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </View>
-              )) : <View style={s.emptyState}><Text style={s.emptyText}>No tables found</Text></View>}
-              </View>
-            </>
+            <MyTablesSection
+              tables={counts.tables}
+              navigation={navigation}
+              theme={theme}
+            />
           )}
         </View>
 
@@ -741,7 +496,54 @@ export default function HomeScreen({ navigation }) {
               <FormField label="CLIENT NAME *" value={clientForm.name} onChangeText={t => setClientForm(f => ({ ...f, name: t }))} />
               <FormField label="EMAIL *" value={clientForm.email} onChangeText={t => setClientForm(f => ({ ...f, email: t }))} keyboardType="email-address" />
               <FormField label="PHONE" value={clientForm.phone} onChangeText={t => setClientForm(f => ({ ...f, phone: t }))} keyboardType="phone-pad" />
-              <FormField label="PASSWORD *" value={clientForm.password} onChangeText={t => setClientForm(f => ({ ...f, password: t }))} secureTextEntry />
+              <FormField label="ADDRESS" value={clientForm.address} onChangeText={t => setClientForm(f => ({ ...f, address: t }))} multiline numberOfLines={2} />
+              
+              <View style={s.passOptionContainer}>
+                <Text style={s.fieldLabel}>PASSWORD SETUP</Text>
+                <View style={s.passOptionRow}>
+                  <TouchableOpacity
+                    style={[s.passOptionBtn, passOption === 'phone' && s.passOptionBtnActive]}
+                    onPress={() => setPassOption('phone')}
+                  >
+                    <Text style={[s.passOptionBtnText, passOption === 'phone' && s.passOptionBtnTextActive]}>
+                      Use Phone as Password
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.passOptionBtn, passOption === 'custom' && s.passOptionBtnActive]}
+                    onPress={() => setPassOption('custom')}
+                  >
+                    <Text style={[s.passOptionBtnText, passOption === 'custom' && s.passOptionBtnTextActive]}>
+                      Custom Password
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {passOption === 'custom' && (
+                <FormField 
+                  label="PASSWORD" 
+                  value={clientForm.password} 
+                  onChangeText={t => setClientForm(f => ({ ...f, password: t }))} 
+                  secureTextEntry 
+                />
+              )}
+              
+              <View style={s.sectionHeader}>
+                <View style={s.sectionDivider} />
+                <Text style={s.sectionTitle}>SYSTEM SETTINGS</Text>
+                <View style={s.sectionDivider} />
+              </View>
+
+              <View style={s.switchRow}>
+                <Text style={s.switchLabel}>ACTIVE STATUS</Text>
+                <Switch 
+                  value={clientForm.is_active} 
+                  onValueChange={v => setClientForm(f => ({ ...f, is_active: v }))} 
+                  trackColor={{ false: '#e2e8f0', true: colors.brandPrimary }}
+                  thumbColor={clientForm.is_active ? '#fff' : '#f4f3f4'}
+                />
+              </View>
             </ScrollView>
             <View style={s.modalFooter}>
               <TouchableOpacity style={s.modalCancel} onPress={() => setShowClientForm(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
@@ -763,7 +565,58 @@ export default function HomeScreen({ navigation }) {
               <Text style={s.modalTitle}>New {staffRole === 'admin_staff' ? 'Operator' : 'Assistant'}</Text>
               <TouchableOpacity onPress={() => setShowStaffForm(false)}><IconClose size={20} color={colors.gray400} /></TouchableOpacity>
             </View>
-            <ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {/* Client Picker — only for Super Admin creating an Assistant */}
+              {isSuperAdmin && staffRole === 'client_staff' && (
+                <View style={s.clientPickerContainer}>
+                  <Text style={s.fieldLabel}>SELECT CLIENT *</Text>
+                  {clientPickerLoading ? (
+                    <View style={s.clientPickerLoading}>
+                      <ActivityIndicator size="small" color={colors.brandPrimary} />
+                      <Text style={s.clientPickerLoadingText}>Loading clients...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <TextInput
+                        style={s.clientPickerSearch}
+                        placeholder="Search clients..."
+                        placeholderTextColor={colors.gray300}
+                        value={clientPickerSearch}
+                        onChangeText={setClientPickerSearch}
+                      />
+                      <View style={s.clientPickerList}>
+                        {clientPickerList
+                          .filter(c => !clientPickerSearch || c.name.toLowerCase().includes(clientPickerSearch.toLowerCase()))
+                          .slice(0, 8)
+                          .map(c => (
+                            <TouchableOpacity
+                              key={c.id}
+                              style={[s.clientPickerItem, selectedClientId === c.id && s.clientPickerItemActive]}
+                              onPress={() => setSelectedClientId(c.id)}
+                              activeOpacity={0.7}
+                            >
+                              <View style={[s.clientPickerDot, selectedClientId === c.id && { backgroundColor: colors.brandPrimary }]} />
+                              <Text style={[s.clientPickerItemText, selectedClientId === c.id && { color: colors.brandPrimary, fontFamily: 'SairaSemiCondensed-Bold' }]} numberOfLines={1}>
+                                {c.name}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        {clientPickerList.filter(c => !clientPickerSearch || c.name.toLowerCase().includes(clientPickerSearch.toLowerCase())).length === 0 && (
+                          <Text style={s.clientPickerEmpty}>No clients found</Text>
+                        )}
+                      </View>
+                      {selectedClientId && (
+                        <View style={s.clientPickerSelected}>
+                          <DynamicIcon name="check-circle" size={12} color={colors.brandPrimary} />
+                          <Text style={s.clientPickerSelectedText}>
+                            {clientPickerList.find(c => c.id === selectedClientId)?.name || 'Selected'}
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  )}
+                </View>
+              )}
               <View style={{ flexDirection: 'row' }}>
                 <FormField label="FIRST NAME *" value={staffForm.first_name} onChangeText={t => setStaffForm(f => ({ ...f, first_name: t }))} />
                 <View style={{ width: 10 }} />
@@ -790,11 +643,19 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-function FormField({ label, value, onChangeText, secureTextEntry, keyboardType }) {
+function FormField({ label, value, onChangeText, secureTextEntry, keyboardType, ...rest }) {
   return (
     <View style={s.field}>
       <Text style={s.fieldLabel}>{label}</Text>
-      <TextInput style={s.fieldInput} value={value} onChangeText={onChangeText} secureTextEntry={secureTextEntry} keyboardType={keyboardType} placeholderTextColor={colors.gray300} />
+      <TextInput 
+        style={[s.fieldInput, rest.multiline && { height: 60, paddingTop: 8, paddingBottom: 8, textAlignVertical: 'top' }]} 
+        value={value} 
+        onChangeText={onChangeText} 
+        secureTextEntry={secureTextEntry} 
+        keyboardType={keyboardType} 
+        placeholderTextColor={colors.gray300} 
+        {...rest}
+      />
     </View>
   );
 }
@@ -956,4 +817,543 @@ const s = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'SairaSemiCondensed-Bold',
   },
+  passOptionContainer: { marginBottom: 16 },
+  passOptionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  passOptionBtn: { flex: 1, paddingVertical: 10, paddingHorizontal: 6, borderRadius: radius.xs, borderWidth: 1, borderColor: colors.gray200, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  passOptionBtnActive: { borderColor: colors.brandPrimary, backgroundColor: `${colors.brandPrimary}08` },
+  passOptionBtnText: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray600, textAlign: 'center' },
+  passOptionBtnTextActive: { fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
+  sectionDivider: { flex: 1, height: 1, backgroundColor: colors.gray200 },
+  sectionTitle: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginHorizontal: 10, letterSpacing: 0.5 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingHorizontal: 2, paddingVertical: 8 },
+  switchLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500 },
+  // Client Picker styles
+  clientPickerContainer: { marginBottom: 16, backgroundColor: colors.gray50, borderRadius: radius.xs, padding: 12, borderWidth: 1, borderColor: colors.gray100 },
+  clientPickerSearch: { height: 38, backgroundColor: '#fff', borderRadius: radius.xs, paddingHorizontal: 10, fontSize: 12, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800, borderWidth: 1, borderColor: colors.gray200, marginBottom: 8 },
+  clientPickerList: { maxHeight: 160 },
+  clientPickerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 8, borderRadius: radius.xs, marginBottom: 2 },
+  clientPickerItemActive: { backgroundColor: `${colors.brandPrimary}10` },
+  clientPickerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gray300, marginRight: 10 },
+  clientPickerItemText: { flex: 1, fontSize: 12, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray700 },
+  clientPickerLoading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
+  clientPickerLoadingText: { fontSize: 11, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium' },
+  clientPickerEmpty: { fontSize: 11, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium', textAlign: 'center', paddingVertical: 12 },
+  clientPickerSelected: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.gray100 },
+  clientPickerSelectedText: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary, flex: 1 },
 });
+
+// Static Helpers outside render
+const mapIcon = (faClass) => {
+  if (!faClass) return 'history';
+  const c = (faClass || '').toLowerCase();
+  if (c.includes('check') || c.includes('verify') || c.includes('approve')) return 'check-circle';
+  if (c.includes('trash') || c.includes('delete') || c.includes('remove')) return 'trash-2';
+  if (c.includes('edit') || c.includes('update')) return 'edit-3';
+  if (c.includes('user') || c.includes('staff')) return 'users';
+  if (c.includes('building') || c.includes('client')) return 'building';
+  if (c.includes('refresh') || c.includes('redo') || c.includes('history')) return 'history';
+  if (c.includes('image') || c.includes('photo')) return 'image';
+  if (c.includes('download')) return 'download';
+  if (c.includes('login') || c.includes('bracket')) return 'log-in';
+  if (c.includes('logout')) return 'log-out';
+  if (c.includes('plus') || c.includes('add')) return 'plus-circle';
+  if (c.includes('key')) return 'key';
+  if (c.includes('print')) return 'printer';
+  if (c.includes('gear') || c.includes('setting')) return 'settings';
+  if (c.includes('envelope')) return 'mail';
+  if (c.includes('bell')) return 'bell';
+  if (c.includes('database') || c.includes('vault')) return 'database';
+  return 'activity';
+};
+
+const mapColor = (c) => {
+  if (!c) return colors.brandPrimary;
+  const low = c.toLowerCase();
+  if (low === 'add') return colors.green;
+  if (low === 'edit') return colors.blue;
+  if (low === 'delete') return colors.red;
+  if (low === 'verify') return colors.purple;
+  if (low === 'approve') return colors.teal;
+  return c;
+};
+
+// Memoized Section Components
+
+const RecentClientsSection = React.memo(({ recentClients, expandedClient, setExpandedClient, handleBadgePress, navigation, theme }) => {
+  const handleToggleExpandClient = useCallback((clientId) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedClient(prev => prev?.id === clientId ? null : { id: clientId });
+  }, [setExpandedClient]);
+
+  return (
+    <View>
+      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+        <Text style={s.secTitleWhite}>RECENT CLIENTS</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('ClientsList', { focusSearch: true })} activeOpacity={0.7} style={{ padding: 4 }}>
+            <IconSearch size={14} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('ClientsList')} activeOpacity={0.7} style={{ padding: 4 }}>
+            <Text style={s.viewAllLinkWhite}>VIEW ALL</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+      <View style={s.secContent}>
+        {recentClients?.length > 0 ? recentClients.map(client => {
+          const isExpanded = expandedClient?.id === client.id;
+          return (
+            <RecentClientItem
+              key={client.id}
+              client={client}
+              isExpanded={isExpanded}
+              theme={theme}
+              handleToggleExpandClient={handleToggleExpandClient}
+              handleBadgePress={handleBadgePress}
+              navigation={navigation}
+              setExpandedClient={setExpandedClient}
+            />
+          );
+        }) : <View style={s.emptyState}><Text style={s.emptyText}>No recent clients</Text></View>}
+      </View>
+    </View>
+  );
+});
+
+const RecentClientItem = React.memo(({ client, isExpanded, theme, handleToggleExpandClient, handleBadgePress, navigation, setExpandedClient }) => {
+  const onToggleExpand = useCallback(() => handleToggleExpandClient(client.id), [client.id, handleToggleExpandClient]);
+  const onBadgePending = useCallback(() => handleBadgePress(client, 'PENDING'), [client, handleBadgePress]);
+  const onBadgeVerified = useCallback(() => handleBadgePress(client, 'VERIFIED'), [client, handleBadgePress]);
+  const onBadgeApproved = useCallback(() => handleBadgePress(client, 'APPROVED'), [client, handleBadgePress]);
+  const onBadgeDownload = useCallback(() => handleBadgePress(client, 'DOWNLOAD'), [client, handleBadgePress]);
+  const onBadgePool = useCallback(() => handleBadgePress(client, 'POOL'), [client, handleBadgePress]);
+  const onCloseExpanded = useCallback(() => setExpandedClient(null), [setExpandedClient]);
+
+  return (
+    <View style={s.clientCardWrapper}>
+      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
+        <View style={s.clientCard}>
+          <TouchableOpacity 
+            style={s.clientHeader} 
+            activeOpacity={0.7}
+            onPress={onToggleExpand}
+          >
+            <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="building" size={14} color={theme.primary} /></View>
+            <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text></View>
+            <DynamicIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
+          </TouchableOpacity>
+          <View style={s.clientStatsRow}>
+            <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={onBadgePending} />
+            <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={onBadgeVerified} />
+            <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={onBadgeApproved} />
+            <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={onBadgeDownload} />
+            <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
+          </View>
+
+          {isExpanded && (
+            <View style={s.expandedContent}>
+              <View style={s.expandedHeader}>
+                <Text style={s.expandedTitle}>TABLES / LISTS</Text>
+                <TouchableOpacity onPress={onCloseExpanded}><DynamicIcon name="times" size={10} color={colors.gray400} /></TouchableOpacity>
+              </View>
+              {(client.tables || []).map(table => (
+                <RecentClientTableItem 
+                  key={table.id}
+                  table={table}
+                  navigation={navigation}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      </LinearGradient>
+    </View>
+  );
+});
+
+const RecentClientTableItem = React.memo(({ table, navigation }) => {
+  return (
+    <View style={s.expandedItem}>
+      <View style={s.expandedItemHeader}>
+        <Text style={s.expandedItemName}>{table.name}</Text>
+        <Text style={s.expandedItemGroup}>{table.group}</Text>
+      </View>
+      <View style={s.statusButtonsRowBelow}>
+        {[
+          { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
+          { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
+          { key: 'approved', label: 'Approved', count: table.a || 0, color: colors.approved.text, bg: colors.approved.bg },
+          { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg },
+          { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
+        ].map((stBtn) => (
+          <RecentClientTableStatusBtn
+            key={stBtn.key}
+            stBtn={stBtn}
+            tableId={table.id}
+            navigation={navigation}
+          />
+        ))}
+      </View>
+    </View>
+  );
+});
+
+const RecentClientTableStatusBtn = React.memo(({ stBtn, tableId, navigation }) => {
+  const onPress = useCallback(() => {
+    navigation.navigate('CardList', { tableId, status: stBtn.key });
+  }, [navigation, tableId, stBtn.key]);
+
+  return (
+    <TouchableOpacity
+      style={[
+        s.stBtnBelow,
+        { 
+          backgroundColor: stBtn.bg,
+          borderColor: stBtn.color + '60',
+        }
+      ]}
+      activeOpacity={0.7}
+      onPress={onPress}
+    >
+      <Text style={[s.stBtnTextBelow, { color: stBtn.color }]}>
+        {stBtn.label} ({stBtn.count})
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
+const RecentActivitySection = React.memo(({ recentActivity, handleActivityPress }) => {
+  return (
+    <View>
+      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+        <Text style={s.secTitleWhite}>RECENT ACTIVITY</Text>
+      </LinearGradient>
+      <View style={s.secContent}>
+        {recentActivity?.length > 0 ? (
+          recentActivity.slice(0, 15).map(act => (
+            <RecentActivityItem
+              key={act.id}
+              act={act}
+              handleActivityPress={handleActivityPress}
+            />
+          ))
+        ) : <View style={s.emptyState}><Text style={s.emptyText}>No activity found</Text></View>}
+      </View>
+    </View>
+  );
+});
+
+const RecentActivityItem = React.memo(({ act, handleActivityPress }) => {
+  const onPress = useCallback(() => handleActivityPress(act), [act, handleActivityPress]);
+
+  return (
+    <TouchableOpacity 
+      style={s.activityCard} 
+      activeOpacity={0.7}
+      onPress={onPress}
+    >
+      <View style={[s.activityIcon, { backgroundColor: mapColor(act.icon_color) + '15' }]}>
+        <DynamicIcon name={mapIcon(act.icon_class)} size={14} color={mapColor(act.icon_color)} />
+      </View>
+      <View style={s.activityInfo}>
+        <Text style={s.activityText} numberOfLines={2}>{act.display_text}</Text>
+        <View style={s.activityMeta}>
+          <Text style={s.activityTime}>{act.time_ago} ago</Text>
+          <Text style={s.activityDot}>•</Text>
+          <Text style={s.activityActor}>{act.actor}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const ReprintRequestsSection = React.memo(({ recentReprints, recentClients, expandedReprint, setExpandedReprint, navigation, theme }) => {
+  const handleToggleExpandReprint = useCallback((clientId) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedReprint(prev => prev?.id === clientId ? null : { id: clientId });
+  }, [setExpandedReprint]);
+
+  // Group recent_reprints by client
+  const reprintClients = useMemo(() => {
+    const reprints = recentReprints || [];
+    const clients = recentClients || [];
+    const clientReprintMap = {};
+
+    clients.forEach(client => {
+      const cid = client.id;
+      clientReprintMap[cid] = {
+        id: cid,
+        name: client.name || 'Unknown Client',
+        requested: 0,
+        confirmed: 0,
+        tables: {},
+      };
+      if (client.tables && Array.isArray(client.tables)) {
+        client.tables.forEach(t => {
+          const tName = t.name || 'Unknown Table';
+          clientReprintMap[cid].tables[tName] = {
+            table_id: t.id,
+            name: tName,
+            group_name: t.group || 'Unknown Group',
+            requested: 0,
+            confirmed: 0,
+          };
+        });
+      }
+    });
+
+    reprints.forEach(rep => {
+      const cid = rep.client_id || 0;
+      if (!clientReprintMap[cid]) {
+        clientReprintMap[cid] = {
+          id: cid,
+          name: rep.client_name || 'Unknown Client',
+          requested: 0,
+          confirmed: 0,
+          tables: {},
+        };
+      }
+      if (rep.status === 'requested') clientReprintMap[cid].requested += 1;
+      else if (rep.status === 'confirmed') clientReprintMap[cid].confirmed += 1;
+      
+      const tid = rep.table_name || 'Unknown Table';
+      if (!clientReprintMap[cid].tables[tid]) {
+        clientReprintMap[cid].tables[tid] = { 
+          table_id: rep.table_id || 0, 
+          name: tid, 
+          group_name: rep.group_name || 'Unknown Group',
+          requested: 0, 
+          confirmed: 0 
+        };
+      }
+      if (rep.status === 'requested') clientReprintMap[cid].tables[tid].requested += 1;
+      else if (rep.status === 'confirmed') clientReprintMap[cid].tables[tid].confirmed += 1;
+    });
+
+    return Object.values(clientReprintMap).sort((a, b) => (b.requested + b.confirmed) - (a.requested + a.confirmed));
+  }, [recentReprints, recentClients]);
+
+  const handleReprintBadgePress = useCallback((client) => {
+    const tableList = Object.values(client.tables || {});
+    if (tableList.length === 0) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpandedReprint(prev => prev?.id === client.id ? null : { id: client.id });
+      return;
+    }
+    if (tableList.length === 1) {
+      navigation.navigate('ReprintDetail', { tableId: tableList[0].table_id });
+    } else {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpandedReprint(prev => prev?.id === client.id ? null : { id: client.id });
+    }
+  }, [navigation, setExpandedReprint]);
+
+  return (
+    <View>
+      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+        <Text style={s.secTitleWhite}>REPRINT REQUESTS</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Reprint', { clientId: 0 })}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
+      </LinearGradient>
+      <View style={s.secContent}>
+        {reprintClients.length > 0 ? reprintClients.map(client => {
+          const isExpanded = expandedReprint?.id === client.id;
+          return (
+            <ReprintClientItem
+              key={client.id}
+              client={client}
+              isExpanded={isExpanded}
+              theme={theme}
+              handleToggleExpandReprint={handleToggleExpandReprint}
+              handleReprintBadgePress={handleReprintBadgePress}
+              navigation={navigation}
+              setExpandedReprint={setExpandedReprint}
+            />
+          );
+        }) : <View style={s.emptyState}><Text style={s.emptyText}>No recent reprints</Text></View>}
+      </View>
+    </View>
+  );
+});
+
+const ReprintClientItem = React.memo(({ client, isExpanded, theme, handleToggleExpandReprint, handleReprintBadgePress, navigation, setExpandedReprint }) => {
+  const onToggleExpand = useCallback(() => handleToggleExpandReprint(client.id), [client.id, handleToggleExpandReprint]);
+  const onBadgeRequested = useCallback(() => handleReprintBadgePress(client), [client, handleReprintBadgePress]);
+  const onCloseExpanded = useCallback(() => setExpandedReprint(null), [setExpandedReprint]);
+  const tableList = useMemo(() => Object.values(client.tables || {}), [client.tables]);
+
+  return (
+    <View style={s.clientCardWrapper}>
+      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
+        <View style={s.clientCard}>
+          <TouchableOpacity
+            style={s.clientHeader}
+            activeOpacity={0.7}
+            onPress={onToggleExpand}
+          >
+            <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="redo" size={14} color={theme.primary} /></View>
+            <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text></View>
+            <DynamicIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
+          </TouchableOpacity>
+          <View style={s.clientStatsRow}>
+            <ClientMiniStat
+              label="REQUESTED"
+              count={client.requested}
+              color="#f59e0b"
+              bg="#fef3c7"
+              onPress={onBadgeRequested}
+            />
+            <ClientMiniStat
+              label="CONFIRMED"
+              count={client.confirmed}
+              color="#10b981"
+              bg="#ecfdf5"
+              onPress={onBadgeRequested}
+            />
+          </View>
+
+          {isExpanded && (
+            <View style={s.expandedContent}>
+              <View style={s.expandedHeader}>
+                <Text style={s.expandedTitle}>TABLES / LISTS</Text>
+                <TouchableOpacity onPress={onCloseExpanded}><DynamicIcon name="times" size={10} color={colors.gray400} /></TouchableOpacity>
+              </View>
+              {tableList.map((table, ti) => (
+                <ReprintClientTableItem
+                  key={ti}
+                  table={table}
+                  navigation={navigation}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      </LinearGradient>
+    </View>
+  );
+});
+
+const ReprintClientTableItem = React.memo(({ table, navigation }) => {
+  return (
+    <View style={s.expandedItem}>
+      <View style={s.expandedItemHeader}>
+        <Text style={s.expandedItemName}>{table.name}</Text>
+        <Text style={s.expandedItemGroup}>{table.group_name}</Text>
+      </View>
+      <View style={s.statusButtonsRowBelow}>
+        {[
+          { key: 'requested', label: 'Requested', count: table.requested || 0, color: '#f59e0b', bg: '#fef3c7' },
+          { key: 'confirmed', label: 'Confirmed', count: table.confirmed || 0, color: '#10b981', bg: '#ecfdf5' },
+        ].map((stBtn) => (
+          <ReprintClientTableStatusBtn
+            key={stBtn.key}
+            stBtn={stBtn}
+            tableId={table.table_id}
+            navigation={navigation}
+          />
+        ))}
+      </View>
+    </View>
+  );
+});
+
+const ReprintClientTableStatusBtn = React.memo(({ stBtn, tableId, navigation }) => {
+  const onPress = useCallback(() => {
+    navigation.navigate('ReprintDetail', { tableId });
+  }, [navigation, tableId]);
+
+  return (
+    <TouchableOpacity
+      style={[
+        s.stBtnBelow,
+        { 
+          backgroundColor: stBtn.bg,
+          borderColor: stBtn.color + '60',
+        }
+      ]}
+      activeOpacity={0.7}
+      onPress={onPress}
+    >
+      <Text style={[s.stBtnTextBelow, { color: stBtn.color }]}>
+        {stBtn.label} ({stBtn.count})
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
+const MyTablesSection = React.memo(({ tables, navigation, theme }) => {
+  return (
+    <>
+      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.secHeaderGradient}>
+        <Text style={s.secTitleWhite}>MY TABLES</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Groups')}><Text style={s.viewAllLinkWhite}>VIEW ALL</Text></TouchableOpacity>
+      </LinearGradient>
+      <View style={s.secContent}>
+        {tables?.length > 0 ? tables.map(table => (
+          <MyTableItem
+            key={table.id}
+            table={table}
+            navigation={navigation}
+            theme={theme}
+          />
+        )) : <View style={s.emptyState}><Text style={s.emptyText}>No tables found</Text></View>}
+      </View>
+    </>
+  );
+});
+
+const MyTableItem = React.memo(({ table, navigation, theme }) => {
+  const { user } = useAuth();
+  const onTablePress = useCallback(() => {
+    navigation.navigate('CardList', { tableId: table.id, status: 'all' });
+  }, [navigation, table.id]);
+
+  const allowedStBtns = useMemo(() => {
+    const list = [
+      { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
+      { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
+      { key: 'approved', label: 'Approved', count: table.a || 0, color: colors.approved.text, bg: colors.approved.bg },
+      { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg },
+      { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
+    ];
+    const permsObj = user?.permissions || {};
+    return list.filter(opt => {
+      const p = {
+        pending:  'perm_idcard_pending_list',
+        verified: 'perm_idcard_verified_list',
+        approved: 'perm_idcard_approved_list',
+        download: 'perm_idcard_download_list',
+        pool:     'perm_idcard_pool_list',
+      }[opt.key];
+      return (user?.isSuperAdmin) || !p || permsObj[p];
+    });
+  }, [table, user]);
+
+  return (
+    <View style={s.clientCardWrapper}>
+      <LinearGradient colors={gradients.brandFull} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
+        <View style={s.clientCard}>
+          <TouchableOpacity 
+            style={s.clientHeader} 
+            activeOpacity={0.7}
+            onPress={onTablePress}
+          >
+            <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="table" size={14} color={theme.primary} /></View>
+            <View style={s.clientInfo}><Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{table.name}</Text></View>
+            <DynamicIcon name="chevron-right" size={10} color={colors.gray400} />
+          </TouchableOpacity>
+          <View style={s.statusButtonsRowBelow}>
+            {allowedStBtns.map(stBtn => (
+              <RecentClientTableStatusBtn
+                key={stBtn.key}
+                stBtn={stBtn}
+                tableId={table.id}
+                navigation={navigation}
+              />
+            ))}
+          </View>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+});
+

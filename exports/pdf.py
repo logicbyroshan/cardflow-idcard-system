@@ -52,6 +52,13 @@ _PLACEHOLDER_IMAGE_PATH = os.path.join(
     settings.BASE_DIR, 'static', 'assets', 'no-image-placeholder.png'
 )
 
+# Tiny 1x1 transparent PNG as base64 data URI fallback when placeholder file missing
+_TRANSPARENT_PNG_DATA_URI = (
+    'data:image/png;base64,'
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMA'
+    'ASsJTYQAAAAASUVORK5CYII='
+)
+
 
 _STATUS_LIST_LABELS = {
     'pending': 'Pending List',
@@ -944,10 +951,16 @@ class PdfExporter:
                         if abs_path and os.path.isfile(abs_path):
                             cell['content'] = _path_to_file_uri(abs_path)
                         else:
-                            cell['content'] = _path_to_file_uri(_PLACEHOLDER_IMAGE_PATH)
+                            if os.path.isfile(_PLACEHOLDER_IMAGE_PATH):
+                                cell['content'] = _path_to_file_uri(_PLACEHOLDER_IMAGE_PATH)
+                            else:
+                                cell['content'] = _TRANSPARENT_PNG_DATA_URI
                             cell['is_placeholder'] = True
                     else:
-                        cell['content'] = _path_to_file_uri(_PLACEHOLDER_IMAGE_PATH)
+                        if os.path.isfile(_PLACEHOLDER_IMAGE_PATH):
+                            cell['content'] = _path_to_file_uri(_PLACEHOLDER_IMAGE_PATH)
+                        else:
+                            cell['content'] = _TRANSPARENT_PNG_DATA_URI
                         cell['is_placeholder'] = True
                 else:
                     # WeasyPrint handles wrapping via CSS — store plain text;

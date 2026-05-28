@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
 import { DynamicIcon, IconClock, IconWarning, IconCheck, IconEdit, IconTrash } from './Icons';
 import { colors, shadows, radius, spacing, typography, fontFamily, gradients } from '../theme';
-import { HStack } from './Stack';
+import { HStack, Wrap } from './Stack';
 import { cleanFieldValue } from '../utils/data';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
@@ -169,12 +169,12 @@ const CardItem = React.memo(function CardItem({
           )}
         </View>
 
-        <HStack spacing={8} style={s.rightActions}>
+        <Wrap spacing={6} style={s.rightActions}>
           {/* Pending List Action Button */}
           {currentStatus === 'pending' && onStatusChange && hasPerm('perm_idcard_verify') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.green }]} 
-              onPress={() => onStatusChange('verified')}
+              onPress={() => onStatusChange(item.id, 'verified')}
             >
               <Text style={[s.outlineBtnText, { color: colors.green }]}>VERIFY</Text>
             </TouchableOpacity>
@@ -184,7 +184,7 @@ const CardItem = React.memo(function CardItem({
           {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_approve') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.green }]} 
-              onPress={() => onStatusChange('approved')}
+              onPress={() => onStatusChange(item.id, 'approved')}
             >
               <Text style={[s.outlineBtnText, { color: colors.green }]}>APPROVE</Text>
             </TouchableOpacity>
@@ -192,7 +192,7 @@ const CardItem = React.memo(function CardItem({
           {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_verify') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.red }]} 
-              onPress={() => onStatusChange('pending')}
+              onPress={() => onStatusChange(item.id, 'pending')}
             >
               <Text style={[s.outlineBtnText, { color: colors.red }]}>UNVERIFY</Text>
             </TouchableOpacity>
@@ -202,7 +202,7 @@ const CardItem = React.memo(function CardItem({
           {currentStatus === 'approved' && onStatusChange && hasPerm('perm_idcard_approve') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.red }]} 
-              onPress={() => onStatusChange('verified')}
+              onPress={() => onStatusChange(item.id, 'verified')}
             >
               <Text style={[s.outlineBtnText, { color: colors.red }]}>DISAPPROVE</Text>
             </TouchableOpacity>
@@ -212,7 +212,7 @@ const CardItem = React.memo(function CardItem({
           {currentStatus === 'download' && onStatusChange && hasPerm('perm_idcard_retrieve') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
-              onPress={() => onStatusChange('pending')}
+              onPress={() => onStatusChange(item.id, 'pending')}
             >
               <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
             </TouchableOpacity>
@@ -230,7 +230,7 @@ const CardItem = React.memo(function CardItem({
           {currentStatus === 'pool' && onStatusChange && hasPerm('perm_idcard_retrieve') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
-              onPress={() => onStatusChange('pending')}
+              onPress={() => onStatusChange(item.id, 'pending')}
             >
               <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
             </TouchableOpacity>
@@ -249,7 +249,7 @@ const CardItem = React.memo(function CardItem({
               <IconTrash size={12} color={colors.red} />
             </TouchableOpacity>
           )}
-        </HStack>
+        </Wrap>
       </View>
     </View>
   );
@@ -277,7 +277,7 @@ const s = StyleSheet.create({
   checkboxSmall: { width: 14, height: 14, borderRadius: radius.xs, borderWidth: 1, borderColor: colors.gray300, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   checkboxCheckedSmall: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
   checkboxLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500 },
-  rightActions: { flexDirection: 'row', alignItems: 'center' },
+  rightActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', flex: 1 },
   iconBtn: { width: 30, height: 30, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#f1f5f9' },
   premiumBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   premiumBtnText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },

@@ -4,7 +4,7 @@ import { IconSearch, IconFilter, IconPlus, IconTrash, IconEdit, IconClose, IconC
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
-import { ListSkeleton } from '../components/Skeleton';
+import { StaffManageSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import ConfirmModal from '../components/ConfirmModal';
 import { apiGet, apiPost } from '../api/client';
@@ -218,7 +218,7 @@ export default function StaffManageScreen({ navigation, route }) {
         )}
       </View>
 
-      {error ? <ErrorBanner message={error} onRetry={refresh} /> : loading && !refreshing ? <ListSkeleton count={6} /> : (
+      {error ? <ErrorBanner message={error} onRetry={refresh} /> : loading && !refreshing ? <StaffManageSkeleton /> : (
         <FlatList data={filtered} renderItem={renderItem} keyExtractor={item => item.id.toString()} contentContainerStyle={s.list} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandPrimary} />} ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>No members found</Text></View>} />
       )}
 

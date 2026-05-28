@@ -306,10 +306,23 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Phase 1: Photo upload removed - using avatar placeholder
         
-        // Reset all permission toggles to unchecked (OFF by default for new clients)
+        // Reset all permission toggles to default (OFF by default, except the 16 auto-on permissions for new clients)
+        var defaultOnPerms = [
+          'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_approved_list',
+          'perm_idcard_download_list', 'perm_idcard_pool_list', 'perm_idcard_add', 'perm_idcard_edit',
+          'perm_idcard_info', 'perm_idcard_delete', 'perm_idcard_approve', 'perm_idcard_verify',
+          'perm_idcard_updated_at', 'perm_idcard_retrieve', 'perm_idcard_bulk_download',
+          'perm_idcard_client_list', 'perm_set_temp_password'
+        ];
         NS.permissionFields.forEach(function(field) {
           var el = document.getElementById(field);
-          if (el) el.checked = false;
+          if (el) {
+            if (mode === 'add') {
+              el.checked = defaultOnPerms.includes(field);
+            } else {
+              el.checked = false;
+            }
+          }
         });
         
         if (mode === 'add') {

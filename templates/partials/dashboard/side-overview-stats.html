@@ -54,6 +54,17 @@
         <span class="card-overview-value">{{ overview_operators_count|default:0 }}</span>
       </a>
 
+      {% if is_super_admin or is_admin_staff %}
+      <div class="card-overview-item card-overview-item-static">
+        <div class="card-overview-left">
+          <div class="card-overview-icon active-staff">
+            <i class="fa-solid fa-user-gear"></i>
+          </div>
+          <span class="card-overview-label">Assistents</span>
+        </div>
+        <span class="card-overview-value">{{ overview_assistents_count|default:0 }}</span>
+      </div>
+      {% else %}
       <a href="{% url 'manage_client_staff' %}" class="card-overview-item" title="Open Manage Assistent">
         <div class="card-overview-left">
           <div class="card-overview-icon active-staff">
@@ -63,6 +74,7 @@
         </div>
         <span class="card-overview-value">{{ overview_assistents_count|default:0 }}</span>
       </a>
+      {% endif %}
     </div>
   </div>
 </div>

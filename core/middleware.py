@@ -983,7 +983,7 @@ class SecurityHeadersMiddleware:
         allowed_suffixes = (
             '/manage-clients',
             '/manage-staff',
-            '/manage-client-staff',
+            # admin manage-client-staff removed
         )
         return any(normalized_path.endswith(suffix) for suffix in allowed_suffixes)
 

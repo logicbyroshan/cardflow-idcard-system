@@ -1,11 +1,12 @@
 import React, { useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, typography, spacing, radius, shadows, fontFamily } from '../theme';
 import useRefreshableResource from '../hooks/useRefreshableResource';
+import { NotificationsSkeleton } from '../components/Skeleton';
 
 const ICON_MAP = { green: { bg: '#dcfce7', c: '#22c55e' }, blue: { bg: '#dbeafe', c: '#3b82f6' }, purple: { bg: '#ede9fe', c: '#8b5cf6' }, yellow: { bg: '#fef3c7', c: '#f59e0b' }, red: { bg: '#fef2f2', c: '#ef4444' }, orange: { bg: '#ffedd5', c: '#f97316' } };
 
@@ -54,7 +55,7 @@ export default function NotificationsScreen({ navigation }) {
       <TopBar title="Notifications" subtitle="Activity & updates" onBack={() => navigation.goBack()} />
       {error && <ErrorBanner message={error} onDismiss={() => refresh()} onRetry={() => refresh()} />}
       {loading ? (
-        <View style={s.loadingWrap}><ActivityIndicator size="large" color={colors.brandLight} /></View>
+        <NotificationsSkeleton />
       ) : (
         <FlatList
           data={notifications}

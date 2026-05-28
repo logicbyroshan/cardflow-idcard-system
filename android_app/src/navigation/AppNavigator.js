@@ -30,6 +30,7 @@ import ReprintScreen from '../screens/ReprintScreen';
 import ClientGroupsScreen from '../screens/ClientGroupsScreen';
 import ReprintDetailScreen from '../screens/ReprintDetailScreen';
 import PermissionsScreen from '../screens/PermissionsScreen';
+import GroupSettingsScreen from '../screens/GroupSettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -86,6 +87,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Camera" component={CameraScreen} />
           <Stack.Screen name="Reprint" component={ReprintScreen} />
           <Stack.Screen name="ReprintDetail" component={ReprintDetailScreen} />
+          <Stack.Screen name="GroupSettings" component={GroupSettingsScreen} />
         </>
       )}
     </Stack.Navigator>

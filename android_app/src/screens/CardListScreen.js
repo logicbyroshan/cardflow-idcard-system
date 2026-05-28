@@ -276,11 +276,28 @@ export default function CardListScreen({ navigation, route }) {
     } else if (currentStatus === 'verified' && statusStr === 'approved') {
       title = 'Approve Selected Cards?'; icon = 'thumbs-up'; color = '#3b82f6';
       note  = `This will move ${selectedIds.size} selected records to Approved list.`;
+    } else if (currentStatus === 'verified' && statusStr === 'pending') {
+      title = 'Unverify Selected Cards?'; icon = 'redo'; color = '#f59e0b';
+      note  = `This will move ${selectedIds.size} selected records back to Pending list.`;
+    } else if (currentStatus === 'approved' && statusStr === 'verified') {
+      title = 'Disapprove Selected Cards?'; icon = 'redo'; color = '#f59e0b';
+      note  = `This will move ${selectedIds.size} selected records back to Verified list.`;
+    } else if (currentStatus === 'download' && statusStr === 'pending') {
+      title = 'Retrieve Selected Cards?'; icon = 'redo'; color = '#3b82f6';
+      note  = `This will move ${selectedIds.size} selected records back to Pending list.`;
+    } else if (currentStatus === 'pool' && statusStr === 'pending') {
+      title = 'Retrieve Selected Cards?'; icon = 'redo'; color = '#3b82f6';
+      note  = `This will move ${selectedIds.size} selected records back to Pending list.`;
     } else if (statusStr === 'pool') {
       title   = 'Delete Selected Cards?';
       message = `Are you sure you want to delete ${selectedIds.size} records?`;
       icon    = 'trash'; color = colors.red;
       note    = `This will move ${selectedIds.size} selected records to the Pool list.`;
+    } else if (statusStr === 'permanent_delete') {
+      title   = 'Permanently Delete Selected?';
+      message = `Are you sure you want to permanently delete ${selectedIds.size} records?`;
+      icon    = 'trash'; color = colors.red;
+      note    = 'WARNING: This action cannot be undone and will permanently erase these records from the database.';
     } else {
       const opt = STATUS_OPTIONS.find(o => o.key === statusStr) || STATUS_OPTIONS[0];
       title = `${opt?.label} Selected Cards?`;
@@ -294,13 +311,21 @@ export default function CardListScreen({ navigation, route }) {
         setBulkLoading(true);
         try {
           const idsArray = Array.from(selectedIds);
-          const { data } = await apiPost(`/api/mobile/table/${tableId}/bulk-status/`, {
-            card_ids: idsArray,
-            status: statusStr,
-          });
+          let res;
+          if (statusStr === 'permanent_delete') {
+            res = await apiPost(`/api/table/${tableId}/cards/bulk-delete/`, {
+              card_ids: idsArray,
+            });
+          } else {
+            res = await apiPost(`/api/mobile/table/${tableId}/bulk-status/`, {
+              card_ids: idsArray,
+              status: statusStr,
+            });
+          }
+          const { data } = res;
           if (data?.success) {
             showToast(data.message || 'Updated successfully', 'success');
-            updateCardStateLocally(idsArray, currentStatus, statusStr);
+            updateCardStateLocally(idsArray, currentStatus, statusStr === 'permanent_delete' ? null : statusStr);
             exitSelectMode();
           } else {
             showToast(data?.message || 'Update failed', 'error');
@@ -326,7 +351,8 @@ export default function CardListScreen({ navigation, route }) {
     } catch (_e) { showToast('Network error', 'error'); }
   }, [showToast, currentStatus, updateCardStateLocally]);
 
-  const handleSingleDelete = useCallback((id) => {
+  const handleSingleDelete = useCallback((cardOrId) => {
+    const id = (cardOrId && typeof cardOrId === 'object') ? cardOrId.id : cardOrId;
     setConfirmModal({
       visible: true, title: 'Delete Card?',
       message: 'Are you sure you want to delete this record?',
@@ -436,6 +462,12 @@ export default function CardListScreen({ navigation, route }) {
   );
 
   const isClientRole = perms.role === 'client' || perms.role === 'client_staff';
+  const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list;
+
+  const handleEditCard = useCallback((card) => {
+    setEditingCardId(card.id);
+    setShowForm(true);
+  }, []);
 
   const renderItem = useCallback(({ item }) => {
     const isClient = perms.role === 'client' || perms.role === 'client_staff';
@@ -443,23 +475,23 @@ export default function CardListScreen({ navigation, route }) {
     const canDelete = perms.perm_idcard_delete && currentStatus === 'pending' && !isClient;
     const statusChangeHandler = isClient && ['approved', 'download', 'pool'].includes(currentStatus)
       ? undefined
-      : (s => handleStatusChange(item.id, s));
+      : handleStatusChange;
 
     return (
       <CardItem
         item={item}
         showCheckbox={!isClient || perms.perm_idcard_verify || perms.perm_idcard_approve}
         isSelected={selectedIds.has(item.id)}
-        onToggleSelect={() => toggleSelect(item.id)}
-        onEdit={canEdit ? () => { setEditingCardId(item.id); setShowForm(true); } : undefined}
+        onToggleSelect={toggleSelect}
+        onEdit={canEdit ? handleEditCard : undefined}
         currentStatus={currentStatus}
         onStatusChange={statusChangeHandler}
-        onDelete={canDelete ? () => handleSingleDelete(item.id) : undefined}
+        onDelete={canDelete ? handleSingleDelete : undefined}
         onReprint={(perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
         permissions={perms}
       />
     );
-  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint]);
+  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -469,6 +501,10 @@ export default function CardListScreen({ navigation, route }) {
         subtitle={tableName}
         onBack={(selectMode && (!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve)) ? exitSelectMode : () => navigation.goBack()}
         onAdd={(currentStatus === 'pending' && perms.perm_idcard_add) ? () => { setEditingCardId(null); setShowForm(true); } : undefined}
+        rightAction={hasReprintPerm ? {
+          onPress: () => navigation.navigate('ReprintDetail', { tableId }),
+          icon: 'redo'
+        } : undefined}
       />
 
       {/* Status tabs */}
@@ -574,8 +610,17 @@ export default function CardListScreen({ navigation, route }) {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.fActions}>
               {currentStatus === 'pending'  && perms.perm_idcard_verify  && <FBtn icon="check"        label="VERIFY SELECTED"  disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
+              {currentStatus === 'pending'  && perms.perm_idcard_delete  && <FBtn icon="trash"        label="DELETE SELECTED"  color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
+              
               {currentStatus === 'verified' && perms.perm_idcard_approve && <FBtn icon="check-double" label="APPROVE SELECTED" disabled={bulkLoading} onPress={() => handleBulkStatus('approved')} />}
-              {perms.perm_idcard_delete && <FBtn icon="trash" label="DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
+              {currentStatus === 'verified' && perms.perm_idcard_verify  && <FBtn icon="redo"         label="UNVERIFY SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              
+              {currentStatus === 'approved' && perms.perm_idcard_approve && <FBtn icon="redo"         label="DISAPPROVE SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
+              
+              {currentStatus === 'download' && perms.perm_idcard_retrieve && <FBtn icon="redo"         label="RETRIEVE SELECTED" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              
+              {currentStatus === 'pool'     && perms.perm_idcard_retrieve && <FBtn icon="redo"         label="RETRIEVE FROM POOL" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              {currentStatus === 'pool'     && perms.perm_idcard_delete_from_pool && <FBtn icon="trash" label="PERMANENTLY DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('permanent_delete')} />}
             </ScrollView>
           </LinearGradient>
         </View>

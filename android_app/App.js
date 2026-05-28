@@ -1,19 +1,122 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox, ActivityIndicator, TouchableOpacity } from 'react-native';
 // LogBox.ignoreAllLogs();
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AuthProvider } from './src/context/AuthContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import NetworkGuard from './src/components/NetworkGuard';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { colors } from './src/theme';
 
 const { width, height } = Dimensions.get('window');
+
+const navigationRef = createNavigationContainerRef();
+
+function AppContent() {
+  const { isAuthenticated, isImpersonating, user, stopImpersonation } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [stopping, setStopping] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(0.6)).current;
+
+  const prevImpersonatingRef = useRef(isImpersonating);
+
+  useEffect(() => {
+    if (prevImpersonatingRef.current && !isImpersonating && isAuthenticated) {
+      if (navigationRef.isReady()) {
+        navigationRef.reset({
+          index: 0,
+          routes: [{ name: 'ClientsList' }],
+        });
+      }
+    }
+    prevImpersonatingRef.current = isImpersonating;
+  }, [isImpersonating, isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && isImpersonating) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0.6,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      return () => animation.stop();
+    }
+  }, [pulseAnim, isAuthenticated, isImpersonating]);
+
+  const handleStop = async () => {
+    setStopping(true);
+    try {
+      await stopImpersonation();
+    } catch (err) {
+      console.log('Error stopping impersonation:', err);
+    } finally {
+      setStopping(false);
+    }
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      {isAuthenticated && isImpersonating && (
+        <View style={[styles.impersonateBanner, { paddingTop: insets.top }]}>
+          <View style={styles.bannerContent}>
+            <View style={styles.bannerTextContainer}>
+              <View style={styles.pulseContainer}>
+                <Animated.View 
+                  style={[
+                    styles.pulseOuterDot, 
+                    {
+                      transform: [{ scale: pulseAnim }],
+                      opacity: pulseAnim.interpolate({
+                        inputRange: [0.6, 1.2],
+                        outputRange: [0.8, 0],
+                      })
+                    }
+                  ]} 
+                />
+                <View style={styles.pulseDot} />
+              </View>
+              <Text style={styles.bannerText} numberOfLines={1} ellipsizeMode="tail">
+                Impersonating: <Text style={styles.bannerUserText}>{user?.name || 'Client'}</Text>
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.bannerButton} 
+              onPress={handleStop}
+              disabled={stopping}
+              activeOpacity={0.8}
+            >
+              {stopping ? (
+                <ActivityIndicator size="small" color="#ef4444" style={{ width: 32, height: 14 }} />
+              ) : (
+                <Text style={styles.bannerButtonText}>STOP</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      <NetworkGuard>
+        <NavigationContainer ref={navigationRef}>
+          <AppNavigator />
+        </NavigationContainer>
+      </NetworkGuard>
+    </View>
+  );
+}
 
 export default function App() {
   const [appReady, setAppReady] = useState(false);
@@ -81,11 +184,7 @@ export default function App() {
           ) : (
             <AuthProvider>
               <StatusBar style="light" />
-              <NetworkGuard>
-                <NavigationContainer>
-                  <AppNavigator />
-                </NavigationContainer>
-              </NetworkGuard>
+              <AppContent />
             </AuthProvider>
           )}
         </ErrorBoundary>
@@ -138,5 +237,82 @@ const splash = StyleSheet.create({
     fontSize: 9, 
     color: 'rgba(255,255,255,0.3)', 
     letterSpacing: 2 
+  },
+});
+
+const styles = StyleSheet.create({
+  impersonateBanner: {
+    backgroundColor: '#ef4444',
+    borderBottomWidth: 1,
+    borderBottomColor: '#dc2626',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  bannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  bannerTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  pulseContainer: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+  },
+  pulseOuterDot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#ffffff',
+  },
+  bannerText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: 'SairaSemiCondensed-Medium',
+  },
+  bannerUserText: {
+    fontFamily: 'SairaSemiCondensed-Bold',
+    textTransform: 'uppercase',
+  },
+  bannerButton: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+  },
+  bannerButtonText: {
+    color: '#ef4444',
+    fontSize: 11,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    letterSpacing: 0.5,
   },
 });

@@ -63,6 +63,9 @@ class IDCardCardService(BaseService):
             client_id = int(getattr(getattr(table, 'group', None), 'client_id', 0) or 0)
             if client_id > 0:
                 CacheVersionService.bump('class_section', client_id)
+                CacheVersionService.bump('client_dash_counts', f'client:{client_id}')
+            
+            CacheVersionService.bump('admin_dash_counts', 'global')
         except Exception as exc:
             logger.debug('IDCardCardService cache version bump failed: %s', exc)
 

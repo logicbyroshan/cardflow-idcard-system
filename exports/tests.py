@@ -477,6 +477,36 @@ class ExportViewHelperTests(TestCase):
         self.assertTrue(gen_opts.get('compress_enabled'))
         self.assertEqual(gen_opts.get('target_size_kb'), 200)
 
+
+class PdfExporterUnitTests(SimpleTestCase):
+    """Lightweight unit tests for PdfExporter helper methods that don't need DB."""
+
+    def test_build_rows_uses_datauri_when_placeholder_missing(self):
+        from types import SimpleNamespace
+        from exports.pdf import PdfExporter, _PLACEHOLDER_IMAGE_PATH
+
+        # Ensure placeholder is absent for this test environment
+        try:
+            if _PLACEHOLDER_IMAGE_PATH and os.path.isfile(_PLACEHOLDER_IMAGE_PATH):
+                os.remove(_PLACEHOLDER_IMAGE_PATH)
+        except Exception:
+            pass
+
+        ordered_fields = [
+            {'name': 'PHOTO', 'type': 'image', 'is_image': True, 'image_width_cm': 1.95, 'image_height_cm': 2.5}
+        ]
+
+        # Minimal card-like object with field_data attribute
+        card = SimpleNamespace(field_data={'PHOTO': 'NOT_FOUND'})
+        exporter = PdfExporter()
+
+        rows = exporter._build_rows(ordered_fields, [card], column_configs=[{'is_image': False}, {'is_image': True, 'image_width_cm': 1.95, 'image_height_cm': 2.5}])
+        self.assertTrue(rows)
+        # The image cell content should be either a file URI or data URI; ensure no exception occurred
+        img_cell = rows[0][1]
+        self.assertIn('content', img_cell)
+        self.assertTrue(isinstance(img_cell['content'], str) and (img_cell['content'].startswith('file:') or img_cell['content'].startswith('data:')))
+
     def test_lock_acquire_and_release(self):
         from exports.views import _acquire_export_lock, _release_export_lock
 

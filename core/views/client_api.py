@@ -82,98 +82,17 @@ def _has_manage_client_page_permission(user):
 
 
 def _has_manage_client_staff_page_permission(user):
-    """Return True when user can use Manage Assistent operations."""
-    return (
-        PermissionService.is_super_admin(user)
-        or PermissionService.has(user, 'perm_idcard_client_list')
-        or PermissionService.has(user, 'perm_manage_client_staff')
-    )
+    """(Deprecated) Admin Manage Assistant permission checker removed.
+    Admin-side Manage Assistant functionality has been removed — client-side assistant
+    features remain unaffected.
+    """
+    return False
 
 
 def _manage_client_permission_denied_response():
     """Standard deny payload for missing Manage Client permission."""
     return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
 
-
-def _manage_client_staff_permission_denied_response():
-    """Standard deny payload for missing Manage Assistent permission."""
-    return JsonResponse({'success': False, 'message': 'Manage Assistent permission required'}, status=403)
-
-
-def _serialize_admin_client_staff(staff_obj, include_permissions=True):
-    data = StaffService.serialize(staff_obj, include_permissions=include_permissions)
-    data['client_id'] = staff_obj.client_id
-    data['client_name'] = getattr(staff_obj.client, 'name', '')
-    data['assigned_group_ids'] = list(staff_obj.assigned_groups.values_list('id', flat=True))
-    data['assigned_table_ids'] = list(staff_obj.assigned_table_ids or [])
-    data['allowed_classes'] = list(staff_obj.allowed_classes or [])
-    data['allowed_sections'] = list(staff_obj.allowed_sections or [])
-    data['allowed_branches'] = list(staff_obj.allowed_branches or [])
-    data['assignment_scopes'] = list(staff_obj.assignment_scopes or [])
-    return data
-
-
-def _staff_assignment_snapshot(staff_obj):
-    """Normalized assignment state for activity timeline diff logging."""
-    if not staff_obj:
-        return {
-            'client_ids': [],
-            'group_ids': [],
-            'table_ids': [],
-            'classes': [],
-            'sections': [],
-            'branches': [],
-            'scope_count': 0,
-        }
-
-    table_ids = []
-    for value in (staff_obj.assigned_table_ids or []):
-        try:
-            num = int(str(value).strip())
-        except (TypeError, ValueError):
-            continue
-        if num > 0:
-            table_ids.append(num)
-
-    return {
-        'client_ids': [int(staff_obj.client_id)] if getattr(staff_obj, 'client_id', None) else [],
-        'group_ids': list(staff_obj.assigned_groups.values_list('id', flat=True)),
-        'table_ids': table_ids,
-        'classes': list(staff_obj.allowed_classes or []),
-        'sections': list(staff_obj.allowed_sections or []),
-        'branches': list(staff_obj.allowed_branches or []),
-        'scope_count': len(staff_obj.assignment_scopes or []),
-    }
-
-
-def _build_admin_client_staff_payload(payload):
-    data = {}
-    for key in ('name', 'email', 'phone', 'address', 'is_active', 'password'):
-        if key in payload:
-            data[key] = payload.get(key)
-
-    # Preserve assignment payload fields when present (assign drawer updates).
-    for key in (
-        'assigned_groups',
-        'assigned_group_ids',
-        'assigned_table_ids',
-        'assignment_id_source',
-        'allowed_classes',
-        'allowed_sections',
-        'allowed_branches',
-        'assignment_scopes',
-    ):
-        if key in payload:
-            data[key] = payload.get(key)
-
-    for perm in CLIENT_STAFF_ALLOWED_PERMISSION_FIELDS:
-        if perm in payload:
-            data[perm] = payload.get(perm)
-
-    # Sensitive permissions are never delegable to client staff.
-    data['perm_idcard_approve'] = False
-    data['perm_idcard_delete_from_pool'] = False
-    return data
 
 
 def _parse_client_id(raw_client_id):
@@ -620,441 +539,63 @@ def api_client_set_temp_password(request, client_id):
 @api_require_any_admin
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='admin_client_staff_clients')
 def api_admin_client_staff_clients(request):
-    """List clients that can be assigned to client staff from admin pages."""
-    if not _has_manage_client_staff_page_permission(request.user):
-        return _manage_client_staff_permission_denied_response()
-
-    clients_qs = Client.objects.select_related('user').order_by('name')
-    if PermissionService.is_super_admin(request.user):
-        pass
-    else:
-        accessible_ids = PermissionService.get_accessible_client_ids(request.user)
-        clients_qs = clients_qs.filter(id__in=accessible_ids)
-
-    return JsonResponse({
-        'success': True,
-        'clients': [
-            {
-                'id': c.id,
-                'name': c.name,
-                'status': c.status,
-                'is_user_active': bool(c.user and c.user.is_active),
-            }
-            for c in clients_qs
-        ],
-    })
+    # Admin client-staff listing removed: admin Manage Assistant feature deprecated.
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["GET"])
 @api_require_any_admin
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='admin_client_staff_get')
 def api_admin_client_staff_get(request, staff_id):
-    """Get details for a client staff member from admin pages."""
-    if not _has_manage_client_staff_page_permission(request.user):
-        return _manage_client_staff_permission_denied_response()
-
-    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
-    if denied_response:
-        return denied_response
-
-    return JsonResponse({
-        'success': True,
-        'staff': _serialize_admin_client_staff(staff_obj, include_permissions=True),
-    })
+    # Admin endpoint removed
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["POST"])
 @api_require_any_admin
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='admin_client_staff_create')
 def api_admin_client_staff_create(request):
-    """Create a client staff member from admin pages."""
-    if not _has_manage_client_staff_page_permission(request.user):
-        return _manage_client_staff_permission_denied_response()
-
-    try:
-        payload = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
-
-    client_id = _parse_client_id(payload.get('client_id'))
-    if not client_id:
-        return JsonResponse({'success': False, 'message': 'Please select a client'}, status=400)
-    if not _check_admin_staff_client_access(request.user, client_id):
-        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
-
-    client_obj = Client.objects.filter(id=client_id).first()
-    if not client_obj:
-        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
-
-    data = _build_admin_client_staff_payload(payload)
-    result = StaffService.create(
-        data,
-        staff_type='client_staff',
-        client=client_obj,
-        request=request,
-    )
-    if not result.success:
-        return JsonResponse(result.to_response_dict(), status=400)
-
-    created_staff_id = ((result.data or {}).get('staff') or {}).get('id')
-    created_staff = (
-        Staff.objects
-        .filter(id=created_staff_id, staff_type='client_staff')
-        .select_related('user', 'client')
-        .prefetch_related('assigned_groups')
-        .first()
-    )
-
-    if created_staff:
-        try:
-            ActivityService.log_staff_create(request, created_staff)
-            ActivityService.log_staff_assignment_change(
-                request,
-                created_staff,
-                before_snapshot={},
-                after_snapshot=_staff_assignment_snapshot(created_staff),
-                reason='created',
-            )
-        except Exception:
-            logger.exception('Failed to log client staff create timeline for staff_id=%s', created_staff.id)
-
-    return JsonResponse({
-        'success': True,
-        'message': result.message,
-        'staff': _serialize_admin_client_staff(created_staff, include_permissions=True) if created_staff else None,
-    })
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["POST", "PUT"])
 @api_require_any_admin
 @rate_limit(max_requests=15, window_seconds=60, key_prefix='admin_client_staff_update')
 def api_admin_client_staff_update(request, staff_id):
-    """Update a client staff member from admin pages."""
-    if not _has_manage_client_staff_page_permission(request.user):
-        return _manage_client_staff_permission_denied_response()
-
-    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
-    if denied_response:
-        return denied_response
-
-    try:
-        payload = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
-
-    incoming_client_id = _parse_client_id(payload.get('client_id'))
-    if incoming_client_id and incoming_client_id != staff_obj.client_id:
-        return JsonResponse({'success': False, 'message': 'Changing assigned client is not supported. Create a new staff for another client.'}, status=400)
-
-    data = _build_admin_client_staff_payload(payload)
-    before_assignment_snapshot = _staff_assignment_snapshot(staff_obj)
-
-    result = StaffService.update(staff_obj.id, data)
-    if not result.success:
-        return JsonResponse(result.to_response_dict(), status=400)
-
-    refreshed = (
-        Staff.objects
-        .filter(id=staff_obj.id, staff_type='client_staff')
-        .select_related('user', 'client')
-        .prefetch_related('assigned_groups')
-        .first()
-    )
-
-    if refreshed:
-        try:
-            ActivityService.log_staff_update(request, refreshed)
-            ActivityService.log_staff_assignment_change(
-                request,
-                refreshed,
-                before_snapshot=before_assignment_snapshot,
-                after_snapshot=_staff_assignment_snapshot(refreshed),
-                reason='updated',
-            )
-        except Exception:
-            logger.exception('Failed to log client staff update timeline for staff_id=%s', refreshed.id)
-
-    return JsonResponse({
-        'success': True,
-        'message': result.message,
-        'staff': _serialize_admin_client_staff(refreshed, include_permissions=True) if refreshed else None,
-    })
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["POST", "DELETE"])
 @api_require_any_admin
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='admin_client_staff_delete')
 def api_admin_client_staff_delete(request, staff_id):
-    """Delete a client staff member from admin pages."""
-    if not _has_manage_client_staff_page_permission(request.user):
-        return _manage_client_staff_permission_denied_response()
-
-    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
-    if denied_response:
-        return denied_response
-
-    result = StaffService.delete(staff_obj.id)
-    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["POST"])
 @api_require_any_admin
 @rate_limit(max_requests=20, window_seconds=60, key_prefix='admin_client_staff_toggle')
 def api_admin_client_staff_toggle_status(request, staff_id):
-    """Toggle active/inactive status for a client staff member from admin pages."""
-    if not _has_manage_client_staff_page_permission(request.user):
-        return _manage_client_staff_permission_denied_response()
-
-    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
-    if denied_response:
-        return denied_response
-
-    result = StaffService.toggle_status(staff_obj.id)
-    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["POST"])
 @api_require_any_admin
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='admin_client_staff_temp_pw')
 def api_admin_client_staff_set_temp_password(request, staff_id):
-    """Set temporary password for a client staff member from admin pages."""
-    if not _has_manage_client_staff_page_permission(request.user):
-        return _manage_client_staff_permission_denied_response()
-
-    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
-    if denied_response:
-        return denied_response
-
-    try:
-        payload = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
-
-    new_password = (payload.get('password') or '').strip()
-    if not new_password:
-        return JsonResponse({'success': False, 'message': 'Password is required'}, status=400)
-    if len(new_password) < 8:
-        return JsonResponse({'success': False, 'message': 'Password must be at least 8 characters'}, status=400)
-
-    from django.contrib.auth.password_validation import validate_password
-    try:
-        validate_password(new_password, user=staff_obj.user)
-    except Exception as validation_error:
-        return JsonResponse({'success': False, 'message': '; '.join(validation_error.messages)}, status=400)
-
-    result = StaffService.set_temp_password(staff_obj.id, new_password, request=request)
-    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["GET"])
 @api_require_any_admin
 def api_admin_client_class_section_options(request, client_id):
-    """
-    API: Get distinct class and section values from all cards of a specific client.
-    Used by admin side assistant management to assign classes/sections.
-    """
-    from idcards.models import IDCard, IDCardTable
-    from idcards.models import IDCardGroup
-
-    if not _check_admin_staff_client_access(request.user, client_id):
-        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
-
-    client = Client.objects.filter(id=client_id).first()
-    if not client:
-        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
-
-    raw_group_ids = request.GET.get('group_ids', '').strip()
-    id_source = (request.GET.get('id_source', '') or '').strip().lower()
-    if id_source not in ('group', 'table'):
-        id_source = 'auto'
-
-    resolved_id_source = id_source
-    if resolved_id_source == 'auto':
-        group_count = IDCardGroup.objects.filter(client=client).count()
-        resolved_id_source = 'table' if group_count <= 1 else 'group'
-
-    group_ids = []
-    if raw_group_ids:
-        try:
-            group_ids = sorted({int(x) for x in raw_group_ids.split(',') if str(x).strip().isdigit()})
-        except Exception:
-            group_ids = []
-
-    # Resolve effective tables.
-    tables_qs = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
-
-    if group_ids:
-        valid_group_ids = set(
-            IDCardGroup.objects.filter(client=client, id__in=group_ids).values_list('id', flat=True)
-        )
-        valid_table_ids = set(
-            IDCardTable.objects.filter(group__client=client, id__in=group_ids).values_list('id', flat=True)
-        )
-
-        if resolved_id_source == 'table':
-            if valid_table_ids:
-                tables_qs = tables_qs.filter(id__in=list(valid_table_ids))
-            elif valid_group_ids:
-                tables_qs = tables_qs.filter(group_id__in=list(valid_group_ids))
-            else:
-                tables_qs = tables_qs.none()
-        elif resolved_id_source == 'group':
-            if valid_group_ids:
-                tables_qs = tables_qs.filter(group_id__in=list(valid_group_ids))
-            elif valid_table_ids:
-                tables_qs = tables_qs.filter(id__in=list(valid_table_ids))
-            else:
-                tables_qs = tables_qs.none()
-
-    tables = list(tables_qs.values('id', 'fields'))
-
-    classes = set()
-    sections = set()
-    branches = set()
-    class_sections = {}
-    class_counts = {}
-    section_counts = {}
-    class_section_counts = {}
-    table_field_map = {}
-    has_class_field = False
-    has_section_field = False
-    has_branch_field = False
-
-    for table in tables:
-        class_field = None
-        section_field = None
-        branch_field = None
-        for field in (table.get('fields') or []):
-            ft = field.get('type', '').lower()
-            fn = field.get('name', '')
-            fn_lower = fn.lower()
-            if ft == 'class' or fn.lower() == 'class':
-                class_field = fn
-            elif ft == 'section' or fn.lower() == 'section':
-                section_field = fn
-            elif (
-                ft == 'branch'
-                or fn_lower == 'branch'
-                or fn_lower == 'stream'
-                or fn_lower == 'course'
-                or 'branch' in fn_lower
-                or 'stream' in fn_lower
-                or 'course' in fn_lower
-            ):
-                branch_field = fn
-
-        if class_field: has_class_field = True
-        if section_field: has_section_field = True
-        if branch_field: has_branch_field = True
-
-        if class_field or section_field or branch_field:
-            table_field_map[table['id']] = (class_field, section_field, branch_field)
-
-    table_ids = list(table_field_map.keys())
-    if table_ids:
-        cards = IDCard.objects.filter(table_id__in=table_ids).values_list('table_id', 'field_data').iterator(chunk_size=1000)
-    else:
-        cards = []
-
-    for table_id, fd in cards:
-        if not fd: continue
-        class_field, section_field, branch_field = table_field_map.get(table_id, (None, None, None))
-        class_val = ''
-        section_val = ''
-        if class_field:
-            val = fd.get(class_field, '') or fd.get(class_field.upper(), '') or fd.get(class_field.lower(), '')
-            if val:
-                class_val = str(val).strip()
-                if class_val: classes.add(class_val)
-        if section_field:
-            val = fd.get(section_field, '') or fd.get(section_field.upper(), '') or fd.get(section_field.lower(), '')
-            if val:
-                section_val = str(val).strip()
-                if section_val: sections.add(section_val)
-        if branch_field:
-            val = fd.get(branch_field, '') or fd.get(branch_field.upper(), '') or fd.get(branch_field.lower(), '')
-            if val:
-                branch_val = str(val).strip()
-                if branch_val: branches.add(branch_val)
-
-        if class_val:
-            if class_val not in class_sections:
-                class_sections[class_val] = set()
-            if section_val:
-                class_sections[class_val].add(section_val)
-            class_counts[class_val] = class_counts.get(class_val, 0) + 1
-        if section_val:
-            section_counts[section_val] = section_counts.get(section_val, 0) + 1
-        if class_val and section_val:
-            class_section_counts.setdefault(class_val, {})
-            class_section_counts[class_val][section_val] = class_section_counts[class_val].get(section_val, 0) + 1
-
-    return JsonResponse({
-        'success': True,
-        'resolved_id_source': resolved_id_source,
-        'classes': sorted(classes),
-        'sections': sorted(sections),
-        'branches': sorted(branches),
-        'has_class_field': has_class_field,
-        'has_section_field': has_section_field,
-        'has_branch_field': has_branch_field,
-        'class_sections': {k: sorted(v) for k, v in sorted(class_sections.items())},
-        'class_counts': {k: int(v) for k, v in sorted(class_counts.items())},
-        'section_counts': {k: int(v) for k, v in sorted(section_counts.items())},
-        'class_section_counts': {k: {sk: int(sv) for sk, sv in sorted(sv.items())} for k, sv in sorted(class_section_counts.items())},
-    })
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["GET"])
 @api_require_any_admin
 def api_admin_client_groups_list(request, client_id):
-    """
-    API: Get list of assignable groups for a specific client.
-    Similar to the client-side api_client_groups_list but for admin use.
-    """
-    from idcards.models import IDCardGroup, IDCardTable
-    from client.models import Client
-
-    if not _check_admin_staff_client_access(request.user, client_id):
-        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-
-    client = Client.objects.filter(id=client_id).first()
-    if not client:
-        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
-
-    groups_qs = IDCardGroup.objects.filter(client=client).order_by('name')
-    group_count = groups_qs.count()
-
-    # If only one group, show tables as assignable units (matches client-side behavior)
-    if group_count <= 1:
-        tables_qs = IDCardTable.objects.filter(
-            group__client=client,
-            deleted_by_client=False,
-        ).order_by('name').values('id', 'name', 'group_id')
-        groups_data = [
-            {
-                'id': t['id'],
-                'name': t['name'],
-                'group_id': t['group_id'],
-                'source': 'table',
-            }
-            for t in tables_qs
-        ]
-    else:
-        groups_data = [
-            {
-                'id': g.id,
-                'name': g.name,
-                'group_id': g.id,
-                'source': 'group',
-            }
-            for g in groups_qs
-        ]
-
-    return JsonResponse({
-        'success': True,
-        'groups': groups_data
-    })
+    return JsonResponse({'success': False, 'message': 'Admin Manage Assistant feature removed'}, status=404)
 
 
 @require_http_methods(["GET"])

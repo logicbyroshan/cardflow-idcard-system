@@ -1478,6 +1478,10 @@ def api_idcard_change_status(request, card_id):
             and str(new_status or '').strip().lower() == 'pending'
         )
 
+        if PermissionService.is_client_staff(request.user) and not is_pool_retrieve:
+            if not _is_card_in_client_staff_scope(request.user, card):
+                return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
         if is_pool_retrieve and not _is_card_in_client_staff_assignment_scope(request.user, card):
             apply_class_change = _as_bool(data.get('apply_class_change'))
             if apply_class_change:
@@ -1505,9 +1509,6 @@ def api_idcard_change_status(request, card_id):
                         **payload,
                     }, status=409)
                 return JsonResponse({'success': False, 'message': _POOL_RETRIEVE_SCOPE_MESSAGE}, status=409)
-
-                if not _is_card_in_client_staff_scope(request.user, card):
-                    return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
 
         from idcards.services_workflow import WorkflowService
         result = WorkflowService.transition(card, new_status, user=request.user, request=request)

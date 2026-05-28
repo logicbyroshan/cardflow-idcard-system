@@ -1,3 +1,4 @@
+{% load cache %}
 {% comment %}Cache staff table per-user and query params for short TTL to reduce DB load{% endcomment %}
 {% cache 20 client_staff_table request.user.id request.GET.page request.GET.per_page request.GET.search request.GET.status request.GET.client_id %}
 

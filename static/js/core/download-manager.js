@@ -95,10 +95,16 @@
         return false;
     }
 
+    function _getDownloadProgressPresenter() {
+        return window.IDCardApp && window.IDCardApp.downloadProgressPresenter ? window.IDCardApp.downloadProgressPresenter : null;
+    }
+
     // =========================================
     // BLOCKING OVERLAY HELPERS (Enhanced)
     // =========================================
     function _showBlockingOverlay(id, name, itemCount, lockUi) {
+        var presenterForOverlay = _getDownloadProgressPresenter();
+        if (presenterForOverlay && presenterForOverlay.isActive && presenterForOverlay.isActive()) return;
         var overlay = document.getElementById('blockingOverlay');
         if (!overlay) return;
         _currentOverlayId = id;
@@ -149,6 +155,8 @@
     }
 
     function _updateBlockingOverlay(id, pct, message, sizeInfo) {
+        var presenterForOverlay = _getDownloadProgressPresenter();
+        if (presenterForOverlay && presenterForOverlay.isActive && presenterForOverlay.isActive()) return;
         if (_currentOverlayId !== id) return;
         var overlay = document.getElementById('blockingOverlay');
         if (!overlay) return;
@@ -192,6 +200,8 @@
     }
 
     function _completeBlockingOverlay(id, success, message) {
+        var presenterForOverlay = _getDownloadProgressPresenter();
+        if (presenterForOverlay && presenterForOverlay.isActive && presenterForOverlay.isActive()) return;
         if (_currentOverlayId !== id) return;
         var overlay = document.getElementById('blockingOverlay');
         if (!overlay) return;
@@ -239,6 +249,8 @@
     }
 
     function _hideBlockingOverlay(id) {
+        var presenterForOverlay = _getDownloadProgressPresenter();
+        if (presenterForOverlay && presenterForOverlay.isActive && presenterForOverlay.isActive()) return;
         if (_currentOverlayId !== id) return;
         var overlay = document.getElementById('blockingOverlay');
         if (overlay) overlay.style.display = 'none';
@@ -268,6 +280,8 @@
     // CREATE A DOWNLOAD TOAST ELEMENT
     // =========================================
     function _createToast(id, name) {
+        var presenter = _getDownloadProgressPresenter();
+        if (presenter && presenter.isActive && presenter.isActive()) return null;
         var el = document.createElement('div');
         el.id = 'dl-toast-' + id;
         el.className = 'dl-toast dl-toast-active';
@@ -360,6 +374,15 @@
         dl.loaded = loaded;
         dl.total = total;
 
+        if (!dl.toastEl) {
+            var presenter = _getDownloadProgressPresenter();
+            if (presenter && presenter.isActive && presenter.isActive() && typeof presenter.update === 'function') {
+                var modalPct = total > 0 ? Math.min(Math.round((loaded / total) * 100), 100) : -1;
+                presenter.update('Downloading...', modalPct, '--');
+            }
+            return;
+        }
+
         var el = dl.toastEl;
         if (!el) return;
 
@@ -386,6 +409,16 @@
     // MARK TOAST AS COMPLETE / ERROR / CANCELLED
     // =========================================
     function _finishToast(dl, status, message) {
+        var presenter = _getDownloadProgressPresenter();
+        if (presenter && presenter.isActive && presenter.isActive()) {
+            if (status === 'complete' && typeof presenter.complete === 'function') {
+                presenter.complete(message);
+            } else if (status === 'cancelled' && typeof presenter.clear === 'function') {
+                presenter.clear();
+            } else if (typeof presenter.error === 'function') {
+                presenter.error(message);
+            }
+        }
         // Complete blocking overlay with success/error state
         var overlaySuccess = status === 'complete';
         var overlayMsg = message || (overlaySuccess ? 'Downloaded successfully!' : 'Download failed');
@@ -604,10 +637,20 @@
                 }
             } else if (!dl._indeterminateTimer) {
                 // No Content-Length  use time-based estimation (exponential approach to 85%)
+                var presenter = _getDownloadProgressPresenter();
+                if (dl.useModalProgress && presenter && presenter.isActive && presenter.isActive() && typeof presenter.update === 'function') {
+                    presenter.update('Downloading...', -1, '--');
+                }
                 var _indStart = Date.now();
                 dl._indeterminateTimer = setInterval(function() {
                     var bar = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-bar') : null;
                     var pctEl = dl.toastEl ? dl.toastEl.querySelector('.dl-toast-pct') : null;
+                    if (!bar && dl.useModalProgress && presenter && presenter.isActive && presenter.isActive() && typeof presenter.update === 'function') {
+                        var elapsedModal = (Date.now() - _indStart) / 1000;
+                        var estPctModal = Math.round(85 * (1 - Math.exp(-elapsedModal / 15)));
+                        presenter.update('Downloading...', estPctModal, '--');
+                        return;
+                    }
                     if (!bar) return;
                     bar.style.animation = '';
                     bar.dataset.indeterminate = '';
@@ -722,9 +765,11 @@
          */
         var id = _nextId++;
         var name = options.name || 'Download #' + id;
+        var presenter = _getDownloadProgressPresenter();
+        var useModalProgress = !!(presenter && presenter.isActive && presenter.isActive());
 
         // Create toast immediately
-        var toastEl = _createToast(id, name);
+        var toastEl = useModalProgress ? null : _createToast(id, name);
 
         _active[id] = {
             id: id,
@@ -735,8 +780,13 @@
             total: 0,
             toastEl: toastEl,
             status: 'pending',
-            skeletonStart: Date.now()
+            skeletonStart: Date.now(),
+            useModalProgress: useModalProgress
         };
+
+        if (useModalProgress && presenter && typeof presenter.prepare === 'function') {
+            presenter.prepare('Preparing download...', -1, function() { _cancel(id); });
+        }
 
         var activeCount = _getActiveCount();
 
@@ -775,6 +825,13 @@
     }
 
     function _updateToastQueued(dl) {
+        if (dl && dl.useModalProgress) {
+            var presenter = _getDownloadProgressPresenter();
+            if (presenter && presenter.isActive && presenter.isActive() && typeof presenter.update === 'function') {
+                presenter.update('Queued...', -1, 'Queued');
+            }
+            return;
+        }
         if (!dl || !dl.toastEl) return;
         var pctEl = dl.toastEl.querySelector('.dl-toast-pct');
         var etaEl = dl.toastEl.querySelector('.dl-toast-eta');
@@ -801,7 +858,9 @@
          */
         var id = _nextId++;
         var name = options.name || 'Images Download';
-        var toastEl = _createToast(id, name);
+        var presenter = _getDownloadProgressPresenter();
+        var useModalProgress = !!(presenter && presenter.isActive && presenter.isActive());
+        var toastEl = useModalProgress ? null : _createToast(id, name);
 
         _active[id] = {
             id: id,
@@ -812,7 +871,8 @@
             total: 0,
             toastEl: toastEl,
             status: 'downloading',
-            skeletonStart: Date.now()
+            skeletonStart: Date.now(),
+            useModalProgress: useModalProgress
         };
 
         var dl = _active[id];
@@ -827,7 +887,11 @@
         }
 
         // Show blocking overlay for image download with item count
-        _showBlockingOverlay(id, name, itemCount, !!options.lockUi);
+        if (!useModalProgress) {
+            _showBlockingOverlay(id, name, itemCount, !!options.lockUi);
+        } else if (presenter && typeof presenter.prepare === 'function') {
+            presenter.prepare('Preparing download...', -1, function() { _cancel(id); });
+        }
 
         var xhr = new XMLHttpRequest();
         dl.xhr = xhr;

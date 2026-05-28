@@ -121,12 +121,13 @@ export function AuthProvider({ children }) {
     const { ok, data } = await apiPost('/api/mobile/auth/login/', body);
 
     if (data.success) {
+      const u = data.user || {};
       const userData = enrichUser({
         email,
-        name: data.user_name || data.name || email,
-        role: data.role || '',
-        client_id: data.client_id,
-        phone: data.phone || '',
+        name: u.full_name || u.name || data.user_name || data.name || email,
+        role: u.role || data.role || '',
+        client_id: u.client_id || data.client_id,
+        phone: u.phone || data.phone || '',
         can_manage_clients: !!data.can_manage_clients,
         can_manage_staff: !!data.can_manage_staff,
         permissions: data.permissions || {},
@@ -139,44 +140,6 @@ export function AuthProvider({ children }) {
     }
 
     return { success: false, data };
-  }, []);
-
-  const logout = useCallback(async () => {
-    // Always clear local state first — even if server call fails
-    setUser(null);
-    setIsAuthenticated(false);
-    setIsImpersonating(false);
-    setOriginalUser(null);
-    try {
-      // Standard logout endpoint
-      await apiPost('/api/mobile/auth/logout/', {});
-    } catch (e) {
-      // Network failure during logout is fine — session will expire on server
-    }
-    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-    await AsyncStorage.removeItem('adarsh_impersonate_state');
-    await AsyncStorage.removeItem('adarsh_csrf_token');
-    await AsyncStorage.removeItem('adarsh_cookies');
-    await clearAuth();
-  }, []);
-
-  const checkSession = useCallback(async () => {
-    try {
-      const { ok, status } = await apiGet('/api/mobile/profile/');
-      if (status === 401 || status === 403) {
-        setUser(null);
-        setIsAuthenticated(false);
-        setIsImpersonating(false);
-        setOriginalUser(null);
-        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-        await AsyncStorage.removeItem('adarsh_impersonate_state');
-        await clearAuth();
-        return false;
-      }
-      return ok;
-    } catch (e) {
-      return false;
-    }
   }, []);
 
   const startImpersonation = useCallback(async (userId) => {
@@ -247,6 +210,49 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Network error' };
     }
   }, [originalUser]);
+
+  const logout = useCallback(async () => {
+    if (isImpersonating) {
+      const res = await stopImpersonation();
+      return res;
+    }
+
+    // Always clear local state first — even if server call fails
+    setUser(null);
+    setIsAuthenticated(false);
+    setIsImpersonating(false);
+    setOriginalUser(null);
+    try {
+      // Standard logout endpoint
+      await apiPost('/api/mobile/auth/logout/', {});
+    } catch (e) {
+      // Network failure during logout is fine — session will expire on server
+    }
+    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    await AsyncStorage.removeItem('adarsh_impersonate_state');
+    await AsyncStorage.removeItem('adarsh_csrf_token');
+    await AsyncStorage.removeItem('adarsh_cookies');
+    await clearAuth();
+  }, [isImpersonating, stopImpersonation]);
+
+  const checkSession = useCallback(async () => {
+    try {
+      const { ok, status } = await apiGet('/api/mobile/profile/');
+      if (status === 401 || status === 403) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsImpersonating(false);
+        setOriginalUser(null);
+        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+        await AsyncStorage.removeItem('adarsh_impersonate_state');
+        await clearAuth();
+        return false;
+      }
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }, []);
 
   const value = {
     user,

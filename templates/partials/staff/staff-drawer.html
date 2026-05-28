@@ -28,7 +28,9 @@ Refactored into sub-partials for maintainability.
                 <span class="text-xs text-gray-500">Operator avatar</span>
             </div>
 
+            {% if active_page == 'manage_client_staff' %}
             {% include 'partials/staff/staff-drawer-client-assignment.html' %}
+            {% endif %}
             
             {% include 'partials/staff/staff-drawer-info.html' %}
             

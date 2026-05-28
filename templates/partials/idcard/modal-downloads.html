@@ -1,5 +1,5 @@
 <!-- Download PDF Modal -->
-<div id="downloadPdfModal" class="center-modal-overlay center-modal-theme-purple" style="display:none;">
+<div id="downloadPdfModal" class="center-modal-overlay center-modal-theme-purple download-modal" style="display:none;">
   <div class="center-modal-card" @click.stop>
     <!-- Header -->
     <div class="center-modal-header">
@@ -8,6 +8,19 @@
     </div>
     <!-- Body -->
     <div class="center-modal-body-area">
+    <div class="download-modal-settings">
+      <div class="modal-stepper modal-stepper--wide download-modal-stepper" aria-hidden="true">
+        <div class="modal-step is-active" id="downloadPdfStep1Badge">
+          <span class="modal-step-dot">1</span>
+          <span class="modal-step-label">Options</span>
+        </div>
+        <div class="modal-stepper-line"></div>
+        <div class="modal-step" id="downloadPdfStep2Badge">
+          <span class="modal-step-dot">2</span>
+          <span class="modal-step-label">Download</span>
+        </div>
+      </div>
+      <div class="download-modal-settings-content">
     <p class="center-modal-subtitle">List: <strong id="downloadPdfListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadPdfCardCount">0</strong></p>
     
@@ -51,12 +64,21 @@
         <span class="text-sm text-gray-700">Break Pages By Class Only</span>
       </label>
     </div>
-    
-    <div id="downloadPdfProgress" class="center-modal-progress">
-      <div class="center-modal-progress-track">
-        <div id="downloadPdfBar" class="center-modal-progress-bar"></div>
       </div>
-      <p class="center-modal-progress-text" id="downloadPdfStatus">Preparing...</p>
+    </div>
+    <div id="downloadPdfProgressStep" class="download-modal-progress-step" style="display:none;">
+      <p class="download-modal-step-title">Step 2: Downloading</p>
+      <p class="center-modal-note mt-0 mb-2">Please keep this modal open while the file is generated and downloaded.</p>
+      <div id="downloadPdfProgress" class="center-modal-progress">
+        <div class="center-modal-progress-track">
+          <div id="downloadPdfBar" class="center-modal-progress-bar"></div>
+        </div>
+        <p class="center-modal-progress-text" id="downloadPdfStatus">Preparing...</p>
+      </div>
+      <div class="download-modal-progress-meta">
+        <span id="downloadPdfPercent" class="download-modal-progress-pct">0%</span>
+        <span id="downloadPdfEta" class="download-modal-progress-eta">--</span>
+      </div>
     </div>
     </div><!-- end body-area -->
     <!-- Footer -->
@@ -68,7 +90,7 @@
 </div>
 
 <!-- Download XLSX Modal -->
-<div id="downloadXlsxModal" class="center-modal-overlay center-modal-theme-purple" style="display:none;">
+<div id="downloadXlsxModal" class="center-modal-overlay center-modal-theme-purple download-modal" style="display:none;">
   <div class="center-modal-card" @click.stop>
     <!-- Header -->
     <div class="center-modal-header">
@@ -77,6 +99,19 @@
     </div>
     <!-- Body -->
     <div class="center-modal-body-area">
+    <div class="download-modal-settings">
+      <div class="modal-stepper modal-stepper--wide download-modal-stepper" aria-hidden="true">
+        <div class="modal-step is-active" id="downloadXlsxStep1Badge">
+          <span class="modal-step-dot">1</span>
+          <span class="modal-step-label">Options</span>
+        </div>
+        <div class="modal-stepper-line"></div>
+        <div class="modal-step" id="downloadXlsxStep2Badge">
+          <span class="modal-step-dot">2</span>
+          <span class="modal-step-label">Download</span>
+        </div>
+      </div>
+      <div class="download-modal-settings-content">
     <p class="center-modal-subtitle">List: <strong id="downloadXlsxListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadXlsxCardCount">0</strong></p>
     <p class="center-modal-note mt-0">Export all card data to an Excel spreadsheet.</p>
@@ -87,23 +122,33 @@
       </label>
       <p class="download-xlsx-option-note">Use this when you want XLSX and image ZIP in one action.</p>
     </div>
-    <div id="downloadXlsxProgress" class="center-modal-progress">
-      <div class="center-modal-progress-track">
-        <div id="downloadXlsxBar" class="center-modal-progress-bar"></div>
       </div>
-      <p class="center-modal-progress-text" id="downloadXlsxStatus">Preparing...</p>
+    </div>
+    <div id="downloadXlsxProgressStep" class="download-modal-progress-step" style="display:none;">
+      <p class="download-modal-step-title">Step 2: Downloading</p>
+      <p class="center-modal-note mt-0 mb-2">Please keep this modal open while the file is generated and downloaded.</p>
+      <div id="downloadXlsxProgress" class="center-modal-progress">
+        <div class="center-modal-progress-track">
+          <div id="downloadXlsxBar" class="center-modal-progress-bar"></div>
+        </div>
+        <p class="center-modal-progress-text" id="downloadXlsxStatus">Preparing...</p>
+      </div>
+      <div class="download-modal-progress-meta">
+        <span id="downloadXlsxPercent" class="download-modal-progress-pct">0%</span>
+        <span id="downloadXlsxEta" class="download-modal-progress-eta">--</span>
+      </div>
     </div>
     </div><!-- end body-area -->
     <!-- Footer -->
     <div class="center-modal-footer-area">
       <button id="downloadXlsxCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
-      <button id="downloadXlsxConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
+      <button id="downloadXlsxConfirm" class="center-modal-btn center-modal-btn-confirm">Download Xlsx</button>
     </div>
   </div>
 </div>
 
 <!-- Download Word Modal -->
-<div id="downloadDocxModal" class="center-modal-overlay center-modal-theme-purple" style="display:none;">
+<div id="downloadDocxModal" class="center-modal-overlay center-modal-theme-purple download-modal" style="display:none;">
   <div class="center-modal-card" @click.stop>
     <!-- Header -->
     <div class="center-modal-header">
@@ -112,30 +157,74 @@
     </div>
     <!-- Body -->
     <div class="center-modal-body-area">
+    <div class="download-modal-settings">
+      <div class="modal-stepper modal-stepper--wide download-modal-stepper" aria-hidden="true">
+        <div class="modal-step is-active" id="downloadDocxStep1Badge">
+          <span class="modal-step-dot">1</span>
+          <span class="modal-step-label">Options</span>
+        </div>
+        <div class="modal-stepper-line"></div>
+        <div class="modal-step" id="downloadDocxStep2Badge">
+          <span class="modal-step-dot">2</span>
+          <span class="modal-step-label">Download</span>
+        </div>
+      </div>
+      <div class="download-modal-settings-content">
     <p class="center-modal-subtitle">List: <strong id="downloadDocxListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadDocxCardCount">0</strong></p>
+    <p class="center-modal-note mt-0 mb-2">Choose the Word version in this same modal before downloading.</p>
+    <div class="docx-version-choice-group" id="downloadDocxFormatCards">
+      <label class="docx-version-choice is-active" data-docx-format="docx" id="downloadDocxFormatCardDocx">
+        <input type="radio" name="downloadDocxFormat" value="docx" checked>
+        <span class="docx-version-choice-icon"><i class="fa-solid fa-file-word"></i></span>
+        <span class="docx-version-choice-body">
+          <span class="docx-version-choice-title">.DOCX Format</span>
+          <span class="docx-version-choice-subtitle">For Word 2007 and later</span>
+        </span>
+        <span class="format-badge recommended">Recommended</span>
+      </label>
+      <label class="docx-version-choice" data-docx-format="doc" id="downloadDocxFormatCardDoc">
+        <input type="radio" name="downloadDocxFormat" value="doc">
+        <span class="docx-version-choice-icon is-doc"><i class="fa-solid fa-file-word"></i></span>
+        <span class="docx-version-choice-body">
+          <span class="docx-version-choice-title">.DOC Format</span>
+          <span class="docx-version-choice-subtitle">For Word 2003 and earlier</span>
+        </span>
+        <span class="format-badge legacy">Legacy</span>
+      </label>
+    </div>
     <label class="center-modal-label text-left block">Select Template:</label>
     <select id="downloadDocxTemplate" class="center-modal-select">
       <option value="">Default (No Footer Text)</option>
     </select>
     <p class="center-modal-note">Template determines the footer text printed on every Word page.</p>
-    <div id="downloadDocxProgress" class="center-modal-progress">
-      <div class="center-modal-progress-track">
-        <div id="downloadDocxBar" class="center-modal-progress-bar"></div>
-      </div>
-      <p class="center-modal-progress-text" id="downloadDocxStatus">Preparing...</p>
     </div>
+    <div id="downloadDocxProgressStep" class="download-modal-progress-step" style="display:none;">
+      <p class="download-modal-step-title">Step 2: Downloading</p>
+      <p class="center-modal-note mt-0 mb-2">Please keep this modal open while the file is generated and downloaded.</p>
+      <div id="downloadDocxProgress" class="center-modal-progress">
+        <div class="center-modal-progress-track">
+          <div id="downloadDocxBar" class="center-modal-progress-bar"></div>
+        </div>
+        <p class="center-modal-progress-text" id="downloadDocxStatus">Preparing...</p>
+      </div>
+      <div class="download-modal-progress-meta">
+        <span id="downloadDocxPercent" class="download-modal-progress-pct">0%</span>
+        <span id="downloadDocxEta" class="download-modal-progress-eta">--</span>
+      </div>
+    </div>
+        </div>
     </div><!-- end body-area -->
     <!-- Footer -->
     <div class="center-modal-footer-area">
       <button id="downloadDocxCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
-      <button id="downloadDocxConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
+      <button id="downloadDocxConfirm" class="center-modal-btn center-modal-btn-confirm">Download Docx</button>
     </div>
   </div>
 </div>
 
 <!-- Download Images Modal -->
-<div id="downloadImgModal" class="center-modal-overlay center-modal-theme-purple" style="display:none;">
+<div id="downloadImgModal" class="center-modal-overlay center-modal-theme-purple download-modal" style="display:none;">
   <div class="center-modal-card" @click.stop>
     <!-- Header -->
     <div class="center-modal-header">
@@ -144,6 +233,19 @@
     </div>
     <!-- Body -->
     <div class="center-modal-body-area">
+    <div class="download-modal-settings">
+    <div class="modal-stepper modal-stepper--wide download-modal-stepper" aria-hidden="true" id="downloadImgStepper">
+      <div class="modal-step is-active" id="downloadImgStep1Badge">
+        <span class="modal-step-dot">1</span>
+        <span class="modal-step-label">Options</span>
+      </div>
+      <div class="modal-stepper-line"></div>
+      <div class="modal-step" id="downloadImgStep2Badge">
+        <span class="modal-step-dot">2</span>
+        <span class="modal-step-label">Download</span>
+      </div>
+    </div>
+    <div class="download-modal-settings-content">
     <div class="download-img-summary">
       <div class="download-img-summary-item">
         <span class="download-img-summary-label">List</span>
@@ -317,17 +419,27 @@
     </div>
     {% endif %}
 
-    <div id="downloadImgProgress" class="center-modal-progress">
-      <div class="center-modal-progress-track">
-        <div id="downloadImgBar" class="center-modal-progress-bar"></div>
+    </div>
+    </div>
+    <div id="downloadImgProgressStep" class="download-modal-progress-step" style="display:none;">
+      <p class="download-modal-step-title">Step 2: Downloading</p>
+      <p class="center-modal-note mt-0 mb-2">Please keep this modal open while the file is generated and downloaded.</p>
+      <div id="downloadImgProgress" class="center-modal-progress">
+        <div class="center-modal-progress-track">
+          <div id="downloadImgBar" class="center-modal-progress-bar"></div>
+        </div>
+        <p class="center-modal-progress-text" id="downloadImgStatus">Preparing...</p>
       </div>
-      <p class="center-modal-progress-text" id="downloadImgStatus">Preparing...</p>
+      <div class="download-modal-progress-meta">
+        <span id="downloadImgPercent" class="download-modal-progress-pct">0%</span>
+        <span id="downloadImgEta" class="download-modal-progress-eta">--</span>
+      </div>
     </div>
     </div><!-- end body-area -->
     <!-- Footer -->
     <div class="center-modal-footer-area">
       <button id="downloadImgCancel" class="center-modal-btn center-modal-btn-cancel">Cancel</button>
-      <button id="downloadImgConfirm" class="center-modal-btn center-modal-btn-confirm">Download</button>
+      <button id="downloadImgConfirm" class="center-modal-btn center-modal-btn-confirm">Download Imgs</button>
     </div>
   </div>
 </div>
@@ -403,6 +515,32 @@
   }
   .download-img-toggle-label {
     min-height: 40px;
+  }
+  .download-modal-progress-step {
+    margin-top: 8px;
+  }
+  .download-modal-step-title {
+    margin: 0 0 6px;
+    font-size: var(--ui-font-size-sm, 12px);
+    font-weight: 700;
+    color: #5b21b6;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .download-modal-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: var(--ui-font-size-xs, 11px);
+    color: #6b7280;
+  }
+  .download-modal-progress-pct {
+    font-weight: 700;
+    color: #5b21b6;
+  }
+  .download-modal-progress-eta {
+    text-align: right;
   }
   .download-img-mode-pill {
     border: 1px solid #d8b4fe;

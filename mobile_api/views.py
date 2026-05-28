@@ -3324,7 +3324,7 @@ def api_card_status(request, card_id):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
     new_status = data.get('status', '')
-    result = ClientCardService.change_card_status(request.user, card_id, new_status)
+    result = ClientCardService.change_card_status(request.user, card_id, new_status, request=request)
     if result.success:
         return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
     return JsonResponse({'success': False, 'message': result.message}, status=400)
@@ -3351,7 +3351,7 @@ def api_bulk_status(request, table_id):
     if not card_ids:
         return JsonResponse({'success': False, 'message': 'No valid card IDs provided'}, status=400)
 
-    result = ClientCardService.bulk_change_status(request.user, table_id, card_ids, new_status)
+    result = ClientCardService.bulk_change_status(request.user, table_id, card_ids, new_status, request=request)
     if result.success:
         return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
     return JsonResponse({'success': False, 'message': result.message}, status=400)
@@ -4196,6 +4196,238 @@ def api_card_update(request, table_id, card_id):
 
 
 @require_mobile_client
+@require_http_methods(["GET"])
+def api_client_groups_detail(request, client_id):
+    """Return groups with their tables and card counts for a client (admin only)."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not PermissionService.can_access_client(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    from client.models import Client
+    from idcards.models import IDCardGroup, IDCardTable
+    get_object_or_404(Client, id=client_id)
+    groups = IDCardGroup.objects.filter(client_id=client_id).order_by('name')
+    tables_qs = (
+        IDCardTable.objects
+        .filter(group__client_id=client_id, is_active=True)
+        .select_related('group')
+        .annotate(
+            pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
+            verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
+            approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
+            download_count=Count('id_cards', filter=Q(id_cards__status='download')),
+            pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
+            total_count=Count('id_cards'),
+        )
+        .order_by('name')
+    )
+    tables_by_group = {}
+    for t in tables_qs:
+        gid = t.group_id
+        if gid not in tables_by_group:
+            tables_by_group[gid] = []
+        tables_by_group[gid].append({
+            'id': t.id,
+            'name': t.name,
+            'group_id': t.group_id,
+            'fields': t.fields if isinstance(t.fields, list) else [],
+            'is_active': t.is_active,
+            'pending_count': t.pending_count,
+            'verified_count': t.verified_count,
+            'approved_count': t.approved_count,
+            'download_count': t.download_count,
+            'pool_count': t.pool_count,
+            'total_count': t.total_count,
+        })
+    groups_data = []
+    for g in groups:
+        g_tables = tables_by_group.get(g.id, [])
+        groups_data.append({
+            'id': g.id,
+            'name': g.name,
+            'table_count': len(g_tables),
+            'total_cards': sum(t['total_count'] for t in g_tables),
+            'tables': g_tables,
+        })
+    return JsonResponse({'success': True, 'groups': groups_data})
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_group_create(request, client_id):
+    """Create a new IDCardGroup for a client."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not PermissionService.can_access_client(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    if not PermissionService.has(request.user, 'perm_idcard_setting_add'):
+        return JsonResponse({'success': False, 'message': 'Settings add permission required'}, status=403)
+    from client.models import Client
+    from idcards.models import IDCardGroup
+    target_client = get_object_or_404(Client, id=client_id)
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    name = str(data.get('name', '') or '').strip()
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Group name is required'}, status=400)
+    if IDCardGroup.objects.filter(client=target_client, name__iexact=name).exists():
+        return JsonResponse({'success': False, 'message': f'A group named "{name}" already exists'}, status=400)
+    group = IDCardGroup.objects.create(client=target_client, name=name)
+    ActivityService.log('group_create', f'Group "{name}" created', request=request, target_model='IDCardGroup', target_id=group.pk, target_name=name)
+    return JsonResponse({'success': True, 'message': f'Group "{name}" created', 'group': {'id': group.id, 'name': group.name, 'table_count': 0, 'total_cards': 0, 'tables': []}})
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_group_update(request, group_id):
+    """Rename an IDCardGroup."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not PermissionService.has(request.user, 'perm_idcard_setting_edit'):
+        return JsonResponse({'success': False, 'message': 'Settings edit permission required'}, status=403)
+    from idcards.models import IDCardGroup
+    group = get_object_or_404(IDCardGroup, id=group_id)
+    if not PermissionService.can_access_client(request.user, group.client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    name = str(data.get('name', '') or '').strip()
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Group name is required'}, status=400)
+    if IDCardGroup.objects.filter(client_id=group.client_id, name__iexact=name).exclude(id=group_id).exists():
+        return JsonResponse({'success': False, 'message': f'A group named "{name}" already exists'}, status=400)
+    old_name = group.name
+    group.name = name
+    group.save(update_fields=['name'])
+    ActivityService.log('group_update', f'Group "{old_name}" renamed to "{name}"', request=request, target_model='IDCardGroup', target_id=group.pk, target_name=name)
+    return JsonResponse({'success': True, 'message': f'Group renamed to "{name}"', 'group': {'id': group.id, 'name': group.name}})
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_group_delete(request, group_id):
+    """Delete an IDCardGroup — only if it has no active tables."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not PermissionService.has(request.user, 'perm_idcard_setting_delete'):
+        return JsonResponse({'success': False, 'message': 'Settings delete permission required'}, status=403)
+    from idcards.models import IDCardGroup, IDCardTable
+    group = get_object_or_404(IDCardGroup, id=group_id)
+    if not PermissionService.can_access_client(request.user, group.client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    active_table_count = IDCardTable.objects.filter(group=group, is_active=True).count()
+    if active_table_count > 0:
+        return JsonResponse({'success': False, 'message': f'Cannot delete group with {active_table_count} active table(s). Delete or move all tables first.'}, status=400)
+    name = group.name
+    group.delete()
+    ActivityService.log('group_delete', f'Group "{name}" deleted', request=request, target_model='IDCardGroup', target_name=name)
+    return JsonResponse({'success': True, 'message': f'Group "{name}" deleted'})
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_table_create(request, group_id):
+    """Create a new IDCardTable under a group."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not PermissionService.has(request.user, 'perm_idcard_setting_add'):
+        return JsonResponse({'success': False, 'message': 'Settings add permission required'}, status=403)
+    from idcards.models import IDCardGroup, IDCardTable
+    group = get_object_or_404(IDCardGroup, id=group_id)
+    if not PermissionService.can_access_client(request.user, group.client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    name = str(data.get('name', '') or '').strip()
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Table name is required'}, status=400)
+    if IDCardTable.objects.filter(group=group, name__iexact=name, is_active=True).exists():
+        return JsonResponse({'success': False, 'message': f'A table named "{name}" already exists in this group'}, status=400)
+    table = IDCardTable.objects.create(group=group, name=name, fields=[])
+    ActivityService.log('table_create', f'Table "{name}" created in group "{group.name}"', request=request, target_model='IDCardTable', target_id=table.pk, target_name=name)
+    return JsonResponse({
+        'success': True, 'message': f'Table "{name}" created',
+        'table': {
+            'id': table.id, 'name': table.name, 'group_id': group.id,
+            'fields': [], 'is_active': True,
+            'pending_count': 0, 'verified_count': 0, 'approved_count': 0,
+            'download_count': 0, 'pool_count': 0, 'total_count': 0,
+        }
+    })
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_table_rename(request, table_id):
+    """Rename an IDCardTable."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not PermissionService.has(request.user, 'perm_idcard_setting_edit'):
+        return JsonResponse({'success': False, 'message': 'Settings edit permission required'}, status=403)
+    table = get_object_or_404(IDCardTable, id=table_id)
+    if not ClientAccessService.can_access_table(request.user, table):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    name = str(data.get('name', '') or '').strip()
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Table name is required'}, status=400)
+    if IDCardTable.objects.filter(group=table.group, name__iexact=name, is_active=True).exclude(id=table_id).exists():
+        return JsonResponse({'success': False, 'message': f'A table named "{name}" already exists in this group'}, status=400)
+    old_name = table.name
+    table.name = name
+    table.save(update_fields=['name'])
+    ActivityService.log('table_update', f'Table "{old_name}" renamed to "{name}"', request=request, target_model='IDCardTable', target_id=table.pk, target_name=name)
+    return JsonResponse({'success': True, 'message': f'Table renamed to "{name}"', 'table': {'id': table.id, 'name': table.name}})
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_table_delete(request, table_id):
+    """Soft-delete (deactivate) an IDCardTable, or permanently delete if empty."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not PermissionService.has(request.user, 'perm_idcard_setting_delete'):
+        return JsonResponse({'success': False, 'message': 'Settings delete permission required'}, status=403)
+    table = get_object_or_404(IDCardTable, id=table_id)
+    if not ClientAccessService.can_access_table(request.user, table):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    card_count = IDCard.objects.filter(table=table).count()
+    if card_count > 0:
+        return JsonResponse({'success': False, 'message': f'Cannot delete table with {card_count} card(s). Ensure all cards are removed first.'}, status=400)
+    name = table.name
+    group_name = table.group.name if table.group else ''
+    table.delete()
+    ActivityService.log('table_delete', f'Table "{name}" deleted from group "{group_name}"', request=request, target_model='IDCardTable', target_name=name)
+    return JsonResponse({'success': True, 'message': f'Table "{name}" deleted'})
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_table_fields_get(request, table_id):
+    """Return field definitions for a table."""
+    table = get_object_or_404(IDCardTable, id=table_id)
+    if not ClientAccessService.can_access_table(request.user, table):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    return JsonResponse({
+        'success': True,
+        'table': {
+            'id': table.id,
+            'name': table.name,
+            'fields': table.fields if isinstance(table.fields, list) else [],
+        }
+    })
+
+
+@require_mobile_client
 @require_http_methods(["POST"])
 def api_table_update_fields(request, table_id):
     """Update the column definitions (fields) of an IDCardTable.
@@ -4217,7 +4449,8 @@ def api_table_update_fields(request, table_id):
 
         VALID_FIELD_TYPES = {
             'text', 'number', 'date', 'select', 'photo', 'signature', 'qr_code',
-            'barcode', 'class_section', 'rel_photo',
+            'barcode', 'class_section', 'rel_photo', 'email', 'class', 'section',
+            'image', 'textarea',
             # Legacy aliases accepted and normalized to rel_photo.
             'mother_photo', 'father_photo',
         }
@@ -4755,13 +4988,41 @@ def api_staff_create(request):
 
     if PermissionService.is_super_admin(user):
         payload = dict(data)
-        first_name = str(payload.pop('first_name', '') or '').strip()
-        last_name = str(payload.pop('last_name', '') or '').strip()
-        full_name = f'{first_name} {last_name}'.strip() or str(payload.get('name', '') or '').strip()
-        if not full_name:
-            return JsonResponse({'success': False, 'message': 'First name is required'}, status=400)
-        payload['name'] = full_name
-        result = StaffService.create(payload, staff_type='admin_staff', request=request)
+        role_requested = str(payload.get('role', '') or '').strip().lower()
+
+        if role_requested == 'client_staff':
+            # Super Admin creating an Assistant (client_staff) for a specific client
+            client_id = payload.get('client_id')
+            if not client_id:
+                return JsonResponse({'success': False, 'message': 'client_id is required to create an assistant'}, status=400)
+            try:
+                from client.models import Client
+                target_client = Client.objects.get(id=int(client_id))
+            except Exception:
+                return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+            # Build a minimal fake admin user context scoped to the target client
+            # Use ClientStaffService with a proxy-like call under the target client
+            # Build data dict the service expects (same as client self-creating staff)
+            staff_data = dict(payload)
+            staff_data.pop('role', None)
+            staff_data.pop('client_id', None)
+            first_name = str(staff_data.pop('first_name', '') or '').strip()
+            last_name = str(staff_data.pop('last_name', '') or '').strip()
+            full_name = f'{first_name} {last_name}'.strip() or str(staff_data.get('name', '') or '').strip()
+            if not full_name:
+                return JsonResponse({'success': False, 'message': 'First name is required'}, status=400)
+            staff_data['name'] = full_name
+            # StaffService.create accepts client= as a keyword argument (Client instance)
+            result = StaffService.create(staff_data, staff_type='client_staff', client=target_client, request=request)
+        else:
+            # Super Admin creating an Operator (admin_staff)
+            first_name = str(payload.pop('first_name', '') or '').strip()
+            last_name = str(payload.pop('last_name', '') or '').strip()
+            full_name = f'{first_name} {last_name}'.strip() or str(payload.get('name', '') or '').strip()
+            if not full_name:
+                return JsonResponse({'success': False, 'message': 'First name is required'}, status=400)
+            payload['name'] = full_name
+            result = StaffService.create(payload, staff_type='admin_staff', request=request)
     else:
         result = ClientStaffService.create_staff(user, data)
 
@@ -5210,9 +5471,23 @@ def api_dashboard_data(request):
         # Recent Activity (Always included for all roles)
         recent_activity = ActivityService.get_recent(limit=100, user=user)
         
+        # Enrich activity entries with table_id for IDCard entries (for mobile navigation)
+        idcard_activity_ids = [
+            a['target_id'] for a in recent_activity
+            if str(a.get('target_model', '')).lower() == 'idcard' and a.get('target_id')
+        ]
+        if idcard_activity_ids:
+            idcard_table_map = dict(
+                IDCard.objects.filter(id__in=idcard_activity_ids).values_list('id', 'table_id')
+            )
+            for a in recent_activity:
+                if str(a.get('target_model', '')).lower() == 'idcard' and a.get('target_id'):
+                    a['table_id'] = idcard_table_map.get(a['target_id'])
+        
         if is_admin:
             # ADMIN/OPERATOR: Return clients with nested tables
-            cache_key = f"mob_dash_admin_{user.id}"
+            cache_version = CacheVersionService.get('admin_dash_counts', 'global')
+            cache_key = f"mob_dash_admin_{user.id}_v{cache_version}"
             cached_data = cache.get(cache_key)
             if cached_data:
                 cached_data['recent_activity'] = recent_activity
@@ -5252,7 +5527,7 @@ def api_dashboard_data(request):
             }
             
             clients_data = []
-
+ 
             # Order clients identically to the dashboard: latest approved cards first, then latest created.
             ordered_clients = list(clients_qs.annotate(
                 latest_approved=Max(
@@ -5264,10 +5539,10 @@ def api_dashboard_data(request):
                 F('created_at').desc(nulls_last=True),
                 F('id').desc(),
             )[:100])
-
+ 
             # Batch-fetch tables and card counts to avoid N+1 queries per client
             client_ids = [c.id for c in ordered_clients]
-
+ 
             # Tables with per-table counts
             tables_qs = (
                 IDCardTable.objects
@@ -5283,7 +5558,7 @@ def api_dashboard_data(request):
             )
             if not PermissionService.is_super_admin(user):
                 tables_qs = tables_qs.filter(is_active=True)
-
+ 
             from collections import defaultdict
             tables_by_client = defaultdict(list)
             for t in tables_qs:
@@ -5293,7 +5568,7 @@ def api_dashboard_data(request):
                     # Fallback: try group__client_id via attribute access
                     client_id = getattr(t, 'group_id', None)
                 tables_by_client[client_id].append(t)
-
+ 
             # Aggregate card status counts per client in one query
             status_rows = IDCard.objects.filter(table__group__client_id__in=client_ids).values('table__group__client_id', 'status').annotate(n=Count('id'))
             client_counts_map = {cid: {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0} for cid in client_ids}
@@ -5302,10 +5577,10 @@ def api_dashboard_data(request):
                 st = row.get('status')
                 if cid in client_counts_map and st in client_counts_map[cid]:
                     client_counts_map[cid][st] = row.get('n', 0)
-
+ 
             for client in ordered_clients:
                 client_counts = client_counts_map.get(client.id, {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
-
+ 
                 tables_data = []
                 tables_for_client = tables_by_client.get(client.id, [])
                 # Limit to 20 as before; tables_qs is already filtered by is_active when needed
@@ -5320,7 +5595,7 @@ def api_dashboard_data(request):
                         'd': getattr(t, 'cnt_d', 0),
                         'po': getattr(t, 'cnt_po', 0),
                     })
-
+ 
                 clients_data.append({
                     'id': client.id,
                     'name': getattr(client, 'business_name', client.name),
@@ -5354,7 +5629,7 @@ def api_dashboard_data(request):
                         'time_ago': timesince(r.created_at, timezone.now()) + ' ago',
                         'created_at': r.created_at.isoformat(),
                     })
-
+ 
             counts = {
                 **global_counts,
                 'recent_clients': clients_data,
@@ -5760,6 +6035,30 @@ def api_search(request):
         name = _card_display_name(card, fd)
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
         photo_url = get_card_photo_url(card, fd)
+        
+        # Sanitize field_data: strip PENDING: prefix from text fields
+        sanitized_field_data = {}
+        for key, val in fd.items():
+            is_image_field = False
+            for field in (card.table.fields or []):
+                if field.get('name') == key or field.get('name', '').upper() == key.upper():
+                    is_image_field = field.get('type') in ['photo', 'image', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+                    break
+            if not is_image_field and val and isinstance(val, str) and val.startswith('PENDING:'):
+                sanitized_field_data[key] = ''
+            else:
+                sanitized_field_data[key] = val
+
+        ordered_fields = []
+        for field in (card.table.fields or []):
+            field_name = field.get('name')
+            ordered_fields.append({
+                'name': field_name,
+                'type': field.get('type', 'text'),
+                'label': field.get('label') or field_name,
+                'value': sanitized_field_data.get(field_name, '')
+            })
+
         results.append({
             'id': card.id,
             'name': name,
@@ -5770,6 +6069,8 @@ def api_search(request):
             'client_name': getattr(getattr(card.table.group, 'client', None), 'name', ''),
             'photo_url': photo_url,
             'table_id': card.table.id,
+            'field_data': sanitized_field_data,
+            'ordered_fields': ordered_fields,
         })
 
     return JsonResponse({'success': True, 'data': {'results': results, 'count': len(results)}})
@@ -5886,6 +6187,7 @@ def api_clients_list(request):
             'name': c.name,
             'email': u.email,
             'phone': getattr(u, 'phone', '') or '',
+            'address': c.address or '',
             'is_active': u.is_active,
             'logo_url': logo_url,
             'counts': counts_map.get(c.id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})

@@ -65,6 +65,245 @@ let downloadPdfModal = null;
 let downloadXlsxModal = null;
 let downloadImgModal = null;
 
+function _dlGetProgressModalConfig(type) {
+    var modalId = '';
+    var stepId = '';
+    var bodySelector = '.download-modal-settings-content';
+    var cancelId = '';
+    var confirmId = '';
+    var statusId = '';
+    var barId = '';
+    var percentId = '';
+    var etaId = '';
+    var step1BadgeId = '';
+    var step2BadgeId = '';
+
+    if (type === 'pdf') {
+        modalId = 'downloadPdfModal';
+        stepId = 'downloadPdfProgressStep';
+        cancelId = 'downloadPdfCancel';
+        confirmId = 'downloadPdfConfirm';
+        statusId = 'downloadPdfStatus';
+        barId = 'downloadPdfBar';
+        percentId = 'downloadPdfPercent';
+        etaId = 'downloadPdfEta';
+        step1BadgeId = 'downloadPdfStep1Badge';
+        step2BadgeId = 'downloadPdfStep2Badge';
+    } else if (type === 'xlsx') {
+        modalId = 'downloadXlsxModal';
+        stepId = 'downloadXlsxProgressStep';
+        cancelId = 'downloadXlsxCancel';
+        confirmId = 'downloadXlsxConfirm';
+        statusId = 'downloadXlsxStatus';
+        barId = 'downloadXlsxBar';
+        percentId = 'downloadXlsxPercent';
+        etaId = 'downloadXlsxEta';
+        step1BadgeId = 'downloadXlsxStep1Badge';
+        step2BadgeId = 'downloadXlsxStep2Badge';
+    } else if (type === 'docx') {
+        modalId = 'downloadDocxModal';
+        stepId = 'downloadDocxProgressStep';
+        cancelId = 'downloadDocxCancel';
+        confirmId = 'downloadDocxConfirm';
+        statusId = 'downloadDocxStatus';
+        barId = 'downloadDocxBar';
+        percentId = 'downloadDocxPercent';
+        etaId = 'downloadDocxEta';
+        step1BadgeId = 'downloadDocxStep1Badge';
+        step2BadgeId = 'downloadDocxStep2Badge';
+    } else if (type === 'img') {
+        modalId = 'downloadImgModal';
+        stepId = 'downloadImgProgressStep';
+        cancelId = 'downloadImgCancel';
+        confirmId = 'downloadImgConfirm';
+        statusId = 'downloadImgStatus';
+        barId = 'downloadImgBar';
+        percentId = 'downloadImgPercent';
+        etaId = 'downloadImgEta';
+        step1BadgeId = 'downloadImgStep1Badge';
+        step2BadgeId = 'downloadImgStep2Badge';
+    }
+
+    return {
+        type: type,
+        modalId: modalId,
+        stepId: stepId,
+        bodySelector: bodySelector,
+        cancelId: cancelId,
+        confirmId: confirmId,
+        statusId: statusId,
+        barId: barId,
+        percentId: percentId,
+        etaId: etaId,
+        step1BadgeId: step1BadgeId,
+        step2BadgeId: step2BadgeId,
+    };
+}
+
+var _dlProgressState = {
+    type: '',
+    cancelFn: null,
+};
+
+function _dlSetFooterCancelLabel(type, label) {
+    var cfg = _dlGetProgressModalConfig(type);
+    var cancelBtn = document.getElementById(cfg.cancelId);
+    if (cancelBtn) cancelBtn.textContent = label;
+}
+
+function _dlSetStepperState(type, activeStep) {
+    var cfg = _dlGetProgressModalConfig(type);
+    var step1 = document.getElementById(cfg.step1BadgeId);
+    var step2 = document.getElementById(cfg.step2BadgeId);
+
+    if (step1) {
+        step1.classList.toggle('is-active', activeStep === 1);
+        step1.classList.toggle('is-complete', activeStep > 1);
+    }
+    if (step2) {
+        step2.classList.toggle('is-active', activeStep === 2);
+        step2.classList.toggle('is-complete', false);
+    }
+}
+
+function _dlSetProgressVisible(type, visible) {
+    var cfg = _dlGetProgressModalConfig(type);
+    var modal = document.getElementById(cfg.modalId);
+    var body = modal ? modal.querySelector(cfg.bodySelector) : null;
+    var step = document.getElementById(cfg.stepId);
+    if (body) body.style.display = visible ? 'none' : '';
+    if (step) step.style.display = visible ? 'block' : 'none';
+    _dlSetStepperState(type, visible ? 2 : 1);
+}
+
+function _dlUpdateProgressUi(type, message, progress, etaText) {
+    var cfg = _dlGetProgressModalConfig(type);
+    var statusEl = document.getElementById(cfg.statusId);
+    var barEl = document.getElementById(cfg.barId);
+    var percentEl = document.getElementById(cfg.percentId);
+    var etaEl = document.getElementById(cfg.etaId);
+
+    if (statusEl && message) statusEl.textContent = message;
+    if (barEl) {
+        if (progress < 0) {
+            barEl.classList.add('indeterminate');
+            barEl.style.width = '30%';
+        } else {
+            barEl.classList.remove('indeterminate');
+            barEl.style.width = Math.max(0, Math.min(100, Math.round(progress))) + '%';
+        }
+    }
+    if (percentEl) {
+        percentEl.textContent = progress >= 0 ? Math.max(0, Math.min(100, Math.round(progress))) + '%' : '...';
+    }
+    if (etaEl) etaEl.textContent = etaText || '--';
+}
+
+function _dlFinishProgressUi(type, message, isError) {
+    var cfg = _dlGetProgressModalConfig(type);
+    var modal = document.getElementById(cfg.modalId);
+    var body = modal ? modal.querySelector(cfg.bodySelector) : null;
+    var step = document.getElementById(cfg.stepId);
+    var cancelBtn = document.getElementById(cfg.cancelId);
+    var confirmBtn = document.getElementById(cfg.confirmId);
+    var statusEl = document.getElementById(cfg.statusId);
+    var barEl = document.getElementById(cfg.barId);
+    var percentEl = document.getElementById(cfg.percentId);
+    var etaEl = document.getElementById(cfg.etaId);
+
+    if (body) body.style.display = 'none';
+    if (step) step.style.display = 'block';
+    if (barEl) {
+        barEl.classList.remove('indeterminate');
+        barEl.style.width = '100%';
+    }
+    if (percentEl) percentEl.textContent = '100%';
+    if (etaEl) etaEl.textContent = '--';
+    if (statusEl) statusEl.textContent = message || (isError ? 'Download failed' : 'Download complete');
+    if (cancelBtn) cancelBtn.textContent = isError ? 'Close' : 'Close';
+    if (confirmBtn) confirmBtn.style.display = 'none';
+    _dlSetStepperState(type, 2);
+    _dlProgressState.cancelFn = null;
+}
+
+function _dlClearProgressUi(type) {
+    var cfg = _dlGetProgressModalConfig(type);
+    var modal = document.getElementById(cfg.modalId);
+    var body = modal ? modal.querySelector(cfg.bodySelector) : null;
+    var step = document.getElementById(cfg.stepId);
+    var cancelBtn = document.getElementById(cfg.cancelId);
+    var confirmBtn = document.getElementById(cfg.confirmId);
+    var barEl = document.getElementById(cfg.barId);
+    var percentEl = document.getElementById(cfg.percentId);
+    var etaEl = document.getElementById(cfg.etaId);
+    var statusEl = document.getElementById(cfg.statusId);
+
+    if (body) body.style.display = '';
+    if (step) step.style.display = 'none';
+    if (cancelBtn) cancelBtn.textContent = 'Cancel';
+    if (confirmBtn) confirmBtn.style.display = '';
+    if (barEl) {
+        barEl.classList.remove('indeterminate');
+        barEl.style.width = '0%';
+    }
+    if (percentEl) percentEl.textContent = '0%';
+    if (etaEl) etaEl.textContent = '--';
+    if (statusEl) statusEl.textContent = 'Preparing...';
+    _dlSetStepperState(type, 1);
+}
+
+window.IDCardApp = window.IDCardApp || {};
+window.IDCardApp.downloadProgressPresenter = {
+    isActive: function() {
+        return !!_dlProgressState.type;
+    },
+    setType: function(type) {
+        _dlProgressState.type = type || '';
+    },
+    prepare: function(message, progress, onCancel) {
+        if (!_dlProgressState.type) return;
+        _dlSetProgressVisible(_dlProgressState.type, true);
+        _dlSetFooterCancelLabel(_dlProgressState.type, 'Cancel Download');
+        var cfgPrepare = _dlGetProgressModalConfig(_dlProgressState.type);
+        var confirmBtnPrepare = document.getElementById(cfgPrepare.confirmId);
+        if (confirmBtnPrepare) confirmBtnPrepare.style.display = 'none';
+        _dlProgressState.cancelFn = (typeof onCancel === 'function') ? onCancel : _dlProgressState.cancelFn;
+        _dlUpdateProgressUi(_dlProgressState.type, message || 'Preparing...', typeof progress === 'number' ? progress : -1, '--');
+    },
+    update: function(message, progress, etaText, onCancel) {
+        if (!_dlProgressState.type) return;
+        if (typeof onCancel === 'function') _dlProgressState.cancelFn = onCancel;
+        _dlUpdateProgressUi(_dlProgressState.type, message || 'Downloading...', typeof progress === 'number' ? progress : -1, etaText || '--');
+    },
+    complete: function(message) {
+        if (!_dlProgressState.type) return;
+        _dlFinishProgressUi(_dlProgressState.type, message || 'Download complete', false);
+    },
+    error: function(message) {
+        if (!_dlProgressState.type) return;
+        _dlFinishProgressUi(_dlProgressState.type, message || 'Download failed', true);
+    },
+    cancel: function() {
+        if (typeof _dlProgressState.cancelFn === 'function') {
+            var cancelFn = _dlProgressState.cancelFn;
+            _dlProgressState.cancelFn = null;
+            cancelFn();
+            return;
+        }
+        if (_dlProgressState.type) {
+            _dlClearProgressUi(_dlProgressState.type);
+            _dlProgressState.type = '';
+        }
+    },
+    clear: function() {
+        if (_dlProgressState.type) {
+            _dlClearProgressUi(_dlProgressState.type);
+        }
+        _dlProgressState.type = '';
+        _dlProgressState.cancelFn = null;
+    }
+};
+
 function _dlNormalizeFieldKey(value) {
     return String(value || '')
         .toUpperCase()
@@ -364,54 +603,41 @@ function _dlSyncImageWizardUi() {
     if (_dlImageWizardStep > maxStep) _dlImageWizardStep = maxStep;
     if (_dlImageWizardStep < 1) _dlImageWizardStep = 1;
 
-    if (step1El) step1El.style.display = hasMode ? (_dlImageWizardStep === 1 ? 'block' : 'none') : 'block';
-    if (step2El) step2El.style.display = (mode && _dlImageWizardStep === 2) ? 'block' : 'none';
-    if (renameStepEl) renameStepEl.style.display = (mode === 'rename' && _dlImageWizardStep === 3) ? 'block' : 'none';
-    if (generateStepEl) generateStepEl.style.display = (mode === 'generate' && _dlImageWizardStep === 3) ? 'block' : 'none';
-    if (step4El) step4El.style.display = (mode === 'generate' && _dlImageWizardStep === 4) ? 'block' : 'none';
+    // Simplified UI: show all relevant option panels together (no per-step progression)
+    if (step1El) step1El.style.display = 'block';
+    if (step2El) step2El.style.display = mode ? 'block' : 'none';
+    if (renameStepEl) renameStepEl.style.display = (mode === 'rename') ? 'block' : 'none';
+    if (generateStepEl) generateStepEl.style.display = (mode === 'generate') ? 'block' : 'none';
+    if (step4El) step4El.style.display = (mode === 'generate') ? 'block' : 'none';
 
-    if (wizardProgressEl) wizardProgressEl.style.display = hasMode ? 'grid' : 'none';
-    if (wizardNavEl) wizardNavEl.style.display = hasMode ? 'flex' : 'none';
-    
-    if (step1HeadingEl) {
-        step1HeadingEl.textContent = hasMode ? 'Step 1: Choose Mode' : 'Optional: Choose Mode';
-    }
-    if (modeHelperEl) {
-        modeHelperEl.textContent = hasMode 
-            ? 'Choose one mode. Use Next to continue to base settings.'
-            : 'Leave both unchecked to download all image columns normally.';
-    }
+    // Hide wizard chips and navigation; present all options in a single combined panel
+    if (wizardProgressEl) wizardProgressEl.style.display = 'none';
+    if (wizardNavEl) wizardNavEl.style.display = 'none';
 
+    if (step1HeadingEl) step1HeadingEl.textContent = hasMode ? 'Choose Mode & Options' : 'Optional: Choose Mode';
+    if (modeHelperEl) modeHelperEl.textContent = hasMode ? 'Select options below then click Download.' : 'Leave both unchecked to download all image columns normally.';
+
+    // Mark chips disabled visually if present
     chips.forEach(function(chip) {
-        const rawStep = chip.getAttribute('data-dl-wizard-chip');
-        const stepNum = parseInt(String(rawStep || ''), 10);
-        if (!Number.isFinite(stepNum)) return;
-
-        chip.classList.toggle('is-active', stepNum === _dlImageWizardStep);
-        chip.classList.toggle('is-complete', stepNum < _dlImageWizardStep && stepNum <= maxStep);
-        chip.classList.toggle('is-disabled', stepNum > maxStep);
+        chip.classList.remove('is-active');
+        chip.classList.remove('is-complete');
+        chip.classList.add('is-disabled');
     });
 
     if (stepLabelEl) {
-        stepLabelEl.textContent = hasMode ? ('Step ' + _dlImageWizardStep + ' of ' + maxStep) : '';
+        stepLabelEl.textContent = '';
     }
 
-    if (backBtn) {
-        backBtn.disabled = _dlImageWizardStep <= 1;
-    }
-
-    if (nextBtn) {
-        const isFinalStep = _dlImageWizardStep >= maxStep;
-        nextBtn.disabled = isFinalStep;
-        nextBtn.style.display = isFinalStep ? 'none' : '';
-        nextBtn.textContent = 'Next';
-    }
+    if (backBtn) backBtn.disabled = true;
+    if (nextBtn) { nextBtn.disabled = true; nextBtn.style.display = 'none'; }
 
     if (confirmBtn) {
-        confirmBtn.disabled = hasMode ? !(_dlImageWizardStep === maxStep) : false;
-        confirmBtn.textContent = hasMode ? 'Download' : 'Download All Images';
+        // Allow immediate confirm; validation will run on click
+        confirmBtn.disabled = false;
+        // Keep the template label authoritative; use concise image label here.
+        confirmBtn.textContent = 'Download Imgs';
     }
-    console.log('[DownloadWizard] UI synced to step ' + _dlImageWizardStep + ' (Mode: ' + (mode || 'none') + ')');
+    console.log('[DownloadWizard] UI synced to combined view (Mode: ' + (mode || 'none') + ')');
 }
 
 function _dlSyncModeUi() {
@@ -2261,6 +2487,9 @@ function initReprintPickerHandlers() {
 function openDownloadImgModal(cardIds) {
     pendingDownloadCardIds = cardIds;
     currentDownloadType = 'img';
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+        window.IDCardApp.downloadProgressPresenter.setType('img');
+    }
     downloadImgModal = document.getElementById('downloadImgModal');
 
     if (!downloadImgModal) {
@@ -2283,8 +2512,14 @@ function openDownloadImgModal(cardIds) {
 }
 
 function closeDownloadImgModal() {
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
+        window.IDCardApp.downloadProgressPresenter.cancel();
+    }
     if (downloadImgModal) {
         downloadImgModal.style.display = 'none';
+    }
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+        window.IDCardApp.downloadProgressPresenter.clear();
     }
     pendingDownloadCardIds = [];
     currentDownloadType = null;
@@ -2296,6 +2531,9 @@ function markNextBulkUiLock() {
 }
 
 function initDownloadImagesHandlers() {
+    try {
+        console.log('[DL] initDownloadImagesHandlers start');
+    } catch (e) {}
     const downloadImgBtnIds = ['downloadImgBtn', 'downloadImgBtnV', 'downloadImgBtnP', 'downloadImgBtnA', 'downloadImgBtnD'];
 
     downloadImgBtnIds.forEach(btnId => {
@@ -2368,17 +2606,13 @@ function initDownloadImagesHandlers() {
     }
 
     document.getElementById('downloadImgConfirm')?.addEventListener('click', function() {
+        try {
+            console.log('[DL] downloadImgConfirm clicked');
+        } catch (e) {}
         const mode = _dlGetActiveImageMode();
         if (mode) {
             const maxStep = _dlGetImageWizardMaxStep();
-            if (_dlImageWizardStep < maxStep) {
-                if (typeof showToast === 'function') {
-                    showToast('Please complete all steps before downloading.', 'warning');
-                }
-                return;
-            }
-
-            const validationError = _dlValidateImageWizardStep(Math.max(1, maxStep - 1));
+            const validationError = _dlValidateImageWizardStep(maxStep);
             if (validationError) {
                 if (typeof showToast === 'function') {
                     showToast(validationError, 'warning');
@@ -2397,10 +2631,15 @@ function initDownloadImagesHandlers() {
             return;
         }
 
-        closeDownloadImgModal();
+        if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+            window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
+        }
         markNextBulkUiLock();
         window.IDCardApp.downloadImages(selectedCardIds, renameOptions);
     });
+    try {
+        console.log('[DL] initDownloadImagesHandlers bound handlers');
+    } catch (e) {}
 }
 
 // ==========================================
@@ -2409,6 +2648,21 @@ function initDownloadImagesHandlers() {
 
 let pendingDocxDownloadIds = [];
 let pendingDocxFormat = 'docx';
+
+function _setDocxFormatSelection(format) {
+    const normalizedFormat = format === 'doc' ? 'doc' : 'docx';
+    pendingDocxFormat = normalizedFormat;
+
+    const docxCard = document.getElementById('downloadDocxFormatCardDocx');
+    const docCard = document.getElementById('downloadDocxFormatCardDoc');
+
+    if (docxCard) {
+        docxCard.classList.toggle('is-active', normalizedFormat === 'docx');
+    }
+    if (docCard) {
+        docCard.classList.toggle('is-active', normalizedFormat === 'doc');
+    }
+}
 
 function openDocFormatModal(cardIds) {
     pendingDocxDownloadIds = cardIds;
@@ -2429,8 +2683,13 @@ function closeDocFormatModal() {
 }
 
 function openDownloadDocxModal(cardIds, format) {
+    try { console.log('[DL] openDownloadDocxModal', {cardIdsCount: Array.isArray(cardIds)?cardIds.length:0, format: format}); } catch (e) {}
     pendingDocxDownloadIds = cardIds;
     pendingDocxFormat = format || 'docx';
+    currentDownloadType = 'docx';
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+        window.IDCardApp.downloadProgressPresenter.setType('docx');
+    }
     const modal = document.getElementById('downloadDocxModal');
     if (!modal) {
         // Fallback: download directly if modal not found
@@ -2441,6 +2700,7 @@ function openDownloadDocxModal(cardIds, format) {
     const cardCountEl = document.getElementById('downloadDocxCardCount');
     if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
     if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
+    _setDocxFormatSelection(pendingDocxFormat);
     // Load templates dynamically (from init sub-module)
     if (window.IDCardApp._loadExportTemplates) window.IDCardApp._loadExportTemplates(false);
     modal.style.display = 'flex';
@@ -2448,25 +2708,30 @@ function openDownloadDocxModal(cardIds, format) {
 
 function closeDownloadDocxModal() {
     const modal = document.getElementById('downloadDocxModal');
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
+        window.IDCardApp.downloadProgressPresenter.cancel();
+    }
     if (modal) modal.style.display = 'none';
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+        window.IDCardApp.downloadProgressPresenter.clear();
+    }
+    currentDownloadType = null;
 }
 
 function initDownloadDocxHandlers() {
-    const docFormatModalOverlay = document.getElementById('docFormatModalOverlay');
+    try { console.log('[DL] initDownloadDocxHandlers start'); } catch (e) {}
+    try {
+    document.querySelectorAll('[data-docx-format]').forEach(card => {
+        const activateFormat = function() {
+            const format = card.getAttribute('data-docx-format');
+            if (format) _setDocxFormatSelection(format);
+        };
 
-    document.getElementById('closeDocFormatModal')?.addEventListener('click', closeDocFormatModal);
-    document.getElementById('cancelDocFormatModal')?.addEventListener('click', closeDocFormatModal);
-
-    if (docFormatModalOverlay) {
-        // Disabled  prevent accidental closure on outside click
-    }
-
-    document.querySelectorAll('.format-card').forEach(card => {
-        card.addEventListener('click', function() {
-            const format = this.getAttribute('data-format');
-            if (format) {
-                closeDocFormatModal();
-                openDownloadDocxModal(pendingDocxDownloadIds, format);
+        card.addEventListener('click', activateFormat);
+        card.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                activateFormat();
             }
         });
     });
@@ -2477,6 +2742,9 @@ function initDownloadDocxHandlers() {
     document.getElementById('downloadDocxConfirm')?.addEventListener('click', function() {
         const templateSelect = document.getElementById('downloadDocxTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
+        if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+            window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
+        }
         markNextBulkUiLock();
         window.IDCardApp.downloadDocx(pendingDocxDownloadIds, pendingDocxFormat, templateId);
     });
@@ -2488,15 +2756,17 @@ function initDownloadDocxHandlers() {
             this.disabled = true;
             try {
                 let cardIds = (window.IDCardApp && typeof window.IDCardApp.getAllCardIdsForAction === 'function') ? await window.IDCardApp.getAllCardIdsForAction() : [];
-                openDocFormatModal(cardIds);
+                openDownloadDocxModal(cardIds, 'docx');
             } catch (error) {
                 console.error('Error getting card IDs for download:', error);
-                openDocFormatModal([]);
+                openDownloadDocxModal([], 'docx');
             } finally {
                 this.disabled = false;
             }
         });
     });
+    } catch (err) { console.error('[DL] initDownloadDocxHandlers error', err); }
+    try { console.log('[DL] initDownloadDocxHandlers bound handlers'); } catch (e) {}
 }
 
 // ==========================================
@@ -2506,6 +2776,9 @@ function initDownloadDocxHandlers() {
 function openDownloadXlsxModal(cardIds) {
     pendingDownloadCardIds = cardIds;
     currentDownloadType = 'xlsx';
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+        window.IDCardApp.downloadProgressPresenter.setType('xlsx');
+    }
     downloadXlsxModal = document.getElementById('downloadXlsxModal');
 
     if (!downloadXlsxModal) {
@@ -2527,11 +2800,17 @@ function openDownloadXlsxModal(cardIds) {
 }
 
 function closeDownloadXlsxModal() {
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
+        window.IDCardApp.downloadProgressPresenter.cancel();
+    }
     if (downloadXlsxModal) {
         downloadXlsxModal.style.display = 'none';
     }
     const includeImagesEl = document.getElementById('downloadXlsxIncludeImages');
     if (includeImagesEl) includeImagesEl.checked = false;
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+        window.IDCardApp.downloadProgressPresenter.clear();
+    }
     pendingDownloadCardIds = [];
     currentDownloadType = null;
 }
@@ -2561,7 +2840,9 @@ function initDownloadXlsxHandlers() {
         const includeImagesEl = document.getElementById('downloadXlsxIncludeImages');
         const includeImagesZip = !!(includeImagesEl && includeImagesEl.checked);
         const cardIds = Array.isArray(pendingDownloadCardIds) ? pendingDownloadCardIds.slice() : [];
-        closeDownloadXlsxModal();
+        if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+            window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
+        }
         markNextBulkUiLock();
         window.IDCardApp.downloadXlsx(cardIds, { includeImagesZip: includeImagesZip });
     });
@@ -2612,6 +2893,10 @@ function bindPdfBreakModeCheckboxes() {
 
 function openDownloadPdfModal(cardIds) {
     pendingPdfCardIds = cardIds;
+    currentDownloadType = 'pdf';
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+        window.IDCardApp.downloadProgressPresenter.setType('pdf');
+    }
     downloadPdfModal = document.getElementById('downloadPdfModal');
 
     if (!downloadPdfModal) {
@@ -2651,6 +2936,9 @@ function openDownloadPdfModal(cardIds) {
 }
 
 function closeDownloadPdfModal() {
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
+        window.IDCardApp.downloadProgressPresenter.cancel();
+    }
     if (downloadPdfModal) {
         downloadPdfModal.style.display = 'none';
     }
@@ -2660,6 +2948,10 @@ function closeDownloadPdfModal() {
     if (shortenCb) shortenCb.checked = false;
     // Reset break-mode checkboxes for next open (default: class + section)
     setPdfBreakModeSelection('class_section');
+    if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+        window.IDCardApp.downloadProgressPresenter.clear();
+    }
+    currentDownloadType = null;
 }
 
 function initDownloadPdfHandlers() {
@@ -2693,7 +2985,9 @@ function initDownloadPdfHandlers() {
         // Read break-mode checkboxes
         var breakMode = readPdfBreakModeSelection();
         var cardIdsToDownload = Array.isArray(pendingPdfCardIds) ? pendingPdfCardIds.slice() : [];
-        closeDownloadPdfModal();
+        if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+            window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
+        }
         markNextBulkUiLock();
         window.IDCardApp.downloadPdf(cardIdsToDownload, templateId, fontMode, shortenTitles, breakMode);
     });

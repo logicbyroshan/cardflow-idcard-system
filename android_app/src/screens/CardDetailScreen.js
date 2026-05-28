@@ -194,20 +194,60 @@ export default function CardDetailScreen({ navigation, route }) {
               card.ordered_fields.map((f, i) => {
                 const val = fd[f.name];
                 const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined';
+                const isImage = ['photo', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'].includes((f.type || '').toLowerCase());
+                const isPendingVal = !isEmpty && typeof val === 'string' && val.startsWith('PENDING:');
+
                 return (
-                  <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
+                  <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }, isImage && { flexDirection: 'column', alignItems: 'flex-start' }]}>
                     <Text style={s.fieldKey}>{f.name}</Text>
-                    <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                    {isImage && !isEmpty ? (
+                      isPendingVal ? (
+                        <View style={{ backgroundColor: '#fffbeb', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginTop: 4 }}>
+                          <Text style={{ fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: '#d97706' }}>PENDING UPLOAD</Text>
+                        </View>
+                      ) : (
+                        <Image 
+                          source={{ 
+                            uri: resolveAdarshImageUrl(val),
+                            headers: { Cookie: getSessionCookies() }
+                          }} 
+                          style={{ width: 120, height: 75, borderRadius: 4, marginTop: 6, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
+                          resizeMode="contain"
+                        />
+                      )
+                    ) : (
+                      <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                    )}
                   </View>
                 );
               })
             ) : (
               Object.entries(fd).map(([key, val], i) => {
                 const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined';
+                const isImage = ['photo', 'signature', 'barcode', 'qr_code', 'image'].some(k => key.toLowerCase().includes(k));
+                const isPendingVal = !isEmpty && typeof val === 'string' && val.startsWith('PENDING:');
+
                 return (
-                  <View key={key} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
+                  <View key={key} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }, isImage && { flexDirection: 'column', alignItems: 'flex-start' }]}>
                     <Text style={s.fieldKey}>{key.replace(/_/g, ' ')}</Text>
-                    <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                    {isImage && !isEmpty ? (
+                      isPendingVal ? (
+                        <View style={{ backgroundColor: '#fffbeb', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginTop: 4 }}>
+                          <Text style={{ fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: '#d97706' }}>PENDING UPLOAD</Text>
+                        </View>
+                      ) : (
+                        <Image 
+                          source={{ 
+                            uri: resolveAdarshImageUrl(val),
+                            headers: { Cookie: getSessionCookies() }
+                          }} 
+                          style={{ width: 120, height: 75, borderRadius: 4, marginTop: 6, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
+                          resizeMode="contain"
+                        />
+                      )
+                    ) : (
+                      <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                    )}
                   </View>
                 );
               })
@@ -251,7 +291,7 @@ export default function CardDetailScreen({ navigation, route }) {
             })}
           </View>
 
-          {user?.permissions?.perm_idcard_delete && card.status === 'pending' && (
+          {user?.permissions?.perm_idcard_delete && card.status === 'pending' && !(user?.isClient || user?.isAssistant) && (
             <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
               <IconTrash size={12} color={colors.red} />
               <Text style={s.deleteBtnText}>Move to Pool</Text>
@@ -307,7 +347,7 @@ export default function CardDetailScreen({ navigation, route }) {
               </TouchableOpacity>
             )}
 
-            {user?.permissions?.perm_idcard_delete && card.status === 'pending' && (
+            {user?.permissions?.perm_idcard_delete && card.status === 'pending' && !(user?.isClient || user?.isAssistant) && (
               <TouchableOpacity onPress={deleteCard} activeOpacity={0.85} style={s.actionBtnFull}>
                 <View style={s.deleteActionBtn}>
                   <IconTrash size={14} color={colors.red} />

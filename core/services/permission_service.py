@@ -599,6 +599,9 @@ class PermissionService:
                 if perm in cls.CLIENT_BLOCKED_PERMS:
                     context[perm] = False
                     continue
+                if perm in cls.CLIENT_STAFF_BLOCKED_PERMS:
+                    context[perm] = False
+                    continue
                 if not active:
                     context[perm] = False
                     continue

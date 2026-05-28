@@ -24,6 +24,7 @@ class IDCardTableService(BaseService):
     VALID_FIELD_TYPES = [
         'text', 'number', 'date', 'email', 'image', 'textarea', 'class', 'section',
         'photo', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature',
+        'select', 'class_section',
     ]
     LEGACY_REL_PHOTO_ALIASES = {'mother_photo', 'father_photo'}
 

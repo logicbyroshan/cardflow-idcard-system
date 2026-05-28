@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from idcards.models import IDCard, IDCardTable
 from core.services.base import ServiceResult
+from core.services.cache_version_service import CacheVersionService
 from core.services.activity_service import ActivityService
 from .models import ReprintRequest
 
@@ -62,6 +63,17 @@ class ReprintWorkflowService:
             normalized.append(parsed)
         return normalized
 
+    @classmethod
+    def _bump_dashboard_cache_versions(cls, table: IDCardTable) -> None:
+        """Invalidate dashboard cache versions for reprint data updates."""
+        try:
+            CacheVersionService.bump('admin_dash_counts', 'global')
+            client_id = getattr(getattr(table, 'group', None), 'client_id', None)
+            if client_id:
+                CacheVersionService.bump('client_dash_counts', f'client:{int(client_id)}')
+        except Exception:
+            pass
+
     # ── Single transition ───────────────────────────────────────────
 
     @classmethod
@@ -92,6 +104,7 @@ class ReprintWorkflowService:
             reprint_req.status = target_status
             reprint_req.save(update_fields=['status', 'updated_at'])
 
+        cls._bump_dashboard_cache_versions(reprint_req.table)
         ActivityService.log(
             'reprint_status',
             f'Reprint moved from {cls._status_label(current)} to {cls._status_label(target_status)}',
@@ -151,6 +164,7 @@ class ReprintWorkflowService:
                 message=f'No reprint requests eligible for transition to {target_status}.'
             )
 
+        cls._bump_dashboard_cache_versions(table)
         for row in transition_rows:
             ActivityService.log(
                 'reprint_status',
@@ -221,6 +235,7 @@ class ReprintWorkflowService:
         skipped_count = len(already_requested & set(card_ids))
 
         if created > 0:
+            cls._bump_dashboard_cache_versions(table)
             client_name = ''
             try:
                 client_name = table.group.client.name
@@ -290,6 +305,7 @@ class ReprintWorkflowService:
 
             rr_qs.delete()
 
+        cls._bump_dashboard_cache_versions(table)
         for card_id in card_ids:
             ActivityService.log(
                 'reprint_status',

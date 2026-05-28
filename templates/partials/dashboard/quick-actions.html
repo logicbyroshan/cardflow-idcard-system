@@ -18,7 +18,7 @@
         <span>Add New Staff</span>
       </a>
       {% endif %}
-      {% if is_super_admin or perm_idcard_client_list or perm_manage_client_staff %}
+      {% if is_client or is_client_staff %}
       <a href="{% url 'manage_client_staff' %}?add=1" class="quick-action-btn" data-dashboard-quick-action="add-assistent">
         <i class="fa-solid fa-user-gear"></i>
         <span>Add New Assistent</span>

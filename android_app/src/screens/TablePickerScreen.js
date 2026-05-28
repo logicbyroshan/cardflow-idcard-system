@@ -1,10 +1,11 @@
 import React, { useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { apiGet } from '../api/client';
 import { colors, typography, spacing, radius, shadows, fontFamily } from '../theme';
 import useRefreshableResource from '../hooks/useRefreshableResource';
+import { TablePickerSkeleton } from '../components/Skeleton';
 
 const STATUS_COLORS = {
   pending: { bg: '#fef3c7', text: '#b45309' },
@@ -68,7 +69,7 @@ export default function TablePickerScreen({ navigation, route }) {
     <View style={s.root}>
       <TopBar title={`${statusDisplay} List`} subtitle="Select a table to view cards" onBack={() => navigation.goBack()} />
       {loading ? (
-        <View style={s.loadingWrap}><ActivityIndicator size="large" color={colors.brandLight} /></View>
+        <TablePickerSkeleton />
       ) : (
         <FlatList
           data={tables}

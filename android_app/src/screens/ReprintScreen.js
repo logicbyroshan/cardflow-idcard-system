@@ -4,7 +4,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, 
 import { LinearGradient } from 'expo-linear-gradient';
 import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
-import { ListSkeleton } from '../components/Skeleton';
+import { ReprintSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
 import { colors, shadows, radius, fontFamily, roleThemes } from '../theme';
@@ -64,7 +64,7 @@ export default function ReprintScreen({ navigation, route }) {
       clientsMap[cid].confirmed += table.confirmed || 0;
       clientsMap[cid].tables.push(table);
     });
-    return Object.values(clientsMap).sort((a, b) => a.name.localeCompare(b.name));
+    return Object.values(clientsMap).sort((a, b) => (b.requested + b.confirmed) - (a.requested + a.confirmed));
   }, [tables]);
 
   const handleClientPress = (client) => {
@@ -175,32 +175,34 @@ export default function ReprintScreen({ navigation, route }) {
     <View style={s.root}>
       <TopBar title="Reprint Manager" subtitle="Request & confirmed reprints" onBack={() => navigation.goBack()} />
 
-      {/* Summary */}
-      <View style={s.summaryRow}>
-        <SummaryBox icon="list" color="#f59e0b" bg="#fef3c7" label="Requested" value={totals.request} />
-        <SummaryBox icon="check" color="#22c55e" bg="#d1fae5" label="Confirmed" value={totals.confirmed} />
-        <SummaryBox icon="download" color="#8b5cf6" bg="#ede9fe" label="Download" value={totals.download} />
-      </View>
-
       {error && <ErrorBanner message={error} onDismiss={() => {}} onRetry={refresh} />}
       {loading ? (
-        <ListSkeleton rows={4} />
+        <ReprintSkeleton />
       ) : (
-        <FlatList
-          data={groupedClients}
-          renderItem={renderItem}
-          keyExtractor={item => item.id.toString()}
-          contentContainerStyle={s.list}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
-          ListEmptyComponent={
-            <View style={s.empty}>
-              <View style={s.emptyIcon}><DynamicIcon name="redo" size={24} color={colors.gray300} /></View>
-              <Text style={s.emptyTitle}>No reprints</Text>
-              <Text style={s.emptySub}>All reprint requests have been processed</Text>
-            </View>
-          }
-        />
+        <>
+          {/* Summary */}
+          <View style={s.summaryRow}>
+            <SummaryBox icon="list" color="#f59e0b" bg="#fef3c7" label="Requested" value={totals.request} />
+            <SummaryBox icon="check" color="#22c55e" bg="#d1fae5" label="Confirmed" value={totals.confirmed} />
+            <SummaryBox icon="download" color="#8b5cf6" bg="#ede9fe" label="Download" value={totals.download} />
+          </View>
+
+          <FlatList
+            data={groupedClients}
+            renderItem={renderItem}
+            keyExtractor={item => item.id.toString()}
+            contentContainerStyle={s.list}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandLight} />}
+            ListEmptyComponent={
+              <View style={s.empty}>
+                <View style={s.emptyIcon}><DynamicIcon name="redo" size={24} color={colors.gray300} /></View>
+                <Text style={s.emptyTitle}>No reprints</Text>
+                <Text style={s.emptySub}>All reprint requests have been processed</Text>
+              </View>
+            }
+          />
+        </>
       )}
     </View>
   );

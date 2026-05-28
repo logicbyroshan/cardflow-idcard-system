@@ -225,10 +225,21 @@ class ClientService(BaseService):
                     'status': 'active' if create_as_active else 'inactive',
                 }
                 
+                # Default permissions set to Auto-ON for new clients
+                DEFAULT_ACTIVE_PERMISSIONS = {
+                    'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_approved_list',
+                    'perm_idcard_download_list', 'perm_idcard_pool_list', 'perm_idcard_add', 'perm_idcard_edit',
+                    'perm_idcard_info', 'perm_idcard_delete', 'perm_idcard_approve', 'perm_idcard_verify',
+                    'perm_idcard_updated_at', 'perm_idcard_retrieve', 'perm_idcard_bulk_download',
+                    'perm_idcard_client_list', 'perm_set_temp_password'
+                }
+                
                 # Add permissions
                 for perm in cls.PERMISSION_FIELDS:
                     if perm in data:
                         client_kwargs[perm] = cls.parse_bool(data[perm])
+                    else:
+                        client_kwargs[perm] = (perm in DEFAULT_ACTIVE_PERMISSIONS)
                 
                 client = Client.objects.create(**client_kwargs)
 

@@ -834,23 +834,66 @@ body[style*="overflow:hidden"] {
 .center-modal-progress {
   display: none;
   margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--color-white) 0%, var(--color-gray-50) 100%);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.download-modal-progress-step .center-modal-progress {
+  display: block;
 }
 .center-modal-progress-track {
   background: var(--color-gray-200);
-  border-radius: 6px;
-  height: 6px;
+  border-radius: 999px;
+  height: 10px;
   overflow: hidden;
 }
 .center-modal-progress-bar {
   height: 100%;
   width: 0%;
   transition: width 0.3s;
-  border-radius: 6px;
+  border-radius: 999px;
+  background-image: linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
 }
 .center-modal-progress-text {
   color: var(--color-gray-500);
   font-size: var(--ui-font-size-base, 14px);
   margin: 6px 0 0;
+}
+
+.download-modal-progress-step {
+  margin-top: 12px;
+  padding: 14px 0 2px;
+  border-top: 1px solid var(--color-slate-200);
+}
+
+.download-modal-step-title {
+  margin: 0 0 6px;
+  font-size: var(--ui-font-size-base, 14px);
+  font-weight: 700;
+  color: var(--color-gray-800);
+}
+
+.download-modal-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.download-modal-progress-pct,
+.download-modal-progress-eta {
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  color: var(--color-gray-600);
+}
+
+.center-modal-theme-purple .center-modal-progress-track {
+  background: rgba(109, 40, 217, 0.10);
 }
 
 /* Theme colors for center modals */

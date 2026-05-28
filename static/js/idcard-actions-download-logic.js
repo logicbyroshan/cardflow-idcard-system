@@ -992,25 +992,13 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles, breakMode) {
         return;
     }
 
-    // Determine card count for async decision
-    // If cardIds is empty, it means "all cards"  use async to be safe
-    var totalCards = (window.IDCardApp && window.IDCardApp.lazyLoadState)
-        ? (window.IDCardApp.lazyLoadState.totalCount || 0)
-        : 0;
-    var effectiveCount = (cardIds && cardIds.length > 0) ? cardIds.length : totalCards;
-
-    // Use async export for large datasets to avoid Cloudflare timeout
-    if (effectiveCount >= _ASYNC_PDF_THRESHOLD) {
-        _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode);
-        return;
-    }
-
-    // Use DownloadManager if available (small exports)
+    // Use DownloadManager if available. The PDF modal now prefers the stable
+    // direct download path so the progress UI stays in sync with one request.
     if (window.DownloadManager) {
         window.DownloadManager.start({
             name: 'PDF Document',
             url: `/api/table/${tableId}/cards/download-pdf/`,
-            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles, break_mode: breakMode }, _getActiveFilters()),
+            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles, break_mode: breakMode, prefer_sync: true }, _getActiveFilters()),
             lockUi: true,
             fallbackExt: 'pdf',
             completeMessage: 'PDF file downloaded successfully!',
@@ -1024,7 +1012,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles, breakMode) {
         return;
     }
 
-    // Legacy fallback for small exports
+    // Legacy fallback
     _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode);
 }
 
