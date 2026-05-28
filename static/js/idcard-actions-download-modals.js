@@ -269,11 +269,9 @@ window.IDCardApp.downloadProgressPresenter = {
     },
     setType: function(type) {
         _dlProgressState.type = type || '';
-        console.debug('[DL TRACE] presenter.setType ->', _dlProgressState.type);
     },
     prepare: function(message, progress, onCancel) {
         if (!_dlProgressState.type) return;
-        console.debug('[DL TRACE] presenter.prepare type=', _dlProgressState.type, 'message=', message);
         _dlSetProgressVisible(_dlProgressState.type, true);
         _dlSetFooterCancelLabel(_dlProgressState.type, 'Cancel Download');
         var cfgPrepare = _dlGetProgressModalConfig(_dlProgressState.type);
@@ -284,13 +282,11 @@ window.IDCardApp.downloadProgressPresenter = {
     },
     update: function(message, progress, etaText, onCancel) {
         if (!_dlProgressState.type) return;
-        console.debug('[DL TRACE] presenter.update type=', _dlProgressState.type, 'msg=', message, 'pct=', progress, 'eta=', etaText);
         if (typeof onCancel === 'function') _dlProgressState.cancelFn = onCancel;
         _dlUpdateProgressUi(_dlProgressState.type, message || 'Downloading...', typeof progress === 'number' ? progress : -1, etaText || '--');
     },
     complete: function(message) {
         if (!_dlProgressState.type) return;
-        console.debug('[DL TRACE] presenter.complete type=', _dlProgressState.type, 'msg=', message);
         var completedType = _dlProgressState.type;
         _dlFinishProgressUi(completedType, message || 'Download complete', false);
         setTimeout(function() {
@@ -303,26 +299,22 @@ window.IDCardApp.downloadProgressPresenter = {
     },
     error: function(message) {
         if (!_dlProgressState.type) return;
-        console.debug('[DL TRACE] presenter.error type=', _dlProgressState.type, 'msg=', message);
         _dlFinishProgressUi(_dlProgressState.type, message || 'Download failed', true);
     },
     cancel: function() {
         if (typeof _dlProgressState.cancelFn === 'function') {
             var cancelFn = _dlProgressState.cancelFn;
             _dlProgressState.cancelFn = null;
-            console.debug('[DL TRACE] presenter.cancel -> calling cancelFn');
             cancelFn();
             return;
         }
         if (_dlProgressState.type) {
-            console.debug('[DL TRACE] presenter.cancel -> clearing UI for type', _dlProgressState.type);
             _dlClearProgressUi(_dlProgressState.type);
             _dlProgressState.type = '';
         }
     },
     clear: function() {
         if (_dlProgressState.type) {
-            console.debug('[DL TRACE] presenter.clear for type', _dlProgressState.type);
             _dlClearProgressUi(_dlProgressState.type);
         }
         _dlProgressState.type = '';
