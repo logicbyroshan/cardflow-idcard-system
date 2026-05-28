@@ -207,6 +207,7 @@ from .pro_user_guest_users_api import (
     api_pro_user_guest_source_clients,
     api_pro_user_guest_user_create,
     api_pro_user_guest_user_convert,
+    api_pro_user_guest_user_restore,
 )
 from .pro_user_session_api import (
     api_pro_user_revoke_sessions,

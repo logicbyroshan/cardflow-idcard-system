@@ -249,6 +249,7 @@ urlpatterns = [
     path('api/pro-user/guest-users/clients/', views.api_pro_user_guest_source_clients, name='api_pro_user_guest_source_clients'),
     path('api/pro-user/guest-users/create/', views.api_pro_user_guest_user_create, name='api_pro_user_guest_user_create'),
     path('api/pro-user/guest-users/convert/', views.api_pro_user_guest_user_convert, name='api_pro_user_guest_user_convert'),
+    path('api/pro-user/guest-users/restore/', views.api_pro_user_guest_user_restore, name='api_pro_user_guest_user_restore'),
     path('api/pro-user/sessions/revoke/', views.api_pro_user_revoke_sessions, name='api_pro_user_revoke_sessions'),
     path('api/pro-user/sessions/list/', views.api_pro_user_list_sessions, name='api_pro_user_list_sessions'),
     path('api/pro-user/sessions/revoke-single/', views.api_pro_user_revoke_session_key, name='api_pro_user_revoke_session_key'),

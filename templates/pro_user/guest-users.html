@@ -233,7 +233,9 @@
   data-list-api="{% url 'api_pro_user_guest_users' %}"
   data-client-api="{% url 'api_pro_user_guest_source_clients' %}"
   data-create-api="{% url 'api_pro_user_guest_user_create' %}"
-  data-convert-api="{% url 'api_pro_user_guest_user_convert' %}">
+  data-convert-api="{% url 'api_pro_user_guest_user_convert' %}"
+  data-restore-api="{% url 'api_pro_user_guest_user_restore' %}"
+  data-current-client-id="{{ current_client_id|default:'' }}">
 
   {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_guest_users' %}
 
@@ -342,10 +344,11 @@
                   <th>Role</th>
                   <th>Status</th>
                   <th>Updated</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="guestTableBody">
-                <tr><td class="guest-empty" colspan="6">Loading guest users...</td></tr>
+                <tr><td class="guest-empty" colspan="7">Loading guest users...</td></tr>
               </tbody>
             </table>
           </div>
@@ -364,6 +367,8 @@
   const clientApi = root.dataset.clientApi;
   const createApi = root.dataset.createApi;
   const convertApi = root.dataset.convertApi;
+  const restoreApi = root.dataset.restoreApi;
+  const currentClientId = (root.dataset.currentClientId || '').trim();
 
   const guestTableBody = document.getElementById('guestTableBody');
   const guestClientPicker = document.getElementById('guestClientPicker');
@@ -387,7 +392,7 @@
   }
 
   function setTableMessage(message) {
-    guestTableBody.innerHTML = '<tr><td class="guest-empty" colspan="6">' + esc(message) + '</td></tr>';
+    guestTableBody.innerHTML = '<tr><td class="guest-empty" colspan="7">' + esc(message) + '</td></tr>';
   }
 
   function renderGuests(guests) {
@@ -396,6 +401,9 @@
       return;
     }
     guestTableBody.innerHTML = guests.map(function(item) {
+      var revertButton = item.guest_status === 'sandbox'
+        ? '<button class="btn btn-secondary" type="button" data-revert-client="' + esc(item.id) + '"><i class="fa-solid fa-right-to-bracket"></i> Revert to Client</button>'
+        : '';
       return (
         '<tr>' +
           '<td><strong>' + esc(item.name || '-') + '</strong><div class="guest-muted">ID ' + esc(item.id) + '</div></td>' +
@@ -404,6 +412,7 @@
           '<td>' + esc(item.role_display || item.role || '-') + '</td>' +
           '<td><span class="guest-status sandbox"><i class="fa-solid fa-shield-halved"></i> ' + esc(item.guest_status || 'sandbox') + '</span></td>' +
           '<td>' + esc(item.updated_at || '-') + '</td>' +
+          '<td>' + revertButton + '</td>' +
         '</tr>'
       );
     }).join('');
@@ -473,6 +482,9 @@
     if (!selectedId) {
       throw new Error('Select a client or enter a client ID first.');
     }
+    if (currentClientId && String(selectedId) === String(currentClientId)) {
+      throw new Error('This page cannot convert the currently logged-in client account. Choose another client or use the guest restore action on a guest row.');
+    }
     guestConvertStatus.textContent = 'Converting client to guest sandbox...';
     await fetchJson(convertApi, {
       method: 'POST',
@@ -481,6 +493,17 @@
     guestConvertStatus.textContent = 'Client converted to guest sandbox successfully.';
     guestClientId.value = '';
     guestClientPicker.value = '';
+    await refreshGuests();
+    await refreshClients();
+  }
+
+  async function restoreGuest(clientId) {
+    guestCreateStatus.textContent = 'Restoring guest to client...';
+    await fetchJson(restoreApi, {
+      method: 'POST',
+      body: JSON.stringify({ client_id: clientId }),
+    });
+    guestCreateStatus.textContent = 'Guest restored to client successfully.';
     await refreshGuests();
     await refreshClients();
   }
@@ -500,6 +523,14 @@
   document.getElementById('guestRefreshBtn').addEventListener('click', function() {
     Promise.all([refreshGuests(), refreshClients()]).catch(function(err) {
       guestCreateStatus.textContent = err.message || 'Failed to refresh guest users.';
+    });
+  });
+
+  guestTableBody.addEventListener('click', function(event) {
+    var button = event.target.closest('[data-revert-client]');
+    if (!button) return;
+    restoreGuest(button.getAttribute('data-revert-client')).catch(function(err) {
+      guestCreateStatus.textContent = err.message || 'Failed to restore guest.';
     });
   });
 

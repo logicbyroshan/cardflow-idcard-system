@@ -355,6 +355,33 @@ class ClientService(BaseService):
             )
         except Exception as e:
             return cls._unexpected_error_result('create_guest_from_client', e)
+
+    @classmethod
+    def restore_client_from_guest(cls, client_id: int, request=None) -> ServiceResult:
+        """Convert a guest sandbox client back into a normal client."""
+        try:
+            client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
+            user = client.user
+
+            if not client.is_guest and user.role != 'guest_user':
+                return ServiceResult(success=False, message='This account is already a normal client.')
+
+            with transaction.atomic():
+                client.is_guest = False
+                client.status = 'active'
+                user.role = 'client'
+                user.is_active = True
+                user.save(update_fields=['role', 'is_active'])
+                client.save(update_fields=['is_guest', 'status', 'updated_at'])
+
+            cls._bump_client_cache_versions(client.id)
+            return ServiceResult(
+                success=True,
+                message=f'Guest "{client.name}" restored to client successfully!',
+                data={'client': cls.serialize(client, include_permissions=False)},
+            )
+        except Exception as e:
+            return cls._unexpected_error_result('restore_client_from_guest', e)
     
     @classmethod
     def get(cls, client_id: int, include_permissions: bool = True) -> ServiceResult:

@@ -72,12 +72,16 @@ def api_pro_user_guest_source_clients(request):
     if guard is not None:
         return guard
 
+    current_client_id = getattr(getattr(request.user, 'client_profile', None), 'id', None)
+
     clients = (
         Client.objects
         .select_related('user')
         .filter(status='active', is_guest=False)
         .order_by('name', 'id')
     )
+    if current_client_id:
+        clients = clients.exclude(id=current_client_id)
 
     return JsonResponse({
         'success': True,
@@ -161,5 +165,39 @@ def api_pro_user_guest_user_convert(request):
     except Exception as exc:
         logger.exception('Guest convert failed for client_id=%s: %s', client_id, exc)
         return JsonResponse({'success': False, 'message': 'Failed to convert client to guest user.'}, status=500)
+
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_pro_user_guest_user_restore(request):
+    """Restore a guest sandbox account back to a normal client."""
+    guard = _require_pro_user(request)
+    if guard is not None:
+        return guard
+
+    body = _parse_json_body(request)
+    if body is None:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    client_id = body.get('client_id')
+    try:
+        client_id = int(str(client_id).strip())
+    except (TypeError, ValueError):
+        client_id = 0
+
+    if client_id <= 0:
+        return JsonResponse({'success': False, 'message': 'A valid client_id is required.'}, status=400)
+
+    client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
+    if not getattr(client, 'is_guest', False) and getattr(client.user, 'role', '') != 'guest_user':
+        return JsonResponse({'success': False, 'message': 'This user is not a guest.'}, status=400)
+
+    try:
+        result = ClientService.restore_client_from_guest(client_id, request=request)
+    except Exception as exc:
+        logger.exception('Guest restore failed for client_id=%s: %s', client_id, exc)
+        return JsonResponse({'success': False, 'message': 'Failed to restore guest to client.'}, status=500)
 
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)

@@ -423,9 +423,12 @@ def pro_user_guest_users_page(request):
     if not PermissionService.can_manage_pro_features(request.user):
         return redirect('dashboard')
 
+    current_client = getattr(request.user, 'client_profile', None)
+
     context = {
         'active_page': 'pro_user_guest_users',
         'user_role': get_user_role(request.user),
+        'current_client_id': getattr(current_client, 'id', ''),
     }
     return render(request, 'pro_user/guest-users.html', context)
 

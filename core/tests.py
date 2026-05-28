@@ -540,6 +540,56 @@ class PermissionValidationMiddlewareTests(TestCase):
         self.assertIn('/panel/inactive/', response['Location'])
 
 
+class GuestUserManagementApiTests(TestCase):
+    def setUp(self):
+        self.admin = _create_super_admin('guest-admin@test.com', 'adminpass1')
+        self.client.login(username='guest-admin@test.com', password='adminpass1')
+
+    def test_source_clients_excludes_current_client_profile(self):
+        from client.models import Client
+
+        current_client = Client.objects.create(user=self.admin, name='Admin Client Profile')
+        other_user, _other_client = _create_client_user('guest-target@test.com', 'clientpass1')
+        del other_user
+
+        response = self.client.get('/panel/api/pro-user/guest-users/clients/')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        ids = {item['id'] for item in data['clients']}
+        self.assertNotIn(current_client.id, ids)
+
+    def test_restore_guest_to_client_roundtrip(self):
+        user, client_profile = _create_client_user('guest-roundtrip@test.com', 'clientpass1')
+        self.assertEqual(user.role, 'client')
+
+        convert_response = self.client.post(
+            '/panel/api/pro-user/guest-users/convert/',
+            data=json.dumps({'client_id': client_profile.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(convert_response.status_code, 200)
+        self.assertTrue(convert_response.json()['success'])
+
+        client_profile.refresh_from_db()
+        user.refresh_from_db()
+        self.assertTrue(client_profile.is_guest)
+        self.assertEqual(user.role, 'guest_user')
+
+        restore_response = self.client.post(
+            '/panel/api/pro-user/guest-users/restore/',
+            data=json.dumps({'client_id': client_profile.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(restore_response.status_code, 200)
+        self.assertTrue(restore_response.json()['success'])
+
+        client_profile.refresh_from_db()
+        user.refresh_from_db()
+        self.assertFalse(client_profile.is_guest)
+        self.assertEqual(user.role, 'client')
+
+
 class LegacyStaffApiJsonShapeTests(TestCase):
     def setUp(self):
         from staff.models import Staff
