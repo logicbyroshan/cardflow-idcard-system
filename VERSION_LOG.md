@@ -8,7 +8,7 @@
 | 2026-05-11 | v3.20.0 | 1.0.44 | 44 | SVG Icon Stabilization, Crash Fix, Release Signing |
 | 2026-05-08 | v3.19.0 | 1.0.43 | 43 | Role-based UI logic and initial native build |
 
-## Current Release Candidate (v4.18.2 / 1.0.45)
+## Current Stable Release (v4.18.2 / 1.0.45)
 
 ### Mobile App (1.0.45)
 - **API 35 Target**: Updated `targetSdkVersion` to 35 to meet the latest Google Play Store requirements.
@@ -20,6 +20,7 @@
 ### Backend (v4.18.2)
 - **Reprint Workflow**: Confirmed-list retrieve action is wired and visible, with backend transition handling verified.
 - **UI/Release**: Rebuilt dist assets and aligned the release log with the 4.18.2 deployment.
+- **Approved List Actions**: Restored `Download Images` and `Download Word` on the approved list action bar for bulk-download users.
 
 ## Next Steps
 - [ ] Complete Google Play Store upload of `app-release.aab` (v44).
