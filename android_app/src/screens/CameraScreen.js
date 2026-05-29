@@ -328,6 +328,7 @@ export default function CameraScreen({ navigation, route }) {
       try {
         const p = await cameraRef.current.takePictureAsync({
           quality: 0.8,
+          shutterSound: false,
         });
         if (p) {
           setPhoto(p);

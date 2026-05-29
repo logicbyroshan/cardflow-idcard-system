@@ -516,6 +516,7 @@ class ClientCardService(BaseService):
         branch_filter: Optional[str] = None,
         photo_filter: Optional[str] = None,
         sort_order: Optional[str] = None,
+        image_column: Optional[str] = None,
     ) -> ServiceResult:
         """
         Get cards for a table (with permission checks).
@@ -696,18 +697,29 @@ class ClientCardService(BaseService):
             photo_filter_value = str(photo_filter or '').strip().lower()
             if photo_filter_value in ('complete', 'pending', 'incomplete', 'with', 'without'):
                 matching_photo_ids: List[int] = []
+                target_col = str(image_column or 'photo').strip()
                 for _card in cards_query.only('id', 'photo', 'field_data').iterator(chunk_size=500):
                     fd = _card.field_data or {}
                     
-                    # 1. Check for valid photo (complete)
-                    has_valid_photo = bool(get_card_photo_url(_card, fd))
-                    
-                    # 2. Check for pending placeholder
-                    is_pending_placeholder = False
-                    for val in fd.values():
-                        if isinstance(val, str) and val.startswith('PENDING:'):
-                            is_pending_placeholder = True
-                            break
+                    if target_col:
+                        val = fd.get(target_col)
+                        if val is None:
+                            for k, v in fd.items():
+                                if str(k).strip().upper() == target_col.upper():
+                                    val = v
+                                    break
+                        has_valid_photo = bool(val and isinstance(val, str) and not val.startswith('PENDING:') and val not in ('NOT_FOUND', ''))
+                        is_pending_placeholder = bool(val and isinstance(val, str) and val.startswith('PENDING:'))
+                    else:
+                        # 1. Check for valid photo (complete)
+                        has_valid_photo = bool(get_card_photo_url(_card, fd))
+                        
+                        # 2. Check for pending placeholder
+                        is_pending_placeholder = False
+                        for val in fd.values():
+                            if isinstance(val, str) and val.startswith('PENDING:'):
+                                is_pending_placeholder = True
+                                break
                     
                     matched = False
                     if photo_filter_value in ('complete', 'with'):

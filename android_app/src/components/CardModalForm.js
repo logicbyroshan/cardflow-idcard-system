@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Image, Animated, Dimensions } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Image, Animated, Dimensions, BackHandler } from 'react-native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DynamicIcon } from './Icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -31,6 +31,7 @@ import { cleanFieldData, cleanFieldValue } from '../utils/data';
  */
 export default function CardModalForm({ visible, onClose, tableId, cardId, onSuccess }) {
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const isEdit = !!cardId;
   const [fields, setFields] = useState([]);
@@ -50,6 +51,23 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
   const [shouldRender, setShouldRender] = useState(visible);
   const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible && isFocused) {
+      const onBackPress = () => {
+        if (photoMenu.visible) {
+          setPhotoMenu(p => ({ ...p, visible: false }));
+          return true;
+        }
+        onClose();
+        return true;
+      };
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => {
+        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+      };
+    }
+  }, [visible, isFocused, photoMenu.visible, onClose]);
 
   useEffect(() => {
     if (visible) {
@@ -113,7 +131,13 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       if (isEdit) {
         const { ok: cOk, data: cData } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
         if (cOk && cData?.success) {
-          setValues(cleanFieldData(cData.data?.field_data || {}));
+          const cleaned = cleanFieldData(cData.data?.field_data || {});
+          Object.keys(cleaned).forEach(k => {
+            if (typeof cleaned[k] === 'string') {
+              cleaned[k] = cleaned[k].toUpperCase();
+            }
+          });
+          setValues(cleaned);
           setTableName(cData.data?.table_name || '');
         } else if (!cOk) {
           setError('Failed to load card details');
@@ -328,7 +352,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                             <TextInput
                               style={s.fieldInput}
                               value={values[field.name] || ''}
-                              onChangeText={t => setValues(prev => ({ ...prev, [field.name]: t }))}
+                              onChangeText={t => setValues(prev => ({ ...prev, [field.name]: t.toUpperCase() }))}
                               placeholder={`Enter ${field.name.toLowerCase()}`}
                               placeholderTextColor={colors.gray300}
                             />

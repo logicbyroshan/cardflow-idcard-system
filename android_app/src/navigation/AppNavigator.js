@@ -13,6 +13,7 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
 // Eagerly load HomeScreen (primary authenticated screen)
 import HomeScreen from '../screens/HomeScreen';
+import MpinScreen from '../screens/MpinScreen';
 
 import ProfileScreen from '../screens/ProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
@@ -36,7 +37,7 @@ const Stack = createNativeStackNavigator();
 
 
 export default function AppNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAppUnlocked } = useAuth();
 
   if (isLoading) {
     return null;
@@ -44,7 +45,7 @@ export default function AppNavigator() {
 
   return (
     <Stack.Navigator
-      initialRouteName={isAuthenticated ? "Home" : "Landing"}
+      initialRouteName={isAuthenticated ? (isAppUnlocked ? "Home" : "Mpin") : "Landing"}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
@@ -59,6 +60,11 @@ export default function AppNavigator() {
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="NoAccess" component={NoAccessScreen} />
+        </>
+      ) : !isAppUnlocked ? (
+        <>
+          {/* Locked App Flow */}
+          <Stack.Screen name="Mpin" component={MpinScreen} />
         </>
       ) : (
         <>
@@ -88,6 +94,9 @@ export default function AppNavigator() {
           <Stack.Screen name="Reprint" component={ReprintScreen} />
           <Stack.Screen name="ReprintDetail" component={ReprintDetailScreen} />
           <Stack.Screen name="GroupSettings" component={GroupSettingsScreen} />
+          
+          {/* Allowed to change MPIN when unlocked */}
+          <Stack.Screen name="Mpin" component={MpinScreen} />
         </>
       )}
     </Stack.Navigator>

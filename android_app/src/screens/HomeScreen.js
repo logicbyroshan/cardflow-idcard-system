@@ -85,6 +85,14 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
   const { data: counts = {}, loading, refreshing, error, refresh } = useRefreshableResource(loadDashboard, { initialData: {} });
+
+  const onRefresh = useCallback(async () => {
+    try {
+      await refresh();
+    } catch (e) {
+      console.log('Dashboard refresh failed', e);
+    }
+  }, [refresh]);
   
   // Creation States
   const [showClientForm, setShowClientForm] = useState(false);
@@ -295,12 +303,6 @@ export default function HomeScreen({ navigation }) {
       <ErrorView type={error === 'network' ? ERROR_TYPES.NETWORK : ERROR_TYPES.SERVER} onRetry={refresh} message={error} />
     </View>
   );
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
-  }, [refresh]);
 
   return (
     <View style={s.root}>

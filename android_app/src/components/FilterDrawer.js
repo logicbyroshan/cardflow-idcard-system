@@ -18,6 +18,8 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
   const [sections, setSections] = useState([]);
   const [courses, setCourses] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [fields, setFields] = useState([]);
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [classToSections, setClassToSections] = useState({});
   const [courseToBranches, setCourseToBranches] = useState({});
   const [tempFilters, setTempFilters] = useState(currentFilters);
@@ -36,6 +38,7 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
       const { ok, data } = await apiGet(`/api/mobile/table/${tableId}/filter-options/`, { status });
 
       if (ok && data?.success) {
+        setFields(data.data?.fields || []);
         setClasses(data.data?.classes || []);
         setSections(data.data?.sections || []);
         setCourses(data.data?.courses || []);
@@ -86,6 +89,14 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
     ? (courseToBranches[tempFilters.course] || [])
     : branches;
 
+  const imageFields = fields.filter(f => {
+    const t = (f.type || '').toLowerCase();
+    const n = (f.name || '').toLowerCase();
+    return t.includes('image') || t.includes('photo') || n.includes('photo') || n.includes('sign') || n.includes('pic');
+  });
+
+  const imageColumnOptions = imageFields.length > 0 ? imageFields.map(f => f.name) : ['photo'];
+
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={s.overlay}>
@@ -127,6 +138,20 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
                     );
                   })}
                 </Wrap>
+              </View>
+
+              {/* Image Column Selection */}
+              <View style={s.section}>
+                <Text style={s.sectionTitle}>Select Image Column</Text>
+                <TouchableOpacity 
+                  style={s.dropdownSelector} 
+                  onPress={() => setShowColumnPicker(true)}
+                >
+                  <Text style={s.dropdownSelectorText}>
+                    {tempFilters.image_column ? tempFilters.image_column.toUpperCase() : 'Default (PHOTO)'}
+                  </Text>
+                  <DynamicIcon name="chevron-down" size={12} color={colors.gray400} />
+                </TouchableOpacity>
               </View>
 
               {/* Image Sort (Photo Filter) */}
@@ -233,6 +258,46 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
             </TouchableOpacity>
           </HStack>
         </View>
+        {/* Photo Column Selector Overlay */}
+        {showColumnPicker && (
+          <View style={s.menuOverlayContainer}>
+            <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setShowColumnPicker(false)}>
+              <View style={s.menuContent}>
+                <Text style={s.menuTitle}>Select Image Column</Text>
+                
+                <TouchableOpacity 
+                  style={[s.menuItem, !tempFilters.image_column && s.menuItemActive]} 
+                  onPress={() => {
+                    setTempFilters(prev => ({ ...prev, image_column: null }));
+                    setShowColumnPicker(false);
+                  }}
+                >
+                  <Text style={[s.menuItemText, !tempFilters.image_column && s.menuItemTextActive]}>Default (PHOTO)</Text>
+                </TouchableOpacity>
+
+                {imageColumnOptions.map(col => {
+                  const isActive = tempFilters.image_column === col;
+                  return (
+                    <TouchableOpacity 
+                      key={col} 
+                      style={[s.menuItem, isActive && s.menuItemActive]} 
+                      onPress={() => {
+                        setTempFilters(prev => ({ ...prev, image_column: col }));
+                        setShowColumnPicker(false);
+                      }}
+                    >
+                      <Text style={[s.menuItemText, isActive && s.menuItemTextActive]}>{col.toUpperCase()}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <TouchableOpacity style={s.menuCancel} onPress={() => setShowColumnPicker(false)}>
+                  <Text style={s.menuCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -290,4 +355,80 @@ const s = StyleSheet.create({
   applyBtnWrap: { flex: 2, borderRadius: radius.sm, overflow: 'hidden' },
   applyBtn: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   applyText: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
+
+  // Dropdown selector styles
+  dropdownSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: radius.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  dropdownSelectorText: {
+    fontSize: 13,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
+    color: colors.gray800,
+  },
+  menuOverlayContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  menuOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+  menuContent: {
+    backgroundColor: '#fff',
+    borderRadius: radius.lg,
+    padding: 8,
+    ...shadows.xl,
+  },
+  menuTitle: {
+    fontSize: 13,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray400,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    paddingVertical: 12,
+    letterSpacing: 1,
+  },
+  menuItem: {
+    padding: 16,
+    borderRadius: radius.md,
+    backgroundColor: '#fff',
+  },
+  menuItemActive: {
+    backgroundColor: '#eff6ff',
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray800,
+    textAlign: 'center',
+  },
+  menuItemTextActive: {
+    color: colors.brandPrimary,
+  },
+  menuCancel: {
+    marginTop: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  menuCancelText: {
+    fontSize: 15,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray400,
+  },
 });

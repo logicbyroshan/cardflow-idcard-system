@@ -2,7 +2,7 @@
   "expo": {
     "name": "Adarsh ID Cards",
     "slug": "adarsh-final-deploye",
-    "version": "1.0.51",
+    "version": "1.0.52",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.adarshid.app",
-      "buildNumber": "51"
+      "buildNumber": "52"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,11 +24,13 @@
       },
       "edgeToEdgeEnabled": false,
       "package": "com.adarshid.app",
-      "versionCode": 51,
+      "versionCode": 52,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VISUAL_USER_SELECTED"
       ]
     },
     "web": {
@@ -37,7 +39,13 @@
     "plugins": [
       "expo-font",
       "expo-system-ui",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you choose student photos."
+        }
+      ]
     ],
     "extra": {
       "eas": {

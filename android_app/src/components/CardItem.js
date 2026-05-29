@@ -148,7 +148,12 @@ const CardItem = React.memo(function CardItem({
           {textFields.map((f, i) => (
             <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
               <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
-              <Text style={s.fieldValue} numberOfLines={1}>{cleanFieldValue(f.value) || '-'}</Text>
+              <Text style={s.fieldValue} numberOfLines={1}>
+                {(() => {
+                  const cleaned = cleanFieldValue(f.value);
+                  return cleaned ? String(cleaned).toUpperCase() : '-';
+                })()}
+              </Text>
             </View>
           ))}
           {textFields.length === 0 && (
@@ -238,8 +243,11 @@ const CardItem = React.memo(function CardItem({
 
           {/* Edit Button */}
           {onEdit && hasPerm('perm_idcard_edit') && (
-            <TouchableOpacity style={s.iconBtn} onPress={() => onEdit(item)}>
-              <IconEdit size={12} color={colors.brandPrimary} />
+            <TouchableOpacity 
+              style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
+              onPress={() => onEdit(item)}
+            >
+              <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>EDIT</Text>
             </TouchableOpacity>
           )}
 

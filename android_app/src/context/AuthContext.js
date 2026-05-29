@@ -25,6 +25,8 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [originalUser, setOriginalUser] = useState(null);
+  const [isAppUnlocked, setIsAppUnlocked] = useState(false);
+  const [isMpinCreated, setIsMpinCreated] = useState(false);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -34,6 +36,8 @@ export function AuthProvider({ children }) {
         setIsAuthenticated(false);
         setIsImpersonating(false);
         setOriginalUser(null);
+        setIsAppUnlocked(false);
+        setIsMpinCreated(false);
         await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
         await clearAuth();
       } else if (ok && data?.success) {
@@ -81,6 +85,16 @@ export function AuthProvider({ children }) {
           const parsed = enrichUser(JSON.parse(stored));
           setUser(parsed);
           setIsAuthenticated(true);
+          
+          // Check if MPIN is set for this user
+          const mpin = await AsyncStorage.getItem(`adarsh_mpin_${parsed.email.toLowerCase()}`);
+          if (mpin) {
+            setIsMpinCreated(true);
+            setIsAppUnlocked(false); // Must unlock on fresh app open
+          } else {
+            setIsMpinCreated(false);
+            setIsAppUnlocked(false); // Must create MPIN
+          }
           
           // Restore impersonation state
           const impState = await AsyncStorage.getItem('adarsh_impersonate_state');
@@ -136,6 +150,17 @@ export function AuthProvider({ children }) {
       setUser(userData);
       setIsAuthenticated(true);
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+
+      // Check if MPIN is set for this user
+      const mpin = await AsyncStorage.getItem(`adarsh_mpin_${email.toLowerCase()}`);
+      if (mpin) {
+        setIsMpinCreated(true);
+        setIsAppUnlocked(true); // Logged in with password, unlock app
+      } else {
+        setIsMpinCreated(false);
+        setIsAppUnlocked(false); // Force them to set MPIN
+      }
+
       return { success: true, data };
     }
 
@@ -211,6 +236,45 @@ export function AuthProvider({ children }) {
     }
   }, [originalUser]);
 
+  const createMpin = useCallback(async (newMpin) => {
+    if (!user?.email) return false;
+    const emailKey = user.email.toLowerCase();
+    await AsyncStorage.setItem(`adarsh_mpin_${emailKey}`, newMpin);
+    setIsMpinCreated(true);
+    setIsAppUnlocked(true);
+    return true;
+  }, [user]);
+
+  const verifyMpin = useCallback(async (enteredMpin) => {
+    if (!user?.email) return false;
+    const emailKey = user.email.toLowerCase();
+    const stored = await AsyncStorage.getItem(`adarsh_mpin_${emailKey}`);
+    if (stored === enteredMpin) {
+      setIsAppUnlocked(true);
+      return true;
+    }
+    return false;
+  }, [user]);
+
+  const changeMpin = useCallback(async (oldMpin, newMpin) => {
+    if (!user?.email) return false;
+    const emailKey = user.email.toLowerCase();
+    const stored = await AsyncStorage.getItem(`adarsh_mpin_${emailKey}`);
+    if (stored === oldMpin) {
+      await AsyncStorage.setItem(`adarsh_mpin_${emailKey}`, newMpin);
+      return true;
+    }
+    return false;
+  }, [user]);
+
+  const forgotMpin = useCallback(async () => {
+    const email = user?.email;
+    if (email) {
+      await AsyncStorage.removeItem(`adarsh_mpin_${email.toLowerCase()}`);
+    }
+    await logout();
+  }, [user, logout]);
+
   const logout = useCallback(async () => {
     if (isImpersonating) {
       const res = await stopImpersonation();
@@ -222,6 +286,8 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(false);
     setIsImpersonating(false);
     setOriginalUser(null);
+    setIsAppUnlocked(false);
+    setIsMpinCreated(false);
     try {
       // Standard logout endpoint
       await apiPost('/api/mobile/auth/logout/', {});
@@ -243,6 +309,8 @@ export function AuthProvider({ children }) {
         setIsAuthenticated(false);
         setIsImpersonating(false);
         setOriginalUser(null);
+        setIsAppUnlocked(false);
+        setIsMpinCreated(false);
         await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
         await AsyncStorage.removeItem('adarsh_impersonate_state');
         await clearAuth();
@@ -260,12 +328,18 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     isImpersonating,
     originalUser,
+    isAppUnlocked,
+    isMpinCreated,
     login,
     logout,
     checkSession,
     refreshProfile,
     startImpersonation,
     stopImpersonation,
+    createMpin,
+    verifyMpin,
+    changeMpin,
+    forgotMpin,
   };
 
   return (

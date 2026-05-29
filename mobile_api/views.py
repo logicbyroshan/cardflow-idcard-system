@@ -3563,6 +3563,7 @@ def api_cards(request, table_id):
     photo_filter = str(request.GET.get('photo', '') or '').strip().lower()
     if photo_filter not in ('complete', 'pending', 'incomplete', 'with', 'without'):
         photo_filter = ''
+    image_column = str(request.GET.get('image_column', '') or '').strip()
     sort_mode = _normalize_mobile_sort_mode(request.GET.get('sort', 'sr-asc'))
     class_filter = (request.GET.get('class') or '').strip()
     section_filter = (request.GET.get('section') or '').strip()
@@ -3589,6 +3590,7 @@ def api_cards(request, table_id):
             branch_filter=branch_filter or None,
             photo_filter=photo_filter or None,
             sort_order=sort_mode,
+            image_column=image_column or None,
         )
         if result.success:
             return JsonResponse({'success': True, 'data': result.data})
@@ -3636,7 +3638,8 @@ def api_all_card_ids(request, table_id):
     photo_filter = str(request.GET.get('photo', '') or '').strip().lower()
     if photo_filter not in ('complete', 'pending', 'incomplete', 'with', 'without'):
         photo_filter = ''
-
+    image_column = str(request.GET.get('image_column', '') or '').strip()
+    
     if status_filter == 'download':
         cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
@@ -3742,14 +3745,26 @@ def api_all_card_ids(request, table_id):
 
     if photo_filter:
         matching_photo_ids = []
+        target_col = image_column or 'photo'
         for _card in cards_qs.only('id', 'photo', 'field_data').iterator(chunk_size=500):
             fd = _card.field_data or {}
-            has_valid_photo = bool(get_card_photo_url(_card, fd))
-            is_pending_placeholder = False
-            for val in fd.values():
-                if isinstance(val, str) and val.startswith('PENDING:'):
-                    is_pending_placeholder = True
-                    break
+            
+            if target_col:
+                val = fd.get(target_col)
+                if val is None:
+                    for k, v in fd.items():
+                        if str(k).strip().upper() == target_col.upper():
+                            val = v
+                            break
+                has_valid_photo = bool(val and isinstance(val, str) and not val.startswith('PENDING:') and val not in ('NOT_FOUND', ''))
+                is_pending_placeholder = bool(val and isinstance(val, str) and val.startswith('PENDING:'))
+            else:
+                has_valid_photo = bool(get_card_photo_url(_card, fd))
+                is_pending_placeholder = False
+                for val in fd.values():
+                    if isinstance(val, str) and val.startswith('PENDING:'):
+                        is_pending_placeholder = True
+                        break
 
             matched = False
             if photo_filter in ('complete', 'with'):
@@ -5043,6 +5058,25 @@ def api_staff_update(request, staff_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
+    # Handle temporary password if provided
+    temp_pw = data.get('temp_password', '').strip()
+    if temp_pw:
+        if len(temp_pw) < 8:
+            return JsonResponse({'success': False, 'message': 'Password must be at least 8 characters'}, status=400)
+        from django.contrib.auth.password_validation import validate_password
+        try:
+            validate_password(temp_pw)
+        except Exception as validation_error:
+            return JsonResponse({'success': False, 'message': '; '.join(validation_error.messages)}, status=400)
+
+        if PermissionService.is_super_admin(user):
+            pw_result = StaffService.set_temp_password(staff_id, temp_pw, request=request)
+        else:
+            pw_result = ClientStaffService.set_temp_password(user, staff_id, temp_pw, request=request)
+
+        if not pw_result.success:
+            return JsonResponse({'success': False, 'message': pw_result.message or 'Failed to set password'}, status=400)
+
     if PermissionService.is_super_admin(user):
         if not Staff.objects.filter(id=staff_id, staff_type='admin_staff').exists():
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
@@ -5193,7 +5227,232 @@ def api_staff_assign(request, staff_id):
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
 
 
-# â”€â”€â”€ Native App JSON APIs (for React Native) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_mobile_staff_assignment(request, staff_id):
+    """GET current assignments and scope options for a staff member."""
+    user = request.user
+    if not _can_manage_client_staff_surface(user):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    try:
+        staff = get_object_or_404(Staff, id=staff_id)
+        
+        # operator mode (admin_staff)
+        is_operator_mode = staff.staff_type == 'admin_staff'
+        
+        if is_operator_mode:
+            # Operator: return all active clients
+            from client.models import Client
+            clients = Client.objects.filter(status='active').order_by('name')
+            clients_list = [{'id': c.id, 'name': c.name} for c in clients]
+            assigned_clients = list(staff.assigned_clients.values_list('id', flat=True))
+            
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'clients': clients_list,
+                    'assigned_clients': assigned_clients,
+                    'groups': [],
+                    'tables': [],
+                    'assigned_groups': [],
+                    'assigned_tables': [],
+                    'assignment_scopes': []
+                }
+            })
+            
+        # assistant mode (client_staff)
+        client_id = staff.client_id
+        if not PermissionService.can_access_client(user, client_id):
+            return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+        # Load client's groups and tables
+        groups = IDCardGroup.objects.filter(client_id=client_id).values('id', 'name').order_by('name')
+        tables = IDCardTable.objects.filter(group__client_id=client_id, is_active=True, deleted_by_client=False).values('id', 'name', 'group_id').order_by('group__name', 'name')
+        
+        assigned_groups = list(staff.assigned_groups.values_list('id', flat=True))
+        assigned_tables = [
+            int(v) for v in (staff.assigned_table_ids or [])
+            if str(v).strip().isdigit() and int(v) > 0
+        ]
+        
+        # Aggregate distinct classes, sections, branches from this client's card database
+        # We build options per group, per table, and globally.
+        from idcards.models import IDCard
+        tables_data = list(IDCardTable.objects.filter(group__client_id=client_id, deleted_by_client=False).values('id', 'group_id', 'fields'))
+        
+        table_fields_meta = {}
+        for t in tables_data:
+            tid = t['id']
+            class_f = None
+            section_f = None
+            branch_f = None
+            for f in (t.get('fields') or []):
+                ft = f.get('type', '').lower()
+                fn = f.get('name', '')
+                fn_lower = fn.lower()
+                if ft == 'class' or fn_lower == 'class':
+                    class_f = fn
+                elif ft == 'section' or fn_lower == 'section':
+                    section_f = fn
+                elif ft == 'branch' or fn_lower == 'branch' or fn_lower == 'stream' or fn_lower == 'course' or 'branch' in fn_lower or 'stream' in fn_lower or 'course' in fn_lower:
+                    branch_f = fn
+            table_fields_meta[tid] = (class_f, section_f, branch_f)
+            
+        cards = IDCard.objects.filter(table__group__client_id=client_id).values('table_id', 'field_data')
+        
+        group_options = {}
+        table_options = {}
+        global_classes = set()
+        global_sections = set()
+        global_branches = set()
+        
+        # Build maps
+        for card in cards:
+            tid = card['table_id']
+            fd = card['field_data']
+            if not fd:
+                continue
+            
+            class_f, section_f, branch_f = table_fields_meta.get(tid, (None, None, None))
+            class_val = ''
+            section_val = ''
+            branch_val = ''
+            
+            if class_f:
+                val = fd.get(class_f) or fd.get(class_f.upper()) or fd.get(class_f.lower())
+                if val: class_val = str(val).strip()
+            if section_f:
+                val = fd.get(section_f) or fd.get(section_f.upper()) or fd.get(section_f.lower())
+                if val: section_val = str(val).strip()
+            if branch_f:
+                val = fd.get(branch_f) or fd.get(branch_f.upper()) or fd.get(branch_f.lower())
+                if val: branch_val = str(val).strip()
+                
+            # Get group id for this table
+            gid = next((t['group_id'] for t in tables_data if t['id'] == tid), None)
+            
+            if gid:
+                group_options.setdefault(gid, {'classes': set(), 'sections': set(), 'branches': set()})
+                if class_val: group_options[gid]['classes'].add(class_val)
+                if section_val: group_options[gid]['sections'].add(section_val)
+                if branch_val: group_options[gid]['branches'].add(branch_val)
+                
+            table_options.setdefault(tid, {'classes': set(), 'sections': set(), 'branches': set()})
+            if class_val: table_options[tid]['classes'].add(class_val)
+            if section_val: table_options[tid]['sections'].add(section_val)
+            if branch_val: table_options[tid]['branches'].add(branch_val)
+            
+            if class_val: global_classes.add(class_val)
+            if section_val: global_sections.add(section_val)
+            if branch_val: global_branches.add(branch_val)
+            
+        group_options_json = {}
+        for gid, opt in group_options.items():
+            group_options_json[str(gid)] = {
+                'classes': sorted(opt['classes']),
+                'sections': sorted(opt['sections']),
+                'branches': sorted(opt['branches'])
+            }
+            
+        table_options_json = {}
+        for tid, opt in table_options.items():
+            table_options_json[str(tid)] = {
+                'classes': sorted(opt['classes']),
+                'sections': sorted(opt['sections']),
+                'branches': sorted(opt['branches'])
+            }
+            
+        global_options = {
+            'classes': sorted(global_classes),
+            'sections': sorted(global_sections),
+            'branches': sorted(global_branches)
+        }
+        
+        # Fallback assignment modes
+        from client.models import Client
+        target_client = Client.objects.filter(id=client_id).first()
+        group_count = len(groups)
+        inferred_id_source = 'table' if group_count <= 1 else 'group'
+        assignment_id_source = 'table' if target_client and getattr(target_client, 'assignment_id_source', '') == 'table' else inferred_id_source
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'groups': list(groups),
+                'tables': list(tables),
+                'assigned_groups': assigned_groups,
+                'assigned_tables': assigned_tables,
+                'assignment_scopes': staff.assignment_scopes or [],
+                'assignment_id_source': assignment_id_source,
+                'class_section_options': global_options,
+                'group_options': group_options_json,
+                'table_options': table_options_json
+            }
+        })
+    except Exception:
+        logger.exception('api_mobile_staff_assignment error')
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_mobile_staff_assignment_update(request, staff_id):
+    """POST to save assignments for a staff member (compatible with React Native)."""
+    user = request.user
+    if not _can_manage_client_staff_surface(user):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        
+        # React Native sends { group_ids, table_ids, client_ids, assignment_scopes }
+        # We need to translate them to the payload shape expected by ClientStaffService or StaffService
+        payload = {
+            'assigned_groups': data.get('group_ids', []),
+            'assigned_tables': data.get('table_ids', []),
+            'assigned_clients': data.get('client_ids', []),
+            'assignment_scopes': data.get('assignment_scopes', [])
+        }
+        
+        staff = get_object_or_404(Staff, id=staff_id)
+        if staff.staff_type == 'admin_staff':
+            # Operator mode
+            if not PermissionService.is_super_admin(user):
+                return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+            # StaffService.update takes client_ids key
+            operator_payload = {
+                'client_ids': payload['assigned_clients']
+            }
+            result = StaffService.update(staff_id, operator_payload)
+        else:
+            # Client staff assistant mode
+            client_id = staff.client_id
+            from client.models import Client
+            target_client = Client.objects.filter(id=client_id).first()
+            group_count = IDCardGroup.objects.filter(client_id=client_id).count()
+            id_source = 'table' if group_count <= 1 else 'group'
+            if target_client and getattr(target_client, 'assignment_id_source', '') == 'table':
+                id_source = 'table'
+                
+            client_staff_payload = {
+                'assigned_groups': payload['assigned_tables'] if id_source == 'table' else payload['assigned_groups'],
+                'assignment_id_source': id_source,
+                'assignment_scopes': payload['assignment_scopes']
+            }
+            result = ClientStaffService.update_staff(user, staff_id, client_staff_payload)
+
+        if result.success:
+            return JsonResponse({'success': True, 'message': 'Assignments updated successfully'})
+        return JsonResponse({'success': False, 'message': result.message}, status=400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    except Exception:
+        logger.exception('api_mobile_staff_assignment_update error')
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+# ─── Native App JSON APIs (for React Native) ───
 
 @require_mobile_client
 @require_http_methods(["GET"])

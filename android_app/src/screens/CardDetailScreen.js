@@ -42,6 +42,56 @@ export default function CardDetailScreen({ navigation, route }) {
 
   const { data: card, loading, refreshing, error, refresh } = useRefreshableResource(loadCard);
 
+  const isLocked = (user?.isClient || user?.isAssistant) && card && ['approved', 'download', 'pool'].includes(card.status);
+
+  const canTransitionTo = useCallback((targetStatus) => {
+    if (!card) return false;
+    if (isLocked) return false;
+    if (card.status === targetStatus) return true;
+    
+    const allowed = {
+      'pending':  ['verified', 'pool'],
+      'verified': ['approved', 'pending', 'pool'],
+      'approved': ['download', 'verified', 'pending', 'pool'],
+      'download': ['approved', 'pending'],
+      'pool':     ['pending'],
+      'reprint':  ['download', 'verified', 'approved', 'pending'],
+    }[card.status] || [];
+    
+    if (!allowed.includes(targetStatus)) return false;
+    
+    const isSuperAdmin = user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin';
+    if (isSuperAdmin) return true;
+    
+    const perms = user?.permissions || {};
+    if (['pool', 'download'].includes(card.status) && targetStatus === 'pending') {
+      return !!perms.perm_idcard_retrieve;
+    }
+    
+    const requiredPerm = {
+      'verified': 'perm_idcard_verify',
+      'approved': 'perm_idcard_approve',
+      'download': 'perm_idcard_approve',
+      'pending':  'perm_idcard_verify',
+      'pool':     'perm_idcard_delete',
+    }[targetStatus];
+    
+    return !!perms[requiredPerm];
+  }, [card?.status, isLocked, user]);
+
+  const allowedStatuses = useMemo(() => {
+    const perms = user?.permissions || {};
+    const isSuperAdmin = user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin';
+    return [
+      { key: 'pending', label: 'Pending', perm: 'perm_idcard_pending_list' },
+      { key: 'verified', label: 'Verified', perm: 'perm_idcard_verified_list' },
+      { key: 'approved', label: 'Approved', perm: 'perm_idcard_approved_list' },
+      { key: 'download', label: 'Download', perm: 'perm_idcard_download_list' },
+      { key: 'reprint', label: 'Reprint', perm: 'perm_idcard_reprint_list' },
+      { key: 'pool', label: 'Pool', perm: 'perm_idcard_pool_list' },
+    ].filter(opt => isSuperAdmin || !opt.perm || perms[opt.perm]);
+  }, [user]);
+
   const updateStatus = async (status) => {
     setUpdating(true);
     try {
@@ -88,54 +138,6 @@ export default function CardDetailScreen({ navigation, route }) {
 
   const fd = card.field_data || {};
   const cardName = card.name || fd.NAME || fd.Name || fd.name || fd.FULL_NAME || fd.full_name || `Card #${card.id}`;
-  const isLocked = (user?.isClient || user?.isAssistant) && ['approved', 'download', 'pool'].includes(card.status);
-
-  const canTransitionTo = useCallback((targetStatus) => {
-    if (isLocked) return false;
-    if (card.status === targetStatus) return true;
-    
-    const allowed = {
-      'pending':  ['verified', 'pool'],
-      'verified': ['approved', 'pending', 'pool'],
-      'approved': ['download', 'verified', 'pending', 'pool'],
-      'download': ['approved', 'pending'],
-      'pool':     ['pending'],
-      'reprint':  ['download', 'verified', 'approved', 'pending'],
-    }[card.status] || [];
-    
-    if (!allowed.includes(targetStatus)) return false;
-    
-    const isSuperAdmin = user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin';
-    if (isSuperAdmin) return true;
-    
-    const perms = user?.permissions || {};
-    if (['pool', 'download'].includes(card.status) && targetStatus === 'pending') {
-      return !!perms.perm_idcard_retrieve;
-    }
-    
-    const requiredPerm = {
-      'verified': 'perm_idcard_verify',
-      'approved': 'perm_idcard_approve',
-      'download': 'perm_idcard_approve',
-      'pending':  'perm_idcard_verify',
-      'pool':     'perm_idcard_delete',
-    }[targetStatus];
-    
-    return !!perms[requiredPerm];
-  }, [card.status, isLocked, user]);
-
-  const allowedStatuses = useMemo(() => {
-    const perms = user?.permissions || {};
-    const isSuperAdmin = user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin';
-    return [
-      { key: 'pending', label: 'Pending', perm: 'perm_idcard_pending_list' },
-      { key: 'verified', label: 'Verified', perm: 'perm_idcard_verified_list' },
-      { key: 'approved', label: 'Approved', perm: 'perm_idcard_approved_list' },
-      { key: 'download', label: 'Download', perm: 'perm_idcard_download_list' },
-      { key: 'reprint', label: 'Reprint', perm: 'perm_idcard_reprint_list' },
-      { key: 'pool', label: 'Pool', perm: 'perm_idcard_pool_list' },
-    ].filter(opt => isSuperAdmin || !opt.perm || perms[opt.perm]);
-  }, [user]);
 
   const photoVal = card.photo_url || '';
   const isPending = photoVal.includes('PENDING:');
@@ -216,7 +218,7 @@ export default function CardDetailScreen({ navigation, route }) {
                         />
                       )
                     ) : (
-                      <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                      <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : String(val).toUpperCase()}</Text>
                     )}
                   </View>
                 );
@@ -246,7 +248,7 @@ export default function CardDetailScreen({ navigation, route }) {
                         />
                       )
                     ) : (
-                      <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : val}</Text>
+                      <Text style={[s.fieldVal, isEmpty && s.fieldValEmpty]}>{isEmpty ? 'NOT ADDED' : String(val).toUpperCase()}</Text>
                     )}
                   </View>
                 );

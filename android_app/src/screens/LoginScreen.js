@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DynamicIcon } from '../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -81,9 +82,10 @@ export default function LoginScreen({ navigation }) {
 
         setError(data.message || 'Invalid email or password.');
       } else {
+        const hasMpin = await AsyncStorage.getItem(`adarsh_mpin_${email.trim().toLowerCase()}`);
         navigation.reset({
           index: 0,
-          routes: [{ name: 'Home' }],
+          routes: [{ name: hasMpin ? 'Home' : 'Mpin' }],
         });
       }
     } catch (e) {

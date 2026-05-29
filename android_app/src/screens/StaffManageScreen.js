@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useDeferredValue, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, RefreshControl, Modal, ScrollView, Dimensions } from 'react-native';
-import { IconSearch, IconFilter, IconPlus, IconTrash, IconEdit, IconClose, IconCheck, IconMail, IconPhone } from '../components/Icons';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, RefreshControl, Modal, ScrollView, Dimensions, Switch } from 'react-native';
+import { IconSearch, IconFilter, IconPlus, IconTrash, IconEdit, IconClose, IconCheck, IconMail, IconPhone, DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
 import Toast from '../components/Toast';
@@ -28,7 +28,7 @@ export default function StaffManageScreen({ navigation, route }) {
     const isSuper = !!(user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin');
     const canManage = isOperatorMode 
       ? isSuper
-      : (isSuper || user?.role === 'admin_staff' || (user?.permissions?.perm_manage_client_staff));
+      : (isSuper || user?.role === 'admin_staff' || user?.role === 'client' || (user?.permissions?.perm_manage_client_staff) || (user?.permissions?.perm_idcard_client_list));
       
     return {
       canManage,
@@ -38,16 +38,19 @@ export default function StaffManageScreen({ navigation, route }) {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '', department: '', designation: '' });
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '', department: '', designation: '', is_active: true });
+  const [passOption, setPassOption] = useState('phone');
+  const [tempPasswordUnlocked, setTempPasswordUnlocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
 
   const [showAssign, setShowAssign] = useState(false);
   const [assigningId, setAssigningId] = useState(null);
-  const [assignData, setAssignData] = useState({ groups: [], tables: [], clients: [] });
+  const [assignData, setAssignData] = useState({ groups: [], tables: [], clients: [], class_section_options: {}, group_options: {}, table_options: {} });
   const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [selectedTableIds, setSelectedTableIds] = useState([]);
   const [selectedClientIds, setSelectedClientIds] = useState([]);
+  const [assignmentScopes, setAssignmentScopes] = useState([]);
   const [loadingAssign, setLoadingAssign] = useState(false);
   const [savingAssign, setSavingAssign] = useState(false);
 
@@ -82,25 +85,67 @@ export default function StaffManageScreen({ navigation, route }) {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ first_name: '', last_name: '', email: '', phone: '', password: '', department: '', designation: '' });
+    setForm({ first_name: '', last_name: '', email: '', phone: '', password: '', department: '', designation: '', is_active: true });
+    setPassOption('phone');
+    setTempPasswordUnlocked(false);
     setShowForm(true);
   };
 
   const openEdit = (member) => {
     setEditingId(member.id);
     const nameParts = (member.name || '').split(' ');
-    setForm({ first_name: nameParts[0] || '', last_name: nameParts.slice(1).join(' ') || '', email: member.email || '', phone: member.phone || '', password: '', department: member.department || '', designation: member.designation || '' });
+    setForm({ 
+      first_name: nameParts[0] || '', 
+      last_name: nameParts.slice(1).join(' ') || '', 
+      email: member.email || '', 
+      phone: member.phone || '', 
+      password: '', 
+      department: member.department || '', 
+      designation: member.designation || '', 
+      is_active: member.is_active ?? true 
+    });
+    setPassOption('custom');
+    setTempPasswordUnlocked(false);
     setShowForm(true);
   };
 
   const saveStaff = async () => {
-    if (!form.first_name || !form.email || (!editingId && !form.password)) {
-      showToast('Please fill required fields', 'error'); return;
+    if (!form.first_name || !form.email) {
+      showToast('Please fill required fields (First Name & Email)', 'error'); return;
+    }
+    if (!editingId && passOption === 'phone' && !form.phone) {
+      showToast('Phone number is required to use it as a password', 'error'); return;
+    }
+    if (!editingId && passOption === 'custom' && !form.password) {
+      showToast('Password is required', 'error'); return;
     }
     setSaving(true);
     try {
       const url = editingId ? `/api/mobile/staff/${editingId}/update/` : '/api/mobile/staff/create/';
-      const { ok, data } = await apiPost(url, { ...form, role: targetRole });
+      const payload = {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+        phone: form.phone,
+        department: form.department,
+        designation: form.designation,
+        is_active: form.is_active,
+        role: targetRole
+      };
+      
+      if (!editingId) {
+        if (passOption === 'phone') {
+          payload.password = form.phone;
+        } else {
+          payload.password = form.password;
+        }
+      } else {
+        if (tempPasswordUnlocked && form.password) {
+          payload.temp_password = form.password;
+        }
+      }
+      
+      const { ok, data } = await apiPost(url, payload);
       if (ok && data.success) { showToast(editingId ? 'Staff updated' : 'Staff created', 'success'); setShowForm(false); refresh(); }
       else showToast(data.message || 'Error saving staff', 'error');
     } catch (e) { showToast('Network error', 'error'); }
@@ -118,6 +163,7 @@ export default function StaffManageScreen({ navigation, route }) {
         setSelectedGroupIds(data.data.assigned_groups || []);
         setSelectedTableIds(data.data.assigned_tables || []);
         setSelectedClientIds(data.data.assigned_clients || []);
+        setAssignmentScopes(data.data.assignment_scopes || []);
       }
     } catch (e) { showToast('Error loading assignments', 'error'); }
     setLoadingAssign(false);
@@ -126,13 +172,128 @@ export default function StaffManageScreen({ navigation, route }) {
   const saveAssignment = async () => {
     setSavingAssign(true);
     try {
-      const { ok, data } = await apiPost(`/api/mobile/staff/${assigningId}/assignment/update/`, {
-        group_ids: selectedGroupIds, table_ids: selectedTableIds, client_ids: selectedClientIds
-      });
+      const payload = {
+        group_ids: selectedGroupIds,
+        table_ids: selectedTableIds,
+        client_ids: selectedClientIds,
+        assignment_scopes: selectedGroupIds.map(gid => {
+          const scope = assignmentScopes.find(s => s.scope_type === 'group' && parseInt(s.scope_id) === gid) || { classes: [], sections: [], branches: [] };
+          return {
+            scope_type: 'group',
+            scope_id: gid,
+            classes: scope.classes || [],
+            sections: scope.sections || [],
+            branches: scope.branches || []
+          };
+        }).concat(selectedTableIds.map(tid => {
+          const scope = assignmentScopes.find(s => s.scope_type === 'table' && parseInt(s.scope_id) === tid) || { classes: [], sections: [], branches: [] };
+          return {
+            scope_type: 'table',
+            scope_id: tid,
+            classes: scope.classes || [],
+            sections: scope.sections || [],
+            branches: scope.branches || []
+          };
+        }))
+      };
+      
+      const { ok, data } = await apiPost(`/api/mobile/staff/${assigningId}/assignment/update/`, payload);
       if (ok && data.success) { showToast('Assignments updated', 'success'); setShowAssign(false); }
       else showToast(data.message || 'Error saving', 'error');
     } catch (e) { showToast('Network error', 'error'); }
     setSavingAssign(false);
+  };
+
+  const renderScopeConfig = (item, type) => {
+    const isGroup = type === 'group';
+    const optMap = isGroup ? assignData.group_options : assignData.table_options;
+    const options = optMap?.[item.id] || { classes: [], sections: [], branches: [] };
+    
+    const scope = assignmentScopes.find(s => s.scope_type === type && parseInt(s.scope_id) === item.id) || { classes: [], sections: [], branches: [] };
+    
+    const toggleValue = (field, val) => {
+      setAssignmentScopes(prev => {
+        const existingIdx = prev.findIndex(s => s.scope_type === type && parseInt(s.scope_id) === item.id);
+        const currentScope = existingIdx > -1 ? { ...prev[existingIdx] } : { scope_type: type, scope_id: item.id, classes: [], sections: [], branches: [] };
+        
+        const list = currentScope[field] || [];
+        if (list.includes(val)) {
+          currentScope[field] = list.filter(v => v !== val);
+        } else {
+          currentScope[field] = [...list, val];
+        }
+        
+        if (existingIdx > -1) {
+          const updated = [...prev];
+          updated[existingIdx] = currentScope;
+          return updated;
+        } else {
+          return [...prev, currentScope];
+        }
+      });
+    };
+    
+    const classesList = options.classes || [];
+    const sectionsList = options.sections || [];
+    const branchesList = options.branches || [];
+    
+    if (classesList.length === 0 && sectionsList.length === 0 && branchesList.length === 0) {
+      return null;
+    }
+    
+    return (
+      <View key={`${type}-${item.id}`} style={s.scopeCard}>
+        <Text style={s.scopeCardTitle}>{item.name.toUpperCase()} FILTERS</Text>
+        
+        {classesList.length > 0 && (
+          <View style={s.scopeSection}>
+            <Text style={s.scopeSubTitle}>Classes</Text>
+            <View style={s.checkGridSmall}>
+              {classesList.map(c => {
+                const isSelected = scope.classes?.includes(c);
+                return (
+                  <TouchableOpacity key={c} style={[s.checkItemSmall, isSelected && s.checkItemSmallActive]} onPress={() => toggleValue('classes', c)}>
+                    <Text style={[s.checkLabelSmall, isSelected && s.checkLabelSmallActive]}>{c}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+        
+        {sectionsList.length > 0 && (
+          <View style={s.scopeSection}>
+            <Text style={s.scopeSubTitle}>Sections</Text>
+            <View style={s.checkGridSmall}>
+              {sectionsList.map(sec => {
+                const isSelected = scope.sections?.includes(sec);
+                return (
+                  <TouchableOpacity key={sec} style={[s.checkItemSmall, isSelected && s.checkItemSmallActive]} onPress={() => toggleValue('sections', sec)}>
+                    <Text style={[s.checkLabelSmall, isSelected && s.checkLabelSmallActive]}>{sec}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+        
+        {branchesList.length > 0 && (
+          <View style={s.scopeSection}>
+            <Text style={s.scopeSubTitle}>Branches / Courses</Text>
+            <View style={s.checkGridSmall}>
+              {branchesList.map(br => {
+                const isSelected = scope.branches?.includes(br);
+                return (
+                  <TouchableOpacity key={br} style={[s.checkItemSmall, isSelected && s.checkItemSmallActive]} onPress={() => toggleValue('branches', br)}>
+                    <Text style={[s.checkLabelSmall, isSelected && s.checkLabelSmallActive]}>{br}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+      </View>
+    );
   };
 
   const toggleStatus = (member) => {
@@ -238,7 +399,78 @@ export default function StaffManageScreen({ navigation, route }) {
               </View>
               <FormField label="EMAIL *" value={form.email} onChangeText={t => setForm(f => ({ ...f, email: t }))} keyboardType="email-address" />
               <FormField label="PHONE" value={form.phone} onChangeText={t => setForm(f => ({ ...f, phone: t }))} keyboardType="phone-pad" />
-              {!editingId && <FormField label="PASSWORD *" value={form.password} onChangeText={t => setForm(f => ({ ...f, password: t }))} secureTextEntry />}
+              
+              {/* Active Status Switch */}
+              <View style={s.switchRow}>
+                <Text style={s.switchLabel}>ACTIVE STATUS</Text>
+                <Switch
+                  value={form.is_active}
+                  onValueChange={val => setForm(f => ({ ...f, is_active: val }))}
+                  trackColor={{ false: '#cbd5e1', true: '#c7d2fe' }}
+                  thumbColor={form.is_active ? colors.brandPrimary : '#94a3b8'}
+                />
+              </View>
+
+              {/* Password configuration */}
+              {!editingId ? (
+                <View style={s.passOptionContainer}>
+                  <Text style={s.optionGroupLabel}>PASSWORD SETUP</Text>
+                  <View style={s.optionGrid}>
+                    <TouchableOpacity 
+                      style={[s.optionItem, passOption === 'phone' && s.optionItemActive]} 
+                      onPress={() => setPassOption('phone')}
+                    >
+                      <Text style={[s.optionLabel, passOption === 'phone' && s.optionLabelActive]}>Use Phone as Password</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[s.optionItem, passOption === 'custom' && s.optionItemActive]} 
+                      onPress={() => setPassOption('custom')}
+                    >
+                      <Text style={[s.optionLabel, passOption === 'custom' && s.optionLabelActive]}>Custom Password</Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {passOption === 'custom' && (
+                    <FormField 
+                      label="PASSWORD *" 
+                      value={form.password} 
+                      onChangeText={t => setForm(f => ({ ...f, password: t }))} 
+                      secureTextEntry 
+                    />
+                  )}
+                </View>
+              ) : (
+                <View style={s.tempPasswordContainer}>
+                  {!tempPasswordUnlocked ? (
+                    <TouchableOpacity 
+                      style={s.unlockBtn} 
+                      onPress={() => setTempPasswordUnlocked(true)}
+                    >
+                      <Text style={s.unlockBtnText}>Unlock Temporary Password</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={s.tempPasswordInputRow}>
+                      <View style={{ flex: 1 }}>
+                        <FormField 
+                          label="NEW TEMPORARY PASSWORD *" 
+                          value={form.password} 
+                          onChangeText={t => setForm(f => ({ ...f, password: t }))} 
+                          secureTextEntry 
+                        />
+                      </View>
+                      <TouchableOpacity 
+                        style={s.lockBtn} 
+                        onPress={() => {
+                          setTempPasswordUnlocked(false);
+                          setForm(f => ({ ...f, password: '' }));
+                        }}
+                      >
+                        <IconClose size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
             </ScrollView>
             <View style={s.modalFooter}>
               <TouchableOpacity style={s.modalCancel} onPress={() => setShowForm(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
@@ -283,6 +515,12 @@ export default function StaffManageScreen({ navigation, route }) {
                         </TouchableOpacity>
                       ))}
                     </View>
+                    
+                    {selectedGroupIds.map(gid => {
+                      const g = assignData.groups.find(x => x.id === gid);
+                      return g ? renderScopeConfig(g, 'group') : null;
+                    })}
+
                     <Text style={s.sectionTitle}>Tables (Sections)</Text>
                     <View style={s.checkGrid}>
                       {assignData.tables.map(t => (
@@ -291,6 +529,11 @@ export default function StaffManageScreen({ navigation, route }) {
                         </TouchableOpacity>
                       ))}
                     </View>
+
+                    {selectedTableIds.map(tid => {
+                      const t = assignData.tables.find(x => x.id === tid);
+                      return t ? renderScopeConfig(t, 'table') : null;
+                    })}
                   </>
                 )
               )}
@@ -369,4 +612,31 @@ const s = StyleSheet.create({
   checkLabelActive: { color: colors.brandPrimary, fontFamily: 'SairaSemiCondensed-Bold' },
   empty: { padding: 60, alignItems: 'center' },
   emptyText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400 },
+
+  // Password Setup & Status Switch Styles
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingVertical: 4 },
+  switchLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500 },
+  passOptionContainer: { marginBottom: 16 },
+  optionGroupLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500, marginBottom: 8 },
+  optionGrid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  optionItem: { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  optionItemActive: { backgroundColor: 'rgba(102,126,234,0.1)', borderColor: colors.brandPrimary },
+  optionLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray600, textAlign: 'center' },
+  optionLabelActive: { fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
+  tempPasswordContainer: { marginBottom: 16 },
+  unlockBtn: { paddingVertical: 12, borderRadius: radius.xs, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f3ff' },
+  unlockBtnText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
+  tempPasswordInputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
+  lockBtn: { width: 44, height: 44, borderRadius: radius.xs, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fee2e2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+
+  // Scope Filtering Styles
+  scopeCard: { backgroundColor: '#f8fafc', borderRadius: radius.xs, padding: 12, marginTop: 10, marginBottom: 15, borderWidth: 1, borderColor: '#e2e8f0', width: '100%' },
+  scopeCardTitle: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary, letterSpacing: 0.5, marginBottom: 10, textTransform: 'uppercase' },
+  scopeSection: { marginBottom: 12 },
+  scopeSubTitle: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginBottom: 6, textTransform: 'uppercase' },
+  checkGridSmall: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  checkItemSmall: { backgroundColor: '#fff', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.xs, borderWidth: 1, borderColor: '#cbd5e1' },
+  checkItemSmallActive: { backgroundColor: 'rgba(102,126,234,0.08)', borderColor: colors.brandPrimary },
+  checkLabelSmall: { fontSize: 10, color: colors.gray600, fontFamily: 'SairaSemiCondensed-Medium' },
+  checkLabelSmallActive: { color: colors.brandPrimary, fontFamily: 'SairaSemiCondensed-Bold' },
 });

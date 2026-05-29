@@ -77,6 +77,15 @@ export default function CardListScreen({ navigation, route }) {
 
   const [searchQuery, setSearchQuery]     = useState('');
   const [activeFilters, setActiveFilters] = useState({});
+  const hasActiveFilters = useMemo(() => {
+    return Object.keys(activeFilters).some(key => 
+      key !== 'sort' && 
+      key !== 'image_column' && 
+      activeFilters[key] !== null && 
+      activeFilters[key] !== undefined && 
+      activeFilters[key] !== ''
+    );
+  }, [activeFilters]);
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [totalCount, setTotalCount]       = useState(0);
 
@@ -214,7 +223,6 @@ export default function CardListScreen({ navigation, route }) {
         const allIds = data.card_ids;
         setSelectedIds(new Set(allIds));
         setSelectMode(allIds.length > 0);
-        if (allIds.length > 0) showToast(`${allIds.length} records selected`, 'info');
       } else {
         // Fallback: select current page only
         setSelectedIds(prev => {
@@ -480,7 +488,7 @@ export default function CardListScreen({ navigation, route }) {
     return (
       <CardItem
         item={item}
-        showCheckbox={!isClient || perms.perm_idcard_verify || perms.perm_idcard_approve}
+        showCheckbox={(!isClient || perms.perm_idcard_verify || perms.perm_idcard_approve) && !(isClient && ['approved', 'download'].includes(currentStatus))}
         isSelected={selectedIds.has(item.id)}
         onToggleSelect={toggleSelect}
         onEdit={canEdit ? handleEditCard : undefined}
@@ -543,13 +551,19 @@ export default function CardListScreen({ navigation, route }) {
             clearButtonMode="while-editing"
           />
         </View>
-        <TouchableOpacity onPress={() => setShowFilterDrawer(true)} style={s.filterBtn}>
-          <DynamicIcon name="filter" size={14} color={colors.brandPrimary} />
-        </TouchableOpacity>
+        {hasActiveFilters ? (
+          <TouchableOpacity onPress={() => { setActiveFilters({}); setPage(1); }} style={[s.filterBtn, s.filterBtnActive]}>
+            <DynamicIcon name="times" size={14} color="#ef4444" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={() => setShowFilterDrawer(true)} style={s.filterBtn}>
+            <DynamicIcon name="filter" size={14} color={colors.brandPrimary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Select-all bar */}
-      {(!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve) && (
+      {(!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve) && !(isClientRole && ['approved', 'download'].includes(currentStatus)) && (
         <View style={s.summaryRow}>
           <TouchableOpacity style={s.selectAllBtn} onPress={handleSelectAll} disabled={selectAllLoading}>
             {selectAllLoading
@@ -595,7 +609,7 @@ export default function CardListScreen({ navigation, route }) {
       }
 
       {/* Bulk action floating bar */}
-      {(!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve) && selectMode && (
+      {(!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve) && !(isClientRole && ['approved', 'download'].includes(currentStatus)) && selectMode && (
         <View style={[s.floatingBar, { bottom: Math.max(insets.bottom, 16) + 16 }]}>
           <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.floatingGradient}>
             <View style={s.floatingInfo}>
@@ -610,7 +624,6 @@ export default function CardListScreen({ navigation, route }) {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.fActions}>
               {currentStatus === 'pending'  && perms.perm_idcard_verify  && <FBtn icon="check"        label="VERIFY SELECTED"  disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
-              {currentStatus === 'pending'  && perms.perm_idcard_delete  && <FBtn icon="trash"        label="DELETE SELECTED"  color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
               
               {currentStatus === 'verified' && perms.perm_idcard_approve && <FBtn icon="check-double" label="APPROVE SELECTED" disabled={bulkLoading} onPress={() => handleBulkStatus('approved')} />}
               {currentStatus === 'verified' && perms.perm_idcard_verify  && <FBtn icon="redo"         label="UNVERIFY SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
@@ -619,8 +632,8 @@ export default function CardListScreen({ navigation, route }) {
               
               {currentStatus === 'download' && perms.perm_idcard_retrieve && <FBtn icon="redo"         label="RETRIEVE SELECTED" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
               
-              {currentStatus === 'pool'     && perms.perm_idcard_retrieve && <FBtn icon="redo"         label="RETRIEVE FROM POOL" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
-              {currentStatus === 'pool'     && perms.perm_idcard_delete_from_pool && <FBtn icon="trash" label="PERMANENTLY DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('permanent_delete')} />}
+              {currentStatus === 'pool'     && (perms.perm_idcard_retrieve || isClientRole) && <FBtn icon="redo"         label="RETRIEVE FROM POOL" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              {currentStatus === 'pool'     && perms.perm_idcard_delete_from_pool && !isClientRole && <FBtn icon="trash" label="PERMANENTLY DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('permanent_delete')} />}
             </ScrollView>
           </LinearGradient>
         </View>
@@ -686,6 +699,7 @@ const s = StyleSheet.create({
   searchWrap:          { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', height: 44, borderRadius: radius.sm, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm, marginRight: 10 },
   searchInput:         { flex: 1, marginLeft: 8, fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800 },
   filterBtn:           { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: radius.sm, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  filterBtnActive:     { backgroundColor: '#fef2f2', borderColor: '#fca5a5' },
   summaryRow:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   selectAllBtn:        { flexDirection: 'row', alignItems: 'center' },
   checkboxSmall:       { width: 14, height: 14, borderRadius: 3, borderWidth: 1, borderColor: colors.gray300, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
