@@ -927,13 +927,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     classCell.appendChild(classIcon);
                 }
 
-                // Show the class name only when editing or when there are no sections
                 var className = document.createElement('span');
                 className.className = 'assignment-class-section-row-name';
-                if (chip.isEditing || !availableSections.length) {
-                    className.textContent = cls;
-                    classCell.appendChild(className);
-                }
+                className.textContent = cls;
+                classCell.appendChild(className);
 
                 row.appendChild(classCell);
 

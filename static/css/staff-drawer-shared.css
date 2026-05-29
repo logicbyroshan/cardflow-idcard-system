@@ -320,14 +320,6 @@
   box-shadow: inset 0 -1px 0 rgba(16,24,40,0.04);
 }
 
-/* Hide class name when card is not in editing mode (show only icons on save) */
-.assignment-scope-chip-card .assignment-class-section-row-name {
-  display: none;
-}
-.assignment-scope-chip-card.is-editing .assignment-class-section-row-name {
-  display: inline-flex;
-}
-
 .assignment-class-section-row.is-assigned {
   border-color: var(--color-emerald-200);
   background: var(--color-green-50);
