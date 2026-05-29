@@ -162,6 +162,20 @@ class ClientStaffService(BaseService):
             out.append(text)
         return out
 
+    @staticmethod
+    def _normalize_class_section_map(raw_map: Any) -> Dict[str, List[str]]:
+        """Normalize per-class section selections into a string-to-list map."""
+        if not isinstance(raw_map, dict):
+            return {}
+
+        out: Dict[str, List[str]] = {}
+        for cls_name, raw_sections in raw_map.items():
+            cls_text = str(cls_name).strip()
+            if not cls_text:
+                continue
+            out[cls_text] = ClientStaffService._normalize_scope_value_list(raw_sections)
+        return out
+
     @classmethod
     def _normalize_assignment_scopes(cls, client: Client, raw_scopes: Any) -> List[Dict[str, Any]]:
         """Validate and normalize per-scope filters sent by assignment chips."""
@@ -201,6 +215,7 @@ class ClientStaffService(BaseService):
                 'classes': cls._normalize_scope_value_list(item.get('classes', [])),
                 'sections': cls._normalize_scope_value_list(item.get('sections', [])),
                 'branches': cls._normalize_scope_value_list(item.get('branches', [])),
+                'class_sections': cls._normalize_class_section_map(item.get('class_sections', {})),
             })
 
         valid_group_ids = set(
@@ -241,6 +256,7 @@ class ClientStaffService(BaseService):
                 'classes': scope['classes'],
                 'sections': scope['sections'],
                 'branches': scope['branches'],
+                'class_sections': scope['class_sections'],
             }
 
         return sorted(
@@ -255,6 +271,19 @@ class ClientStaffService(BaseService):
         seen_cls, seen_sec, seen_bra = set(), set(), set()
 
         for scope in scopes:
+            class_sections = scope.get('class_sections') or {}
+            if isinstance(class_sections, dict):
+                for cls_name, raw_sections in class_sections.items():
+                    key = str(cls_name).strip().lower()
+                    if key and key not in seen_cls:
+                        seen_cls.add(key)
+                        classes.append(str(cls_name).strip())
+                    for value in (raw_sections or []):
+                        sec_key = str(value).strip().lower()
+                        if sec_key and sec_key not in seen_sec:
+                            seen_sec.add(sec_key)
+                            sections.append(str(value).strip())
+
             for value in (scope.get('classes') or []):
                 key = str(value).strip().lower()
                 if key and key not in seen_cls:

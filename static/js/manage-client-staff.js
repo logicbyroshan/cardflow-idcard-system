@@ -645,6 +645,52 @@ document.addEventListener('DOMContentLoaded', function () {
         return out;
     }
 
+    function _cloneClassSectionSelections(mapObj) {
+        var out = {};
+        Object.keys(mapObj || {}).forEach(function (k) {
+            out[String(k)] = _normalizeStringList(mapObj[k] || []);
+        });
+        return out;
+    }
+
+    function _syncChipSelections(chip) {
+        if (!chip) return;
+
+        var classNames = [];
+        var sectionNames = [];
+        var seenClasses = new Set();
+        var seenSections = new Set();
+
+        Object.keys(chip.classSectionSelections || {}).forEach(function (cls) {
+            var selectedSections = _normalizeStringList(chip.classSectionSelections[cls] || []);
+            if (!selectedSections.length) return;
+
+            var classKey = String(cls).trim().toLowerCase();
+            if (classKey && !seenClasses.has(classKey)) {
+                seenClasses.add(classKey);
+                classNames.push(String(cls).trim());
+            }
+
+            selectedSections.forEach(function (sec) {
+                var secKey = String(sec).trim().toLowerCase();
+                if (secKey && !seenSections.has(secKey)) {
+                    seenSections.add(secKey);
+                    sectionNames.push(String(sec).trim());
+                }
+            });
+        });
+
+        chip.classes = _normalizeStringList(classNames);
+        chip.sections = _normalizeStringList(sectionNames);
+    }
+
+    function _setChipClassSections(chip, cls, sections) {
+        if (!chip) return;
+        if (!chip.classSectionSelections) chip.classSectionSelections = {};
+        chip.classSectionSelections[String(cls)] = _normalizeStringList(sections || []);
+        _syncChipSelections(chip);
+    }
+
     function _chipKey(groupId) {
         return String(parseInt(groupId, 10));
     }
@@ -745,6 +791,7 @@ document.addEventListener('DOMContentLoaded', function () {
             sectionOptions: [],
             branchOptions: [],
             classSectionMap: {},
+            classSectionSelections: {},
             classCounts: {},
             sectionCounts: {},
             classSectionCounts: {},
@@ -774,6 +821,7 @@ document.addEventListener('DOMContentLoaded', function () {
             chip.sectionOptions = _normalizeStringList(data.sections || []);
             chip.branchOptions = _normalizeStringList(data.branches || []);
             chip.classSectionMap = _cloneClassSectionMap(data.class_sections || {});
+            chip.classSectionSelections = _cloneClassSectionSelections(data.class_sections || {});
             chip.classCounts = _normalizeCountMap(data.class_counts || {});
             chip.sectionCounts = _normalizeCountMap(data.section_counts || {});
             chip.classSectionCounts = _normalizeNestedCountMap(data.class_section_counts || {});
@@ -795,6 +843,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 chip.branches = pendingBranches.filter(function (v) {
                     return chip.branchOptions.indexOf(v) !== -1;
                 });
+
+                if (!Object.keys(chip.classSectionSelections || {}).length) {
+                    chip.classSectionSelections = {};
+                    chip.classOptions.forEach(function (cls) {
+                        chip.classSectionSelections[cls] = chip.sections.slice();
+                    });
+                }
 
                 chip.pendingGlobalClasses = null;
                 chip.pendingGlobalSections = null;
@@ -882,8 +937,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             classValues.forEach(function (cls) {
                 var availableSections = _normalizeStringList(chip.classSectionMap[cls] || []);
-                // Consider a class assigned if all its available sections are selected
-                var isAssignedClass = availableSections.length && availableSections.every(function (s) { return chip.sections.indexOf(s) !== -1; });
+                var selectedSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
+                var isAssignedClass = selectedSections.length > 0;
+                var isClassFullySelected = availableSections.length > 0 && availableSections.every(function (s) {
+                    return selectedSections.indexOf(s) !== -1;
+                });
 
                 var row = document.createElement('div');
                 row.className = 'assignment-class-section-row' + (isAssignedClass ? ' is-assigned' : ' is-unassigned');
@@ -894,27 +952,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (chip.isEditing) {
                         let classInput = document.createElement('input');
                     classInput.type = 'checkbox';
-                    classInput.checked = isAssignedClass;
+                    classInput.checked = isClassFullySelected;
                     classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
                     classInput.addEventListener('change', function () {
-                        // If class is checked, select all available sections for this class.
-                        // If unchecked, remove those sections.
-                        var nextSections = chip.sections.slice();
                         if (classInput.checked) {
-                            availableSections.forEach(function (s) { if (nextSections.indexOf(s) === -1) nextSections.push(s); });
+                            _setChipClassSections(chip, cls, availableSections);
                         } else {
-                            nextSections = nextSections.filter(function (val) { return availableSections.indexOf(val) === -1; });
+                            _setChipClassSections(chip, cls, []);
                         }
-                        chip.sections = _normalizeStringList(nextSections);
-                        // Update classes list to include this class only when all its sections are selected
-                        var allSelected = availableSections.length && availableSections.every(function (s) { return chip.sections.indexOf(s) !== -1; });
-                        var nextClasses = chip.classes.slice();
-                        if (allSelected) {
-                            if (nextClasses.indexOf(cls) === -1) nextClasses.push(cls);
-                        } else {
-                            nextClasses = nextClasses.filter(function (val) { return val !== cls; });
-                        }
-                        chip.classes = _normalizeStringList(nextClasses);
                         _pruneChipSelection(chip);
                         renderAssignmentScopeChips();
                     });
@@ -944,7 +989,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     sectionCell.appendChild(sectionEmpty);
                 } else {
                     availableSections.forEach(function (sec) {
-                        var isAssignedSection = chip.sections.indexOf(sec) !== -1;
+                        var isAssignedSection = selectedSections.indexOf(sec) !== -1;
                         var sectionItem = document.createElement('div');
                         sectionItem.className = 'assignment-chip-checkbox-item assignment-chip-checkbox-item--section ' + (isAssignedSection ? 'is-assigned' : 'is-unassigned');
 
@@ -954,26 +999,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             sectionInput.checked = isAssignedSection;
                             sectionInput.id = String(chip.groupId) + '-section-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + sec.replace(/[^a-zA-Z0-9_-]/g, '_');
                             sectionInput.addEventListener('change', function () {
-                                var nextSections = chip.sections.slice();
+                                var nextSections = selectedSections.slice();
                                 if (sectionInput.checked) {
                                     if (nextSections.indexOf(sec) === -1) nextSections.push(sec);
                                 } else {
                                     nextSections = nextSections.filter(function (val) { return val !== sec; });
                                 }
-                                chip.sections = _normalizeStringList(nextSections);
-                                // Update class checkbox state: checked only if all sections selected
-                                if (typeof classInput !== 'undefined') {
-                                    var allSelectedNow = availableSections.length && availableSections.every(function (s) { return chip.sections.indexOf(s) !== -1; });
-                                    classInput.checked = !!allSelectedNow;
-                                    // Reflect in chip.classes
-                                    var nextClasses2 = chip.classes.slice();
-                                    if (allSelectedNow) {
-                                        if (nextClasses2.indexOf(cls) === -1) nextClasses2.push(cls);
-                                    } else {
-                                        nextClasses2 = nextClasses2.filter(function (val) { return val !== cls; });
-                                    }
-                                    chip.classes = _normalizeStringList(nextClasses2);
-                                }
+                                _setChipClassSections(chip, cls, nextSections);
+                                classInput.checked = availableSections.length > 0 && availableSections.every(function (s) {
+                                    return _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []).indexOf(s) !== -1;
+                                });
                                 renderAssignmentScopeChips();
                             });
                             sectionItem.appendChild(sectionInput);
@@ -1225,6 +1260,16 @@ document.addEventListener('DOMContentLoaded', function () {
         chip.sectionOptions = _normalizeStringList(allSections);
         chip.branchOptions = _normalizeStringList(allBranches);
         chip.classSectionMap = _cloneClassSectionMap(classSectionMap);
+        chip.classSectionSelections = {};
+        chip.classOptions.forEach(function (cls) {
+            chip.classSectionSelections[cls] = _normalizeStringList((chip.classSectionMap[cls] || []).filter(function (sec) {
+                return chip.sections.indexOf(sec) !== -1;
+            }));
+        });
+        if (!Object.keys(chip.classSectionSelections).length) {
+            chip.classSectionSelections = _cloneClassSectionSelections(chip.classSectionMap);
+        }
+        _syncChipSelections(chip);
         chip.classCounts = _normalizeCountMap(classCountMap);
         chip.sectionCounts = _normalizeCountMap(sectionCountMap);
         chip.classSectionCounts = _normalizeNestedCountMap(classSectionCountMap);
@@ -1268,12 +1313,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 scopeType = (assignmentIdSource === 'table') ? 'table' : 'group';
             }
 
+            var classSections = {};
+            Object.keys(chip.classSectionSelections || {}).forEach(function (cls) {
+                var selectedSections = _normalizeStringList(chip.classSectionSelections[cls] || []);
+                if (selectedSections.length) {
+                    classSections[cls] = selectedSections;
+                }
+            });
+
+            if (!Object.keys(classSections).length) {
+                (chip.classes || []).forEach(function (cls) {
+                    classSections[cls] = _normalizeStringList(chip.sectionOptions || []);
+                });
+            }
+
             payload.assignment_scopes.push({
                 scope_type: scopeType,
                 scope_id: gid,
                 classes: _normalizeStringList(chip.classes || []),
                 sections: _normalizeStringList(chip.sections || []),
                 branches: _normalizeStringList(chip.branches || []),
+                class_sections: classSections,
             });
         });
 
@@ -1318,10 +1378,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     classes: _normalizeStringList(scope.classes || []),
                     sections: _normalizeStringList(scope.sections || []),
                     branches: _normalizeStringList(scope.branches || []),
+                    classSectionSelections: _cloneClassSectionSelections(scope.class_sections || {}),
                     classOptions: [],
                     sectionOptions: [],
                     branchOptions: [],
                     classSectionMap: {},
+                    classSectionSelections: {},
                     classCounts: {},
                     sectionCounts: {},
                     classSectionCounts: {},
@@ -1335,6 +1397,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     pendingGlobalBranches: null,
                     initializedFromGlobal: true,
                 };
+
+                _syncChipSelections(assignmentScopeChips[_chipKey(gid)]);
             });
 
             renderAssignmentScopeChips();
@@ -1359,6 +1423,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 sectionOptions: [],
                 branchOptions: [],
                 classSectionMap: {},
+                classSectionSelections: {},
                 classCounts: {},
                 sectionCounts: {},
                 classSectionCounts: {},
