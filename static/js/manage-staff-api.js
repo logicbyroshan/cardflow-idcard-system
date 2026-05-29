@@ -37,6 +37,11 @@ document.addEventListener('DOMContentLoaded', function() {
     NS.updateStaff = async function(staffId, formData) {
         try {
             // Phase 1: File upload removed - always use JSON
+            try {
+                console.info('NS.updateStaff payload for staffId=' + staffId + ':', JSON.stringify(formData));
+            } catch (e) {
+                console.info('NS.updateStaff payload (could not stringify) for staffId=' + staffId);
+            }
             var data = await ApiClient.post('/api/staff/' + staffId + '/update/', formData);
             return data;
         } catch (error) {
