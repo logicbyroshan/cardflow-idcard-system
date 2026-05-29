@@ -345,6 +345,13 @@ export const IconEyeOff = ({ size = 24, color = "#fff" }) => (
     <Path d="M1 1l22 22" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
+
+export const IconBackspace = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M21 4H8L2 12L8 20H21C21.5304 20 22.0391 19.7893 22.4142 19.4142C22.7893 19.0391 23 18.5304 23 18V6C23 5.46957 22.7893 4.96086 22.4142 4.58579C22.0391 4.21071 21.5304 4 21 4Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M18 9L12 15M12 9L18 15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
 /**
  * Dynamic mapping component to bridge FontAwesome-style names to premium SVG icons.
  */
@@ -362,6 +369,7 @@ export const DynamicIcon = ({ name, size = 18, color = "#fff" }) => {
   if (n === 'download') return <IconDownload size={size} color={color} />;
   if (n === 'pool' || n === 'archive') return <IconArchive size={size} color={color} />;
   if (n === 'reprint' || n === 'redo') return <IconRedo size={size} color={color} />;
+  if (n === 'backspace') return <IconBackspace size={size} color={color} />;
   
   if (n === 'trash' || n === 'trash-alt') return <IconTrash size={size} color={color} />;
   if (n === 'edit' || n === 'pen') return <IconEdit size={size} color={color} />;

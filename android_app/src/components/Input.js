@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { DynamicIcon } from './Icons';
 import { colors, radius, fontFamily, typography } from '../theme';
 
-export default function Input({
+const Input = forwardRef(({
   label,
   error,
   leftIcon,
@@ -15,7 +15,7 @@ export default function Input({
   errorStyle,
   style,
   ...props
-}) {
+}, ref) => {
   const [hidden, setHidden] = useState(!!secureTextEntry);
   const showToggle = typeof secureTextEntry === 'boolean' || secureTextEntry;
 
@@ -29,6 +29,7 @@ export default function Input({
           </View>
         ) : null}
         <TextInput
+          ref={ref}
           style={[styles.input, leftIcon && styles.inputWithLeft, showToggle && styles.inputWithRight, inputStyle]}
           placeholderTextColor={colors.gray300}
           secureTextEntry={hidden}
@@ -47,7 +48,9 @@ export default function Input({
       {error ? <Text style={[styles.error, errorStyle]}>{error}</Text> : null}
     </View>
   );
-}
+});
+
+export default Input;
 
 const styles = StyleSheet.create({
   wrap: {

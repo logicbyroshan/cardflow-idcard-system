@@ -123,6 +123,12 @@ export default function MpinScreen({ navigation, route }) {
             const success = await createMpin(enteredPin);
             if (success) {
               showToast('MPIN created successfully', 'success');
+              setTimeout(() => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Home' }],
+                });
+              }, 1500);
             } else {
               showToast('Failed to create MPIN', 'error');
               setStep('enter_new');
@@ -136,7 +142,13 @@ export default function MpinScreen({ navigation, route }) {
       } else if (mode === 'enter') {
         const isValid = await verifyMpin(enteredPin);
         if (isValid) {
-          // Navigates automatically through AppNavigator context reload
+          showToast('App unlocked successfully', 'success');
+          setTimeout(() => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            });
+          }, 1000);
         } else {
           showToast('Incorrect MPIN. Please try again.', 'error');
           triggerShake();

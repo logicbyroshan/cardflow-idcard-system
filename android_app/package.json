@@ -1,6 +1,6 @@
 {
   "name": "android_app",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "main": "index.js",
   "scripts": {
     "start": "expo start",

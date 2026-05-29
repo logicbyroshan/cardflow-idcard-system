@@ -32,14 +32,22 @@ export function AuthProvider({ children }) {
     try {
       const { ok, status, data } = await apiGet('/api/mobile/profile/');
       if (status === 401 || status === 403) {
-        setUser(null);
-        setIsAuthenticated(false);
-        setIsImpersonating(false);
-        setOriginalUser(null);
-        setIsAppUnlocked(false);
-        setIsMpinCreated(false);
-        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-        await clearAuth();
+        // If session expired on backend but MPIN/credentials are saved, do NOT perform a hard logout.
+        // Simply lock the app (so they enter MPIN to trigger silent re-login).
+        const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+        const credentials = await AsyncStorage.getItem('adarsh_user_credentials');
+        if (stored && credentials) {
+          setIsAppUnlocked(false); // Force lock
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsImpersonating(false);
+          setOriginalUser(null);
+          setIsAppUnlocked(false);
+          setIsMpinCreated(false);
+          await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+          await clearAuth();
+        }
       } else if (ok && data?.success) {
         setUser(prev => {
           const base = prev || {};
@@ -151,6 +159,9 @@ export function AuthProvider({ children }) {
       setIsAuthenticated(true);
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
 
+      // Save user credentials for background session renewal
+      await AsyncStorage.setItem('adarsh_user_credentials', JSON.stringify({ email, password }));
+
       // Check if MPIN is set for this user
       const mpin = await AsyncStorage.getItem(`adarsh_mpin_${email.toLowerCase()}`);
       if (mpin) {
@@ -251,10 +262,24 @@ export function AuthProvider({ children }) {
     const stored = await AsyncStorage.getItem(`adarsh_mpin_${emailKey}`);
     if (stored === enteredMpin) {
       setIsAppUnlocked(true);
+
+      // Silently renew backend session in background
+      (async () => {
+        try {
+          const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+          if (credsStr) {
+            const { email, password } = JSON.parse(credsStr);
+            await login(email, password);
+          }
+        } catch (e) {
+          console.log('[Auth] Background login renewal failed', e);
+        }
+      })();
+
       return true;
     }
     return false;
-  }, [user]);
+  }, [user, login]);
 
   const changeMpin = useCallback(async (oldMpin, newMpin) => {
     if (!user?.email) return false;
@@ -298,6 +323,7 @@ export function AuthProvider({ children }) {
     await AsyncStorage.removeItem('adarsh_impersonate_state');
     await AsyncStorage.removeItem('adarsh_csrf_token');
     await AsyncStorage.removeItem('adarsh_cookies');
+    await AsyncStorage.removeItem('adarsh_user_credentials');
     await clearAuth();
   }, [isImpersonating, stopImpersonation]);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
@@ -16,6 +16,7 @@ import { colors, gradients, typography, spacing, radius, shadows, fontFamily } f
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
+  const passwordInputRef = useRef(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -148,11 +149,12 @@ export default function LoginScreen({ navigation }) {
               keyboardType="email-address"
               autoComplete="email"
               returnKeyType="next"
-              onSubmitEditing={handleLogin}
+              onSubmitEditing={() => passwordInputRef.current?.focus()}
             />
 
             {/* Password */}
             <Input
+              ref={passwordInputRef}
               label="PASSWORD"
               leftIcon="lock"
               value={password}
