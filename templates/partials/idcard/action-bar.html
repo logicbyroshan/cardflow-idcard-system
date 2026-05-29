@@ -66,7 +66,7 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Verify Selected</span>
             </button>
             {% endif %}
-            {% if perm_idcard_bulk_download %}
+            {% if perm_idcard_bulk_download or perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
             {% if perm_idcard_bulk_upload or perm_reupload_idcard_image or perm_idcard_bulk_reupload or perm_idcard_add or perm_idcard_edit or perm_idcard_info or perm_idcard_delete or perm_idcard_verify %}
             <div class="action-divider"></div>
             {% endif %}
@@ -74,6 +74,8 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
             {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadDocxBtn" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
@@ -122,12 +124,14 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
-            {% if perm_idcard_bulk_download %}
+            {% if perm_idcard_bulk_download or perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
             <div class="action-divider"></div>
             <button class="btn action-btn btn-purple" id="downloadImgBtnV" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
             {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadDocxBtnV" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
@@ -172,12 +176,14 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
-            {% if perm_idcard_bulk_download %}
+            {% if perm_idcard_bulk_download or perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
             <div class="action-divider"></div>
             <button class="btn action-btn btn-purple" id="downloadImgBtnA" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
             <button class="btn action-btn btn-purple" id="downloadDocxBtnA" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
                 <span class="btn-text">Download Word</span>
@@ -233,12 +239,14 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
-            {% if perm_idcard_bulk_download %}
+            {% if perm_idcard_bulk_download or perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
             <div class="action-divider"></div>
             <button class="btn action-btn btn-purple" id="downloadImgBtnD" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
             <button class="btn action-btn btn-purple" id="downloadDocxBtnD" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
                 <span class="btn-text">Download Word</span>
@@ -254,12 +262,14 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% endif %}
             {% endif %}
             {% if is_client or is_client_staff %}
-            {% if perm_idcard_bulk_download %}
+            {% if perm_idcard_bulk_download or perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
             <div class="action-divider"></div>
             <button class="btn action-btn btn-purple" id="downloadImgBtnD" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
             <button class="btn action-btn btn-purple" id="downloadPdfBtnD" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
                 <span class="btn-text">Download PDF</span>
@@ -286,12 +296,14 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Reupload Image</span>
             </button>
             {% endif %}
-            {% if perm_idcard_bulk_download %}
+            {% if perm_idcard_bulk_download or perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
             <div class="action-divider"></div>
             <button class="btn action-btn btn-purple" id="downloadImgBtnP" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
             {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadDocxBtnP" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>

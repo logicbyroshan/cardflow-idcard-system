@@ -525,6 +525,47 @@ def _check_export_permission(request, skip_status_check=False):
     return None
 
 
+def _check_image_export_permission(request):
+    """Check if user has permission to export images.
+
+    Allows access if the user has bulk download or image-mode permissions.
+    Keeps list-permission and client status restrictions aligned with exports.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Authentication required'
+        }, status=401)
+
+    has_bulk = PermissionService.can_bulk_download(request.user)
+    has_image_modes = (
+        PermissionService.can_use_image_rename_mode(request.user)
+        or PermissionService.can_use_image_generate_mode(request.user)
+    )
+    if not (has_bulk or has_image_modes):
+        return JsonResponse({
+            'success': False,
+            'message': 'Permission denied: You do not have image download access'
+        }, status=403)
+
+    status = _get_status_from_request(request)
+    if status:
+        required_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
+        if required_perm and not PermissionService.has(request.user, required_perm):
+            return JsonResponse({
+                'success': False,
+                'message': 'Permission denied: You do not have access to this list'
+            }, status=403)
+
+    if request.user.role in ('client', 'client_staff') and status in ('approved', 'download'):
+        return JsonResponse({
+            'success': False,
+            'message': 'Export is not available for this list'
+        }, status=403)
+
+    return None
+
+
 def _check_client_pdf_only(request):
     """
     Block client / client_staff from non-PDF export formats.
@@ -1244,7 +1285,7 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         }
     """
     # Check permission
-    perm_error = _check_export_permission(request)
+    perm_error = _check_image_export_permission(request)
     if perm_error:
         return perm_error
     
