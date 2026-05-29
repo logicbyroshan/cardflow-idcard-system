@@ -1426,7 +1426,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     sectionOptions: [],
                     branchOptions: [],
                     classSectionMap: {},
-                    classSectionSelections: {},
                     classCounts: {},
                     sectionCounts: {},
                     classSectionCounts: {},
