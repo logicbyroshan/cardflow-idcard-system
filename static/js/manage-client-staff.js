@@ -8,6 +8,16 @@ document.addEventListener('DOMContentLoaded', function () {
         return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
     }
 
+    function isClientPortalPath() {
+        var path = String(window.location.pathname || '');
+        return path.indexOf('/client/') === 0 && path.indexOf('/panel/') !== 0;
+    }
+
+    function isPanelClientPath() {
+        var path = String(window.location.pathname || '');
+        return path.indexOf('/panel/client/') === 0;
+    }
+
     function apiBasePath() {
         var base = (typeof window.API_BASE_URL === 'string' && window.API_BASE_URL.trim())
             ? window.API_BASE_URL.trim()
@@ -63,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // If we're on the client portal, avoid calling the admin-only
         // `/panel/api/client-staff/clients/` endpoint which returns 403.
-        if (String(window.location.pathname || '').indexOf('/panel/client/') === 0) {
+        if (isClientPortalPath() || isPanelClientPath()) {
             allClients = [];
             return;
         }
@@ -385,12 +395,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function _buildGroupScopedOptionsUrl(groupIds) {
-        var clientId = getActiveAssignmentClientId();
-        if (!clientId) return null;
-
         var normalized = _normalizeGroupIds(groupIds);
-        if (!normalized.length) return apiPath('/api/client/' + clientId + '/class-section-options/');
-        var url = apiPath('/api/client/' + clientId + '/class-section-options/?group_ids=' + encodeURIComponent(normalized.join(',')));
+        var baseUrl = null;
+        if (isClientPortalPath()) {
+            baseUrl = apiPath('/client/api/class-section-options/');
+        } else {
+            var clientId = getActiveAssignmentClientId();
+            if (!clientId) return null;
+            baseUrl = apiPath('/api/client/' + clientId + '/class-section-options/');
+        }
+
+        if (!normalized.length) return baseUrl;
+        var url = baseUrl + '?group_ids=' + encodeURIComponent(normalized.join(','));
         if (assignmentIdSource === 'group' || assignmentIdSource === 'table') {
             url += '&id_source=' + encodeURIComponent(assignmentIdSource);
         }
@@ -1304,10 +1320,17 @@ document.addEventListener('DOMContentLoaded', function () {
     async function loadAssignGroups() {
         if (_assignmentGroupsLoaded) return;
         var clientId = getActiveAssignmentClientId();
-        if (!clientId) return;
+        var groupsUrl = null;
+        if (isClientPortalPath()) {
+            groupsUrl = apiPath('/client/api/groups/active/');
+        } else if (clientId) {
+            groupsUrl = apiPath('/api/client/' + clientId + '/groups/');
+        } else {
+            return;
+        }
 
         try {
-            var data = await ApiClient.get(apiPath('/api/client/' + clientId + '/groups/'));
+            var data = await ApiClient.get(groupsUrl);
             if (data.success) {
                 _assignmentGroupsLoaded = true;
                 var groups = data.groups || [];
@@ -1406,6 +1429,9 @@ document.addEventListener('DOMContentLoaded', function () {
         assignment: {
             prefix:          'group',
             apiUrl:          function () {
+                if (isClientPortalPath()) {
+                    return apiPath('/client/api/groups/active/');
+                }
                 var clientId = getActiveAssignmentClientId();
                 if (!clientId) return null;
                 return apiPath('/api/client/' + clientId + '/groups/');
