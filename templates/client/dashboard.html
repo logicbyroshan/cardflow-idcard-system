@@ -220,7 +220,7 @@
   <!-- Bottom Fixed Quick Actions Row -->
   <div class="dashboard-bottom-fixed">
     <div class="client-quick-actions-bar">
-      {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_reprint_request_list or perm_confirmed_list %}
+      {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
       <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
         <i class="fa-solid fa-id-card"></i>
         <span>ID Card Group</span>

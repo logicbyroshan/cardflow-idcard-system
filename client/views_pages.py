@@ -73,7 +73,8 @@ def card_groups(request):
         return redirect('/panel/auth/login/')
     
     # Check permission
-    if not PermissionService.has_permission(user, 'perm_idcard_setting_list'):
+    if not (PermissionService.has_permission(user, 'perm_idcard_setting_list')
+            or PermissionService.has_permission(user, 'perm_idcard_reprint_list')):
         return redirect(reverse('client:dashboard'))
     
     result = ClientDashboardService.get_groups_with_counts(user)
@@ -109,6 +110,7 @@ def card_table(request, table_id):
         'perm_idcard_setting_list', 'perm_idcard_pending_list',
         'perm_idcard_verified_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_pool_list',
+        'perm_idcard_reprint_list',
         'perm_reprint_request_list', 'perm_confirmed_list',
     ]
     if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):

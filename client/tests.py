@@ -264,6 +264,15 @@ class ManageClientsPaginationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="deleteClientBtn"')
 
+    def test_manage_clients_shows_reprint_permission_toggles(self):
+        self.client.login(username='sa-manage-clients@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Reprint Lists')
+        self.assertContains(response, 'Request List (Reprint)')
+        self.assertContains(response, 'Confirmed List (Reprint)')
+
 
 class ManageClientsPermissionGateTests(TestCase):
     @classmethod
@@ -511,6 +520,34 @@ class ClientAccessServiceAdvancedTests(TestCase):
     def test_client_staff_assigned_groups_restrict_card_access(self):
         from client.services import ClientAccessService
         self.assertTrue(ClientAccessService.can_access_card(self.staff_user, self.card_a))
+
+    def test_client_reprint_permission_can_open_card_table(self):
+        self.client_owner.client_profile.perm_idcard_setting_list = False
+        self.client_owner.client_profile.perm_idcard_pending_list = False
+        self.client_owner.client_profile.perm_idcard_verified_list = False
+        self.client_owner.client_profile.perm_idcard_pool_list = False
+        self.client_owner.client_profile.perm_idcard_approved_list = False
+        self.client_owner.client_profile.perm_idcard_download_list = False
+        self.client_owner.client_profile.perm_idcard_reprint_list = True
+        self.client_owner.client_profile.perm_reprint_request_list = False
+        self.client_owner.client_profile.perm_confirmed_list = False
+        self.client_owner.client_profile.save(update_fields=[
+            'perm_idcard_setting_list',
+            'perm_idcard_pending_list',
+            'perm_idcard_verified_list',
+            'perm_idcard_pool_list',
+            'perm_idcard_approved_list',
+            'perm_idcard_download_list',
+            'perm_idcard_reprint_list',
+            'perm_reprint_request_list',
+            'perm_confirmed_list',
+        ])
+
+        self.client.login(username='owner-adv@test.com', password='pass1234')
+
+        response = self.client.get(f'/panel/client/table/{self.table_a.id}/cards/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Cards - Client Portal')
 
 
 class ClientDashboardServiceTests(TestCase):
