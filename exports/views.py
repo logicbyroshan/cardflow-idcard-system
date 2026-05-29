@@ -557,7 +557,7 @@ def _check_image_export_permission(request):
                 'message': 'Permission denied: You do not have access to this list'
             }, status=403)
 
-    if request.user.role in ('client', 'client_staff') and status in ('approved', 'download'):
+    if request.user.role in ('client', 'client_staff') and status == 'approved':
         return JsonResponse({
             'success': False,
             'message': 'Export is not available for this list'
