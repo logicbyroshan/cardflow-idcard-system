@@ -4,6 +4,28 @@
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
+    // Hotfix: some minified admin bundles call `/panel/api/client-staff/clients/`
+    // which doesn't exist in this deployment. Intercept fetch calls and
+    // reroute that specific path to a client-safe endpoint so the drawer
+    // still populates groups for client pages.
+    try {
+        (function () {
+            var origFetch = window.fetch.bind(window);
+            window.fetch = function (input, init) {
+                try {
+                    var url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+                    if (typeof url === 'string' && url.indexOf('/panel/api/client-staff/clients/') !== -1) {
+                        // Prefer client-scoped active groups endpoint.
+                        return origFetch('/client/api/groups/active/', init);
+                    }
+                } catch (e) {
+                    // ignore and continue with original fetch
+                }
+                return origFetch(input, init);
+            };
+        })();
+    } catch (e) { /* no-op */ }
+
     function panelBasePath() {
         return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
     }
