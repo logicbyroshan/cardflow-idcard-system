@@ -59,6 +59,14 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         if (classSectionFilterSection) classSectionFilterSection.style.display = assignmentOnly ? '' : 'none';
         if (staffInfoSection) staffInfoSection.style.display = assignmentOnly ? 'none' : '';
         if (staffPermissionsSection) staffPermissionsSection.style.display = assignmentOnly ? 'none' : '';
+
+        var nameInput = document.getElementById('staff-name');
+        var emailInput = document.getElementById('staff-email');
+        var passwordInput = document.getElementById('staff-password');
+
+        if (nameInput) nameInput.required = !assignmentOnly;
+        if (emailInput) emailInput.required = !assignmentOnly;
+        if (passwordInput) passwordInput.required = false;
     }
 
     var allItems    = [];          // { id, name }
