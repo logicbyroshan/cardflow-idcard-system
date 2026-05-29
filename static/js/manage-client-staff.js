@@ -920,15 +920,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 className.textContent = cls;
                 classCell.appendChild(className);
 
-                var classCount = parseInt(_getChipClassCount(chip, cls), 10);
-                if (Number.isFinite(classCount) && classCount > 0) {
-                    var classBadge = document.createElement('span');
-                    classBadge.className = 'assignment-chip-count-badge assignment-chip-count-badge--classes';
-                    classBadge.textContent = String(classCount);
-                    classBadge.title = classCount + ' cards';
-                    classCell.appendChild(classBadge);
-                }
-
                 row.appendChild(classCell);
 
                 var sectionCell = document.createElement('div');
@@ -971,17 +962,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         var sectionText = document.createElement('span');
                         sectionText.className = 'assignment-chip-option-text';
-                        sectionText.textContent = sec;
+                        sectionText.textContent = cls + '"' + sec + '"';
                         sectionItem.appendChild(sectionText);
-
-                        var sectionCount = parseInt(_getChipSectionCount(chip, sec), 10);
-                        if (Number.isFinite(sectionCount) && sectionCount > 0) {
-                            var sectionBadge = document.createElement('span');
-                            sectionBadge.className = 'assignment-chip-count-badge assignment-chip-count-badge--sections';
-                            sectionBadge.textContent = String(sectionCount);
-                            sectionBadge.title = sectionCount + ' cards';
-                            sectionItem.appendChild(sectionBadge);
-                        }
 
                         sectionCell.appendChild(sectionItem);
                     });
