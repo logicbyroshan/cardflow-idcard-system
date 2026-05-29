@@ -27,9 +27,11 @@ export default function ReprintDetailScreen({ navigation, route }) {
   const isAdminOrOperator = isSuperAdmin || isOperator;
 
   // Permissions gate check
-  const hasDownloadTab = perms.perm_idcard_reprint_list || isAdminOrOperator;
-  const hasRequestTab = perms.perm_reprint_request_list || isAdminOrOperator || ((user?.role === 'client' || user?.role === 'client_staff') && perms.perm_idcard_reprint_list);
-  const hasConfirmedTab = perms.perm_confirmed_list || isAdminOrOperator;
+  const isClient = user?.role === 'client' || user?.role === 'client_staff';
+  const isAssistant = user?.role === 'client_staff';
+  const hasDownloadTab = perms.perm_idcard_reprint_list || isAdminOrOperator || isClient || isAssistant;
+  const hasRequestTab = perms.perm_reprint_request_list || isAdminOrOperator || isClient || isAssistant;
+  const hasConfirmedTab = perms.perm_confirmed_list || isAdminOrOperator || isClient || isAssistant;
 
   // Tab State
   const [activeTab, setActiveTab] = useState(() => {

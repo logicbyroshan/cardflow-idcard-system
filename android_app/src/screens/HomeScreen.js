@@ -287,7 +287,7 @@ export default function HomeScreen({ navigation }) {
   const quickActions = useMemo(() => {
     const actions = [];
     const perms = user?.permissions || {};
-    const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list;
+    const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list || isClient || isAssistant;
 
     if (isSuperAdmin) {
       actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', onPress: () => setShowClientForm(true) });

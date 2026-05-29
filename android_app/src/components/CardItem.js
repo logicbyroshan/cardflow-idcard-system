@@ -222,7 +222,7 @@ const CardItem = React.memo(function CardItem({
               <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
             </TouchableOpacity>
           )}
-          {currentStatus === 'download' && onReprint && (hasPerm('perm_idcard_reprint_list') || hasPerm('perm_reprint_request_list')) && (
+          {currentStatus === 'download' && onReprint && (hasPerm('perm_idcard_reprint_list') || hasPerm('perm_reprint_request_list') || permissions?.role === 'client' || permissions?.role === 'client_staff') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.yellow }]} 
               onPress={() => onReprint(item)}
