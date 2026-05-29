@@ -891,8 +891,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 var classCell = document.createElement('div');
                 classCell.className = 'assignment-class-section-row-class';
 
-                if (chip.isEditing) {
-                    var classInput = document.createElement('input');
+                    if (chip.isEditing) {
+                        let classInput = document.createElement('input');
                     classInput.type = 'checkbox';
                     classInput.checked = isAssignedClass;
                     classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -951,8 +951,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         var sectionItem = document.createElement('div');
                         sectionItem.className = 'assignment-chip-checkbox-item assignment-chip-checkbox-item--section ' + (isAssignedSection ? 'is-assigned' : 'is-unassigned');
 
-                        if (chip.isEditing) {
-                            var sectionInput = document.createElement('input');
+                            if (chip.isEditing) {
+                            let sectionInput = document.createElement('input');
                             sectionInput.type = 'checkbox';
                             sectionInput.checked = isAssignedSection;
                             sectionInput.id = String(chip.groupId) + '-section-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + sec.replace(/[^a-zA-Z0-9_-]/g, '_');
