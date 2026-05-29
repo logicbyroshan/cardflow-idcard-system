@@ -675,7 +675,7 @@ def api_client_groups_list(request):
     })
 
 
-@require_client_admin
+@require_client_staff_manager
 @require_http_methods(["GET"])
 def api_class_section_options(request):
     """
