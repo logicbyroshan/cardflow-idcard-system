@@ -1021,7 +1021,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             sectionInput.checked = isAssignedSection;
                             sectionInput.id = String(chip.groupId) + '-section-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + sec.replace(/[^a-zA-Z0-9_-]/g, '_');
                             sectionInput.addEventListener('change', function () {
-                                var nextSections = selectedSections.slice();
+                                var currentSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
+                                var nextSections = currentSections.slice();
                                 if (sectionInput.checked) {
                                     if (nextSections.indexOf(sec) === -1) nextSections.push(sec);
                                 } else {
