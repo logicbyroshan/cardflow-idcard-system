@@ -259,7 +259,9 @@
         }
 
         const allClientsUrl = panelUrl('/api/client/messages/targets/?limit=1000');
-        const assignmentClientsUrl = panelUrl('/api/client-staff/clients/');
+        const assignmentClientsUrl = (String(window.location.pathname || '').indexOf('/panel/client/') === 0)
+            ? panelUrl('/client/api/groups/active/')
+            : panelUrl('/api/client-staff/clients/');
         const activeUrl = panelUrl('/api/clients/active/');
 
         // If we're on a client-scoped page, skip the admin-only assignmentClientsUrl
