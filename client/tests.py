@@ -549,6 +549,34 @@ class ClientAccessServiceAdvancedTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Cards - Client Portal')
 
+    def test_client_request_list_permission_can_open_card_table(self):
+        self.client_owner.client_profile.perm_idcard_setting_list = False
+        self.client_owner.client_profile.perm_idcard_pending_list = False
+        self.client_owner.client_profile.perm_idcard_verified_list = False
+        self.client_owner.client_profile.perm_idcard_pool_list = False
+        self.client_owner.client_profile.perm_idcard_approved_list = False
+        self.client_owner.client_profile.perm_idcard_download_list = False
+        self.client_owner.client_profile.perm_idcard_reprint_list = False
+        self.client_owner.client_profile.perm_reprint_request_list = True
+        self.client_owner.client_profile.perm_confirmed_list = False
+        self.client_owner.client_profile.save(update_fields=[
+            'perm_idcard_setting_list',
+            'perm_idcard_pending_list',
+            'perm_idcard_verified_list',
+            'perm_idcard_pool_list',
+            'perm_idcard_approved_list',
+            'perm_idcard_download_list',
+            'perm_idcard_reprint_list',
+            'perm_reprint_request_list',
+            'perm_confirmed_list',
+        ])
+
+        self.client.login(username='owner-adv@test.com', password='pass1234')
+
+        response = self.client.get(f'/panel/client/table/{self.table_a.id}/reprint/?step=request_list')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Request List')
+
 
 class ClientDashboardServiceTests(TestCase):
     def test_dashboard_photo_url_maps_mediafiles_under_media_route(self):
@@ -1614,6 +1642,74 @@ class ClientApiIntegrationTests(TestCase):
         self.assertEqual(scopes[0].get('scope_id'), self.table.id)
         self.assertEqual(scopes[0].get('classes'), ['10'])
         self.assertEqual(scopes[0].get('sections'), ['A'])
+
+    def test_api_staff_detail_preserves_legacy_flat_assignment_fields(self):
+        self.staff_profile.assigned_groups.set([self.group])
+        self.staff_profile.allowed_classes = ['10']
+        self.staff_profile.allowed_sections = ['A']
+        self.staff_profile.allowed_branches = []
+        self.staff_profile.assignment_scopes = []
+        self.staff_profile.save(update_fields=[
+            'allowed_classes',
+            'allowed_sections',
+            'allowed_branches',
+            'assignment_scopes',
+        ])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        detail_resp = self.client.get(f'/panel/client/api/staff/{self.staff_profile.id}/')
+
+        self.assertEqual(detail_resp.status_code, 200)
+        detail_payload = detail_resp.json().get('data', {})
+        self.assertEqual(detail_payload.get('assignment_scopes'), [])
+        self.assertEqual(detail_payload.get('allowed_classes'), ['10'])
+        self.assertEqual(detail_payload.get('allowed_sections'), ['A'])
+
+    def test_api_staff_update_round_trips_scoped_assignments(self):
+        self.client.login(username='api-owner@test.com', password='pass1234')
+
+        update_payload = {
+            'name': 'Scoped Staff Updated',
+            'assigned_groups': [self.group.id],
+            'assignment_id_source': 'group',
+            'assignment_scopes': [
+                {
+                    'scope_type': 'group',
+                    'scope_id': self.group.id,
+                    'classes': ['10'],
+                    'sections': ['A'],
+                    'branches': [],
+                }
+            ],
+        }
+        update_resp = self.client.put(
+            f'/panel/client/api/staff/{self.staff_profile.id}/',
+            data=json.dumps(update_payload),
+            content_type='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(update_resp.status_code, 200)
+        self.assertTrue(update_resp.json().get('success'))
+
+        self.staff_profile.refresh_from_db()
+        self.assertEqual(self.staff_profile.assignment_scopes, [
+            {
+                'scope_type': 'group',
+                'scope_id': self.group.id,
+                'group_id': self.group.id,
+                'classes': ['10'],
+                'sections': ['A'],
+                'branches': [],
+                'class_sections': {},
+            }
+        ])
+
+        detail_resp = self.client.get(f'/panel/client/api/staff/{self.staff_profile.id}/')
+        self.assertEqual(detail_resp.status_code, 200)
+        detail_payload = detail_resp.json().get('data', {})
+        self.assertEqual(detail_payload.get('assignment_scopes')[0].get('classes'), ['10'])
+        self.assertEqual(detail_payload.get('assignment_scopes')[0].get('sections'), ['A'])
 
     def test_api_class_section_options_auto_uses_group_mode_without_id_collision(self):
         from idcards.models import IDCardGroup, IDCardTable, IDCard

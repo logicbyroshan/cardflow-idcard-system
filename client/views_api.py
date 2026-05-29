@@ -464,22 +464,6 @@ def api_staff_detail(request, staff_id):
             logger.info('Incoming staff update payload for staff_id=%s: %s', staff_id, json.dumps({k: v for k, v in data.items() if k in ('assignment_scopes', 'assigned_groups')}, ensure_ascii=False))
         except Exception:
             logger.exception('Failed to log incoming staff update payload for staff_id=%s', staff_id)
-        # Also persist a copy to workspace for quick inspection during debugging
-        try:
-            import os as _os
-            _out_dir = _os.path.join(_os.path.dirname(__file__), '..', 'tmp_assignment_payloads')
-            _out_dir = _os.path.normpath(_out_dir)
-            _os.makedirs(_out_dir, exist_ok=True)
-            _fn = _os.path.join(_out_dir, f'staff_{staff_id}_incoming_payload.json')
-            with open(_fn, 'w', encoding='utf-8') as _f:
-                json.dump({
-                    'staff_id': staff_id,
-                    'assignment_scopes': data.get('assignment_scopes'),
-                    'assigned_groups': data.get('assigned_groups'),
-                }, _f, ensure_ascii=False, indent=2)
-        except Exception:
-            logger.exception('Failed to write incoming payload file for staff_id=%s', staff_id)
-
         data = _normalize_staff_assignment_payload(data)
         
         result = ClientStaffService.update_staff(request.user, staff_id, data)

@@ -934,8 +934,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function addClassSectionGroup(container, chip) {
-            var classValues = _normalizeStringList(chip.classOptions.length ? chip.classOptions : chip.classes);
-            var hasClassRows = classValues.length || (chip.classes && chip.classes.length);
+            var classValues = _normalizeStringList(chip.classes.length ? chip.classes : Object.keys(chip.classSectionSelections || {}));
+            var hasClassRows = classValues.length || (chip.classSectionSelections && Object.keys(chip.classSectionSelections).length);
             if (!hasClassRows && !chip.hasSection && !(chip.sections && chip.sections.length)) return;
 
             var wrap = document.createElement('div');
@@ -971,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 classCell.className = 'assignment-class-section-row-class';
 
                     if (chip.isEditing) {
-                        let classInput = document.createElement('input');
+                        var classInput = document.createElement('input');
                     classInput.type = 'checkbox';
                     classInput.checked = isAssignedClass;
                     classInput.indeterminate = false;
@@ -1016,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         sectionItem.className = 'assignment-chip-checkbox-item assignment-chip-checkbox-item--section ' + (isAssignedSection ? 'is-assigned' : 'is-unassigned');
 
                             if (chip.isEditing) {
-                            let sectionInput = document.createElement('input');
+                            var sectionInput = document.createElement('input');
                             sectionInput.type = 'checkbox';
                             sectionInput.checked = isAssignedSection;
                             sectionInput.id = String(chip.groupId) + '-section-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + sec.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -1242,9 +1242,31 @@ document.addEventListener('DOMContentLoaded', function () {
             var groups = document.createElement('div');
             groups.className = 'assignment-scope-chip-groups';
 
-            if (chip.hasClass || chip.classes.length || chip.classOptions.length || chip.hasSection || chip.sections.length) {
-                addClassSectionGroup(groups, chip);
+            if (chip.isEditing) {
+                if (chip.hasClass || chip.classes.length || chip.classOptions.length || chip.hasSection || chip.sections.length) {
+                    addClassSectionGroup(groups, chip);
+                }
+            } else {
+                var summaryClasses = _normalizeStringList(chip.classes || []);
+                var summarySections = _normalizeStringList(chip.sections || []);
+                if (!summaryClasses.length && chip.classSectionSelections) {
+                    summaryClasses = Object.keys(chip.classSectionSelections || {});
+                }
+                if (!summarySections.length && chip.classSectionSelections) {
+                    Object.keys(chip.classSectionSelections || {}).forEach(function (cls) {
+                        summarySections = summarySections.concat(_normalizeStringList(chip.classSectionSelections[cls] || []));
+                    });
+                    summarySections = _normalizeStringList(summarySections);
+                }
+
+                if (summaryClasses.length) {
+                    addChipGroup(groups, chip, 'Classes', summaryClasses, summaryClasses, 'classes');
+                }
+                if (summarySections.length) {
+                    addChipGroup(groups, chip, 'Sections', summarySections, summarySections, 'sections');
+                }
             }
+
             if (chip.hasBranch || chip.branches.length) {
                 addChipGroup(groups, chip, 'Branches / Courses', chip.branchOptions, chip.branches, 'branches');
             }
@@ -1365,9 +1387,13 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             if (!Object.keys(classSections).length) {
-                (chip.classes || []).forEach(function (cls) {
-                    classSections[cls] = _normalizeStringList(chip.sectionOptions || []);
-                });
+                if ((chip.classes || []).length === 1 && (chip.sections || []).length) {
+                    classSections[chip.classes[0]] = _normalizeStringList(chip.sections || []);
+                } else if ((chip.sections || []).length === 1 && (chip.classes || []).length) {
+                    (chip.classes || []).forEach(function (cls) {
+                        classSections[cls] = [chip.sections[0]];
+                    });
+                }
             }
 
             payload.assignment_scopes.push({

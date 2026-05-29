@@ -73,8 +73,12 @@ def card_groups(request):
         return redirect('/panel/auth/login/')
     
     # Check permission
-    if not (PermissionService.has_permission(user, 'perm_idcard_setting_list')
-            or PermissionService.has_permission(user, 'perm_idcard_reprint_list')):
+    if not (
+        PermissionService.has_permission(user, 'perm_idcard_setting_list')
+        or PermissionService.has_permission(user, 'perm_idcard_reprint_list')
+        or PermissionService.has_permission(user, 'perm_reprint_request_list')
+        or PermissionService.has_permission(user, 'perm_confirmed_list')
+    ):
         return redirect(reverse('client:dashboard'))
     
     result = ClientDashboardService.get_groups_with_counts(user)
