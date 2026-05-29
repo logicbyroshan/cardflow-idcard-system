@@ -882,7 +882,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             classValues.forEach(function (cls) {
                 var availableSections = _normalizeStringList(chip.classSectionMap[cls] || []);
-                var isAssignedClass = chip.classes.indexOf(cls) !== -1;
+                // Consider a class assigned if all its available sections are selected
+                var isAssignedClass = availableSections.length && availableSections.every(function (s) { return chip.sections.indexOf(s) !== -1; });
 
                 var row = document.createElement('div');
                 row.className = 'assignment-class-section-row' + (isAssignedClass ? ' is-assigned' : ' is-unassigned');
@@ -896,8 +897,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     classInput.checked = isAssignedClass;
                     classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
                     classInput.addEventListener('change', function () {
-                        var nextClasses = chip.classes.slice();
+                        // If class is checked, select all available sections for this class.
+                        // If unchecked, remove those sections.
+                        var nextSections = chip.sections.slice();
                         if (classInput.checked) {
+                            availableSections.forEach(function (s) { if (nextSections.indexOf(s) === -1) nextSections.push(s); });
+                        } else {
+                            nextSections = nextSections.filter(function (val) { return availableSections.indexOf(val) === -1; });
+                        }
+                        chip.sections = _normalizeStringList(nextSections);
+                        // Update classes list to include this class only when all its sections are selected
+                        var allSelected = availableSections.length && availableSections.every(function (s) { return chip.sections.indexOf(s) !== -1; });
+                        var nextClasses = chip.classes.slice();
+                        if (allSelected) {
                             if (nextClasses.indexOf(cls) === -1) nextClasses.push(cls);
                         } else {
                             nextClasses = nextClasses.filter(function (val) { return val !== cls; });
@@ -952,6 +964,19 @@ document.addEventListener('DOMContentLoaded', function () {
                                     nextSections = nextSections.filter(function (val) { return val !== sec; });
                                 }
                                 chip.sections = _normalizeStringList(nextSections);
+                                // Update class checkbox state: checked only if all sections selected
+                                if (typeof classInput !== 'undefined') {
+                                    var allSelectedNow = availableSections.length && availableSections.every(function (s) { return chip.sections.indexOf(s) !== -1; });
+                                    classInput.checked = !!allSelectedNow;
+                                    // Reflect in chip.classes
+                                    var nextClasses2 = chip.classes.slice();
+                                    if (allSelectedNow) {
+                                        if (nextClasses2.indexOf(cls) === -1) nextClasses2.push(cls);
+                                    } else {
+                                        nextClasses2 = nextClasses2.filter(function (val) { return val !== cls; });
+                                    }
+                                    chip.classes = _normalizeStringList(nextClasses2);
+                                }
                                 renderAssignmentScopeChips();
                             });
                             sectionItem.appendChild(sectionInput);
@@ -965,7 +990,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         var sectionText = document.createElement('span');
                         sectionText.className = 'assignment-chip-option-text';
-                        sectionText.textContent = cls + '"' + sec + '"';
+                        // Show only the section name on the right side (class shown on left)
+                        sectionText.textContent = sec;
                         sectionItem.appendChild(sectionText);
 
                         sectionCell.appendChild(sectionItem);
