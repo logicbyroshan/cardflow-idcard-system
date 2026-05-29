@@ -298,6 +298,12 @@ window._StaffDrawerSetup = function (cfg, ctx) {
     // ==================== DRAWER OPEN / CLOSE / POPULATE ====================
     function openDrawer(mode, staffData) {
         currentMode = mode || 'add';
+        if (staffData && (mode === 'edit' || mode === 'assign' || mode === 'view')) {
+            var resolvedStaffId = parseInt(staffData.id, 10);
+            if (Number.isFinite(resolvedStaffId) && resolvedStaffId > 0) {
+                ctx.selectedStaffId = resolvedStaffId;
+            }
+        }
         staffForm.reset();
 
         // Let page-specific hook run (e.g. reset status dropdown)
