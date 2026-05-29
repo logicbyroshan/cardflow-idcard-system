@@ -300,7 +300,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Fix: always re-enable submit button when opening drawer (may be disabled from previous submit)
         if (submitBtn) { submitBtn.disabled = false; }
         NS.setClientStatusDropdown('false'); // Default Inactive for new clients
-        NS.setClientPasswordOption('phone'); // Reset password option to phone
         setClientPasswordHidden();
         renderClientDrawerAvatar('', '');
         
@@ -329,6 +328,7 @@ document.addEventListener('DOMContentLoaded', function() {
           drawerTitle.textContent = 'Add New Client';
           drawerIcon.className = 'fa-solid fa-user-plus';
           submitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Client';
+          NS.setClientPasswordOption('custom');
           
           // Show password option for new clients
           var pwRow = document.getElementById('clientPasswordOptionRow');
@@ -343,6 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
           drawerTitle.textContent = 'Edit Client';
           drawerIcon.className = 'fa-solid fa-user-pen';
           submitBtn.innerHTML = '<i class="fa-solid fa-save"></i> Update Client';
+          NS.setClientPasswordOption('phone');
           
           // Hide password option when editing (change via settings/forgot password)
           var pwRow = document.getElementById('clientPasswordOptionRow');
