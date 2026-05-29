@@ -1235,6 +1235,8 @@ def api_export_status(request, task_id: str) -> JsonResponse:
         'success': True,
         'state': status['state'],
         'progress': status['progress'],
+        'progress_percentage': status.get('progress_percentage', 0),
+        'eta_seconds': status.get('eta_seconds'),
         'message': status['message'],
         'download_url': status.get('download_url', ''),
         'filename': status.get('filename', ''),

@@ -370,7 +370,7 @@
     // =========================================
     // UPDATE TOAST PROGRESS
     // =========================================
-    function _updateToast(dl, loaded, total) {
+    function _updateToast(dl, loaded, total, etaText) {
         dl.loaded = loaded;
         dl.total = total;
 
@@ -401,7 +401,7 @@
             var remaining = (total - loaded) / speed;
             etaEl.textContent = _formatEta(remaining);
         } else if (etaEl) {
-            etaEl.textContent = '--';
+            etaEl.textContent = etaText || '--';
         }
     }
 
@@ -1043,6 +1043,11 @@
     function _pollAsyncExportTask(taskId, dl, opts) {
         var pollCount = 0;
         var maxPolls = 300; // 10 minutes at 2 second interval
+        var pollStartedAt = Date.now();
+        var lastBackendPct = 0;
+        var lastBackendUpdateAt = pollStartedAt;
+        var exportType = _resolveAsyncExportKind(opts, null);
+        var estimatedTotalSec = _estimateAsyncExportSeconds(exportType, (opts && opts.cardCount) || 0);
 
         function poll() {
             if (dl.status !== 'downloading') return;
@@ -1054,7 +1059,7 @@
                 return;
             }
 
-            fetch('/api/export/status/' + taskId + '/', {
+            fetch('/api/task-status/' + taskId + '/', {
                 headers: {
                     'X-CSRFToken': (typeof getCSRFToken === 'function') ? getCSRFToken() : ''
                 }
@@ -1067,24 +1072,65 @@
                         return;
                     }
 
-                    if (data.state === 'completed') {
-                        _triggerUrlDownload(data.download_url, data.filename || (opts.fallbackExt ? ('export.' + opts.fallbackExt) : 'export'));
+                    if (data.status === 'completed') {
+                        _triggerUrlDownload(data.download_url, (data.result && data.result.filename) || data.filename || (opts.fallbackExt ? ('export.' + opts.fallbackExt) : 'export'));
                         _finishToast(dl, 'complete', opts.completeMessage || 'Downloaded successfully');
                         if (typeof opts.onComplete === 'function') {
-                            try { opts.onComplete(null, data.filename || 'export'); } catch (e) { console.error(e); }
+                            try { opts.onComplete(null, (data.result && data.result.filename) || data.filename || 'export'); } catch (e) { console.error(e); }
                         }
                         return;
                     }
 
-                    if (data.state === 'failed') {
-                        _finishToast(dl, 'error', data.message || 'Export failed');
-                        if (typeof opts.onError === 'function') opts.onError(data.message || 'Export failed');
+                    if (data.status === 'failed' || data.status === 'cancelled') {
+                        _finishToast(dl, 'error', data.error_message || data.message || 'Export failed');
+                        if (typeof opts.onError === 'function') opts.onError(data.error_message || data.message || 'Export failed');
                         return;
                     }
 
-                    var progress = Math.max(5, Math.min(95, Number(data.progress || 0)));
-                    _updateToast(dl, progress, 100);
-                    _updateBlockingOverlay(dl.id, progress, data.message || ('Generating ' + dl.name + '...'), null);
+                    exportType = _resolveAsyncExportKind(opts, data);
+
+                    var backendPct = Number(data.progress_percentage || 0);
+                    if (!isFinite(backendPct) || backendPct <= 0) {
+                        var total = Number(data.total || 0);
+                        var progress = Number(data.progress || 0);
+                        if (total > 0 && progress > 0) backendPct = (progress / total) * 100;
+                    }
+                    if (!isFinite(backendPct)) backendPct = 0;
+                    backendPct = Math.max(0, Math.min(95, backendPct));
+
+                    if (backendPct > lastBackendPct + 0.1) {
+                        lastBackendPct = backendPct;
+                        lastBackendUpdateAt = Date.now();
+                    }
+
+                    var elapsedSec = Math.max(1, (Date.now() - pollStartedAt) / 1000);
+                    if (backendPct >= 8) {
+                        var observedTotal = elapsedSec / Math.max(backendPct / 100, 0.08);
+                        estimatedTotalSec = Math.max(estimatedTotalSec, observedTotal);
+                    }
+
+                    var timeDrivenPct = Math.min(92, (elapsedSec / Math.max(estimatedTotalSec, 1)) * 100);
+                    var stalledSec = Math.max(0, (Date.now() - lastBackendUpdateAt) / 1000);
+                    var stalledBoost = stalledSec > 8 ? Math.min(10, (stalledSec - 8) * 0.8) : 0;
+                    var displayPct = Math.max(5, Math.min(95, Math.max(backendPct, timeDrivenPct, Math.min(94, backendPct + stalledBoost))));
+
+                    var etaSeconds = null;
+                    if (typeof data.eta_seconds === 'number' && isFinite(data.eta_seconds)) {
+                        etaSeconds = data.eta_seconds;
+                    } else {
+                        etaSeconds = Math.max(5, Math.ceil(Math.max(0, estimatedTotalSec - elapsedSec)));
+                    }
+
+                    var etaLabel = _formatEta(etaSeconds);
+                    var message = data.stage_label || data.status_display || data.message || ('Generating ' + dl.name + '...');
+                    _updateToast(dl, displayPct, 100, etaLabel);
+                    if (dl.useModalProgress) {
+                        var presenter = _getDownloadProgressPresenter();
+                        if (presenter && presenter.isActive && presenter.isActive() && typeof presenter.update === 'function') {
+                            presenter.update(message, displayPct, etaLabel);
+                        }
+                    }
+                    _updateBlockingOverlay(dl.id, displayPct, message, null);
                     setTimeout(poll, 2000);
                 })
                 .catch(function () {
