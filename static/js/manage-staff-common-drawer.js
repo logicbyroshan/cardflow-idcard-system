@@ -318,6 +318,11 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             if (submitBtnText) submitBtnText.textContent = labels.addSubmit || 'Add Staff';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
+            if (pwOptionSelect) {
+                pwOptionSelect.value = 'custom';
+                if (pwGroup) pwGroup.style.display = '';
+                if (pwInput) pwInput.required = true;
+            }
             // Show password option for new staff
             if (pwRow) pwRow.style.display = '';
             // Hide temp password button in add mode
@@ -330,6 +335,11 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             if (submitBtnText) submitBtnText.textContent = labels.editSubmit || 'Save Changes';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
+            if (pwOptionSelect) {
+                pwOptionSelect.value = 'phone';
+                if (pwGroup) pwGroup.style.display = 'none';
+                if (pwInput) pwInput.required = false;
+            }
             // Hide password option when editing
             if (pwRow) pwRow.style.display = 'none';
             // Show temp password button in edit mode
