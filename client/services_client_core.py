@@ -151,21 +151,16 @@ class ClientService(BaseService):
                 return ServiceResult(success=False, message='Name is required')
 
             raw_email = str(data.get('email') or '').strip().lower()
-            email_was_provided = bool(raw_email)
+            if not raw_email:
+                return ServiceResult(success=False, message='Email is required')
 
-            if raw_email:
-                # Check for duplicate email
-                if User.objects.filter(email__iexact=raw_email).exists():
-                    return ServiceResult(
-                        success=False,
-                        message='A user with this email already exists'
-                    )
-                email = raw_email
-            else:
-                slug = cls.normalize_name(name)[:24] or 'client'
-                email = f'client.{slug}.{secrets.token_hex(4)}@noemail.local'
-                while User.objects.filter(email__iexact=email).exists():
-                    email = f'client.{slug}.{secrets.token_hex(4)}@noemail.local'
+            # Check for duplicate email
+            if User.objects.filter(email__iexact=raw_email).exists():
+                return ServiceResult(
+                    success=False,
+                    message='A user with this email already exists'
+                )
+            email = raw_email
             
             # Generate unique username
             username = email.split('@')[0].lower().replace('.', '_')
@@ -203,13 +198,13 @@ class ClientService(BaseService):
                 # Normalize custom password input
                 password = normalize_password_input(password)
             
+            if not email:
+                return ServiceResult(success=False, message='Email is required')
+
             # Check if admin explicitly requested active status at creation time
             create_as_active = cls.parse_bool(data.get('is_active', False))
             
             with transaction.atomic():
-                if not email:
-                    slug = re.sub(r'[^a-z0-9]+', '.', (username or name or 'guest').strip().lower()).strip('.') or 'guest'
-                    email = f'{role}.{slug}.{secrets.token_hex(4)}@noemail.local'
 
                 # Create user — honour admin's active/inactive choice
                 user = User.objects.create_user(

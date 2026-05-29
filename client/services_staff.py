@@ -469,19 +469,16 @@ class ClientStaffService(BaseService):
                 return ServiceResult(success=False, message='Name is required')
 
             raw_email = str(data.get('email') or '').strip().lower()
-            if raw_email:
-                # Check for duplicate email
-                if User.objects.filter(email__iexact=raw_email).exists():
-                    return ServiceResult(
-                        success=False,
-                        message='A user with this email already exists'
-                    )
-                email = raw_email
-            else:
-                slug = cls.normalize_name(display_name)[:24] or 'cstaff'
-                email = f'cstaff.{slug}.{secrets.token_hex(4)}@noemail.local'
-                while User.objects.filter(email__iexact=email).exists():
-                    email = f'cstaff.{slug}.{secrets.token_hex(4)}@noemail.local'
+            if not raw_email:
+                return ServiceResult(success=False, message='Email is required')
+
+            # Check for duplicate email
+            if User.objects.filter(email__iexact=raw_email).exists():
+                return ServiceResult(
+                    success=False,
+                    message='A user with this email already exists'
+                )
+            email = raw_email
 
             # Generate username
             username = email.split('@')[0].lower().replace('.', '_')
