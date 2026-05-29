@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var selectedBranches = new Set();
     var csOptionsCache = {};
     var assignmentIdSource = 'auto';
-    var USE_CHIP_SCOPED_FILTERS = true;
+    var USE_CHIP_SCOPED_FILTERS = false;
 
     var _esc = window.escapeHtml || function (s) {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');

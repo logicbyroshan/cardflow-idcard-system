@@ -114,6 +114,9 @@ window.initStaffPage = function (cfg) {
     // ==================== DRAWER SETUP ====================
     var drawerApi = window._StaffDrawerSetup(cfg, ctx);
     window._staffDrawerApi = drawerApi;
+    if (drawerApi && typeof drawerApi.refreshAssignmentItems === 'function') {
+        drawerApi.refreshAssignmentItems([]);
+    }
 
     // ==================== FILTER & SEARCH ====================
     var dropdownToggle  = document.getElementById('statusToggle');

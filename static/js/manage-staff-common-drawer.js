@@ -269,6 +269,8 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         });
     }
 
+    fetchItems();
+
     // ==================== PASSWORD OPTIONS ====================
     var pwOptionSelect = document.getElementById('staff-password-option');
     var pwGroup = document.getElementById('staffCustomPasswordGroup');
@@ -368,6 +370,10 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         staffDrawer.classList.add('open');
         if (staffOverlay) staffOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
+
+        if (currentMode === 'add' || currentMode === 'assign') {
+            refreshAssignmentItems([]);
+        }
 
         // Attach sanitizer (shows inline hint on blur, strips bad chars)
         if (window.DataSanitizer) DataSanitizer.attachToForm(staffForm);
