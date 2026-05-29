@@ -1113,6 +1113,13 @@ document.addEventListener('DOMContentLoaded', function () {
             head.appendChild(tools);
             card.appendChild(head);
 
+            // Mark card as editing when chip.isEditing so CSS can show/hide class names
+            if (chip.isEditing) {
+                card.classList.add('is-editing');
+            } else {
+                card.classList.remove('is-editing');
+            }
+
             if (chip.isEditing && (chip.hasClass || chip.hasSection)) {
                 var bulkActions = document.createElement('div');
                 bulkActions.className = 'assignment-scope-chip-bulk-actions';
