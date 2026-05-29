@@ -974,7 +974,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         let classInput = document.createElement('input');
                     classInput.type = 'checkbox';
                     classInput.checked = isAssignedClass;
-                    classInput.indeterminate = isAssignedClass && !isClassFullySelected;
+                    classInput.indeterminate = false;
                     classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
                     classInput.addEventListener('change', function () {
                         if (classInput.checked) {
@@ -1029,11 +1029,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                                 _setChipClassSections(chip, cls, nextSections);
                                 var currentSelected = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
-                                var classFullySelected = availableSections.length > 0 && availableSections.every(function (s) {
-                                    return currentSelected.indexOf(s) !== -1;
-                                });
                                 classInput.checked = currentSelected.length > 0;
-                                classInput.indeterminate = currentSelected.length > 0 && !classFullySelected;
+                                classInput.indeterminate = false;
                                 renderAssignmentScopeChips();
                             });
                             sectionItem.appendChild(sectionInput);
