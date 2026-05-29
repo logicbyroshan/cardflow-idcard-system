@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // If we're on the client portal, avoid calling the admin-only
         // `/panel/api/client-staff/clients/` endpoint which returns 403.
-        if (isClientPortalPath()) {
+        if (isClientPortalPath() || isPanelClientPath()) {
             allClients = [];
             return;
         }
@@ -1461,7 +1461,7 @@ document.addEventListener('DOMContentLoaded', function () {
         assignment: {
             prefix:          'group',
             apiUrl:          function () {
-                if (isClientPortalPath()) {
+                if (isClientPortalPath() || isPanelClientPath()) {
                     return apiPath('/client/api/groups/active/');
                 }
                 var clientId = getActiveAssignmentClientId();
