@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // If we're on the client portal, avoid calling the admin-only
         // `/panel/api/client-staff/clients/` endpoint which returns 403.
-        if (isClientPortalPath() || isPanelClientPath()) {
+        if (isClientPortalPath()) {
             allClients = [];
             return;
         }
@@ -198,6 +198,20 @@ document.addEventListener('DOMContentLoaded', function () {
     function getActiveAssignmentClientId() {
         if (Number.isFinite(activeAssignmentClientId) && activeAssignmentClientId > 0) return activeAssignmentClientId;
         if (Number.isFinite(selectedClientId) && selectedClientId > 0) return selectedClientId;
+        // Try to auto-detect client id from common panel contexts
+        try {
+            if (typeof window.CLIENT_ID !== 'undefined' && Number.isFinite(Number(window.CLIENT_ID))) {
+                return Number(window.CLIENT_ID);
+            }
+            if (typeof window.PANEL_CLIENT_ID !== 'undefined' && Number.isFinite(Number(window.PANEL_CLIENT_ID))) {
+                return Number(window.PANEL_CLIENT_ID);
+            }
+            var el = document.querySelector('[data-client-id]');
+            if (el) {
+                var val = parseInt(el.getAttribute('data-client-id'), 10);
+                if (Number.isFinite(val) && val > 0) return val;
+            }
+        } catch (e) { /* ignore dom parse errors */ }
         return null;
     }
 
