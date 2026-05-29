@@ -199,8 +199,14 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% endif %}
             {% endif %}
             {% if is_client or is_client_staff %}
-            {% if perm_idcard_bulk_download %}
+            {% if perm_idcard_bulk_download or perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
             <div class="action-divider"></div>
+            <button class="btn action-btn btn-purple" id="downloadImgBtnA" title="Download images as ZIP">
+                <i class="fa-solid fa-images"></i>
+                <span class="btn-text">Download Images</span>
+            </button>
+            {% endif %}
+            {% if perm_idcard_bulk_download %}
             <button class="btn action-btn btn-purple" id="downloadXlsxBtnA" title="Download as Excel file">
                 <i class="fa-solid fa-file-excel"></i>
                 <span class="btn-text">Download Excel</span>
