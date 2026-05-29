@@ -104,7 +104,19 @@ window._StaffCommonAPI = {
             if (!assignmentUrl) return [];
 
             var data = await ApiClient.get(assignmentUrl);
-            if (data.success) return data[cfg.assignment.responseKey] || [];
+            if (!data) return [];
+            if (data.success) {
+                // Support two response shapes:
+                // 1) { success: true, groups: [...] }
+                // 2) { success: true, data: { groups: [...] } }
+                var top = data[cfg.assignment.responseKey];
+                if (Array.isArray(top)) return top;
+                if (data.data && Array.isArray(data.data[cfg.assignment.responseKey])) return data.data[cfg.assignment.responseKey];
+                // Generic fallbacks
+                if (Array.isArray(data.groups)) return data.groups;
+                if (data.data && Array.isArray(data.data.groups)) return data.data.groups;
+                return [];
+            }
         } catch (_) { /* swallow */ }
         return [];
     }

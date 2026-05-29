@@ -1331,7 +1331,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             var data = await ApiClient.get(groupsUrl);
-            if (data.success) {
+            // If the active endpoint returned no data or was forbidden, try the
+            // more permissive client groups endpoint which nests groups under
+            // `data.groups` for legacy callers.
+            if (!(data && data.success) && isClientPortalPath()) {
+                try {
+                    var fallback = await ApiClient.get(apiPath('/client/api/groups/'));
+                    if (fallback && fallback.success) data = { success: true, groups: (fallback.data && fallback.data.groups) || [] };
+                } catch (__) { /* ignore fallback error */ }
+            }
+
+            if (data && data.success) {
                 _assignmentGroupsLoaded = true;
                 var groups = data.groups || [];
 
