@@ -79,7 +79,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            var data = await ApiClient.get(apiPath('/api/client-staff/clients/'));
+            var url = apiPath('/api/client-staff/clients/');
+            console.debug('[staff] fetchAssignableClients ->', url);
+            var data = await ApiClient.get(url);
+            console.debug('[staff] fetchAssignableClients response ->', data && typeof data === 'object' ? data.success : data);
             if (data && data.success) {
                 allClients = Array.isArray(data.clients) ? data.clients : [];
             }
@@ -1345,6 +1348,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             var data = await ApiClient.get(groupsUrl);
+            console.debug('[staff] loadAssignGroups ->', groupsUrl, data && (data.success || 'no-success'));
             // If the active endpoint returned no data or was forbidden, try the
             // more permissive client groups endpoint which nests groups under
             // `data.groups` for legacy callers.
