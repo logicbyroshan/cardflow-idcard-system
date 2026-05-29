@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function _buildGroupScopedOptionsUrl(groupIds) {
         var normalized = _normalizeGroupIds(groupIds);
         var baseUrl = null;
-        if (isClientPortalPath()) {
+        if (isClientPortalPath() || isPanelClientPath()) {
             baseUrl = apiPath('/client/api/class-section-options/');
         } else {
             var clientId = getActiveAssignmentClientId();
@@ -1361,6 +1361,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var clientId = getActiveAssignmentClientId();
         var groupsUrl = null;
         if (isClientPortalPath()) {
+            groupsUrl = apiPath('/client/api/groups/active/');
+        } else if (isPanelClientPath()) {
             groupsUrl = apiPath('/client/api/groups/active/');
         } else if (clientId) {
             groupsUrl = apiPath('/api/client/' + clientId + '/groups/');
