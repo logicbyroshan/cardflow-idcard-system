@@ -857,6 +857,144 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        function addClassSectionGroup(container, chip) {
+            var classValues = _normalizeStringList(chip.classOptions.length ? chip.classOptions : chip.classes);
+            var hasClassRows = classValues.length || (chip.classes && chip.classes.length);
+            if (!hasClassRows && !chip.hasSection && !(chip.sections && chip.sections.length)) return;
+
+            var wrap = document.createElement('div');
+            wrap.className = 'assignment-scope-chip-group assignment-scope-chip-group--matrix';
+
+            var label = document.createElement('div');
+            label.className = 'assignment-scope-chip-group-label';
+            label.textContent = 'Classes & Sections';
+            wrap.appendChild(label);
+
+            var table = document.createElement('div');
+            table.className = 'assignment-class-section-table';
+
+            if (!classValues.length) {
+                var empty = document.createElement('div');
+                empty.className = 'assignment-options-empty';
+                empty.textContent = 'No classes selected.';
+                table.appendChild(empty);
+            }
+
+            classValues.forEach(function (cls) {
+                var availableSections = _normalizeStringList(chip.classSectionMap[cls] || []);
+                var isAssignedClass = chip.classes.indexOf(cls) !== -1;
+
+                var row = document.createElement('div');
+                row.className = 'assignment-class-section-row' + (isAssignedClass ? ' is-assigned' : ' is-unassigned');
+
+                var classCell = document.createElement('div');
+                classCell.className = 'assignment-class-section-row-class';
+
+                if (chip.isEditing) {
+                    var classInput = document.createElement('input');
+                    classInput.type = 'checkbox';
+                    classInput.checked = isAssignedClass;
+                    classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    classInput.addEventListener('change', function () {
+                        var nextClasses = chip.classes.slice();
+                        if (classInput.checked) {
+                            if (nextClasses.indexOf(cls) === -1) nextClasses.push(cls);
+                        } else {
+                            nextClasses = nextClasses.filter(function (val) { return val !== cls; });
+                        }
+                        chip.classes = _normalizeStringList(nextClasses);
+                        _pruneChipSelection(chip);
+                        renderAssignmentScopeChips();
+                    });
+                    classCell.appendChild(classInput);
+                } else {
+                    var classIcon = document.createElement('i');
+                    classIcon.className = isAssignedClass
+                        ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
+                        : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
+                    classCell.appendChild(classIcon);
+                }
+
+                var className = document.createElement('span');
+                className.className = 'assignment-class-section-row-name';
+                className.textContent = cls;
+                classCell.appendChild(className);
+
+                var classCount = parseInt(_getChipClassCount(chip, cls), 10);
+                if (Number.isFinite(classCount) && classCount > 0) {
+                    var classBadge = document.createElement('span');
+                    classBadge.className = 'assignment-chip-count-badge assignment-chip-count-badge--classes';
+                    classBadge.textContent = String(classCount);
+                    classBadge.title = classCount + ' cards';
+                    classCell.appendChild(classBadge);
+                }
+
+                row.appendChild(classCell);
+
+                var sectionCell = document.createElement('div');
+                sectionCell.className = 'assignment-class-section-row-sections';
+
+                if (!availableSections.length) {
+                    var sectionEmpty = document.createElement('span');
+                    sectionEmpty.className = 'assignment-class-section-empty';
+                    sectionEmpty.textContent = 'No sections';
+                    sectionCell.appendChild(sectionEmpty);
+                } else {
+                    availableSections.forEach(function (sec) {
+                        var isAssignedSection = chip.sections.indexOf(sec) !== -1;
+                        var sectionItem = document.createElement('div');
+                        sectionItem.className = 'assignment-chip-checkbox-item assignment-chip-checkbox-item--section ' + (isAssignedSection ? 'is-assigned' : 'is-unassigned');
+
+                        if (chip.isEditing) {
+                            var sectionInput = document.createElement('input');
+                            sectionInput.type = 'checkbox';
+                            sectionInput.checked = isAssignedSection;
+                            sectionInput.id = String(chip.groupId) + '-section-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + sec.replace(/[^a-zA-Z0-9_-]/g, '_');
+                            sectionInput.addEventListener('change', function () {
+                                var nextSections = chip.sections.slice();
+                                if (sectionInput.checked) {
+                                    if (nextSections.indexOf(sec) === -1) nextSections.push(sec);
+                                } else {
+                                    nextSections = nextSections.filter(function (val) { return val !== sec; });
+                                }
+                                chip.sections = _normalizeStringList(nextSections);
+                                renderAssignmentScopeChips();
+                            });
+                            sectionItem.appendChild(sectionInput);
+                        } else {
+                            var sectionIcon = document.createElement('i');
+                            sectionIcon.className = isAssignedSection
+                                ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
+                                : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
+                            sectionItem.appendChild(sectionIcon);
+                        }
+
+                        var sectionText = document.createElement('span');
+                        sectionText.className = 'assignment-chip-option-text';
+                        sectionText.textContent = sec;
+                        sectionItem.appendChild(sectionText);
+
+                        var sectionCount = parseInt(_getChipSectionCount(chip, sec), 10);
+                        if (Number.isFinite(sectionCount) && sectionCount > 0) {
+                            var sectionBadge = document.createElement('span');
+                            sectionBadge.className = 'assignment-chip-count-badge assignment-chip-count-badge--sections';
+                            sectionBadge.textContent = String(sectionCount);
+                            sectionBadge.title = sectionCount + ' cards';
+                            sectionItem.appendChild(sectionBadge);
+                        }
+
+                        sectionCell.appendChild(sectionItem);
+                    });
+                }
+
+                row.appendChild(sectionCell);
+                table.appendChild(row);
+            });
+
+            wrap.appendChild(table);
+            container.appendChild(wrap);
+        }
+
         function addChipGroup(container, chip, labelText, values, selectedValues, valueKey, countResolver) {
             if (!values.length && !selectedValues.length) return;
 
@@ -1031,11 +1169,8 @@ document.addEventListener('DOMContentLoaded', function () {
             var groups = document.createElement('div');
             groups.className = 'assignment-scope-chip-groups';
 
-            if (chip.hasClass || chip.classes.length) {
-                addChipGroup(groups, chip, 'Classes', chip.classOptions, chip.classes, 'classes', _getChipClassCount);
-            }
-            if (chip.hasSection || chip.sections.length) {
-                addChipGroup(groups, chip, 'Sections', _getChipAvailableSections(chip), chip.sections, 'sections', _getChipSectionCount);
+            if (chip.hasClass || chip.classes.length || chip.classOptions.length || chip.hasSection || chip.sections.length) {
+                addClassSectionGroup(groups, chip);
             }
             if (chip.hasBranch || chip.branches.length) {
                 addChipGroup(groups, chip, 'Branches / Courses', chip.branchOptions, chip.branches, 'branches');

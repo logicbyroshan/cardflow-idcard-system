@@ -187,11 +187,65 @@
     background: var(--color-white);
     padding: 8px;
   }
+  .assignment-scope-chip-group--matrix {
+    padding-bottom: 10px;
+  }
   .assignment-scope-chip-group-label {
     font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-slate-700);
     font-weight: 700;
     margin-bottom: 6px;
+  }
+  .assignment-class-section-table {
+    display: grid;
+    gap: 8px;
+  }
+  .assignment-class-section-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 160px) 1fr;
+    gap: 8px;
+    align-items: start;
+    padding: 8px;
+    border: 1px solid var(--color-slate-200);
+    border-radius: 8px;
+    background: #f8fafc;
+  }
+  .assignment-class-section-row.is-assigned {
+    border-color: var(--color-emerald-200);
+    background: var(--color-green-50);
+  }
+  .assignment-class-section-row.is-unassigned {
+    border-color: var(--color-red-200);
+    background: #fff7f7;
+  }
+  .assignment-class-section-row-class {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    flex-wrap: wrap;
+  }
+  .assignment-class-section-row-name {
+    font-size: var(--ui-font-size-sm, 12px);
+    font-weight: 700;
+    color: var(--color-slate-800);
+  }
+  .assignment-class-section-row-sections {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .assignment-chip-checkbox-item--section {
+    max-width: 100%;
+  }
+  .assignment-class-section-empty {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    color: var(--color-slate-500);
+    font-size: var(--ui-font-size-xs, 11px);
+    font-style: italic;
   }
   .assignment-chip-checkbox-list {
     display: flex;
