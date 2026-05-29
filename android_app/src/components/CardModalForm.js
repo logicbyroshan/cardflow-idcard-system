@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Image, Animated, Dimensions, BackHandler } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Image, Animated, Dimensions, BackHandler, Alert, Linking } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DynamicIcon } from './Icons';
@@ -218,7 +218,17 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        showToast('Permission to access gallery is required', 'error');
+        Alert.alert(
+          'Gallery Permission Required',
+          'Gallery access is required to select photos. Please enable it in system settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => {
+              if (Platform.OS === 'ios') Linking.openURL('app-settings:');
+              else Linking.openSettings();
+            }}
+          ]
+        );
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({

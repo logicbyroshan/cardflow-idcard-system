@@ -2,10 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   RefreshControl, Dimensions, Image, Modal, ActivityIndicator, TextInput,
-  LayoutAnimation, Platform, UIManager, Switch
+  LayoutAnimation, Platform, UIManager, Switch, Alert, Linking
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   IconSearch, IconProfile, IconPending, IconVerified, IconApproved,
@@ -63,10 +66,63 @@ export default function HomeScreen({ navigation }) {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   useEffect(() => {
-    if (cameraPermission && !cameraPermission.granted && cameraPermission.canAskAgain && typeof requestCameraPermission === 'function') {
-      requestCameraPermission().catch(err => console.log('Camera permission request error:', err));
-    }
-  }, [cameraPermission, requestCameraPermission]);
+    (async () => {
+      try {
+        const currentVersion = Constants?.expoConfig?.version || '1.0.53';
+        const lastVersion = await AsyncStorage.getItem('adarsh_last_seen_version');
+        
+        const { status: camStatus, canAskAgain: camCanAsk } = await ImagePicker.getCameraPermissionsAsync();
+        const { status: mediaStatus, canAskAgain: mediaCanAsk } = await ImagePicker.getMediaLibraryPermissionsAsync();
+
+        let needsPrompt = false;
+        
+        // If app version changed (updated), or first time, or if permissions are not set/granted
+        const isAppUpdated = lastVersion !== currentVersion;
+        
+        if (isAppUpdated) {
+          await AsyncStorage.setItem('adarsh_last_seen_version', currentVersion);
+        }
+
+        if (camStatus !== 'granted') {
+          if (camCanAsk) {
+            await ImagePicker.requestCameraPermissionsAsync();
+          } else if (isAppUpdated || camStatus === 'denied') {
+            needsPrompt = true;
+          }
+        }
+
+        if (mediaStatus !== 'granted') {
+          if (mediaCanAsk) {
+            await ImagePicker.requestMediaLibraryPermissionsAsync();
+          } else if (isAppUpdated || mediaStatus === 'denied') {
+            needsPrompt = true;
+          }
+        }
+
+        if (needsPrompt && isAppUpdated) {
+          Alert.alert(
+            'Permissions Required',
+            'Adarsh has been updated to the latest premium version! To capture and upload student/staff ID photos, please ensure Camera and Photo Library permissions are enabled.',
+            [
+              { text: 'Later', style: 'cancel' },
+              { 
+                text: 'Open Settings', 
+                onPress: () => {
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.log('Automatic permissions request error:', err);
+      }
+    })();
+  }, []);
 
   const isSuperAdmin = user?.role === 'admin' || user?.isSuperAdmin;
   const isOperator = user?.role === 'admin_staff';

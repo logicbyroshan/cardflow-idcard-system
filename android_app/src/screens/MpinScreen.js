@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, Animated, Dimensions, Platform,
+  TextInput, KeyboardAvoidingView, ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DynamicIcon } from '../components/Icons';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +15,7 @@ import { colors, gradients, typography, spacing, radius, shadows } from '../them
 const { width } = Dimensions.get('window');
 
 export default function MpinScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const {
     isMpinCreated,
     createMpin,
@@ -19,6 +23,11 @@ export default function MpinScreen({ navigation, route }) {
     changeMpin,
     forgotMpin,
     user,
+    resetMpinWithPassword,
+    login,
+    isSilentAuthFailed,
+    setIsSilentAuthFailed,
+    setIsAppUnlocked,
   } = useAuth();
 
   // Screen modes: 'create' (force create on login), 'enter' (app lock screen), 'change' (from profile)
@@ -43,6 +52,9 @@ export default function MpinScreen({ navigation, route }) {
   
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Animations
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -196,12 +208,67 @@ export default function MpinScreen({ navigation, route }) {
     }
   };
 
+  const handlePasswordSubmit = async () => {
+    if (!password.trim()) {
+      showToast('Please enter your password', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await login(user.email, password);
+      if (result.success) {
+        showToast('App unlocked successfully', 'success');
+        setPassword('');
+        setIsSilentAuthFailed(false);
+        setIsAppUnlocked(true);
+        setTimeout(() => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          });
+        }, 1000);
+      } else {
+        showToast(result.data?.message || 'Incorrect password', 'error');
+      }
+    } catch (e) {
+      showToast('Network error, please try again', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleForgotMpin = () => {
-    forgotMpin();
+    Alert.alert(
+      'Forgot MPIN?',
+      'This will log you out of your account. You will need to log in again using your password to set a new MPIN.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Reset',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await forgotMpin();
+              setTimeout(() => {
+                navigation.navigate('Login');
+              }, 100);
+            } catch (e) {
+              showToast('Failed to reset MPIN', 'error');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Render title / subtitle dynamically based on state machine
   const getHeaderInfo = () => {
+    if (isSilentAuthFailed) {
+      return { title: 'Session Expired', subtitle: 'Please enter your password to unlock the app and restore your session.' };
+    }
     if (mode === 'create') {
       if (step === 'enter_new') {
         return { title: 'Create MPIN', subtitle: 'Set a secure 4-digit MPIN for quick logins' };
@@ -249,69 +316,103 @@ export default function MpinScreen({ navigation, route }) {
           <Text style={s.subtitle}>{header.subtitle}</Text>
         </View>
 
-        {/* Dots Representation */}
-        <Animated.View style={[s.dotsRow, { transform: [{ translateX: shakeAnim }] }]}>
-          {[0, 1, 2, 3].map((idx) => {
-            const isFilled = pin.length > idx;
-            return (
-              <Animated.View
-                key={idx}
-                style={[
-                  s.dot,
-                  isFilled && s.dotFilled,
-                  { transform: [{ scale: dotScales[idx] }] }
-                ]}
+        {/* Dots & Keypad or Password Fallback */}
+        {isSilentAuthFailed ? (
+          <View style={s.passwordContainer}>
+            <View style={s.passwordInputWrapper}>
+              <TextInput
+                style={s.passwordInput}
+                placeholder="Enter your account password"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                autoCapitalize="none"
               />
-            );
-          })}
-        </Animated.View>
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={s.eyeIcon}>
+                <DynamicIcon name={showPassword ? 'eye-slash' : 'eye'} size={18} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+            <View style={s.passwordBtnRow}>
+              <TouchableOpacity style={s.passwordCancelBtn} onPress={handleForgotMpin}>
+                <Text style={s.passwordCancelText}>Logout</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.passwordSubmitBtn} onPress={handlePasswordSubmit} disabled={loading}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#5b21b6" />
+                ) : (
+                  <Text style={s.passwordSubmitText}>Unlock App</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <>
+            {/* Dots Representation */}
+            <Animated.View style={[s.dotsRow, { transform: [{ translateX: shakeAnim }] }]}>
+              {[0, 1, 2, 3].map((idx) => {
+                const isFilled = pin.length > idx;
+                return (
+                  <Animated.View
+                    key={idx}
+                    style={[
+                      s.dot,
+                      isFilled && s.dotFilled,
+                      { transform: [{ scale: dotScales[idx] }] }
+                    ]}
+                  />
+                );
+              })}
+            </Animated.View>
 
-        {/* Keyboard / Keypad */}
-        <View style={s.keypadContainer}>
-          <View style={s.keypadRow}>
-            {['1', '2', '3'].map((n) => (
-              <TouchableOpacity key={n} style={s.key} onPress={() => handlePressNumber(n)}>
-                <Text style={s.keyText}>{n}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={s.keypadRow}>
-            {['4', '5', '6'].map((n) => (
-              <TouchableOpacity key={n} style={s.key} onPress={() => handlePressNumber(n)}>
-                <Text style={s.keyText}>{n}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={s.keypadRow}>
-            {['7', '8', '9'].map((n) => (
-              <TouchableOpacity key={n} style={s.key} onPress={() => handlePressNumber(n)}>
-                <Text style={s.keyText}>{n}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={s.keypadRow}>
-            {/* Bottom-left key */}
-            {mode === 'enter' ? (
-              <TouchableOpacity style={[s.key, s.keySpecial]} onPress={handleForgotMpin}>
-                <Text style={s.keySpecialText}>Forgot</Text>
-              </TouchableOpacity>
-            ) : isChangeFlow ? (
-              <TouchableOpacity style={[s.key, s.keySpecial]} onPress={() => navigation.goBack()}>
-                <Text style={s.keySpecialText}>Cancel</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={s.key} />
-            )}
+            {/* Keyboard / Keypad */}
+            <View style={[s.keypadContainer, { marginBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 10 : 25) }]}>
+              <View style={s.keypadRow}>
+                {['1', '2', '3'].map((n) => (
+                  <TouchableOpacity key={n} style={s.key} onPress={() => handlePressNumber(n)}>
+                    <Text style={s.keyText}>{n}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={s.keypadRow}>
+                {['4', '5', '6'].map((n) => (
+                  <TouchableOpacity key={n} style={s.key} onPress={() => handlePressNumber(n)}>
+                    <Text style={s.keyText}>{n}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={s.keypadRow}>
+                {['7', '8', '9'].map((n) => (
+                  <TouchableOpacity key={n} style={s.key} onPress={() => handlePressNumber(n)}>
+                    <Text style={s.keyText}>{n}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={s.keypadRow}>
+                {/* Bottom-left key */}
+                {mode === 'enter' ? (
+                  <TouchableOpacity style={[s.key, s.keySpecial]} onPress={handleForgotMpin}>
+                    <Text style={s.keySpecialText}>Forgot</Text>
+                  </TouchableOpacity>
+                ) : isChangeFlow ? (
+                  <TouchableOpacity style={[s.key, s.keySpecial]} onPress={() => navigation.goBack()}>
+                    <Text style={s.keySpecialText}>Cancel</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={s.key} />
+                )}
 
-            <TouchableOpacity style={s.key} onPress={() => handlePressNumber('0')}>
-              <Text style={s.keyText}>0</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={s.key} onPress={() => handlePressNumber('0')}>
+                  <Text style={s.keyText}>0</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity style={[s.key, s.keySpecial]} onPress={handlePressDelete}>
-              <DynamicIcon name="backspace" size={18} color={colors.white} />
-            </TouchableOpacity>
-          </View>
-        </View>
+                <TouchableOpacity style={[s.key, s.keySpecial]} onPress={handlePressDelete}>
+                  <DynamicIcon name="backspace" size={18} color={colors.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        )}
       </SafeAreaView>
 
       <Toast
@@ -421,6 +522,67 @@ const s = StyleSheet.create({
   keySpecialText: {
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
+    fontFamily: 'SairaSemiCondensed-Bold',
+  },
+  passwordContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    marginTop: -40,
+  },
+  passwordInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: radius.md,
+    paddingHorizontal: 16,
+    height: 54,
+    marginTop: 30,
+    marginBottom: 24,
+  },
+  passwordInput: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 16,
+    fontFamily: 'SairaSemiCondensed-Medium',
+  },
+  eyeIcon: {
+    padding: 8,
+  },
+  passwordBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  passwordCancelBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  passwordCancelText: {
+    color: colors.white,
+    fontSize: 15,
+    fontFamily: 'SairaSemiCondensed-Bold',
+  },
+  passwordSubmitBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.lg,
+  },
+  passwordSubmitText: {
+    color: '#5b21b6',
+    fontSize: 15,
     fontFamily: 'SairaSemiCondensed-Bold',
   },
 });

@@ -211,6 +211,12 @@ export default function ProfileScreen({ navigation }) {
               <Text style={[s.linkLabel, { color: '#d97706' }]}>Exit Impersonation</Text>
             </TouchableOpacity>
           )}
+          {user?.permissions?.perm_manage_client_staff && (
+            <TouchableOpacity onPress={() => navigation.navigate('StaffManage', { role: 'client_staff' })} style={s.linkRow}>
+              <View style={[s.linkIcon, { backgroundColor: '#f5f3ff' }]}><DynamicIcon name="users" size={12} color="#8b5cf6" /></View>
+              <Text style={s.linkLabel}>Manage Assistants</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={handleDeleteRequest} style={s.linkRow}>
             <View style={[s.linkIcon, { backgroundColor: '#fee2e2' }]}><DynamicIcon name="trash" size={12} color="#ef4444" /></View>
             <Text style={[s.linkLabel, { color: '#ef4444' }]}>Delete Data Request</Text>

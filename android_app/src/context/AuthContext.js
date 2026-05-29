@@ -27,17 +27,21 @@ export function AuthProvider({ children }) {
   const [originalUser, setOriginalUser] = useState(null);
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
   const [isMpinCreated, setIsMpinCreated] = useState(false);
+  const [isSilentAuthFailed, setIsSilentAuthFailed] = useState(false);
 
   const refreshProfile = useCallback(async () => {
     try {
       const { ok, status, data } = await apiGet('/api/mobile/profile/');
       if (status === 401 || status === 403) {
-        // If session expired on backend but MPIN/credentials are saved, do NOT perform a hard logout.
-        // Simply lock the app (so they enter MPIN to trigger silent re-login).
+        // If session expired on backend but profile is stored, do NOT perform a hard logout.
+        // Simply lock the app (so they enter MPIN or password to trigger re-login).
         const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
         const credentials = await AsyncStorage.getItem('adarsh_user_credentials');
-        if (stored && credentials) {
+        if (stored) {
           setIsAppUnlocked(false); // Force lock
+          if (!credentials) {
+            setIsSilentAuthFailed(true);
+          }
         } else {
           setUser(null);
           setIsAuthenticated(false);
@@ -45,6 +49,7 @@ export function AuthProvider({ children }) {
           setOriginalUser(null);
           setIsAppUnlocked(false);
           setIsMpinCreated(false);
+          setIsSilentAuthFailed(false);
           await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
           await clearAuth();
         }
@@ -262,6 +267,7 @@ export function AuthProvider({ children }) {
     const stored = await AsyncStorage.getItem(`adarsh_mpin_${emailKey}`);
     if (stored === enteredMpin) {
       setIsAppUnlocked(true);
+      setIsSilentAuthFailed(false);
 
       // Silently renew backend session in background
       (async () => {
@@ -269,7 +275,14 @@ export function AuthProvider({ children }) {
           const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
           if (credsStr) {
             const { email, password } = JSON.parse(credsStr);
-            await login(email, password);
+            const res = await login(email, password);
+            if (!res.success) {
+              setIsSilentAuthFailed(true);
+              setIsAppUnlocked(false); // Relock if password invalid
+            }
+          } else {
+            setIsSilentAuthFailed(true);
+            setIsAppUnlocked(false); // Relock if no credentials stored
           }
         } catch (e) {
           console.log('[Auth] Background login renewal failed', e);
@@ -300,6 +313,20 @@ export function AuthProvider({ children }) {
     await logout();
   }, [user, logout]);
 
+  const resetMpinWithPassword = useCallback(async (password) => {
+    if (!user?.email) return { success: false, error: 'No user email found' };
+    const email = user.email;
+    const result = await login(email, password);
+    if (result.success) {
+      const emailKey = email.toLowerCase();
+      await AsyncStorage.removeItem(`adarsh_mpin_${emailKey}`);
+      setIsMpinCreated(false);
+      setIsAppUnlocked(false);
+      return { success: true };
+    }
+    return { success: false, error: result.data?.message || 'Invalid password' };
+  }, [user, login]);
+
   const logout = useCallback(async () => {
     if (isImpersonating) {
       const res = await stopImpersonation();
@@ -313,6 +340,7 @@ export function AuthProvider({ children }) {
     setOriginalUser(null);
     setIsAppUnlocked(false);
     setIsMpinCreated(false);
+    setIsSilentAuthFailed(false);
     try {
       // Standard logout endpoint
       await apiPost('/api/mobile/auth/logout/', {});
@@ -337,6 +365,7 @@ export function AuthProvider({ children }) {
         setOriginalUser(null);
         setIsAppUnlocked(false);
         setIsMpinCreated(false);
+        setIsSilentAuthFailed(false);
         await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
         await AsyncStorage.removeItem('adarsh_impersonate_state');
         await clearAuth();
@@ -356,6 +385,9 @@ export function AuthProvider({ children }) {
     originalUser,
     isAppUnlocked,
     isMpinCreated,
+    isSilentAuthFailed,
+    setIsSilentAuthFailed,
+    setIsAppUnlocked,
     login,
     logout,
     checkSession,
@@ -366,6 +398,7 @@ export function AuthProvider({ children }) {
     verifyMpin,
     changeMpin,
     forgotMpin,
+    resetMpinWithPassword,
   };
 
   return (

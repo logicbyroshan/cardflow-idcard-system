@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DynamicIcon } from './Icons';
 import { colors, typography, spacing, radius, shadows, fontFamily } from '../theme';
 
 export default function Toast({ visible, message, type = 'info', duration = 2500, onHide }) {
-  const translateY = useRef(new Animated.Value(100)).current;
+  const insets = useSafeAreaInsets();
+  const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export default function Toast({ visible, message, type = 'info', duration = 2500
 
       const timer = setTimeout(() => {
         Animated.parallel([
-          Animated.timing(translateY, { toValue: 100, duration: 250, useNativeDriver: true }),
+          Animated.timing(translateY, { toValue: -100, duration: 250, useNativeDriver: true }),
           Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
         ]).start(() => {
           if (onHide) onHide();
@@ -41,7 +43,12 @@ export default function Toast({ visible, message, type = 'info', duration = 2500
     <Animated.View
       style={[
         styles.container,
-        { backgroundColor: bgColor, transform: [{ translateY }], opacity },
+        { 
+          top: Math.max(insets.top, 20),
+          backgroundColor: bgColor, 
+          transform: [{ translateY }], 
+          opacity 
+        },
       ]}
     >
       <DynamicIcon name={icon} size={16} color="#fff" />
@@ -53,7 +60,6 @@ export default function Toast({ visible, message, type = 'info', duration = 2500
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 50,
     left: 20,
     right: 20,
     zIndex: 9999,

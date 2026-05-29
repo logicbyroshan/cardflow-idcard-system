@@ -472,6 +472,26 @@ export default function CardListScreen({ navigation, route }) {
   const isClientRole = perms.role === 'client' || perms.role === 'client_staff';
   const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list;
 
+  const canSelect = useMemo(() => {
+    if (!isClientRole) return true;
+    if (currentStatus === 'pending') {
+      return !!(perms.perm_idcard_verify || perms.perm_idcard_approve || perms.perm_idcard_delete);
+    }
+    if (currentStatus === 'verified') {
+      return !!(perms.perm_idcard_verify || perms.perm_idcard_approve);
+    }
+    if (currentStatus === 'approved') {
+      return !!perms.perm_idcard_approve;
+    }
+    if (currentStatus === 'download') {
+      return !!perms.perm_idcard_retrieve;
+    }
+    if (currentStatus === 'pool') {
+      return !!(perms.perm_idcard_retrieve || isClientRole);
+    }
+    return false;
+  }, [isClientRole, currentStatus, perms]);
+
   const handleEditCard = useCallback((card) => {
     setEditingCardId(card.id);
     setShowForm(true);
@@ -480,15 +500,16 @@ export default function CardListScreen({ navigation, route }) {
   const renderItem = useCallback(({ item }) => {
     const isClient = perms.role === 'client' || perms.role === 'client_staff';
     const canEdit = perms.perm_idcard_edit && (!isClient || ['pending', 'verified'].includes(currentStatus));
-    const canDelete = perms.perm_idcard_delete && currentStatus === 'pending' && !isClient;
-    const statusChangeHandler = isClient && ['approved', 'download', 'pool'].includes(currentStatus)
-      ? undefined
-      : handleStatusChange;
+    const canDelete = currentStatus === 'pending' && perms.perm_idcard_delete;
+    const statusChangeHandler = isClient && (
+      (currentStatus === 'approved' && !perms.perm_idcard_approve) ||
+      (currentStatus === 'download' && !perms.perm_idcard_retrieve)
+    ) ? undefined : handleStatusChange;
 
     return (
       <CardItem
         item={item}
-        showCheckbox={(!isClient || perms.perm_idcard_verify || perms.perm_idcard_approve) && !(isClient && ['approved', 'download'].includes(currentStatus))}
+        showCheckbox={canSelect}
         isSelected={selectedIds.has(item.id)}
         onToggleSelect={toggleSelect}
         onEdit={canEdit ? handleEditCard : undefined}
@@ -499,15 +520,15 @@ export default function CardListScreen({ navigation, route }) {
         permissions={perms}
       />
     );
-  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard]);
+  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={s.root}>
       <TopBar
-        title={(selectMode && (!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve)) ? `${selectedIds.size} SELECTED` : `${currentStatus.toUpperCase()} LIST`}
+        title={selectMode ? `${selectedIds.size} SELECTED` : `${currentStatus.toUpperCase()} LIST`}
         subtitle={tableName}
-        onBack={(selectMode && (!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve)) ? exitSelectMode : () => navigation.goBack()}
+        onBack={selectMode ? exitSelectMode : () => navigation.goBack()}
         onAdd={(currentStatus === 'pending' && perms.perm_idcard_add) ? () => { setEditingCardId(null); setShowForm(true); } : undefined}
         rightAction={hasReprintPerm ? {
           onPress: () => navigation.navigate('ReprintDetail', { tableId }),
@@ -563,7 +584,7 @@ export default function CardListScreen({ navigation, route }) {
       </View>
 
       {/* Select-all bar */}
-      {(!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve) && !(isClientRole && ['approved', 'download'].includes(currentStatus)) && (
+      {canSelect && (
         <View style={s.summaryRow}>
           <TouchableOpacity style={s.selectAllBtn} onPress={handleSelectAll} disabled={selectAllLoading}>
             {selectAllLoading
@@ -609,7 +630,7 @@ export default function CardListScreen({ navigation, route }) {
       }
 
       {/* Bulk action floating bar */}
-      {(!isClientRole || perms.perm_idcard_verify || perms.perm_idcard_approve) && !(isClientRole && ['approved', 'download'].includes(currentStatus)) && selectMode && (
+      {canSelect && selectMode && (
         <View style={[s.floatingBar, { bottom: Math.max(insets.bottom, 16) + 16 }]}>
           <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.floatingGradient}>
             <View style={s.floatingInfo}>
@@ -624,6 +645,7 @@ export default function CardListScreen({ navigation, route }) {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.fActions}>
               {currentStatus === 'pending'  && perms.perm_idcard_verify  && <FBtn icon="check"        label="VERIFY SELECTED"  disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
+              {currentStatus === 'pending'  && perms.perm_idcard_delete && <FBtn icon="trash" label="DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
               
               {currentStatus === 'verified' && perms.perm_idcard_approve && <FBtn icon="check-double" label="APPROVE SELECTED" disabled={bulkLoading} onPress={() => handleBulkStatus('approved')} />}
               {currentStatus === 'verified' && perms.perm_idcard_verify  && <FBtn icon="redo"         label="UNVERIFY SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}

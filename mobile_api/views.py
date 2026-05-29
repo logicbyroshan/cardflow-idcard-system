@@ -5307,6 +5307,10 @@ def api_mobile_staff_assignment(request, staff_id):
         global_sections = set()
         global_branches = set()
         
+        group_class_sections = {}
+        table_class_sections = {}
+        global_class_sections = {}
+        
         # Build maps
         for card in cards:
             tid = card['table_id']
@@ -5338,35 +5342,62 @@ def api_mobile_staff_assignment(request, staff_id):
                 if section_val: group_options[gid]['sections'].add(section_val)
                 if branch_val: group_options[gid]['branches'].add(branch_val)
                 
+                if class_val:
+                    group_class_sections.setdefault(gid, {}).setdefault(class_val, set())
+                    if section_val:
+                        group_class_sections[gid][class_val].add(section_val)
+                
             table_options.setdefault(tid, {'classes': set(), 'sections': set(), 'branches': set()})
             if class_val: table_options[tid]['classes'].add(class_val)
             if section_val: table_options[tid]['sections'].add(section_val)
             if branch_val: table_options[tid]['branches'].add(branch_val)
             
+            if class_val:
+                table_class_sections.setdefault(tid, {}).setdefault(class_val, set())
+                if section_val:
+                    table_class_sections[tid][class_val].add(section_val)
+            
             if class_val: global_classes.add(class_val)
             if section_val: global_sections.add(section_val)
             if branch_val: global_branches.add(branch_val)
             
+            if class_val:
+                global_class_sections.setdefault(class_val, set())
+                if section_val:
+                    global_class_sections[class_val].add(section_val)
+            
         group_options_json = {}
         for gid, opt in group_options.items():
+            cls_secs = {}
+            for c_val, s_set in group_class_sections.get(gid, {}).items():
+                cls_secs[c_val] = sorted(list(s_set))
             group_options_json[str(gid)] = {
                 'classes': sorted(opt['classes']),
                 'sections': sorted(opt['sections']),
-                'branches': sorted(opt['branches'])
+                'branches': sorted(opt['branches']),
+                'class_sections': cls_secs
             }
             
         table_options_json = {}
         for tid, opt in table_options.items():
+            cls_secs = {}
+            for c_val, s_set in table_class_sections.get(tid, {}).items():
+                cls_secs[c_val] = sorted(list(s_set))
             table_options_json[str(tid)] = {
                 'classes': sorted(opt['classes']),
                 'sections': sorted(opt['sections']),
-                'branches': sorted(opt['branches'])
+                'branches': sorted(opt['branches']),
+                'class_sections': cls_secs
             }
             
         global_options = {
             'classes': sorted(global_classes),
             'sections': sorted(global_sections),
-            'branches': sorted(global_branches)
+            'branches': sorted(global_branches),
+            'class_sections': {
+                c_val: sorted(list(s_set))
+                for c_val, s_set in global_class_sections.items()
+            }
         }
         
         # Fallback assignment modes

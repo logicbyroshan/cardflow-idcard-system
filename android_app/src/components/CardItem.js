@@ -232,7 +232,7 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Pool List Action Button */}
-          {currentStatus === 'pool' && onStatusChange && hasPerm('perm_idcard_retrieve') && (
+          {currentStatus === 'pool' && onStatusChange && (hasPerm('perm_idcard_retrieve') || permissions?.role === 'client' || permissions?.role === 'client_staff') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
               onPress={() => onStatusChange(item.id, 'pending')}
@@ -252,9 +252,12 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Delete/Pool Button */}
-          {onDelete && hasPerm('perm_idcard_delete') && (
-            <TouchableOpacity style={s.iconBtn} onPress={() => onDelete(item)}>
-              <IconTrash size={12} color={colors.red} />
+          {onDelete && (
+            <TouchableOpacity 
+              style={[s.outlineBtn, { borderColor: colors.red }]} 
+              onPress={() => onDelete(item)}
+            >
+              <Text style={[s.outlineBtnText, { color: colors.red }]}>DELETE</Text>
             </TouchableOpacity>
           )}
         </Wrap>

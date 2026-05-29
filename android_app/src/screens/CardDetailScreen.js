@@ -63,8 +63,16 @@ export default function CardDetailScreen({ navigation, route }) {
     const isSuperAdmin = user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin';
     if (isSuperAdmin) return true;
     
+    // Allow clients/assistants to delete (move to pool) pending cards if they have delete permission
     const perms = user?.permissions || {};
-    if (['pool', 'download'].includes(card.status) && targetStatus === 'pending') {
+    if (targetStatus === 'pool' && card.status === 'pending' && perms.perm_idcard_delete) {
+      return true;
+    }
+    if (card.status === 'pool' && targetStatus === 'pending') {
+      const isClient = user?.role === 'client' || user?.role === 'client_staff';
+      return !!(perms.perm_idcard_retrieve || isClient);
+    }
+    if (card.status === 'download' && targetStatus === 'pending') {
       return !!perms.perm_idcard_retrieve;
     }
     
@@ -293,7 +301,7 @@ export default function CardDetailScreen({ navigation, route }) {
             })}
           </View>
 
-          {user?.permissions?.perm_idcard_delete && card.status === 'pending' && !(user?.isClient || user?.isAssistant) && (
+          {card.status === 'pending' && user?.permissions?.perm_idcard_delete && (
             <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
               <IconTrash size={12} color={colors.red} />
               <Text style={s.deleteBtnText}>Move to Pool</Text>
@@ -349,7 +357,7 @@ export default function CardDetailScreen({ navigation, route }) {
               </TouchableOpacity>
             )}
 
-            {user?.permissions?.perm_idcard_delete && card.status === 'pending' && !(user?.isClient || user?.isAssistant) && (
+            {card.status === 'pending' && user?.permissions?.perm_idcard_delete && (
               <TouchableOpacity onPress={deleteCard} activeOpacity={0.85} style={s.actionBtnFull}>
                 <View style={s.deleteActionBtn}>
                   <IconTrash size={14} color={colors.red} />

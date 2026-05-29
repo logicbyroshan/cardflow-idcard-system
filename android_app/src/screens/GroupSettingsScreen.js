@@ -57,7 +57,7 @@ export default function GroupSettingsScreen({ navigation, route }) {
   const canDelete = isSuperAdmin || !!(user?.permissions?.perm_idcard_setting_delete);
 
   // ── State ────────────────────────────────────────────────────────────────
-  const [expandedGroupId, setExpandedGroupId] = useState(null);
+  const [searchText, setSearchText] = useState('');
   const [expandedTableId, setExpandedTableId] = useState(null);
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
@@ -109,6 +109,19 @@ export default function GroupSettingsScreen({ navigation, route }) {
   }, [clientId]);
 
   const { data: groups = [], loading, refreshing, error, refresh, setData: setGroups } = useRefreshableResource(loadGroups, { initialData: [] });
+
+  const filteredGroups = useMemo(() => {
+    if (!searchText) return groups;
+    const query = searchText.toLowerCase();
+    return groups.map(g => {
+      if (g.name.toLowerCase().includes(query)) return g;
+      const matchingTables = (g.tables || []).filter(t => t.name.toLowerCase().includes(query));
+      if (matchingTables.length > 0) {
+        return { ...g, tables: matchingTables };
+      }
+      return null;
+    }).filter(Boolean);
+  }, [groups, searchText]);
 
   // ── Group actions ─────────────────────────────────────────────────────────
   const openCreateGroup = () => {
@@ -354,13 +367,6 @@ export default function GroupSettingsScreen({ navigation, route }) {
           <View style={s.tableExpanded}>
             {/* Actions row */}
             <View style={s.tableActions}>
-              <TouchableOpacity
-                style={s.tableAction}
-                onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'pending' })}
-              >
-                <DynamicIcon name="eye" size={11} color="#3b82f6" />
-                <Text style={[s.tableActionText, { color: '#3b82f6' }]}>VIEW CARDS</Text>
-              </TouchableOpacity>
               {canEdit && (
                 <TouchableOpacity style={s.tableAction} onPress={() => openFieldEditor(table)}>
                   <DynamicIcon name="columns" size={11} color="#10b981" />
@@ -411,15 +417,10 @@ export default function GroupSettingsScreen({ navigation, route }) {
   };
 
   const renderGroup = ({ item: group }) => {
-    const isOpen = expandedGroupId === group.id;
     return (
       <View style={s.groupCard}>
         {/* Group header */}
-        <TouchableOpacity
-          style={s.groupHeader}
-          onPress={() => setExpandedGroupId(isOpen ? null : group.id)}
-          activeOpacity={0.7}
-        >
+        <View style={s.groupHeader}>
           <LinearGradient colors={['#7c3aed', '#4f46e5']} style={s.groupIconCircle}>
             <DynamicIcon name="layer-group" size={14} color="#fff" />
           </LinearGradient>
@@ -445,29 +446,26 @@ export default function GroupSettingsScreen({ navigation, route }) {
               <IconTrash size={12} color="#ef4444" />
             </TouchableOpacity>
           )}
-          <DynamicIcon name={isOpen ? 'chevron-up' : 'chevron-down'} size={10} color={colors.gray300} />
-        </TouchableOpacity>
+        </View>
 
         {/* Group body */}
-        {isOpen && (
-          <View style={s.groupBody}>
-            {(group.tables || []).map(t => renderTableRow(t, group.id))}
-            {(group.tables || []).length === 0 && (
-              <View style={s.emptyTables}>
-                <DynamicIcon name="table" size={18} color={colors.gray300} />
-                <Text style={s.emptyTablesText}>No tables in this group</Text>
-              </View>
-            )}
-            {canAdd && (
-              <TouchableOpacity style={s.addTableBtn} onPress={() => openCreateTable(group.id)} activeOpacity={0.7}>
-                <LinearGradient colors={['#f5f3ff', '#ede9fe']} style={s.addTableBtnInner}>
-                  <IconPlus size={12} color="#7c3aed" />
-                  <Text style={s.addTableBtnText}>ADD TABLE</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+        <View style={s.groupBody}>
+          {(group.tables || []).map(t => renderTableRow(t, group.id))}
+          {(group.tables || []).length === 0 && (
+            <View style={s.emptyTables}>
+              <DynamicIcon name="table" size={18} color={colors.gray300} />
+              <Text style={s.emptyTablesText}>No tables in this group</Text>
+            </View>
+          )}
+          {canAdd && (
+            <TouchableOpacity style={s.addTableBtn} onPress={() => openCreateTable(group.id)} activeOpacity={0.7}>
+              <LinearGradient colors={['#f5f3ff', '#ede9fe']} style={s.addTableBtnInner}>
+                <IconPlus size={12} color="#7c3aed" />
+                <Text style={s.addTableBtnText}>ADD TABLE</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
   };
@@ -488,25 +486,24 @@ export default function GroupSettingsScreen({ navigation, route }) {
         <ListSkeleton rows={5} />
       ) : (
         <FlatList
-          data={groups}
+          data={filteredGroups}
           renderItem={renderGroup}
           keyExtractor={g => g.id.toString()}
           contentContainerStyle={[s.list, { paddingBottom: insets.bottom + 40 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandPrimary} />}
           ListHeaderComponent={
-            <View style={s.statsRow}>
-              <View style={s.statCard}>
-                <Text style={s.statValue}>{groups.length}</Text>
-                <Text style={s.statLabel}>GROUPS</Text>
-              </View>
-              <View style={s.statCard}>
-                <Text style={s.statValue}>{groups.reduce((a, g) => a + (g.table_count || 0), 0)}</Text>
-                <Text style={s.statLabel}>TABLES</Text>
-              </View>
-              <View style={s.statCard}>
-                <Text style={s.statValue}>{groups.reduce((a, g) => a + (g.total_cards || 0), 0)}</Text>
-                <Text style={s.statLabel}>TOTAL CARDS</Text>
+            <View style={s.searchSection}>
+              <View style={s.searchBar}>
+                <DynamicIcon name="search" size={13} color={colors.gray400} />
+                <TextInput
+                  style={s.searchInput}
+                  value={searchText}
+                  onChangeText={setSearchText}
+                  placeholder="Search groups or tables..."
+                  placeholderTextColor={colors.gray400}
+                  clearButtonMode="while-editing"
+                />
               </View>
             </View>
           }
@@ -775,11 +772,10 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   list: { paddingHorizontal: 12, paddingTop: 8 },
 
-  // Stats header
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: radius.sm, padding: 12, alignItems: 'center', ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
-  statValue: { fontSize: 20, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
-  statLabel: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginTop: 2, letterSpacing: 0.5 },
+  // Search header
+  searchSection: { paddingBottom: 12 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: radius.xs, paddingHorizontal: 12, height: 44, borderWidth: 1, borderColor: colors.gray100, ...shadows.sm },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800 },
 
   // Group card
   groupCard: { backgroundColor: '#fff', borderRadius: radius.sm, marginBottom: 12, ...shadows.sm, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' },

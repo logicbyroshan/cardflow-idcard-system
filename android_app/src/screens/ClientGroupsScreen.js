@@ -57,9 +57,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
   const canUpgradeAll = isSuperAdmin || perms.perm_idcard_upgrade_all;
 
   // ── States ───────────────────────────────────────────────────────────────
-  const [expandedGroupId, setExpandedGroupId] = useState(null);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState(initialStatus);
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [confirmModal, setConfirmModal] = useState({ visible: false, title: '', message: '', icon: '', color: colors.brandPrimary, onConfirm: null });
@@ -82,13 +80,6 @@ export default function ClientGroupsScreen({ navigation, route }) {
   const [reuploadProgress, setReuploadProgress] = useState(0);
   const [reuploadStatus, setReuploadStatus] = useState('');
   const [reuploadTaskId, setReuploadTaskId] = useState('');
-
-  // Sync initial param if it changes on navigation
-  useEffect(() => {
-    if (route?.params?.initialStatus) {
-      setStatusFilter(route.params.initialStatus);
-    }
-  }, [route?.params?.initialStatus]);
 
   const showToast = useCallback((msg, type = 'info') => setToast({ visible: true, message: msg, type }), []);
 
@@ -122,7 +113,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
     return list;
   }, [groups]);
 
-  // Group tables by group_name after applying Search & Status Filters
+  // Group tables by group_name after applying Search Filter
   const filteredGroupedData = useMemo(() => {
     const resGroups = {};
     allTables.forEach(t => {
@@ -130,12 +121,6 @@ export default function ClientGroupsScreen({ navigation, route }) {
       if (searchText && !t.name.toLowerCase().includes(searchText.toLowerCase())) {
         return;
       }
-      // 2. Status filter
-      if (statusFilter === 'pending' && !(t.pending_count > 0)) return;
-      if (statusFilter === 'verified' && !(t.verified_count > 0)) return;
-      if (statusFilter === 'approved' && !(t.approved_count > 0)) return;
-      if (statusFilter === 'download' && !(t.download_count > 0)) return;
-      if (statusFilter === 'pool' && !(t.pool_count > 0)) return;
 
       const gName = t.group_name || 'Ungrouped';
       if (!resGroups[gName]) {
@@ -159,15 +144,8 @@ export default function ClientGroupsScreen({ navigation, route }) {
       resGroups[gName].pool += (t.pool_count || 0);
     });
 
-    // Expand the first group automatically if filtering results
-    const values = Object.values(resGroups);
-    if (values.length > 0 && (searchText || statusFilter !== 'all') && !expandedGroupId) {
-      setExpandedGroupId(values[0].name);
-    }
-    return values;
-  }, [allTables, searchText, statusFilter]);
-
-  const toggleGroup = (name) => setExpandedGroupId(prev => prev === name ? null : name);
+    return Object.values(resGroups);
+  }, [allTables, searchText]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const handleOpenActions = (table) => {
@@ -425,18 +403,15 @@ export default function ClientGroupsScreen({ navigation, route }) {
 
   // ── Render Items ─────────────────────────────────────────────────────────
   const renderGroup = useCallback(({ item: group }) => {
-    const isExpanded = expandedGroupId === group.name;
     return (
       <GroupCardItem
         group={group}
-        isExpanded={isExpanded}
         theme={theme}
-        onToggle={toggleGroup}
         onOpenActions={handleOpenActions}
         navigation={navigation}
       />
     );
-  }, [expandedGroupId, theme, toggleGroup, handleOpenActions, navigation]);
+  }, [theme, handleOpenActions, navigation]);
 
   return (
     <View style={s.root}>
@@ -444,7 +419,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
 
       {error && <ErrorBanner message={error} onDismiss={() => {}} onRetry={refresh} />}
 
-      {/* Local Search and Status Filter Chips */}
+      {/* Local Search */}
       <View style={s.controlsContainer}>
         <View style={s.searchBar}>
           <DynamicIcon name="search" size={13} color={colors.gray400} />
@@ -457,28 +432,6 @@ export default function ClientGroupsScreen({ navigation, route }) {
             clearButtonMode="while-editing"
           />
         </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsScroll}>
-          {STATUS_OPTIONS.map(opt => {
-            const isSelected = statusFilter === opt.key;
-            return (
-              <TouchableOpacity
-                key={opt.key}
-                style={[
-                  s.chip,
-                  isSelected && { borderColor: opt.color, backgroundColor: opt.color + '10' }
-                ]}
-                onPress={() => setStatusFilter(opt.key)}
-                activeOpacity={0.8}
-              >
-                <DynamicIcon name={opt.icon} size={10} color={isSelected ? opt.color : colors.gray500} />
-                <Text style={[s.chipText, isSelected && { color: opt.color }]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
       </View>
 
       {loading ? (
@@ -752,12 +705,10 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions }) => {
   );
 });
 
-const GroupCardItem = React.memo(({ group, isExpanded, theme, onToggle, onOpenActions, navigation }) => {
-  const handleToggle = useCallback(() => onToggle(group.name), [group.name, onToggle]);
-
+const GroupCardItem = React.memo(({ group, theme, onOpenActions, navigation }) => {
   return (
     <View style={s.groupCard}>
-      <TouchableOpacity style={s.groupHeader} onPress={handleToggle} activeOpacity={0.7}>
+      <View style={s.groupHeader}>
         <View style={[s.groupIcon, { backgroundColor: theme.bgSoft }]}>
           <DynamicIcon name="layer-group" size={14} color={theme.primary} />
         </View>
@@ -772,24 +723,21 @@ const GroupCardItem = React.memo(({ group, isExpanded, theme, onToggle, onOpenAc
           {group.download > 0 && <MiniCount count={group.download} bg={STATUS_COLORS.download.bg} c={STATUS_COLORS.download.text} />}
           {group.pool > 0 && <MiniCount count={group.pool} bg={STATUS_COLORS.pool.bg} c={STATUS_COLORS.pool.text} />}
         </View>
-        <DynamicIcon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={10} color={colors.gray400} />
-      </TouchableOpacity>
+      </View>
 
-      {isExpanded && (
-        <View style={s.tablesList}>
-          {group.tables.map(table => (
-            <TableCardRow
-              key={table.id}
-              table={table}
-              navigation={navigation}
-              onOpenActions={onOpenActions}
-            />
-          ))}
-          {group.tables.length === 0 && (
-            <View style={s.emptyTables}><Text style={s.emptyTablesText}>No tables in this group</Text></View>
-          )}
-        </View>
-      )}
+      <View style={s.tablesList}>
+        {group.tables.map(table => (
+          <TableCardRow
+            key={table.id}
+            table={table}
+            navigation={navigation}
+            onOpenActions={onOpenActions}
+          />
+        ))}
+        {group.tables.length === 0 && (
+          <View style={s.emptyTables}><Text style={s.emptyTablesText}>No tables in this group</Text></View>
+        )}
+      </View>
     </View>
   );
 });

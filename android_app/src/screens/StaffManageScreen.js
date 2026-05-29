@@ -163,7 +163,57 @@ export default function StaffManageScreen({ navigation, route }) {
         setSelectedGroupIds(data.data.assigned_groups || []);
         setSelectedTableIds(data.data.assigned_tables || []);
         setSelectedClientIds(data.data.assigned_clients || []);
-        setAssignmentScopes(data.data.assignment_scopes || []);
+        
+        // Initialize scopes and hydrate class_sections
+        const scopes = (data.data.assignment_scopes || []).map(scope => {
+          const type = scope.scope_type;
+          const id = scope.scope_id;
+          const optMap = type === 'group' ? data.data.group_options : data.data.table_options;
+          const options = optMap?.[id] || { classes: [], sections: [], branches: [], class_sections: {} };
+          const classSectionMap = options.class_sections || {};
+          
+          let classSections = {};
+          if (scope.class_sections && Object.keys(scope.class_sections).length > 0) {
+            Object.keys(scope.class_sections).forEach(cls => {
+              classSections[cls] = [...(scope.class_sections[cls] || [])];
+            });
+          } else {
+            // Build from flat classes and sections
+            const selectedClasses = scope.classes || [];
+            const selectedSections = scope.sections || [];
+            selectedClasses.forEach(cls => {
+              classSections[cls] = [];
+            });
+            selectedSections.forEach(sec => {
+              let targetClass = null;
+              selectedClasses.forEach(cls => {
+                if (targetClass) return;
+                const available = classSectionMap[cls] || [];
+                if (available.includes(sec)) {
+                  targetClass = cls;
+                }
+              });
+              if (!targetClass && selectedClasses.length > 0) {
+                targetClass = selectedClasses[0];
+              }
+              if (targetClass) {
+                classSections[targetClass] = classSections[targetClass] || [];
+                if (!classSections[targetClass].includes(sec)) {
+                  classSections[targetClass].push(sec);
+                }
+              }
+            });
+          }
+          
+          return {
+            ...scope,
+            classes: scope.classes || [],
+            sections: scope.sections || [],
+            branches: scope.branches || [],
+            class_sections: classSections
+          };
+        });
+        setAssignmentScopes(scopes);
       }
     } catch (e) { showToast('Error loading assignments', 'error'); }
     setLoadingAssign(false);
@@ -177,22 +227,60 @@ export default function StaffManageScreen({ navigation, route }) {
         table_ids: selectedTableIds,
         client_ids: selectedClientIds,
         assignment_scopes: selectedGroupIds.map(gid => {
-          const scope = assignmentScopes.find(s => s.scope_type === 'group' && parseInt(s.scope_id) === gid) || { classes: [], sections: [], branches: [] };
+          const scope = assignmentScopes.find(s => s.scope_type === 'group' && parseInt(s.scope_id) === gid) || { classes: [], sections: [], branches: [], class_sections: {} };
+          
+          let classSections = {};
+          if (scope.class_sections) {
+            Object.keys(scope.class_sections).forEach(cls => {
+              if (scope.class_sections[cls] && scope.class_sections[cls].length > 0) {
+                classSections[cls] = scope.class_sections[cls];
+              }
+            });
+          }
+          if (Object.keys(classSections).length === 0 && (scope.classes || []).length > 0) {
+            const optMap = assignData.group_options;
+            const options = optMap?.[gid] || { classes: [], sections: [], branches: [], class_sections: {} };
+            const classSectionMap = options.class_sections || {};
+            (scope.classes || []).forEach(cls => {
+              classSections[cls] = classSectionMap[cls] || [];
+            });
+          }
+          
           return {
             scope_type: 'group',
             scope_id: gid,
             classes: scope.classes || [],
             sections: scope.sections || [],
-            branches: scope.branches || []
+            branches: scope.branches || [],
+            class_sections: classSections
           };
         }).concat(selectedTableIds.map(tid => {
-          const scope = assignmentScopes.find(s => s.scope_type === 'table' && parseInt(s.scope_id) === tid) || { classes: [], sections: [], branches: [] };
+          const scope = assignmentScopes.find(s => s.scope_type === 'table' && parseInt(s.scope_id) === tid) || { classes: [], sections: [], branches: [], class_sections: {} };
+          
+          let classSections = {};
+          if (scope.class_sections) {
+            Object.keys(scope.class_sections).forEach(cls => {
+              if (scope.class_sections[cls] && scope.class_sections[cls].length > 0) {
+                classSections[cls] = scope.class_sections[cls];
+              }
+            });
+          }
+          if (Object.keys(classSections).length === 0 && (scope.classes || []).length > 0) {
+            const optMap = assignData.table_options;
+            const options = optMap?.[tid] || { classes: [], sections: [], branches: [], class_sections: {} };
+            const classSectionMap = options.class_sections || {};
+            (scope.classes || []).forEach(cls => {
+              classSections[cls] = classSectionMap[cls] || [];
+            });
+          }
+          
           return {
             scope_type: 'table',
             scope_id: tid,
             classes: scope.classes || [],
             sections: scope.sections || [],
-            branches: scope.branches || []
+            branches: scope.branches || [],
+            class_sections: classSections
           };
         }))
       };
@@ -207,14 +295,14 @@ export default function StaffManageScreen({ navigation, route }) {
   const renderScopeConfig = (item, type) => {
     const isGroup = type === 'group';
     const optMap = isGroup ? assignData.group_options : assignData.table_options;
-    const options = optMap?.[item.id] || { classes: [], sections: [], branches: [] };
+    const options = optMap?.[item.id] || { classes: [], sections: [], branches: [], class_sections: {} };
     
-    const scope = assignmentScopes.find(s => s.scope_type === type && parseInt(s.scope_id) === item.id) || { classes: [], sections: [], branches: [] };
+    const scope = assignmentScopes.find(s => s.scope_type === type && parseInt(s.scope_id) === item.id) || { classes: [], sections: [], branches: [], class_sections: {} };
     
     const toggleValue = (field, val) => {
       setAssignmentScopes(prev => {
         const existingIdx = prev.findIndex(s => s.scope_type === type && parseInt(s.scope_id) === item.id);
-        const currentScope = existingIdx > -1 ? { ...prev[existingIdx] } : { scope_type: type, scope_id: item.id, classes: [], sections: [], branches: [] };
+        const currentScope = existingIdx > -1 ? { ...prev[existingIdx] } : { scope_type: type, scope_id: item.id, classes: [], sections: [], branches: [], class_sections: {} };
         
         const list = currentScope[field] || [];
         if (list.includes(val)) {
@@ -232,12 +320,87 @@ export default function StaffManageScreen({ navigation, route }) {
         }
       });
     };
+
+    const toggleClassSection = (action, classVal, sectionVal = null) => {
+      setAssignmentScopes(prev => {
+        const existingIdx = prev.findIndex(s => s.scope_type === type && parseInt(s.scope_id) === item.id);
+        const currentScope = existingIdx > -1 
+          ? { ...prev[existingIdx] } 
+          : { scope_type: type, scope_id: item.id, classes: [], sections: [], branches: [], class_sections: {} };
+        
+        if (!currentScope.class_sections) {
+          currentScope.class_sections = {};
+        } else {
+          currentScope.class_sections = { ...currentScope.class_sections };
+        }
+        
+        const availableSectionsForClass = options.class_sections?.[classVal] || [];
+        
+        if (action === 'class') {
+          // Toggle entire class
+          const currentSections = currentScope.class_sections[classVal] || [];
+          const isAssigned = currentSections.length > 0 || (availableSectionsForClass.length === 0 && currentScope.classes?.includes(classVal));
+          
+          if (isAssigned) {
+            // Deselect class and all its sections
+            currentScope.class_sections[classVal] = [];
+            currentScope.classes = (currentScope.classes || []).filter(c => c !== classVal);
+          } else {
+            // Select class and all its sections
+            currentScope.class_sections[classVal] = [...availableSectionsForClass];
+            if (!currentScope.classes?.includes(classVal)) {
+              currentScope.classes = [...(currentScope.classes || []), classVal];
+            }
+          }
+        } else if (action === 'section' && sectionVal) {
+          // Toggle specific section under a class
+          const currentSections = [...(currentScope.class_sections[classVal] || [])];
+          if (currentSections.includes(sectionVal)) {
+            currentScope.class_sections[classVal] = currentSections.filter(s => s !== sectionVal);
+          } else {
+            currentScope.class_sections[classVal] = [...currentSections, sectionVal];
+          }
+          
+          const hasSelectedSections = currentScope.class_sections[classVal].length > 0;
+          if (hasSelectedSections) {
+            if (!currentScope.classes?.includes(classVal)) {
+              currentScope.classes = [...(currentScope.classes || []), classVal];
+            }
+          } else {
+            // If class has sections and none are selected, deselect class itself
+            if (availableSectionsForClass.length > 0) {
+              currentScope.classes = (currentScope.classes || []).filter(c => c !== classVal);
+            }
+          }
+        }
+        
+        // Re-sync all sections list flatly in currentScope.sections
+        const allFlatSections = [];
+        const seenSections = new Set();
+        Object.keys(currentScope.class_sections).forEach(cls => {
+          (currentScope.class_sections[cls] || []).forEach(sec => {
+            if (!seenSections.has(sec)) {
+              seenSections.add(sec);
+              allFlatSections.push(sec);
+            }
+          });
+        });
+        currentScope.sections = allFlatSections;
+        
+        if (existingIdx > -1) {
+          const updated = [...prev];
+          updated[existingIdx] = currentScope;
+          return updated;
+        } else {
+          return [...prev, currentScope];
+        }
+      });
+    };
     
     const classesList = options.classes || [];
-    const sectionsList = options.sections || [];
     const branchesList = options.branches || [];
     
-    if (classesList.length === 0 && sectionsList.length === 0 && branchesList.length === 0) {
+    if (classesList.length === 0 && branchesList.length === 0) {
       return null;
     }
     
@@ -247,30 +410,50 @@ export default function StaffManageScreen({ navigation, route }) {
         
         {classesList.length > 0 && (
           <View style={s.scopeSection}>
-            <Text style={s.scopeSubTitle}>Classes</Text>
-            <View style={s.checkGridSmall}>
-              {classesList.map(c => {
-                const isSelected = scope.classes?.includes(c);
+            <Text style={s.scopeSubTitle}>Class-Section Assignment Matrix</Text>
+            <View style={s.matrixContainer}>
+              {classesList.map(cls => {
+                const availableSections = options.class_sections?.[cls] || [];
+                const selectedSections = scope.class_sections?.[cls] || [];
+                const isClassAssigned = selectedSections.length > 0 || (availableSections.length === 0 && scope.classes?.includes(cls));
+                
                 return (
-                  <TouchableOpacity key={c} style={[s.checkItemSmall, isSelected && s.checkItemSmallActive]} onPress={() => toggleValue('classes', c)}>
-                    <Text style={[s.checkLabelSmall, isSelected && s.checkLabelSmallActive]}>{c}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-        
-        {sectionsList.length > 0 && (
-          <View style={s.scopeSection}>
-            <Text style={s.scopeSubTitle}>Sections</Text>
-            <View style={s.checkGridSmall}>
-              {sectionsList.map(sec => {
-                const isSelected = scope.sections?.includes(sec);
-                return (
-                  <TouchableOpacity key={sec} style={[s.checkItemSmall, isSelected && s.checkItemSmallActive]} onPress={() => toggleValue('sections', sec)}>
-                    <Text style={[s.checkLabelSmall, isSelected && s.checkLabelSmallActive]}>{sec}</Text>
-                  </TouchableOpacity>
+                  <View key={cls} style={[s.matrixRow, isClassAssigned && s.matrixRowActive]}>
+                    <View style={s.matrixClassCol}>
+                      <TouchableOpacity 
+                        activeOpacity={0.7} 
+                        style={[s.matrixClassChip, isClassAssigned && s.matrixClassChipActive]} 
+                        onPress={() => toggleClassSection('class', cls)}
+                      >
+                        <View style={[s.matrixCheckboxIcon, isClassAssigned && s.matrixCheckboxIconActive]}>
+                          {isClassAssigned && <IconCheck size={10} color="#fff" />}
+                        </View>
+                        <Text style={[s.matrixClassLabel, isClassAssigned && s.matrixClassLabelActive]}>{cls}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    
+                    <View style={s.matrixSectionsCol}>
+                      {availableSections.length > 0 ? (
+                        <View style={s.matrixSectionsGrid}>
+                          {availableSections.map(sec => {
+                            const isSecSelected = selectedSections.includes(sec);
+                            return (
+                              <TouchableOpacity 
+                                key={sec} 
+                                activeOpacity={0.7} 
+                                style={[s.matrixSectionChip, isSecSelected && s.matrixSectionChipActive]} 
+                                onPress={() => toggleClassSection('section', cls, sec)}
+                              >
+                                <Text style={[s.matrixSectionLabel, isSecSelected && s.matrixSectionLabelActive]}>{sec}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <Text style={s.matrixEmptyText}>No sections available</Text>
+                      )}
+                    </View>
+                  </View>
                 );
               })}
             </View>
@@ -590,8 +773,8 @@ const s = StyleSheet.create({
   actionBtnText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: radius.sm, borderTopRightRadius: radius.sm, padding: 20, maxHeight: '90%' },
-  modalContentFull: { backgroundColor: '#fff', borderTopLeftRadius: radius.sm, borderTopRightRadius: radius.sm, padding: 20 },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: radius.sm, borderTopRightRadius: radius.sm, padding: 20, paddingBottom: 32, maxHeight: '90%' },
+  modalContentFull: { backgroundColor: '#fff', borderTopLeftRadius: radius.sm, borderTopRightRadius: radius.sm, padding: 20, paddingBottom: 32 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 16, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
   field: { flex: 1, marginBottom: 16 },
@@ -639,4 +822,23 @@ const s = StyleSheet.create({
   checkItemSmallActive: { backgroundColor: 'rgba(102,126,234,0.08)', borderColor: colors.brandPrimary },
   checkLabelSmall: { fontSize: 10, color: colors.gray600, fontFamily: 'SairaSemiCondensed-Medium' },
   checkLabelSmallActive: { color: colors.brandPrimary, fontFamily: 'SairaSemiCondensed-Bold' },
+
+  // Matrix specific styles
+  matrixContainer: { marginTop: 6, gap: 8 },
+  matrixRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0', padding: 8, minHeight: 48 },
+  matrixRowActive: { borderColor: colors.brandPrimary, backgroundColor: 'rgba(102,126,234,0.02)' },
+  matrixClassCol: { width: '35%', borderRightWidth: 1, borderRightColor: '#f1f5f9', paddingRight: 8, justifyContent: 'center' },
+  matrixClassChip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, borderRadius: radius.xs, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1' },
+  matrixClassChipActive: { backgroundColor: 'rgba(102,126,234,0.1)', borderColor: colors.brandPrimary },
+  matrixCheckboxIcon: { width: 14, height: 14, borderRadius: 3, borderWidth: 1, borderColor: '#94a3b8', marginRight: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  matrixCheckboxIconActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+  matrixClassLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray600 },
+  matrixClassLabelActive: { fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary },
+  matrixSectionsCol: { width: '65%', paddingLeft: 8, justifyContent: 'center' },
+  matrixSectionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  matrixSectionChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.xs, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff' },
+  matrixSectionChipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+  matrixSectionLabel: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray600 },
+  matrixSectionLabelActive: { fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
+  matrixEmptyText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400, fontStyle: 'italic' },
 });
