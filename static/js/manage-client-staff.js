@@ -846,8 +846,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (!Object.keys(chip.classSectionSelections || {}).length) {
                     chip.classSectionSelections = {};
-                    chip.classOptions.forEach(function (cls) {
-                        chip.classSectionSelections[cls] = chip.sections.slice();
+                    var selectedClasses = chip.classes.length ? chip.classes.slice() : pendingClasses.slice();
+                    var selectedSections = chip.sections.length ? chip.sections.slice() : pendingSections.slice();
+
+                    selectedClasses.forEach(function (cls) {
+                        chip.classSectionSelections[cls] = [];
+                    });
+
+                    selectedSections.forEach(function (sec) {
+                        var targetClass = null;
+                        selectedClasses.forEach(function (cls) {
+                            if (targetClass) return;
+                            var available = _normalizeStringList(chip.classSectionMap[cls] || []);
+                            if (available.indexOf(sec) !== -1) targetClass = cls;
+                        });
+                        if (!targetClass && selectedClasses.length) {
+                            targetClass = selectedClasses[0];
+                        }
+                        if (targetClass) {
+                            chip.classSectionSelections[targetClass] = chip.classSectionSelections[targetClass] || [];
+                            if (chip.classSectionSelections[targetClass].indexOf(sec) === -1) {
+                                chip.classSectionSelections[targetClass].push(sec);
+                            }
+                        }
                     });
                 }
 
@@ -952,7 +973,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (chip.isEditing) {
                         let classInput = document.createElement('input');
                     classInput.type = 'checkbox';
-                    classInput.checked = isClassFullySelected;
+                    classInput.checked = isAssignedClass;
+                    classInput.indeterminate = isAssignedClass && !isClassFullySelected;
                     classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
                     classInput.addEventListener('change', function () {
                         if (classInput.checked) {
@@ -1006,9 +1028,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                     nextSections = nextSections.filter(function (val) { return val !== sec; });
                                 }
                                 _setChipClassSections(chip, cls, nextSections);
-                                classInput.checked = availableSections.length > 0 && availableSections.every(function (s) {
-                                    return _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []).indexOf(s) !== -1;
+                                var currentSelected = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
+                                var classFullySelected = availableSections.length > 0 && availableSections.every(function (s) {
+                                    return currentSelected.indexOf(s) !== -1;
                                 });
+                                classInput.checked = currentSelected.length > 0;
+                                classInput.indeterminate = currentSelected.length > 0 && !classFullySelected;
                                 renderAssignmentScopeChips();
                             });
                             sectionItem.appendChild(sectionInput);
@@ -1260,14 +1285,34 @@ document.addEventListener('DOMContentLoaded', function () {
         chip.sectionOptions = _normalizeStringList(allSections);
         chip.branchOptions = _normalizeStringList(allBranches);
         chip.classSectionMap = _cloneClassSectionMap(classSectionMap);
-        chip.classSectionSelections = {};
-        chip.classOptions.forEach(function (cls) {
-            chip.classSectionSelections[cls] = _normalizeStringList((chip.classSectionMap[cls] || []).filter(function (sec) {
-                return chip.sections.indexOf(sec) !== -1;
-            }));
-        });
-        if (!Object.keys(chip.classSectionSelections).length) {
-            chip.classSectionSelections = _cloneClassSectionSelections(chip.classSectionMap);
+        if (!chip.classSectionSelections || !Object.keys(chip.classSectionSelections).length) {
+            chip.classSectionSelections = {};
+            var selectedClasses = _normalizeStringList(chip.classes || []);
+            var selectedSections = _normalizeStringList(chip.sections || []);
+
+            selectedClasses.forEach(function (cls) {
+                chip.classSectionSelections[cls] = [];
+            });
+
+            selectedSections.forEach(function (sec) {
+                var targetClass = null;
+                selectedClasses.forEach(function (cls) {
+                    if (targetClass) return;
+                    var available = _normalizeStringList(chip.classSectionMap[cls] || []);
+                    if (available.indexOf(sec) !== -1) {
+                        targetClass = cls;
+                    }
+                });
+                if (!targetClass && selectedClasses.length) {
+                    targetClass = selectedClasses[0];
+                }
+                if (targetClass) {
+                    chip.classSectionSelections[targetClass] = chip.classSectionSelections[targetClass] || [];
+                    if (chip.classSectionSelections[targetClass].indexOf(sec) === -1) {
+                        chip.classSectionSelections[targetClass].push(sec);
+                    }
+                }
+            });
         }
         _syncChipSelections(chip);
         chip.classCounts = _normalizeCountMap(classCountMap);
