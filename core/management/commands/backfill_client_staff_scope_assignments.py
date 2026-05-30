@@ -79,15 +79,19 @@ class Command(BaseCommand):
         candidates: List[Tuple[Staff, Dict[str, object]]] = []
         skipped_not_legacy = 0
         skipped_no_values = 0
+        skipped_not_legacy_items: List[Staff] = []
+        skipped_no_values_items: List[Staff] = []
 
         for staff in qs:
             if not self._is_legacy_unscoped_staff(staff, include_flat_legacy=include_flat_legacy):
                 skipped_not_legacy += 1
+                skipped_not_legacy_items.append(staff)
                 continue
 
             plan = self._build_backfill_plan(staff)
             if not plan.get("assignment_scopes"):
                 skipped_no_values += 1
+                skipped_no_values_items.append(staff)
                 continue
 
             candidates.append((staff, plan))
@@ -97,6 +101,19 @@ class Command(BaseCommand):
         self.stdout.write(f"Legacy-unscoped staff found: {len(candidates)}")
         self.stdout.write(f"Skipped (already scoped / not legacy-empty): {skipped_not_legacy}")
         self.stdout.write(f"Skipped (no scope values found in card data): {skipped_no_values}")
+
+        # Provide short previews including client names to aid diagnostics
+        if skipped_not_legacy_items:
+            self.stdout.write("\nPreview (skipped - already scoped / not legacy-empty):")
+            for s in skipped_not_legacy_items[:20]:
+                cname = getattr(s.client, 'name', '') if getattr(s, 'client', None) else ''
+                self.stdout.write(f"  - staff_id={s.id}, client_id={s.client_id}, client_name={cname}")
+
+        if skipped_no_values_items:
+            self.stdout.write("\nPreview (skipped - no scope values found):")
+            for s in skipped_no_values_items[:20]:
+                cname = getattr(s.client, 'name', '') if getattr(s, 'client', None) else ''
+                self.stdout.write(f"  - staff_id={s.id}, client_id={s.client_id}, client_name={cname}")
 
         if not candidates:
             self.stdout.write(self.style.WARNING("No assistants require backfill."))
@@ -108,8 +125,9 @@ class Command(BaseCommand):
             classes = plan.get("allowed_classes") or []
             sections = plan.get("allowed_sections") or []
             branches = plan.get("allowed_branches") or []
+            cname = getattr(staff.client, 'name', '') if getattr(staff, 'client', None) else ''
             self.stdout.write(
-                f"  - staff_id={staff.id}, client_id={staff.client_id}, "
+                f"  - staff_id={staff.id}, client_id={staff.client_id}, client_name={cname}, "
                 f"scopes={len(scopes)}, classes={len(classes)}, "
                 f"sections={len(sections)}, branches={len(branches)}"
             )
