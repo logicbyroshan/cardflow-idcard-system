@@ -239,7 +239,7 @@ def require_mobile_client(view_func=None, allow_public=False):
 
             # 4. Enforce valid roles
             user = request.user
-            valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
+            valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff')
             if not hasattr(user, 'role') or user.role not in valid_roles:
                 if is_api_request:
                     return JsonResponse({'success': False, 'message': 'Invalid account role.'}, status=403)
@@ -1031,7 +1031,7 @@ def mobile_login(request):
     """
     if request.user.is_authenticated:
         user = request.user
-        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
+        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff')
         if not hasattr(user, 'role') or user.role not in valid_roles:
             return redirect('/panel/auth/logout/?next=/app/login/')
         # Separate mobile auth flow: do not auto-enter app unless mobile auth checkpoint passed.
@@ -1095,7 +1095,7 @@ def api_mobile_login(request):
             return JsonResponse({'success': False, 'message': result.get('message', 'Invalid credentials.')}, status=400)
 
         user = result.get('user')
-        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff')
+        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff')
         if not user or getattr(user, 'role', '') not in valid_roles:
             return JsonResponse({'success': False, 'message': 'This account cannot access the mobile app.'}, status=403)
 
