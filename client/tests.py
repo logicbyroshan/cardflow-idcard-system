@@ -1700,6 +1700,34 @@ class ClientApiIntegrationTests(TestCase):
         self.assertEqual(detail_payload.get('allowed_classes'), ['10'])
         self.assertEqual(detail_payload.get('allowed_sections'), ['A'])
 
+    def test_api_staff_detail_synthesizes_single_class_multiple_sections_legacy_scope(self):
+        self.staff_profile.assigned_groups.set([self.group])
+        self.staff_profile.allowed_classes = ['10']
+        self.staff_profile.allowed_sections = ['A', 'B']
+        self.staff_profile.allowed_branches = []
+        self.staff_profile.assignment_scopes = []
+        self.staff_profile.save(update_fields=[
+            'allowed_classes',
+            'allowed_sections',
+            'allowed_branches',
+            'assignment_scopes',
+        ])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        detail_resp = self.client.get(f'/panel/client/api/staff/{self.staff_profile.id}/')
+
+        self.assertEqual(detail_resp.status_code, 200)
+        detail_payload = detail_resp.json().get('data', {})
+        scopes = detail_payload.get('assignment_scopes', [])
+        self.assertEqual(len(scopes), 1)
+        self.assertEqual(scopes[0].get('scope_type'), 'group')
+        self.assertEqual(scopes[0].get('scope_id'), self.group.id)
+        self.assertEqual(scopes[0].get('classes'), ['10'])
+        self.assertEqual(scopes[0].get('sections'), ['A', 'B'])
+        self.assertEqual(scopes[0].get('class_sections'), {'10': ['A', 'B']})
+        self.assertEqual(detail_payload.get('allowed_classes'), ['10'])
+        self.assertEqual(detail_payload.get('allowed_sections'), ['A', 'B'])
+
     def test_api_staff_update_round_trips_scoped_assignments(self):
         self.client.login(username='api-owner@test.com', password='pass1234')
 

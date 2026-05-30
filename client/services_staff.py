@@ -464,7 +464,7 @@ class ClientStaffService(BaseService):
                     if str(v).strip().isdigit() and int(v) > 0
                 ]
 
-                if len(legacy_classes) == 1 and len(legacy_sections) == 1:
+                if legacy_classes and legacy_sections:
                     scope_type = 'group'
                     scope_id = group_ids[0] if len(group_ids) == 1 else None
                     if scope_id is None and len(table_ids) == 1:
@@ -472,6 +472,13 @@ class ClientStaffService(BaseService):
                         scope_id = table_ids[0]
 
                     if scope_id is not None:
+                        if len(legacy_classes) == 1:
+                            class_sections = {legacy_classes[0]: legacy_sections}
+                        elif len(legacy_sections) == 1:
+                            class_sections = {cls_name: legacy_sections for cls_name in legacy_classes}
+                        else:
+                            class_sections = {}
+
                         detail['assignment_scopes'] = [{
                             'scope_type': scope_type,
                             'scope_id': scope_id,
@@ -479,7 +486,7 @@ class ClientStaffService(BaseService):
                             'classes': legacy_classes,
                             'sections': legacy_sections,
                             'branches': list(staff.allowed_branches or []),
-                            'class_sections': {legacy_classes[0]: legacy_sections},
+                            'class_sections': class_sections,
                         }]
 
             # Include all permissions
