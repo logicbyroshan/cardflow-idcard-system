@@ -19,6 +19,14 @@ const STORAGE_KEYS = {
   cookies: 'adarsh_cookies',
 };
 
+// ─── Global session kicked callback ──────────────────────────────────────────
+let onSessionKickedCallback = null;
+
+export function registerSessionKickedCallback(cb) {
+  onSessionKickedCallback = cb;
+}
+
+
 // ─── Cookie/CSRF Management ─────────────────────────────────────────────────
 
 let cachedCsrf = '';
@@ -191,6 +199,9 @@ export async function apiGet(path, params = null) {
     }
 
     if (!response.ok) {
+      if (response.status === 401 && data?.logged_in_elsewhere && onSessionKickedCallback) {
+        onSessionKickedCallback();
+      }
       return { 
         ok: false, 
         status: response.status, 
@@ -246,6 +257,9 @@ export async function apiPost(path, body = {}) {
     }
 
     if (!response.ok) {
+      if (response.status === 401 && data?.logged_in_elsewhere && onSessionKickedCallback) {
+        onSessionKickedCallback();
+      }
       return { 
         ok: false, 
         status: response.status, 
@@ -282,6 +296,9 @@ export async function apiPostForm(path, formData, extraHeaders = {}) {
     let data = {};
     try {
       data = JSON.parse(text);
+      if (response.status === 401 && data?.logged_in_elsewhere && onSessionKickedCallback) {
+        onSessionKickedCallback();
+      }
     } catch (e) {
       console.warn('[API] JSON Parse Error for form POST:', path);
       return { ok: false, status: response.status, data: { message: 'Invalid server response' } };

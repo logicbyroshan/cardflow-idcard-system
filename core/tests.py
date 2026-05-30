@@ -1694,6 +1694,7 @@ class SecurityApiRegressionTests(TestCase):
             data=json.dumps({
                 'name': 'Staff Created Client',
                 'phone': '8888888888',
+                'email': 'staff-created-client@test.com',
                 'perm_idcard_edit': True,
             }),
             content_type='application/json',

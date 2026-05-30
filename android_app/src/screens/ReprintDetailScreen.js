@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, Text, FlatList, TouchableOpacity, Image, StyleSheet, 
-  ActivityIndicator, RefreshControl, Alert, TextInput, Dimensions 
+  ActivityIndicator, RefreshControl, Alert, TextInput, Dimensions,
+  Modal, TouchableWithoutFeedback
 } from 'react-native';
 import { DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +14,7 @@ import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet, apiPost, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 import { colors, gradients, shadows, radius, fontFamily, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import CardModalForm from '../components/CardModalForm';
 
 const { width } = Dimensions.get('window');
 
@@ -51,6 +53,11 @@ export default function ReprintDetailScreen({ navigation, route }) {
   const [tableName, setTableName] = useState('');
   const [updating, setUpdating] = useState(null); // rr_id or card_id being updated
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingCardId, setEditingCardId] = useState(null);
+  const [reprintConfirmModal, setReprintConfirmModal] = useState({ visible: false, cardId: null, name: '' });
+
+  const canRequestReprint = perms.perm_idcard_reprint_list || isAdminOrOperator;
   
   // Search
   const [searchText, setSearchText] = useState('');
@@ -155,43 +162,28 @@ export default function ReprintDetailScreen({ navigation, route }) {
 
   // ── Actions ─────────────────────────────────────────────────────────────
   
+  const submitReprintRequest = async (cardId, studentName, afterEdit = false) => {
+    setUpdating(cardId);
+    try {
+      const { ok, data } = await apiPost(`/reprint/api/table/${tableId}/request/`, {
+        card_ids: [cardId],
+        reason: afterEdit ? 'Requested with Edit from Mobile App' : 'Requested from Mobile App'
+      });
+      if (ok && data?.status === 'ok') {
+        showToast(data.message || 'Reprint request created!', 'success');
+        await loadCards(1);
+      } else {
+        showToast(data?.message || 'Failed to request reprint', 'error');
+      }
+    } catch (e) {
+      showToast('Network error', 'error');
+    }
+    setUpdating(null);
+  };
+
   // 1. Request Reprint
   const handleRequestReprint = (cardId, studentName) => {
-    Alert.alert(
-      'Request Reprint',
-      `Are you sure you want to request a reprint for ${studentName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Request', 
-          onPress: async () => {
-            setUpdating(cardId);
-            try {
-              const { ok, data } = await apiPost(`/reprint/api/table/${tableId}/request/`, {
-                card_ids: [cardId],
-                reason: 'Requested from Mobile App'
-              });
-              if (ok && data?.status === 'ok') {
-                showToast(data.message || 'Reprint request created!', 'success');
-                // Remove from local list to animate away
-                setCards(prev => prev.filter(c => c.card_id !== cardId));
-                // Update local counts
-                setCounts(prev => ({
-                  ...prev,
-                  download_list: Math.max(0, prev.download_list - 1),
-                  request_list: prev.request_list + 1
-                }));
-              } else {
-                showToast(data?.message || 'Failed to request reprint', 'error');
-              }
-            } catch (e) {
-              showToast('Network error', 'error');
-            }
-            setUpdating(null);
-          }
-        }
-      ]
-    );
+    setReprintConfirmModal({ visible: true, cardId, name: studentName });
   };
 
   // 2. Confirm Request (Admin Only)
@@ -373,7 +365,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
             <ActivityIndicator size="small" color={theme.primary} />
           ) : (
             <>
-              {activeTab === 'download_list' && (
+              {activeTab === 'download_list' && canRequestReprint && (
                 <TouchableOpacity
                   style={[s.actionBtn, { backgroundColor: '#fef3c7', flex: 1, justifyContent: 'center' }]}
                   onPress={() => handleRequestReprint(cardId, name)}
@@ -559,6 +551,81 @@ export default function ReprintDetailScreen({ navigation, route }) {
         />
       )}
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({...p, visible: false}))} />
+      
+      {/* Reprint Confirm Selection Modal */}
+      <Modal
+        visible={reprintConfirmModal.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setReprintConfirmModal(p => ({ ...p, visible: false }))}
+      >
+        <View style={s.modalOverlay}>
+          <TouchableWithoutFeedback onPress={() => setReprintConfirmModal(p => ({ ...p, visible: false }))}>
+            <View style={s.modalBackground} />
+          </TouchableWithoutFeedback>
+          <View style={s.modalContent}>
+            <View style={s.modalHeader}>
+              <DynamicIcon name="redo" size={16} color="#b45309" style={{ marginRight: 8 }} />
+              <Text style={s.modalTitle}>Confirm Reprint Request</Text>
+            </View>
+            <View style={s.modalBody}>
+              <Text style={s.modalBodyText}>
+                Do you want to edit the details for <Text style={{ fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 }}>{reprintConfirmModal.name}</Text> first, or request reprint without edit?
+              </Text>
+            </View>
+            <View style={s.modalActions}>
+              <TouchableOpacity 
+                style={[s.modalBtn, { backgroundColor: theme.primary, marginBottom: 8 }]}
+                onPress={() => {
+                  const { cardId } = reprintConfirmModal;
+                  setReprintConfirmModal(p => ({ ...p, visible: false }));
+                  setEditingCardId(cardId);
+                  setShowEditForm(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <DynamicIcon name="edit" size={12} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={s.modalBtnText}>Edit Details First</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[s.modalBtn, { backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', marginBottom: 8 }]}
+                onPress={() => {
+                  const { cardId, name } = reprintConfirmModal;
+                  setReprintConfirmModal(p => ({ ...p, visible: false }));
+                  submitReprintRequest(cardId, name, false);
+                }}
+                activeOpacity={0.7}
+              >
+                <DynamicIcon name="check" size={12} color="#b45309" style={{ marginRight: 6 }} />
+                <Text style={[s.modalBtnText, { color: '#b45309' }]}>Request Without Edit</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[s.modalBtn, { backgroundColor: '#f3f4f6' }]}
+                onPress={() => setReprintConfirmModal(p => ({ ...p, visible: false }))}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.modalBtnText, { color: colors.gray500 }]}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Card Edit Form for Reprint with Edit */}
+      <CardModalForm 
+        visible={showEditForm}
+        onClose={() => {
+          setShowEditForm(false);
+          setEditingCardId(null);
+        }}
+        cardId={editingCardId}
+        tableId={tableId}
+        onSuccess={() => {
+          submitReprintRequest(editingCardId, reprintConfirmModal.name, true);
+        }}
+      />
     </View>
   );
 }
@@ -640,5 +707,67 @@ const s = StyleSheet.create({
   emptyTitle: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 4 },
   emptySub: { fontSize: 11, color: colors.gray400, textAlign: 'center', fontFamily: 'SairaSemiCondensed-Medium', marginBottom: 16 },
   transitionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm, ...shadows.sm },
-  transitionBtnText: { color: '#fff', fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' }
+  transitionBtnText: { color: '#fff', fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
+  // Modal Styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContent: {
+    width: width - 40,
+    backgroundColor: '#fff',
+    borderRadius: radius.lg,
+    padding: 20,
+    ...shadows.xl,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 15,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray800,
+  },
+  modalBody: {
+    marginBottom: 20,
+  },
+  modalBodyText: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Medium',
+    color: colors.gray600,
+    lineHeight: 18,
+  },
+  modalActions: {
+    width: '100%',
+  },
+  modalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: radius.sm,
+    width: '100%',
+  },
+  modalBtnText: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: '#fff',
+  },
 });

@@ -215,6 +215,18 @@ def require_mobile_client(view_func=None, allow_public=False):
 
             # 2. Enforce Authentication
             if not request.user.is_authenticated:
+                session_key = request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+                if session_key:
+                    from django.core.cache import cache
+                    if cache.get(f'concurrent_logout:{session_key}'):
+                        if is_api_request:
+                            return JsonResponse({
+                                'success': False,
+                                'logged_in_elsewhere': True,
+                                'message': 'logged_in_elsewhere'
+                            }, status=401)
+                        return redirect('/app/login/?reason=logged_in_elsewhere')
+
                 if is_api_request:
                     return JsonResponse({'success': False, 'authenticated': False, 'message': 'Authentication required'}, status=401)
                 return redirect('/app/login/')
@@ -1110,6 +1122,17 @@ def api_mobile_login(request):
 
         try:
             auth_login(request, user)
+            if not request.session.session_key:
+                request.session.save()
+            new_session_key = request.session.session_key or ''
+            
+            # Revoke other mobile sessions for this user
+            from accounts.services import AuthService
+            AuthService.revoke_active_sessions_for_user(
+                user.id,
+                surface='mobile',
+                exclude_session_key=new_session_key
+            )
         except Exception as e:
             logger.error("api_mobile_login: auth_login failed: %s", str(e), exc_info=True)
             return JsonResponse({'success': False, 'message': 'Authentication failed during session creation.'}, status=500)

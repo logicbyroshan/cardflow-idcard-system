@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox, ActivityIndicator, TouchableOpacity, BackHandler } from 'react-native';
 // LogBox.ignoreAllLogs();
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,6 +57,24 @@ function AppContent() {
       return () => animation.stop();
     }
   }, [pulseAnim, isAuthenticated, isImpersonating]);
+
+  useEffect(() => {
+    const handleHardwareBack = () => {
+      if (navigationRef.isReady()) {
+        const canGoBack = navigationRef.canGoBack();
+        if (canGoBack) {
+          navigationRef.goBack();
+          return true; // prevent default exit behavior
+        }
+      }
+      return false; // let default behavior (exit/minimize) handle it
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
+    return () => {
+      BackHandler.removeEventListener('hardwareBackPress', handleHardwareBack);
+    };
+  }, []);
 
   const handleStop = async () => {
     setStopping(true);

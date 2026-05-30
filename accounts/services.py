@@ -426,6 +426,10 @@ class AuthService:
         revoked_sessions = []
         for _, session, info in candidates:
             try:
+                session_key = session.session_key
+                if session_key:
+                    from django.core.cache import cache
+                    cache.set(f'concurrent_logout:{session_key}', True, 86400)
                 session.delete()
                 revoked_sessions.append(info)
             except Exception:

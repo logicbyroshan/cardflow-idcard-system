@@ -28,6 +28,7 @@ export default function MpinScreen({ navigation, route }) {
     isSilentAuthFailed,
     setIsSilentAuthFailed,
     setIsAppUnlocked,
+    logout,
   } = useAuth();
 
   // Screen modes: 'create' (force create on login), 'enter' (app lock screen), 'change' (from profile)
@@ -238,23 +239,28 @@ export default function MpinScreen({ navigation, route }) {
   };
 
   const handleForgotMpin = () => {
+    setStep('forgot_password');
+    setPassword('');
+  };
+
+  const handleHardLogout = () => {
     Alert.alert(
-      'Forgot MPIN?',
-      'This will log you out of your account. You will need to log in again using your password to set a new MPIN.',
+      'Logout?',
+      'Are you sure you want to log out of your account?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Confirm Reset',
+          text: 'Logout',
           style: 'destructive',
           onPress: async () => {
             setLoading(true);
             try {
-              await forgotMpin();
+              await logout();
               setTimeout(() => {
                 navigation.navigate('Login');
               }, 100);
             } catch (e) {
-              showToast('Failed to reset MPIN', 'error');
+              showToast('Failed to logout', 'error');
             } finally {
               setLoading(false);
             }
@@ -264,10 +270,36 @@ export default function MpinScreen({ navigation, route }) {
     );
   };
 
+  const handleForgotPasswordSubmit = async () => {
+    if (!password.trim()) {
+      showToast('Please enter your password', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await resetMpinWithPassword(password);
+      if (result.success) {
+        showToast('Password verified. Please set your new MPIN.', 'success');
+        setPassword('');
+        setMode('create');
+        setStep('enter_new');
+      } else {
+        showToast(result.error || 'Incorrect password', 'error');
+      }
+    } catch (e) {
+      showToast('Verification failed, please try again', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Render title / subtitle dynamically based on state machine
   const getHeaderInfo = () => {
     if (isSilentAuthFailed) {
       return { title: 'Session Expired', subtitle: 'Please enter your password to unlock the app and restore your session.' };
+    }
+    if (step === 'forgot_password') {
+      return { title: 'Verify Password', subtitle: 'Enter your account password to reset your MPIN.' };
     }
     if (mode === 'create') {
       if (step === 'enter_new') {
@@ -317,7 +349,7 @@ export default function MpinScreen({ navigation, route }) {
         </View>
 
         {/* Dots & Keypad or Password Fallback */}
-        {isSilentAuthFailed ? (
+        {isSilentAuthFailed || step === 'forgot_password' ? (
           <View style={s.passwordContainer}>
             <View style={s.passwordInputWrapper}>
               <TextInput
@@ -334,14 +366,27 @@ export default function MpinScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
             <View style={s.passwordBtnRow}>
-              <TouchableOpacity style={s.passwordCancelBtn} onPress={handleForgotMpin}>
-                <Text style={s.passwordCancelText}>Logout</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.passwordSubmitBtn} onPress={handlePasswordSubmit} disabled={loading}>
+              {isSilentAuthFailed ? (
+                <TouchableOpacity style={s.passwordCancelBtn} onPress={handleHardLogout}>
+                  <Text style={s.passwordCancelText}>Logout</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={s.passwordCancelBtn} onPress={() => {
+                  setStep('enter_pin');
+                  setPassword('');
+                }}>
+                  <Text style={s.passwordCancelText}>Back to PIN</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                style={s.passwordSubmitBtn} 
+                onPress={isSilentAuthFailed ? handlePasswordSubmit : handleForgotPasswordSubmit} 
+                disabled={loading}
+              >
                 {loading ? (
                   <ActivityIndicator size="small" color="#5b21b6" />
                 ) : (
-                  <Text style={s.passwordSubmitText}>Unlock App</Text>
+                  <Text style={s.passwordSubmitText}>{isSilentAuthFailed ? 'Unlock App' : 'Verify'}</Text>
                 )}
               </TouchableOpacity>
             </View>

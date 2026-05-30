@@ -39,7 +39,11 @@ export default function GroupsScreen({ navigation }) {
 
     return (
       <View style={s.tableCard}>
-        <View style={s.tableTop}>
+        <TouchableOpacity
+          style={s.tableTop}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('CardList', { tableId: table.id, status: 'all' })}
+        >
           <View style={[s.tableIcon, { backgroundColor: theme.bgSoft }]}>
             <DynamicIcon name="table" size={13} color={theme.primary} />
           </View>
@@ -47,7 +51,7 @@ export default function GroupsScreen({ navigation }) {
             <Text style={s.tableName} numberOfLines={1}>{table.name}</Text>
             {table.group_name ? <Text style={s.groupName} numberOfLines={1}>{table.group_name}</Text> : null}
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={s.tablePills}>
           {[
             { key: 'p', status: 'pending' },

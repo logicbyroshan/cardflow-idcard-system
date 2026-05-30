@@ -161,13 +161,23 @@ class WorkflowService:
         if user is None:
             return allowed
 
-        # Client-readonly filter
-        if user.role in ('client', 'client_staff') and card.status in cls.CLIENT_READONLY_STATUSES:
-            return []
+        # Client-readonly filter: Client users can only transition approved/download cards BACKWARD
+        is_client = user.role in ('client', 'client_staff')
 
         # Permission filter
         result = []
         for target in allowed:
+            # Check client-readonly exemption for backward transitions
+            if is_client and card.status in cls.CLIENT_READONLY_STATUSES:
+                is_backward = False
+                if card.status == 'approved' and target in ('verified', 'pending', 'pool'):
+                    is_backward = True
+                elif card.status == 'download' and target in ('approved', 'verified', 'pending'):
+                    is_backward = True
+                
+                if not is_backward:
+                    continue
+
             perm = cls._get_required_perm(card.status, target)
             if PermissionService.has(user, perm):
                 result.append(target)
@@ -229,7 +239,14 @@ class WorkflowService:
 
             # ── 3. Client-readonly guard ────────────────────────────────
             if user and not skip_permission:
-                if user.role in ('client', 'client_staff') and current in cls.CLIENT_READONLY_STATUSES:
+                # Allow client/client_staff to move cards backward (e.g. approved -> verified/pending or download -> approved/pending/verified)
+                is_backward = False
+                if current == 'approved' and target_status in ('verified', 'pending', 'pool'):
+                    is_backward = True
+                elif current == 'download' and target_status in ('approved', 'verified', 'pending'):
+                    is_backward = True
+
+                if not is_backward and user.role in ('client', 'client_staff') and current in cls.CLIENT_READONLY_STATUSES:
                     return ServiceResult(
                         success=False,
                         message='Cards in approved / download status cannot be modified by client users.'
@@ -348,18 +365,24 @@ class WorkflowService:
 
         # ── 2. Permission check (once, not per-card) ────────────────
         if user and not skip_permission:
-            # Client-readonly: reject if any card is in locked status
+            # Client-readonly: reject unless moving backward
             if user.role in ('client', 'client_staff'):
-                locked_exists = IDCard.objects.filter(
-                    table=table,
-                    id__in=card_ids,
-                    status__in=cls.CLIENT_READONLY_STATUSES,
-                ).exists()
-                if locked_exists:
-                    return ServiceResult(
-                        success=False,
-                        message='Cards in approved / download status cannot be modified by client users.'
-                    )
+                locked_cards_statuses = set(
+                    IDCard.objects.filter(table=table, id__in=card_ids, status__in=cls.CLIENT_READONLY_STATUSES)
+                    .values_list('status', flat=True)
+                )
+                for current_status in locked_cards_statuses:
+                    is_backward = False
+                    if current_status == 'approved' and target_status in ('verified', 'pending', 'pool'):
+                        is_backward = True
+                    elif current_status == 'download' and target_status in ('approved', 'verified', 'pending'):
+                        is_backward = True
+                    
+                    if not is_backward:
+                        return ServiceResult(
+                            success=False,
+                            message='Cards in approved / download status cannot be modified by client users.'
+                        )
 
             # Keep bulk permission checks consistent with single-card transition rules.
             selected_statuses = set(

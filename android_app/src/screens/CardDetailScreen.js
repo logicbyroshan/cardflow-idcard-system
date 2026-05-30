@@ -270,11 +270,12 @@ export default function CardDetailScreen({ navigation, route }) {
 
         <View style={s.actions}>
           {!isLocked && user?.permissions?.perm_idcard_edit && (
-            <TouchableOpacity onPress={() => setShowForm(true)} activeOpacity={0.85} style={s.editBtnWrap}>
-              <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.editBtn}>
-                <IconEdit size={12} color="#fff" />
-                <Text style={s.editBtnText}>Edit Information</Text>
-              </LinearGradient>
+            <TouchableOpacity 
+              onPress={() => setShowForm(true)} 
+              activeOpacity={0.8} 
+              style={[s.actionBtnFull, { borderColor: colors.brandPrimary, marginTop: 0, marginBottom: 12 }]}
+            >
+              <Text style={[s.actionBtnText, { color: colors.brandPrimary }]}>EDIT INFORMATION</Text>
             </TouchableOpacity>
           )}
 
@@ -302,9 +303,12 @@ export default function CardDetailScreen({ navigation, route }) {
           </View>
 
           {card.status === 'pending' && user?.permissions?.perm_idcard_delete && (
-            <TouchableOpacity onPress={deleteCard} style={s.deleteBtn}>
-              <IconTrash size={12} color={colors.red} />
-              <Text style={s.deleteBtnText}>Move to Pool</Text>
+            <TouchableOpacity 
+              onPress={deleteCard} 
+              activeOpacity={0.8}
+              style={[s.actionBtnFull, { borderColor: colors.red, backgroundColor: '#fef2f2', marginTop: 12 }]}
+            >
+              <Text style={[s.actionBtnText, { color: colors.red }]}>MOVE TO POOL</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -340,29 +344,32 @@ export default function CardDetailScreen({ navigation, route }) {
 
           <View style={s.actionButtonsRow}>
             {!isLocked && user?.permissions?.perm_idcard_edit && (
-              <TouchableOpacity onPress={() => setShowForm(true)} activeOpacity={0.85} style={s.actionBtnHalf}>
-                <LinearGradient colors={theme.gradient} start={{x:0, y:0}} end={{x:1, y:0}} style={s.actionBtnGradient}>
-                  <IconEdit size={14} color="#fff" />
-                  <Text style={s.actionBtnText}>Edit</Text>
-                </LinearGradient>
+              <TouchableOpacity 
+                onPress={() => setShowForm(true)} 
+                activeOpacity={0.8} 
+                style={[s.actionBtnHalf, { borderColor: colors.brandPrimary }]}
+              >
+                <Text style={[s.actionBtnText, { color: colors.brandPrimary }]}>EDIT</Text>
               </TouchableOpacity>
             )}
           
             {user?.permissions?.perm_idcard_download_list && (
-              <TouchableOpacity onPress={downloadCard} activeOpacity={0.85} style={s.actionBtnHalf}>
-                <LinearGradient colors={['#7c3aed', '#6d28d9']} start={{x:0, y:0}} end={{x:1, y:0}} style={s.actionBtnGradient}>
-                  <IconDownload size={14} color="#fff" />
-                  <Text style={s.actionBtnText}>Download</Text>
-                </LinearGradient>
+              <TouchableOpacity 
+                onPress={downloadCard} 
+                activeOpacity={0.8} 
+                style={[s.actionBtnHalf, { borderColor: '#7c3aed' }]}
+              >
+                <Text style={[s.actionBtnText, { color: '#7c3aed' }]}>DOWNLOAD</Text>
               </TouchableOpacity>
             )}
 
             {card.status === 'pending' && user?.permissions?.perm_idcard_delete && (
-              <TouchableOpacity onPress={deleteCard} activeOpacity={0.85} style={s.actionBtnFull}>
-                <View style={s.deleteActionBtn}>
-                  <IconTrash size={14} color={colors.red} />
-                  <Text style={s.deleteActionBtnText}>Move to Pool</Text>
-                </View>
+              <TouchableOpacity 
+                onPress={deleteCard} 
+                activeOpacity={0.8} 
+                style={[s.actionBtnFull, { borderColor: colors.red, backgroundColor: '#fef2f2' }]}
+              >
+                <Text style={[s.actionBtnText, { color: colors.red }]}>MOVE TO POOL</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -431,12 +438,9 @@ const s = StyleSheet.create({
   
     // Bottom action buttons
     actionButtonsRow: { flexDirection: 'row', gap: 12, marginBottom: 20, marginTop: 16 },
-    actionBtnHalf: { flex: 1, borderRadius: radius.sm, overflow: 'hidden', ...shadows.md },
-    actionBtnFull: { width: '100%', borderRadius: radius.sm, overflow: 'hidden', marginTop: 12 },
-    actionBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 8 },
-    actionBtnText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
-    deleteActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderWidth: 1.5, borderColor: colors.red, borderRadius: radius.sm, backgroundColor: 'rgba(239, 68, 68, 0.05)' },
-    deleteActionBtnText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.red, marginLeft: 8 },
+    actionBtnHalf: { flex: 1, borderRadius: radius.sm, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff', paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+    actionBtnFull: { width: '100%', borderRadius: radius.sm, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff', paddingVertical: 12, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
+    actionBtnText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', textAlign: 'center' },
 });
 
 function DetailStatusIcon({ status, size, color }) {

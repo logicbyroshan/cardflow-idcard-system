@@ -57,8 +57,6 @@ export default function ClientGroupsScreen({ navigation, route }) {
   const canUpgradeAll = isSuperAdmin || perms.perm_idcard_upgrade_all;
 
   // ── States ───────────────────────────────────────────────────────────────
-  const [searchText, setSearchText] = useState('');
-
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [confirmModal, setConfirmModal] = useState({ visible: false, title: '', message: '', icon: '', color: colors.brandPrimary, onConfirm: null });
 
@@ -112,40 +110,6 @@ export default function ClientGroupsScreen({ navigation, route }) {
     });
     return list;
   }, [groups]);
-
-  // Group tables by group_name after applying Search Filter
-  const filteredGroupedData = useMemo(() => {
-    const resGroups = {};
-    allTables.forEach(t => {
-      // 1. Search text filter
-      if (searchText && !t.name.toLowerCase().includes(searchText.toLowerCase())) {
-        return;
-      }
-
-      const gName = t.group_name || 'Ungrouped';
-      if (!resGroups[gName]) {
-        resGroups[gName] = {
-          name: gName,
-          tables: [],
-          totalCards: 0,
-          pending: 0,
-          verified: 0,
-          approved: 0,
-          download: 0,
-          pool: 0,
-        };
-      }
-      resGroups[gName].tables.push(t);
-      resGroups[gName].totalCards += (t.total_count || 0);
-      resGroups[gName].pending += (t.pending_count || 0);
-      resGroups[gName].verified += (t.verified_count || 0);
-      resGroups[gName].approved += (t.approved_count || 0);
-      resGroups[gName].download += (t.download_count || 0);
-      resGroups[gName].pool += (t.pool_count || 0);
-    });
-
-    return Object.values(resGroups);
-  }, [allTables, searchText]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const handleOpenActions = (table) => {
@@ -402,53 +366,37 @@ export default function ClientGroupsScreen({ navigation, route }) {
   };
 
   // ── Render Items ─────────────────────────────────────────────────────────
-  const renderGroup = useCallback(({ item: group }) => {
+  const renderTableItem = useCallback(({ item: table }) => {
     return (
-      <GroupCardItem
-        group={group}
-        theme={theme}
-        onOpenActions={handleOpenActions}
+      <TableCardRow
+        table={table}
         navigation={navigation}
+        onOpenActions={handleOpenActions}
       />
     );
-  }, [theme, handleOpenActions, navigation]);
+  }, [handleOpenActions, navigation]);
 
   return (
     <View style={s.root}>
-      <TopBar title={clientName} subtitle="ID Card Groups" onBack={() => navigation.goBack()} />
+      <TopBar title={clientName} subtitle="ID Card Tables" onBack={() => navigation.goBack()} />
 
       {error && <ErrorBanner message={error} onDismiss={() => {}} onRetry={refresh} />}
-
-      {/* Local Search */}
-      <View style={s.controlsContainer}>
-        <View style={s.searchBar}>
-          <DynamicIcon name="search" size={13} color={colors.gray400} />
-          <TextInput
-            style={s.searchInput}
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholder="Search tables..."
-            placeholderTextColor={colors.gray400}
-            clearButtonMode="while-editing"
-          />
-        </View>
-      </View>
 
       {loading ? (
         <ClientGroupsSkeleton />
       ) : (
         <FlatList
-          data={filteredGroupedData}
-          renderItem={renderGroup}
-          keyExtractor={item => item.name}
+          data={allTables}
+          renderItem={renderTableItem}
+          keyExtractor={item => item.id.toString()}
           contentContainerStyle={[s.list, { paddingBottom: insets.bottom + 40 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.primary} />}
           ListEmptyComponent={
             <View style={s.empty}>
-              <View style={s.emptyIcon}><DynamicIcon name="layer-group" size={24} color={colors.gray300} /></View>
+              <View style={s.emptyIcon}><DynamicIcon name="table" size={24} color={colors.gray300} /></View>
               <Text style={s.emptyTitle}>No tables found</Text>
-              <Text style={s.emptySub}>No active tables match your search / filters</Text>
+              <Text style={s.emptySub}>This client has no ID card tables yet.</Text>
             </View>
           }
         />
@@ -664,7 +612,10 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions }) => {
                      (table.approved_count || 0) + (table.download_count || 0) +
                      (table.pool_count || 0);
 
-  const handlePressInfo = useCallback(() => onOpenActions(table), [table, onOpenActions]);
+  const handlePressInfo = useCallback(() => {
+    navigation.navigate('CardList', { tableId: table.id, status: 'all' });
+  }, [navigation, table.id]);
+
   const handlePressCog = useCallback(() => onOpenActions(table), [table, onOpenActions]);
 
   return (
@@ -678,7 +629,9 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions }) => {
           <View style={s.tableIcon}><DynamicIcon name="table" size={12} color="#7c3aed" /></View>
           <View style={{ flex: 1 }}>
             <Text style={s.tableName} numberOfLines={1}>{table.name}</Text>
-            <Text style={s.tableMeta}>{totalCount} total cards · Tap for bulk actions</Text>
+            <Text style={s.tableMeta}>
+              {table.group_name ? `${table.group_name} · ` : ''}{totalCount} total cards · Tap cog for bulk actions
+            </Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity
@@ -705,71 +658,13 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions }) => {
   );
 });
 
-const GroupCardItem = React.memo(({ group, theme, onOpenActions, navigation }) => {
-  return (
-    <View style={s.groupCard}>
-      <View style={s.groupHeader}>
-        <View style={[s.groupIcon, { backgroundColor: theme.bgSoft }]}>
-          <DynamicIcon name="layer-group" size={14} color={theme.primary} />
-        </View>
-        <View style={s.groupInfo}>
-          <Text style={s.groupName} numberOfLines={1}>{group.name}</Text>
-          <Text style={s.groupMeta}>{group.tables.length} tables · {group.totalCards} cards</Text>
-        </View>
-        <View style={s.groupBadges}>
-          {group.pending > 0 && <MiniCount count={group.pending} bg={STATUS_COLORS.pending.bg} c={STATUS_COLORS.pending.text} />}
-          {group.verified > 0 && <MiniCount count={group.verified} bg={STATUS_COLORS.verified.bg} c={STATUS_COLORS.verified.text} />}
-          {group.approved > 0 && <MiniCount count={group.approved} bg={STATUS_COLORS.approved.bg} c={STATUS_COLORS.approved.text} />}
-          {group.download > 0 && <MiniCount count={group.download} bg={STATUS_COLORS.download.bg} c={STATUS_COLORS.download.text} />}
-          {group.pool > 0 && <MiniCount count={group.pool} bg={STATUS_COLORS.pool.bg} c={STATUS_COLORS.pool.text} />}
-        </View>
-      </View>
-
-      <View style={s.tablesList}>
-        {group.tables.map(table => (
-          <TableCardRow
-            key={table.id}
-            table={table}
-            navigation={navigation}
-            onOpenActions={onOpenActions}
-          />
-        ))}
-        {group.tables.length === 0 && (
-          <View style={s.emptyTables}><Text style={s.emptyTablesText}>No tables in this group</Text></View>
-        )}
-      </View>
-    </View>
-  );
-});
-
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
   list: { padding: 12 },
 
-  // Filter and search controls
-  controlsContainer: { backgroundColor: '#fff', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 10 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, borderRadius: radius.xs, paddingHorizontal: 12, height: 38, borderWidth: 1, borderColor: colors.gray100 },
-  searchInput: { flex: 1, marginLeft: 8, fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800 },
-  chipsScroll: { gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.gray200, backgroundColor: '#f8fafc' },
-  chipText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500 },
-
-  // Group card
-  groupCard: { backgroundColor: '#fff', borderRadius: radius.md, marginBottom: 12, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', padding: 12 },
-  groupIcon: { width: 34, height: 34, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  groupInfo: { flex: 1, marginLeft: 10 },
-  groupName: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
-  groupMeta: { fontSize: 10, color: colors.gray400, marginTop: 1 },
-  groupBadges: { flexDirection: 'row', marginRight: 8, gap: 2 },
-  miniCount: { paddingHorizontal: 4, paddingVertical: 1.5, borderRadius: 4, minWidth: 16, alignItems: 'center' },
-  miniCountText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
-
-  // Tables list within group
-  tablesList: { paddingHorizontal: 12, paddingBottom: 12, backgroundColor: '#fafbfc', borderTopWidth: 1, borderTopColor: '#f1f5f9' },
 
   // Table card item
-  tableCard: { backgroundColor: '#fff', borderRadius: radius.xs, marginTop: 8, padding: 10, borderWidth: 1, borderColor: '#f1f5f9', ...shadows.xs },
+  tableCard: { backgroundColor: '#fff', borderRadius: radius.sm, padding: 14, borderWidth: 1, borderColor: colors.gray100, ...shadows.sm, marginBottom: 10 },
   tableHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   tableInfoCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   tableIcon: { width: 24, height: 24, borderRadius: 5, backgroundColor: '#f5f3ff', alignItems: 'center', justifyContent: 'center' },
@@ -785,8 +680,6 @@ const s = StyleSheet.create({
   badgeCountText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
 
   // Empty states
-  emptyTables: { padding: 16, alignItems: 'center' },
-  emptyTablesText: { fontSize: 11, color: colors.gray400 },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   emptyTitle: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400 },

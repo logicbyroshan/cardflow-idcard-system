@@ -430,20 +430,18 @@ export default function GroupSettingsScreen({ navigation, route }) {
           </View>
           {canEdit && (
             <TouchableOpacity
-              style={s.groupEditBtn}
+              style={s.groupEditBtnText}
               onPress={() => openEditGroup(group)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <IconEdit size={12} color={colors.gray400} />
+              <Text style={s.groupEditText}>EDIT</Text>
             </TouchableOpacity>
           )}
           {canDelete && (
             <TouchableOpacity
-              style={s.groupEditBtn}
+              style={s.groupDeleteBtnText}
               onPress={() => deleteGroup(group)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <IconTrash size={12} color="#ef4444" />
+              <Text style={s.groupDeleteText}>DELETE</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -784,7 +782,10 @@ const s = StyleSheet.create({
   groupInfo: { flex: 1 },
   groupName: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
   groupMeta: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400, marginTop: 2 },
-  groupEditBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
+  groupEditBtnText: { paddingVertical: 5, paddingHorizontal: 9, borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc', marginLeft: 6 },
+  groupEditText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray600 },
+  groupDeleteBtnText: { paddingVertical: 5, paddingHorizontal: 9, borderRadius: radius.xs, borderWidth: 1, borderColor: '#fee2e2', backgroundColor: '#fef2f2', marginLeft: 6 },
+  groupDeleteText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: '#ef4444' },
   groupBody: { borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fafbfc', paddingHorizontal: 12, paddingVertical: 10 },
 
   // Table card

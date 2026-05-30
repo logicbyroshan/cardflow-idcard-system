@@ -1083,11 +1083,24 @@ class IDCardCardService(BaseService):
                                     uploaded_file = file_obj
                                     break
 
-                        new_value = field_data.get(img_field)  # None if not sent
-                        if new_value is None:
-                            new_value = normalized_field_data.get(str(img_field).strip().upper(), None)
+                        # Check if the field was explicitly sent in the payload (casing tolerant)
+                        was_sent = False
+                        new_value = None
 
-                        if uploaded_file is not None or new_value is not None:
+                        if img_field in field_data:
+                            was_sent = True
+                            new_value = field_data[img_field]
+                        else:
+                            img_field_upper = str(img_field).strip().upper()
+                            if img_field_upper in normalized_field_data:
+                                was_sent = True
+                                new_value = normalized_field_data[img_field_upper]
+
+                        # If explicitly sent as None/null or empty string, treat it as removal (new_value = "")
+                        if was_sent and (new_value is None or new_value == ''):
+                            new_value = ''
+
+                        if uploaded_file is not None or was_sent:
                             existing_value = existing_data.get(img_field, '')
                             image_counter += 1
                             result = ImageService.process_image_field(
@@ -1208,34 +1221,31 @@ class IDCardCardService(BaseService):
 
                 field_data = card.field_data or {}
 
-                if isinstance(value, str):
-                    # If this is an image field, process via ImageService to
-                    # canonicalize paths, convert bare filenames to PENDING:,
-                    # and handle removals. This mirrors update_card behavior.
-                    if cls.is_image_field_name_for_table(canonical_field, table.fields):
-                        existing_value = field_data.get(canonical_field, '')
-                        try:
-                            result = ImageService.process_image_field(
-                                field_name=canonical_field,
-                                new_value=value,
-                                existing_value=existing_value,
-                                client=table.group.client,
-                                card=card,
-                                uploaded_file=None,
-                                batch_counter=1,
-                                uploaded_by=None,
-                            )
-                            if result.success:
-                                field_data[canonical_field] = result.data.get('final_value', value)
-                            else:
-                                # Fallback to raw value if processing failed
-                                field_data[canonical_field] = value
-                        except Exception:
-                            field_data[canonical_field] = value
-                    else:
-                        field_data[canonical_field] = value.upper()
+                if cls.is_image_field_name_for_table(canonical_field, table.fields):
+                    existing_value = field_data.get(canonical_field, '')
+                    new_img_value = '' if (value is None or value == '') else value
+                    try:
+                        result = ImageService.process_image_field(
+                            field_name=canonical_field,
+                            new_value=new_img_value,
+                            existing_value=existing_value,
+                            client=table.group.client,
+                            card=card,
+                            uploaded_file=None,
+                            batch_counter=1,
+                            uploaded_by=None,
+                        )
+                        if result.success:
+                            field_data[canonical_field] = result.data.get('final_value', new_img_value)
+                        else:
+                            field_data[canonical_field] = new_img_value
+                    except Exception:
+                        field_data[canonical_field] = new_img_value
                 else:
-                    field_data[canonical_field] = value
+                    if isinstance(value, str):
+                        field_data[canonical_field] = value.upper()
+                    else:
+                        field_data[canonical_field] = value
 
                 card.field_data = field_data
                 if modified_by:

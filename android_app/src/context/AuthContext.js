@@ -28,6 +28,7 @@ export function AuthProvider({ children }) {
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
   const [isMpinCreated, setIsMpinCreated] = useState(false);
   const [isSilentAuthFailed, setIsSilentAuthFailed] = useState(false);
+  const [isSessionKicked, setIsSessionKicked] = useState(false);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -92,6 +93,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
+        const kicked = await AsyncStorage.getItem('adarsh_session_kicked');
+        if (kicked === 'true') {
+          setIsSessionKicked(true);
+        }
         await loadStoredAuth();
         const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
         if (stored) {
@@ -377,6 +382,38 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const handleSessionKicked = useCallback(async () => {
+    setUser(null);
+    setIsAuthenticated(false);
+    setIsImpersonating(false);
+    setOriginalUser(null);
+    setIsAppUnlocked(false);
+    setIsMpinCreated(false);
+    setIsSilentAuthFailed(false);
+    setIsSessionKicked(true);
+
+    await AsyncStorage.setItem('adarsh_session_kicked', 'true');
+    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    await AsyncStorage.removeItem('adarsh_impersonate_state');
+    await AsyncStorage.removeItem('adarsh_csrf_token');
+    await AsyncStorage.removeItem('adarsh_cookies');
+    await AsyncStorage.removeItem('adarsh_user_credentials');
+    await clearAuth();
+  }, []);
+
+  useEffect(() => {
+    const { registerSessionKickedCallback } = require('../api/client');
+    registerSessionKickedCallback(handleSessionKicked);
+    return () => {
+      registerSessionKickedCallback(null);
+    };
+  }, [handleSessionKicked]);
+
+  const resolveKicked = useCallback(async () => {
+    setIsSessionKicked(false);
+    await AsyncStorage.removeItem('adarsh_session_kicked');
+  }, []);
+
   const value = {
     user,
     isLoading,
@@ -386,6 +423,7 @@ export function AuthProvider({ children }) {
     isAppUnlocked,
     isMpinCreated,
     isSilentAuthFailed,
+    isSessionKicked,
     setIsSilentAuthFailed,
     setIsAppUnlocked,
     login,
@@ -399,6 +437,7 @@ export function AuthProvider({ children }) {
     changeMpin,
     forgotMpin,
     resetMpinWithPassword,
+    resolveKicked,
   };
 
   return (

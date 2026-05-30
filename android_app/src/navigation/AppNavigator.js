@@ -32,15 +32,24 @@ import ClientGroupsScreen from '../screens/ClientGroupsScreen';
 import ReprintDetailScreen from '../screens/ReprintDetailScreen';
 import PermissionsScreen from '../screens/PermissionsScreen';
 import GroupSettingsScreen from '../screens/GroupSettingsScreen';
+import KickedScreen from '../screens/KickedScreen';
 
 const Stack = createNativeStackNavigator();
 
 
 export default function AppNavigator() {
-  const { isAuthenticated, isLoading, isAppUnlocked } = useAuth();
+  const { isAuthenticated, isLoading, isAppUnlocked, isSessionKicked } = useAuth();
 
   if (isLoading) {
     return null;
+  }
+
+  if (isSessionKicked) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Kicked" component={KickedScreen} />
+      </Stack.Navigator>
+    );
   }
 
   return (

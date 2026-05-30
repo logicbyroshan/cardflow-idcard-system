@@ -132,11 +132,42 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         const { ok: cOk, data: cData } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
         if (cOk && cData?.success) {
           const cleaned = cleanFieldData(cData.data?.field_data || {});
+          const activeFields = fData?.data?.fields || fields || [];
+          
           Object.keys(cleaned).forEach(k => {
             if (typeof cleaned[k] === 'string') {
-              cleaned[k] = cleaned[k].toUpperCase();
+              // Check if key is an image field
+              const isImg = activeFields.some(f => {
+                if (f.name === k || (f.name || '').toUpperCase() === k.toUpperCase()) {
+                  const t = (f.type || '').toLowerCase();
+                  const n = (f.name || '').toLowerCase();
+                  return t.includes('image') || t.includes('photo') || n.includes('photo') || n.includes('sign') || n.includes('pic');
+                }
+                return false;
+              });
+              
+              if (!isImg) {
+                cleaned[k] = cleaned[k].toUpperCase();
+              }
             }
           });
+
+          // Fallback: Populate main photo if missing or placeholder and cData.data.photo_url exists
+          activeFields.forEach(f => {
+            const nameLower = (f.name || '').toLowerCase();
+            const typeLower = (f.type || '').toLowerCase();
+            const isImg = typeLower.includes('image') || typeLower.includes('photo') || nameLower.includes('photo') || nameLower.includes('pic') || nameLower.includes('image');
+            
+            if (isImg) {
+              const isMainPhoto = nameLower === 'photo' || nameLower === 'student_photo' || nameLower === 'student photo' || nameLower === 'image';
+              const val = cleaned[f.name];
+              const isEmpty = !val || val === 'NOT_FOUND' || String(val).startsWith('PENDING:');
+              if (isEmpty && isMainPhoto && cData.data?.photo_url) {
+                cleaned[f.name] = cData.data.photo_url;
+              }
+            }
+          });
+
           setValues(cleaned);
           setTableName(cData.data?.table_name || '');
         } else if (!cOk) {

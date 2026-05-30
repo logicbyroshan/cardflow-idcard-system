@@ -215,24 +215,6 @@ def api_client_create(request):
         photo, file_error = _validate_optional_image_upload(photo)
         if file_error:
             return file_error
-        # Handle explicit logo removal request when no new photo uploaded
-        remove_logo_flag = data.get('remove_logo')
-        try:
-            remove_requested = str(remove_logo_flag).lower() in ('1', 'true', 'yes')
-        except Exception:
-            remove_requested = False
-        if remove_requested and not photo:
-            # Delete existing logo file safely
-            client_obj = Client.objects.filter(id=client_id).first()
-            if client_obj:
-                logo_field = getattr(client_obj, 'logo', None)
-                try:
-                    if logo_field and logo_field.name:
-                        logo_field.delete(save=False)
-                except Exception:
-                    logger.warning('Could not delete client logo file for client_id=%s (remove flag)', client_id)
-                client_obj.logo = None
-                client_obj.save(update_fields=['logo'])
         
         result = ClientService.create(data, request=request, photo=photo)
 

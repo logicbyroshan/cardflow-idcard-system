@@ -557,7 +557,10 @@ export default function StaffManageScreen({ navigation, route }) {
         </View>
         {perms.canManage && (
           <TouchableOpacity style={s.addBtn} onPress={openCreate}>
-            <LinearGradient colors={gradients.brand} style={s.addBtnInner}><IconPlus size={16} color="#fff" /></LinearGradient>
+            <LinearGradient colors={gradients.brand} style={s.addBtnInner}>
+              <IconPlus size={14} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={s.addBtnText}>ADD NEW</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
       </View>
@@ -753,8 +756,9 @@ const s = StyleSheet.create({
   searchSection: { flexDirection: 'row', paddingHorizontal: 16, marginVertical: 12 },
   searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: radius.xs, paddingHorizontal: 12, height: 44, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100, marginRight: 10 },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray800 },
-  addBtn: { width: 44, height: 44, borderRadius: radius.xs, ...shadows.md },
-  addBtnInner: { flex: 1, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
+  addBtn: { height: 44, borderRadius: radius.xs, ...shadows.md },
+  addBtnInner: { flex: 1, borderRadius: radius.xs, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  addBtnText: { color: '#fff', fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold' },
   list: { padding: 12, paddingBottom: 100 },
   card: { backgroundColor: '#fff', borderRadius: radius.xs, padding: 12, marginBottom: 12, ...shadows.sm, borderWidth: 1, borderColor: colors.gray100 },
   cardTop: { flexDirection: 'row', alignItems: 'center' },
