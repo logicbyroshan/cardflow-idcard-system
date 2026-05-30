@@ -366,6 +366,9 @@ class PermissionService:
             if client_profile.status != 'active':
                 return False
 
+            if cls.is_guest_user(user) and perm_key == 'perm_mobile_app':
+                return True
+
             # ID card lists are controlled by the client profile toggle.
             if perm_key in cls.IDCARD_LIST_PERMISSIONS:
                 return bool(getattr(client_profile, perm_key, False))
@@ -594,6 +597,8 @@ class PermissionService:
             for perm in cls.ALL_PERMISSION_KEYS:
                 if perm in cls.CLIENT_BLOCKED_PERMS:
                     context[perm] = False
+                elif is_guest and perm == 'perm_mobile_app':
+                    context[perm] = True
                 elif active and profile and hasattr(profile, perm):
                     context[perm] = bool(getattr(profile, perm, False))
                 else:

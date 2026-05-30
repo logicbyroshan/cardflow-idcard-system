@@ -502,6 +502,19 @@ class PermissionTests(TestCase):
         self.assertTrue(ctx['perm_reprint_request_list'])
         self.assertTrue(ctx['perm_confirmed_list'])
 
+    def test_guest_permission_context_enables_mobile_app(self):
+        from core.services.permission_service import PermissionService
+
+        guest_user, _guest_client = _create_client_user('guest-mobile@test.com', 'clientpass1')
+        guest_user.role = 'guest_user'
+        guest_user.save(update_fields=['role'])
+
+        self.assertTrue(PermissionService.has(guest_user, 'perm_mobile_app'))
+
+        ctx = PermissionService.get_permission_context(guest_user)
+
+        self.assertTrue(ctx['perm_mobile_app'])
+
 
 class PermissionValidationMiddlewareTests(TestCase):
     def setUp(self):
