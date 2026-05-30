@@ -28,7 +28,7 @@ Refactored into sub-partials for maintainability.
                 <span class="text-xs text-gray-500">Operator avatar</span>
             </div>
 
-            {# client assignment removed: assistant owner is the creating client #}
+            {% include 'partials/staff/staff-drawer-client-assignment.html' %}
             
             {% include 'partials/staff/staff-drawer-info.html' %}
             

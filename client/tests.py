@@ -577,6 +577,35 @@ class ClientAccessServiceAdvancedTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Request List')
 
+    def test_client_download_page_shows_reprint_controls_for_request_permission_only(self):
+        self.client_owner.client_profile.perm_idcard_setting_list = False
+        self.client_owner.client_profile.perm_idcard_pending_list = False
+        self.client_owner.client_profile.perm_idcard_verified_list = False
+        self.client_owner.client_profile.perm_idcard_pool_list = False
+        self.client_owner.client_profile.perm_idcard_approved_list = False
+        self.client_owner.client_profile.perm_idcard_download_list = True
+        self.client_owner.client_profile.perm_idcard_reprint_list = False
+        self.client_owner.client_profile.perm_reprint_request_list = True
+        self.client_owner.client_profile.perm_confirmed_list = False
+        self.client_owner.client_profile.save(update_fields=[
+            'perm_idcard_setting_list',
+            'perm_idcard_pending_list',
+            'perm_idcard_verified_list',
+            'perm_idcard_pool_list',
+            'perm_idcard_approved_list',
+            'perm_idcard_download_list',
+            'perm_idcard_reprint_list',
+            'perm_reprint_request_list',
+            'perm_confirmed_list',
+        ])
+
+        self.client.login(username='owner-adv@test.com', password='pass1234')
+
+        response = self.client.get(f'/panel/client/table/{self.table_a.id}/actions/?status=download')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="openReprintModalBtn"')
+        self.assertContains(response, 'Request List')
+
 
 class ClientDashboardServiceTests(TestCase):
     def test_dashboard_photo_url_maps_mediafiles_under_media_route(self):
@@ -1662,7 +1691,12 @@ class ClientApiIntegrationTests(TestCase):
 
         self.assertEqual(detail_resp.status_code, 200)
         detail_payload = detail_resp.json().get('data', {})
-        self.assertEqual(detail_payload.get('assignment_scopes'), [])
+        scopes = detail_payload.get('assignment_scopes', [])
+        self.assertEqual(len(scopes), 1)
+        self.assertEqual(scopes[0].get('scope_type'), 'group')
+        self.assertEqual(scopes[0].get('scope_id'), self.group.id)
+        self.assertEqual(scopes[0].get('classes'), ['10'])
+        self.assertEqual(scopes[0].get('sections'), ['A'])
         self.assertEqual(detail_payload.get('allowed_classes'), ['10'])
         self.assertEqual(detail_payload.get('allowed_sections'), ['A'])
 

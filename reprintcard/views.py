@@ -232,7 +232,11 @@ def _require_admin_role(user):
 
 def _can_use_reprint_cards(user) -> bool:
     """Permission for opening reprint picker and creating reprint requests."""
-    return PermissionService.has(user, 'perm_idcard_reprint_list')
+    if PermissionService.has(user, 'perm_idcard_reprint_list'):
+        return True
+    if PermissionService.is_client_role(user):
+        return PermissionService.has(user, 'perm_reprint_request_list')
+    return False
 
 
 def _can_view_reprint_request_list(user) -> bool:
@@ -240,7 +244,7 @@ def _can_view_reprint_request_list(user) -> bool:
     if PermissionService.has(user, 'perm_reprint_request_list'):
         return True
     if PermissionService.is_client_role(user):
-        return PermissionService.has(user, 'perm_idcard_reprint_list')
+        return PermissionService.has(user, 'perm_idcard_reprint_list') or PermissionService.has(user, 'perm_reprint_request_list')
     return False
 
 
@@ -554,9 +558,13 @@ def api_reprint_step_counts(request, table_id):
 
 
 @require_http_methods(["GET"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_reprint_list(request, table_id):
     """List source IDCards (Download only) for Reprint List step."""
+    perm_err = _require_reprint_scope(request.user, 'cards')
+    if perm_err:
+        return perm_err
+
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -611,11 +619,15 @@ def api_reprint_list(request, table_id):
 
 
 @require_http_methods(["POST"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_reprint_request_create(request, table_id):
     """Create reprint requests for card IDs (goes to request list).
     Body: { "card_ids": [1, 2, 3], "reason": "optional" }
     """
+    perm_err = _require_reprint_scope(request.user, 'cards')
+    if perm_err:
+        return perm_err
+
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err

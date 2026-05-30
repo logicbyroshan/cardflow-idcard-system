@@ -454,6 +454,34 @@ class ClientStaffService(BaseService):
                 'assignment_scopes': staff.assignment_scopes or [],
                 'client_permissions': client_permissions,
             }
+
+            if not detail['assignment_scopes']:
+                legacy_classes = list(staff.allowed_classes or [])
+                legacy_sections = list(staff.allowed_sections or [])
+                group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                table_ids = [
+                    int(v) for v in (staff.assigned_table_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                ]
+
+                if len(legacy_classes) == 1 and len(legacy_sections) == 1:
+                    scope_type = 'group'
+                    scope_id = group_ids[0] if len(group_ids) == 1 else None
+                    if scope_id is None and len(table_ids) == 1:
+                        scope_type = 'table'
+                        scope_id = table_ids[0]
+
+                    if scope_id is not None:
+                        detail['assignment_scopes'] = [{
+                            'scope_type': scope_type,
+                            'scope_id': scope_id,
+                            'group_id': group_ids[0] if group_ids else scope_id,
+                            'classes': legacy_classes,
+                            'sections': legacy_sections,
+                            'branches': list(staff.allowed_branches or []),
+                            'class_sections': {legacy_classes[0]: legacy_sections},
+                        }]
+
             # Include all permissions
             for perm in cls.STAFF_PERMISSION_FIELDS:
                 detail[perm] = getattr(staff, perm, False)
