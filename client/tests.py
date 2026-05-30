@@ -1661,7 +1661,12 @@ class ClientApiIntegrationTests(TestCase):
 
         self.assertEqual(detail_resp.status_code, 200)
         detail_payload = detail_resp.json().get('data', {})
-        self.assertEqual(detail_payload.get('assignment_scopes'), [])
+        scopes = detail_payload.get('assignment_scopes', [])
+        self.assertEqual(len(scopes), 1)
+        self.assertEqual(scopes[0].get('scope_type'), 'group')
+        self.assertEqual(scopes[0].get('scope_id'), self.group.id)
+        self.assertEqual(scopes[0].get('classes'), ['10'])
+        self.assertEqual(scopes[0].get('sections'), ['A'])
         self.assertEqual(detail_payload.get('allowed_classes'), ['10'])
         self.assertEqual(detail_payload.get('allowed_sections'), ['A'])
 
