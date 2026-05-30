@@ -618,6 +618,33 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertEqual(payload.get('status'), 'ok')
 		self.assertGreaterEqual(payload.get('total', 0), 1)
 
+	def test_request_list_visible_for_client_with_request_permission_only(self):
+		self.client_obj.perm_idcard_reprint_list = False
+		self.client_obj.perm_reprint_request_list = True
+		self.client_obj.save(update_fields=['perm_idcard_reprint_list', 'perm_reprint_request_list'])
+
+		self.client.force_login(self.client_user)
+
+		page_response = self.client.get(self._url('reprint_cards') + '?step=request_list')
+		self.assertEqual(page_response.status_code, 200)
+		self.assertContains(page_response, 'Request List')
+
+		api_response = self.client.get(self._url('api_request_list'))
+		self.assertEqual(api_response.status_code, 200)
+		self.assertEqual(api_response.json().get('status'), 'ok')
+
+		list_response = self.client.get(self._url('api_reprint_list'))
+		self.assertEqual(list_response.status_code, 200)
+		self.assertEqual(list_response.json().get('status'), 'ok')
+
+		create_response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({'card_ids': [self.card_a.id]}),
+			content_type='application/json',
+		)
+		self.assertEqual(create_response.status_code, 200)
+		self.assertEqual(create_response.json().get('status'), 'ok')
+
 	def test_reprint_list_normalizes_legacy_mediafiles_image_paths(self):
 		from idcards.models import IDCardTable, IDCard
 
