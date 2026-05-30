@@ -6912,7 +6912,7 @@ def api_app_version(request):
     """
     Returns the latest mobile app version from settings, and redirect/installation URLs.
     """
-    latest_version = getattr(settings, 'LATEST_MOBILE_VERSION', '1.0.55')
+    latest_version = getattr(settings, 'LATEST_MOBILE_VERSION', '1.0.56')
     return JsonResponse({
         'success': True,
         'latest_version': latest_version,

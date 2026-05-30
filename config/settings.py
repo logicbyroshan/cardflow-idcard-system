@@ -848,7 +848,7 @@ def _get_app_version() -> str:
 
 
 APP_VERSION = _get_app_version()
-LATEST_MOBILE_VERSION = os.getenv('LATEST_MOBILE_VERSION', '1.0.55')
+LATEST_MOBILE_VERSION = os.getenv('LATEST_MOBILE_VERSION', '1.0.56')
 
 try:
     MOBILE_PWA_CACHE_GENERATION = max(1, int(os.getenv('MOBILE_PWA_CACHE_GENERATION', '2')))
