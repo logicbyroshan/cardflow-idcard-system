@@ -12,6 +12,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import NetworkGuard from './src/components/NetworkGuard';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { colors } from './src/theme';
+import UpdatePromptModal from './src/components/UpdatePromptModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -132,6 +133,7 @@ function AppContent() {
           <AppNavigator />
         </NavigationContainer>
       </NetworkGuard>
+      <UpdatePromptModal />
     </View>
   );
 }

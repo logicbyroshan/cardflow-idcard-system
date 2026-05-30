@@ -33,6 +33,7 @@ urlpatterns = [
     path('profile/delete-request/', views.api_profile_delete_request, name='api_profile_delete_request'),
     path('search/', views.api_search, name='api_search'),
     path('server-info/', views.api_server_info, name='api_server_info'),
+    path('app-version/', views.api_app_version, name='api_app_version'),
     path('notifications/', views.api_notifications_list, name='api_notifications_list'),
     path('tables/', views.api_tables_list, name='api_tables_list'),
     path('groups/', views.api_groups_list, name='api_groups_list'),

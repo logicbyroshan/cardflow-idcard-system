@@ -3848,7 +3848,10 @@ def api_filter_options(request, table_id):
     elif status_filter in ('verified', 'approved'):
         cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-status_changed_at', '-id')
     else:
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-created_at', '-id')
+        from django.db.models.functions import Coalesce
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).annotate(
+            _status_sort_at=Coalesce('status_changed_at', 'created_at')
+        ).order_by('-_status_sort_at', '-id')
 
     cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs)
 
@@ -4227,7 +4230,70 @@ def api_card_update(request, table_id, card_id):
         if not update_result.success:
             return JsonResponse({'success': False, 'message': update_result.message or 'Update failed'}, status=400)
 
-        return JsonResponse({'success': True, 'message': 'Card updated successfully'})
+        # Construct exact same card serialization as returned in get_cards
+        from django.utils.timezone import localtime
+        from mediafiles.utils import get_card_photo_url
+        from core.services.idcard_card_service import IDCardService
+
+        card.refresh_from_db()
+        fd = card.field_data or {}
+        detected_name_field = IDCardService._get_name_field(table)
+        name = None
+        if detected_name_field:
+            name = fd.get(detected_name_field)
+            if not name:
+                for k, v in fd.items():
+                    if k.upper() == detected_name_field.upper():
+                        name = v
+                        break
+        name = name or fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+        id_number = (
+            fd.get('ID') or 
+            fd.get('id') or 
+            fd.get('ID_NUMBER') or 
+            fd.get('id_number') or
+            fd.get('ROLL_NO') or
+            fd.get('roll_no') or
+            ''
+        )
+        class_designation = (
+            fd.get('CLASS') or 
+            fd.get('class') or 
+            fd.get('DESIGNATION') or 
+            fd.get('designation') or
+            ''
+        )
+        sanitized_field_data = {}
+        for key, val in fd.items():
+            is_image_field = False
+            for field in (table.fields or []):
+                if field.get('name') == key or field.get('name', '').upper() == key.upper():
+                    is_image_field = field.get('type') in ['photo', 'image', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+                    break
+            if not is_image_field and val and isinstance(val, str) and val.startswith('PENDING:'):
+                sanitized_field_data[key] = ''
+            else:
+                sanitized_field_data[key] = val
+        card_data = {
+            'id': card.id,
+            'sr_no': 1,
+            'name': name,
+            'id_number': id_number,
+            'class_designation': class_designation,
+            'photo_url': get_card_photo_url(card, fd),
+            'field_data': sanitized_field_data,
+            'status': card.status,
+            'status_display': card.get_status_display(),
+            'downloaded_date': localtime(card.downloaded_at).strftime('%Y-%m-%d') if card.downloaded_at else '',
+            'created_at': localtime(card.created_at).strftime('%d %b %Y, %H:%M'),
+            'updated_at': localtime(card.updated_at).strftime('%d %b %Y, %H:%M'),
+        }
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Card updated successfully',
+            'card': card_data
+        })
     except Exception:
         logger.exception('Card update error')
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
@@ -6849,6 +6915,21 @@ def api_client_permissions(request, client_user_id):
     client_user = get_object_or_404(User, id=client_user_id)
     perms = PermissionService.get_permission_context(client_user)
     return JsonResponse({'success': True, 'data': perms.get('user_permissions', {})})
+
+@require_mobile_client(allow_public=True)
+@require_http_methods(['GET'])
+def api_app_version(request):
+    """
+    Returns the latest mobile app version from settings, and redirect/installation URLs.
+    """
+    latest_version = getattr(settings, 'LATEST_MOBILE_VERSION', '1.0.55')
+    return JsonResponse({
+        'success': True,
+        'latest_version': latest_version,
+        'play_store_url': 'https://play.google.com/store/apps/details?id=com.adarshid.app',
+        'market_url': 'market://details?id=com.adarshid.app'
+    })
+
 
 @require_mobile_client(allow_public=True)
 @require_http_methods(['GET'])

@@ -1146,6 +1146,15 @@ class IDCardCardService(BaseService):
                 elif uploaded_by and hasattr(uploaded_by, 'username'):
                     card.modified_by = uploaded_by.username
 
+                # Update modification dates so card bubbles to top on edit
+                from django.utils import timezone
+                now_dt = timezone.now()
+                card.status_changed_at = now_dt
+                if card.status == 'download':
+                    card.downloaded_at = now_dt
+                elif card.status == 'pool':
+                    card.deleted_at = now_dt
+
                 # Status changes MUST go through WorkflowService.transition().
                 if status:
                     logger.warning(
@@ -1250,6 +1259,15 @@ class IDCardCardService(BaseService):
                 card.field_data = field_data
                 if modified_by:
                     card.modified_by = modified_by
+
+                # Update modification dates so card bubbles to top on edit
+                from django.utils import timezone
+                now_dt = timezone.now()
+                card.status_changed_at = now_dt
+                if card.status == 'download':
+                    card.downloaded_at = now_dt
+                elif card.status == 'pool':
+                    card.deleted_at = now_dt
                 card.save()
                 cls._bump_table_cache_versions(table)
 

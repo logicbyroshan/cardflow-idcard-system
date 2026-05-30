@@ -481,10 +481,10 @@ export default function CardListScreen({ navigation, route }) {
       return !!(perms.perm_idcard_verify || perms.perm_idcard_approve);
     }
     if (currentStatus === 'approved') {
-      return !!perms.perm_idcard_approve;
+      return !isClientRole && !!perms.perm_idcard_approve;
     }
     if (currentStatus === 'download') {
-      return !!perms.perm_idcard_retrieve;
+      return !isClientRole && !!perms.perm_idcard_retrieve;
     }
     if (currentStatus === 'pool') {
       return !!(perms.perm_idcard_retrieve || isClientRole);
@@ -502,8 +502,8 @@ export default function CardListScreen({ navigation, route }) {
     const canEdit = perms.perm_idcard_edit && (!isClient || ['pending', 'verified'].includes(currentStatus));
     const canDelete = currentStatus === 'pending' && perms.perm_idcard_delete;
     const statusChangeHandler = isClient && (
-      (currentStatus === 'approved' && !perms.perm_idcard_approve) ||
-      (currentStatus === 'download' && !perms.perm_idcard_retrieve)
+      currentStatus === 'approved' ||
+      currentStatus === 'download'
     ) ? undefined : handleStatusChange;
 
     return (
@@ -650,9 +650,9 @@ export default function CardListScreen({ navigation, route }) {
               {currentStatus === 'verified' && perms.perm_idcard_approve && <FBtn icon="check-double" label="APPROVE SELECTED" disabled={bulkLoading} onPress={() => handleBulkStatus('approved')} />}
               {currentStatus === 'verified' && perms.perm_idcard_verify  && <FBtn icon="redo"         label="UNVERIFY SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
               
-              {currentStatus === 'approved' && perms.perm_idcard_approve && <FBtn icon="redo"         label="DISAPPROVE SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
+              {currentStatus === 'approved' && perms.perm_idcard_approve && !isClientRole && <FBtn icon="redo"         label="DISAPPROVE SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
               
-              {currentStatus === 'download' && perms.perm_idcard_retrieve && <FBtn icon="redo"         label="RETRIEVE SELECTED" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              {currentStatus === 'download' && perms.perm_idcard_retrieve && !isClientRole && <FBtn icon="redo"         label="RETRIEVE SELECTED" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
               
               {currentStatus === 'pool'     && (perms.perm_idcard_retrieve || isClientRole) && <FBtn icon="redo"         label="RETRIEVE FROM POOL" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
               {currentStatus === 'pool'     && perms.perm_idcard_delete_from_pool && !isClientRole && <FBtn icon="trash" label="PERMANENTLY DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('permanent_delete')} />}
@@ -675,7 +675,16 @@ export default function CardListScreen({ navigation, route }) {
         onClose={() => setShowForm(false)}
         tableId={tableId}
         cardId={editingCardId}
-        onSuccess={onRefresh}
+        onSuccess={(updatedCard) => {
+          if (editingCardId && updatedCard) {
+            setCards(prev => {
+              const filtered = prev.filter(c => c.id !== editingCardId);
+              return [updatedCard, ...filtered];
+            });
+          } else {
+            onRefresh();
+          }
+        }}
       />
       <ConfirmModal
         visible={confirmModal.visible}

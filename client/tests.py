@@ -1276,7 +1276,7 @@ class ClientStaffServicePermissionTests(TestCase):
             'name': 'Custom Only Staff',
             'password': 'StaffOnly@123',
             'phone': '',
-            'email': '',
+            'email': 'custom-only-staff@example.com',
         })
         self.assertTrue(result.success, msg=result.message)
 
@@ -1291,7 +1291,7 @@ class ClientStaffServicePermissionTests(TestCase):
             'name': 'Missing Credentials Staff',
             'phone': '',
             'password': '',
-            'email': '',
+            'email': 'missing-credentials-staff@example.com',
         })
         self.assertFalse(result.success)
         self.assertIn('phone number is required', result.message.lower())
@@ -1609,6 +1609,7 @@ class ClientApiIntegrationTests(TestCase):
 
         payload = {
             'name': 'Scoped Staff',
+            'email': 'scoped-staff@example.com',
             'phone': '7777777777',
             'assigned_groups': [self.table.id],
             'assignment_id_source': 'table',
@@ -2513,7 +2514,7 @@ class ClientActivationPasswordFlowTests(TestCase):
 
         result = ClientService.create({
             'name': 'Missing Credentials Client',
-            'email': '',
+            'email': 'missing-credentials-client@example.com',
             'phone': '',
             'password': '',
             'is_active': False,
@@ -2528,7 +2529,7 @@ class ClientActivationPasswordFlowTests(TestCase):
 
         result = ClientService.create({
             'name': 'Custom No Contact Client',
-            'email': '',
+            'email': 'custom-no-contact-client@example.com',
             'phone': '',
             'password': 'ClientOnly@123',
             'is_active': False,

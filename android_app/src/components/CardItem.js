@@ -32,6 +32,7 @@ const CardItem = React.memo(function CardItem({
   permissions = {} 
 }) {
   const [imageErrors, setImageErrors] = React.useState({});
+  const isClient = permissions?.role === 'client' || permissions?.role === 'client_staff';
   const fd = item.field_data || {};
   const orderedFields = item.ordered_fields || [];
   let imageFields = [];
@@ -204,7 +205,7 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Approved List Action Button */}
-          {currentStatus === 'approved' && onStatusChange && hasPerm('perm_idcard_approve') && (
+          {currentStatus === 'approved' && onStatusChange && hasPerm('perm_idcard_approve') && !isClient && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.red }]} 
               onPress={() => onStatusChange(item.id, 'verified')}
@@ -214,7 +215,7 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Download List Action Buttons */}
-          {currentStatus === 'download' && onStatusChange && hasPerm('perm_idcard_retrieve') && (
+          {currentStatus === 'download' && onStatusChange && hasPerm('perm_idcard_retrieve') && !isClient && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
               onPress={() => onStatusChange(item.id, 'pending')}

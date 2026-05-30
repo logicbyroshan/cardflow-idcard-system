@@ -234,7 +234,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       if (data?.success) {
         showToast(data.message || (isEdit ? 'Updated!' : 'Saved!'), 'success');
         setTimeout(() => {
-          onSuccess && onSuccess();
+          onSuccess && onSuccess(data.card);
           onClose();
         }, 800);
       } else {
@@ -247,21 +247,6 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
   const handlePickFromGallery = async () => {
     const fieldName = photoMenu.field; // Capture BEFORE closing menu (avoids stale closure)
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Gallery Permission Required',
-          'Gallery access is required to select photos. Please enable it in system settings.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => {
-              if (Platform.OS === 'ios') Linking.openURL('app-settings:');
-              else Linking.openSettings();
-            }}
-          ]
-        );
-        return;
-      }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.8,
@@ -285,7 +270,18 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         });
       }
     } catch (e) {
-      showToast('Error picking image', 'error');
+      console.warn('[Gallery] Error or permission denied:', e);
+      Alert.alert(
+        'Gallery Permission Required',
+        'Gallery access is required to select photos. Please enable it in system settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => {
+            if (Platform.OS === 'ios') Linking.openURL('app-settings:');
+            else Linking.openSettings();
+          }}
+        ]
+      );
     }
   };
 
@@ -459,7 +455,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
               {photoMenu.hasImage && (
                 <HStack spacing={14} style={s.menuItem} align="center">
                   <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
-                    setValues(prev => ({ ...prev, [photoMenu.field]: null }));
+                    setValues(prev => ({ ...prev, [photoMenu.field]: '' }));
                     setPhotoMenu(p => ({ ...p, visible: false }));
                   }}>
                     <View style={[s.menuIconBox, { backgroundColor: '#fef2f2' }]}><DynamicIcon name="trash-alt" size={14} color="#ef4444" /></View>

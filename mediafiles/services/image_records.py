@@ -210,6 +210,13 @@ class ImageRecordsMixin:
                 except Exception as cm_err:
                     logger.warning("Failed to delete CardMedia for %s: %s", field_name, cm_err)
 
+                # Clear legacy photo ImageField if primary photo is being removed
+                if field_name.upper() == 'PHOTO' and hasattr(card, 'photo') and card.photo:
+                    try:
+                        card.photo.delete(save=False)
+                    except Exception as photo_err:
+                        logger.warning("Failed to delete legacy card.photo: %s", photo_err)
+
         return MediaResult(
             success=True,
             data={'final_value': '', 'action': 'removal'},

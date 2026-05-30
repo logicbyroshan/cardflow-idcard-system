@@ -574,7 +574,10 @@ class ClientCardService(BaseService):
             elif status_filter in ('verified', 'approved'):
                 cards_query = IDCard.objects.filter(table=table).order_by('-status_changed_at', '-id')
             else:
-                cards_query = IDCard.objects.filter(table=table).order_by('-created_at', '-id')
+                from django.db.models.functions import Coalesce
+                cards_query = IDCard.objects.filter(table=table).annotate(
+                    _status_sort_at=Coalesce('status_changed_at', 'created_at')
+                ).order_by('-_status_sort_at', '-id')
             
             if status_filter:
                 cards_query = cards_query.filter(status=status_filter)
