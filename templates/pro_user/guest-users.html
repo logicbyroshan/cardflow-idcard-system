@@ -53,6 +53,13 @@
     background: #fff;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
     overflow: hidden;
+    transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  }
+
+  .guest-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    border-color: #c7d4e7;
   }
 
   .guest-head {
@@ -74,6 +81,59 @@
     margin: 4px 0 0;
     color: var(--color-slate-500);
     font-size: 12px;
+  }
+
+  .guest-hero {
+    background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 54%, #ffffff 100%);
+    border-color: #ccd8ec;
+  }
+
+  .guest-hero .guest-head {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.3));
+    backdrop-filter: blur(10px);
+  }
+
+  .guest-hero-copy {
+    display: grid;
+    gap: 10px;
+    max-width: 900px;
+  }
+
+  .guest-hero-note {
+    margin: 0;
+    padding: 12px 14px;
+    border-left: 4px solid var(--color-primary);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--color-slate-700);
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .guest-quick-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .guest-fact {
+    padding: 12px 14px;
+    border: 1px solid #dbe5f1;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .guest-fact strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #1f2937;
+    font-size: 12px;
+  }
+
+  .guest-fact span {
+    color: var(--color-slate-500);
+    font-size: 12px;
+    line-height: 1.45;
   }
 
   .guest-body {
@@ -247,9 +307,28 @@
     <div class="guest-inner">
       <section class="guest-card">
         <div class="guest-head">
-          <div>
-            <h2>Guest Sandbox Users</h2>
-            <p>Guest accounts behave like client accounts, but their data stays inside sandbox client profiles.</p>
+          <div class="guest-hero-copy">
+            <div>
+              <h2>Guest Sandbox Users</h2>
+              <p>Guest accounts behave like client accounts, but their data stays inside sandbox client profiles.</p>
+            </div>
+            <p class="guest-hero-note">
+              Changes made here are intentionally sandboxed. You can create a guest account, convert an existing client, or restore it later without affecting the live client workflow.
+            </p>
+            <div class="guest-quick-facts">
+              <div class="guest-fact">
+                <strong>Sandbox first</strong>
+                <span>Guest records remain isolated from normal client management.</span>
+              </div>
+              <div class="guest-fact">
+                <strong>Safe rollback</strong>
+                <span>Convert and restore actions are both available from this page.</span>
+              </div>
+              <div class="guest-fact">
+                <strong>Fast setup</strong>
+                <span>Create demo logins with a password and optional email.</span>
+              </div>
+            </div>
           </div>
           <div class="guest-badges">
             <span class="guest-pill"><i class="fa-solid fa-user-secret"></i> Sandbox mode</span>
