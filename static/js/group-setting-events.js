@@ -98,9 +98,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Delete button click handler
     if (GSP.deleteBtn) {
-        GSP.deleteBtn.addEventListener('click', () => {
+        GSP.deleteBtn.addEventListener('click', async () => {
             if (!GSP.selectedRow) return;
+            const tableId = GSP.selectedTableId || GSP.selectedRow.dataset.tableId;
             const name = GSP.selectedRow.dataset.tableName;
+
+            // Check table status counts before allowing deletion
+            try {
+                const resp = await ApiClient.get(`/api/table/${tableId}/status-counts/`);
+                const total = resp && resp.status_counts ? (resp.status_counts.total || 0) : 0;
+                if (total > 0) {
+                    showToast('Cannot delete table: it contains cards. Please move or delete all cards first.', 'error');
+                    return;
+                }
+            } catch (err) {
+                // If the check fails, fall back to showing server-side validation when attempting delete
+                console.warn('Could not verify table counts before delete', err);
+            }
+
             if (GSP.deleteStaffName) GSP.deleteStaffName.textContent = name;
             if (window.alpineOpenModal) window.alpineOpenModal('delete');
         });

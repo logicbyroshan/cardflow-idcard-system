@@ -1700,8 +1700,12 @@ def api_idcard_bulk_delete(request, table_id):
         
         result = IDCardService.bulk_delete(table_id, card_ids, delete_all)
         if result.success:
-            count = result.data.get('deleted_count', len(card_ids))
-            target_label = 'all cards' if delete_all else f'{count} card(s)'
+            # Support both legacy 'deleted_count' and new 'moved_count' keys
+            count = result.data.get('deleted_count') or result.data.get('moved_count') or len(card_ids)
+            if delete_all:
+                target_label = 'moved to pool (all cards)'
+            else:
+                target_label = f'deleted {count} card(s)'
             ActivityService.log_bulk_delete(request, target_label, count)
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:

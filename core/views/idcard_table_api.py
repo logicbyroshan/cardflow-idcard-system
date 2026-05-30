@@ -18,7 +18,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from accounts.rate_limit import rate_limit
 
-from idcards.models import IDCardTable
+from idcards.models import IDCardTable, IDCard
 from ..services import IDCardService
 from ..services.permission_service import api_require_permission, PermissionService
 
@@ -181,6 +181,13 @@ def api_idcard_table_delete(request, table_id):
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     try:
+        # Prevent deleting tables that still contain cards. Require explicit
+        # cleanup (move/delete) of cards before allowing table deletion.
+        if IDCard.objects.filter(table_id=table_id).exists():
+            return JsonResponse({
+                'success': False,
+                'message': 'Cannot delete table: it contains cards. Please move or delete all cards first.'
+            }, status=400)
         # Client users: soft-delete only
         if PermissionService.is_client_role(request.user):
             table.deleted_by_client = True

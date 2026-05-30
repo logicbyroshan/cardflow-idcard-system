@@ -63,10 +63,31 @@ class IDCardBulkService(BaseService):
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
 
+            # If delete_all is requested, instead of deleting we move all cards
+            # to the 'pool' status so they become available for reprint/requests.
+            from django.db import transaction
+
             if delete_all:
-                target_qs = IDCard.objects.filter(table=table)
-            else:
-                target_qs = IDCard.objects.filter(table=table, id__in=card_ids or [])
+                with transaction.atomic():
+                    locked_qs = IDCard.objects.select_for_update().filter(table=table)
+                    # Update status to 'pool' for all matching cards
+                    moved_count = locked_qs.update(status='pool')
+
+                try:
+                    CacheVersionService.bump('mob_filter', int(table.id))
+                    CacheVersionService.bump('class_section', int(table.group.client_id))
+                    CacheVersionService.bump('global_search', 'all')
+                except Exception as exc:
+                    logger.debug('IDCardBulkService cache version bump failed: %s', exc)
+
+                return ServiceResult(
+                    success=True,
+                    message=f'{moved_count} cards moved to pool successfully!',
+                    data={'moved_count': moved_count}
+                )
+
+            # Non-delete_all path: delete selected card ids (legacy behavior)
+            target_qs = IDCard.objects.filter(table=table, id__in=card_ids or [])
 
             # ── Step 1: harvest image paths without loading full model objects ──
             # Only select the two columns we need — avoids fetching field_data JSON
@@ -85,10 +106,6 @@ class IDCardBulkService(BaseService):
             image_paths = [p for p in set(image_paths) if p]
             legacy_photos = [p for p in set(legacy_photos) if p]
 
-            # ── Step 2: SQL DELETE inside a short atomic transaction ──
-            # Files are removed only after commit to avoid DB/file drift.
-            from django.db import transaction
-
             def _delete_media_after_commit():
                 from mediafiles.services import ImageService
                 from django.core.files.storage import default_storage
@@ -106,11 +123,10 @@ class IDCardBulkService(BaseService):
                     except Exception as e:
                         logger.warning("bulk_delete: could not delete photo %s: %s", path, e)
 
+            # ── Step 2: SQL DELETE inside a short atomic transaction ──
+            # Files are removed only after commit to avoid DB/file drift.
             with transaction.atomic():
-                if delete_all:
-                    locked_qs = IDCard.objects.select_for_update().filter(table=table)
-                else:
-                    locked_qs = IDCard.objects.select_for_update().filter(table=table, id__in=card_ids or [])
+                locked_qs = IDCard.objects.select_for_update().filter(table=table, id__in=card_ids or [])
                 deleted_count = locked_qs.count()
                 locked_qs.delete()
                 transaction.on_commit(_delete_media_after_commit)
