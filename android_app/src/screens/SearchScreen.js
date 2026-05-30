@@ -130,6 +130,7 @@ export default function SearchScreen({ navigation }) {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <View style={s.empty}>
               <View style={s.emptyIcon}><IconSearch size={24} color={colors.gray300} /></View>

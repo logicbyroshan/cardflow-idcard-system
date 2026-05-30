@@ -542,7 +542,12 @@ export default function CardListScreen({ navigation, route }) {
           {allowedStatuses.map(opt => (
             <TouchableOpacity
               key={opt.key}
-              onPress={() => { setCurrentStatus(opt.key); setPage(1); }}
+              onPress={() => {
+                setCurrentStatus(opt.key);
+                setPage(1);
+                setSearchQuery('');
+                setActiveFilters({});
+              }}
               style={[s.tabItem, currentStatus === opt.key && { backgroundColor: opt.c, borderColor: opt.c }]}
             >
               <Text style={[s.tabLabel, { color: currentStatus === opt.key ? '#fff' : opt.c }]}>{opt.label}</Text>
@@ -620,6 +625,7 @@ export default function CardListScreen({ navigation, route }) {
               keyExtractor={item => item.id.toString()}
               extraData={selectedIds}
               contentContainerStyle={s.list}
+              keyboardShouldPersistTaps="handled"
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandPrimary} />}
               onEndReached={loadMore}
               onEndReachedThreshold={0.5}
@@ -677,10 +683,7 @@ export default function CardListScreen({ navigation, route }) {
         cardId={editingCardId}
         onSuccess={(updatedCard) => {
           if (editingCardId && updatedCard) {
-            setCards(prev => {
-              const filtered = prev.filter(c => c.id !== editingCardId);
-              return [updatedCard, ...filtered];
-            });
+            setCards(prev => prev.map(c => c.id === editingCardId ? updatedCard : c));
           } else {
             onRefresh();
           }

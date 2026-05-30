@@ -49,7 +49,7 @@ const CardItem = React.memo(function CardItem({
         'barcode', 'qr_code', 'signature', 'image'
       ].includes(typeLower) || 
       nameUpper.includes('PHOTO') || 
-      nameUpper.includes('SIGN') || 
+      (nameUpper.includes('SIGN') && !nameUpper.includes('DESIGNATION')) || 
       nameUpper.includes('IMAGE') ||
       nameUpper.includes('PIC') ||
       String(val).match(/\.(jpg|jpeg|png|webp|gif)$/i);
@@ -65,7 +65,7 @@ const CardItem = React.memo(function CardItem({
     Object.entries(fd).forEach(([key, value]) => {
       const k = key.toUpperCase();
       const v = String(value || '');
-      const isImage = k.includes('PHOTO') || k.includes('SIGN') || k.includes('IMAGE') || v.match(/\.(jpg|jpeg|png|webp|gif)$/i) || v.startsWith('http');
+      const isImage = k.includes('PHOTO') || (k.includes('SIGN') && !k.includes('DESIGNATION')) || k.includes('IMAGE') || v.match(/\.(jpg|jpeg|png|webp|gif)$/i) || v.startsWith('http');
       if (isImage) imageFields.push({ name: key, value: v });
       else textFields.push({ name: key, value: v, label: key });
     });

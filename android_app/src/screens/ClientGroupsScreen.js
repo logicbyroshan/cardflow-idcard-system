@@ -41,6 +41,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
   const clientId = route?.params?.clientId;
   const clientName = route?.params?.clientName || 'Client';
   const initialStatus = route?.params?.initialStatus || 'all';
+  const [currentStatus, setCurrentStatus] = useState(initialStatus);
 
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -110,6 +111,25 @@ export default function ClientGroupsScreen({ navigation, route }) {
     });
     return list;
   }, [groups]);
+
+  // Aggregated status counts across all client tables to display in the tabs
+  const statusCounts = useMemo(() => {
+    const counts = { all: 0, pending: 0, verified: 0, approved: 0, download: 0, pool: 0 };
+    allTables.forEach(t => {
+      counts.pending += (t.pending_count || 0);
+      counts.verified += (t.verified_count || 0);
+      counts.approved += (t.approved_count || 0);
+      counts.download += (t.download_count || 0);
+      counts.pool += (t.pool_count || 0);
+    });
+    counts.all = counts.pending + counts.verified + counts.approved + counts.download + counts.pool;
+    return counts;
+  }, [allTables]);
+
+  const filteredTables = useMemo(() => {
+    if (currentStatus === 'all') return allTables;
+    return allTables.filter(t => (t[`${currentStatus}_count`] || 0) > 0);
+  }, [allTables, currentStatus]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const handleOpenActions = (table) => {
@@ -372,13 +392,47 @@ export default function ClientGroupsScreen({ navigation, route }) {
         table={table}
         navigation={navigation}
         onOpenActions={handleOpenActions}
+        currentStatus={currentStatus}
       />
     );
-  }, [handleOpenActions, navigation]);
+  }, [handleOpenActions, navigation, currentStatus]);
 
   return (
     <View style={s.root}>
       <TopBar title={clientName} subtitle="ID Card Tables" onBack={() => navigation.goBack()} />
+
+      {/* Status tabs */}
+      <View style={s.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabScroll}>
+          {STATUS_OPTIONS.map(opt => {
+            const isActive = currentStatus === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                onPress={() => setCurrentStatus(opt.key)}
+                style={[
+                  s.tabItem,
+                  isActive && { backgroundColor: opt.color, borderColor: opt.color }
+                ]}
+              >
+                <Text style={[s.tabLabel, { color: isActive ? '#fff' : opt.color }]}>
+                  {opt.label}
+                </Text>
+                <View 
+                  style={[
+                    s.tabCount, 
+                    { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : `${opt.color}15` }
+                  ]}
+                >
+                  <Text style={[s.tabCountText, { color: isActive ? '#fff' : opt.color }]}>
+                    {statusCounts[opt.key] || 0}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {error && <ErrorBanner message={error} onDismiss={() => {}} onRetry={refresh} />}
 
@@ -386,7 +440,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
         <ClientGroupsSkeleton />
       ) : (
         <FlatList
-          data={allTables}
+          data={filteredTables}
           renderItem={renderTableItem}
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={[s.list, { paddingBottom: insets.bottom + 40 }]}
@@ -607,14 +661,15 @@ const TableBadgeButton = React.memo(({ opt, table, navigation }) => {
   );
 });
 
-const TableCardRow = React.memo(({ table, navigation, onOpenActions }) => {
+const TableCardRow = React.memo(({ table, navigation, onOpenActions, currentStatus }) => {
   const totalCount = (table.pending_count || 0) + (table.verified_count || 0) +
                      (table.approved_count || 0) + (table.download_count || 0) +
                      (table.pool_count || 0);
 
   const handlePressInfo = useCallback(() => {
-    navigation.navigate('CardList', { tableId: table.id, status: 'all' });
-  }, [navigation, table.id]);
+    const navStatus = currentStatus === 'all' ? 'pending' : currentStatus;
+    navigation.navigate('CardList', { tableId: table.id, status: navStatus });
+  }, [navigation, table.id, currentStatus]);
 
   const handlePressCog = useCallback(() => onOpenActions(table), [table, onOpenActions]);
 
@@ -660,6 +715,12 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions }) => {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceBg },
+  tabContainer:        { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  tabScroll:           { paddingHorizontal: 12, paddingVertical: 8 },
+  tabItem:             { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.xs, borderWidth: 1, borderColor: '#f1f5f9', backgroundColor: '#f8fafc', marginRight: 8 },
+  tabLabel:            { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', marginRight: 6 },
+  tabCount:            { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10 },
+  tabCountText:        { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
   list: { padding: 12 },
 
 

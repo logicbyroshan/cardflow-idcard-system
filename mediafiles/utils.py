@@ -379,11 +379,18 @@ def get_card_photo_url(card, field_data: Optional[dict] = None) -> Optional[str]
         ))
 
     # 1. Check image fields in field_data (canonical source)
-    #    Try well-known photo field names first, then scan all values
-    for key in ('PHOTO', 'Photo', 'photo'):
-        val = fd.get(key, '')
-        if val and is_valid_image_path(val):
-            return _ensure_media_url(val, settings.MEDIA_URL)
+    #    Try well-known photo field names first
+    main_photo_keys = ('PHOTO', 'Photo', 'photo', 'student_photo', 'student photo', 'image')
+    has_photo_key = False
+    for key in fd.keys():
+        if str(key).strip().lower() in [k.lower() for k in main_photo_keys]:
+            has_photo_key = True
+            val = fd.get(key, '')
+            if val and is_valid_image_path(val):
+                return _ensure_media_url(val, settings.MEDIA_URL)
+
+    if has_photo_key:
+        return None
 
     # If the card explicitly carries image-like field keys, prefer their values
     # when present; otherwise treat explicit blank values as a deliberate

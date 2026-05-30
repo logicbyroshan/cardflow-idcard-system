@@ -141,7 +141,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                 if (f.name === k || (f.name || '').toUpperCase() === k.toUpperCase()) {
                   const t = (f.type || '').toLowerCase();
                   const n = (f.name || '').toLowerCase();
-                  return t.includes('image') || t.includes('photo') || n.includes('photo') || n.includes('sign') || n.includes('pic');
+                  return t.includes('image') || t.includes('photo') || n.includes('photo') || (n.includes('sign') && !n.includes('designation')) || n.includes('pic');
                 }
                 return false;
               });
@@ -329,7 +329,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                         {fieldList.filter(f => {
                           const t = (f.type || '').toLowerCase();
                           const n = (f.name || '').toLowerCase();
-                          return t.includes('image') || t.includes('photo') || n.includes('photo') || n.includes('sign') || n.includes('pic');
+                          return t.includes('image') || t.includes('photo') || n.includes('photo') || (n.includes('sign') && !n.includes('designation')) || n.includes('pic');
                         }).map((field, i) => {
                           const val = values[field.name];
                           const hasImage = !!val && val !== 'NOT_FOUND' && !String(val).startsWith('PENDING:');
@@ -377,7 +377,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                       {fieldList.filter(f => {
                         const t = (f.type || '').toLowerCase();
                         const n = (f.name || '').toLowerCase();
-                        const isImg = t.includes('image') || t.includes('photo') || n.includes('photo') || n.includes('sign') || n.includes('pic');
+                        const isImg = t.includes('image') || t.includes('photo') || n.includes('photo') || (n.includes('sign') && !n.includes('designation')) || n.includes('pic');
                         return !isImg;
                       }).map((field, i) => {
                         return (

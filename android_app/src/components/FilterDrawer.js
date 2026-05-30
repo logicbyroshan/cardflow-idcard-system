@@ -92,7 +92,7 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
   const imageFields = fields.filter(f => {
     const t = (f.type || '').toLowerCase();
     const n = (f.name || '').toLowerCase();
-    return t.includes('image') || t.includes('photo') || n.includes('photo') || n.includes('sign') || n.includes('pic');
+    return t.includes('image') || t.includes('photo') || n.includes('photo') || (n.includes('sign') && !n.includes('designation')) || n.includes('pic');
   });
 
   const imageColumnOptions = imageFields.length > 0 ? imageFields.map(f => f.name) : ['photo'];

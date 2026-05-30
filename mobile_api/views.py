@@ -1127,7 +1127,6 @@ def api_mobile_login(request):
             new_session_key = request.session.session_key or ''
             
             # Revoke other mobile sessions for this user
-            from accounts.services import AuthService
             AuthService.revoke_active_sessions_for_user(
                 user.id,
                 surface='mobile',
@@ -4074,10 +4073,6 @@ def api_card_add(request, table_id):
                 elif key_l.startswith('image_'):
                     image_files[file_key] = validated_file
 
-        # Guard against accidental PHOTO overwrite from mixed payloads.
-        # When explicit image_<field> files are present, ignore legacy photo key.
-        if image_files:
-            legacy_photo = None
 
         with transaction.atomic():
             card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
@@ -4214,11 +4209,6 @@ def api_card_update(request, table_id, card_id):
                 elif key_l.startswith('image_'):
                     image_files[file_key] = validated_file
 
-        # Guard against accidental PHOTO overwrite from mixed payloads.
-        # When explicit image_<field> files are present, ignore legacy photo key.
-        if image_files:
-            legacy_photo = None
-
         update_result = IDCardService.update_card(
             card_id=card.id,
             field_data=field_data,
@@ -4233,11 +4223,11 @@ def api_card_update(request, table_id, card_id):
         # Construct exact same card serialization as returned in get_cards
         from django.utils.timezone import localtime
         from mediafiles.utils import get_card_photo_url
-        from core.services.idcard_card_service import IDCardService
+        from core.services import IDCardService
 
         card.refresh_from_db()
         fd = card.field_data or {}
-        detected_name_field = IDCardService._get_name_field(table)
+        detected_name_field = IDCardService._get_name_field(card.table)
         name = None
         if detected_name_field:
             name = fd.get(detected_name_field)
@@ -4266,7 +4256,7 @@ def api_card_update(request, table_id, card_id):
         sanitized_field_data = {}
         for key, val in fd.items():
             is_image_field = False
-            for field in (table.fields or []):
+            for field in (card.table.fields or []):
                 if field.get('name') == key or field.get('name', '').upper() == key.upper():
                     is_image_field = field.get('type') in ['photo', 'image', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
                     break

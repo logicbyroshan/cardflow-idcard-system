@@ -51,7 +51,7 @@ export default function ClientsListScreen({ navigation, route }) {
     throw new Error(data?.message || 'Failed to load clients');
   }, []);
 
-  const { data: clients = [], loading, refreshing, error, refresh } = useRefreshableResource(loadClients, { initialData: [] });
+  const { data: clients = [], loading, refreshing, error, refresh, setData } = useRefreshableResource(loadClients, { initialData: [] });
 
   useEffect(() => {
     if (route.params?.openForm) openCreate();
@@ -87,7 +87,7 @@ export default function ClientsListScreen({ navigation, route }) {
         const { ok, data } = await apiPost(`/api/mobile/client/${client.id}/delete/`, {});
         if (ok && data?.success) { 
           showToast(data.message || 'Client deleted successfully', 'success'); 
-          refresh(); 
+          setData(prev => prev.filter(c => c.id !== client.id)); 
         } else {
           showToast(data?.message || 'Error deleting client', 'error');
         }
@@ -159,7 +159,11 @@ export default function ClientsListScreen({ navigation, route }) {
       if (ok && data.success) {
         showToast(editingId ? 'Client updated' : 'Client created', 'success');
         setShowForm(false);
-        refresh();
+        if (editingId) {
+          setData(prev => prev.map(c => c.id === editingId ? { ...c, ...data.client } : c));
+        } else {
+          setData(prev => [data.client, ...prev]);
+        }
       } else showToast(data.message || 'Error saving client', 'error');
     } catch (e) { showToast('Network error', 'error'); }
     setSaving(false);
@@ -176,12 +180,15 @@ export default function ClientsListScreen({ navigation, route }) {
         setConfirmModal(p => ({ ...p, visible: false }));
         try {
           const { ok, data } = await apiPost(`/api/mobile/client/${client.id}/toggle/`, {});
-          if (ok && data.success) { showToast(data.message, 'success'); refresh(); }
+          if (ok && data.success) {
+            showToast(data.message, 'success');
+            setData(prev => prev.map(c => c.id === client.id ? { ...c, is_active: !c.is_active } : c));
+          }
           else showToast(data.message || 'Error toggling client', 'error');
         } catch (e) { showToast('Network error', 'error'); }
       }
     });
-  }, [showToast, refresh]);
+  }, [showToast, setData]);
 
   const deleteClient = useCallback((client) => {
     const code = generateCode();
@@ -263,7 +270,7 @@ export default function ClientsListScreen({ navigation, route }) {
       </View>
 
       {error ? <ErrorBanner message={error} onRetry={refresh} /> : loading && !refreshing ? <ClientsListSkeleton /> : (
-        <FlatList data={filtered} renderItem={renderItem} keyExtractor={item => item.id.toString()} contentContainerStyle={s.list} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandPrimary} />} ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>No clients found</Text></View>} />
+        <FlatList data={filtered} renderItem={renderItem} keyExtractor={item => item.id.toString()} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandPrimary} />} ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>No clients found</Text></View>} />
       )}
 
       <Modal visible={showForm} animationType="fade" transparent onRequestClose={() => setShowForm(false)}>
