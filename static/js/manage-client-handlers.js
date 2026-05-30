@@ -355,6 +355,20 @@ document.addEventListener('DOMContentLoaded', function() {
       if (deleteClientBtn) deleteClientBtn.addEventListener('click', function() {
         if (!NS.selectedClientId || !NS.selectedRow) return;
         var clientName = getSelectedClientName();
+
+        // If the selected client still has groups/lists/media, show a helpful
+        // error instead of proceeding to the delete confirmation modal.
+        var hasDataFlag = String(NS.selectedRow.dataset.clientHasData || deleteClientBtn.dataset.clientHasData || 'false');
+        if (hasDataFlag === 'true') {
+          var msg = 'Please delete all groups, lists, and media for ' + clientName + ' before deleting this client.';
+          if (typeof showToast === 'function') {
+            showToast(msg, 'error');
+          } else {
+            alert(msg);
+          }
+          return;
+        }
+
         NS.openDeleteModalFn(clientName);
       });
 

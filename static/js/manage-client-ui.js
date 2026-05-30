@@ -200,12 +200,11 @@ document.addEventListener('DOMContentLoaded', function() {
           if (viewClientBtn) viewClientBtn.disabled = false;
           if (viewStaffBtn) viewStaffBtn.disabled = false;
           if (deleteClientBtn) {
-            // Disable delete when client has existing data to prevent accidental deletion
-            if (row.dataset.clientHasData === 'true') {
-              deleteClientBtn.disabled = true;
-            } else {
-              deleteClientBtn.disabled = false;
-            }
+            // Keep delete button interactive so we can show a helpful message
+            // when deletion is blocked due to existing groups/media. Store
+            // the has-data flag on the button for click-time handling.
+            deleteClientBtn.disabled = false;
+            deleteClientBtn.dataset.clientHasData = row.dataset.clientHasData || 'false';
           }
           if (activeClientBtn) activeClientBtn.disabled = false;
           if (groupSettingBtn) groupSettingBtn.disabled = false;
