@@ -165,6 +165,14 @@ class StaffPermissionViewTests(TestCase):
         self.assertEqual(len(response.context['staff_list']), 12)
         self.assertEqual(response.context['page_obj'].paginator.count, 12)
 
+    def test_manage_staff_drawer_renders_client_assignment_section(self):
+        self.client.login(username='sa@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-staff/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="client-assignment-section"')
+        self.assertContains(response, 'Assign Clients')
+
 
 class AdminStaffPermissionServiceTests(TestCase):
     def test_assign_permissions_rejects_invalid_codename(self):
