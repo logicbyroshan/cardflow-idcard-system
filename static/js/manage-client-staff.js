@@ -821,7 +821,6 @@ document.addEventListener('DOMContentLoaded', function () {
             chip.sectionOptions = _normalizeStringList(data.sections || []);
             chip.branchOptions = _normalizeStringList(data.branches || []);
             chip.classSectionMap = _cloneClassSectionMap(data.class_sections || {});
-            chip.classSectionSelections = _cloneClassSectionSelections(data.class_sections || {});
             chip.classCounts = _normalizeCountMap(data.class_counts || {});
             chip.sectionCounts = _normalizeCountMap(data.section_counts || {});
             chip.classSectionCounts = _normalizeNestedCountMap(data.class_section_counts || {});
