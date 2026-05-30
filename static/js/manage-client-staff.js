@@ -934,7 +934,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function addClassSectionGroup(container, chip) {
-            var classValues = _normalizeStringList(chip.classes.length ? chip.classes : Object.keys(chip.classSectionSelections || {}));
+            var classValues;
+            if (chip.isEditing) {
+                classValues = _normalizeStringList(
+                    chip.classOptions.length ? chip.classOptions : (chip.classes.length ? chip.classes : Object.keys(chip.classSectionSelections || {}))
+                );
+            } else {
+                classValues = _normalizeStringList(chip.classes.length ? chip.classes : Object.keys(chip.classSectionSelections || {}));
+            }
             var hasClassRows = classValues.length || (chip.classSectionSelections && Object.keys(chip.classSectionSelections).length);
             if (!hasClassRows && !chip.hasSection && !(chip.sections && chip.sections.length)) return;
 
@@ -952,12 +959,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!classValues.length) {
                 var empty = document.createElement('div');
                 empty.className = 'assignment-options-empty';
-                empty.textContent = 'No classes selected.';
+                empty.textContent = chip.isEditing ? 'No classes available.' : 'No classes selected.';
                 table.appendChild(empty);
             }
 
             classValues.forEach(function (cls) {
                 var availableSections = _normalizeStringList(chip.classSectionMap[cls] || []);
+                if (!availableSections.length && chip.sectionOptions.length) {
+                    availableSections = chip.sectionOptions.slice();
+                }
                 var selectedSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
                 var isAssignedClass = selectedSections.length > 0;
                 var isClassFullySelected = availableSections.length > 0 && availableSections.every(function (s) {
@@ -1247,16 +1257,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     addClassSectionGroup(groups, chip);
                 }
             } else {
-                var summaryClasses = _normalizeStringList(chip.classes || []);
-                var summarySections = _normalizeStringList(chip.sections || []);
-                if (!summaryClasses.length && chip.classSectionSelections) {
+                var summaryClasses = [];
+                var summarySections = [];
+                if (chip.classSectionSelections && Object.keys(chip.classSectionSelections).length) {
                     summaryClasses = Object.keys(chip.classSectionSelections || {});
-                }
-                if (!summarySections.length && chip.classSectionSelections) {
                     Object.keys(chip.classSectionSelections || {}).forEach(function (cls) {
                         summarySections = summarySections.concat(_normalizeStringList(chip.classSectionSelections[cls] || []));
                     });
                     summarySections = _normalizeStringList(summarySections);
+                }
+                if (!summaryClasses.length) {
+                    summaryClasses = _normalizeStringList(chip.classes || []);
+                }
+                if (!summarySections.length) {
+                    summarySections = _normalizeStringList(chip.sections || []);
                 }
 
                 if (summaryClasses.length) {
