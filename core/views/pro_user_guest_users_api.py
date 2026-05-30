@@ -122,6 +122,7 @@ def api_pro_user_guest_user_create(request):
         'pincode': str(body.get('pincode') or '').strip(),
         'status': 'active',
         'role': 'guest_user',
+        'is_active': True,
     }
 
     if not payload['name']:

@@ -150,22 +150,36 @@ class ClientService(BaseService):
             if not name:
                 return ServiceResult(success=False, message='Name is required')
 
-            raw_email = str(data.get('email') or '').strip().lower()
-            if not raw_email:
-                return ServiceResult(success=False, message='Email is required')
+            role = str(data.get('role', 'client') or 'client').strip().lower()
+            if role not in {'client', 'guest_user'}:
+                role = 'client'
 
-            # Check for duplicate email
-            if User.objects.filter(email__iexact=raw_email).exists():
+            username_input = str(data.get('username') or '').strip()
+            raw_email = str(data.get('email') or '').strip().lower()
+            email_was_provided = bool(raw_email)
+            if not raw_email:
+                if role != 'guest_user':
+                    return ServiceResult(success=False, message='Email is required')
+                username_seed = username_input or name or 'guest'
+                safe_username = ''.join(ch if ch.isalnum() or ch in ('-', '_', '.') else '_' for ch in username_seed.lower()).strip('._-') or 'guest'
+                raw_email = f'guest.{safe_username}.{secrets.token_hex(4)}@noemail.local'
+
+            if email_was_provided and User.objects.filter(email__iexact=raw_email).exists():
                 return ServiceResult(
                     success=False,
                     message='A user with this email already exists'
                 )
+
             email = raw_email
-            
-            # Generate unique username
-            username = email.split('@')[0].lower().replace('.', '_')
+
+            if role == 'guest_user' and username_input:
+                username = username_input.lower().replace('.', '_')
+            else:
+                username = email.split('@')[0].lower().replace('.', '_')
+
             if not username:
                 username = f'client_{secrets.token_hex(4)}'
+
             base_username = username
             counter = 1
             while User.objects.filter(username=username).exists():
@@ -177,10 +191,6 @@ class ClientService(BaseService):
             # Password policy:
             # - if custom password is provided, use it
             # - otherwise phone number is required and used as password
-            role = str(data.get('role', 'client') or 'client').strip().lower()
-            if role not in {'client', 'guest_user'}:
-                role = 'client'
-
             phone = str(data.get('phone') or '').strip()
             password = str(data.get('password') or '').strip()
             if not password:
@@ -201,8 +211,8 @@ class ClientService(BaseService):
             if not email:
                 return ServiceResult(success=False, message='Email is required')
 
-            # Check if admin explicitly requested active status at creation time
-            create_as_active = cls.parse_bool(data.get('is_active', False))
+            # Guest users should come up active by default so they can sign in immediately.
+            create_as_active = cls.parse_bool(data.get('is_active', role == 'guest_user'))
             
             with transaction.atomic():
 

@@ -433,11 +433,25 @@
     }).join('');
   }
 
+  function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content
+      || document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1]
+      || '';
+  }
+
   async function fetchJson(url, options) {
-    const response = await fetch(url, Object.assign({
+    const requestOptions = Object.assign({
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       credentials: 'same-origin',
-    }, options || {}));
+    }, options || {});
+
+    requestOptions.headers = Object.assign({}, requestOptions.headers || {});
+    const csrfToken = getCsrfToken();
+    if (csrfToken && String(requestOptions.method || 'GET').toUpperCase() !== 'GET') {
+      requestOptions.headers['X-CSRFToken'] = csrfToken;
+    }
+
+    const response = await fetch(url, requestOptions);
     const data = await response.json().catch(function() { return {}; });
     if (!response.ok || data.success === false) {
       throw new Error(data.message || ('Request failed with status ' + response.status));

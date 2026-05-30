@@ -545,6 +545,39 @@ class GuestUserManagementApiTests(TestCase):
         self.admin = _create_super_admin('guest-admin@test.com', 'adminpass1')
         self.client.login(username='guest-admin@test.com', password='adminpass1')
 
+    def test_guest_users_page_embeds_csrf_header_helper(self):
+        response = self.client.get('/panel/pro-user/guest-users/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'X-CSRFToken')
+
+    def test_create_guest_user_allows_optional_email_and_defaults_active(self):
+        response = self.client.post(
+            '/panel/api/pro-user/guest-users/create/',
+            data=json.dumps({
+                'name': 'Demo Guest',
+                'username': 'demo-guest',
+                'password': 'guestpass123',
+                'email': '',
+                'phone': '',
+                'city': 'Demo City',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+
+        created_user = User.objects.get(username='demo-guest')
+        self.assertEqual(created_user.role, 'guest_user')
+        self.assertTrue(created_user.is_active)
+        self.assertTrue(created_user.email.endswith('@noemail.local'))
+
+        created_client = created_user.client_profile
+        self.assertTrue(created_client.is_guest)
+        self.assertEqual(created_client.status, 'active')
+
     def test_source_clients_excludes_current_client_profile(self):
         from client.models import Client
 
