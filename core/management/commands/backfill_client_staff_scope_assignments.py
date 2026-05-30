@@ -14,7 +14,9 @@ from staff.models import Staff
 class Command(BaseCommand):
     help = (
         "Backfill legacy client_staff scope assignments. "
-        "Targets assistants with empty assignment_scopes and empty allowed class/section/branch lists."
+        "Targets assistants with empty assignment_scopes. "
+        "Default mode handles legacy-empty allowed class/section/branch lists; "
+        "use --include-flat-legacy to also convert flat legacy allowed_* records."
     )
 
     def add_arguments(self, parser):
@@ -42,12 +44,22 @@ class Command(BaseCommand):
             default=0,
             help="Process at most N assistants (0 means no limit).",
         )
+        parser.add_argument(
+            "--include-flat-legacy",
+            action="store_true",
+            default=False,
+            help=(
+                "Also convert assistants with empty assignment_scopes but non-empty "
+                "allowed class/section/branch lists into explicit scopes."
+            ),
+        )
 
     def handle(self, *args, **options):
         apply_changes = bool(options.get("apply"))
         client_id = int(options.get("client_id") or 0)
         staff_id = int(options.get("staff_id") or 0)
         limit = max(int(options.get("limit") or 0), 0)
+        include_flat_legacy = bool(options.get("include_flat_legacy"))
 
         mode = "APPLY" if apply_changes else "DRY-RUN"
         self.stdout.write(f"\n=== backfill_client_staff_scope_assignments ({mode}) ===")
@@ -69,7 +81,7 @@ class Command(BaseCommand):
         skipped_no_values = 0
 
         for staff in qs:
-            if not self._is_legacy_unscoped_staff(staff):
+            if not self._is_legacy_unscoped_staff(staff, include_flat_legacy=include_flat_legacy):
                 skipped_not_legacy += 1
                 continue
 
@@ -179,10 +191,22 @@ class Command(BaseCommand):
             out.append(text)
         return out
 
-    def _is_legacy_unscoped_staff(self, staff: Staff) -> bool:
+    @staticmethod
+    def _build_class_sections(classes: List[str], sections: List[str]) -> Dict[str, List[str]]:
+        classes_norm = [str(v).strip() for v in (classes or []) if str(v).strip()]
+        sections_norm = [str(v).strip() for v in (sections or []) if str(v).strip()]
+        if not classes_norm or not sections_norm:
+            return {}
+        # Legacy flat filters effectively behave as class x section combinations.
+        return {cls_name: list(sections_norm) for cls_name in classes_norm}
+
+    def _is_legacy_unscoped_staff(self, staff: Staff, include_flat_legacy: bool = False) -> bool:
         scopes = staff.assignment_scopes if isinstance(staff.assignment_scopes, list) else []
         if scopes:
             return False
+
+        if include_flat_legacy:
+            return True
 
         if self._normalize_value_list(staff.allowed_classes or []):
             return False
@@ -316,6 +340,15 @@ class Command(BaseCommand):
         assigned_table_ids = self._normalize_positive_int_ids(staff.assigned_table_ids or [])
         assigned_table_ids = [tid for tid in assigned_table_ids if tid in table_ids_all]
 
+        preset_classes = self._normalize_value_list(staff.allowed_classes or [])
+        preset_sections = self._normalize_value_list(staff.allowed_sections or [])
+        preset_branches = self._normalize_value_list(staff.allowed_branches or [])
+
+        # For flat legacy records with explicit allowed_* values but no assignment IDs,
+        # avoid guessing a scope across all client groups/tables.
+        if (preset_classes or preset_sections or preset_branches) and not (assigned_group_ids or assigned_table_ids):
+            return {}
+
         use_table_mode = (len(group_ids_all) <= 1) or (bool(assigned_table_ids) and not assigned_group_ids)
 
         if use_table_mode:
@@ -369,9 +402,18 @@ class Command(BaseCommand):
             sections_list = sorted(sections)
             branches_list = sorted(branches)
 
+            if preset_classes:
+                classes_list = list(preset_classes)
+            if preset_sections:
+                sections_list = list(preset_sections)
+            if preset_branches:
+                branches_list = list(preset_branches)
+
             # Keep only scopes that can enforce at least one row-level dimension.
             if not (classes_list or sections_list or branches_list):
                 continue
+
+            class_sections = self._build_class_sections(classes_list, sections_list)
 
             scopes.append({
                 "scope_type": scope_type,
@@ -380,6 +422,7 @@ class Command(BaseCommand):
                 "classes": classes_list,
                 "sections": sections_list,
                 "branches": branches_list,
+                "class_sections": class_sections,
             })
 
             for value in classes_list:
