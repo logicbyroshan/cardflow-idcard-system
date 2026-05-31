@@ -32,7 +32,7 @@ const CardItem = React.memo(function CardItem({
   permissions = {} 
 }) {
   const [imageErrors, setImageErrors] = React.useState({});
-  const isClient = permissions?.role === 'client' || permissions?.role === 'client_staff';
+  const isClient = permissions?.role === 'client' || permissions?.role === 'client_staff' || permissions?.role === 'guest_user';
   const fd = item.field_data || {};
   const orderedFields = item.ordered_fields || [];
   let imageFields = [];
@@ -223,7 +223,7 @@ const CardItem = React.memo(function CardItem({
               <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
             </TouchableOpacity>
           )}
-          {currentStatus === 'download' && onReprint && (hasPerm('perm_idcard_reprint_list') || hasPerm('perm_reprint_request_list') || permissions?.role === 'client' || permissions?.role === 'client_staff') && (
+          {currentStatus === 'download' && onReprint && (hasPerm('perm_idcard_reprint_list') || hasPerm('perm_reprint_request_list') || isClient) && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.yellow }]} 
               onPress={() => onReprint(item)}
@@ -233,7 +233,7 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Pool List Action Button */}
-          {currentStatus === 'pool' && onStatusChange && (hasPerm('perm_idcard_retrieve') || permissions?.role === 'client' || permissions?.role === 'client_staff') && (
+          {currentStatus === 'pool' && onStatusChange && (hasPerm('perm_idcard_retrieve') || isClient) && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
               onPress={() => onStatusChange(item.id, 'pending')}

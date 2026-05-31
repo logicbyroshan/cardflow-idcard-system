@@ -28,7 +28,7 @@ export default function StaffManageScreen({ navigation, route }) {
     const isSuper = !!(user?.isSuperAdmin || user?.role === 'super_admin' || user?.role === 'admin');
     const canManage = isOperatorMode 
       ? isSuper
-      : (isSuper || user?.role === 'admin_staff' || user?.role === 'client' || (user?.permissions?.perm_manage_client_staff) || (user?.permissions?.perm_idcard_client_list));
+      : (isSuper || user?.role === 'admin_staff' || user?.role === 'client' || user?.role === 'guest_user' || (user?.permissions?.perm_manage_client_staff) || (user?.permissions?.perm_idcard_client_list));
       
     return {
       canManage,

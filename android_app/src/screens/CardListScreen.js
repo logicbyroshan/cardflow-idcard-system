@@ -469,7 +469,7 @@ export default function CardListScreen({ navigation, route }) {
     [cards, selectedIds],
   );
 
-  const isClientRole = perms.role === 'client' || perms.role === 'client_staff';
+  const isClientRole = perms.role === 'client' || perms.role === 'client_staff' || perms.role === 'guest_user';
   const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list;
 
   const canSelect = useMemo(() => {
@@ -498,7 +498,7 @@ export default function CardListScreen({ navigation, route }) {
   }, []);
 
   const renderItem = useCallback(({ item }) => {
-    const isClient = perms.role === 'client' || perms.role === 'client_staff';
+    const isClient = perms.role === 'client' || perms.role === 'client_staff' || perms.role === 'guest_user';
     const canEdit = perms.perm_idcard_edit && (!isClient || ['pending', 'verified'].includes(currentStatus));
     const canDelete = currentStatus === 'pending' && perms.perm_idcard_delete;
     const statusChangeHandler = isClient && (

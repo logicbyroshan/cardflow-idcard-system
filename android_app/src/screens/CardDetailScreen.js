@@ -69,7 +69,7 @@ export default function CardDetailScreen({ navigation, route }) {
       return true;
     }
     if (card.status === 'pool' && targetStatus === 'pending') {
-      const isClient = user?.role === 'client' || user?.role === 'client_staff';
+      const isClient = user?.role === 'client' || user?.role === 'client_staff' || user?.role === 'guest_user';
       return !!(perms.perm_idcard_retrieve || isClient);
     }
     if (card.status === 'download' && targetStatus === 'pending') {

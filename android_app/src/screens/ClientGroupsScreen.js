@@ -49,7 +49,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
 
   // Permissions matching web
   const isSuperAdmin = user?.role === 'super_admin' || user?.isSuperAdmin;
-  const isClientRole = user?.role === 'client' || user?.role === 'client_staff';
+  const isClientRole = user?.role === 'client' || user?.role === 'client_staff' || user?.role === 'guest_user';
   const perms = user?.permissions || {};
 
   const canDownloadAll = !isClientRole && (isSuperAdmin || perms.perm_idcard_bulk_download);

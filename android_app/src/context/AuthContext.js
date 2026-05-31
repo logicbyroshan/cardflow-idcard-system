@@ -14,7 +14,7 @@ const enrichUser = (userObj) => {
     isSuperAdmin: ['super_admin', 'pro_user'].includes(r),
     isOperator: r === 'admin_staff',
     isAdmin: ['super_admin', 'pro_user', 'admin_staff'].includes(r),
-    isClient: r === 'client',
+    isClient: r === 'client' || r === 'guest_user',
     isAssistant: r === 'client_staff',
   };
 };

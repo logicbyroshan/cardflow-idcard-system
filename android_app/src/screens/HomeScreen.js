@@ -126,7 +126,7 @@ export default function HomeScreen({ navigation }) {
 
   const isSuperAdmin = user?.role === 'admin' || user?.isSuperAdmin;
   const isOperator = user?.role === 'admin_staff';
-  const isClient = user?.role === 'client';
+  const isClient = user?.role === 'client' || user?.role === 'guest_user';
   const isAssistant = user?.role === 'client_staff';
   const isAdminOrOperator = isSuperAdmin || isOperator;
 
