@@ -3729,3 +3729,50 @@ class ClientStaffEmptyScopeVisibilityTests(TestCase):
         pool_payload = pool_response.json()
         self.assertEqual(len(pool_payload.get('cards') or []), 0)
         self.assertEqual(len(pool_payload.get('cards') or []), 0)
+
+
+class DynamicFieldsDefensiveTests(TestCase):
+    def setUp(self):
+        self.user, self.client_obj = _create_client_user('test-defensive-client@test.com', 'pass1234')
+        self.client_obj.perm_idcard_edit = True
+        self.client_obj.perm_idcard_pending_list = True
+        self.client_obj.perm_idcard_info = True
+        self.client_obj.perm_mobile_app = True
+        self.client_obj.save()
+        self.user.client_profile = self.client_obj
+        
+        self.group, self.table = _create_table(self.client_obj, fields=[
+            None,
+            'invalid_string_field',
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'photo', 'type': 'photo', 'order': 2},
+            {'name': None, 'type': 'text', 'order': 3},
+        ])
+        self.card = _create_card(self.table, field_data={'NAME': 'JOHN DOE', 'photo': 'PENDING:avatar.jpg'})
+        self.client.login(username='test-defensive-client@test.com', password='pass1234')
+        session = self.client.session
+        session['mobile_auth_ok'] = True
+        session.save()
+
+    def test_api_card_update_defensive_fields(self):
+        # Verify that we can retrieve/update cards without 500 even with malformed table fields
+        url = f'/api/mobile/table/{self.table.id}/card/{self.card.id}/update/'
+        response = self.client.post(url, {
+            'field_data': json.dumps({'NAME': 'JANE DOE'}),
+        }, HTTP_USER_AGENT='adarsh-mobile-app')
+        if response.status_code != 200:
+            raise ValueError(f"API update failed: status={response.status_code}, content={response.content}")
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['card']['field_data']['NAME'], 'JANE DOE')
+
+    def test_client_card_service_get_cards_defensive(self):
+        # Verify that ClientCardService.get_cards handles malformed fields safely
+        from client.services_card import ClientCardService
+        result = ClientCardService.get_cards(self.user, self.table.id, status_filter='pending')
+        if not result.success:
+            raise ValueError(f"get_cards failed: {result.message}")
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.data['cards']), 1)
+        self.assertEqual(result.data['cards'][0]['name'], 'JOHN DOE')
+

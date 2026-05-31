@@ -284,6 +284,8 @@ class BaseService:
     @classmethod
     def is_image_field(cls, field: dict) -> bool:
         """Check if a field is an image field by type OR name"""
+        if not isinstance(field, dict):
+            return False
         field_type = field.get('type', 'text')
         field_name = field.get('name', '')
         return field_type in cls.IMAGE_FIELD_TYPES or cls.is_image_field_by_name(field_name)
@@ -307,7 +309,9 @@ class BaseService:
             if cls.is_image_field(f):
                 if mandatory_only and not f.get('mandatory', False):
                     continue
-                result.append(f['name'])
+                name = f.get('name')
+                if name:
+                    result.append(name)
         return result
     
     @classmethod
@@ -368,7 +372,9 @@ class BaseService:
         field_name_upper = field_name.upper()
         
         for field in table_fields:
-            config_name = field.get('name', '')
+            if not isinstance(field, dict):
+                continue
+            config_name = field.get('name', '') or ''
             if config_name.upper() == field_name_upper:
                 return cls.is_image_field(field)
         

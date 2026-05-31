@@ -269,7 +269,9 @@ class IDCardCardService(BaseService):
             blocked = ('father', 'mother', 'guardian', 'parent', 'relation', 'spouse', 'husband', 'wife')
             return not any(token in name_norm for token in blocked)
 
-        for field in table.fields:
+        for field in (table.fields or []):
+            if not isinstance(field, dict):
+                continue
             ftype = str(field.get('type', '') or '').strip().lower()
             fname = str(field.get('name', '') or '').strip()
             fname_norm = _norm(fname)
@@ -279,7 +281,9 @@ class IDCardCardService(BaseService):
                 return fname
 
         # Fallback: first text field
-        for field in table.fields:
+        for field in (table.fields or []):
+            if not isinstance(field, dict):
+                continue
             ftype = str(field.get('type', '') or '').strip().lower()
             fname = str(field.get('name', '') or '').strip()
             if not fname:
@@ -914,10 +918,28 @@ class IDCardCardService(BaseService):
                         img_bytes = legacy_photo_file.read()
                         legacy_photo_file.seek(0)
                         image_counter += 1
+
+                        # Dynamically find the exact case of the photo field name from table config
+                        image_field_names = cls.get_image_field_names(table.fields)
+                        main_photo_field_name = None
+                        for name in image_field_names:
+                            name_l = name.lower()
+                            if name_l in ('photo', 'student_photo', 'student photo', 'image'):
+                                main_photo_field_name = name
+                                break
+                        if not main_photo_field_name:
+                            for name in image_field_names:
+                                name_l = name.lower()
+                                if 'photo' in name_l or 'image' in name_l:
+                                    main_photo_field_name = name
+                                    break
+                        if not main_photo_field_name:
+                            main_photo_field_name = 'PHOTO'
+
                         result = ImageService.save_new_image(
                             image_bytes=img_bytes,
                             client=client,
-                            field_name='PHOTO',
+                            field_name=main_photo_field_name,
                             card=card,
                             batch_counter=image_counter,
                             original_ext=original_ext,
@@ -926,7 +948,11 @@ class IDCardCardService(BaseService):
                         )
                         if result.success and result.data.get('final_value'):
                             fd = card.field_data or {}
-                            fd['PHOTO'] = result.data['final_value']
+                            fd[main_photo_field_name] = result.data['final_value']
+                            # Clean up alternative casing variants to prevent conflicts
+                            for variant in (main_photo_field_name, 'PHOTO', 'Photo', 'photo'):
+                                if variant in fd and variant != main_photo_field_name:
+                                    del fd[variant]
                             card.field_data = fd
                             card.save(update_fields=['field_data'])
                     except Exception as photo_err:
@@ -1120,9 +1146,32 @@ class IDCardCardService(BaseService):
 
                 # Legacy 'photo' key
                 if legacy_photo_file:
-                    existing_photo = existing_data.get('PHOTO', '') or existing_data.get('Photo', '')
+                    # Dynamically find the exact case of the photo field name from table config
+                    image_field_names = cls.get_image_field_names(table.fields)
+                    main_photo_field_name = None
+                    for name in image_field_names:
+                        name_l = name.lower()
+                        if name_l in ('photo', 'student_photo', 'student photo', 'image'):
+                            main_photo_field_name = name
+                            break
+                    if not main_photo_field_name:
+                        for name in image_field_names:
+                            name_l = name.lower()
+                            if 'photo' in name_l or 'image' in name_l:
+                                main_photo_field_name = name
+                                break
+                    if not main_photo_field_name:
+                        main_photo_field_name = 'PHOTO'
+
+                    existing_photo = existing_data.get(main_photo_field_name, '')
+                    if not existing_photo:
+                        for variant in ('PHOTO', 'Photo', 'photo'):
+                            if existing_data.get(variant):
+                                existing_photo = existing_data[variant]
+                                break
+
                     result = ImageService.process_image_field(
-                        field_name='PHOTO',
+                        field_name=main_photo_field_name,
                         new_value=None,  # upload takes precedence
                         existing_value=existing_photo,
                         client=client,
@@ -1132,9 +1181,11 @@ class IDCardCardService(BaseService):
                         uploaded_by=uploaded_by,
                     )
                     if result.success and result.data.get('action') == 'upload':
-                        existing_data['PHOTO'] = result.data['final_value']
-                        if 'Photo' in existing_data and 'Photo' != 'PHOTO':
-                            del existing_data['Photo']
+                        existing_data[main_photo_field_name] = result.data['final_value']
+                        # Clean up alternative casing variants to prevent conflicts
+                        for variant in (main_photo_field_name, 'PHOTO', 'Photo', 'photo'):
+                            if variant in existing_data and variant != main_photo_field_name:
+                                del existing_data[variant]
                     elif not result.success:
                         logger.warning("Could not save legacy photo: %s", result.message)
 

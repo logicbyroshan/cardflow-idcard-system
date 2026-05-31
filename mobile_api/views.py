@@ -4174,6 +4174,7 @@ def api_table_download_pdf(request, table_id):
 @require_http_methods(["POST"])
 def api_card_update(request, table_id, card_id):
     """Update an existing card."""
+    from core.services import IDCardService
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id, table_id=table_id)
         if not _can_access_card_with_row_scope(request.user, card):
@@ -4223,7 +4224,6 @@ def api_card_update(request, table_id, card_id):
         # Construct exact same card serialization as returned in get_cards
         from django.utils.timezone import localtime
         from mediafiles.utils import get_card_photo_url
-        from core.services import IDCardService
 
         card.refresh_from_db()
         fd = card.field_data or {}
@@ -4257,7 +4257,13 @@ def api_card_update(request, table_id, card_id):
         for key, val in fd.items():
             is_image_field = False
             for field in (card.table.fields or []):
-                if field.get('name') == key or field.get('name', '').upper() == key.upper():
+                if not isinstance(field, dict):
+                    continue
+                fname = field.get('name')
+                if fname is None:
+                    continue
+                fname_str = str(fname).strip()
+                if fname_str == key or fname_str.upper() == key.upper():
                     is_image_field = field.get('type') in ['photo', 'image', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
                     break
             if not is_image_field and val and isinstance(val, str) and val.startswith('PENDING:'):
@@ -6410,7 +6416,13 @@ def api_search(request):
         for key, val in fd.items():
             is_image_field = False
             for field in (card.table.fields or []):
-                if field.get('name') == key or field.get('name', '').upper() == key.upper():
+                if not isinstance(field, dict):
+                    continue
+                fname = field.get('name')
+                if fname is None:
+                    continue
+                fname_str = str(fname).strip()
+                if fname_str == key or fname_str.upper() == key.upper():
                     is_image_field = field.get('type') in ['photo', 'image', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
                     break
             if not is_image_field and val and isinstance(val, str) and val.startswith('PENDING:'):
@@ -6420,12 +6432,15 @@ def api_search(request):
 
         ordered_fields = []
         for field in (card.table.fields or []):
+            if not isinstance(field, dict):
+                continue
             field_name = field.get('name')
+            field_name_str = str(field_name).strip() if field_name is not None else ''
             ordered_fields.append({
-                'name': field_name,
+                'name': field_name_str,
                 'type': field.get('type', 'text'),
-                'label': field.get('label') or field_name,
-                'value': sanitized_field_data.get(field_name, '')
+                'label': field.get('label') or field_name_str,
+                'value': sanitized_field_data.get(field_name_str, '')
             })
 
         results.append({

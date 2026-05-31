@@ -110,14 +110,19 @@ class ClientCardService(BaseService):
             blocked = ('father', 'mother', 'guardian', 'parent', 'relation', 'spouse', 'husband', 'wife')
             return not any(token in name_norm for token in blocked)
 
-        for field in table.fields:
+        fields_list = table.fields if isinstance(table.fields, list) else []
+        for field in fields_list:
+            if not isinstance(field, dict):
+                continue
             fname = str(field.get('name', '') or '').strip()
             ftype = str(field.get('type', '') or '').strip().lower()
             if ftype == 'name' and fname:
                 return fname
             if _is_primary_name_candidate(_norm(fname)):
                 return fname
-        for field in table.fields:
+        for field in fields_list:
+            if not isinstance(field, dict):
+                continue
             fname = str(field.get('name', '') or '').strip()
             ftype = str(field.get('type', '') or '').strip().lower()
             if fname and ftype in ('text', 'name', ''):
@@ -803,8 +808,14 @@ class ClientCardService(BaseService):
                 for key, val in (card.field_data or {}).items():
                     # Check if this is an image field
                     is_image_field = False
-                    for field in table.fields:
-                        if field.get('name') == key or field.get('name', '').upper() == key.upper():
+                    for field in (table.fields or []):
+                        if not isinstance(field, dict):
+                            continue
+                        fname = field.get('name')
+                        if fname is None:
+                            continue
+                        fname_str = str(fname).strip()
+                        if fname_str == key or fname_str.upper() == key.upper():
                             is_image_field = field.get('type') in ['photo', 'image', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
                             break
                     # Strip PENDING: prefix from non-image fields
