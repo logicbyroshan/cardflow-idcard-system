@@ -372,6 +372,10 @@ class IDCardBulkService(BaseService):
             if skipped:
                 parts.append(f'{skipped} skipped (unrecognized class value).')
 
+            # Invalidate row scope distinct list cache upon completion of class upgrades
+            from core.views.idcard_helpers import invalidate_table_distinct_cache
+            invalidate_table_distinct_cache(table_id)
+
             return ServiceResult(
                 success=True,
                 message=' '.join(parts),

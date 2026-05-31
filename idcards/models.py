@@ -360,3 +360,18 @@ except ImportError:
     pass
 
 
+# ── Row Scoping distinct cache invalidation signals ──
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+@receiver(post_save, sender=IDCard)
+@receiver(post_delete, sender=IDCard)
+def clear_idcard_distinct_values_cache(sender, instance, **kwargs):
+    """Clear distinct values cache when card data changes."""
+    table_id = getattr(instance, 'table_id', None)
+    if table_id:
+        from core.views.idcard_helpers import invalidate_table_distinct_cache
+        invalidate_table_distinct_cache(table_id)
+
+
+

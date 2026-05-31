@@ -406,3 +406,69 @@ class WorkflowServiceTests(TestCase):
 		locked_other_table_card.refresh_from_db()
 		self.assertEqual(self.card_good_pending.status, 'verified')
 		self.assertEqual(locked_other_table_card.status, 'approved')
+
+
+class RowScopingCacheTests(TestCase):
+	def setUp(self):
+		from client.models import Client
+		from idcards.models import IDCardGroup, IDCardTable
+
+		self.owner = User.objects.create_user(
+			username='scoping-owner@test.com',
+			email='scoping-owner@test.com',
+			password='pass1234',
+			role='client',
+		)
+		self.client_obj = Client.objects.create(user=self.owner, name='Scoping Client')
+		self.group = IDCardGroup.objects.create(client=self.client_obj, name='Group A')
+		self.table = IDCardTable.objects.create(
+			group=self.group,
+			name='Scoping Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Class', 'type': 'class'},
+				{'name': 'Section', 'type': 'section'},
+			],
+		)
+
+	def test_scoping_distinct_cache_and_invalidation(self):
+		from django.core.cache import cache
+		from idcards.models import IDCard
+		from core.views.idcard_helpers import _get_distinct_field_values_cached, invalidate_table_distinct_cache
+
+		# Ensure cache is empty initially
+		invalidate_table_distinct_cache(self.table.id)
+		
+		# Create cards with classes and sections
+		IDCard.objects.create(table=self.table, field_data={'Name': 'Alice', 'Class': '10', 'Section': 'A'})
+		IDCard.objects.create(table=self.table, field_data={'Name': 'Bob', 'Class': '10', 'Section': 'B'})
+		IDCard.objects.create(table=self.table, field_data={'Name': 'Charlie', 'Class': '11', 'Section': 'A'})
+
+		# Call cached distinct lookup
+		class_variants = ['Class', 'class', 'CLASS']
+
+		# 1. First lookup triggers cache miss and database query
+		classes_1 = _get_distinct_field_values_cached(self.table, 'class', class_variants)
+		self.assertCountEqual(classes_1, ['10', '11'])
+
+		# Verify cache is populated
+		cache_key = f"table_distinct_fields:{self.table.id}:class"
+		self.assertEqual(cache.get(cache_key), classes_1)
+
+		# 2. Modify card, triggering post_save signal and cache invalidation
+		card = IDCard.objects.create(table=self.table, field_data={'Name': 'Dave', 'Class': '12', 'Section': 'C'})
+		self.assertIsNone(cache.get(cache_key)) # Cache must be cleared by signal receiver!
+
+		# 3. Next lookup repopulates cache with new value
+		classes_2 = _get_distinct_field_values_cached(self.table, 'class', class_variants)
+		self.assertCountEqual(classes_2, ['10', '11', '12'])
+		self.assertEqual(cache.get(cache_key), classes_2)
+
+		# 4. Delete card, triggering post_delete signal and cache invalidation
+		card.delete()
+		self.assertIsNone(cache.get(cache_key))
+
+		# 5. Lookup returns to original values
+		classes_3 = _get_distinct_field_values_cached(self.table, 'class', class_variants)
+		self.assertCountEqual(classes_3, ['10', '11'])
+

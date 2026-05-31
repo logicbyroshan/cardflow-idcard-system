@@ -418,7 +418,7 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 30   # 30-day sessions
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False # Session persists after browser close
 CSRF_COOKIE_SAMESITE = 'Lax'           # CSRF cookie SameSite
 # Ensure session cookie expiry is extended on every request.
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_SAVE_EVERY_REQUEST = False
 
 # ── Domain restriction ──
 # REMOVE any existing domain overrides to prevent duplicate cookies

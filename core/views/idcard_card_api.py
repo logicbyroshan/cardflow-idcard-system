@@ -1087,10 +1087,15 @@ def api_idcard_create(request, table_id):
         # Parse field_data and image_files from either multipart or JSON
         if request.content_type and 'multipart/form-data' in request.content_type:
             field_data = json.loads(request.POST.get('field_data', '{}'))
-            # CRITICAL: dict(request.FILES) returns lists (MultiValueDict internals).
-            # Use dict comprehension with [] access to get actual file objects.
-            image_files = {key: request.FILES[key] for key in request.FILES}
+            # Extract legacy 'photo' key FIRST, then build image_files
+            # WITHOUT it to prevent the same file object being processed twice
+            # (once in the image-field loop and once by the legacy handler).
             legacy_photo_file = request.FILES.get('photo')
+            image_files = {
+                key: request.FILES[key]
+                for key in request.FILES
+                if key != 'photo'  # handled separately via legacy_photo_file
+            }
         else:
             data = json.loads(request.body)
             field_data = data.get('field_data', {})
@@ -1264,10 +1269,14 @@ def api_idcard_update(request, card_id):
             field_data = json.loads(request.POST.get('field_data', '{}'))
             expected_updated_at = request.POST.get('expected_updated_at', None)
             reprint_modal_edit = _as_bool(request.POST.get('reprint_modal_edit'))
-            # CRITICAL: dict(request.FILES) returns lists (MultiValueDict internals).
-            # Use dict comprehension with [] access to get actual file objects.
-            image_files = {key: request.FILES[key] for key in request.FILES}
+            # Extract legacy 'photo' key FIRST, then build image_files
+            # WITHOUT it to prevent the same file object being processed twice.
             legacy_photo_file = request.FILES.get('photo')
+            image_files = {
+                key: request.FILES[key]
+                for key in request.FILES
+                if key != 'photo'  # handled separately via legacy_photo_file
+            }
         else:
             data = json.loads(request.body)
             field_data = data.get('field_data')

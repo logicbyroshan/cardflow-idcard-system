@@ -354,6 +354,51 @@ def _get_class_section_branch_field_names(table):
     return class_field, section_field, branch_field
 
 
+def invalidate_table_distinct_cache(table_id):
+    """Invalidate class, section, and branch distinct cache keys for a table."""
+    if not table_id:
+        return
+    from django.core.cache import cache
+    cache.delete(f"table_distinct_fields:{table_id}:class")
+    cache.delete(f"table_distinct_fields:{table_id}:section")
+    cache.delete(f"table_distinct_fields:{table_id}:branch")
+
+
+def _get_distinct_field_values_cached(table, field_key, variants):
+    """Retrieve distinct field values for class, section, or branch using cache."""
+    if not table or not table.id or not variants:
+        return []
+    from django.core.cache import cache
+    cache_key = f"table_distinct_fields:{table.id}:{field_key}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    # Query distinct values from the database
+    from idcards.models import IDCard
+    from django.db.models.fields.json import KeyTextTransform
+    from django.db.models.functions import Cast, Coalesce
+    from django.db.models import CharField, Value
+
+    coalesce_annotation = Coalesce(
+        *[Cast(KeyTextTransform(v, 'field_data'), CharField()) for v in variants],
+        Value(''),
+        output_field=CharField()
+    )
+
+    raw_values = list(
+        IDCard.objects.filter(table=table)
+        .annotate(_temp_val=coalesce_annotation)
+        .exclude(_temp_val='')
+        .values_list('_temp_val', flat=True)
+        .distinct()
+    )
+
+    # Cache for 1 hour
+    cache.set(cache_key, raw_values, 3600)
+    return raw_values
+
+
 def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     """Apply client_staff-specific row-level scope to an IDCard queryset.
 
@@ -430,9 +475,9 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
             has_any_filter = True
             normalized_allowed = {normalize_class_value(v) for v in scope['classes'] if normalize_class_value(v)}
             if normalized_allowed:
-                # We still need to find matching raw variants because normalize_class_value is a Python function
-                raw_values = list(
-                    qs.exclude(_scope_cls='').values_list('_scope_cls', flat=True).distinct()
+                # Retrieve from cache to avoid heavy JSON distinct query on every request
+                raw_values = _get_distinct_field_values_cached(
+                    table, 'class', _get_case_variants(class_field)
                 )
                 matching_raw = [raw for raw in raw_values if normalize_class_value(raw) in normalized_allowed]
                 if matching_raw:
@@ -447,8 +492,9 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
             has_any_filter = True
             allowed_normalized = {str(s).strip().upper() for s in scope['sections'] if str(s).strip()}
             if allowed_normalized:
-                raw_values = list(
-                    qs.exclude(_scope_sec='').values_list('_scope_sec', flat=True).distinct()
+                # Retrieve from cache to avoid heavy JSON distinct query on every request
+                raw_values = _get_distinct_field_values_cached(
+                    table, 'section', _get_case_variants(section_field)
                 )
                 matching_raw = [raw for raw in raw_values if str(raw).strip().upper() in allowed_normalized]
                 if matching_raw:
@@ -463,8 +509,9 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
             has_any_filter = True
             normalized_allowed = {normalize_compact_text_value(v) for v in scope['branches'] if normalize_compact_text_value(v)}
             if normalized_allowed:
-                raw_values = list(
-                    qs.exclude(_scope_branch='').values_list('_scope_branch', flat=True).distinct()
+                # Retrieve from cache to avoid heavy JSON distinct query on every request
+                raw_values = _get_distinct_field_values_cached(
+                    table, 'branch', _get_case_variants(branch_field)
                 )
                 matching_raw = [raw for raw in raw_values if normalize_compact_text_value(raw) in normalized_allowed]
                 if matching_raw:

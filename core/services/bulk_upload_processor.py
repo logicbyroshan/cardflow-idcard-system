@@ -251,8 +251,10 @@ def process_bulk_upload(task):
             'error_count': len(errors),
             'errors': errors[:10] if errors else []
         }
-        task.save(update_fields=['metadata'])
-        
+        # Invalidate row scope distinct list cache upon new cards bulk upload completion
+        from core.views.idcard_helpers import invalidate_table_distinct_cache
+        invalidate_table_distinct_cache(table_id)
+
         # Mark completed
         task.mark_completed()
         logger.info(

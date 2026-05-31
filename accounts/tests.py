@@ -446,6 +446,60 @@ class LoginViewTests(TestCase):
                 user_sessions += 1
         self.assertEqual(user_sessions, 13)
 
+    def test_login_api_allows_guest_user_20_sessions(self):
+        guest_user = User.objects.create_user(
+            username='guest-limit@example.com',
+            email='guest-limit@example.com',
+            password='testpass123',
+            role='guest_user',
+        )
+
+        from accounts.models import UserDeviceSession
+        from django.utils import timezone
+
+        # Create 20 existing sessions
+        session_keys = []
+        for i in range(20):
+            session = SessionStore()
+            session['_auth_user_id'] = str(guest_user.pk)
+            session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+            session['_auth_user_hash'] = guest_user.get_session_auth_hash()
+            session['_auth_login_surface'] = 'desktop'
+            session.save()
+            session_keys.append(session.session_key)
+
+            UserDeviceSession.objects.create(
+                user=guest_user,
+                session_key=session.session_key,
+                device_type='web',
+                last_active=timezone.now(),
+            )
+
+        # Login 21st time
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'guest-limit@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.27',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        # Verify oldest session was evicted
+        self.assertFalse(Session.objects.filter(session_key=session_keys[0]).exists())
+
+        # Verify exactly 20 active sessions exist
+        user_sessions = 0
+        for s in Session.objects.all():
+            if str(s.get_decoded().get('_auth_user_id')) == str(guest_user.pk):
+                user_sessions += 1
+        self.assertEqual(user_sessions, 20)
+
     def test_login_api_logs_cross_browser_activity_for_client(self):
         from accounts.services import AuthService
 

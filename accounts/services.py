@@ -77,6 +77,8 @@ _ROLE_SURFACE_LIMITS = {
     # One desktop + one mobile for standard staff/client roles.
     'client': {'desktop': 1, 'mobile': 1},
     'client_staff': {'desktop': 1, 'mobile': 1},
+    # Guest users can use the same account on up to 20 devices per surface.
+    'guest_user': {'desktop': 20, 'mobile': 20},
     # PRO and ADMIN have effectively no limit (9999).
     'admin_staff': {'desktop': 9999, 'mobile': 9999},
     'super_admin': {'desktop': 9999, 'mobile': 9999},

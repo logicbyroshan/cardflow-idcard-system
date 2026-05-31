@@ -254,6 +254,88 @@ class IDCardCardServiceCreateTests(TestCase):
         self.assertEqual(result.data['card']['field_data']['PHOTO'], 'PENDING:avatar-1.jpg')
 
 
+class IDCardApiUploadTests(TestCase):
+    def setUp(self):
+        self.user, self.client_obj = _create_client_user()
+        self.group, self.table = _create_table(
+            self.client_obj,
+            fields=[
+                {'name': 'NAME', 'type': 'text', 'order': 1},
+                {'name': 'PHOTO', 'type': 'photo', 'order': 2},
+                {'name': 'SIGNATURE', 'type': 'signature', 'order': 3},
+            ]
+        )
+        self.client_obj.perm_idcard_add = True
+        self.client_obj.perm_idcard_edit = True
+        self.client_obj.save(update_fields=['perm_idcard_add', 'perm_idcard_edit'])
+        self.client.force_login(self.user)
+
+    def test_api_create_card_with_images_success(self):
+        # Create a dummy image
+        from PIL import Image
+        img = Image.new('RGB', (100, 100), color='red')
+        img_io = io.BytesIO()
+        img.save(img_io, 'JPEG')
+        img_bytes = img_io.getvalue()
+
+        # Build SimpleUploadedFiles for both PHOTO and SIGNATURE fields
+        photo_file = SimpleUploadedFile("myphoto.jpg", img_bytes, content_type="image/jpeg")
+        sig_file = SimpleUploadedFile("mysign.jpg", img_bytes, content_type="image/jpeg")
+
+        # Call create API
+        response = self.client.post(
+            f'/panel/api/table/{self.table.id}/card/create/',
+            data={
+                'field_data': json.dumps({'NAME': 'DUMMY USER'}),
+                'image_PHOTO': photo_file,
+                'image_SIGNATURE': sig_file,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        
+        # Verify card and images are created
+        from idcards.models import IDCard
+        card = IDCard.objects.get(id=data['card']['id'])
+        self.assertEqual(card.field_data['NAME'], 'DUMMY USER')
+        self.assertTrue(card.field_data['PHOTO'].endswith('.jpg'))
+        self.assertTrue(card.field_data['SIGNATURE'].endswith('.jpg'))
+        self.assertNotEqual(card.field_data['PHOTO'], 'NOT_FOUND')
+
+    def test_api_update_card_with_images_success(self):
+        from idcards.models import IDCard
+        card = IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'INITIAL', 'PHOTO': '', 'SIGNATURE': ''}
+        )
+
+        from PIL import Image
+        img = Image.new('RGB', (100, 100), color='blue')
+        img_io = io.BytesIO()
+        img.save(img_io, 'JPEG')
+        img_bytes = img_io.getvalue()
+
+        photo_file = SimpleUploadedFile("updated_photo.jpg", img_bytes, content_type="image/jpeg")
+
+        response = self.client.post(
+            f'/panel/api/card/{card.id}/update/',
+            data={
+                'field_data': json.dumps({'NAME': 'UPDATED NAME'}),
+                'image_PHOTO': photo_file,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+
+        card.refresh_from_db()
+        self.assertEqual(card.field_data['NAME'], 'UPDATED NAME')
+        self.assertTrue(card.field_data['PHOTO'].endswith('.jpg'))
+
+
 # ── Workflow Transition Tests ──
 class WorkflowTransitionTests(TestCase):
     def setUp(self):
