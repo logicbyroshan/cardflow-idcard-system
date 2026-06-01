@@ -272,7 +272,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
             const pre = await ImageManipulator.manipulateAsync(
               uri,
               [{ resize: { width: Math.round(assetWidth * preScale), height: Math.round(assetHeight * preScale) } }],
-              { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+              { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
             );
             uri = pre.uri;
             assetWidth = pre.width;

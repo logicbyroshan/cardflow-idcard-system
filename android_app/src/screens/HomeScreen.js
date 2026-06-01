@@ -332,13 +332,24 @@ export default function HomeScreen({ navigation }) {
     const statusMapped = statusKey === 'total' ? 'all' : statusKey;
     if (isClient || isAssistant) {
       const clientTables = counts.tables || [];
-      if (clientTables.length === 1) {
-        navigation.navigate('CardList', { tableId: clientTables[0].id, status: statusMapped });
-      } else {
+      if (clientTables.length === 0) {
+        // No tables assigned yet — go to Groups screen which will show empty state
         navigation.navigate('ClientGroups', {
           clientId: user?.client_id,
-          clientName: 'Groups & Tables',
-          initialStatus: statusMapped
+          clientName: 'My Groups & Tables',
+          initialStatus: statusMapped,
+        });
+        return;
+      }
+      if (clientTables.length === 1) {
+        // Only 1 table — go directly to the card list with the right status
+        navigation.navigate('CardList', { tableId: clientTables[0].id, status: statusMapped });
+      } else {
+        // Multiple tables — go to the groups & tables page (same as VIEW ALL btn)
+        navigation.navigate('ClientGroups', {
+          clientId: user?.client_id,
+          clientName: 'My Groups & Tables',
+          initialStatus: statusMapped,
         });
       }
     }

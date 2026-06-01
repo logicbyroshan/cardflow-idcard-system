@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Dimensions, Platform, StatusBar, Animated, PanResponder } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Dimensions, Platform, StatusBar, Animated } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useIsFocused } from '@react-navigation/native';
@@ -155,174 +155,26 @@ export default function CameraScreen({ navigation, route }) {
   const previewHeight = height - 160 - Math.max(insets.bottom, 20);
   const previewWidth = width;
 
-  const [cropX, setCropX] = useState(0);
-  const [cropY, setCropY] = useState(0);
-  const [cropW, setCropW] = useState(0);
-  const [cropH, setCropH] = useState(0);
   const [cropping, setCropping] = useState(false);
-
-  const cropRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
-
-  const updateCrop = (x, y, w, h) => {
-    cropRef.current = { x, y, w, h };
-    setCropX(x);
-    setCropY(y);
-    setCropW(w);
-    setCropH(h);
-  };
-
-  useEffect(() => {
-    if (photo) {
-      const imageAspect = photo.width / photo.height;
-      let dW = previewWidth;
-      let dH = previewWidth / imageAspect;
-      if (dH > previewHeight) {
-        dH = previewHeight;
-        dW = previewHeight * imageAspect;
-      }
-      const oX = (previewWidth - dW) / 2;
-      const oY = (previewHeight - dH) / 2;
-
-      const w = dW * 0.8;
-      const h = dH * 0.8;
-      const x = oX + (dW - w) / 2;
-      const y = oY + (dH - h) / 2;
-
-      updateCrop(x, y, w, h);
-    }
-  }, [photo]);
-
-  const panStartRef = useRef({ cx: 0, cy: 0 });
-  const boxPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        panStartRef.current = {
-          cx: cropRef.current.x,
-          cy: cropRef.current.y,
-        };
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        if (!photo) return;
-        const imageAspect = photo.width / photo.height;
-        let dW = previewWidth;
-        let dH = previewWidth / imageAspect;
-        if (dH > previewHeight) {
-          dH = previewHeight;
-          dW = previewHeight * imageAspect;
-        }
-        const oX = (previewWidth - dW) / 2;
-        const oY = (previewHeight - dH) / 2;
-
-        let newX = panStartRef.current.cx + gestureState.dx;
-        let newY = panStartRef.current.cy + gestureState.dy;
-
-        const cw = cropRef.current.w;
-        const ch = cropRef.current.h;
-
-        if (newX < oX) newX = oX;
-        if (newX + cw > oX + dW) newX = oX + dW - cw;
-        if (newY < oY) newY = oY;
-        if (newY + ch > oY + dH) newY = oY + dH - ch;
-
-        updateCrop(newX, newY, cw, ch);
-      },
-    })
-  ).current;
-
-  const resizeStartRef = useRef({ cw: 0, ch: 0 });
-  const resizePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        resizeStartRef.current = {
-          cw: cropRef.current.w,
-          ch: cropRef.current.h,
-        };
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        if (!photo) return;
-        const imageAspect = photo.width / photo.height;
-        let dW = previewWidth;
-        let dH = previewWidth / imageAspect;
-        if (dH > previewHeight) {
-          dH = previewHeight;
-          dW = previewHeight * imageAspect;
-        }
-        const oX = (previewWidth - dW) / 2;
-        const oY = (previewHeight - dH) / 2;
-
-        let newW = resizeStartRef.current.cw + gestureState.dx;
-        let newH = resizeStartRef.current.ch + gestureState.dy;
-
-        if (newW < 60) newW = 60;
-        if (newH < 60) newH = 60;
-
-        const cx = cropRef.current.x;
-        const cy = cropRef.current.y;
-
-        if (cx + newW > oX + dW) newW = oX + dW - cx;
-        if (cy + newH > oY + dH) newH = oY + dH - cy;
-
-        updateCrop(cx, cy, newW, newH);
-      },
-    })
-  ).current;
 
   const handleConfirm = async () => {
     if (!photo) return;
     setCropping(true);
     try {
-      const imageAspect = photo.width / photo.height;
-      let dW = previewWidth;
-      let dH = previewWidth / imageAspect;
-      if (dH > previewHeight) {
-        dH = previewHeight;
-        dW = previewHeight * imageAspect;
-      }
-      const oX = (previewWidth - dW) / 2;
-      const oY = (previewHeight - dH) / 2;
-
-      const scale = photo.width / dW;
-      const originX = Math.round((cropRef.current.x - oX) * scale);
-      const originY = Math.round((cropRef.current.y - oY) * scale);
-      const cropWidth = Math.round(cropRef.current.w * scale);
-      const cropHeight = Math.round(cropRef.current.h * scale);
-
-      // Step 1: Crop the photo to the selected region
-      const cropped = await ImageManipulator.manipulateAsync(
-        photo.uri,
-        [
-          {
-            crop: {
-              originX: Math.max(0, originX),
-              originY: Math.max(0, originY),
-              width: Math.min(photo.width - originX, cropWidth),
-              height: Math.min(photo.height - originY, cropHeight),
-            },
-          },
-        ],
-        { compress: 1.0, format: ImageManipulator.SaveFormat.JPEG } // lossless crop first
-      );
-
-      // Step 2: Resize to max 800x1000 and compress to ~75% quality.
-      // This brings a 12MP camera photo (~6 MB) down to ~150–250 KB,
-      // preventing request timeouts during upload.
-      const croppedW = cropped.width;
-      const croppedH = cropped.height;
-      const MAX_W = 800;
-      const MAX_H = 1000;
-      const scaleW = croppedW > MAX_W ? MAX_W / croppedW : 1;
-      const scaleH = croppedH > MAX_H ? MAX_H / croppedH : 1;
-      const finalScale = Math.min(scaleW, scaleH);
-      const resizeActions = finalScale < 1
-        ? [{ resize: { width: Math.round(croppedW * finalScale), height: Math.round(croppedH * finalScale) } }]
+      // Resize the photo to max 1600px on longest side, compress at 90% JPEG quality.
+      // This keeps files near ~1MB regardless of the original sensor resolution.
+      const srcW = photo.width || 1;
+      const srcH = photo.height || 1;
+      const MAX_SIDE = 1600;
+      const scale = Math.max(srcW, srcH) > MAX_SIDE ? MAX_SIDE / Math.max(srcW, srcH) : 1;
+      const resizeActions = scale < 1
+        ? [{ resize: { width: Math.round(srcW * scale), height: Math.round(srcH * scale) } }]
         : [];
 
       const manipulated = await ImageManipulator.manipulateAsync(
-        cropped.uri,
+        photo.uri,
         resizeActions,
-        { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
       );
 
       if (route.params?.onCapture) {
@@ -330,11 +182,65 @@ export default function CameraScreen({ navigation, route }) {
       }
       navigation.goBack();
     } catch (err) {
-      alert("Error cropping image: " + err.message);
+      alert('Error processing image: ' + err.message);
     } finally {
       setCropping(false);
     }
-  };
+  };  // ── Free photo preview — no crop box, just confirm or retake ────────────
+  if (photo) {
+    return (
+      <View style={[s.root, { backgroundColor: '#0f172a' }]}>
+        <StatusBar hidden />
+
+        {/* Full-screen photo preview */}
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <Image
+            source={{ uri: photo.uri }}
+            style={{ flex: 1, width: '100%' }}
+            resizeMode="contain"
+          />
+
+          {/* Top label */}
+          <View style={s.previewTopBar}>
+            <Text style={s.previewTopLabel}>📷  PHOTO PREVIEW</Text>
+            <Text style={s.previewTopSub}>Confirm or retake the photo</Text>
+          </View>
+        </View>
+
+        {/* Action buttons */}
+        <View style={[s.previewActions, { paddingBottom: Math.max(insets.bottom, 24) + 12 }]}>
+          <TouchableOpacity
+            style={s.retakeBtn}
+            onPress={() => {
+              if (route.params?.imageUri) {
+                navigation.goBack();
+              } else {
+                setPhoto(null);
+              }
+            }}
+            disabled={cropping}
+          >
+            <DynamicIcon name={route.params?.imageUri ? 'times' : 'redo'} size={18} color='#fff' />
+            <Text style={s.btnText}>{route.params?.imageUri ? 'Cancel' : 'Retake'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm} disabled={cropping}>
+            {cropping ? (
+              <>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={s.btnText}>Processing...</Text>
+              </>
+            ) : (
+              <>
+                <DynamicIcon name="check" size={18} color='#fff' />
+                <Text style={s.btnText}>Use Photo</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   const takePicture = async () => {
     if (!cameraRef.current || !isCameraReady || isCapturing) return;
@@ -348,7 +254,7 @@ export default function CameraScreen({ navigation, route }) {
     while (attempts > 0) {
       try {
         const p = await cameraRef.current.takePictureAsync({
-          quality: 0.5,  // Lower initial quality; final compression happens in handleConfirm
+          quality: 0.85,
           shutterSound: false,
         });
         if (p) {
@@ -369,106 +275,6 @@ export default function CameraScreen({ navigation, route }) {
     setTimeout(() => setIsCapturing(false), 500);
   };
 
-  // Check if we already have a photo to crop (e.g. from gallery pick)
-  // before demanding camera permissions.
-  if (photo) {
-    return (
-      <View style={[s.root, { justifyContent: 'flex-start' }]}>
-        <View style={{ width: previewWidth, height: previewHeight, backgroundColor: '#000', position: 'relative' }}>
-          <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
-
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: cropY, backgroundColor: 'rgba(0,0,0,0.6)' }} />
-          <View style={{ position: 'absolute', top: cropY + cropH, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} />
-          <View style={{ position: 'absolute', top: cropY, left: 0, width: cropX, height: cropH, backgroundColor: 'rgba(0,0,0,0.6)' }} />
-          <View style={{ position: 'absolute', top: cropY, left: cropX + cropW, right: 0, height: cropH, backgroundColor: 'rgba(0,0,0,0.6)' }} />
-
-          <View
-            style={[
-              s.cropBox,
-              {
-                position: 'absolute',
-                top: cropY,
-                left: cropX,
-                width: cropW,
-                height: cropH,
-                borderColor: '#fff',
-                borderWidth: 2,
-                backgroundColor: 'rgba(255,255,255,0.05)',
-              },
-            ]}
-            {...boxPanResponder.panHandlers}
-          >
-            <View style={[s.cropCorner, { top: -2, left: -2, borderLeftWidth: 3, borderTopWidth: 3 }]} />
-            <View style={[s.cropCorner, { top: -2, right: -2, borderRightWidth: 3, borderTopWidth: 3 }]} />
-            <View style={[s.cropCorner, { bottom: -2, left: -2, borderLeftWidth: 3, borderBottomWidth: 3 }]} />
-            <View style={[s.cropCorner, { bottom: -2, right: -2, borderRightWidth: 3, borderBottomWidth: 3 }]} />
-
-            <View style={{ position: 'absolute', left: '33.3%', top: 0, bottom: 0, width: 0.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            <View style={{ position: 'absolute', left: '66.6%', top: 0, bottom: 0, width: 0.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            <View style={{ position: 'absolute', top: '33.3%', left: 0, right: 0, height: 0.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            <View style={{ position: 'absolute', top: '66.6%', left: 0, right: 0, height: 0.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-
-            <View
-              style={{
-                position: 'absolute',
-                bottom: -15,
-                right: -15,
-                width: 35,
-                height: 35,
-                backgroundColor: 'transparent',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 99,
-              }}
-              {...resizePanResponder.panHandlers}
-            >
-              <View
-                style={{
-                  width: 14,
-                  height: 14,
-                  backgroundColor: '#fff',
-                  borderRadius: 7,
-                  borderWidth: 2,
-                  borderColor: '#22c55e',
-                }}
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={[s.reviewOverlay, { position: 'relative', flex: 1, justifyContent: 'center', paddingBottom: Math.max(insets.bottom, 20) + 10 }]}>
-           <Text style={[s.reviewTitle, { fontSize: 13, marginBottom: 12 }]}>Drag box to move • Corner dot to crop</Text>
-           <View style={s.reviewActions}>
-              <TouchableOpacity
-                style={s.retakeBtn}
-                onPress={() => {
-                  if (route.params?.imageUri) {
-                    navigation.goBack();
-                  } else {
-                    setPhoto(null);
-                  }
-                }}
-                disabled={cropping}
-              >
-                <DynamicIcon name={route.params?.imageUri ? "times" : "redo"} size={16} color="#fff" />
-                <Text style={s.btnText}>{route.params?.imageUri ? "Cancel" : "Retake"}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm} disabled={cropping}>
-                {cropping ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <DynamicIcon name="check" size={16} color="#fff" />
-                    <Text style={s.btnText}>Crop & Use</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-           </View>
-        </View>
-      </View>
-    );
-  }
-
   if (!permission) return <View style={s.center}><ActivityIndicator color={colors.brandPrimary} /></View>;
   if (!permission.granted) {
     return (
@@ -484,9 +290,6 @@ export default function CameraScreen({ navigation, route }) {
       </View>
     );
   }
-
-
-
 
   // Stencil position values
   const ovalCx = width / 2;
@@ -639,8 +442,10 @@ const s = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'space-around', 
     paddingHorizontal: 20, 
-    paddingTop: 20,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingTop: 24,
+    backgroundColor: '#0f172a',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
   },
   controlItem: { alignItems: 'center', width: 80 },
   controlIconSquare: { 
@@ -668,12 +473,31 @@ const s = StyleSheet.create({
   },
   captureBtnInnerMain: { width: 56, height: 56, borderRadius: radius.xs, backgroundColor: '#fff' },
 
+  // Preview screen styles (free viewer — no crop box)
+  previewTopBar: {
+    position: 'absolute', top: 0, left: 0, right: 0,
+    paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    alignItems: 'center',
+  },
+  previewTopLabel: { color: '#fff', fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', letterSpacing: 1 },
+  previewTopSub: { color: 'rgba(255,255,255,0.55)', fontSize: 11, fontFamily: 'SairaSemiCondensed-Medium', marginTop: 2 },
+  previewActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 16,
+    backgroundColor: '#0f172a',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.10)',
+  },
+
   fullPreview: { flex: 1, resizeMode: 'cover' },
   reviewOverlay: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(15, 23, 42, 0.95)', padding: 24, borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md, ...shadows.lg },
   reviewTitle: { color: '#fff', fontSize: 20, fontFamily: 'SairaSemiCondensed-Bold', textAlign: 'center', marginBottom: 20 },
   reviewActions: { flexDirection: 'row', gap: 16 },
-  retakeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.sm, gap: 8 },
-  confirmBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: '#22c55e', borderRadius: radius.sm, gap: 8 },
+  retakeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: radius.sm, gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  confirmBtn: { flex: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, backgroundColor: '#22c55e', borderRadius: radius.sm, gap: 10 },
   btnText: { color: '#fff', fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold' },
   
   errorText: { color: '#fff', marginBottom: 20, fontFamily: 'SairaSemiCondensed-Medium' },
