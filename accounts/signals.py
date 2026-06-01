@@ -161,29 +161,29 @@ def manage_user_device_sessions(sender, request, user, **kwargs):
             limits = get_limits(user)
             limit = limits.get(device_type, 1)
 
-            # Use select_for_update for race protection
-            # Order primarily by last_active (most recent first) and use id
-            # as a deterministic tiebreaker so eviction behavior is stable
-            # when multiple records share identical timestamps.
-            active_sessions_qs = UserDeviceSession.objects.select_for_update().filter(
+            # Use select_for_update for race protection.
+            # Compute how many OTHER sessions exist and revoke the oldest ones
+            # when the count would exceed the per-surface limit. This approach
+            # avoids relying solely on queryset ordering semantics and is
+            # deterministic: we explicitly pick the oldest records by
+            # ascending `(last_active, id)` and remove exactly the required
+            # number of entries.
+            other_qs = UserDeviceSession.objects.select_for_update().filter(
                 user=user,
                 device_type=device_type
-            ).only('id', 'session_key', 'last_active').order_by('-last_active', '-id')
+            ).exclude(session_key=session_key).only('id', 'session_key', 'last_active')
 
-            # EXCLUDE current session BEFORE deletion to prevent immediate logout
-            active_sessions = [s for s in active_sessions_qs if s.session_key != session_key]
-
-            # If the number of OTHER sessions >= limit, remove the oldest ones.
+            other_count = other_qs.count()
             # We keep at most (limit - 1) other sessions because the current
-            # session already occupies one slot.
-            if len(active_sessions) >= limit:
-                stale_entries = active_sessions[limit - 1:]
-                
-                for entry in stale_entries:
-                    try:
-                        # Thoroughly delete the session from DB + cache
-                        _delete_session_thoroughly(entry.session_key, logger)
+            # session occupies one slot. If other_count >= limit, we must remove
+            # `other_count - (limit - 1)` oldest entries.
+            if other_count >= limit:
+                num_to_remove = max(1, other_count - (limit - 1))
+                stale_qs = other_qs.order_by('last_active', 'id')[:num_to_remove]
 
+                for entry in stale_qs:
+                    try:
+                        _delete_session_thoroughly(entry.session_key, logger)
                         logger.info(
                             "Revoked session %s for user %s (device_type=%s, limit=%d hit)",
                             entry.session_key[:8], user.username, device_type, limit,
