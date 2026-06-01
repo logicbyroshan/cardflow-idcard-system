@@ -220,16 +220,44 @@ window.initStaffPage = function (cfg) {
     var allRows      = [];
     var filteredRows = [];
 
+    function rowMatchesFilters(row, searchTerm) {
+        var matchStatus = true;
+        if (currentFilter === 'active' || currentFilter === 'inactive') {
+            matchStatus = row.dataset.staffStatus === currentFilter;
+        }
+
+        if (!searchTerm) {
+            return matchStatus;
+        }
+
+        var matchSearch = false;
+        row.querySelectorAll('td').forEach(function (cell) {
+            if (cell.textContent.toLowerCase().includes(searchTerm)) {
+                matchSearch = true;
+            }
+        });
+
+        return matchStatus && matchSearch;
+    }
+
+    function refreshFilteredRows() {
+        var searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        filteredRows = allRows.filter(function (row) {
+            var matches = rowMatchesFilters(row, searchTerm);
+            row.dataset.filtered = matches ? 'true' : 'false';
+            return matches;
+        });
+    }
+
     function initPagination() {
         var tb = getTbody();
         if (!tb) return;
         allRows      = Array.from(tb.querySelectorAll('tr:not(.no-data-row)'));
-        filteredRows = allRows.slice();
+        refreshFilteredRows();
         updatePagination();
     }
 
     function updatePagination() {
-        filteredRows = allRows.filter(function (r) { return r.style.display !== 'none'; });
         var total      = filteredRows.length;
         var totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
         if (currentPage > totalPages) currentPage = totalPages;
@@ -293,14 +321,7 @@ window.initStaffPage = function (cfg) {
     // Override search to integrate with pagination
     var origSearch = performSearch;
     function searchWithPagination() {
-        var term = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        allRows.forEach(function (row) {
-            var matchSearch = false, matchStatus = true;
-            if (currentFilter === 'active' || currentFilter === 'inactive') matchStatus = row.dataset.staffStatus === currentFilter;
-            if (!term) { matchSearch = true; } else { row.querySelectorAll('td').forEach(function (c) { if (c.textContent.toLowerCase().includes(term)) matchSearch = true; }); }
-            row.dataset.filtered = (matchSearch && matchStatus) ? 'true' : 'false';
-            row.style.display    = (matchSearch && matchStatus) ? '' : 'none';
-        });
+        refreshFilteredRows();
         currentPage = 1;
         updatePagination();
     }
