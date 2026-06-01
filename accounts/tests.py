@@ -500,6 +500,65 @@ class LoginViewTests(TestCase):
                 user_sessions += 1
         self.assertEqual(user_sessions, 20)
 
+    def test_mobile_login_keeps_guest_user_existing_mobile_sessions(self):
+        from client.models import Client
+        from accounts.models import UserDeviceSession
+        from django.utils import timezone
+
+        guest_user = User.objects.create_user(
+            username='guest-mobile@example.com',
+            email='guest-mobile@example.com',
+            password='testpass123',
+            role='guest_user',
+        )
+        Client.objects.create(
+            user=guest_user,
+            name='Guest Mobile',
+            status='active',
+            is_guest=True,
+        )
+
+        session = SessionStore()
+        session['_auth_user_id'] = str(guest_user.pk)
+        session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+        session['_auth_user_hash'] = guest_user.get_session_auth_hash()
+        session['_auth_login_surface'] = 'mobile'
+        session['mobile_auth_ok'] = True
+        session.save()
+
+        UserDeviceSession.objects.create(
+            user=guest_user,
+            session_key=session.session_key,
+            device_type='mobile',
+            last_active=timezone.now(),
+        )
+
+        response = self.client.post(
+            '/api/mobile/auth/login/',
+            data=json.dumps({
+                'email': 'guest-mobile@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.28',
+            HTTP_X_CLIENT_TYPE='mobile',
+            HTTP_USER_AGENT='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+            HTTP_ACCEPT_LANGUAGE='en-US',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        self.assertTrue(Session.objects.filter(session_key=session.session_key).exists())
+
+        guest_mobile_sessions = 0
+        for s in Session.objects.all():
+            data = s.get_decoded()
+            if str(data.get('_auth_user_id')) == str(guest_user.pk) and data.get('_auth_login_surface') == 'mobile':
+                guest_mobile_sessions += 1
+        self.assertGreaterEqual(guest_mobile_sessions, 2)
+
     def test_login_api_logs_cross_browser_activity_for_client(self):
         from accounts.services import AuthService
 
@@ -993,6 +1052,45 @@ class UserProfileServiceTests(TestCase):
         self.assertTrue(success)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('newpass123'))
+
+    def test_guest_profile_sandbox_isolated_per_session(self):
+        from accounts.services_profile import UserProfileService
+        from django.test.client import RequestFactory
+        from django.contrib.sessions.backends.db import SessionStore
+
+        guest_user = User.objects.create_user(
+            username='guest-sandbox@example.com',
+            email='guest-sandbox@example.com',
+            password='testpass123',
+            role='guest_user',
+        )
+
+        factory = RequestFactory()
+
+        request_one = factory.get('/panel/client/profile/')
+        request_one.user = guest_user
+        request_one.session = SessionStore()
+        request_one.session.save()
+
+        request_two = factory.get('/panel/client/profile/')
+        request_two.user = guest_user
+        request_two.session = SessionStore()
+        request_two.session.save()
+
+        success, message, profile = UserProfileService.update_profile(
+            guest_user,
+            {'first_name': 'Device One'},
+            request=request_one,
+        )
+        self.assertTrue(success)
+        self.assertEqual(message, 'Profile updated (sandbox)')
+        self.assertEqual(profile['full_name'], 'Device One')
+
+        first_profile = UserProfileService.get_profile(guest_user, request=request_one)
+        second_profile = UserProfileService.get_profile(guest_user, request=request_two)
+
+        self.assertEqual(first_profile['first_name'], 'Device One')
+        self.assertEqual(second_profile['first_name'], '')
 
     def test_change_password_revokes_other_sessions_keeps_current(self):
         from django.test import Client
