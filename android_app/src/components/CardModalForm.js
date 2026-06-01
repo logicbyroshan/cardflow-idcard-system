@@ -110,22 +110,14 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
     setLoading(true);
     setError(null);
     try {
-      // Load table fields
-      let { ok: fOk, data: fData } = await apiGet(`/api/mobile/table/${tableId}/filter-options/?status=pending`);
+      // Load table fields directly from the fields endpoint (canonical schema source of truth)
+      const { ok: fOk, data: fData } = await apiGet(`/api/mobile/table/${tableId}/fields/`);
       
-      // Fallback: If filter-options didn't provide fields, try the table config endpoint
-      if (!fOk || !fData?.data?.fields || fData.data.fields.length === 0) {
-        const { ok: tOk, data: tData } = await apiGet(`/api/mobile/table/${tableId}/config/`);
-        if (tOk && tData?.success && tData.data?.fields) {
-          fData = tData;
-          fOk = true;
-          if (tData.data.table_name) setTableName(tData.data.table_name);
-        }
-      }
-
-      if (fOk && fData?.success && fData.data?.fields) {
-        setFields(fData.data.fields);
-        if (fData.data.table_name) setTableName(fData.data.table_name);
+      let activeFields = [];
+      if (fOk && fData?.success && fData.table?.fields) {
+        activeFields = fData.table.fields;
+        setFields(activeFields);
+        if (fData.table.name) setTableName(fData.table.name);
       }
 
       // If editing, load existing card data
@@ -133,7 +125,6 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         const { ok: cOk, data: cData } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
         if (cOk && cData?.success) {
           const cleaned = cleanFieldData(cData.data?.field_data || {});
-          const activeFields = fData?.data?.fields || fields || [];
           
           Object.keys(cleaned).forEach(k => {
             if (typeof cleaned[k] === 'string') {
@@ -170,7 +161,9 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
           });
 
           setValues(cleaned);
-          setTableName(cData.data?.table_name || '');
+          if (cData.data?.table_name && !tableName) {
+            setTableName(cData.data.table_name);
+          }
         } else if (!cOk) {
           setError('Failed to load card details');
         }
