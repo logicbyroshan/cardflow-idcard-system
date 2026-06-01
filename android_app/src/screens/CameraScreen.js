@@ -289,7 +289,8 @@ export default function CameraScreen({ navigation, route }) {
       const cropWidth = Math.round(cropRef.current.w * scale);
       const cropHeight = Math.round(cropRef.current.h * scale);
 
-      const manipulated = await ImageManipulator.manipulateAsync(
+      // Step 1: Crop the photo to the selected region
+      const cropped = await ImageManipulator.manipulateAsync(
         photo.uri,
         [
           {
@@ -301,7 +302,27 @@ export default function CameraScreen({ navigation, route }) {
             },
           },
         ],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 1.0, format: ImageManipulator.SaveFormat.JPEG } // lossless crop first
+      );
+
+      // Step 2: Resize to max 800x1000 and compress to ~75% quality.
+      // This brings a 12MP camera photo (~6 MB) down to ~150–250 KB,
+      // preventing request timeouts during upload.
+      const croppedW = cropped.width;
+      const croppedH = cropped.height;
+      const MAX_W = 800;
+      const MAX_H = 1000;
+      const scaleW = croppedW > MAX_W ? MAX_W / croppedW : 1;
+      const scaleH = croppedH > MAX_H ? MAX_H / croppedH : 1;
+      const finalScale = Math.min(scaleW, scaleH);
+      const resizeActions = finalScale < 1
+        ? [{ resize: { width: Math.round(croppedW * finalScale), height: Math.round(croppedH * finalScale) } }]
+        : [];
+
+      const manipulated = await ImageManipulator.manipulateAsync(
+        cropped.uri,
+        resizeActions,
+        { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
       );
 
       if (route.params?.onCapture) {
@@ -327,7 +348,7 @@ export default function CameraScreen({ navigation, route }) {
     while (attempts > 0) {
       try {
         const p = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
+          quality: 0.5,  // Lower initial quality; final compression happens in handleConfirm
           shutterSound: false,
         });
         if (p) {

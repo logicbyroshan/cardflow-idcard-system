@@ -4,6 +4,7 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DynamicIcon } from './Icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiGet, apiPostForm, BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 
@@ -255,17 +256,40 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
-        const uri = asset.uri;
-        const width = asset.width || 1000;
-        const height = asset.height || 1000;
+        let uri = asset.uri;
+        let assetWidth = asset.width || 1000;
+        let assetHeight = asset.height || 1000;
+
+        // Pre-compress large gallery images to prevent upload timeouts.
+        // Cap at 1600×2000 before passing to the crop screen.
+        const PRE_MAX_W = 1600;
+        const PRE_MAX_H = 2000;
+        const scaleW = assetWidth > PRE_MAX_W ? PRE_MAX_W / assetWidth : 1;
+        const scaleH = assetHeight > PRE_MAX_H ? PRE_MAX_H / assetHeight : 1;
+        const preScale = Math.min(scaleW, scaleH);
+        if (preScale < 1) {
+          try {
+            const pre = await ImageManipulator.manipulateAsync(
+              uri,
+              [{ resize: { width: Math.round(assetWidth * preScale), height: Math.round(assetHeight * preScale) } }],
+              { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            uri = pre.uri;
+            assetWidth = pre.width;
+            assetHeight = pre.height;
+          } catch (err) {
+            // If pre-compress fails, use original (still better than crashing)
+            console.warn('[Gallery] Pre-compress failed, using original:', err);
+          }
+        }
 
         setPhotoMenu(p => ({ ...p, visible: false }));
 
         // Navigate to Camera screen for custom cropping
         navigation.navigate('Camera', {
           imageUri: uri,
-          imageWidth: width,
-          imageHeight: height,
+          imageWidth: assetWidth,
+          imageHeight: assetHeight,
           onCapture: (croppedUri) => setValues(prev => ({ ...prev, [fieldName]: croppedUri }))
         });
       }

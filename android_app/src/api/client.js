@@ -291,6 +291,7 @@ export async function apiPostForm(path, formData, extraHeaders = {}) {
       method: 'POST',
       body: formData,
       headers: extraHeaders,
+      timeout: 90000, // 90s — needed for photo uploads over slow mobile connections
     });
     const text = await response.text();
     let data = {};
