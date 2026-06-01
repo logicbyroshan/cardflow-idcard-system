@@ -68,7 +68,7 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     (async () => {
       try {
-        const currentVersion = Constants?.expoConfig?.version || '1.0.62';
+        const currentVersion = Constants?.expoConfig?.version || '1.0.63';
         const lastVersion = await AsyncStorage.getItem('adarsh_last_seen_version');
         
         const { status: camStatus, canAskAgain: camCanAsk } = await ImagePicker.getCameraPermissionsAsync();
