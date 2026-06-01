@@ -101,10 +101,12 @@ const s = StyleSheet.create({
   content: { 
     width: '100%', 
     maxWidth: 340, 
-    backgroundColor: '#fff', 
-    borderRadius: radius.sm, 
+    backgroundColor: 'rgba(255, 255, 255, 0.92)', 
+    borderRadius: radius.md, 
     padding: 24, 
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     ...shadows.xl 
   },
   iconCircle: { 

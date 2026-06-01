@@ -4,13 +4,11 @@ import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { GroupsSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
-import StatusBadge from '../components/StatusBadge';
 import { apiGet } from '../api/client';
 import { colors, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
 
-const STATUS_LABELS = { pending: 'Pending', verified: 'Verified', approved: 'Approved', download: 'Download', pool: 'Pool', reprint: 'Reprint' };
 
 export default function GroupsScreen({ navigation }) {
   const { user } = useAuth();
@@ -54,16 +52,23 @@ export default function GroupsScreen({ navigation }) {
         </TouchableOpacity>
         <View style={s.tablePills}>
           {[
-            { key: 'p', status: 'pending' },
-            { key: 'v', status: 'verified' },
-            { key: 'a', status: 'approved' },
-            { key: 'd', status: 'download' },
-            { key: 'r', status: 'reprint' },
+            { key: 'p', status: 'pending',  label: 'PENDING',  color: '#f59e0b', bg: '#fffbeb', icon: 'clock' },
+            { key: 'v', status: 'verified', label: 'VERIFIED', color: '#10b981', bg: '#ecfdf5', icon: 'check-circle' },
+            { key: 'a', status: 'approved', label: 'APPROVED', color: '#3b82f6', bg: '#eff6ff', icon: 'thumbs-up' },
+            { key: 'd', status: 'download', label: 'DOWNLOAD', color: '#8b5cf6', bg: '#f5f3ff', icon: 'download' },
+            { key: 'po', status: 'pool',     label: 'POOL',     color: '#ef4444', bg: '#fef2f2', icon: 'archive' },
+            { key: 'r', status: 'reprint',  label: 'REPRINT',  color: '#f97316', bg: '#fff7ed', icon: 'redo' },
           ].map(st => (
-            <TouchableOpacity key={st.key} style={s.pillBtn}
+            <TouchableOpacity key={st.key}
+              style={[s.pillBtn, { backgroundColor: st.bg, borderColor: st.color + '40' }]}
               onPress={() => navigation.navigate('CardList', { tableId: table.id, status: st.status })}>
-              <Text style={s.pillLabel} numberOfLines={1}>{STATUS_LABELS[st.status]?.substring(0, 3).toUpperCase() || ''}</Text>
-              <StatusBadge status={st.status} count={counts[st.key] || 0} variant="glass" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <DynamicIcon name={st.icon} size={9} color={st.color} />
+                <Text style={[s.pillLabel, { color: st.color }]}>{st.label}</Text>
+              </View>
+              <View style={[s.pillCount, { backgroundColor: st.color }]}>
+                <Text style={s.pillCountText}>{counts[st.key] || 0}</Text>
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -108,9 +113,11 @@ const s = StyleSheet.create({
   tableName: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
   groupName: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400, marginTop: 1 },
   
-  tablePills: { flexDirection: 'row', justifyContent: 'space-between' },
-  pillBtn: { flex: 1, alignItems: 'center', minWidth: 0 },
-  pillLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginBottom: 4, textTransform: 'uppercase' },
+  tablePills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingTop: 4 },
+  pillBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexGrow: 1, minWidth: '47%', paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius.xs, borderWidth: 1 },
+  pillLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', textTransform: 'uppercase' },
+  pillCount: { minWidth: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  pillCountText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
   
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { width: 64, height: 64, borderRadius: radius.xxl, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },

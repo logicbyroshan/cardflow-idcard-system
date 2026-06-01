@@ -3,7 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, TextInput, ScrollView,
-  Dimensions,
+  Dimensions, Linking,
 } from 'react-native';
 import { DynamicIcon, IconSearch, IconCheck } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,7 +16,7 @@ import Toast from '../components/Toast';
 import CardModalForm from '../components/CardModalForm';
 import ConfirmModal from '../components/ConfirmModal';
 import FilterDrawer from '../components/FilterDrawer';
-import { apiGet, apiPost } from '../api/client';
+import { apiGet, apiPost, BASE_URL } from '../api/client';
 import { colors, gradients, shadows, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
 
@@ -530,9 +530,10 @@ export default function CardListScreen({ navigation, route }) {
         subtitle={tableName}
         onBack={selectMode ? exitSelectMode : () => navigation.goBack()}
         onAdd={(currentStatus === 'pending' && perms.perm_idcard_add) ? () => { setEditingCardId(null); setShowForm(true); } : undefined}
-        rightAction={hasReprintPerm ? {
+        leftOfHomeBtn={(!selectMode && currentStatus === 'download' && hasReprintPerm) ? {
+          label: 'REPRINT',
           onPress: () => navigation.navigate('ReprintDetail', { tableId }),
-          icon: 'redo'
+          style: { backgroundColor: '#8b5cf6' },
         } : undefined}
       />
 
@@ -659,6 +660,19 @@ export default function CardListScreen({ navigation, route }) {
               {currentStatus === 'approved' && perms.perm_idcard_approve && !isClientRole && <FBtn icon="redo"         label="DISAPPROVE SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
               
               {currentStatus === 'download' && perms.perm_idcard_retrieve && !isClientRole && <FBtn icon="redo"         label="RETRIEVE SELECTED" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              {currentStatus === 'download' && (perms.perm_download_pdf || perms.perm_idcard_download_pdf || perms.perm_idcard_bulk_download || perms.isSuperAdmin) && (
+                <FBtn
+                  icon="file-pdf"
+                  label="DOWNLOAD PDF"
+                  color="#8b5cf6"
+                  disabled={bulkLoading || selectedIds.size === 0}
+                  onPress={() => {
+                    const ids = Array.from(selectedIds).join(',');
+                    const url = `${BASE_URL}/api/mobile/table/${tableId}/download-pdf/?status=download&selected_ids=${ids}`;
+                    Linking.openURL(url);
+                  }}
+                />
+              )}
               
               {currentStatus === 'pool'     && (perms.perm_idcard_retrieve || isClientRole) && <FBtn icon="redo"         label="RETRIEVE FROM POOL" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
               {currentStatus === 'pool'     && perms.perm_idcard_delete_from_pool && !isClientRole && <FBtn icon="trash" label="PERMANENTLY DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('permanent_delete')} />}

@@ -652,8 +652,10 @@ const TableBadgeButton = React.memo(({ opt, table, navigation }) => {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <DynamicIcon name={sc.icon} size={10} color={sc.color} />
-      <Text style={[s.badgeText, { color: sc.text }]}>{opt.label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <DynamicIcon name={sc.icon} size={11} color={sc.text} />
+        <Text style={[s.badgeText, { color: sc.text }]}>{opt.label}</Text>
+      </View>
       <View style={[s.badgeCountCircle, { backgroundColor: sc.text }]}>
         <Text style={s.badgeCountText}>{count}</Text>
       </View>
@@ -699,7 +701,7 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions, currentStat
       </View>
 
       {/* Clickable Status Badges matching web style */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tableBadgesRow}>
+      <View style={s.tableBadgesRow}>
         {STATUS_OPTIONS.slice(1).map(opt => (
           <TableBadgeButton
             key={opt.key}
@@ -708,7 +710,7 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions, currentStat
             navigation={navigation}
           />
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 });
@@ -733,9 +735,9 @@ const s = StyleSheet.create({
   tableMeta: { fontSize: 9, color: colors.gray400, marginTop: 1 },
   cogButton: { padding: 6 },
 
-  // Status badges row inside table row
-  tableBadgesRow: { gap: 6, paddingVertical: 2 },
-  badgeButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.xs, borderWidth: 1 },
+  // Status badges row inside table row — 2-column flex-wrap grid
+  tableBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 2 },
+  badgeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexGrow: 1, minWidth: '47%', gap: 4, paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius.xs, borderWidth: 1 },
   badgeText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
   badgeCountCircle: { width: 14, height: 14, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   badgeCountText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },

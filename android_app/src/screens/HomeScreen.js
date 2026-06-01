@@ -302,7 +302,7 @@ export default function HomeScreen({ navigation }) {
       if (hasReprintPerm) {
         actions.push({ label: 'REPRINT', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: user?.client_id } });
       }
-      if ((isClient || isAssistant) && perms.perm_manage_client_staff) {
+      if (isClient || (isAssistant && perms.perm_manage_client_staff)) {
         actions.push({ label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', screen: 'StaffManage' });
       }
     }
@@ -327,6 +327,22 @@ export default function HomeScreen({ navigation }) {
       setExpandedClient(prev => prev?.id === client.id ? null : { id: client.id });
     }
   }, [navigation, setExpandedClient]);
+
+  const handleStatCardPress = useCallback((statusKey) => {
+    const statusMapped = statusKey === 'total' ? 'all' : statusKey;
+    if (isClient || isAssistant) {
+      const clientTables = counts.tables || [];
+      if (clientTables.length === 1) {
+        navigation.navigate('CardList', { tableId: clientTables[0].id, status: statusMapped });
+      } else {
+        navigation.navigate('ClientGroups', {
+          clientId: user?.client_id,
+          clientName: 'Groups & Tables',
+          initialStatus: statusMapped
+        });
+      }
+    }
+  }, [isClient, isAssistant, counts.tables, user, navigation]);
 
   if (loading) return (
     <View style={s.root}>
@@ -391,7 +407,12 @@ export default function HomeScreen({ navigation }) {
           {STATUS_CONFIG.map(st => {
             const val = st.key === 'total' ? totalCards : (counts[st.key] || 0);
             return (
-              <View key={st.key} style={s.statusCardOuter}>
+              <TouchableOpacity 
+                key={st.key} 
+                style={s.statusCardOuter}
+                activeOpacity={0.8}
+                onPress={() => handleStatCardPress(st.key)}
+              >
                 <LinearGradient colors={[st.bg, st.bg2]} start={{x:0, y:0}} end={{x:1, y:1}} style={s.statusCard}>
                   <View style={s.statusCardContent}>
                     <View style={s.statusIconCircle}><st.Svg size={16} color="#fff" /></View>
@@ -401,7 +422,7 @@ export default function HomeScreen({ navigation }) {
                     </View>
                   </View>
                 </LinearGradient>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>

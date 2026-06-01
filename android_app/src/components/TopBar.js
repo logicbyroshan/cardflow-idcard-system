@@ -8,7 +8,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, typography, spacing, radius, fontFamily } from '../theme';
 
-export default function TopBar({ title, subtitle, onBack, rightAction, secondaryAction, onAdd, onDownload, children, showHome = true }) {
+export default function TopBar({ title, subtitle, onBack, rightAction, secondaryAction, onAdd, onDownload, children, showHome = true, leftOfHomeBtn }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute();
@@ -64,6 +64,17 @@ export default function TopBar({ title, subtitle, onBack, rightAction, secondary
             activeOpacity={0.7}
           >
             <IconDownload size={13} color={colors.white} />
+          </TouchableOpacity>
+        )}
+        {leftOfHomeBtn && (
+          <TouchableOpacity
+            onPress={leftOfHomeBtn.onPress}
+            style={[styles.leftOfHomeBtnStyle, leftOfHomeBtn.style]}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.leftOfHomeBtnText, leftOfHomeBtn.textStyle]}>
+              {leftOfHomeBtn.label}
+            </Text>
           </TouchableOpacity>
         )}
         {shouldShowHome && (
@@ -172,6 +183,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+  },
+  leftOfHomeBtnStyle: {
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  leftOfHomeBtnText: {
+    color: colors.white,
+    fontSize: 10,
+    fontFamily: 'SairaSemiCondensed-Bold',
   },
 });
 

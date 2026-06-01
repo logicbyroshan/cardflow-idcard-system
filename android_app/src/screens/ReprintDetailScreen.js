@@ -367,12 +367,11 @@ export default function ReprintDetailScreen({ navigation, route }) {
             <>
               {activeTab === 'download_list' && canRequestReprint && (
                 <TouchableOpacity
-                  style={[s.actionBtn, { backgroundColor: '#fef3c7', flex: 1, justifyContent: 'center' }]}
+                  style={[s.actionBtn, { backgroundColor: '#8b5cf6', flex: 1, justifyContent: 'center' }]}
                   onPress={() => handleRequestReprint(cardId, name)}
                   activeOpacity={0.7}
                 >
-                  <DynamicIcon name="redo" size={11} color="#b45309" style={{ marginRight: 6 }} />
-                  <Text style={[s.actionText, { color: '#b45309' }]}>Request Reprint</Text>
+                  <Text style={[s.actionText, { color: '#fff' }]}>REQUEST REPRINT</Text>
                 </TouchableOpacity>
               )}
 
@@ -448,7 +447,16 @@ export default function ReprintDetailScreen({ navigation, route }) {
 
   return (
     <View style={s.root}>
-      <TopBar title="Reprint Detail" subtitle={tableName || `Table #${tableId}`} onBack={() => navigation.goBack()} />
+      <TopBar
+        title="Reprint Detail"
+        subtitle={tableName || `Table #${tableId}`}
+        onBack={() => navigation.goBack()}
+        leftOfHomeBtn={{
+          label: 'DOWNLOAD LIST',
+          onPress: () => navigation.navigate('CardList', { tableId, status: 'download' }),
+          style: { backgroundColor: '#8b5cf6' },
+        }}
+      />
       
       {/* 3-Tab workflow Segment Bar */}
       {tabs.length > 1 && (

@@ -63,7 +63,8 @@ class MobileAppCSRFBypassMiddleware:
         # This covers:
         # - /api/auth/* (Main panel APIs)
         # - /app/api/auth/* (Mobile/PWA specific APIs)
-        auth_patterns = ['/api/auth/', '/app/api/', '/api/mobile/', '/auth/login', '/auth/logout']
+        # - /reprint/api/* (Reprint workflow APIs)
+        auth_patterns = ['/api/auth/', '/app/api/', '/api/mobile/', '/auth/login', '/auth/logout', '/reprint/api/']
         
         if any(p in path for p in auth_patterns) or any(p in path_info for p in auth_patterns):
             # This is a Django internal flag that CsrfViewMiddleware respects.
