@@ -45,6 +45,61 @@ export async function loadStoredAuth() {
   }
 }
 
+let renewalPromise = null;
+
+async function attemptSilentSessionRenewal() {
+  if (renewalPromise) {
+    return await renewalPromise;
+  }
+  
+  renewalPromise = (async () => {
+    try {
+      const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+      if (!credsStr) {
+        return false;
+      }
+      const { email, password } = JSON.parse(credsStr);
+      
+      // First ensure fresh CSRF
+      await fetchInitialCsrf();
+      
+      const url = `${BASE_URL}/api/mobile/auth/login/`;
+      const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'User-Agent': 'AdarshMobileApp/1.1 (Premium Native; Expo)',
+      };
+      if (cachedCsrf) {
+        headers['X-CSRFToken'] = cachedCsrf;
+      }
+      if (cachedCookies) {
+        headers['Cookie'] = cachedCookies;
+      }
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
+      
+      await saveCookiesFromResponse(response);
+      const text = await response.text();
+      const data = JSON.parse(text);
+      
+      return !!data?.success;
+    } catch (e) {
+      console.warn('[API] Silent session renewal failed', e);
+      return false;
+    }
+  })();
+  
+  const result = await renewalPromise;
+  renewalPromise = null; // Reset for future expirations
+  return result;
+}
+
 async function saveCookiesFromResponse(response) {
   try {
     const setCookie = response.headers.get('set-cookie');
@@ -199,8 +254,18 @@ export async function apiGet(path, params = null) {
     }
 
     if (!response.ok) {
-      if (response.status === 401 && data?.logged_in_elsewhere && onSessionKickedCallback) {
-        onSessionKickedCallback();
+      if (response.status === 401) {
+        if (data?.logged_in_elsewhere && onSessionKickedCallback) {
+          onSessionKickedCallback();
+        } else if (!path.includes('/auth/login/')) {
+          // Attempt silent session renewal and retry once
+          const renewed = await attemptSilentSessionRenewal();
+          if (renewed) {
+            console.log('[API] Silent session renewal successful for GET retry:', path);
+            // Retry the GET request once
+            return await apiGet(path, params);
+          }
+        }
       }
       return { 
         ok: false, 
@@ -257,8 +322,18 @@ export async function apiPost(path, body = {}) {
     }
 
     if (!response.ok) {
-      if (response.status === 401 && data?.logged_in_elsewhere && onSessionKickedCallback) {
-        onSessionKickedCallback();
+      if (response.status === 401) {
+        if (data?.logged_in_elsewhere && onSessionKickedCallback) {
+          onSessionKickedCallback();
+        } else if (!path.includes('/auth/login/')) {
+          // Attempt silent session renewal and retry once
+          const renewed = await attemptSilentSessionRenewal();
+          if (renewed) {
+            console.log('[API] Silent session renewal successful for POST retry:', path);
+            // Retry the POST request once
+            return await apiPost(path, body);
+          }
+        }
       }
       return { 
         ok: false, 
@@ -297,13 +372,28 @@ export async function apiPostForm(path, formData, extraHeaders = {}) {
     let data = {};
     try {
       data = JSON.parse(text);
-      if (response.status === 401 && data?.logged_in_elsewhere && onSessionKickedCallback) {
-        onSessionKickedCallback();
-      }
     } catch (e) {
       console.warn('[API] JSON Parse Error for form POST:', path);
       return { ok: false, status: response.status, data: { message: 'Invalid server response' } };
     }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        if (data?.logged_in_elsewhere && onSessionKickedCallback) {
+          onSessionKickedCallback();
+        } else if (!path.includes('/auth/login/')) {
+          // Attempt silent session renewal and retry once
+          const renewed = await attemptSilentSessionRenewal();
+          if (renewed) {
+            console.log('[API] Silent session renewal successful for Form POST retry:', path);
+            // Retry the Form POST request once
+            return await apiPostForm(path, formData, extraHeaders);
+          }
+        }
+      }
+      return { ok: false, status: response.status, data: data || { message: 'Server error' } };
+    }
+
     return { ok: response.ok, status: response.status, data };
   } catch (e) {
     console.warn('[API] Fetch Error for form POST:', path, e);
