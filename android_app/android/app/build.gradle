@@ -97,8 +97,8 @@ android {
         applicationId 'com.adarshid.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 61
-        versionName "1.0.61"
+        versionCode 62
+        versionName "1.0.62"
     }
     signingConfigs {
         debug {
