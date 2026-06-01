@@ -1125,13 +1125,15 @@ def api_mobile_login(request):
             if not request.session.session_key:
                 request.session.save()
             new_session_key = request.session.session_key or ''
-            
-            # Revoke other mobile sessions for this user
-            AuthService.revoke_active_sessions_for_user(
-                user.id,
-                surface='mobile',
-                exclude_session_key=new_session_key
-            )
+
+            # Guest users are allowed up to 20 concurrent mobile sessions.
+            # Keep the legacy handoff behavior for other roles only.
+            if getattr(user, 'role', '') != 'guest_user':
+                AuthService.revoke_active_sessions_for_user(
+                    user.id,
+                    surface='mobile',
+                    exclude_session_key=new_session_key
+                )
         except Exception as e:
             logger.error("api_mobile_login: auth_login failed: %s", str(e), exc_info=True)
             return JsonResponse({'success': False, 'message': 'Authentication failed during session creation.'}, status=500)

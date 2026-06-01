@@ -162,10 +162,13 @@ def manage_user_device_sessions(sender, request, user, **kwargs):
             limit = limits.get(device_type, 1)
 
             # Use select_for_update for race protection
+            # Order primarily by last_active (most recent first) and use id
+            # as a deterministic tiebreaker so eviction behavior is stable
+            # when multiple records share identical timestamps.
             active_sessions_qs = UserDeviceSession.objects.select_for_update().filter(
                 user=user,
                 device_type=device_type
-            ).only('id', 'session_key', 'last_active').order_by('-last_active')
+            ).only('id', 'session_key', 'last_active').order_by('-last_active', '-id')
 
             # EXCLUDE current session BEFORE deletion to prevent immediate logout
             active_sessions = [s for s in active_sessions_qs if s.session_key != session_key]
