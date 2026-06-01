@@ -194,6 +194,157 @@ function buildCsrfHeaders() {
     return headers;
 }
 
+var _imagePickerStartHandle = null;
+var _imagePickerStartHandleLoaded = false;
+var _imagePickerStartHandleLoadPromise = null;
+
+function _supportsNativeImageFilePicker() {
+    return typeof window.showOpenFilePicker === 'function';
+}
+
+function _readImagePickerStartHandleFromDb() {
+    if (!window.indexedDB) return Promise.resolve(null);
+    if (_imagePickerStartHandleLoaded) return Promise.resolve(_imagePickerStartHandle);
+    if (_imagePickerStartHandleLoadPromise) return _imagePickerStartHandleLoadPromise;
+
+    _imagePickerStartHandleLoadPromise = new Promise(function(resolve) {
+        var request = indexedDB.open('adarsh-admin-image-picker', 1);
+
+        request.onupgradeneeded = function() {
+            var db = request.result;
+            if (db.objectStoreNames.contains('handles')) return;
+            db.createObjectStore('handles');
+        };
+
+        request.onsuccess = function() {
+            try {
+                var db = request.result;
+                var tx = db.transaction('handles', 'readonly');
+                var store = tx.objectStore('handles');
+                var getRequest = store.get('last-file-handle');
+
+                getRequest.onsuccess = function() {
+                    _imagePickerStartHandle = getRequest.result || null;
+                    _imagePickerStartHandleLoaded = true;
+                    try { db.close(); } catch (e) {}
+                    resolve(_imagePickerStartHandle);
+                };
+                getRequest.onerror = function() {
+                    _imagePickerStartHandleLoaded = true;
+                    try { db.close(); } catch (e) {}
+                    resolve(null);
+                };
+            } catch (err) {
+                _imagePickerStartHandleLoaded = true;
+                try { request.result && request.result.close(); } catch (e) {}
+                resolve(null);
+            }
+        };
+
+        request.onerror = function() {
+            _imagePickerStartHandleLoaded = true;
+            resolve(null);
+        };
+
+        request.onblocked = function() {
+            _imagePickerStartHandleLoaded = true;
+            resolve(null);
+        };
+    });
+
+    return _imagePickerStartHandleLoadPromise;
+}
+
+function _storeImagePickerStartHandle(handle) {
+    if (!handle || !window.indexedDB) return;
+    _imagePickerStartHandle = handle;
+    _imagePickerStartHandleLoaded = true;
+
+    try {
+        var request = indexedDB.open('adarsh-admin-image-picker', 1);
+
+        request.onupgradeneeded = function() {
+            var db = request.result;
+            if (!db.objectStoreNames.contains('handles')) {
+                db.createObjectStore('handles');
+            }
+        };
+
+        request.onsuccess = function() {
+            try {
+                var db = request.result;
+                var tx = db.transaction('handles', 'readwrite');
+                tx.objectStore('handles').put(handle, 'last-file-handle');
+                tx.oncomplete = function() {
+                    try { db.close(); } catch (e) {}
+                };
+                tx.onerror = function() {
+                    try { db.close(); } catch (e) {}
+                };
+            } catch (err) {
+                try { request.result && request.result.close(); } catch (e) {}
+            }
+        };
+    } catch (err) {
+        console.warn('Could not store remembered image picker folder:', err);
+    }
+}
+
+function _setInputFileFromSelection(input, file) {
+    if (!input || !file) return;
+    try {
+        if (typeof DataTransfer !== 'undefined') {
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+        }
+    } catch (err) {
+        console.warn('DataTransfer assignment failed; falling back to stored file.', err);
+    }
+
+    try {
+        input._croppedFile = file;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (e) {
+        console.error('Unable to apply selected file to input:', e);
+    }
+}
+
+async function openRememberedImagePicker(input) {
+    if (!input) return;
+
+    if (!_supportsNativeImageFilePicker()) {
+        input.click();
+        return;
+    }
+
+    var pickerOptions = {
+        multiple: false,
+        startIn: _imagePickerStartHandle || 'pictures',
+        types: [{
+            description: 'Image files',
+            accept: {
+                'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.heic', '.heif', '.hei']
+            }
+        }]
+    };
+
+    try {
+        var handles = await window.showOpenFilePicker(pickerOptions);
+        if (!handles || !handles.length) return;
+        var fileHandle = handles[0];
+        var file = await fileHandle.getFile();
+        _storeImagePickerStartHandle(fileHandle);
+        _setInputFileFromSelection(input, file);
+    } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        console.warn('Native image picker failed, falling back to file input:', err);
+        input.click();
+    }
+}
+
 async function convertHeifPreviewViaServer(file) {
     var formData = new FormData();
     formData.append('file', file, file.name || 'image.heic');
@@ -371,6 +522,10 @@ function applyImageToField(input, file) {
 function initFormDataHandlers() {
     const formPhotoInput = document.getElementById('formPhotoInput');
     const formPhotoPreview = document.getElementById('formPhotoPreview');
+
+    _readImagePickerStartHandleFromDb().catch(function() {
+        // Best-effort cache warmup only.
+    });
     
     // Photo upload preview
     if (formPhotoInput) {
@@ -389,6 +544,18 @@ function initFormDataHandlers() {
     // Integrates with ImageCropper when available
     const cardFormEl = document.getElementById('cardForm');
     if (cardFormEl) {
+        cardFormEl.addEventListener('click', function(e) {
+            const uploadBtn = e.target.closest('.image-upload-btn');
+            if (!uploadBtn) return;
+
+            const input = uploadBtn.querySelector('.image-input');
+            if (!input) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            openRememberedImagePicker(input);
+        });
+
         cardFormEl.addEventListener('change', function(e) {
             const input = e.target;
             if (!input.classList.contains('image-input')) return;

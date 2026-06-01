@@ -173,6 +173,9 @@
         if (!formEl) return;
         var inputs = formEl.querySelectorAll('input[type="text"], input[type="tel"], textarea, input:not([type])');
         inputs.forEach(function (el) {
+            if (el.classList && el.classList.contains('image-path-input')) {
+                return;
+            }
             var isEmail = el.type === 'email' || (el.name && el.name.toLowerCase().includes('email'));
             // Sanitize on blur (after user finishes typing)
             el.addEventListener('blur', function () {
