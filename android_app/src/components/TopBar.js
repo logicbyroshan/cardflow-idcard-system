@@ -67,15 +67,30 @@ export default function TopBar({ title, subtitle, onBack, rightAction, secondary
           </TouchableOpacity>
         )}
         {leftOfHomeBtn && (
-          <TouchableOpacity
-            onPress={leftOfHomeBtn.onPress}
-            style={[styles.leftOfHomeBtnStyle, leftOfHomeBtn.style]}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.leftOfHomeBtnText, leftOfHomeBtn.textStyle]}>
-              {leftOfHomeBtn.label}
-            </Text>
-          </TouchableOpacity>
+          Array.isArray(leftOfHomeBtn) ? (
+            leftOfHomeBtn.map((btn, index) => btn && (
+              <TouchableOpacity
+                key={index}
+                onPress={btn.onPress}
+                style={[styles.leftOfHomeBtnStyle, btn.style]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.leftOfHomeBtnText, btn.textStyle]}>
+                  {btn.label}
+                </Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <TouchableOpacity
+              onPress={leftOfHomeBtn.onPress}
+              style={[styles.leftOfHomeBtnStyle, leftOfHomeBtn.style]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.leftOfHomeBtnText, leftOfHomeBtn.textStyle]}>
+                {leftOfHomeBtn.label}
+              </Text>
+            </TouchableOpacity>
+          )
         )}
         {shouldShowHome && (
           <TouchableOpacity

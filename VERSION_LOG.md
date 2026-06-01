@@ -2,6 +2,7 @@
 
 | Date | Platform Version | Mobile Version | Mobile Build | Key Changes |
 | :--- | :--- | :--- | :--- | :--- |
+| **2026-06-01** | **v4.18.2** | **1.0.65** | **65** | **Fix TopBar PDF action button for clients/guests; bump build version** |
 | **2026-05-30** | **v4.18.2** | **1.0.56** | **56** | **Phase 2 app bug fixes: designation field layout fix, search query reset on tab switch, in-place client updates, flat list keyboard persistent tap, admin client status tabs pre-selection** |
 | **2026-05-22** | **v4.18.2** | **1.0.45** | **45** | **Fix: Reprint download CSRF refresh + retry; Pro Features admin UI fetch fixes; session keepalive URL handling; rebuild dist assets** |
 | **2026-05-11** | **v3.20.0** | **1.0.45** | **45** | **Google Play API 35 Requirement Fix** |
