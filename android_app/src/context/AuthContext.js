@@ -105,7 +105,18 @@ export function AuthProvider({ children }) {
           setIsAuthenticated(true);
           
           // Check if MPIN is set for this user
-          const mpin = await AsyncStorage.getItem(`adarsh_mpin_${parsed.email.toLowerCase()}`);
+          let loginIdentifier = parsed.email;
+          const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+          if (credsStr) {
+            try {
+              const creds = JSON.parse(credsStr);
+              if (creds?.email) {
+                loginIdentifier = creds.email;
+              }
+            } catch (e) {}
+          }
+          const emailKey = loginIdentifier ? loginIdentifier.toLowerCase() : '';
+          const mpin = await AsyncStorage.getItem(`adarsh_mpin_${emailKey}`);
           if (mpin) {
             setIsMpinCreated(true);
             setIsAppUnlocked(false); // Must unlock on fresh app open
@@ -258,8 +269,19 @@ export function AuthProvider({ children }) {
   }, [originalUser]);
 
   const createMpin = useCallback(async (newMpin) => {
-    if (!user?.email) return false;
-    const emailKey = user.email.toLowerCase();
+    let loginIdentifier = user?.email;
+    try {
+      const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+      if (credsStr) {
+        const creds = JSON.parse(credsStr);
+        if (creds?.email) {
+          loginIdentifier = creds.email;
+        }
+      }
+    } catch (e) {}
+
+    if (!loginIdentifier) return false;
+    const emailKey = loginIdentifier.toLowerCase();
     await AsyncStorage.setItem(`adarsh_mpin_${emailKey}`, newMpin);
     setIsMpinCreated(true);
     setIsAppUnlocked(true);
@@ -267,8 +289,19 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   const verifyMpin = useCallback(async (enteredMpin) => {
-    if (!user?.email) return false;
-    const emailKey = user.email.toLowerCase();
+    let loginIdentifier = user?.email;
+    try {
+      const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+      if (credsStr) {
+        const creds = JSON.parse(credsStr);
+        if (creds?.email) {
+          loginIdentifier = creds.email;
+        }
+      }
+    } catch (e) {}
+
+    if (!loginIdentifier) return false;
+    const emailKey = loginIdentifier.toLowerCase();
     const stored = await AsyncStorage.getItem(`adarsh_mpin_${emailKey}`);
     if (stored === enteredMpin) {
       setIsAppUnlocked(true);
@@ -300,8 +333,19 @@ export function AuthProvider({ children }) {
   }, [user, login]);
 
   const changeMpin = useCallback(async (oldMpin, newMpin) => {
-    if (!user?.email) return false;
-    const emailKey = user.email.toLowerCase();
+    let loginIdentifier = user?.email;
+    try {
+      const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+      if (credsStr) {
+        const creds = JSON.parse(credsStr);
+        if (creds?.email) {
+          loginIdentifier = creds.email;
+        }
+      }
+    } catch (e) {}
+
+    if (!loginIdentifier) return false;
+    const emailKey = loginIdentifier.toLowerCase();
     const stored = await AsyncStorage.getItem(`adarsh_mpin_${emailKey}`);
     if (stored === oldMpin) {
       await AsyncStorage.setItem(`adarsh_mpin_${emailKey}`, newMpin);
@@ -311,19 +355,39 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   const forgotMpin = useCallback(async () => {
-    const email = user?.email;
-    if (email) {
-      await AsyncStorage.removeItem(`adarsh_mpin_${email.toLowerCase()}`);
+    let loginIdentifier = user?.email;
+    try {
+      const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+      if (credsStr) {
+        const creds = JSON.parse(credsStr);
+        if (creds?.email) {
+          loginIdentifier = creds.email;
+        }
+      }
+    } catch (e) {}
+
+    if (loginIdentifier) {
+      await AsyncStorage.removeItem(`adarsh_mpin_${loginIdentifier.toLowerCase()}`);
     }
     await logout();
   }, [user, logout]);
 
   const resetMpinWithPassword = useCallback(async (password) => {
-    if (!user?.email) return { success: false, error: 'No user email found' };
-    const email = user.email;
-    const result = await login(email, password);
+    let loginIdentifier = user?.email;
+    try {
+      const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+      if (credsStr) {
+        const creds = JSON.parse(credsStr);
+        if (creds?.email) {
+          loginIdentifier = creds.email;
+        }
+      }
+    } catch (e) {}
+
+    if (!loginIdentifier) return { success: false, error: 'No user email found' };
+    const result = await login(loginIdentifier, password);
     if (result.success) {
-      const emailKey = email.toLowerCase();
+      const emailKey = loginIdentifier.toLowerCase();
       await AsyncStorage.removeItem(`adarsh_mpin_${emailKey}`);
       setIsMpinCreated(false);
       setIsAppUnlocked(false);

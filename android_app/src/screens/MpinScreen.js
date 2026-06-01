@@ -5,6 +5,7 @@ import {
   TextInput, KeyboardAvoidingView, ActivityIndicator,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DynamicIcon } from '../components/Icons';
@@ -216,7 +217,28 @@ export default function MpinScreen({ navigation, route }) {
     }
     setLoading(true);
     try {
-      const result = await login(user.email, password);
+      let identifier = user?.email;
+      try {
+        const credsStr = await AsyncStorage.getItem('adarsh_user_credentials');
+        if (credsStr) {
+          const creds = JSON.parse(credsStr);
+          if (creds?.email) {
+            identifier = creds.email;
+          }
+        }
+      } catch (e) {
+        console.log('Error reading adarsh_user_credentials', e);
+      }
+
+      if (!identifier) {
+        showToast('Session expired completely. Please log in again.', 'error');
+        setTimeout(() => {
+          logout().then(() => navigation.navigate('Login'));
+        }, 1500);
+        return;
+      }
+
+      const result = await login(identifier, password);
       if (result.success) {
         showToast('App unlocked successfully', 'success');
         setPassword('');
