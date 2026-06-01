@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, Text, FlatList, TouchableOpacity, Image, StyleSheet, 
   ActivityIndicator, RefreshControl, Alert, TextInput, Dimensions,
-  Modal, TouchableWithoutFeedback
+  Modal, TouchableWithoutFeedback, ScrollView
 } from 'react-native';
 import { DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -319,47 +319,149 @@ export default function ReprintDetailScreen({ navigation, route }) {
   const renderItem = useCallback(({ item }) => {
     const cardId = item.card_id;
     const keyId = item.rr_id || cardId;
-    const name = getFieldValue(item.ordered_fields, ['NAME', 'FULL NAME', 'STUDENT NAME', 'FULL_NAME', 'STUDENT_NAME', 'CLASS']) || `Card #${cardId}`;
-    const parentName = getFieldValue(item.ordered_fields, ['FATHER NAME', 'FATHER_NAME', 'MOTHER NAME', 'MOTHER_NAME', 'GUARDIAN NAME']);
-    const classVal = getFieldValue(item.ordered_fields, ['CLASS', 'CLASS_NAME']);
-    const secVal = getFieldValue(item.ordered_fields, ['SECTION', 'SEC']);
-    const photoUrl = getPhotoUrl(item.ordered_fields);
+    const name = getFieldValue(item.ordered_fields, ['NAME', 'FULL NAME', 'STUDENT NAME', 'FULL_NAME', 'STUDENT_NAME']) || `Card #${cardId}`;
     const isUpdating = updating === keyId;
 
-    const finalPhotoUrl = resolveAdarshImageUrl(photoUrl);
+    let imageFields = [];
+    let textFields = [];
+    const orderedFields = item.ordered_fields || [];
+    
+    orderedFields.forEach(f => {
+      const val = f.value;
+      const typeLower = (f.type || '').toLowerCase();
+      const nameUpper = (f.name || '').toUpperCase();
+      const isImageField = [
+        'photo', 'rel_photo', 'mother_photo', 'father_photo', 
+        'barcode', 'qr_code', 'signature', 'image'
+      ].includes(typeLower) || 
+      nameUpper.includes('PHOTO') || 
+      (nameUpper.includes('SIGN') && !nameUpper.includes('DESIGNATION')) || 
+      nameUpper.includes('IMAGE') ||
+      nameUpper.includes('PIC') ||
+      String(val).match(/\.(jpg|jpeg|png|webp|gif)$/i);
 
-    return (
-      <View style={s.card}>
-        <TouchableOpacity style={s.cardTop} activeOpacity={0.7} onPress={() => navigation.navigate('CardDetail', { cardId })}>
-          <View style={s.photoWrap}>
-            {photoUrl ? (
+      if (isImageField) {
+        imageFields.push({ name: f.name, value: val });
+      } else {
+        textFields.push({ name: f.name, value: val, label: f.label || f.name });
+      }
+    });
+
+    // Ensure PHOTO is present if available at root and not already in imageFields
+    const hasPhotoField = imageFields.some(img => img.name.toUpperCase() === 'PHOTO');
+    const rootPhoto = getPhotoUrl(item.ordered_fields);
+    if (!hasPhotoField && rootPhoto) {
+      imageFields.unshift({ name: 'PHOTO', value: rootPhoto });
+    }
+
+    const renderCardImage = (field) => {
+      const val = String(field.value || '');
+      const isPending = val.toUpperCase().startsWith('PENDING') || val.toUpperCase().includes('PENDING:');
+      const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined' || val.trim() === '';
+      
+      const imageUrl = isPending || isEmpty ? null : resolveAdarshImageUrl(val);
+      const showImage = !isPending && !isEmpty && imageUrl;
+      
+      let boxBg = '#f1f5f9';
+      let iconName = 'user';
+      let iconColor = '#cbd5e1';
+
+      if (isPending) {
+        boxBg = '#fef08a';
+        iconName = 'clock';
+        iconColor = '#ca8a04';
+      } else if (showImage) {
+        boxBg = '#fff';
+      }
+
+      return (
+        <View key={field.name} style={s.imgBoxWrap}>
+          <View style={[s.imgBox, { backgroundColor: boxBg }]}>
+            {showImage ? (
               <Image 
                 source={{ 
-                  uri: finalPhotoUrl,
+                  uri: imageUrl,
                   headers: {
                     Cookie: getSessionCookies()
                   }
                 }} 
-                style={s.photo} 
+                style={s.actualImg} 
               />
             ) : (
-              <View style={s.photoPlaceholder}><DynamicIcon name="user" size={14} color={colors.gray300} /></View>
+              <DynamicIcon 
+                name={iconName} 
+                size={16} 
+                color={iconColor} 
+              />
             )}
           </View>
-          <View style={s.cardInfo}>
-            <Text style={s.cardName} numberOfLines={1}>{name}</Text>
-            {!!parentName && <Text style={s.cardSub} numberOfLines={1}>S/O: {parentName}</Text>}
-            <View style={s.metaRow}>
-              {!!classVal && <Text style={s.classBadge}>{classVal}{secVal ? ` - ${secVal}` : ''}</Text>}
-              <StatusBadge status={activeTab === 'download_list' ? 'download' : (activeTab === 'request_list' ? 'pending' : 'approved')} size="sm" />
-            </View>
-            {activeTab !== 'download_list' && item.requested_by_name && (
-              <Text style={s.requestedByText}>By: {item.requested_by_name} • {item.requested_at || item.confirmed_at}</Text>
-            )}
+          <Text style={s.imgBoxLabel} numberOfLines={1}>{field.name}</Text>
+        </View>
+      );
+    };
+
+    const cleanVal = (v) => {
+      if (v === undefined || v === null) return '';
+      const str = String(v).trim();
+      if (str === 'null' || str === 'undefined' || str === 'NOT_FOUND') return '';
+      return str;
+    };
+
+    return (
+      <View style={s.card}>
+        {/* Card Header Row */}
+        <TouchableOpacity style={s.cardHeaderRow} activeOpacity={0.7} onPress={() => navigation.navigate('CardDetail', { cardId })}>
+          <View style={s.cardHeaderLeft}>
+            <DynamicIcon name="id-card" size={14} color={theme.primary} style={{ marginRight: 8 }} />
+            <Text style={s.cardHeaderTitle} numberOfLines={1}>{name}</Text>
           </View>
-          <DynamicIcon name="chevron-right" size={10} color={colors.gray300} />
+          <View style={s.cardHeaderRight}>
+            <StatusBadge status={activeTab === 'download_list' ? 'download' : (activeTab === 'request_list' ? 'pending' : 'approved')} size="sm" />
+            <DynamicIcon name="chevron-right" size={10} color={colors.gray300} style={{ marginLeft: 8 }} />
+          </View>
         </TouchableOpacity>
 
+        {/* Horizontal Photo strip if images exist */}
+        {imageFields.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.imagesStrip}
+            style={s.imagesStripWrapper}
+          >
+            {imageFields.map(renderCardImage)}
+          </ScrollView>
+        )}
+
+        {/* Text Fields List */}
+        <View style={s.cardBody}>
+          <View style={s.fieldsList}>
+            {textFields.map((f, i) => {
+              const cleaned = cleanVal(f.value);
+              return (
+                <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
+                  <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
+                  <Text style={s.fieldValue} numberOfLines={1}>
+                    {cleaned ? String(cleaned).toUpperCase() : '-'}
+                  </Text>
+                </View>
+              );
+            })}
+            {textFields.length === 0 && (
+              <View style={s.emptyData}><Text style={s.emptyDataText}>No data</Text></View>
+            )}
+            
+            {/* Meta Requested-by stamp */}
+            {activeTab !== 'download_list' && item.requested_by_name && (
+              <View style={s.requestedByRow}>
+                <DynamicIcon name="user-tag" size={10} color={colors.gray400} style={{ marginRight: 6 }} />
+                <Text style={s.requestedByText}>Requested by: {item.requested_by_name} • {item.requested_at || item.confirmed_at}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Actions Button Bar */}
         <View style={s.cardActions}>
           {isUpdating ? (
             <ActivityIndicator size="small" color={theme.primary} />
@@ -694,18 +796,27 @@ const s = StyleSheet.create({
     paddingVertical: 0
   },
   list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
-  card: { backgroundColor: '#fff', borderRadius: radius.lg, marginBottom: 10, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
-  cardTop: { flexDirection: 'row', alignItems: 'center', padding: 12 },
-  photoWrap: { width: 48, height: 58, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.gray50, borderWidth: 1, borderColor: colors.gray100 },
-  photo: { width: '100%', height: '100%', resizeMode: 'cover' },
-  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  cardInfo: { flex: 1, marginLeft: 12 },
-  cardName: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 2 },
-  cardSub: { fontSize: 9, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium', marginBottom: 4 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  classBadge: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary, backgroundColor: colors.indigo50, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.xs },
-  requestedByText: { fontSize: 8, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium', marginTop: 6 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingBottom: 12 },
+  card: { backgroundColor: '#fff', borderRadius: radius.xs, marginBottom: 10, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden', ...shadows.sm },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: '#fafafa' },
+  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 },
+  cardHeaderTitle: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  cardHeaderRight: { flexDirection: 'row', alignItems: 'center' },
+  imagesStripWrapper: { borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: '#fafafa' },
+  imagesStrip: { flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 8, gap: 8 },
+  imgBoxWrap: { alignItems: 'center' },
+  imgBox: { width: 64, height: 72, borderRadius: radius.xs, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+  actualImg: { width: '100%', height: '100%', resizeMode: 'cover' },
+  imgBoxLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginTop: 2, textTransform: 'uppercase', maxWidth: 64, textAlign: 'center' },
+  cardBody: { flexDirection: 'row', padding: 12 },
+  fieldsList: { flex: 1, justifyContent: 'center' },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  fieldLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, textTransform: 'uppercase' },
+  fieldValue: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, flex: 1, textAlign: 'right', marginLeft: 10 },
+  emptyData: { padding: 10, alignItems: 'center' },
+  emptyDataText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray300, fontStyle: 'italic' },
+  requestedByRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  requestedByText: { fontSize: 9, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium' },
+  cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fafafa' },
   actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.sm },
   actionText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
   nonAdminStatus: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', paddingVertical: 6 },
