@@ -18,9 +18,7 @@ Usage:
 import os
 import logging
 import tempfile
-import time
 import zipfile
-from datetime import datetime
 
 from django.conf import settings
 from django.utils import timezone as django_tz
@@ -356,7 +354,6 @@ def process_export_pdf(task):
     try:
         # Use existing PDF exporter but save to file
         exporter = PdfExporter()
-        _export_start = time.time()
         result = exporter.export_cards(
             table, cards_qs,
             status=status_filter,
@@ -367,8 +364,6 @@ def process_export_pdf(task):
             progress_callback=_pdf_progress_callback,
             cancel_check=lambda: _task_cancelled(task),
         )
-        _export_end = time.time()
-        logger.info('PDF exporter finished: task_id=%d cards=%d render_seconds=%.2f', task.id, total_cards, (_export_end - _export_start))
 
         if not result.success and str(result.message).strip().lower() == 'export cancelled':
             if 'pdf_path' in locals():

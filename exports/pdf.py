@@ -20,7 +20,6 @@ import io
 import logging
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
-from datetime import datetime
 
 from django.utils import timezone as django_tz
 from django.conf import settings
@@ -538,13 +537,7 @@ class PdfExporter:
                 if _weasyprint_available and WeasyHTML:
                     # WeasyPrint — write directly to file path
                     base_url = _path_to_file_uri(str(settings.BASE_DIR))
-                    _wp_start = datetime.utcnow()
                     WeasyHTML(string=html_string, base_url=base_url).write_pdf(target=tmpf_path)
-                    _wp_end = datetime.utcnow()
-                    try:
-                        logger.info('WeasyPrint.render: pages=%d duration_seconds=%.2f', len(pages), (_wp_end - _wp_start).total_seconds())
-                    except Exception:
-                        logger.info('WeasyPrint.render completed in %.2f seconds', (_wp_end - _wp_start).total_seconds())
                 else:
                     # xhtml2pdf fallback — write to file-like object
                     from xhtml2pdf import pisa
@@ -567,23 +560,20 @@ class PdfExporter:
                             return resolved
                         return uri
 
-                    # xhtml2pdf fallback — measure render duration
-                    _pisa_start = datetime.utcnow()
+                    # xhtml2pdf fallback — write to file-like object
                     with open(tmpf_path, 'wb') as _out:
                         pisa_status = pisa.CreatePDF(
                             io.BytesIO(html_string.encode('utf-8')),
                             dest=_out,
                             link_callback=link_callback
                         )
-                    _pisa_end = datetime.utcnow()
-                    logger.info('xhtml2pdf.render duration_seconds=%.2f', (_pisa_end - _pisa_start).total_seconds())
-                        if pisa_status.err:
-                            logger.error("xhtml2pdf errors: %s", pisa_status.err)
-                            try:
-                                _os.unlink(tmpf_path)
-                            except Exception:
-                                pass
-                            return PdfExportResult(success=False, message='PDF generation failed. Please try again.')
+                    if pisa_status.err:
+                        logger.error("xhtml2pdf errors: %s", pisa_status.err)
+                        try:
+                            _os.unlink(tmpf_path)
+                        except Exception:
+                            pass
+                        return PdfExportResult(success=False, message='PDF generation failed. Please try again.')
 
                 # Stream the temp file as a StreamingHttpResponse and clean up after
                 file_size = 0
