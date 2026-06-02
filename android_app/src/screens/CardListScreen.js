@@ -16,7 +16,6 @@ import Toast from '../components/Toast';
 import CardModalForm from '../components/CardModalForm';
 import ConfirmModal from '../components/ConfirmModal';
 import FilterDrawer from '../components/FilterDrawer';
-import DownloadPdfModal from '../components/DownloadPdfModal';
 import { apiGet, apiPost, BASE_URL } from '../api/client';
 import { colors, gradients, shadows, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -92,7 +91,6 @@ export default function CardListScreen({ navigation, route }) {
 
   const [showForm, setShowForm]           = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
-  const [showPdfModal, setShowPdfModal]   = useState(false);
 
   const [confirmModal, setConfirmModal]   = useState({
     visible: false, title: '', message: '', icon: '', color: colors.brandPrimary,
@@ -524,28 +522,8 @@ export default function CardListScreen({ navigation, route }) {
     );
   }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect]);
 
-  const showPdfBtn = useMemo(() => {
-    if (selectMode) return false;
-    if (perms.isSuperAdmin || perms.role === 'admin_staff') {
-      return true;
-    }
-    const isClientRole = perms.role === 'client' || perms.role === 'client_staff' || perms.role === 'guest_user';
-    const hasDownloadPerm = !!(perms.perm_download_pdf || perms.perm_idcard_download_pdf || perms.perm_idcard_bulk_download);
-    if (isClientRole && hasDownloadPerm) {
-      return true;
-    }
-    return false;
-  }, [selectMode, perms]);
-
   const leftOfHomeBtns = useMemo(() => {
     const list = [];
-    if (showPdfBtn) {
-      list.push({
-        label: 'DOWNLOAD PDF',
-        onPress: () => setShowPdfModal(true),
-        style: { backgroundColor: '#ef4444' },
-      });
-    }
     if (!selectMode && currentStatus === 'download' && hasReprintPerm) {
       list.push({
         label: 'REPRINT',
@@ -554,7 +532,7 @@ export default function CardListScreen({ navigation, route }) {
       });
     }
     return list.length > 0 ? list : undefined;
-  }, [showPdfBtn, selectMode, currentStatus, hasReprintPerm, tableId, navigation]);
+  }, [selectMode, currentStatus, hasReprintPerm, tableId, navigation]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -689,17 +667,7 @@ export default function CardListScreen({ navigation, route }) {
               {currentStatus === 'approved' && perms.perm_idcard_approve && !isClientRole && <FBtn icon="redo"         label="DISAPPROVE SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
               
               {currentStatus === 'download' && perms.perm_idcard_retrieve && !isClientRole && <FBtn icon="redo"         label="RETRIEVE SELECTED" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
-              {currentStatus === 'download' && (perms.perm_download_pdf || perms.perm_idcard_download_pdf || perms.perm_idcard_bulk_download || perms.isSuperAdmin) && (
-                <FBtn
-                  icon="file-pdf"
-                  label="DOWNLOAD PDF"
-                  color="#8b5cf6"
-                  disabled={bulkLoading || selectedIds.size === 0}
-                  onPress={() => {
-                    setShowPdfModal(true);
-                  }}
-                />
-              )}
+
               
               {currentStatus === 'pool'     && (perms.perm_idcard_retrieve || isClientRole) && <FBtn icon="redo"         label="RETRIEVE FROM POOL" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
               {currentStatus === 'pool'     && perms.perm_idcard_delete_from_pool && !isClientRole && <FBtn icon="trash" label="PERMANENTLY DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('permanent_delete')} />}
@@ -748,16 +716,7 @@ export default function CardListScreen({ navigation, route }) {
         type={toast.type}
         onHide={() => setToast(p => ({ ...p, visible: false }))}
       />
-      <DownloadPdfModal
-        visible={showPdfModal}
-        onClose={() => setShowPdfModal(false)}
-        tableId={tableId}
-        tableName={tableName}
-        status={currentStatus}
-        selectedIds={Array.from(selectedIds)}
-        searchQuery={searchQuery}
-        activeFilters={activeFilters}
-      />
+
 
     </View>
   );

@@ -11,7 +11,6 @@ import Toast from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
 import { DetailSkeleton } from '../components/Skeleton';
 import CardModalForm from '../components/CardModalForm';
-import DownloadPdfModal from '../components/DownloadPdfModal';
 import { apiGet, apiPost, BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 import { colors, radius, shadows, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -25,7 +24,6 @@ export default function CardDetailScreen({ navigation, route }) {
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [showForm, setShowForm] = useState(false);
-  const [showPdfModal, setShowPdfModal] = useState(false);
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
@@ -127,9 +125,7 @@ export default function CardDetailScreen({ navigation, route }) {
     ]);
   };
 
-    const downloadCard = async () => {
-      setShowPdfModal(true);
-    };
+
   if (loading) return (
     <View style={s.root}><TopBar title="Card Detail" onBack={() => navigation.goBack()} /><DetailSkeleton /></View>
   );
@@ -344,19 +340,9 @@ export default function CardDetailScreen({ navigation, route }) {
               <TouchableOpacity 
                 onPress={() => setShowForm(true)} 
                 activeOpacity={0.8} 
-                style={[s.actionBtnHalf, { borderColor: colors.brandPrimary }]}
+                style={[s.actionBtnFull, { borderColor: colors.brandPrimary, marginTop: 0 }]}
               >
-                <Text style={[s.actionBtnText, { color: colors.brandPrimary }]}>EDIT</Text>
-              </TouchableOpacity>
-            )}
-          
-            {user?.permissions?.perm_idcard_download_list && (
-              <TouchableOpacity 
-                onPress={downloadCard} 
-                activeOpacity={0.8} 
-                style={[s.actionBtnHalf, { borderColor: '#7c3aed' }]}
-              >
-                <Text style={[s.actionBtnText, { color: '#7c3aed' }]}>DOWNLOAD</Text>
+                <Text style={[s.actionBtnText, { color: colors.brandPrimary }]}>EDIT INFORMATION</Text>
               </TouchableOpacity>
             )}
 
@@ -381,14 +367,7 @@ export default function CardDetailScreen({ navigation, route }) {
         cardId={card.id}
         onSuccess={() => loadCard(true)}
       />
-      <DownloadPdfModal
-        visible={showPdfModal}
-        onClose={() => setShowPdfModal(false)}
-        tableId={card.table_id}
-        tableName={card.table_name}
-        status={card.status}
-        selectedIds={[card.id]}
-      />
+
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({...p, visible: false}))} />
     </View>
   );

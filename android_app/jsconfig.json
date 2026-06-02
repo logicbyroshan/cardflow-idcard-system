@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react-native",
+    "moduleResolution": "node",
+    "checkJs": false
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".expo"
+  ]
+}

@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, LayoutAnimation } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, LayoutAnimation } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DynamicIcon } from '../components/Icons';
 import TopBar from '../components/TopBar';
 import { ReprintSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
-import { colors, shadows, radius, fontFamily, roleThemes } from '../theme';
+import { colors, shadows, radius, roleThemes } from '../theme';
 import useRefreshableResource from '../hooks/useRefreshableResource';
 
 export default function ReprintScreen({ navigation, route }) {

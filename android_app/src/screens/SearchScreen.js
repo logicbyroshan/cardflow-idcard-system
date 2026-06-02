@@ -28,9 +28,11 @@ export default function SearchScreen({ navigation }) {
     if (!q || q.trim().length < 2) { setResults([]); return; }
     setLoading(true);
     try {
-      const params = new URLSearchParams({ q: q.trim() });
-      if (filter && filter !== 'all') params.set('filter', filter);
-      const { data } = await apiGet(`/api/mobile/search/?${params.toString()}`);
+      let url = `/api/mobile/search/?q=${encodeURIComponent(q.trim())}`;
+      if (filter && filter !== 'all') {
+        url += `&filter=${encodeURIComponent(filter)}`;
+      }
+      const { data } = await apiGet(url);
       if (data?.success) setResults(data.data?.results || []);
     } catch (e) { /* silent */ }
     setLoading(false);

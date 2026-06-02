@@ -5,7 +5,7 @@ import TopBar from '../components/TopBar';
 import { GroupsSkeleton } from '../components/Skeleton';
 import { ErrorBanner } from '../components/NetworkGuard';
 import { apiGet } from '../api/client';
-import { colors, shadows, radius, roleThemes, fontFamily } from '../theme';
+import { colors, shadows, radius, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
 
