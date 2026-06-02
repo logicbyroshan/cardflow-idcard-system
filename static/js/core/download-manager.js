@@ -46,6 +46,7 @@
         if (!node || !node.nodeType || node.nodeType !== 1) return false;
         if (node.id === 'blockingOverlay' || node.id === 'downloadToastContainer') return true;
         if (node.classList && node.classList.contains('alpine-toast-wrapper')) return true;
+        if (node.classList && node.classList.contains('download-modal')) return true;
         return false;
     }
 

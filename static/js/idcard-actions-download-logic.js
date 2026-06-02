@@ -576,6 +576,7 @@ function downloadImages(cardIds, renameOptions) {
             url: `/api/table/${tableId}/cards/download-images/`,
             body: requestBody,
             lockUi: true,
+            modalType: 'img',
             onComplete: function() {
                 // Image export: do NOT move cards to download list
             },

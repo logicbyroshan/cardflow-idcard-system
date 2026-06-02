@@ -2650,6 +2650,7 @@ function initDownloadImagesHandlers() {
         }
 
         if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
+            try { window.IDCardApp.downloadProgressPresenter.setType('img'); } catch (err) {}
             window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
         }
         markNextBulkUiLock();
