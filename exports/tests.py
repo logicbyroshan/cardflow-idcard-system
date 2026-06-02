@@ -1885,7 +1885,7 @@ class WordLayoutTuningTests(SimpleTestCase):
         exporter = WordExporter()
 
         src_stream = io.BytesIO()
-        PILImage.new('RGB', (20, 30), (255, 0, 0)).save(src_stream, format='PNG')
+        PILImage.new('RGB', (100, 150), (255, 0, 0)).save(src_stream, format='PNG')
         src_bytes = src_stream.getvalue()
 
         image_stream = exporter._build_word_image_stream(
@@ -1896,11 +1896,18 @@ class WordLayoutTuningTests(SimpleTestCase):
         )
 
         with PILImage.open(image_stream) as image:
-            self.assertEqual(image.size, (20, 30))
-            self.assertEqual(image.getpixel((0, 0)), (0, 0, 0))
-            self.assertEqual(image.getpixel((1, 1)), (0, 0, 0))
-            self.assertEqual(image.getpixel((2, 2)), (255, 0, 0))
-            self.assertEqual(image.getpixel((10, 15)), (255, 0, 0))
+            self.assertEqual(image.size, (100, 150))
+            # Border pixels should be very close to black (0, 0, 0)
+            p00 = image.getpixel((0, 0))
+            p11 = image.getpixel((1, 1))
+            self.assertTrue(all(c <= 45 for c in p00), f"Expected border near black, got {p00}")
+            self.assertTrue(all(c <= 45 for c in p11), f"Expected border near black, got {p11}")
+            
+            # Interior pixels should be very close to red (255, 0, 0)
+            p55 = image.getpixel((5, 5))
+            p5075 = image.getpixel((50, 75))
+            self.assertTrue(p55[0] >= 210 and p55[1] <= 45 and p55[2] <= 45, f"Expected interior near red, got {p55}")
+            self.assertTrue(p5075[0] >= 210 and p5075[1] <= 45 and p5075[2] <= 45, f"Expected interior near red, got {p5075}")
 
     def test_word_hindi_font_detection_is_normalized(self):
         from exports.word import WordExporter

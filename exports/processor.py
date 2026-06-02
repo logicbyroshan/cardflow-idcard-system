@@ -42,21 +42,28 @@ def _write_response_to_path(response, destination_path: str) -> int:
         return 0
 
     bytes_written = 0
-    with open(destination_path, 'wb') as handle:
-        if isinstance(response, StreamingHttpResponse):
-            for chunk in response.streaming_content:
-                if isinstance(chunk, str):
-                    chunk = chunk.encode('utf-8')
-                if not chunk:
-                    continue
-                handle.write(chunk)
-                bytes_written += len(chunk)
-        elif hasattr(response, 'content') and response.content:
-            payload = response.content
-            if isinstance(payload, str):
-                payload = payload.encode('utf-8')
-            handle.write(payload)
-            bytes_written = len(payload)
+    try:
+        with open(destination_path, 'wb') as handle:
+            if isinstance(response, StreamingHttpResponse):
+                for chunk in response.streaming_content:
+                    if isinstance(chunk, str):
+                        chunk = chunk.encode('utf-8')
+                    if not chunk:
+                        continue
+                    handle.write(chunk)
+                    bytes_written += len(chunk)
+            elif hasattr(response, 'content') and response.content:
+                payload = response.content
+                if isinstance(payload, str):
+                    payload = payload.encode('utf-8')
+                handle.write(payload)
+                bytes_written = len(payload)
+    finally:
+        if hasattr(response, 'close') and callable(response.close):
+            try:
+                response.close()
+            except Exception:
+                pass
 
     return bytes_written
 
