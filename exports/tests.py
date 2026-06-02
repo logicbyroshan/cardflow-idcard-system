@@ -1827,7 +1827,8 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertIn('border: 1pt solid #111;', content)
         self.assertIn('template_use_abbasi', content)
 
-    def test_word_data_row_removes_photo_cell_box_border(self):
+    def test_word_data_row_keeps_photo_cell_box_border(self):
+        """Photo cells must retain table grid borders so column lines are visible."""
         from exports.word import WordExporter
         from docx import Document
         from docx.shared import Cm, Pt, RGBColor
@@ -1874,8 +1875,11 @@ class WordLayoutTuningTests(SimpleTestCase):
                     h_rule='atLeast',
                 )
 
+        # Image must still be added
         self.assertTrue(mocked_add_image.called)
-        self.assertTrue(mocked_remove_borders.called)
+        # Cell borders must NOT be removed — table grid lines must show in photo columns
+        self.assertFalse(mocked_remove_borders.called,
+                         "Photo cell table borders should be preserved for visual consistency")
 
     def test_word_photo_image_stream_adds_1pt_equivalent_edge(self):
         from exports.word import WordExporter

@@ -590,11 +590,9 @@ class WordTablesMixin:
                     field_name=field.get('name'),
                     cancel_check=cancel_check
                 )
-                if self._should_add_photo_border(
-                    image_subtype=field.get('image_subtype'),
-                    field_name=field.get('name'),
-                ):
-                    self._remove_cell_borders(cell, parse_xml, nsdecls)
+                # Photo cells retain full table grid borders so rows/columns
+                # align visually with text columns. The image itself carries its
+                # own bitmap-level border painted in _build_word_image_stream.
             else:
                 value = format_field_value(field_data.get(field['name'], ''), uppercase=True)
                 value = self._prepare_text_for_word(value)
