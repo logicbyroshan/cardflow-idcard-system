@@ -256,13 +256,8 @@ class ImageFieldsMixin:
                     )
                     return None
 
-                # Phase 2: Check if original exists on disk
-                try:
-                    if default_storage.exists(path):
-                        return path
-                except Exception as exc:
-                    logger.debug('Storage exists check failed for %s: %s', path, exc)
-                # Return path anyway for backward compat (callers check existence)
+                # Return path anyway for backward compat (callers check existence).
+                # Bypassing default_storage.exists check here prevents massive network overhead (N network requests).
                 return path
         
         return None

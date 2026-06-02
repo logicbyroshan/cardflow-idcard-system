@@ -31,12 +31,14 @@ class WordTablesMixin:
                     prefer_thumbnail=False, fallback_to_field_data=True
                 )
                 if img_path and is_valid_image_path(img_path):
-                    if default_storage.exists(img_path):
+                    try:
                         with default_storage.open(img_path, 'rb') as f:
                             with PILImage.open(f) as img:
                                 w, h = img.size
                                 if h > 0:
                                     return self.IMAGE_HEIGHT_CM * (w / h)
+                    except Exception:
+                        pass
         except Exception:
             pass
         return self.IMAGE_HEIGHT_CM * DEFAULT_RATIO

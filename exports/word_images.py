@@ -71,7 +71,16 @@ class WordImagesMixin:
                         px[t, y] = edge
                         px[w - 1 - t, y] = edge
             out_stream = BytesIO()
-            bordered.save(out_stream, format='PNG', optimize=True)
+            # JPEGs are much faster to compress and much smaller for portrait photos
+            # than PNGs with optimize=True. Fall back to non-optimized PNG only for transparent images.
+            is_rgba = bordered.mode in ('RGBA', 'LA') or (src_img.info and 'transparency' in src_img.info)
+            if is_rgba:
+                bordered.save(out_stream, format='PNG')
+            else:
+                try:
+                    bordered.save(out_stream, format='JPEG', quality=85)
+                except Exception:
+                    bordered.save(out_stream, format='PNG')
             out_stream.seek(0)
             return out_stream
 
@@ -101,48 +110,50 @@ class WordImagesMixin:
 
         if is_valid_image_path(img_path):
             try:
-                if default_storage.exists(img_path):
+                # Direct open to save a redundant default_storage.exists() network check
+                img_data = None
+                try:
                     with default_storage.open(img_path, 'rb') as img_file:
                         img_data = img_file.read()
-                        
-                        if img_data and len(img_data) >= 100:
-                            # Validate image and keep original bytes (no recompression).
-                            with Image.open(BytesIO(img_data)) as verify_img:
-                                verify_img.verify()
+                except Exception:
+                    pass
+                
+                if img_data and len(img_data) >= 100:
+                    # Validate image and keep original bytes (no recompression).
+                    with Image.open(BytesIO(img_data)) as verify_img:
+                        verify_img.verify()
 
-                            add_photo_border = self._should_add_photo_border(
-                                image_subtype=image_subtype,
-                                field_name=field_name,
-                            )
-                            img_stream = self._build_word_image_stream(
-                                img_data,
-                                Image,
-                                ImageOps,
-                                add_photo_border=add_photo_border,
-                            )
-                            
-                            para = cell.paragraphs[0]
-                            run = para.add_run()
-                            # Keep layout fixed while preserving source quality
-                            # (original bytes, no JPEG recompression step).
-                            inline_shape = run.add_picture(
-                                img_stream,
-                                height=Cm(fixed_height_cm),
-                                width=Cm(fixed_width_cm)
-                            )
-                            img_stream.close()
-                            self._convert_to_vml(
-                                run,
-                                inline_shape,
-                                add_border=False,
-                            )
-                            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            self._set_para_spacing(para, parse_xml, nsdecls)
-                            return
-                        else:
-                            logger.warning("Word export: Image too small (%d bytes): %s", len(img_data) if img_data else 0, img_path)
+                    add_photo_border = self._should_add_photo_border(
+                        image_subtype=image_subtype,
+                        field_name=field_name,
+                    )
+                    img_stream = self._build_word_image_stream(
+                        img_data,
+                        Image,
+                        ImageOps,
+                        add_photo_border=add_photo_border,
+                    )
+                    
+                    para = cell.paragraphs[0]
+                    run = para.add_run()
+                    # Keep layout fixed while preserving source quality
+                    # (original bytes, no JPEG recompression step).
+                    inline_shape = run.add_picture(
+                        img_stream,
+                        height=Cm(fixed_height_cm),
+                        width=Cm(fixed_width_cm)
+                    )
+                    img_stream.close()
+                    self._convert_to_vml(
+                        run,
+                        inline_shape,
+                        add_border=False,
+                    )
+                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    self._set_para_spacing(para, parse_xml, nsdecls)
+                    return
                 else:
-                    logger.warning("Word export: Image file not found by storage: %s", img_path)
+                    logger.warning("Word export: Image missing or invalid/too small: %s", img_path)
             except Exception as e:
                 logger.warning("Word export: Image load error for %s: %s", img_path, e)
         
