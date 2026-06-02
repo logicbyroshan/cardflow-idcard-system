@@ -692,7 +692,7 @@ export default function CardListScreen({ navigation, route }) {
         cardId={editingCardId}
         onSuccess={(updatedCard) => {
           if (editingCardId && updatedCard) {
-            setCards(prev => prev.map(c => c.id === editingCardId ? updatedCard : c));
+            setCards(prev => prev.map(c => c.id === editingCardId ? { ...c, ...updatedCard } : c));
           } else {
             onRefresh();
           }

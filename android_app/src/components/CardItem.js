@@ -88,7 +88,11 @@ const CardItem = React.memo(function CardItem({
     const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined' || val.trim() === '';
     const hasError = imageErrors[field.name];
     
-    const imageUrl = isPending || isEmpty ? null : resolveAdarshImageUrl(val);
+    let imageUrl = isPending || isEmpty ? null : resolveAdarshImageUrl(val);
+    if (imageUrl) {
+      const timestamp = item.updated_at ? encodeURIComponent(item.updated_at) : new Date().getTime();
+      imageUrl = `${imageUrl}?t=${timestamp}`;
+    }
 
     const showImage = !isPending && !isEmpty && imageUrl && !hasError;
     
@@ -223,14 +227,7 @@ const CardItem = React.memo(function CardItem({
               <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
             </TouchableOpacity>
           )}
-          {currentStatus === 'download' && onReprint && (hasPerm('perm_idcard_reprint_list') || hasPerm('perm_reprint_request_list') || isClient) && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.yellow }]} 
-              onPress={() => onReprint(item)}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.yellow }]}>REPRINT</Text>
-            </TouchableOpacity>
-          )}
+
 
           {/* Pool List Action Button */}
           {currentStatus === 'pool' && onStatusChange && (hasPerm('perm_idcard_retrieve') || isClient) && (
@@ -279,7 +276,7 @@ const s = StyleSheet.create({
   imgBoxLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginTop: 2, textTransform: 'uppercase', maxWidth: 64, textAlign: 'center' },
   fieldsList: { flex: 1, justifyContent: 'center' },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
-  fieldLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, textTransform: 'uppercase' },
+  fieldLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: '#4f46e5', textTransform: 'uppercase' },
   fieldValue: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, flex: 1, textAlign: 'right', marginLeft: 10 },
   emptyData: { padding: 10, alignItems: 'center' },
   emptyDataText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray300, fontStyle: 'italic' },

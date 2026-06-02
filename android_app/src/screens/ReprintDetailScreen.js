@@ -380,7 +380,11 @@ export default function ReprintDetailScreen({ navigation, route }) {
       const isPending = val.toUpperCase().startsWith('PENDING') || val.toUpperCase().includes('PENDING:');
       const isEmpty = !val || val === 'NOT_FOUND' || val === 'null' || val === 'undefined' || val.trim() === '';
       
-      const imageUrl = isPending || isEmpty ? null : resolveAdarshImageUrl(val);
+      let imageUrl = isPending || isEmpty ? null : resolveAdarshImageUrl(val);
+      if (imageUrl) {
+        const timestamp = item.updated_at ? encodeURIComponent(item.updated_at) : new Date().getTime();
+        imageUrl = `${imageUrl}?t=${timestamp}`;
+      }
       const showImage = !isPending && !isEmpty && imageUrl;
       
       let boxBg = '#f1f5f9';
@@ -832,7 +836,7 @@ const s = StyleSheet.create({
   cardBody: { flexDirection: 'row', padding: 12 },
   fieldsList: { flex: 1, justifyContent: 'center' },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
-  fieldLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, textTransform: 'uppercase' },
+  fieldLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: '#4f46e5', textTransform: 'uppercase' },
   fieldValue: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, flex: 1, textAlign: 'right', marginLeft: 10 },
   emptyData: { padding: 10, alignItems: 'center' },
   emptyDataText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray300, fontStyle: 'italic' },

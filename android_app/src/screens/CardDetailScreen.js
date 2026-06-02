@@ -161,7 +161,7 @@ export default function CardDetailScreen({ navigation, route }) {
               {isComplete ? (
                 <Image 
                   source={{ 
-                    uri: resolveAdarshImageUrl(card.photo_url),
+                    uri: `${resolveAdarshImageUrl(card.photo_url)}?t=${card.updated_at ? encodeURIComponent(card.updated_at) : new Date().getTime()}`,
                     headers: {
                       Cookie: getSessionCookies()
                     }
@@ -211,7 +211,7 @@ export default function CardDetailScreen({ navigation, route }) {
                       ) : (
                         <Image 
                           source={{ 
-                            uri: resolveAdarshImageUrl(val),
+                            uri: `${resolveAdarshImageUrl(val)}?t=${card.updated_at ? encodeURIComponent(card.updated_at) : new Date().getTime()}`,
                             headers: { Cookie: getSessionCookies() }
                           }} 
                           style={{ width: 120, height: 75, borderRadius: 4, marginTop: 6, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
@@ -241,7 +241,7 @@ export default function CardDetailScreen({ navigation, route }) {
                       ) : (
                         <Image 
                           source={{ 
-                            uri: resolveAdarshImageUrl(val),
+                            uri: `${resolveAdarshImageUrl(val)}?t=${card.updated_at ? encodeURIComponent(card.updated_at) : new Date().getTime()}`,
                             headers: { Cookie: getSessionCookies() }
                           }} 
                           style={{ width: 120, height: 75, borderRadius: 4, marginTop: 6, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' }}
@@ -394,7 +394,7 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 1.2, textTransform: 'uppercase' },
   fieldsList: { padding: 8 },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 8, borderTopWidth: 1, borderTopColor: '#f8fafc' },
-  fieldKey: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, textTransform: 'uppercase' },
+  fieldKey: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: '#4f46e5', textTransform: 'uppercase' },
   fieldVal: { fontSize: 13, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray700, flex: 1, textAlign: 'right', marginLeft: 20 },
   fieldValEmpty: { color: colors.gray300, fontStyle: 'italic', fontSize: 11 },
   emptyFields: { padding: 20, alignItems: 'center' },
