@@ -1016,10 +1016,22 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles, breakMode) {
     fontMode = fontMode || 'auto';
     shortenTitles = !!shortenTitles;
     breakMode = (breakMode === 'class_only') ? 'class_only' : 'class_section';
+    var effectiveCount = _getEffectiveExportCount(cardIds);
     
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+        return;
+    }
+
+    // Consume the one-shot bulk-lock immediately so the modal Cancel button
+    // can close/cancel the active download instead of getting blocked.
+    _consumeNextBulkUiLockFlag();
+
+    // Large PDFs should use the async task flow so the server renders in the
+    // background and cancellation remains reliable.
+    if (effectiveCount >= _ASYNC_PDF_THRESHOLD) {
+        _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode);
         return;
     }
 
