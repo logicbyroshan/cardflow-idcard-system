@@ -834,6 +834,21 @@ class BackgroundTask(models.Model):
     def update_progress(self, progress, total=None):
         """Update progress counter efficiently"""
         update_fields = ["progress", "updated_at"]
+        if total is not None:
+            try:
+                total = int(total)
+            except (TypeError, ValueError):
+                total = None
+        try:
+            progress = int(progress)
+        except (TypeError, ValueError):
+            progress = 0
+
+        if total is not None and total > 0:
+            progress = max(0, min(progress, total))
+        else:
+            progress = max(0, progress)
+
         self.progress = progress
         if total is not None:
             self.total = total

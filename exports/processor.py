@@ -520,7 +520,18 @@ def process_export_docx(task):
 
         docx_path = os.path.join(exports_dir, filename)
 
+        logger.info(
+            "DOCX_WRITE_START task_id=%d path=%s",
+            task.id,
+            docx_path,
+        )
         written = _write_response_to_path(result.response, docx_path)
+        logger.info(
+            "DOCX_WRITE_DONE task_id=%d bytes=%d path=%s",
+            task.id,
+            written,
+            docx_path,
+        )
         if written <= 0:
             task.mark_failed("DOCX exporter returned empty response")
             return

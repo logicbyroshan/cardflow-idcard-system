@@ -495,9 +495,17 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                 // Show slightly conservative ETA so users have a safe wait window.
                 var bufferedEta = Math.max(5, Math.ceil((baseRemaining * 1.18) + 12));
 
+                var safeTotal = Number(data.total || 0) || 0;
+                var safeProgress = Number(data.progress || 0) || 0;
+                if (safeTotal > 0) {
+                    safeProgress = Math.max(0, Math.min(safeProgress, safeTotal));
+                } else {
+                    safeProgress = Math.max(0, safeProgress);
+                }
+
                 var msg = options.processingMessage
                     ? options.processingMessage(data, Math.round(displayPct), bufferedEta)
-                    : ('Processing export... ' + (data.progress || 0) + '/' + (data.total || '?'));
+                    : ('Processing export... ' + safeProgress + '/' + (safeTotal || '?'));
                 msg = msg + ' | Est. wait: ' + _formatEtaLabel(bufferedEta);
 
                 if (typeof showProgressToast === 'function') {

@@ -217,7 +217,17 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             tmp.close()
             try:
                 # Write OOXML to disk (python-docx supports saving to filename)
+                logger.info("DOCX_SAVE_START table=%s cards=%d file=%s", table.id, len(cards_list), tmp_name)
+                import time
+                save_started = time.monotonic()
                 doc.save(tmp_name)
+                logger.info(
+                    "DOCX_SAVE_DONE table=%s cards=%d elapsed=%.2fs file=%s",
+                    table.id,
+                    len(cards_list),
+                    time.monotonic() - save_started,
+                    tmp_name,
+                )
 
                 file_size = 0
                 try:
