@@ -31,7 +31,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 # Maximum time a single task may run before being marked as failed (seconds)
-TASK_TIMEOUT_SECONDS = 30 * 60  # 30 minutes
+TASK_TIMEOUT_SECONDS = 2 * 60 * 60  # 2 hours
 
 
 class BackgroundWorker:

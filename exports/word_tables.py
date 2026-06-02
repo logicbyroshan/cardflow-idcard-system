@@ -41,7 +41,7 @@ class WordTablesMixin:
             pass
         return self.IMAGE_HEIGHT_CM * DEFAULT_RATIO
     
-    def _calculate_column_widths(self, ordered_fields, cards, num_cols):
+    def _calculate_column_widths(self, ordered_fields, cards, num_cols, cancel_check=None):
         """Calculate optimal column widths based on column_spec intelligence + data.
 
         Uses ``column_spec`` semantic min/max bounds per field category,
@@ -96,6 +96,8 @@ class WordTablesMixin:
 
                 lengths = [len(name)]  # header length as baseline
                 for card in cards:
+                    if callable(cancel_check) and cancel_check():
+                        return None
                     fd = card.field_data or {}
                     val = str(fd.get(name, '') or '')
                     if val:
@@ -364,7 +366,7 @@ class WordTablesMixin:
                             num_cols, Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT,
                             WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, OxmlElement,
                             qn, Image, ImageOps, class_field_name=None,
-                            progress_callback=None):
+                            progress_callback=None, cancel_check=None):
         """Create ONE continuous table with all card data.
 
         The table is never split into separate tables, so selecting a
@@ -429,6 +431,8 @@ class WordTablesMixin:
         trPr.append(tblHeader)
 
         for card_idx, card in enumerate(cards_list):
+            if callable(cancel_check) and cancel_check():
+                return False
             fd = card.field_data or {}
             cur_class_val = (
                 str(fd.get(class_field_name, '') or '').strip().upper()
@@ -474,6 +478,8 @@ class WordTablesMixin:
                         progress_callback(processed, len(cards_list))
                     except Exception:
                         pass
+
+        return True
     
     def _style_header_row(self, cells, ordered_fields, column_widths,
                           Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,

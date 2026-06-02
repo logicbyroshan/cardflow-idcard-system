@@ -86,6 +86,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         template_id: int = None,
         allow_large: bool = False,
         progress_callback=None,
+        cancel_check=None,
         user=None,
     ) -> WordExportResult:
         """
@@ -173,10 +174,14 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             
             # Sort cards for export (Class → Name, or Name only)
             cards_list = sort_cards_for_export(cards, table.fields)
+            if callable(cancel_check) and cancel_check():
+                return WordExportResult(success=False, message='Export cancelled')
             num_cols = 1 + len(ordered_fields)  # Sr No + fields
             column_widths = self._calculate_column_widths(
-                ordered_fields, cards_list, num_cols
+                ordered_fields, cards_list, num_cols, cancel_check=cancel_check
             )
+            if column_widths is None:
+                return WordExportResult(success=False, message='Export cancelled')
             
             # Remove default empty paragraph
             if doc.paragraphs:
@@ -191,6 +196,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
                 parse_xml, nsdecls, OxmlElement, qn, Image, ImageOps,
                 class_field_name=class_field_name,
                 progress_callback=progress_callback,
+                cancel_check=cancel_check,
             )
             
             # Set Word 97-2003 compatibility mode

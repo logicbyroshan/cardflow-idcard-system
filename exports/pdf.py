@@ -309,6 +309,7 @@ class PdfExporter:
         break_mode: str = 'class_section',
         progress_callback=None,
         user=None,
+        cancel_check=None,
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -443,7 +444,11 @@ class PdfExporter:
                 cards_list,
                 column_configs,
                 progress_callback=progress_callback,
+                cancel_check=cancel_check,
             )
+
+            if rows is None:
+                return PdfExportResult(success=False, message='Export cancelled')
 
             # Get institution name
             institution_name = "Institution"
@@ -874,7 +879,8 @@ class PdfExporter:
         cards: list,
         column_configs: List[Dict[str, Any]] = None,
         progress_callback=None,
-    ) -> List[List[Dict[str, Any]]]:
+        cancel_check=None,
+    ) -> List[List[Dict[str, Any]] | None]:
         """
         Build row data for the template.
         Each cell: { align, is_image, content, nowrap, image_width_cm, image_height_cm }
@@ -898,6 +904,9 @@ class PdfExporter:
         rows = []
 
         for sr_no, card in enumerate(cards, start=1):
+            # Abort early if requested by caller.
+            if callable(cancel_check) and cancel_check():
+                return None
             fd = card.field_data or {}
             row_cells = []
 

@@ -30,6 +30,14 @@ from django.http import StreamingHttpResponse
 logger = logging.getLogger(__name__)
 
 
+def _task_cancelled(task) -> bool:
+    try:
+        task.refresh_from_db(fields=['status'])
+        return task.status == 'cancelled'
+    except Exception:
+        return False
+
+
 def _write_response_to_path(response, destination_path: str) -> int:
     """Write an export HttpResponse/StreamingHttpResponse directly to a file path."""
     if response is None:
@@ -120,7 +128,7 @@ def process_export_zip(task):
     
     # Sort: class → section → name ascending
     cards_qs = sort_cards_for_export(cards_qs, table.fields or [])
-    
+
     total_cards = cards_qs.count() if hasattr(cards_qs, 'count') else len(cards_qs)
     if total_cards == 0:
         task.mark_failed("No cards to export")
@@ -131,6 +139,11 @@ def process_export_zip(task):
     if not image_fields:
         task.mark_failed("No image fields found in table")
         return
+
+    # Materialize the queryset once so each image field does not re-run the
+    # same database scan. The ZIP writer still streams one file at a time,
+    # but the card list itself is now reused across fields.
+    cards = list(cards_qs.iterator(chunk_size=100))
     
     task.update_progress(0, total_cards * len(image_fields))
     
@@ -156,11 +169,17 @@ def process_export_zip(task):
     try:
         with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_STORED) as zf:
             for field_info in image_fields:
+                if _task_cancelled(task):
+                    _safe_remove(zip_path, 'cancelled ZIP')
+                    return
                 field_name = field_info['name']
                 folder_name = _get_readable_field_name(field_name)
                 used_names = {}
                 
-                for card in cards_qs.iterator(chunk_size=100):
+                for card in cards:
+                    if _task_cancelled(task):
+                        _safe_remove(zip_path, 'cancelled ZIP')
+                        return
                     img_path = ImageService.get_image_path_for_card(
                         card=card,
                         field_name=field_name,
@@ -172,35 +191,36 @@ def process_export_zip(task):
                         continue
                     
                     try:
-                        if default_storage.exists(img_path):
-                            try:
-                                real_path = default_storage.path(img_path)
-                                file_size = os.path.getsize(real_path)
-                            except (NotImplementedError, AttributeError, OSError):
-                                real_path = None
-                                file_size = 0
+                        try:
+                            real_path = default_storage.path(img_path)
+                            file_size = os.path.getsize(real_path)
+                        except (NotImplementedError, AttributeError, OSError):
+                            real_path = None
+                            file_size = 0
 
-                            base = os.path.basename(img_path)
+                        base = os.path.basename(img_path)
 
-                            if base in used_names:
-                                used_names[base] += 1
-                                name, ext = os.path.splitext(base)
-                                download_filename = f"{name}_{used_names[base]}{ext}"
-                            else:
-                                used_names[base] = 0
-                                download_filename = base
+                        if base in used_names:
+                            used_names[base] += 1
+                            name, ext = os.path.splitext(base)
+                            download_filename = f"{name}_{used_names[base]}{ext}"
+                        else:
+                            used_names[base] = 0
+                            download_filename = base
 
-                            arcname = f"{folder_name}/{download_filename}"
+                        arcname = f"{folder_name}/{download_filename}"
 
-                            if real_path and file_size >= 100:
-                                zf.write(real_path, arcname=arcname)
+                        if real_path and file_size >= 100:
+                            zf.write(real_path, arcname=arcname)
+                            total_images += 1
+                        else:
+                            with default_storage.open(img_path, 'rb') as img_file:
+                                img_data = img_file.read()
+                            if img_data and len(img_data) >= 100:
+                                zf.writestr(arcname, img_data)
                                 total_images += 1
-                            elif not real_path:
-                                with default_storage.open(img_path, 'rb') as img_file:
-                                    img_data = img_file.read()
-                                if img_data and len(img_data) >= 100:
-                                    zf.writestr(arcname, img_data)
-                                    total_images += 1
+                    except FileNotFoundError:
+                        continue
                     except Exception as e:
                         logger.warning("Error adding image to ZIP: %s", e)
                     
@@ -344,7 +364,13 @@ def process_export_pdf(task):
             shorten_titles=shorten_titles,
             break_mode=break_mode,
             progress_callback=_pdf_progress_callback,
+            cancel_check=lambda: _task_cancelled(task),
         )
+
+        if not result.success and str(result.message).strip().lower() == 'export cancelled':
+            if 'pdf_path' in locals():
+                _safe_remove(pdf_path, 'cancelled PDF')
+            return
         
         if not result.success:
             task.mark_failed(result.message)
@@ -476,7 +502,13 @@ def process_export_docx(task):
             template_id=template_id,
             allow_large=allow_large,
             progress_callback=_docx_progress_callback,
+            cancel_check=lambda: _task_cancelled(task),
         )
+
+        if not result.success and str(result.message).strip().lower() == 'export cancelled':
+            if 'docx_path' in locals():
+                _safe_remove(docx_path, 'cancelled DOCX')
+            return
         
         if not result.success:
             task.mark_failed(result.message)
@@ -594,7 +626,13 @@ def process_export_excel(task):
             table,
             cards_qs,
             progress_callback=_excel_progress_callback,
+            cancel_check=lambda: _task_cancelled(task),
         )
+
+        if not result.success and str(result.message).strip().lower() == 'export cancelled':
+            if 'excel_path' in locals():
+                _safe_remove(excel_path, 'cancelled Excel')
+            return
         
         if not result.success:
             task.mark_failed(result.message)

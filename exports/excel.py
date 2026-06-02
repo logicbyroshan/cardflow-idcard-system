@@ -66,6 +66,7 @@ class ExcelExporter:
         status: str = '',
         progress_callback=None,
         user=None,
+        cancel_check=None,
     ) -> ExcelExportResult:
         """
         Export cards to Excel format.
@@ -134,6 +135,9 @@ class ExcelExporter:
             row_count = 0
             text_col_count = len(text_fields)
             for row_idx, card in enumerate(sorted_cards, 2):
+                # Support cooperative cancellation from caller
+                if callable(cancel_check) and cancel_check():
+                    return ExcelExportResult(success=False, message='Export cancelled')
                 field_data = card.field_data or {}
                 
                 # Text field columns

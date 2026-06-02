@@ -261,6 +261,30 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
         }
     };
 
+    function requestCancelForTask(taskId) {
+        if (!taskId || _cancelRequested) return;
+        _cancelRequested = true;
+        fetch('/api/task-cancel/' + taskId + '/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (typeof showToast === 'function') {
+                    showToast((data && data.message) || ((options.cancelLabel || 'Export') + ' cancelled'), 'info');
+                }
+            })
+            .catch(function (err) {
+                if (typeof showToast === 'function') {
+                    showToast((options.cancelLabel || 'Export') + ' cancel request sent', 'info');
+                }
+                console.error('Cancel export task failed:', err);
+            });
+    }
+
     if (typeof showProgressToast === 'function') {
         showProgressToast(options.startMessage || 'Starting export...', 5, cancelFn);
     }
@@ -308,6 +332,10 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
                 return;
             }
             _activeTaskId = data.task_id;
+            if (_asyncCancelled) {
+                requestCancelForTask(_activeTaskId);
+                return;
+            }
             _pollGenericTaskStatus(data.task_id, _pollOptions, function () { return _asyncCancelled; }, cancelFn);
         })
         .catch(function (err) {
@@ -321,6 +349,10 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
                 if (typeof showToast === 'function') showToast(errMessage, 'info');
                 if (typeof showProgressToast === 'function') {
                     showProgressToast(options.startMessage || 'Resuming export...', 5, cancelFn);
+                }
+                if (_asyncCancelled) {
+                    requestCancelForTask(_activeTaskId);
+                    return;
                 }
                 _pollGenericTaskStatus(errData.active_task_id, _pollOptions, function () { return _asyncCancelled; }, cancelFn);
                 return;
@@ -338,7 +370,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
 function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
     options = options || {};
     var pollCount = 0;
-    var maxPolls = options.maxPolls || 300; // up to 10 minutes at 2s interval
+    var maxPolls = options.maxPolls || 3600; // up to 2 hours at 2s interval
     var pollErrorCount = 0;
     var maxPollErrors = options.maxPollErrors || 6;
     var pollStartedAt = Date.now();
