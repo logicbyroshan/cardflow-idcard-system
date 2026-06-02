@@ -249,6 +249,15 @@ class ThumbnailService:
             saved_path = default_storage.save(thumb_path, ContentFile(thumb_bytes))
             logger.debug("Created thumbnail: %s", saved_path)
             
+            # Cache the existence status to reduce default_storage.exists calls
+            try:
+                from django.core.cache import cache as django_cache
+                django_cache.set(f"thumb_exists:{saved_path}", True, 86400)
+                if saved_path != thumb_path:
+                    django_cache.set(f"thumb_exists:{thumb_path}", True, 86400)
+            except Exception as ce:
+                logger.debug("Cache write failed on create_thumbnail: %s", ce)
+            
             return saved_path
             
         except Exception as e:
@@ -311,6 +320,13 @@ class ThumbnailService:
             if default_storage.exists(thumb_path):
                 default_storage.delete(thumb_path)
                 logger.debug("Deleted thumbnail: %s", thumb_path)
+            
+            # Clear existence status from cache to prevent broken image references
+            try:
+                from django.core.cache import cache as django_cache
+                django_cache.delete(f"thumb_exists:{thumb_path}")
+            except Exception as ce:
+                logger.debug("Cache delete failed on delete_thumbnail: %s", ce)
             
             return True
             

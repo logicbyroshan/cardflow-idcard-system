@@ -28,7 +28,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.utils import timezone
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 
 from core.models import BackgroundTask
 from idcards.models import IDCardTable
@@ -577,10 +577,22 @@ def api_task_progress_center(request):
 
     try:
         try:
-            limit = int(request.GET.get('limit', 8))
+            per_page = int(request.GET.get('per_page', request.GET.get('limit', 25)))
         except (TypeError, ValueError):
-            limit = 8
-        limit = min(max(limit, 3), 20)
+            per_page = 25
+        per_page = min(max(per_page, 1), 100)
+
+        try:
+            page = int(request.GET.get('page', 1))
+        except (TypeError, ValueError):
+            page = 1
+        page = max(1, page)
+
+        try:
+            offset = int(request.GET.get('offset', (page - 1) * per_page))
+        except (TypeError, ValueError):
+            offset = (page - 1) * per_page
+        offset = max(0, offset)
 
         now = timezone.now()
         recent_cutoff = now - timedelta(hours=24)
@@ -592,16 +604,24 @@ def api_task_progress_center(request):
             tasks_base = BackgroundTask.objects.select_related('user').filter(user=request.user)
             scope = 'self'
 
-        active_qs = tasks_base.filter(status__in=['pending', 'processing']).order_by('-created_at', '-id')
-        active_tasks = list(active_qs[:limit])
+        ordered_tasks = tasks_base.annotate(
+            _batch_job_bucket=Case(
+                When(status__in=['pending', 'processing'], then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        ).order_by('_batch_job_bucket', '-created_at', '-id')
 
-        recent_tasks = list(
-            tasks_base
-            .exclude(id__in=[task.id for task in active_tasks])
-            .order_by('-created_at', '-id')[:limit]
-        )
+        total = ordered_tasks.count()
+        if total <= 0:
+            page = 1
+            offset = 0
+        if offset >= total and total > 0:
+            offset = ((total - 1) // per_page) * per_page
+            page = (offset // per_page) + 1
 
-        tasks = active_tasks + recent_tasks
+        tasks = list(ordered_tasks[offset:offset + per_page])
+        total_pages = max(1, (total + per_page - 1) // per_page)
         tasks_data = [_serialize_progress_center_task(task, now) for task in tasks]
 
         stats = tasks_base.aggregate(
@@ -617,6 +637,10 @@ def api_task_progress_center(request):
             'scope': scope,
             'stats': stats,
             'tasks': tasks_data,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages,
             'generated_at': now.isoformat(),
         })
 

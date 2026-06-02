@@ -48,7 +48,7 @@ def dashboard(request):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Assistant',
         'client': client,
         'is_client_admin': PermissionService.is_client(user),
         'active_page': 'dashboard',
@@ -87,7 +87,7 @@ def card_groups(request):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Assistant',
         'client': client,
         'is_client_admin': PermissionService.is_client(user),
         'active_page': 'groups',
@@ -137,7 +137,7 @@ def card_table(request, table_id):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Assistant',
         'client': client,
         'is_client_admin': PermissionService.is_client(user),
         'active_page': 'groups',
@@ -198,7 +198,7 @@ def manage_staff(request):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Assistant',
         'client': client,
         'is_client_admin': PermissionService.is_client(user),
         'active_page': 'staff',
@@ -248,7 +248,7 @@ def messages(request):
     context = {
         'user': user,
         'user_name': user.get_full_name() or user.username,
-        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Assistant',
         'client': client,
         'is_client_admin': PermissionService.is_client(user),
         'active_page': 'client_messages',

@@ -529,3 +529,58 @@ class MediafilesPathFallbackTests(TestCase):
             got = ImageService.get_image_path_for_card(card, 'PHOTO')
 
         self.assertEqual(got, 'adarshimg/CODE/original.jpg')
+
+
+class ThumbnailExistsCachingTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client_obj, self.group, self.table, self.card = _create_test_card()
+        self.card.field_data['PHOTO'] = 'adarshimg/CODE/original.jpg'
+        self.card.save(update_fields=['field_data'])
+
+    def tearDown(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_get_image_path_for_export_caches_exists_lookup(self):
+        from mediafiles.services import ImageService
+        from django.core.cache import cache
+        
+        thumb_path = 'adarshimg/thumbs/CODE/original.webp'
+        cache_key = f"thumb_exists:{thumb_path}"
+
+        with mock.patch('mediafiles.services.image_fields.ThumbnailService.get_thumbnail_path', return_value=thumb_path):
+            with mock.patch('mediafiles.services.image_fields.default_storage.exists', return_value=True) as mock_exists:
+                # First call: cache miss, calls storage.exists
+                got = ImageService.get_image_path_for_export(self.card, 'PHOTO', prefer_thumbnail=True)
+                self.assertEqual(got, thumb_path)
+                self.assertEqual(mock_exists.call_count, 1)
+                self.assertTrue(cache.get(cache_key))
+
+                # Second call: cache hit, should NOT call storage.exists
+                got2 = ImageService.get_image_path_for_export(self.card, 'PHOTO', prefer_thumbnail=True)
+                self.assertEqual(got2, thumb_path)
+                self.assertEqual(mock_exists.call_count, 1)
+
+    def test_delete_thumbnail_invalidates_cache(self):
+        from mediafiles.services.image_thumbnail import ThumbnailService
+        from django.core.cache import cache
+
+        original = 'adarshimg/CODE/original.jpg'
+        thumb_path = ThumbnailService.get_thumbnail_path(original)
+        cache_key = f"thumb_exists:{thumb_path}"
+
+        # Set in cache manually
+        cache.set(cache_key, True, 86400)
+        self.assertTrue(cache.get(cache_key))
+
+        # Delete thumbnail
+        with mock.patch('django.core.files.storage.default_storage.exists', return_value=True):
+            with mock.patch('django.core.files.storage.default_storage.delete') as mock_delete:
+                res = ThumbnailService.delete_thumbnail(original)
+                self.assertTrue(res)
+                self.assertTrue(mock_delete.called)
+
+        # Cache key should be deleted/invalidated
+        self.assertIsNone(cache.get(cache_key))

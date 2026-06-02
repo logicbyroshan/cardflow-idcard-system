@@ -23,6 +23,11 @@ let _domainStatusLoading = false;
 let _domainToggleBusy = false;
 let _domainEmailBusy = false;
 let _batchJobsAutoRefreshTimer = null;
+let _batchJobPage = 1;
+let _batchJobPerPage = 25;
+let _batchJobTotal = 0;
+let _batchJobTotalPages = 1;
+let _batchJobPagerBound = false;
 let _templateEditorBound = false;
 const MANAGE_PANEL_TAB_KEY = 'managePanel:lastTab';
 const SERVER_INFO_LOCAL_CACHE_KEY = 'managePanel:serverInfoSnapshot:v2';
@@ -106,6 +111,134 @@ function _batchJobStatusClass(status) {
   const normalized = String(status || '').trim().toLowerCase();
   if (!normalized) return '';
   return 'is-' + normalized;
+}
+
+function _setBatchJobRowsDropdownValue(value) {
+  const rowsText = document.getElementById('batchJobRowsSelectedText');
+  const rowsOptions = document.getElementById('batchJobRowsOptions');
+  if (rowsText) rowsText.textContent = String(value);
+  if (!rowsOptions) return;
+
+  rowsOptions.querySelectorAll('.dropdown-option').forEach(function (opt) {
+    opt.classList.toggle('selected', Number(opt.dataset.value) === Number(value));
+  });
+}
+
+function _bindBatchJobPaginationControls() {
+  if (_batchJobPagerBound) return;
+  _batchJobPagerBound = true;
+
+  const firstBtn = document.getElementById('batchJobFirstPage');
+  const prevBtn = document.getElementById('batchJobPrevPage');
+  const nextBtn = document.getElementById('batchJobNextPage');
+  const lastBtn = document.getElementById('batchJobLastPage');
+  const pageNums = document.getElementById('batchJobPageNumbers');
+  const rowsDropdown = document.getElementById('batchJobRowsDropdown');
+  const rowsToggle = document.getElementById('batchJobRowsToggle');
+  const rowsOptions = document.getElementById('batchJobRowsOptions');
+
+  if (firstBtn) firstBtn.addEventListener('click', function () { batchJobGoPage(1); });
+  if (prevBtn) prevBtn.addEventListener('click', function () { batchJobGoPage(_batchJobPage - 1); });
+  if (nextBtn) nextBtn.addEventListener('click', function () { batchJobGoPage(_batchJobPage + 1); });
+  if (lastBtn) {
+    lastBtn.addEventListener('click', function () {
+      batchJobGoPage(_batchJobTotalPages);
+    });
+  }
+
+  if (pageNums) {
+    pageNums.addEventListener('click', function (event) {
+      const btn = event.target.closest('.page-num');
+      if (!btn) return;
+      const page = parseInt(btn.dataset.page || '', 10);
+      if (!Number.isFinite(page)) return;
+      batchJobGoPage(page);
+    });
+  }
+
+  if (rowsDropdown && rowsToggle && rowsOptions) {
+    rowsToggle.addEventListener('click', function (event) {
+      event.stopPropagation();
+      rowsDropdown.classList.toggle('open');
+    });
+
+    rowsOptions.querySelectorAll('.dropdown-option').forEach(function (option) {
+      option.addEventListener('click', function () {
+        const value = parseInt(this.dataset.value || '', 10);
+        if (!Number.isFinite(value) || value <= 0) return;
+        _batchJobPerPage = value;
+        _batchJobPage = 1;
+        _setBatchJobRowsDropdownValue(_batchJobPerPage);
+        rowsDropdown.classList.remove('open');
+        window.loadManagePanelBatchJobProgressCenter(true, 1);
+      });
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!rowsDropdown.contains(event.target)) {
+        rowsDropdown.classList.remove('open');
+      }
+    });
+  }
+
+  _setBatchJobRowsDropdownValue(_batchJobPerPage);
+}
+
+function _renderBatchJobsPagination(totalRows) {
+  const wrapper = document.getElementById('batchJobPaginationWrap');
+  const info = document.getElementById('batchJobPaginationInfo');
+  const pageNumbers = document.getElementById('batchJobPageNumbers');
+  const firstBtn = document.getElementById('batchJobFirstPage');
+  const prevBtn = document.getElementById('batchJobPrevPage');
+  const nextBtn = document.getElementById('batchJobNextPage');
+  const lastBtn = document.getElementById('batchJobLastPage');
+
+  if (!wrapper || !info || !pageNumbers) return;
+
+  if (totalRows <= 0) {
+    wrapper.style.display = 'none';
+    return;
+  }
+
+  wrapper.style.display = '';
+
+  _batchJobTotal = totalRows;
+  _batchJobTotalPages = Math.max(1, Math.ceil(totalRows / _batchJobPerPage));
+  if (_batchJobPage > _batchJobTotalPages) _batchJobPage = _batchJobTotalPages;
+  if (_batchJobPage < 1) _batchJobPage = 1;
+
+  const startIndex = (_batchJobPage - 1) * _batchJobPerPage;
+  const endIndex = Math.min(startIndex + _batchJobPerPage, totalRows);
+  info.innerHTML = 'Showing <strong>' + (startIndex + 1) + '-' + endIndex + '</strong> of <strong>' + totalRows + '</strong> results';
+
+  pageNumbers.innerHTML = '';
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, _batchJobPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(_batchJobTotalPages, startPage + maxVisiblePages - 1);
+  if ((endPage - startPage + 1) < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i += 1) {
+    pageNumbers.insertAdjacentHTML(
+      'beforeend',
+      '<button class="page-num' + (i === _batchJobPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>'
+    );
+  }
+
+  if (firstBtn) firstBtn.disabled = _batchJobPage <= 1;
+  if (prevBtn) prevBtn.disabled = _batchJobPage <= 1;
+  if (nextBtn) nextBtn.disabled = _batchJobPage >= _batchJobTotalPages;
+  if (lastBtn) lastBtn.disabled = _batchJobPage >= _batchJobTotalPages;
+}
+
+function batchJobGoPage(page) {
+  const requested = Number(page || 1);
+  if (!Number.isFinite(requested)) return;
+  const nextPage = Math.max(1, Math.min(requested, _batchJobTotalPages || 1));
+  if (nextPage === _batchJobPage) return;
+  _batchJobPage = nextPage;
+  window.loadManagePanelBatchJobProgressCenter(true, _batchJobPage);
 }
 
 function _renderManagePanelBatchJobRows(tasks) {
@@ -230,7 +363,7 @@ function _syncBatchJobsAutoRefresh(shouldRun) {
   }, MANAGE_PANEL_BATCH_REFRESH_MS);
 }
 
-window.loadManagePanelBatchJobProgressCenter = async function(showLoadingState) {
+window.loadManagePanelBatchJobProgressCenter = async function(showLoadingState, pageOverride) {
   const listEl = document.getElementById('batchJobProgressList');
   if (!listEl) return;
 
@@ -242,6 +375,12 @@ window.loadManagePanelBatchJobProgressCenter = async function(showLoadingState) 
   const updatedAtEl = document.getElementById('batchJobLastUpdated');
   const refreshBtn = document.getElementById('batchJobRefreshBtn');
   const shouldShowLoading = showLoadingState !== false;
+
+  _bindBatchJobPaginationControls();
+
+  if (Number.isFinite(Number(pageOverride))) {
+    _batchJobPage = Math.max(1, Number(pageOverride));
+  }
 
   _bindManagePanelBatchJobActions();
 
@@ -255,7 +394,11 @@ window.loadManagePanelBatchJobProgressCenter = async function(showLoadingState) 
   }
 
   try {
-    const res = await fetch(managePanelUrl('/api/task-progress-center/?limit=8'), {
+    const query = new URLSearchParams({
+      per_page: String(_batchJobPerPage),
+      page: String(_batchJobPage),
+    });
+    const res = await fetch(managePanelUrl('/api/task-progress-center/?' + query.toString()), {
       method: 'GET',
       credentials: 'same-origin',
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -282,6 +425,16 @@ window.loadManagePanelBatchJobProgressCenter = async function(showLoadingState) 
     if (updatedAtEl) updatedAtEl.textContent = _formatBatchJobUpdatedAt();
 
     listEl.innerHTML = _renderManagePanelBatchJobRows(data.tasks || []);
+    _batchJobTotal = Number(data.total || 0) || 0;
+    _batchJobTotalPages = Number(data.total_pages || 1) || 1;
+    if (Number.isFinite(Number(data.page)) && Number(data.page) > 0) {
+      _batchJobPage = Number(data.page);
+    }
+    if (Number.isFinite(Number(data.per_page)) && Number(data.per_page) > 0) {
+      _batchJobPerPage = Number(data.per_page);
+    }
+    _setBatchJobRowsDropdownValue(_batchJobPerPage);
+    _renderBatchJobsPagination(_batchJobTotal);
   } catch (error) {
     console.error('Error loading batch jobs:', error);
     if (activeCountEl) activeCountEl.textContent = '0';
@@ -291,6 +444,7 @@ window.loadManagePanelBatchJobProgressCenter = async function(showLoadingState) 
     if (failedCountEl) failedCountEl.textContent = '0';
     if (updatedAtEl) updatedAtEl.textContent = 'Update failed';
     listEl.innerHTML = '<div class="batch-job-empty"><i class="fa-solid fa-triangle-exclamation"></i>Unable to load batch jobs right now.</div>';
+    _renderBatchJobsPagination(0);
   } finally {
     if (refreshBtn) {
       refreshBtn.disabled = false;
@@ -303,6 +457,10 @@ function _loadInitialManagePanelTabData(tabName) {
   if (!tabName) return;
   if (tabName === 'notifications') {
     loadNotifications();
+    return;
+  }
+  if (tabName === 'batch-jobs') {
+    window.loadManagePanelBatchJobProgressCenter(true, 1);
     return;
   }
   if (tabName === 'download-templates') {

@@ -1325,6 +1325,32 @@ class TaskProgressCenterApiTests(TestCase):
         task_ids = {item.get('task_id') for item in (payload.get('tasks') or [])}
         self.assertEqual(task_ids, {own_task.id})
 
+    def test_task_progress_center_paginates_and_reports_totals(self):
+        from core.models import BackgroundTask
+
+        now = timezone.now()
+        for index in range(7):
+            task = BackgroundTask.objects.create(
+                user=self.super_admin,
+                task_type='export_pdf',
+                status='completed' if index >= 2 else 'processing',
+                progress=index,
+                total=10,
+            )
+            BackgroundTask.objects.filter(pk=task.pk).update(created_at=now - timedelta(minutes=index + 1))
+
+        self.client.force_login(self.super_admin)
+        response = self.client.get('/panel/api/task-progress-center/', {'page': 2, 'per_page': 3})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('total'), 7)
+        self.assertEqual(payload.get('page'), 2)
+        self.assertEqual(payload.get('per_page'), 3)
+        self.assertEqual(payload.get('total_pages'), 3)
+        self.assertEqual(len(payload.get('tasks') or []), 3)
+
 
 class AssignmentTimelineApiTests(TestCase):
     def setUp(self):

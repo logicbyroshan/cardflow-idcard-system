@@ -41,7 +41,10 @@ GLOBAL_SEARCH_RESULT_LIMIT = 50
 
 def get_user_role(user):
     """Helper function to get user role display name"""
-    return user.get_role_display()
+    role = user.get_role_display()
+    if role == 'Client Staff':
+        return 'Assistant'
+    return role
 
 
 def get_page_range(page_obj, window=2):

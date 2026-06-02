@@ -167,9 +167,14 @@
 
 #tab-batch-jobs .panel-batch-jobs-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 10px 20px 14px;
+}
+
+#tab-batch-jobs .batch-job-list {
+  padding-bottom: 6px;
 }
 
 #tab-batch-jobs .batch-jobs-panel-kicker {

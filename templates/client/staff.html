@@ -347,8 +347,11 @@
     <!-- Action Bar -->
     {% include 'partials/staff/action-bar.html' %}
 
-    <!-- Staff Table -->
-    {% include 'partials/staff/table.html' %}
+    <!-- Staff Table Container -->
+    <div id="staff-table-container">
+        <!-- Staff Table -->
+        {% include 'partials/staff/table.html' %}
+    </div>
 
     <!-- Pagination -->
     {% include 'partials/common/pagination.html' with default_rows='25' %}

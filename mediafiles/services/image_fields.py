@@ -300,12 +300,31 @@ class ImageFieldsMixin:
         thumb_path = ThumbnailService.get_thumbnail_path(original_path)
         if thumb_path:
             try:
-                if default_storage.exists(thumb_path):
+                from django.core.cache import cache as django_cache
+                
+                cache_key = f"thumb_exists:{thumb_path}"
+                thumb_exists = django_cache.get(cache_key)
+                
+                if thumb_exists is None:
+                    # On cache miss, query default_storage.exists and cache it
+                    # Comments: Optimization D - Caching existence checks reduces redundant storage backend requests during heavy exports
+                    thumb_exists = default_storage.exists(thumb_path)
+                    django_cache.set(cache_key, thumb_exists, 86400)  # 24 hours TTL
+                
+                if thumb_exists:
                     return thumb_path
+                
                 # Thumbnail missing — regenerate automatically (Phase 2)
                 created = ThumbnailService.create_thumbnail(original_path)
-                if created and default_storage.exists(created):
-                    return created
+                if created:
+                    # Update cache key to True when created successfully
+                    created_cache_key = f"thumb_exists:{created}"
+                    django_cache.set(created_cache_key, True, 86400)
+                    if created != thumb_path:
+                        django_cache.set(cache_key, True, 86400)
+                    
+                    if default_storage.exists(created):
+                        return created
             except Exception as e:
                 logger.debug("Thumbnail not available for %s: %s", original_path, e)
         

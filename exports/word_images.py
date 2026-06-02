@@ -42,47 +42,49 @@ class WordImagesMixin:
         return False
 
     @staticmethod
+    def _build_word_image_stream_from_image(src_img, Image, ImageOps):
+        """Build the image stream with border drawing from an already opened PIL Image.
+        
+        Uses Pillow native ImageDraw.rectangle for fast C-accelerated border drawing
+        instead of slow pure-Python loops.
+        """
+        from PIL import ImageDraw
+
+        if src_img.mode != 'RGB':
+            src_img = src_img.convert('RGB')
+        bordered = src_img.copy()
+        w, h = bordered.size
+        if w >= 2 and h >= 2:
+            draw = ImageDraw.Draw(bordered)
+            border_px = WordImagesMixin.PHOTO_BORDER_PX
+            edge = WordImagesMixin.PHOTO_BORDER_COLOR
+            max_t = min(border_px, w // 2, h // 2)
+            if max_t > 0:
+                # Draws outline expanding inwards, ensuring pixel-for-pixel visual equivalence
+                draw.rectangle([0, 0, w - 1, h - 1], outline=edge, width=max_t)
+
+        out_stream = BytesIO()
+        bordered.save(out_stream, format='PNG')
+        out_stream.seek(0)
+        return out_stream
+
+    @staticmethod
     def _build_word_image_stream(img_data, Image, ImageOps, add_photo_border=False):
         """Return a BytesIO stream for Word embedding.
 
         Some Word compatibility renderers ignore VML stroke on image shapes.
         For photo-like columns, add a 1pt-equivalent inner border in the
         bitmap (without changing dimensions) so border remains visible.
+        
+        Backward compatible wrapper that reuses the optimized image processor.
         """
         if not add_photo_border:
             return BytesIO(img_data)
 
+        # Optimization B: Reuse already opened image stream safely.
         with Image.open(BytesIO(img_data)) as src_img:
             src_img.load()
-            if src_img.mode != 'RGB':
-                src_img = src_img.convert('RGB')
-            bordered = src_img.copy()
-            w, h = bordered.size
-            if w >= 2 and h >= 2:
-                px = bordered.load()
-                border_px = WordImagesMixin.PHOTO_BORDER_PX
-                edge = WordImagesMixin.PHOTO_BORDER_COLOR
-                max_t = min(border_px, w // 2, h // 2)
-                for t in range(max_t):
-                    for x in range(t, w - t):
-                        px[x, t] = edge
-                        px[x, h - 1 - t] = edge
-                    for y in range(t, h - t):
-                        px[t, y] = edge
-                        px[w - 1 - t, y] = edge
-            out_stream = BytesIO()
-            # JPEGs are much faster to compress and much smaller for portrait photos
-            # than PNGs with optimize=True. Fall back to non-optimized PNG only for transparent images.
-            is_rgba = bordered.mode in ('RGBA', 'LA') or (src_img.info and 'transparency' in src_img.info)
-            if is_rgba:
-                bordered.save(out_stream, format='PNG')
-            else:
-                try:
-                    bordered.save(out_stream, format='JPEG', quality=85)
-                except Exception:
-                    bordered.save(out_stream, format='PNG')
-            out_stream.seek(0)
-            return out_stream
+            return WordImagesMixin._build_word_image_stream_from_image(src_img, Image, ImageOps)
 
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
@@ -119,39 +121,42 @@ class WordImagesMixin:
                     pass
                 
                 if img_data and len(img_data) >= 100:
-                    # Validate image and keep original bytes (no recompression).
-                    with Image.open(BytesIO(img_data)) as verify_img:
-                        verify_img.verify()
+                    # Optimization A & B: Open image exactly ONCE, validate via load(), and bypass verify()
+                    with Image.open(BytesIO(img_data)) as src_img:
+                        src_img.load()  # Decodes image in memory, validating integrity and raising exceptions if corrupt
 
-                    add_photo_border = self._should_add_photo_border(
-                        image_subtype=image_subtype,
-                        field_name=field_name,
-                    )
-                    img_stream = self._build_word_image_stream(
-                        img_data,
-                        Image,
-                        ImageOps,
-                        add_photo_border=add_photo_border,
-                    )
-                    
-                    para = cell.paragraphs[0]
-                    run = para.add_run()
-                    # Keep layout fixed while preserving source quality
-                    # (original bytes, no JPEG recompression step).
-                    inline_shape = run.add_picture(
-                        img_stream,
-                        height=Cm(fixed_height_cm),
-                        width=Cm(fixed_width_cm)
-                    )
-                    img_stream.close()
-                    self._convert_to_vml(
-                        run,
-                        inline_shape,
-                        add_border=False,
-                    )
-                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    self._set_para_spacing(para, parse_xml, nsdecls)
-                    return
+                        add_photo_border = self._should_add_photo_border(
+                            image_subtype=image_subtype,
+                            field_name=field_name,
+                        )
+                        if add_photo_border:
+                            # Optimize border painting with Pillow native drawing
+                            img_stream = self._build_word_image_stream_from_image(
+                                src_img,
+                                Image,
+                                ImageOps,
+                            )
+                        else:
+                            # Return original raw bytes to preserve metadata & print quality exactly without re-compressing
+                            img_stream = BytesIO(img_data)
+                        
+                        para = cell.paragraphs[0]
+                        run = para.add_run()
+                        # Keep layout fixed while preserving source quality
+                        inline_shape = run.add_picture(
+                            img_stream,
+                            height=Cm(fixed_height_cm),
+                            width=Cm(fixed_width_cm)
+                        )
+                        img_stream.close()
+                        self._convert_to_vml(
+                            run,
+                            inline_shape,
+                            add_border=False,
+                        )
+                        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        self._set_para_spacing(para, parse_xml, nsdecls)
+                        return
                 else:
                     logger.warning("Word export: Image missing or invalid/too small: %s", img_path)
             except Exception as e:
