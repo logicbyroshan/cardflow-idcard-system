@@ -567,6 +567,8 @@ class PdfExporter:
                             dest=_out,
                             link_callback=link_callback
                         )
+                    _pisa_end = datetime.utcnow()
+                    logger.info('xhtml2pdf.render duration_seconds=%.2f', (_pisa_end - _pisa_start).total_seconds())
                     if pisa_status.err:
                         logger.error("xhtml2pdf errors: %s", pisa_status.err)
                         try:

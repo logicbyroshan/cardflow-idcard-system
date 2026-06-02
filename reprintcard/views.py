@@ -581,7 +581,7 @@ def api_reprint_list(request, table_id):
     if available_only:
         busy_card_ids = ReprintRequest.objects.filter(
             table=table,
-            status__in=['requested', 'confirmed', 'downloaded'],
+            status__in=['requested'],
         ).values_list('card_id', flat=True)
         card_qs = card_qs.exclude(id__in=busy_card_ids)
 

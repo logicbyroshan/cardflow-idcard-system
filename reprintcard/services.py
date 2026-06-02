@@ -213,7 +213,7 @@ class ReprintWorkflowService:
                 ReprintRequest.objects.filter(
                     table=table,
                     card_id__in=valid_ids,
-                    status__in=['requested', 'confirmed', 'downloaded'],
+                    status__in=['requested'],
                 ).values_list('card_id', flat=True)
             )
 

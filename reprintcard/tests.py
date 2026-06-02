@@ -945,3 +945,47 @@ class ReprintApiIntegrationTests(TestCase):
 					status='generate_list',
 				).exists()
 			)
+
+	def test_confirmed_cards_are_available_in_reprint_list(self):
+		from reprintcard.models import ReprintRequest
+		from reprintcard.services import ReprintWorkflowService
+
+		# Initially, self.card_a has a reprint request in 'requested' status.
+		# Check that card_a is NOT in the available reprint list
+		self.client.force_login(self.client_user)
+		response = self.client.get(self._url('api_reprint_list'), {'available_only': '1'})
+		self.assertEqual(response.status_code, 200)
+		items = response.json().get('items', [])
+		card_ids = [item['card_id'] for item in items]
+		self.assertNotIn(self.card_a.id, card_ids)
+
+		# Move self.rr_requested status to 'confirmed'
+		self.rr_requested.status = 'confirmed'
+		self.rr_requested.save()
+
+		# Check that card_a is now available in the reprint list!
+		response = self.client.get(self._url('api_reprint_list'), {'available_only': '1'})
+		self.assertEqual(response.status_code, 200)
+		items = response.json().get('items', [])
+		card_ids = [item['card_id'] for item in items]
+		self.assertIn(self.card_a.id, card_ids)
+
+		# Check that we can create a new reprint request for self.card_a
+		create_response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({'card_ids': [self.card_a.id], 'reason': 'Reprint again'}),
+			content_type='application/json',
+		)
+		self.assertEqual(create_response.status_code, 200)
+		self.assertEqual(create_response.json()['created_count'], 1)
+
+		# There should now be two reprint requests for card_a: one confirmed, one requested
+		self.assertEqual(
+			ReprintRequest.objects.filter(card=self.card_a, status='requested').count(),
+			1
+		)
+		self.assertEqual(
+			ReprintRequest.objects.filter(card=self.card_a, status='confirmed').count(),
+			1
+		)
+
