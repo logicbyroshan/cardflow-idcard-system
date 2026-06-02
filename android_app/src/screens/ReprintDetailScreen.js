@@ -89,6 +89,12 @@ export default function ReprintDetailScreen({ navigation, route }) {
     return () => clearTimeout(delayDebounce);
   }, [searchText]);
 
+  // Clear search query when changing tabs
+  useEffect(() => {
+    setSearchText('');
+    setSearchQuery('');
+  }, [activeTab]);
+
   // ── Fetch Table Metadata ────────────────────────────────────────────────
   useEffect(() => {
     (async () => {

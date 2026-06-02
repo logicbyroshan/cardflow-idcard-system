@@ -409,7 +409,7 @@ def _get_reprint_step_counts(table):
 
     return {
         'download_list': int(source_cards_count),
-        'reprint_list': source_cards_count,
+        'reprint_list': max(0, source_cards_count - request_count),
         'request_list': request_count,
         'confirmed': confirmed_count,
     }

@@ -32,7 +32,6 @@ export default function GroupsScreen({ navigation }) {
       a: table.approved_cards || 0,
       d: table.download_cards || 0,
       po: table.pool_cards || 0,
-      r: table.reprint_cards || 0,
     };
 
     return (
@@ -57,7 +56,6 @@ export default function GroupsScreen({ navigation }) {
             { key: 'a', status: 'approved', label: 'APPROVED', color: '#3b82f6', bg: '#eff6ff', icon: 'thumbs-up' },
             { key: 'd', status: 'download', label: 'DOWNLOAD', color: '#8b5cf6', bg: '#f5f3ff', icon: 'download' },
             { key: 'po', status: 'pool',     label: 'POOL',     color: '#ef4444', bg: '#fef2f2', icon: 'archive' },
-            { key: 'r', status: 'reprint',  label: 'REPRINT',  color: '#f97316', bg: '#fff7ed', icon: 'redo' },
           ].map(st => (
             <TouchableOpacity key={st.key}
               style={[s.pillBtn, { backgroundColor: st.bg, borderColor: st.color + '40' }]}

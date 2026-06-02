@@ -6196,7 +6196,7 @@ def api_reprint_data(request, client_id):
             request_total += requested
             confirmed_total += confirmed
             dl_count = int(download_map.get(t.id, 0) or 0)
-            reprint_count = max(0, dl_count - requested - confirmed)
+            reprint_count = max(0, dl_count - requested)
             download_total += dl_count
             items.append({
                 'id': t.id,
