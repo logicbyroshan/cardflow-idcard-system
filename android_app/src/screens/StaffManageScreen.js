@@ -127,6 +127,8 @@ export default function StaffManageScreen({ navigation, route }) {
   const [selectedTableIds, setSelectedTableIds] = useState([]);
   const [selectedClientIds, setSelectedClientIds] = useState([]);
   const [assignmentScopes, setAssignmentScopes] = useState([]);
+  const [savedScopeIds, setSavedScopeIds] = useState(new Set()); // tracks which scopes have been saved
+  const [activeConfigScope, setActiveConfigScope] = useState(null); // { type, id } currently open for config
   const [loadingAssign, setLoadingAssign] = useState(false);
   const [savingAssign, setSavingAssign] = useState(false);
 
@@ -261,67 +263,99 @@ export default function StaffManageScreen({ navigation, route }) {
     setAssigningId(member.id);
     setLoadingAssign(true);
     setShowAssign(true);
+    // Reset all selections — user must select fresh, no defaults
+    setSelectedGroupIds([]);
+    setSelectedTableIds([]);
+    setSelectedClientIds([]);
+    setAssignmentScopes([]);
+    setSavedScopeIds(new Set());
+    setActiveConfigScope(null);
     try {
       const { ok, data } = await apiGet(`/api/mobile/staff/${member.id}/assignment/`);
       if (ok && data.success) {
         setAssignData(data.data);
-        setSelectedGroupIds(data.data.assigned_groups || []);
-        setSelectedTableIds(data.data.assigned_tables || []);
-        setSelectedClientIds(data.data.assigned_clients || []);
-        
-        // Initialize scopes and hydrate class_sections
+        // Load existing scopes as saved (pre-hydrated) so user sees what's already assigned
+        const existingGroupIds = data.data.assigned_groups || [];
+        const existingTableIds = data.data.assigned_tables || [];
         const scopes = (data.data.assignment_scopes || []).map(scope => {
           const type = scope.scope_type;
           const id = scope.scope_id;
           const optMap = type === 'group' ? data.data.group_options : data.data.table_options;
           const options = optMap?.[id] || { classes: [], sections: [], branches: [], class_sections: {} };
           const classSectionMap = options.class_sections || {};
-          
           let classSections = {};
           if (scope.class_sections && Object.keys(scope.class_sections).length > 0) {
             Object.keys(scope.class_sections).forEach(cls => {
               classSections[cls] = [...(scope.class_sections[cls] || [])];
             });
           } else {
-            // Build from flat classes and sections
             const selectedClasses = scope.classes || [];
             const selectedSections = scope.sections || [];
-            selectedClasses.forEach(cls => {
-              classSections[cls] = [];
-            });
+            selectedClasses.forEach(cls => { classSections[cls] = []; });
             selectedSections.forEach(sec => {
               let targetClass = null;
               selectedClasses.forEach(cls => {
                 if (targetClass) return;
-                const available = classSectionMap[cls] || [];
-                if (available.includes(sec)) {
-                  targetClass = cls;
-                }
+                if ((classSectionMap[cls] || []).includes(sec)) targetClass = cls;
               });
-              if (!targetClass && selectedClasses.length > 0) {
-                targetClass = selectedClasses[0];
-              }
+              if (!targetClass && selectedClasses.length > 0) targetClass = selectedClasses[0];
               if (targetClass) {
                 classSections[targetClass] = classSections[targetClass] || [];
-                if (!classSections[targetClass].includes(sec)) {
-                  classSections[targetClass].push(sec);
-                }
+                if (!classSections[targetClass].includes(sec)) classSections[targetClass].push(sec);
               }
             });
           }
-          
-          return {
-            ...scope,
-            classes: scope.classes || [],
-            sections: scope.sections || [],
-            branches: scope.branches || [],
-            class_sections: classSections
-          };
+          return { ...scope, classes: scope.classes || [], sections: scope.sections || [], branches: scope.branches || [], class_sections: classSections };
         });
         setAssignmentScopes(scopes);
+        // Mark existing assignments as pre-selected and pre-saved
+        setSelectedGroupIds(existingGroupIds);
+        setSelectedTableIds(existingTableIds);
+        setSelectedClientIds(data.data.assigned_clients || []);
+        // Mark all existing scopes as already saved
+        const saved = new Set();
+        existingGroupIds.forEach(id => saved.add(`group-${id}`));
+        existingTableIds.forEach(id => saved.add(`table-${id}`));
+        setSavedScopeIds(saved);
       }
     } catch (e) { showToast('Error loading assignments', 'error'); }
     setLoadingAssign(false);
+  };
+
+  const handleToggleGroupInAssign = (gid) => {
+    setSelectedGroupIds(prev => {
+      if (prev.includes(gid)) {
+        // Deselect: remove scope and saved state
+        setSavedScopeIds(s => { const n = new Set(s); n.delete(`group-${gid}`); return n; });
+        setAssignmentScopes(p => p.filter(s => !(s.scope_type === 'group' && parseInt(s.scope_id) === gid)));
+        if (activeConfigScope?.type === 'group' && activeConfigScope?.id === gid) setActiveConfigScope(null);
+        return prev.filter(i => i !== gid);
+      } else {
+        // Select: open config for this group
+        setActiveConfigScope({ type: 'group', id: gid });
+        return [...prev, gid];
+      }
+    });
+  };
+
+  const handleToggleTableInAssign = (tid) => {
+    setSelectedTableIds(prev => {
+      if (prev.includes(tid)) {
+        setSavedScopeIds(s => { const n = new Set(s); n.delete(`table-${tid}`); return n; });
+        setAssignmentScopes(p => p.filter(s => !(s.scope_type === 'table' && parseInt(s.scope_id) === tid)));
+        if (activeConfigScope?.type === 'table' && activeConfigScope?.id === tid) setActiveConfigScope(null);
+        return prev.filter(i => i !== tid);
+      } else {
+        setActiveConfigScope({ type: 'table', id: tid });
+        return [...prev, tid];
+      }
+    });
+  };
+
+  const saveScopeConfig = (type, id) => {
+    setSavedScopeIds(prev => { const n = new Set(prev); n.add(`${type}-${id}`); return n; });
+    setActiveConfigScope(null);
+    showToast(`${type === 'group' ? 'Group' : 'Table'} scope saved! Select more or save all.`, 'success');
   };
 
   const saveAssignment = async () => {
@@ -510,8 +544,7 @@ export default function StaffManageScreen({ navigation, route }) {
     }
     
     return (
-      <View key={`${type}-${item.id}`} style={s.scopeCard}>
-        <Text style={s.scopeCardTitle}>{item.name.toUpperCase()} FILTERS</Text>
+      <View key={`${type}-${item.id}`}>
         
         {classesList.length > 0 && (
           <View style={s.scopeSection}>
@@ -864,7 +897,7 @@ export default function StaffManageScreen({ navigation, route }) {
               <Text style={s.modalTitle}>Assign Access</Text>
               <TouchableOpacity onPress={() => setShowAssign(false)}><IconClose size={20} color={colors.gray400} /></TouchableOpacity>
             </View>
-            <ScrollView style={{maxHeight: height * 0.7}}>
+            <ScrollView style={{maxHeight: height * 0.72}} showsVerticalScrollIndicator={false}>
               {loadingAssign ? <ActivityIndicator style={{padding:40}} color={colors.brandPrimary} /> : (
                 isOperatorMode ? (
                   <>
@@ -879,33 +912,132 @@ export default function StaffManageScreen({ navigation, route }) {
                   </>
                 ) : (
                   <>
-                    <Text style={s.sectionTitle}>Groups (Departments)</Text>
+                    {/* STEP 1: Select Groups */}
+                    <Text style={s.sectionTitle}>Select Groups (Departments)</Text>
+                    <Text style={s.sectionHint}>Tap a group to select it, then configure class/section access below it.</Text>
                     <View style={s.checkGrid}>
-                      {assignData.groups.map(g => (
-                        <TouchableOpacity key={g.id} style={[s.checkItem, selectedGroupIds.includes(g.id) && s.checkItemActive]} onPress={() => setSelectedGroupIds(p => p.includes(g.id) ? p.filter(i => i !== g.id) : [...p, g.id])}>
-                          <Text style={[s.checkLabel, selectedGroupIds.includes(g.id) && s.checkLabelActive]} numberOfLines={1}>{g.name}</Text>
-                        </TouchableOpacity>
-                      ))}
+                      {assignData.groups.map(g => {
+                        const isSelected = selectedGroupIds.includes(g.id);
+                        const isSaved = savedScopeIds.has(`group-${g.id}`);
+                        return (
+                          <TouchableOpacity
+                            key={g.id}
+                            style={[s.checkItem, isSelected && s.checkItemActive, isSaved && s.checkItemSaved]}
+                            onPress={() => handleToggleGroupInAssign(g.id)}
+                          >
+                            <View style={s.checkItemRow}>
+                              <Text style={[s.checkLabel, isSelected && s.checkLabelActive, isSaved && s.checkLabelSaved]} numberOfLines={1}>{g.name}</Text>
+                              {isSaved && <View style={s.savedBadge}><Text style={s.savedBadgeText}>✓</Text></View>}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
-                    
+
+                    {/* Inline config for selected groups */}
                     {selectedGroupIds.map(gid => {
                       const g = assignData.groups.find(x => x.id === gid);
-                      return g ? renderScopeConfig(g, 'group') : null;
+                      if (!g) return null;
+                      const isActive = activeConfigScope?.type === 'group' && activeConfigScope?.id === gid;
+                      const isSaved = savedScopeIds.has(`group-${gid}`);
+                      return (
+                        <View key={`group-config-${gid}`} style={s.scopeWrapper}>
+                          <TouchableOpacity
+                            style={s.scopeToggleHeader}
+                            onPress={() => setActiveConfigScope(isActive ? null : { type: 'group', id: gid })}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={s.scopeToggleTitle}>{g.name.toUpperCase()} — Configure Access</Text>
+                            <View style={[s.scopeToggleChevron, isActive && s.scopeToggleChevronOpen]}>
+                              <Text style={s.scopeToggleChevronText}>{isActive ? '▲' : '▼'}</Text>
+                            </View>
+                          </TouchableOpacity>
+                          {isActive && (
+                            <View style={s.scopeInner}>
+                              {renderScopeConfig(g, 'group')}
+                              <TouchableOpacity
+                                style={s.innerSaveBtn}
+                                onPress={() => saveScopeConfig('group', gid)}
+                                activeOpacity={0.8}
+                              >
+                                <LinearGradient colors={['#10b981', '#059669']} style={s.innerSaveBtnInner}>
+                                  <Text style={s.innerSaveBtnText}>✓ SAVE THIS GROUP</Text>
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                          {isSaved && !isActive && (
+                            <View style={s.scopeSavedBanner}>
+                              <Text style={s.scopeSavedBannerText}>✓ Configured & Saved</Text>
+                            </View>
+                          )}
+                        </View>
+                      );
                     })}
 
-                    <Text style={s.sectionTitle}>Tables (Sections)</Text>
+                    {/* STEP 2: Select Tables */}
+                    <Text style={[s.sectionTitle, {marginTop: 20}]}>Select Tables (Sections)</Text>
+                    <Text style={s.sectionHint}>Tap a table to select it, then configure class/section access below it.</Text>
                     <View style={s.checkGrid}>
-                      {assignData.tables.map(t => (
-                        <TouchableOpacity key={t.id} style={[s.checkItem, selectedTableIds.includes(t.id) && s.checkItemActive]} onPress={() => setSelectedTableIds(p => p.includes(t.id) ? p.filter(i => i !== t.id) : [...p, t.id])}>
-                          <Text style={[s.checkLabel, selectedTableIds.includes(t.id) && s.checkLabelActive]} numberOfLines={1}>{t.name}</Text>
-                        </TouchableOpacity>
-                      ))}
+                      {assignData.tables.map(t => {
+                        const isSelected = selectedTableIds.includes(t.id);
+                        const isSaved = savedScopeIds.has(`table-${t.id}`);
+                        return (
+                          <TouchableOpacity
+                            key={t.id}
+                            style={[s.checkItem, isSelected && s.checkItemActive, isSaved && s.checkItemSaved]}
+                            onPress={() => handleToggleTableInAssign(t.id)}
+                          >
+                            <View style={s.checkItemRow}>
+                              <Text style={[s.checkLabel, isSelected && s.checkLabelActive, isSaved && s.checkLabelSaved]} numberOfLines={1}>{t.name}</Text>
+                              {isSaved && <View style={s.savedBadge}><Text style={s.savedBadgeText}>✓</Text></View>}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
 
+                    {/* Inline config for selected tables */}
                     {selectedTableIds.map(tid => {
                       const t = assignData.tables.find(x => x.id === tid);
-                      return t ? renderScopeConfig(t, 'table') : null;
+                      if (!t) return null;
+                      const isActive = activeConfigScope?.type === 'table' && activeConfigScope?.id === tid;
+                      const isSaved = savedScopeIds.has(`table-${tid}`);
+                      return (
+                        <View key={`table-config-${tid}`} style={s.scopeWrapper}>
+                          <TouchableOpacity
+                            style={s.scopeToggleHeader}
+                            onPress={() => setActiveConfigScope(isActive ? null : { type: 'table', id: tid })}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={s.scopeToggleTitle}>{t.name.toUpperCase()} — Configure Access</Text>
+                            <View style={[s.scopeToggleChevron, isActive && s.scopeToggleChevronOpen]}>
+                              <Text style={s.scopeToggleChevronText}>{isActive ? '▲' : '▼'}</Text>
+                            </View>
+                          </TouchableOpacity>
+                          {isActive && (
+                            <View style={s.scopeInner}>
+                              {renderScopeConfig(t, 'table')}
+                              <TouchableOpacity
+                                style={s.innerSaveBtn}
+                                onPress={() => saveScopeConfig('table', tid)}
+                                activeOpacity={0.8}
+                              >
+                                <LinearGradient colors={['#10b981', '#059669']} style={s.innerSaveBtnInner}>
+                                  <Text style={s.innerSaveBtnText}>✓ SAVE THIS TABLE</Text>
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                          {isSaved && !isActive && (
+                            <View style={s.scopeSavedBanner}>
+                              <Text style={s.scopeSavedBannerText}>✓ Configured & Saved</Text>
+                            </View>
+                          )}
+                        </View>
+                      );
                     })}
+                    <View style={{height: 20}} />
                   </>
                 )
               )}
@@ -913,7 +1045,9 @@ export default function StaffManageScreen({ navigation, route }) {
             <View style={s.modalFooter}>
               <TouchableOpacity style={s.modalCancel} onPress={() => setShowAssign(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity style={s.modalSave} onPress={saveAssignment} disabled={savingAssign}>
-                <LinearGradient colors={gradients.brand} style={s.modalSaveBtn}><Text style={s.modalSaveText}>SAVE CHANGES</Text></LinearGradient>
+                <LinearGradient colors={gradients.brand} style={s.modalSaveBtn}>
+                  {savingAssign ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.modalSaveText}>SAVE ALL CHANGES</Text>}
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -1034,12 +1168,31 @@ const s = StyleSheet.create({
   modalSave: { flex: 2, height: 44, borderRadius: radius.xs },
   modalSaveBtn: { flex: 1, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   modalSaveText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
-  sectionTitle: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 1, marginBottom: 10, marginTop: 15, textTransform: 'uppercase' },
+  sectionTitle: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, letterSpacing: 1, marginBottom: 6, marginTop: 15, textTransform: 'uppercase' },
+  sectionHint: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray400, marginBottom: 10, fontStyle: 'italic' },
   checkGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   checkItem: { backgroundColor: colors.gray50, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0', minWidth: '48%' },
   checkItemActive: { backgroundColor: 'rgba(102,126,234,0.1)', borderColor: colors.brandPrimary },
-  checkLabel: { fontSize: 11, color: colors.gray600, fontFamily: 'SairaSemiCondensed-Medium' },
+  checkItemSaved: { backgroundColor: 'rgba(16,185,129,0.07)', borderColor: '#10b981' },
+  checkItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  checkLabel: { fontSize: 11, color: colors.gray600, fontFamily: 'SairaSemiCondensed-Medium', flex: 1 },
   checkLabelActive: { color: colors.brandPrimary, fontFamily: 'SairaSemiCondensed-Bold' },
+  checkLabelSaved: { color: '#065f46', fontFamily: 'SairaSemiCondensed-Bold' },
+  savedBadge: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#10b981', alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
+  savedBadgeText: { fontSize: 8, color: '#fff', fontFamily: 'SairaSemiCondensed-Bold' },
+  // Scope wrapper with collapsible header
+  scopeWrapper: { marginTop: 8, marginBottom: 4, borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden' },
+  scopeToggleHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 10 },
+  scopeToggleTitle: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary, flex: 1 },
+  scopeToggleChevron: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  scopeToggleChevronOpen: {},
+  scopeToggleChevronText: { fontSize: 10, color: colors.gray500 },
+  scopeInner: { backgroundColor: '#fafafa', padding: 10 },
+  innerSaveBtn: { marginTop: 10, borderRadius: radius.xs, overflow: 'hidden' },
+  innerSaveBtnInner: { paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRadius: radius.xs },
+  innerSaveBtnText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff', letterSpacing: 0.5 },
+  scopeSavedBanner: { backgroundColor: '#ecfdf5', paddingHorizontal: 12, paddingVertical: 7, borderTopWidth: 1, borderTopColor: '#d1fae5' },
+  scopeSavedBannerText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: '#065f46' },
   empty: { padding: 60, alignItems: 'center' },
   emptyText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400 },
 
