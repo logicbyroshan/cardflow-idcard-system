@@ -318,6 +318,19 @@ export default function ReprintDetailScreen({ navigation, route }) {
   };
 
   // ── Render Helpers ──────────────────────────────────────────────────────
+  const getTabTheme = (key) => {
+    switch (key) {
+      case 'download_list':
+        return { primary: '#8b5cf6', bgSoft: '#faf5ff', border: '#e9d5ff', bgTint: 'rgba(139, 92, 246, 0.08)' };
+      case 'request_list':
+        return { primary: '#d97706', bgSoft: '#fffbeb', border: '#fcd34d', bgTint: 'rgba(217, 119, 6, 0.08)' };
+      case 'confirmed':
+        return { primary: '#10b981', bgSoft: '#f0fdf4', border: '#dcfce7', bgTint: 'rgba(16, 185, 129, 0.08)' };
+      default:
+        return { primary: '#8b5cf6', bgSoft: '#faf5ff', border: '#e9d5ff', bgTint: 'rgba(139, 92, 246, 0.08)' };
+    }
+  };
+
   const getFieldValue = (fields, possibleNames) => {
     if (!Array.isArray(fields)) return '';
     const match = fields.find(f => 
@@ -342,6 +355,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
     const keyId = item.rr_id || cardId;
     const name = getFieldValue(item.ordered_fields, ['NAME', 'FULL NAME', 'STUDENT NAME', 'FULL_NAME', 'STUDENT_NAME']) || `Card #${cardId}`;
     const isUpdating = updating === keyId;
+    const tabTheme = getTabTheme(activeTab);
 
     let imageFields = [];
     let textFields = [];
@@ -433,11 +447,15 @@ export default function ReprintDetailScreen({ navigation, route }) {
     };
 
     return (
-      <View style={s.card}>
+      <View style={[s.card, { borderColor: tabTheme.border, borderLeftWidth: 4, borderLeftColor: tabTheme.primary }]}>
         {/* Card Header Row */}
-        <TouchableOpacity style={s.cardHeaderRow} activeOpacity={0.7} onPress={() => navigation.navigate('CardDetail', { cardId })}>
+        <TouchableOpacity 
+          style={[s.cardHeaderRow, { backgroundColor: tabTheme.bgSoft, borderBottomColor: tabTheme.border }]} 
+          activeOpacity={0.7} 
+          onPress={() => navigation.navigate('CardDetail', { cardId })}
+        >
           <View style={s.cardHeaderLeft}>
-            <DynamicIcon name="id-card" size={14} color={theme.primary} style={{ marginRight: 8 }} />
+            <DynamicIcon name="id-card" size={14} color={tabTheme.primary} style={{ marginRight: 8 }} />
             <Text style={s.cardHeaderTitle} numberOfLines={1}>{name}</Text>
           </View>
           <View style={s.cardHeaderRight}>
@@ -465,7 +483,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
               const cleaned = cleanVal(f.value);
               return (
                 <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
-                  <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
+                  <Text style={[s.fieldLabel, { color: tabTheme.primary }]} numberOfLines={1}>{f.label}</Text>
                   <Text style={s.fieldValue} numberOfLines={1}>
                     {cleaned ? String(cleaned).toUpperCase() : '-'}
                   </Text>
@@ -487,7 +505,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
         </View>
 
         {/* Actions Button Bar */}
-        <View style={s.cardActions}>
+        <View style={[s.cardActions, { backgroundColor: tabTheme.bgSoft, borderTopColor: tabTheme.border }]}>
           {isUpdating ? (
             <ActivityIndicator size="small" color={theme.primary} />
           ) : (
@@ -589,19 +607,34 @@ export default function ReprintDetailScreen({ navigation, route }) {
       {/* 3-Tab workflow Segment Bar */}
       {tabs.length > 1 && (
         <View style={s.tabsWrapper}>
-          {tabs.map(tab => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[s.tabButton, activeTab === tab.key && s.tabButtonActive]}
-              onPress={() => setActiveTab(tab.key)}
-              activeOpacity={0.7}
-            >
-              <DynamicIcon name={tab.icon} size={11} color={activeTab === tab.key ? theme.primary : colors.gray400} style={{ marginRight: 6 }} />
-              <Text style={[s.tabText, activeTab === tab.key && [s.tabTextActive, { color: theme.primary }]]}>
-                {tab.label} ({tab.count || 0})
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {tabs.map(tab => {
+            const isTabActive = activeTab === tab.key;
+            const tabTheme = getTabTheme(tab.key);
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  s.tabButton,
+                  isTabActive && { backgroundColor: tabTheme.bgTint }
+                ]}
+                onPress={() => setActiveTab(tab.key)}
+                activeOpacity={0.7}
+              >
+                <DynamicIcon 
+                  name={tab.icon} 
+                  size={11} 
+                  color={isTabActive ? tabTheme.primary : colors.gray400} 
+                  style={{ marginRight: 6 }} 
+                />
+                <Text style={[
+                  s.tabText, 
+                  isTabActive && [s.tabTextActive, { color: tabTheme.primary }]
+                ]}>
+                  {tab.label} ({tab.count || 0})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
 

@@ -236,22 +236,11 @@ class StaffService(BaseService):
                 for perm in cls.PERMISSION_FIELDS:
                     if perm in data:
                         staff_kwargs[perm] = cls.parse_bool(data[perm])
-                
-                # Set default permissions for new client_staff (locked, enabled)
-                if staff_type == 'client_staff':
-                    # Set defaults for Pending List, Verified List, Pool List if not explicitly provided
-                    if 'perm_idcard_pending_list' not in data:
-                        staff_kwargs['perm_idcard_pending_list'] = True
-                    if 'perm_idcard_verified_list' not in data:
-                        staff_kwargs['perm_idcard_verified_list'] = True
-                    if 'perm_idcard_pool_list' not in data:
-                        staff_kwargs['perm_idcard_pool_list'] = True
-                
-                # Clamp client_staff permissions to parent client's permissions
-                if staff_type == 'client_staff' and client:
-                    for perm in cls.PERMISSION_FIELDS:
-                        if perm in staff_kwargs and staff_kwargs[perm]:
-                            if hasattr(client, perm) and not getattr(client, perm, False):
+                    else:
+                        if staff_type == 'client_staff' and client:
+                            if hasattr(client, perm) and getattr(client, perm, False):
+                                staff_kwargs[perm] = True
+                            else:
                                 staff_kwargs[perm] = False
                 
                 staff = Staff.objects.create(**staff_kwargs)

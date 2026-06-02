@@ -213,6 +213,10 @@ class ManageClientsPaginationTests(TestCase):
     def setUpTestData(cls):
         from client.models import Client
 
+        # Clear any pre-existing records to ensure test is independent and robust
+        Client.objects.all().delete()
+        User.objects.all().delete()
+
         cls.super_admin = User.objects.create_user(
             username='sa-manage-clients@test.com',
             email='sa-manage-clients@test.com',

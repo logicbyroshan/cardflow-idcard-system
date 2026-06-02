@@ -1006,7 +1006,10 @@ class ClientCardService(BaseService):
             return ServiceResult(success=False, message=str(e))
     
     @classmethod
-    def change_card_status(cls, user, card_id: int, new_status: str, request=None) -> ServiceResult:
+    def change_card_status(
+        cls, user, card_id: int, new_status: str, request=None,
+        apply_class_change: bool = False, updated_class: str = ''
+    ) -> ServiceResult:
         """
         Change a card's status — delegates to WorkflowService.transition().
 
@@ -1020,7 +1023,7 @@ class ClientCardService(BaseService):
             
             # Get card
             try:
-                card = IDCard.objects.select_related('table').get(id=card_id)
+                card = IDCard.objects.select_related('table__group').get(id=card_id)
             except IDCard.DoesNotExist:
                 return ServiceResult(success=False, message='Card not found')
             
@@ -1028,13 +1031,59 @@ class ClientCardService(BaseService):
             if not ClientAccessService.can_access_card(user, card):
                 return ServiceResult(success=False, message='Access denied')
 
-            scoped_card = cls._apply_client_staff_row_scope(
-                user,
-                card.table,
-                IDCard.objects.filter(id=card.id, table_id=card.table_id),
+            is_pool_retrieve = (
+                PermissionService.is_client_staff(user)
+                and str(card.status or '').strip().lower() == 'pool'
+                and str(new_status or '').strip().lower() == 'pending'
             )
-            if not scoped_card.exists():
-                return ServiceResult(success=False, message='Access denied')
+
+            if PermissionService.is_client_staff(user) and not is_pool_retrieve:
+                scoped_card = cls._apply_client_staff_row_scope(
+                    user,
+                    card.table,
+                    IDCard.objects.filter(id=card.id, table_id=card.table_id),
+                )
+                if not scoped_card.exists():
+                    return ServiceResult(success=False, message='Access denied')
+
+            if is_pool_retrieve:
+                scoped_card = cls._apply_client_staff_row_scope(
+                    user,
+                    card.table,
+                    IDCard.objects.filter(id=card.id, table_id=card.table_id),
+                )
+                
+                # If out of scope, check if they requested a class change
+                if not scoped_card.exists():
+                    from core.views.idcard_card_api import _apply_pool_retrieve_class_change, _pool_retrieve_scope_payload, _pool_retrieve_requires_class_change, _POOL_RETRIEVE_SCOPE_MESSAGE
+                    
+                    if apply_class_change:
+                        ok, error_message = _apply_pool_retrieve_class_change(user, card, updated_class)
+                        if not ok:
+                            payload = _pool_retrieve_scope_payload(user, card)
+                            return ServiceResult(
+                                success=False,
+                                message=error_message,
+                                data={
+                                    'requires_class_change': True,
+                                    'retrieve_scope': 'pool_to_pending',
+                                    **payload
+                                }
+                            )
+                        card.refresh_from_db()
+                    else:
+                        payload = _pool_retrieve_scope_payload(user, card)
+                        if _pool_retrieve_requires_class_change(user, card):
+                            return ServiceResult(
+                                success=False,
+                                message=_POOL_RETRIEVE_SCOPE_MESSAGE,
+                                data={
+                                    'requires_class_change': True,
+                                    'retrieve_scope': 'pool_to_pending',
+                                    **payload
+                                }
+                            )
+                        return ServiceResult(success=False, message=_POOL_RETRIEVE_SCOPE_MESSAGE)
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
             from idcards.services_workflow import WorkflowService
@@ -1044,7 +1093,10 @@ class ClientCardService(BaseService):
             return ServiceResult(success=False, message=str(e))
     
     @classmethod
-    def bulk_change_status(cls, user, table_id: int, card_ids: List[int], new_status: str, request=None) -> ServiceResult:
+    def bulk_change_status(
+        cls, user, table_id: int, card_ids: List[int], new_status: str, request=None,
+        apply_class_change: bool = False, pool_retrieve_class_updates: dict = None
+    ) -> ServiceResult:
         """
         Change status for multiple cards — delegates to WorkflowService.bulk_transition().
 
@@ -1065,6 +1117,11 @@ class ClientCardService(BaseService):
             if not ClientAccessService.can_access_table(user, table):
                 return ServiceResult(success=False, message='Access denied')
 
+            is_pool_retrieve = (
+                PermissionService.is_client_staff(user)
+                and str(new_status or '').strip().lower() == 'pending'
+            )
+
             forbidden_ids = []
             if PermissionService.is_client_staff(user):
                 normalized_ids = cls._normalize_positive_int_ids(card_ids or [])
@@ -1076,6 +1133,89 @@ class ClientCardService(BaseService):
                     ).values_list('id', flat=True)
                 )
                 forbidden_ids = [cid for cid in normalized_ids if cid not in scoped_ids]
+
+                if forbidden_ids and is_pool_retrieve:
+                    from core.views.idcard_card_api import (
+                        _apply_pool_retrieve_class_change,
+                        _pool_retrieve_scope_payload,
+                        _pool_retrieve_requires_class_change,
+                        _POOL_RETRIEVE_SCOPE_MESSAGE,
+                    )
+
+                    class_updates = pool_retrieve_class_updates if isinstance(pool_retrieve_class_updates, dict) else {}
+
+                    if apply_class_change and class_updates:
+                        candidate_cards = list(
+                            IDCard.objects.select_related('table__group').filter(
+                                table=table,
+                                id__in=forbidden_ids,
+                                status='pool',
+                            )
+                        )
+                        for pool_card in candidate_cards:
+                            requested_class = class_updates.get(str(pool_card.id), class_updates.get(pool_card.id))
+                            if requested_class is None:
+                                continue
+                            ok, error_message = _apply_pool_retrieve_class_change(
+                                user,
+                                pool_card,
+                                requested_class,
+                            )
+                            if not ok:
+                                payload = _pool_retrieve_scope_payload(user, pool_card)
+                                return ServiceResult(
+                                    success=False,
+                                    message=error_message,
+                                    data={
+                                        'requires_class_change': True,
+                                        'retrieve_scope': 'pool_to_pending',
+                                        'cards': [payload],
+                                    }
+                                )
+
+                        # Recheck forbidden IDs after class updates
+                        scoped_ids = set(
+                            cls._apply_client_staff_row_scope(
+                                user,
+                                table,
+                                IDCard.objects.filter(table=table, id__in=normalized_ids),
+                            ).values_list('id', flat=True)
+                        )
+                        forbidden_ids = [cid for cid in normalized_ids if cid not in scoped_ids]
+
+                    if forbidden_ids:
+                        has_pool_mismatch = IDCard.objects.filter(
+                            table=table,
+                            id__in=forbidden_ids,
+                            status='pool',
+                        ).exists()
+                        if has_pool_mismatch:
+                            pool_cards = list(
+                                IDCard.objects.select_related('table__group').filter(
+                                    table=table,
+                                    id__in=forbidden_ids,
+                                    status='pool',
+                                )[:5]
+                            )
+                            payload_cards = [
+                                _pool_retrieve_scope_payload(user, pool_card)
+                                for pool_card in pool_cards
+                                if _pool_retrieve_requires_class_change(user, pool_card)
+                            ]
+                            if payload_cards:
+                                return ServiceResult(
+                                    success=False,
+                                    message=_POOL_RETRIEVE_SCOPE_MESSAGE,
+                                    data={
+                                        'requires_class_change': True,
+                                        'retrieve_scope': 'pool_to_pending',
+                                        'cards': payload_cards,
+                                    }
+                                )
+                            return ServiceResult(
+                                success=False,
+                                message=_POOL_RETRIEVE_SCOPE_MESSAGE,
+                            )
 
             if forbidden_ids:
                 return ServiceResult(success=False, message='Some selected cards are outside assigned scope')

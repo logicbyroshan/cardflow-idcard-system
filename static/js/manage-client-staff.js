@@ -592,6 +592,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var assignmentGroupsById = {};
     var assignmentGroupMetaById = {};
     var assignmentScopeChips = {};
+    var activeBuilderScope = null;
 
     function renderCheckboxOptions(containerId, options, selectedSet, onToggle) {
         var container = document.getElementById(containerId);
@@ -915,6 +916,251 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function triggerRender(chip) {
+        if (activeBuilderScope && chip === activeBuilderScope) {
+            renderGroupBuilder();
+        } else {
+            renderAssignmentScopeChips();
+        }
+    }
+
+    function renderGroupBuilder() {
+        var container = document.getElementById('group-builder-content');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!activeBuilderScope) return;
+
+        // Render Classes and Sections selection matrix
+        addClassSectionGroup(container, activeBuilderScope);
+
+        // Render Branches if applicable
+        if (activeBuilderScope.branchOptions && activeBuilderScope.branchOptions.length) {
+            addChipGroup(container, activeBuilderScope, 'Branches', activeBuilderScope.branchOptions, activeBuilderScope.branches, 'branches', function (val, chip) {
+                return (chip.branchCounts && chip.branchCounts[val]) || 0;
+            });
+        }
+    }
+
+    function addClassSectionGroup(container, chip) {
+        var classValues;
+        if (chip.isEditing) {
+            classValues = _normalizeStringList(
+                chip.classOptions.length ? chip.classOptions : (chip.classes.length ? chip.classes : Object.keys(chip.classSectionSelections || {}))
+            );
+        } else {
+            classValues = _normalizeStringList(chip.classes.length ? chip.classes : Object.keys(chip.classSectionSelections || {}));
+        }
+        var hasClassRows = classValues.length || (chip.classSectionSelections && Object.keys(chip.classSectionSelections).length);
+        if (!hasClassRows && !chip.hasSection && !(chip.sections && chip.sections.length)) return;
+
+        var wrap = document.createElement('div');
+        wrap.className = 'assignment-scope-chip-group assignment-scope-chip-group--matrix';
+
+        var label = document.createElement('div');
+        label.className = 'assignment-scope-chip-group-label';
+        label.textContent = 'Classes & Sections';
+        wrap.appendChild(label);
+
+        var table = document.createElement('div');
+        table.className = 'assignment-class-section-table';
+
+        if (!classValues.length) {
+            var empty = document.createElement('div');
+            empty.className = 'assignment-options-empty';
+            empty.textContent = chip.isEditing ? 'No classes available.' : 'No classes selected.';
+            table.appendChild(empty);
+        }
+
+        classValues.forEach(function (cls) {
+            var availableSections = _normalizeStringList(chip.classSectionMap[cls] || []);
+            if (!availableSections.length && chip.sectionOptions.length) {
+                availableSections = chip.sectionOptions.slice();
+            }
+            var selectedSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
+            var isAssignedClass = selectedSections.length > 0;
+            var isClassFullySelected = availableSections.length > 0 && availableSections.every(function (s) {
+                return selectedSections.indexOf(s) !== -1;
+            });
+
+            var row = document.createElement('div');
+            row.className = 'assignment-class-section-row' + (isAssignedClass ? ' is-assigned' : ' is-unassigned');
+
+            var classCell = document.createElement('div');
+            classCell.className = 'assignment-class-section-row-class';
+
+            if (chip.isEditing) {
+                var classInput = document.createElement('input');
+                classInput.type = 'checkbox';
+                classInput.checked = isAssignedClass;
+                classInput.indeterminate = false;
+                classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
+                classInput.addEventListener('change', function () {
+                    if (classInput.checked) {
+                        _setChipClassSections(chip, cls, availableSections);
+                    } else {
+                        _setChipClassSections(chip, cls, []);
+                    }
+                    _pruneChipSelection(chip);
+                    triggerRender(chip);
+                });
+                classCell.appendChild(classInput);
+            } else {
+                var classIcon = document.createElement('i');
+                classIcon.className = isAssignedClass
+                    ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
+                    : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
+                classCell.appendChild(classIcon);
+            }
+
+            var className = document.createElement('span');
+            className.className = 'assignment-class-section-row-name';
+            className.textContent = cls;
+            classCell.appendChild(className);
+
+            row.appendChild(classCell);
+
+            var sectionCell = document.createElement('div');
+            sectionCell.className = 'assignment-class-section-row-sections';
+
+            if (!availableSections.length) {
+                var sectionEmpty = document.createElement('span');
+                sectionEmpty.className = 'assignment-class-section-empty';
+                sectionEmpty.textContent = 'No sections';
+                sectionCell.appendChild(sectionEmpty);
+            } else {
+                availableSections.forEach(function (sec) {
+                    var isAssignedSection = selectedSections.indexOf(sec) !== -1;
+                    var sectionItem = document.createElement('div');
+                    sectionItem.className = 'assignment-chip-checkbox-item assignment-chip-checkbox-item--section ' + (isAssignedSection ? 'is-assigned' : 'is-unassigned');
+
+                    if (chip.isEditing) {
+                        var sectionInput = document.createElement('input');
+                        sectionInput.type = 'checkbox';
+                        sectionInput.checked = isAssignedSection;
+                        sectionInput.id = String(chip.groupId) + '-section-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + sec.replace(/[^a-zA-Z0-9_-]/g, '_');
+                        sectionInput.addEventListener('change', function () {
+                            var currentSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
+                            var nextSections = currentSections.slice();
+                            if (sectionInput.checked) {
+                                if (nextSections.indexOf(sec) === -1) nextSections.push(sec);
+                            } else {
+                                nextSections = nextSections.filter(function (val) { return val !== sec; });
+                            }
+                            _setChipClassSections(chip, cls, nextSections);
+                            var currentSelected = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
+                            classInput.checked = currentSelected.length > 0;
+                            classInput.indeterminate = false;
+                            triggerRender(chip);
+                        });
+                        sectionItem.appendChild(sectionInput);
+                    } else {
+                        var sectionIcon = document.createElement('i');
+                        sectionIcon.className = isAssignedSection
+                            ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
+                            : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
+                        sectionItem.appendChild(sectionIcon);
+                    }
+
+                    var sectionText = document.createElement('span');
+                    sectionText.className = 'assignment-chip-option-text';
+                    sectionText.textContent = sec;
+                    sectionItem.appendChild(sectionText);
+
+                    sectionCell.appendChild(sectionItem);
+                });
+            }
+
+            row.appendChild(sectionCell);
+            table.appendChild(row);
+        });
+
+        wrap.appendChild(table);
+        container.appendChild(wrap);
+    }
+
+    function addChipGroup(container, chip, labelText, values, selectedValues, valueKey, countResolver) {
+        if (!values.length && !selectedValues.length) return;
+
+        var wrap = document.createElement('div');
+        wrap.className = 'assignment-scope-chip-group';
+
+        var label = document.createElement('div');
+        label.className = 'assignment-scope-chip-group-label';
+        label.textContent = labelText;
+        wrap.appendChild(label);
+
+        var list = document.createElement('div');
+        list.className = 'assignment-chip-checkbox-list';
+
+        var normalizedValues = _normalizeStringList(values.length ? values : selectedValues);
+        if (!normalizedValues.length) {
+            var empty = document.createElement('div');
+            empty.className = 'assignment-options-empty';
+            empty.textContent = 'No values selected.';
+            list.appendChild(empty);
+        } else {
+            normalizedValues.forEach(function (val) {
+                var safe = String(chip.groupId) + '-' + valueKey + '-' + val.replace(/[^a-zA-Z0-9_-]/g, '_');
+                var isAssigned = selectedValues.indexOf(val) !== -1;
+                var row = document.createElement('div');
+                row.className = 'assignment-chip-checkbox-item ' + (isAssigned ? 'is-assigned' : 'is-unassigned');
+
+                if (chip.isEditing) {
+                    var input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.id = safe;
+                    input.checked = isAssigned;
+                    input.addEventListener('change', function () {
+                        var target = chip[valueKey];
+                        if (input.checked) {
+                            if (target.indexOf(val) === -1) target.push(val);
+                        } else {
+                            chip[valueKey] = target.filter(function (x) { return x !== val; });
+                        }
+
+                        row.classList.toggle('is-assigned', input.checked);
+                        row.classList.toggle('is-unassigned', !input.checked);
+
+                        if (valueKey === 'classes') {
+                            // Keep data consistent while editing, but avoid full rerender
+                            // on every click so multi-select interactions stay stable.
+                            _pruneChipSelection(chip);
+                        }
+                    });
+                    row.appendChild(input);
+                } else {
+                    var icon = document.createElement('i');
+                    icon.className = isAssigned
+                        ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
+                        : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
+                    row.appendChild(icon);
+                }
+
+                var text = document.createElement('span');
+                text.className = 'assignment-chip-option-text';
+                text.textContent = val;
+
+                row.appendChild(text);
+
+                if (typeof countResolver === 'function') {
+                    var count = parseInt(countResolver(val, chip), 10);
+                    if (Number.isFinite(count) && count > 0) {
+                        var badge = document.createElement('span');
+                        badge.className = 'assignment-chip-count-badge assignment-chip-count-badge--' + valueKey;
+                        badge.textContent = String(count);
+                        badge.title = count + ' cards';
+                        row.appendChild(badge);
+                    }
+                }
+
+                list.appendChild(row);
+            });
+        }
+
+        wrap.appendChild(list);
+        container.appendChild(wrap);
+    }
+
     function renderAssignmentScopeChips() {
         var chipList = document.getElementById('group-assignment-chip-list');
         if (!chipList) return;
@@ -930,227 +1176,6 @@ document.addEventListener('DOMContentLoaded', function () {
             chipList.innerHTML = '<div class="assignment-options-empty" id="group-assignment-chip-empty">No group assignments added yet.</div>';
             updateCurrentChipActionLabel();
             return;
-        }
-
-        function addClassSectionGroup(container, chip) {
-            var classValues;
-            if (chip.isEditing) {
-                classValues = _normalizeStringList(
-                    chip.classOptions.length ? chip.classOptions : (chip.classes.length ? chip.classes : Object.keys(chip.classSectionSelections || {}))
-                );
-            } else {
-                classValues = _normalizeStringList(chip.classes.length ? chip.classes : Object.keys(chip.classSectionSelections || {}));
-            }
-            var hasClassRows = classValues.length || (chip.classSectionSelections && Object.keys(chip.classSectionSelections).length);
-            if (!hasClassRows && !chip.hasSection && !(chip.sections && chip.sections.length)) return;
-
-            var wrap = document.createElement('div');
-            wrap.className = 'assignment-scope-chip-group assignment-scope-chip-group--matrix';
-
-            var label = document.createElement('div');
-            label.className = 'assignment-scope-chip-group-label';
-            label.textContent = 'Classes & Sections';
-            wrap.appendChild(label);
-
-            var table = document.createElement('div');
-            table.className = 'assignment-class-section-table';
-
-            if (!classValues.length) {
-                var empty = document.createElement('div');
-                empty.className = 'assignment-options-empty';
-                empty.textContent = chip.isEditing ? 'No classes available.' : 'No classes selected.';
-                table.appendChild(empty);
-            }
-
-            classValues.forEach(function (cls) {
-                var availableSections = _normalizeStringList(chip.classSectionMap[cls] || []);
-                if (!availableSections.length && chip.sectionOptions.length) {
-                    availableSections = chip.sectionOptions.slice();
-                }
-                var selectedSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
-                var isAssignedClass = selectedSections.length > 0;
-                var isClassFullySelected = availableSections.length > 0 && availableSections.every(function (s) {
-                    return selectedSections.indexOf(s) !== -1;
-                });
-
-                var row = document.createElement('div');
-                row.className = 'assignment-class-section-row' + (isAssignedClass ? ' is-assigned' : ' is-unassigned');
-
-                var classCell = document.createElement('div');
-                classCell.className = 'assignment-class-section-row-class';
-
-                    if (chip.isEditing) {
-                        var classInput = document.createElement('input');
-                    classInput.type = 'checkbox';
-                    classInput.checked = isAssignedClass;
-                    classInput.indeterminate = false;
-                    classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
-                    classInput.addEventListener('change', function () {
-                        if (classInput.checked) {
-                            _setChipClassSections(chip, cls, availableSections);
-                        } else {
-                            _setChipClassSections(chip, cls, []);
-                        }
-                        _pruneChipSelection(chip);
-                        renderAssignmentScopeChips();
-                    });
-                    classCell.appendChild(classInput);
-                } else {
-                    var classIcon = document.createElement('i');
-                    classIcon.className = isAssignedClass
-                        ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
-                        : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
-                    classCell.appendChild(classIcon);
-                }
-
-                var className = document.createElement('span');
-                className.className = 'assignment-class-section-row-name';
-                className.textContent = cls;
-                classCell.appendChild(className);
-
-                row.appendChild(classCell);
-
-                var sectionCell = document.createElement('div');
-                sectionCell.className = 'assignment-class-section-row-sections';
-
-                if (!availableSections.length) {
-                    var sectionEmpty = document.createElement('span');
-                    sectionEmpty.className = 'assignment-class-section-empty';
-                    sectionEmpty.textContent = 'No sections';
-                    sectionCell.appendChild(sectionEmpty);
-                } else {
-                    availableSections.forEach(function (sec) {
-                        var isAssignedSection = selectedSections.indexOf(sec) !== -1;
-                        var sectionItem = document.createElement('div');
-                        sectionItem.className = 'assignment-chip-checkbox-item assignment-chip-checkbox-item--section ' + (isAssignedSection ? 'is-assigned' : 'is-unassigned');
-
-                            if (chip.isEditing) {
-                            var sectionInput = document.createElement('input');
-                            sectionInput.type = 'checkbox';
-                            sectionInput.checked = isAssignedSection;
-                            sectionInput.id = String(chip.groupId) + '-section-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + sec.replace(/[^a-zA-Z0-9_-]/g, '_');
-                            sectionInput.addEventListener('change', function () {
-                                var currentSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
-                                var nextSections = currentSections.slice();
-                                if (sectionInput.checked) {
-                                    if (nextSections.indexOf(sec) === -1) nextSections.push(sec);
-                                } else {
-                                    nextSections = nextSections.filter(function (val) { return val !== sec; });
-                                }
-                                _setChipClassSections(chip, cls, nextSections);
-                                var currentSelected = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
-                                classInput.checked = currentSelected.length > 0;
-                                classInput.indeterminate = false;
-                                renderAssignmentScopeChips();
-                            });
-                            sectionItem.appendChild(sectionInput);
-                        } else {
-                            var sectionIcon = document.createElement('i');
-                            sectionIcon.className = isAssignedSection
-                                ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
-                                : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
-                            sectionItem.appendChild(sectionIcon);
-                        }
-
-                        var sectionText = document.createElement('span');
-                        sectionText.className = 'assignment-chip-option-text';
-                        // Show only the section name on the right side (class shown on left)
-                        sectionText.textContent = sec;
-                        sectionItem.appendChild(sectionText);
-
-                        sectionCell.appendChild(sectionItem);
-                    });
-                }
-
-                row.appendChild(sectionCell);
-                table.appendChild(row);
-            });
-
-            wrap.appendChild(table);
-            container.appendChild(wrap);
-        }
-
-        function addChipGroup(container, chip, labelText, values, selectedValues, valueKey, countResolver) {
-            if (!values.length && !selectedValues.length) return;
-
-            var wrap = document.createElement('div');
-            wrap.className = 'assignment-scope-chip-group';
-
-            var label = document.createElement('div');
-            label.className = 'assignment-scope-chip-group-label';
-            label.textContent = labelText;
-            wrap.appendChild(label);
-
-            var list = document.createElement('div');
-            list.className = 'assignment-chip-checkbox-list';
-
-            var normalizedValues = _normalizeStringList(values.length ? values : selectedValues);
-            if (!normalizedValues.length) {
-                var empty = document.createElement('div');
-                empty.className = 'assignment-options-empty';
-                empty.textContent = 'No values selected.';
-                list.appendChild(empty);
-            } else {
-                normalizedValues.forEach(function (val) {
-                    var safe = String(chip.groupId) + '-' + valueKey + '-' + val.replace(/[^a-zA-Z0-9_-]/g, '_');
-                    var isAssigned = selectedValues.indexOf(val) !== -1;
-                    var row = document.createElement('div');
-                    row.className = 'assignment-chip-checkbox-item ' + (isAssigned ? 'is-assigned' : 'is-unassigned');
-
-                    if (chip.isEditing) {
-                        var input = document.createElement('input');
-                        input.type = 'checkbox';
-                        input.id = safe;
-                        input.checked = isAssigned;
-                        input.addEventListener('change', function () {
-                            var target = chip[valueKey];
-                            if (input.checked) {
-                                if (target.indexOf(val) === -1) target.push(val);
-                            } else {
-                                chip[valueKey] = target.filter(function (x) { return x !== val; });
-                            }
-
-                            row.classList.toggle('is-assigned', input.checked);
-                            row.classList.toggle('is-unassigned', !input.checked);
-
-                            if (valueKey === 'classes') {
-                                // Keep data consistent while editing, but avoid full rerender
-                                // on every click so multi-select interactions stay stable.
-                                _pruneChipSelection(chip);
-                            }
-                        });
-                        row.appendChild(input);
-                    } else {
-                        var icon = document.createElement('i');
-                        icon.className = isAssigned
-                            ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
-                            : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
-                        row.appendChild(icon);
-                    }
-
-                    var text = document.createElement('span');
-                    text.className = 'assignment-chip-option-text';
-                    text.textContent = val;
-
-                    row.appendChild(text);
-
-                    if (typeof countResolver === 'function') {
-                        var count = parseInt(countResolver(val, chip), 10);
-                        if (Number.isFinite(count) && count > 0) {
-                            var badge = document.createElement('span');
-                            badge.className = 'assignment-chip-count-badge assignment-chip-count-badge--' + valueKey;
-                            badge.textContent = String(count);
-                            badge.title = count + ' cards';
-                            row.appendChild(badge);
-                        }
-                    }
-
-                    list.appendChild(row);
-                });
-            }
-
-            wrap.appendChild(list);
-            container.appendChild(wrap);
         }
 
         keys.forEach(function (key) {
@@ -1700,6 +1725,71 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Active Group Scope Builder buttons
+    var cancelGroupBuilderBtn = document.getElementById('cancel-group-builder-btn');
+    if (cancelGroupBuilderBtn) {
+        cancelGroupBuilderBtn.addEventListener('click', function () {
+            if (mgr && typeof mgr.clearAssignmentSelection === 'function') {
+                mgr.clearAssignmentSelection({ silent: true });
+            }
+            activeBuilderScope = null;
+            currentDraftGroupId = null;
+            var builderSection = document.getElementById('group-builder-section');
+            if (builderSection) builderSection.style.display = 'none';
+            resetClassSection();
+            if (typeof showToast === 'function') {
+                showToast('Assignment configuration cancelled.', 'info');
+            }
+        });
+    }
+
+    var saveGroupBuilderBtn = document.getElementById('save-group-builder-btn');
+    if (saveGroupBuilderBtn) {
+        saveGroupBuilderBtn.addEventListener('click', function () {
+            if (!activeBuilderScope || !currentDraftGroupId) {
+                if (typeof showToast === 'function') {
+                    showToast('Please select and configure a group first', 'error');
+                }
+                return;
+            }
+
+            var key = _chipKey(currentDraftGroupId);
+            
+            // Check if they selected any classes/sections/branches
+            var hasSelections = activeBuilderScope.classes.length || activeBuilderScope.sections.length || activeBuilderScope.branches.length;
+            if (!hasSelections) {
+                if (typeof showToast === 'function') {
+                    showToast('Please select at least one class, section, or branch to save.', 'warning');
+                }
+                return;
+            }
+
+            activeBuilderScope.isEditing = false; // collapses edit mode for saved list
+            _pruneChipSelection(activeBuilderScope);
+            
+            assignmentScopeChips[key] = activeBuilderScope;
+
+            activeBuilderScope = null;
+            currentDraftGroupId = null;
+
+            if (mgr && typeof mgr.clearAssignmentSelection === 'function') {
+                mgr.clearAssignmentSelection({ silent: true });
+            }
+
+            var builderSection = document.getElementById('group-builder-section');
+            if (builderSection) builderSection.style.display = 'none';
+
+            resetClassSection();
+
+            renderAssignmentScopeChips();
+            updateCurrentChipActionLabel();
+
+            if (typeof showToast === 'function') {
+                showToast('Group assignment saved to draft list.', 'success');
+            }
+        });
+    }
+
     // Wire up the Assign button in action bar
     var assignStaffBtn = document.getElementById('assignStaffBtn');
     if (assignStaffBtn) {
@@ -1840,59 +1930,58 @@ document.addEventListener('DOMContentLoaded', function () {
             var normalizedGroupIds = _normalizeGroupIds(selectedGroupIds || []);
             currentDraftGroupId = normalizedGroupIds.length ? normalizedGroupIds[0] : null;
 
+            var builderSection = document.getElementById('group-builder-section');
+            var builderName = document.getElementById('builder-group-name');
+
             if (!currentDraftGroupId) {
+                activeBuilderScope = null;
+                if (builderSection) builderSection.style.display = 'none';
                 resetClassSection();
                 return;
             }
 
+            if (builderName) {
+                builderName.textContent = _getGroupName(currentDraftGroupId);
+            }
+            if (builderSection) {
+                builderSection.style.display = '';
+            }
+
             var key = _chipKey(currentDraftGroupId);
             var existingChip = assignmentScopeChips[key] || null;
-            if (existingChip) {
-                _replaceSetValues(selectedClasses, existingChip.classes || []);
-                _replaceSetValues(selectedSections, existingChip.sections || []);
-                _replaceSetValues(selectedBranches, existingChip.branches || []);
-                existingChip.isEditing = true;
-            } else {
-                selectedClasses.clear();
-                selectedSections.clear();
-                selectedBranches.clear();
-            }
 
-            // Auto-create a full assignment chip immediately for selected group.
+            // Fetch available classes/sections/branches for this group from backend
             await refreshDrawerClassSectionByGroups([currentDraftGroupId]);
 
-            if (!assignmentScopeChips[key]) {
-                var draftMeta = assignmentGroupMetaById[key] || {};
-                var draftSource = String(draftMeta.source || '').toLowerCase();
-                assignmentScopeChips[key] = {
-                    groupId: currentDraftGroupId,
-                    groupName: _getGroupName(currentDraftGroupId),
-                    scopeType: (draftSource === 'group' || draftSource === 'table')
-                        ? draftSource
-                        : ((assignmentIdSource === 'table') ? 'table' : 'group'),
-                    classes: [],
-                    sections: [],
-                    branches: [],
-                    classOptions: _normalizeStringList(allClasses),
-                    sectionOptions: _normalizeStringList(allSections),
-                    branchOptions: _normalizeStringList(allBranches),
-                    classSectionMap: _cloneClassSectionMap(classSectionMap),
-                    classCounts: _normalizeCountMap(classCountMap),
-                    sectionCounts: _normalizeCountMap(sectionCountMap),
-                    classSectionCounts: _normalizeNestedCountMap(classSectionCountMap),
-                    hasClass: fieldCapabilities.hasClass,
-                    hasSection: fieldCapabilities.hasSection,
-                    hasBranch: fieldCapabilities.hasBranch,
-                    optionsLoaded: true,
-                    isEditing: true,
-                };
-                _pruneChipSelection(assignmentScopeChips[key]);
-                if (typeof showToast === 'function') {
-                    showToast('Group assignment chip created. Select classes/sections or use Assign All.', 'success');
-                }
-            }
+            var draftMeta = assignmentGroupMetaById[key] || {};
+            var draftSource = String(draftMeta.source || '').toLowerCase();
 
-            renderAssignmentScopeChips();
+            activeBuilderScope = {
+                groupId: currentDraftGroupId,
+                groupName: _getGroupName(currentDraftGroupId),
+                scopeType: (draftSource === 'group' || draftSource === 'table')
+                    ? draftSource
+                    : ((assignmentIdSource === 'table') ? 'table' : 'group'),
+                classes: existingChip ? _normalizeStringList(existingChip.classes || []) : [],
+                sections: existingChip ? _normalizeStringList(existingChip.sections || []) : [],
+                branches: existingChip ? _normalizeStringList(existingChip.branches || []) : [],
+                classSectionSelections: existingChip ? _cloneClassSectionSelections(existingChip.classSectionSelections || {}) : {},
+                classOptions: _normalizeStringList(allClasses),
+                sectionOptions: _normalizeStringList(allSections),
+                branchOptions: _normalizeStringList(allBranches),
+                classSectionMap: _cloneClassSectionMap(classSectionMap),
+                classCounts: _normalizeCountMap(classCountMap),
+                sectionCounts: _normalizeCountMap(sectionCountMap),
+                classSectionCounts: _normalizeNestedCountMap(classSectionCountMap),
+                hasClass: fieldCapabilities.hasClass,
+                hasSection: fieldCapabilities.hasSection,
+                hasBranch: fieldCapabilities.hasBranch,
+                optionsLoaded: true,
+                isEditing: true,
+            };
+
+            _pruneChipSelection(activeBuilderScope);
+            renderGroupBuilder();
             updateCurrentChipActionLabel();
         },
         onBeforeSubmit: function (formData, meta) {

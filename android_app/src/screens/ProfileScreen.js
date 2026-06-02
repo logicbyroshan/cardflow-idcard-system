@@ -225,6 +225,10 @@ export default function ProfileScreen({ navigation }) {
             <View style={[s.linkIcon, { backgroundColor: '#eff6ff' }]}><DynamicIcon name="key" size={12} color={colors.brandPrimary} /></View>
             <Text style={s.linkLabel}>Change MPIN</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={s.linkRow}>
+            <View style={[s.linkIcon, { backgroundColor: '#ede9fe' }]}><DynamicIcon name="bell" size={12} color="#8b5cf6" /></View>
+            <Text style={s.linkLabel}>Notifications</Text>
+          </TouchableOpacity>
           <TouchableOpacity 
             onPress={async () => {
               if (isImpersonating) {

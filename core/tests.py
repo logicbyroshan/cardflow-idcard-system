@@ -3667,6 +3667,86 @@ class PoolRetrieveClassChangeFlowTests(TestCase):
         self.assertEqual(self.card.status, 'pending')
         self.assertEqual((self.card.field_data or {}).get('CLASS'), '1')
 
+    def test_mobile_single_retrieve_requires_class_change_then_updates_class_and_moves_pending(self):
+        # Set up mobile session
+        session = self.client.session
+        session['mobile_auth_ok'] = True
+        session.save()
+
+        blocked = self.client.post(
+            f'/api/mobile/card/{self.card.id}/status/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json',
+            HTTP_USER_AGENT='adarsh-mobile-app',
+        )
+        self.assertEqual(blocked.status_code, 409)
+        blocked_payload = blocked.json()
+        self.assertFalse(blocked_payload.get('success'))
+        self.assertTrue(blocked_payload.get('requires_class_change'))
+        self.assertIn('allowed_classes', blocked_payload)
+
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.status, 'pool')
+        self.assertEqual((self.card.field_data or {}).get('CLASS'), '2')
+
+        allowed = self.client.post(
+            f'/api/mobile/card/{self.card.id}/status/',
+            data=json.dumps({
+                'status': 'pending',
+                'apply_class_change': True,
+                'updated_class': '1',
+            }),
+            content_type='application/json',
+            HTTP_USER_AGENT='adarsh-mobile-app',
+        )
+        self.assertEqual(allowed.status_code, 200)
+        allowed_payload = allowed.json()
+        self.assertTrue(allowed_payload.get('success'))
+
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.status, 'pending')
+        self.assertEqual((self.card.field_data or {}).get('CLASS'), '1')
+
+    def test_mobile_bulk_retrieve_accepts_class_update_map_for_out_of_scope_pool_card(self):
+        # Set up mobile session
+        session = self.client.session
+        session['mobile_auth_ok'] = True
+        session.save()
+
+        blocked = self.client.post(
+            f'/api/mobile/table/{self.table.id}/bulk-status/',
+            data=json.dumps({
+                'card_ids': [self.card.id],
+                'status': 'pending',
+            }),
+            content_type='application/json',
+            HTTP_USER_AGENT='adarsh-mobile-app',
+        )
+        self.assertEqual(blocked.status_code, 409)
+        blocked_payload = blocked.json()
+        self.assertTrue(blocked_payload.get('requires_class_change'))
+
+        allowed = self.client.post(
+            f'/api/mobile/table/{self.table.id}/bulk-status/',
+            data=json.dumps({
+                'card_ids': [self.card.id],
+                'status': 'pending',
+                'apply_class_change': True,
+                'pool_retrieve_class_updates': {
+                    str(self.card.id): '1',
+                },
+            }),
+            content_type='application/json',
+            HTTP_USER_AGENT='adarsh-mobile-app',
+        )
+        self.assertEqual(allowed.status_code, 200)
+        allowed_payload = allowed.json()
+        self.assertTrue(allowed_payload.get('success'))
+
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.status, 'pending')
+        self.assertEqual((self.card.field_data or {}).get('CLASS'), '1')
+
 
 class ClientStaffEmptyScopeVisibilityTests(TestCase):
     def setUp(self):

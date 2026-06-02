@@ -17,6 +17,7 @@ import MpinScreen from '../screens/MpinScreen';
 
 import ProfileScreen from '../screens/ProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import MessagesScreen from '../screens/MessagesScreen';
 import TablePickerScreen from '../screens/TablePickerScreen';
 import NoAccessScreen from '../screens/NoAccessScreen';
 import DesktopRequiredScreen from '../screens/DesktopRequiredScreen';
@@ -87,6 +88,7 @@ export default function AppNavigator() {
           {/* Management & Profile */}
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          <Stack.Screen name="Messages" component={MessagesScreen} />
           <Stack.Screen name="TablePicker" component={TablePickerScreen} />
           <Stack.Screen name="DesktopRequired" component={DesktopRequiredScreen} />
           <Stack.Screen name="StaffManage" component={StaffManageScreen} />

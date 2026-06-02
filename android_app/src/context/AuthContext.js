@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiPost, apiGet, loadStoredAuth, clearAuth, fetchInitialCsrf } from '../api/client';
 
@@ -29,6 +29,8 @@ export function AuthProvider({ children }) {
   const [isMpinCreated, setIsMpinCreated] = useState(false);
   const [isSilentAuthFailed, setIsSilentAuthFailed] = useState(false);
   const [isSessionKicked, setIsSessionKicked] = useState(false);
+  const appStateRef = useRef('active');
+  const backgroundTimeRef = useRef(null);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -146,10 +148,24 @@ export function AuthProvider({ children }) {
 
     // Foreground sync listener
     const { AppState } = require('react-native');
+    appStateRef.current = AppState.currentState;
+
     const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appStateRef.current === 'active' && (nextAppState === 'background' || nextAppState === 'inactive')) {
+        backgroundTimeRef.current = Date.now();
+      }
+
       if (nextAppState === 'active') {
+        if (backgroundTimeRef.current) {
+          const elapsed = Date.now() - backgroundTimeRef.current;
+          if (elapsed >= 100000) { // 100 seconds
+            setIsAppUnlocked(false);
+          }
+          backgroundTimeRef.current = null;
+        }
         refreshProfile();
       }
+      appStateRef.current = nextAppState;
     });
     return () => subscription.remove();
   }, [refreshProfile]);

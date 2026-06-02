@@ -310,7 +310,7 @@ export default function HomeScreen({ navigation }) {
       actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', onPress: () => setShowClientForm(true) });
       actions.push({ label: 'REPRINT', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: 0 } });
     } else if (isClient || isAssistant) {
-      actions.push({ label: 'MESSAGE', icon: 'bell', color: '#f59e0b', bg: '#fffbeb', screen: 'Notifications' });
+      actions.push({ label: 'MESSAGE', icon: 'envelope', color: '#f59e0b', bg: '#fffbeb', screen: 'Messages' });
       if (hasReprintPerm) {
         actions.push({ 
           label: 'REPRINT', 

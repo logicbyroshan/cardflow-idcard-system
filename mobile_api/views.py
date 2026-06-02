@@ -361,7 +361,7 @@ def _get_system_notifications(user, limit=20, mark_visible_as_read=False):
 
     notifications = list(
         Notification.objects
-        .filter(is_active=True)
+        .filter(is_active=True, client_message__isnull=True)
         .filter(_Q(expires_at__isnull=True) | _Q(expires_at__gt=now))
         .filter(_Q(target='all') | _Q(target=role) | _Q(target='selected', target_users=user))
         .distinct()
@@ -3348,9 +3348,19 @@ def api_card_status(request, card_id):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
     new_status = data.get('status', '')
-    result = ClientCardService.change_card_status(request.user, card_id, new_status, request=request)
+    apply_class_change = _truthy(data.get('apply_class_change'))
+    updated_class = data.get('updated_class', '')
+
+    result = ClientCardService.change_card_status(
+        request.user, card_id, new_status, request=request,
+        apply_class_change=apply_class_change, updated_class=updated_class
+    )
     if result.success:
         return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
+
+    if result.data and result.data.get('requires_class_change'):
+        return JsonResponse({'success': False, 'message': result.message, **(result.data or {})}, status=409)
+
     return JsonResponse({'success': False, 'message': result.message}, status=400)
 
 
@@ -3375,9 +3385,20 @@ def api_bulk_status(request, table_id):
     if not card_ids:
         return JsonResponse({'success': False, 'message': 'No valid card IDs provided'}, status=400)
 
-    result = ClientCardService.bulk_change_status(request.user, table_id, card_ids, new_status, request=request)
+    apply_class_change = _truthy(data.get('apply_class_change'))
+    pool_retrieve_class_updates = data.get('pool_retrieve_class_updates') or {}
+
+    result = ClientCardService.bulk_change_status(
+        request.user, table_id, card_ids, new_status, request=request,
+        apply_class_change=apply_class_change,
+        pool_retrieve_class_updates=pool_retrieve_class_updates
+    )
     if result.success:
         return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
+
+    if result.data and result.data.get('requires_class_change'):
+        return JsonResponse({'success': False, 'message': result.message, **(result.data or {})}, status=409)
+
     return JsonResponse({'success': False, 'message': result.message}, status=400)
 
 
@@ -5636,6 +5657,93 @@ def api_notifications_list(request):
 
 @require_mobile_client
 @require_http_methods(["GET"])
+def api_messages_list(request):
+    """Return client messages sent by admin."""
+    try:
+        from core.models import ClientMessage, NotificationRead
+        from django.db.models import Exists, OuterRef, Q as _Q
+        
+        user = request.user
+        client = ClientAccessService.get_client_for_user(user)
+        if not client:
+            return JsonResponse({'success': True, 'data': []})
+
+        now = timezone.now()
+        base_qs = (
+            ClientMessage.objects
+            .filter(
+                client_id=client.id,
+                notification__is_active=True,
+                notification__target='selected',
+                notification__target_users=user,
+            )
+            .filter(_Q(visibility='permanent') | _Q(expires_at__gt=now))
+            .annotate(
+                is_read=Exists(
+                    NotificationRead.objects.filter(
+                        notification_id=OuterRef('notification_id'),
+                        user=user,
+                    )
+                )
+            )
+            .order_by('-created_at')
+        )
+
+        rows = list(
+            base_qs
+            .select_related('sent_by')
+            .only(
+                'id',
+                'notification_id',
+                'message',
+                'scope',
+                'visibility',
+                'expires_at',
+                'created_at',
+                'sent_by__first_name',
+                'sent_by__last_name',
+                'sent_by__username',
+            )[:50]
+        )
+
+        items = []
+        unread_notif_ids = []
+        for row in rows:
+            sender_name = 'Admin'
+            if row.sent_by:
+                sender_name = row.sent_by.get_full_name() or row.sent_by.username
+            items.append({
+                'id': row.id,
+                'notification_id': row.notification_id,
+                'message': row.message,
+                'scope': row.scope,
+                'scope_display': row.get_scope_display(),
+                'visibility': row.visibility,
+                'expires_at': row.expires_at.isoformat() if row.expires_at else None,
+                'created_at': row.created_at.strftime('%d %b %Y'),
+                'sent_by_name': sender_name,
+                'read': bool(getattr(row, 'is_read', False)),
+            })
+            if not getattr(row, 'is_read', False) and row.notification_id:
+                unread_notif_ids.append(row.notification_id)
+
+        # Automatically mark unread messages as read upon retrieval
+        if unread_notif_ids:
+            NotificationRead.objects.bulk_create(
+                [NotificationRead(user=user, notification_id=nid) for nid in unread_notif_ids],
+                ignore_conflicts=True,
+            )
+            cache.delete(f'mobile:notif_count:{user.pk}')
+
+        return JsonResponse({'success': True, 'data': items})
+    except Exception:
+        logger.exception('api_messages_list error')
+        return JsonResponse({'success': False, 'message': 'Unable to load messages.'}, status=500)
+
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
 def api_tables_list(request):
     """Return list of accessible tables for mobile picker screen."""
     try:
@@ -5721,15 +5829,47 @@ def api_groups_list(request):
             if accessible_ids is not None:
                 tables_qs = tables_qs.filter(id__in=accessible_ids)
 
-        tables_annotated = list(tables_qs.annotate(
-            total_cards=Count('id_cards'),
-            pending_cards=Count('id_cards', filter=Q(id_cards__status='pending')),
-            verified_cards=Count('id_cards', filter=Q(id_cards__status='verified')),
-            approved_cards=Count('id_cards', filter=Q(id_cards__status='approved')),
-            download_cards=Count('id_cards', filter=Q(id_cards__status='download')),
-            pool_cards=Count('id_cards', filter=Q(id_cards__status='pool')),
-            reprint_cards=Count('id_cards', filter=Q(id_cards__status='reprint')),
-        ).order_by('name'))
+        if PermissionService.is_client_staff(user):
+            # Compute scoped counts table-by-table for assistant
+            tables_annotated = []
+            for t in tables_qs.order_by('name'):
+                table_cards_qs = ClientCardService._apply_client_staff_row_scope(
+                    user,
+                    t,
+                    IDCard.objects.filter(table_id=t.id)
+                )
+                
+                # Get scoped status counts (excluding pool)
+                t_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'reprint': 0}
+                for row in table_cards_qs.exclude(status='pool').values('status').annotate(n=Count('id')):
+                    status_val = row['status']
+                    if status_val in t_counts:
+                        t_counts[status_val] = row['n']
+                
+                # Pool cards count is the full table pool count (unfiltered)
+                t_counts['pool'] = IDCard.objects.filter(table_id=t.id, status='pool').count()
+                
+                # total_cards excludes pool to match desktop
+                t.total_cards = t_counts['pending'] + t_counts['verified'] + t_counts['approved'] + t_counts['download']
+                t.pending_cards = t_counts['pending']
+                t.verified_cards = t_counts['verified']
+                t.approved_cards = t_counts['approved']
+                t.download_cards = t_counts['download']
+                t.pool_cards = t_counts['pool']
+                t.reprint_cards = t_counts['reprint']
+                
+                tables_annotated.append(t)
+        else:
+            tables_annotated = list(tables_qs.annotate(
+                pending_cards=Count('id_cards', filter=Q(id_cards__status='pending')),
+                verified_cards=Count('id_cards', filter=Q(id_cards__status='verified')),
+                approved_cards=Count('id_cards', filter=Q(id_cards__status='approved')),
+                download_cards=Count('id_cards', filter=Q(id_cards__status='download')),
+                pool_cards=Count('id_cards', filter=Q(id_cards__status='pool')),
+                reprint_cards=Count('id_cards', filter=Q(id_cards__status='reprint')),
+            ).order_by('name'))
+            for t in tables_annotated:
+                t.total_cards = t.pending_cards + t.verified_cards + t.approved_cards + t.download_cards
 
         # 2. Get groups that contain at least one accessible table
         accessible_group_ids = {t.group_id for t in tables_annotated}
@@ -6042,41 +6182,75 @@ def api_dashboard_data(request):
             
             scoped_table_ids = list(tables_qs.values_list('id', flat=True))
             
-            # Total Counts
-            cards_qs = IDCard.objects.filter(table_id__in=scoped_table_ids)
             counts = {
                 'client_id': client.id,
                 'client_name': getattr(client, 'business_name', client.name),
                 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0, 'total': 0
             }
-            for row in cards_qs.values('status').annotate(n=Count('id')):
-                status_val = row['status']
-                if status_val in counts:
-                    counts[status_val] = row['n']
-            
+
+            tables_data = []
+            if is_staff:
+                # Scoped counts table-by-table for assistant (except pool)
+                for t in tables_qs.order_by('name'):
+                    table_cards_qs = ClientCardService._apply_client_staff_row_scope(
+                        user,
+                        t,
+                        IDCard.objects.filter(table_id=t.id)
+                    )
+                    
+                    t_counts = {'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
+                    # We exclude pool cards from the scoped counts loop,
+                    # because we want to use the full client/table pool count instead!
+                    for row in table_cards_qs.exclude(status='pool').values('status').annotate(n=Count('id')):
+                        status_val = row['status']
+                        if status_val in t_counts:
+                            t_counts[status_val] = row['n']
+                            counts[status_val] += row['n']
+                            
+                    # Pool count in tables is the full table pool count (unfiltered)
+                    t_counts['pool'] = IDCard.objects.filter(table_id=t.id, status='pool').count()
+                    
+                    tables_data.append({
+                        'id': t.id,
+                        'name': t.name,
+                        'p': t_counts['pending'],
+                        'v': t_counts['verified'],
+                        'a': t_counts['approved'],
+                        'd': t_counts['download'],
+                        'po': t_counts['pool'],
+                    })
+                
+                # Fetch full client-wide pool count
+                counts['pool'] = IDCard.objects.filter(table__group__client=client, status='pool').count()
+            else:
+                # Regular client: standard query
+                cards_qs = IDCard.objects.filter(table_id__in=scoped_table_ids)
+                for row in cards_qs.values('status').annotate(n=Count('id')):
+                    status_val = row['status']
+                    if status_val in counts:
+                        counts[status_val] = row['n']
+                
+                tables_annotated = tables_qs.annotate(
+                    cnt_p=Count('id_cards', filter=Q(id_cards__status='pending')),
+                    cnt_v=Count('id_cards', filter=Q(id_cards__status='verified')),
+                    cnt_a=Count('id_cards', filter=Q(id_cards__status='approved')),
+                    cnt_d=Count('id_cards', filter=Q(id_cards__status='download')),
+                    cnt_po=Count('id_cards', filter=Q(id_cards__status='pool')),
+                ).order_by('name')
+                
+                for t in tables_annotated:
+                    tables_data.append({
+                        'id': t.id,
+                        'name': t.name,
+                        'p': t.cnt_p,
+                        'v': t.cnt_v,
+                        'a': t.cnt_a,
+                        'd': t.cnt_d,
+                        'po': t.cnt_po,
+                    })
+
             # TOTAL definition (match website): Excludes pool
             counts['total'] = counts['pending'] + counts['verified'] + counts['approved'] + counts['download']
-            
-            # Tables with counts
-            tables_data = []
-            tables_annotated = tables_qs.annotate(
-                cnt_p=Count('id_cards', filter=Q(id_cards__status='pending')),
-                cnt_v=Count('id_cards', filter=Q(id_cards__status='verified')),
-                cnt_a=Count('id_cards', filter=Q(id_cards__status='approved')),
-                cnt_d=Count('id_cards', filter=Q(id_cards__status='download')),
-                cnt_po=Count('id_cards', filter=Q(id_cards__status='pool')),
-            ).order_by('name')
-            
-            for t in tables_annotated:
-                tables_data.append({
-                    'id': t.id,
-                    'name': t.name,
-                    'p': t.cnt_p,
-                    'v': t.cnt_v,
-                    'a': t.cnt_a,
-                    'd': t.cnt_d,
-                    'po': t.cnt_po,
-                })
             counts['tables'] = tables_data
             counts['recent_activity'] = recent_activity
             
