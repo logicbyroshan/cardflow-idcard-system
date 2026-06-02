@@ -588,9 +588,16 @@ function downloadImages(cardIds, renameOptions) {
         _legacyImgLockActive = false;
     }
 
-    if (typeof showProgressToast === 'function') showProgressToast('Preparing images...', -1);
+    var xhr = null;
+    var _imgCancelFn = function () {
+        if (xhr) try { xhr.abort(); } catch (e) {}
+        _releaseLegacyImgLock();
+        if (typeof showToast === 'function') showToast('Image download cancelled', 'info');
+    };
+
+    if (typeof showProgressToast === 'function') showProgressToast('Preparing images...', -1, _imgCancelFn);
     
-    const xhr = new XMLHttpRequest();
+    xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/table/${tableId}/cards/download-images/`, true);
     xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -697,6 +704,9 @@ function downloadImages(cardIds, renameOptions) {
         if (typeof showToast === 'function') showToast('Failed to download images', false);
         _releaseLegacyImgLock();
     };
+    xhr.onabort = function() {
+        _releaseLegacyImgLock();
+    };
     
     xhr.ontimeout = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -779,9 +789,16 @@ function downloadDocx(cardIds, format, templateId) {
         _legacyDocxLockActive = false;
     }
 
-    if (typeof showProgressToast === 'function') showProgressToast(`Preparing ${format.toUpperCase()} document...`, -1);
+    var xhr = null;
+    var _docxCancelFn = function () {
+        if (xhr) try { xhr.abort(); } catch (e) {}
+        _releaseLegacyDocxLock();
+        if (typeof showToast === 'function') showToast('Document download cancelled', 'info');
+    };
+
+    if (typeof showProgressToast === 'function') showProgressToast(`Preparing ${format.toUpperCase()} document...`, -1, _docxCancelFn);
     
-    const xhr = new XMLHttpRequest();
+    xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/table/${tableId}/cards/download-docx/`, true);
     xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -834,6 +851,9 @@ function downloadDocx(cardIds, format, templateId) {
     xhr.onerror = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Failed to download document', false);
+        _releaseLegacyDocxLock();
+    };
+    xhr.onabort = function() {
         _releaseLegacyDocxLock();
     };
     
@@ -919,9 +939,16 @@ function downloadXlsx(cardIds, options) {
         _legacyXlsxLockActive = false;
     }
 
-    if (typeof showProgressToast === 'function') showProgressToast('Preparing Excel file...', -1);
+    var xhr = null;
+    var _xlsxCancelFn = function () {
+        if (xhr) try { xhr.abort(); } catch (e) {}
+        _releaseLegacyXlsxLock();
+        if (typeof showToast === 'function') showToast('Excel download cancelled', 'info');
+    };
+
+    if (typeof showProgressToast === 'function') showProgressToast('Preparing Excel file...', -1, _xlsxCancelFn);
     
-    const xhr = new XMLHttpRequest();
+    xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/table/${tableId}/cards/download-xlsx/`, true);
     xhr.timeout = 600000;
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -977,6 +1004,9 @@ function downloadXlsx(cardIds, options) {
     xhr.onerror = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Failed to download Excel file', false);
+        _releaseLegacyXlsxLock();
+    };
+    xhr.onabort = function() {
         _releaseLegacyXlsxLock();
     };
     

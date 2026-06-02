@@ -452,7 +452,7 @@ class WordTablesMixin:
                 Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                 Image, ImageOps, image_fixed_widths=image_fixed_widths,
                 image_fixed_heights=image_fixed_heights, row_height_cm=row_height_cm,
-                font_pt=_font_pt, h_rule=_row_h_rule
+                font_pt=_font_pt, h_rule=_row_h_rule, cancel_check=cancel_check
             )
 
             # If a page break is needed, set it on the FIRST paragraph
@@ -531,7 +531,7 @@ class WordTablesMixin:
                       Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                       Image, ImageOps, image_fixed_widths=None,
                       image_fixed_heights=None, row_height_cm=None, font_pt=9,
-                      h_rule='atLeast'):
+                      h_rule='atLeast', cancel_check=None):
         """Add a data row to the table."""
         new_row = table.add_row()
         cells = new_row.cells
@@ -585,7 +585,8 @@ class WordTablesMixin:
                     Image, ImageOps, fixed_width_cm=img_fixed_w,
                     fixed_height_cm=img_fixed_h,
                     image_subtype=field.get('image_subtype'),
-                    field_name=field.get('name')
+                    field_name=field.get('name'),
+                    cancel_check=cancel_check
                 )
                 if self._should_add_photo_border(
                     image_subtype=field.get('image_subtype'),

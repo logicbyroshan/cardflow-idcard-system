@@ -78,7 +78,7 @@ class WordImagesMixin:
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
                            fixed_width_cm=None, fixed_height_cm=None,
-                           image_subtype=None, field_name=None):
+                           image_subtype=None, field_name=None, cancel_check=None):
         """Add an image to a cell using VML for Word 97-2003 compatibility.
         
         Uses VML (Vector Markup Language) instead of DrawingML to ensure
@@ -96,6 +96,9 @@ class WordImagesMixin:
         self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
         
+        if callable(cancel_check) and cancel_check():
+            raise Exception('Export cancelled')
+
         if is_valid_image_path(img_path):
             try:
                 if default_storage.exists(img_path):

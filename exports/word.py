@@ -15,7 +15,6 @@ Features:
 - Phase 4: Uses THUMBNAILS for optimized export file size
 """
 import logging
-from io import BytesIO
 from typing import Optional
 from dataclasses import dataclass
 
@@ -31,7 +30,7 @@ from .utils import (
     generate_export_filename,
     sort_cards_for_export,
     get_class_field_name,
-    stream_file_response,
+    
 )
 
 logger = logging.getLogger(__name__)
@@ -202,31 +201,66 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             # Set Word 97-2003 compatibility mode
             self._set_compatibility_mode(doc)
             
-            # Save document
-            doc_buffer = BytesIO()
-            doc.save(doc_buffer)
-            doc_buffer.seek(0)
-            
-            # Generate filename and content type
+            # Save document to a temporary file to avoid building a giant
+            # in-memory bytes object. Streaming back from disk reduces peak
+            # memory and allows cooperative cancellation earlier.
+            import tempfile
+            import os
+            from django.http import StreamingHttpResponse
+
             extension = 'doc' if doc_format == 'doc' else 'docx'
             filename = generate_export_filename(table.name, extension, client_name=institution_name, status=status)
-            
-            # python-docx always produces DOCX (OOXML) format regardless of extension
             content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            
-            # Use chunked streaming for large files
-            doc_bytes = doc_buffer.getvalue()
-            doc_buffer.close()
-            response = stream_file_response(doc_bytes, filename, content_type, user=user)
-            
-            return WordExportResult(
-                success=True,
-                response=response,
-                filename=filename,
-                card_count=len(cards_list)
-            )
+
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.' + extension)
+            tmp_name = tmp.name
+            tmp.close()
+            try:
+                # Write OOXML to disk (python-docx supports saving to filename)
+                doc.save(tmp_name)
+
+                file_size = 0
+                try:
+                    file_size = os.path.getsize(tmp_name)
+                except Exception:
+                    file_size = 0
+
+                def _iter_file():
+                    try:
+                        with open(tmp_name, 'rb') as fh:
+                            while True:
+                                chunk = fh.read(1024 * 1024)
+                                if not chunk:
+                                    break
+                                yield chunk
+                    finally:
+                        try:
+                            os.unlink(tmp_name)
+                        except Exception:
+                            pass
+
+                response = StreamingHttpResponse(_iter_file(), content_type=content_type)
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                if file_size:
+                    response['Content-Length'] = str(file_size)
+
+                return WordExportResult(
+                    success=True,
+                    response=response,
+                    filename=filename,
+                    card_count=len(cards_list)
+                )
+            except Exception:
+                # Ensure temp file cleanup on error
+                try:
+                    os.unlink(tmp_name)
+                except Exception:
+                    pass
+                raise
             
         except Exception as e:
+            if isinstance(e, Exception) and 'cancel' in str(e).lower():
+                return WordExportResult(success=False, message='Export cancelled')
             logger.error("Word export failed: %s", e, exc_info=True)
             return WordExportResult(
                 success=False,
