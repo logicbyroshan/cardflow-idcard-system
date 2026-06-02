@@ -19,12 +19,48 @@ const { width, height } = Dimensions.get('window');
 const navigationRef = createNavigationContainerRef();
 
 function AppContent() {
-  const { isAuthenticated, isImpersonating, user, stopImpersonation } = useAuth();
+  const { 
+    isAuthenticated, 
+    isImpersonating, 
+    user, 
+    stopImpersonation,
+    isMpinCreated,
+    isAppUnlocked,
+    setIsAppUnlocked
+  } = useAuth();
   const insets = useSafeAreaInsets();
   const [stopping, setStopping] = useState(false);
   const pulseAnim = useRef(new Animated.Value(0.6)).current;
 
   const prevImpersonatingRef = useRef(isImpersonating);
+  const inactivityTimerRef = useRef(null);
+
+  const resetInactivityTimeout = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    if (isAuthenticated && isMpinCreated && isAppUnlocked) {
+      inactivityTimerRef.current = setTimeout(() => {
+        console.log('[Inactivity] User idle for 100 seconds. Locking app.');
+        setIsAppUnlocked(false);
+      }, 100000); // 100 seconds
+    }
+  }, [isAuthenticated, isMpinCreated, isAppUnlocked, setIsAppUnlocked]);
+
+  useEffect(() => {
+    if (isAuthenticated && isMpinCreated && isAppUnlocked) {
+      resetInactivityTimeout();
+    } else {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    }
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, [isAppUnlocked, isAuthenticated, isMpinCreated, resetInactivityTimeout]);
 
   useEffect(() => {
     if (prevImpersonatingRef.current && !isImpersonating && isAuthenticated) {
@@ -89,7 +125,13 @@ function AppContent() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View 
+      style={{ flex: 1 }}
+      onStartShouldSetResponderCapture={() => {
+        resetInactivityTimeout();
+        return false; // do not steal/consume the gesture
+      }}
+    >
       {isAuthenticated && isImpersonating && (
         <View style={[styles.impersonateBanner, { paddingTop: insets.top }]}>
           <View style={styles.bannerContent}>
