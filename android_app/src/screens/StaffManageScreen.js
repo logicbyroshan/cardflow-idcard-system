@@ -14,12 +14,88 @@ import useRefreshableResource from '../hooks/useRefreshableResource';
 
 const { width } = Dimensions.get('window');
 
+const getAssignmentChips = (item) => {
+  const chips = [];
+  const scopes = item.assignment_scopes || [];
+  
+  if (scopes.length > 0) {
+    scopes.forEach(scope => {
+      const classSections = scope.class_sections || {};
+      const classes = scope.classes || [];
+      const sections = scope.sections || [];
+      
+      if (Object.keys(classSections).length > 0) {
+        Object.entries(classSections).forEach(([cls, secs]) => {
+          if (Array.isArray(secs) && secs.length > 0) {
+            secs.forEach(sec => {
+              chips.push({ text: `${cls} "${sec}"`, type: 'assigned' });
+            });
+          } else {
+            chips.push({ text: cls, type: 'assigned' });
+          }
+        });
+      } else {
+        if (classes.length > 0 && sections.length > 0) {
+          classes.forEach(cls => {
+            sections.forEach(sec => {
+              chips.push({ text: `${cls} "${sec}"`, type: 'assigned' });
+            });
+          });
+        } else if (classes.length > 0) {
+          classes.forEach(cls => {
+            chips.push({ text: cls, type: 'assigned' });
+          });
+        } else if (sections.length > 0) {
+          sections.forEach(sec => {
+            chips.push({ text: `"${sec}"`, type: 'assigned' });
+          });
+        }
+      }
+    });
+  } else {
+    const classes = item.allowed_classes || [];
+    const sections = item.allowed_sections || [];
+    if (classes.length > 0 && sections.length > 0) {
+      classes.forEach(cls => {
+        sections.forEach(sec => {
+          chips.push({ text: `${cls} "${sec}"`, type: 'assigned' });
+        });
+      });
+    } else if (classes.length > 0) {
+      classes.forEach(cls => {
+        chips.push({ text: cls, type: 'assigned' });
+      });
+    } else if (sections.length > 0) {
+      sections.forEach(sec => {
+        chips.push({ text: `"${sec}"`, type: 'assigned' });
+      });
+    }
+  }
+  
+  const uniqueChips = [];
+  const seen = new Set();
+  chips.forEach(c => {
+    if (!seen.has(c.text)) {
+      seen.add(c.text);
+      uniqueChips.push(c);
+    }
+  });
+
+  if (uniqueChips.length === 0) {
+    uniqueChips.push({ text: 'No Classes Assigned', type: 'unassigned' });
+    uniqueChips.push({ text: 'No Sections Assigned', type: 'unassigned' });
+  }
+  
+  return uniqueChips;
+};
+
 export default function StaffManageScreen({ navigation, route }) {
   const { user } = useAuth();
   const [staff, setStaff] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); 
   const deferredSearch = useDeferredValue(search);
+  const [expandedCards, setExpandedCards] = useState({});
   
   const targetRole = route.params?.role || 'client_staff';
   const isOperatorMode = targetRole === 'admin_staff';
@@ -535,45 +611,90 @@ export default function StaffManageScreen({ navigation, route }) {
     });
   };
 
-  const renderItem = ({ item }) => (
-    <View style={s.card}>
-      <View style={s.cardTop}>
-        <View style={s.cardAvatar}><Text style={s.avatarText}>{(item.name || 'S').charAt(0).toUpperCase()}</Text></View>
-        <View style={s.cardInfo}>
-          <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
-          <Text style={s.cardEmail} numberOfLines={1}>{item.email}</Text>
+  const renderItem = ({ item }) => {
+    const chips = getAssignmentChips(item);
+    const isExpanded = !!expandedCards[item.id];
+    const maxVisible = 3;
+    const hasMore = chips.length > maxVisible;
+    const visibleChips = isExpanded ? chips : chips.slice(0, maxVisible);
+
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={s.cardAvatar}><Text style={s.avatarText}>{(item.name || 'S').charAt(0).toUpperCase()}</Text></View>
+          <View style={s.cardInfo}>
+            <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
+            <Text style={s.cardEmail} numberOfLines={1}>{item.email}</Text>
+          </View>
+          <TouchableOpacity 
+            activeOpacity={perms.canManage ? 0.7 : 1} 
+            disabled={!perms.canManage}
+            onPress={() => toggleStatus(item)} 
+            style={[s.statusPill, { backgroundColor: item.is_active ? '#ecfdf5' : '#fef2f2' }]}
+          >
+            <View style={[s.statusDotSmall, { backgroundColor: item.is_active ? '#10b981' : '#ef4444' }]} />
+            <Text style={[s.statusPillText, { color: item.is_active ? '#065f46' : '#991b1b' }]}>{item.is_active ? 'ACTIVE' : 'INACTIVE'}</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          activeOpacity={perms.canManage ? 0.7 : 1} 
-          disabled={!perms.canManage}
-          onPress={() => toggleStatus(item)} 
-          style={[s.statusPill, { backgroundColor: item.is_active ? '#ecfdf5' : '#fef2f2' }]}
-        >
-          <View style={[s.statusDotSmall, { backgroundColor: item.is_active ? '#10b981' : '#ef4444' }]} />
-          <Text style={[s.statusPillText, { color: item.is_active ? '#065f46' : '#991b1b' }]}>{item.is_active ? 'ACTIVE' : 'INACTIVE'}</Text>
-        </TouchableOpacity>
+
+        {/* Assigned Classes and Sections Badge Row */}
+        <View style={s.assignmentRow}>
+          <Text style={s.assignmentRowTitle}>ASSIGNED CLASSES & SECTIONS</Text>
+          <View style={s.chipsGrid}>
+            {visibleChips.map((chip, idx) => (
+              <View 
+                key={idx} 
+                style={[
+                  s.assignmentChip, 
+                  chip.type === 'unassigned' ? s.assignmentChipUnassigned : s.assignmentChipAssigned
+                ]}
+              >
+                <Text 
+                  style={[
+                    s.assignmentChipText, 
+                    chip.type === 'unassigned' ? s.assignmentChipTextUnassigned : s.assignmentChipTextAssigned
+                  ]}
+                >
+                  {chip.text}
+                </Text>
+              </View>
+            ))}
+            {hasMore && (
+              <TouchableOpacity 
+                activeOpacity={0.7} 
+                style={s.viewMoreBtn} 
+                onPress={() => setExpandedCards(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+              >
+                <Text style={s.viewMoreBtnText}>
+                  {isExpanded ? 'View Less' : `+${chips.length - maxVisible} More`}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {perms.canManage && (
+          <View style={s.cardActions}>
+            <TouchableOpacity style={s.actionBtn} onPress={() => openAssign(item)}>
+              <LinearGradient colors={['#f5f3ff', '#ede9fe']} style={s.actionBtnInner}>
+                <DynamicIcon name="filter" size={12} color="#8b5cf6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#8b5cf6' }]}>{isOperatorMode ? 'CLIENTS' : 'ASSIGN'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
+              <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
+                <DynamicIcon name="edit" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>EDIT</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.actionBtn} onPress={() => deleteStaff(item)}>
+              <LinearGradient colors={['#fef2f2', '#fee2e2']} style={s.actionBtnInner}>
+                <DynamicIcon name="trash" size={12} color="#ef4444" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#ef4444' }]}>DEL</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-      {perms.canManage && (
-        <View style={s.cardActions}>
-          <TouchableOpacity style={s.actionBtn} onPress={() => openAssign(item)}>
-            <LinearGradient colors={['#f5f3ff', '#ede9fe']} style={s.actionBtnInner}>
-              <DynamicIcon name="filter" size={12} color="#8b5cf6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#8b5cf6' }]}>{isOperatorMode ? 'CLIENTS' : 'ASSIGN'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
-            <LinearGradient colors={['#eff6ff', '#dbeafe']} style={s.actionBtnInner}>
-              <DynamicIcon name="edit" size={12} color="#3b82f6" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#3b82f6' }]}>EDIT</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.actionBtn} onPress={() => deleteStaff(item)}>
-            <LinearGradient colors={['#fef2f2', '#fee2e2']} style={s.actionBtnInner}>
-              <DynamicIcon name="trash" size={12} color="#ef4444" style={s.actionIcon} /><Text style={[s.actionBtnText, { color: '#ef4444' }]}>DEL</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={s.root}>
@@ -613,6 +734,43 @@ export default function StaffManageScreen({ navigation, route }) {
               </View>
               <FormField label="EMAIL *" value={form.email} onChangeText={t => setForm(f => ({ ...f, email: t }))} keyboardType="email-address" />
               <FormField label="PHONE" value={form.phone} onChangeText={t => setForm(f => ({ ...f, phone: t }))} keyboardType="phone-pad" />
+              
+              {/* Assignments Display inside Edit Modal */}
+              {editingId && staff.find(s => s.id === editingId) && (
+                <View style={s.modalAssignmentsContainer}>
+                  <Text style={s.modalAssignmentsTitle}>CURRENT ASSIGNED ACCESS</Text>
+                  <View style={s.modalChipsGrid}>
+                    {getAssignmentChips(staff.find(s => s.id === editingId)).map((chip, idx) => (
+                      <View 
+                        key={idx} 
+                        style={[
+                          s.modalAssignmentChip, 
+                          chip.type === 'unassigned' ? s.assignmentChipUnassigned : s.assignmentChipAssigned
+                        ]}
+                      >
+                        <Text 
+                          style={[
+                            s.modalAssignmentChipText, 
+                            chip.type === 'unassigned' ? s.assignmentChipTextUnassigned : s.assignmentChipTextAssigned
+                          ]}
+                        >
+                          {chip.text}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <TouchableOpacity 
+                    style={s.modalAssignActionBtn} 
+                    onPress={() => {
+                      const member = staff.find(s => s.id === editingId);
+                      setShowForm(false);
+                      setTimeout(() => openAssign(member), 300);
+                    }}
+                  >
+                    <Text style={s.modalAssignActionBtnText}>MANAGE ASSIGNED ACCESS</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               
               {/* Active Status Switch */}
               <View style={s.switchRow}>
@@ -961,4 +1119,120 @@ const s = StyleSheet.create({
   inputLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500, marginBottom: 6, letterSpacing: 0.5, textAlign: 'center' },
   codeInput: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.gray200, borderRadius: radius.xs, height: 46, fontSize: 16, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, width: '100%' },
   codeInputSuccess: { borderColor: '#10b981', backgroundColor: '#f0fdf4' },
+
+  // Card Assignment Badges Styles
+  assignmentRow: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  assignmentRowTitle: {
+    fontSize: 9,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray400,
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  chipsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+  },
+  assignmentChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    minHeight: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  assignmentChipAssigned: {
+    backgroundColor: colors.indigo50,
+    borderColor: colors.indigo200,
+  },
+  assignmentChipUnassigned: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  assignmentChipText: {
+    fontSize: 9,
+    fontFamily: 'SairaSemiCondensed-Bold',
+  },
+  assignmentChipTextAssigned: {
+    color: '#1e3a8a',
+  },
+  assignmentChipTextUnassigned: {
+    color: '#991b1b',
+  },
+  viewMoreBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: colors.brandPrimary,
+    borderStyle: 'dashed',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 20,
+  },
+  viewMoreBtnText: {
+    fontSize: 9,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.brandPrimary,
+  },
+
+  // Edit Modal assignment section styling
+  modalAssignmentsContainer: {
+    marginBottom: 20,
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modalAssignmentsTitle: {
+    fontSize: 10,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray500,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  modalChipsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+  },
+  modalAssignmentChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalAssignmentChipText: {
+    fontSize: 10,
+    fontFamily: 'SairaSemiCondensed-Bold',
+  },
+  modalAssignActionBtn: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.brandPrimary,
+    borderRadius: radius.xs,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  modalAssignActionBtnText: {
+    fontSize: 11,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.brandPrimary,
+    letterSpacing: 0.5,
+  },
 });
