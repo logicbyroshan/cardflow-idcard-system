@@ -233,11 +233,23 @@ export default function HomeScreen({ navigation }) {
     } else if (model === 'staff' && id) {
       navigation.navigate('StaffManage', { role: act.actor_role === 'client_staff' ? 'client_staff' : 'admin_staff' });
     } else if (action.includes('reprint') || model === 'reprint') {
-      navigation.navigate('Reprint', { clientId: act.client_id || 0 });
+      if (isClient || isAssistant) {
+        const clientTables = counts.tables || [];
+        const tId = act.table_id || (clientTables.length === 1 ? clientTables[0].id : null);
+        if (tId) {
+          navigation.navigate('ReprintDetail', { tableId: tId });
+        } else if (clientTables.length > 1) {
+          navigation.navigate('Reprint', { clientId: counts.client_id || user?.client_id || 0 });
+        } else {
+          Alert.alert('No Tables', 'No active tables found for reprint.');
+        }
+      } else {
+        navigation.navigate('Reprint', { clientId: act.client_id || 0 });
+      }
     } else if (model === 'idcardtable' || model === 'table') {
       if (id) navigation.navigate('CardList', { tableId: id, status: 'all' });
     }
-  }, [navigation]);
+  }, [navigation, isClient, isAssistant, counts.tables]);
 
   const handleSaveStaff = async () => {
     if (!staffForm.first_name || !staffForm.email || !staffForm.password) {
@@ -287,7 +299,7 @@ export default function HomeScreen({ navigation }) {
   const quickActions = useMemo(() => {
     const actions = [];
     const perms = user?.permissions || {};
-    const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list || isClient || isAssistant;
+    const hasReprintPerm = !!(perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list);
 
     if (isSuperAdmin) {
       actions.push({ label: 'ADD CLIENT', icon: 'building', color: '#3b82f6', bg: '#eff6ff', onPress: () => setShowClientForm(true) });
@@ -300,14 +312,29 @@ export default function HomeScreen({ navigation }) {
     } else if (isClient || isAssistant) {
       actions.push({ label: 'MESSAGE', icon: 'bell', color: '#f59e0b', bg: '#fffbeb', screen: 'Notifications' });
       if (hasReprintPerm) {
-        actions.push({ label: 'REPRINT', icon: 'redo', color: '#f97316', bg: '#fff7ed', screen: 'Reprint', params: { clientId: user?.client_id } });
+        actions.push({ 
+          label: 'REPRINT', 
+          icon: 'redo', 
+          color: '#f97316', 
+          bg: '#fff7ed', 
+          onPress: () => {
+            const clientTables = counts.tables || [];
+            if (clientTables.length === 1) {
+              navigation.navigate('ReprintDetail', { tableId: clientTables[0].id });
+            } else if (clientTables.length > 1) {
+              navigation.navigate('Reprint', { clientId: counts.client_id || user?.client_id || 0 });
+            } else {
+              Alert.alert('No Tables', 'No active tables found for reprint.');
+            }
+          }
+        });
       }
       if (isClient || (isAssistant && perms.perm_manage_client_staff)) {
         actions.push({ label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', screen: 'StaffManage' });
       }
     }
     return actions;
-  }, [user, isSuperAdmin, isOperator, isClient, isAssistant]);
+  }, [user, isSuperAdmin, isOperator, isClient, isAssistant, counts.tables]);
 
   const handleBadgePress = useCallback((client, statusKey) => {
     const statusValue = { PENDING: 'pending', VERIFIED: 'verified', APPROVED: 'approved', DOWNLOAD: 'download', POOL: 'pool' };

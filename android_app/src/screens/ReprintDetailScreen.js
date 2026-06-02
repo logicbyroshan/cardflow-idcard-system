@@ -29,14 +29,19 @@ export default function ReprintDetailScreen({ navigation, route }) {
   const isAdminOrOperator = isSuperAdmin || isOperator;
 
   // Permissions gate check
-  const isClient = user?.role === 'client' || user?.role === 'client_staff' || user?.role === 'guest_user';
-  const isAssistant = user?.role === 'client_staff' || user?.role === 'guest_user';
-  const hasDownloadTab = perms.perm_idcard_reprint_list || isAdminOrOperator || isClient || isAssistant;
-  const hasRequestTab = perms.perm_reprint_request_list || isAdminOrOperator || isClient || isAssistant;
-  const hasConfirmedTab = perms.perm_confirmed_list || isAdminOrOperator || isClient || isAssistant;
+  const isClient = user?.role === 'client' || user?.role === 'guest_user';
+  const isAssistant = user?.role === 'client_staff';
+  const hasDownloadTab = perms.perm_idcard_reprint_list || isAdminOrOperator;
+  const hasRequestTab = perms.perm_reprint_request_list || isAdminOrOperator;
+  const hasConfirmedTab = perms.perm_confirmed_list || isAdminOrOperator;
 
   // Tab State
   const [activeTab, setActiveTab] = useState(() => {
+    const initTab = route?.params?.initialTab;
+    if (initTab === 'download_list' && hasDownloadTab) return 'download_list';
+    if (initTab === 'request_list' && hasRequestTab) return 'request_list';
+    if (initTab === 'confirmed' && hasConfirmedTab) return 'confirmed';
+
     if (hasDownloadTab) return 'download_list';
     if (hasRequestTab) return 'request_list';
     return 'confirmed';
@@ -65,6 +70,16 @@ export default function ReprintDetailScreen({ navigation, route }) {
 
   const perPage = 50;
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
+
+  // Handle dynamically updated route parameters (e.g., initialTab)
+  useEffect(() => {
+    const initTab = route?.params?.initialTab;
+    if (initTab) {
+      if (initTab === 'download_list' && hasDownloadTab) setActiveTab('download_list');
+      else if (initTab === 'request_list' && hasRequestTab) setActiveTab('request_list');
+      else if (initTab === 'confirmed' && hasConfirmedTab) setActiveTab('confirmed');
+    }
+  }, [route?.params?.initialTab, hasDownloadTab, hasRequestTab, hasConfirmedTab]);
 
   // ── Debounce Search Query ───────────────────────────────────────────────
   useEffect(() => {
@@ -97,7 +112,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
       const limit = perPage;
 
       if (activeTab === 'download_list') {
-        endpoint = `/reprint/api/table/${tableId}/reprint-list/?q=${searchQuery}&offset=${offset}&limit=${limit}`;
+        endpoint = `/reprint/api/table/${tableId}/reprint-list/?q=${searchQuery}&offset=${offset}&limit=${limit}&available_only=1`;
       } else if (activeTab === 'request_list') {
         endpoint = `/reprint/api/table/${tableId}/request-list/?q=${searchQuery}&offset=${offset}&limit=${limit}`;
       } else if (activeTab === 'confirmed') {
@@ -542,8 +557,9 @@ export default function ReprintDetailScreen({ navigation, route }) {
   }, [updating, activeTab, theme, isAdminOrOperator]);
 
   // Segment Tab Bar Items
+  const availableCount = Math.max(0, (counts.download_list || 0) - (counts.request_list || 0) - (counts.confirmed || 0));
   const tabs = [];
-  if (hasDownloadTab) tabs.push({ key: 'download_list', label: 'Download List', icon: 'download', count: counts.download_list });
+  if (hasDownloadTab) tabs.push({ key: 'download_list', label: 'Reprint List', icon: 'download', count: availableCount });
   if (hasRequestTab) tabs.push({ key: 'request_list', label: 'Requested', icon: 'clock', count: counts.request_list });
   if (hasConfirmedTab) tabs.push({ key: 'confirmed', label: 'Confirmed', icon: 'check-circle', count: counts.confirmed });
 
@@ -616,7 +632,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
           ListEmptyComponent={
             <View style={s.empty}>
               <View style={s.emptyIcon}><DynamicIcon name="redo" size={24} color={colors.gray300} /></View>
-              <Text style={s.emptyTitle}>No cards in {activeTab === 'download_list' ? 'Download' : activeTab === 'request_list' ? 'Requested' : 'Confirmed'} list</Text>
+              <Text style={s.emptyTitle}>No cards in {activeTab === 'download_list' ? 'Reprint' : activeTab === 'request_list' ? 'Requested' : 'Confirmed'} list</Text>
               <Text style={s.emptySub}>
                 {activeTab === 'download_list' 
                   ? 'All eligible reprint cards have already been requested.' 
@@ -633,7 +649,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
                   onPress={() => setActiveTab('download_list')}
                 >
                   <DynamicIcon name="download" size={11} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={s.transitionBtnText}>Go to Download List</Text>
+                  <Text style={s.transitionBtnText}>Go to Reprint List</Text>
                 </TouchableOpacity>
               )}
               

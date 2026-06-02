@@ -6195,7 +6195,9 @@ def api_reprint_data(request, client_id):
             confirmed = int(sm.get('confirmed', 0) or 0)
             request_total += requested
             confirmed_total += confirmed
-            download_total += int(download_map.get(t.id, 0) or 0)
+            dl_count = int(download_map.get(t.id, 0) or 0)
+            reprint_count = max(0, dl_count - requested - confirmed)
+            download_total += dl_count
             items.append({
                 'id': t.id,
                 'name': t.name,
@@ -6203,7 +6205,9 @@ def api_reprint_data(request, client_id):
                 'client_name': t.group.client.name if t.group and t.group.client else '',
                 'client_id': t.group.client_id if t.group else 0,
                 'requested': requested,
-                'confirmed': confirmed
+                'confirmed': confirmed,
+                'reprint_count': reprint_count,
+                'download': dl_count
             })
 
         return JsonResponse({'success': True, 'data': {'tables': items, 'request_total': request_total, 'confirmed_total': confirmed_total, 'download_total': download_total}})

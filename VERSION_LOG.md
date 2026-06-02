@@ -2,6 +2,8 @@
 
 | Date | Platform Version | Mobile Version | Mobile Build | Key Changes |
 | :--- | :--- | :--- | :--- | :--- |
+| **2026-06-02** | **v4.18.2** | **1.0.67** | **67** | **Fix search persistence across tabs in reprint and main lists, customize ReprintScreen for clients with 3 workflow badges** |
+| **2026-06-02** | **v4.18.2** | **1.0.66** | **66** | **Implement inline background PDF download modal to fix authenticated redirection errors for clients and assistants** |
 | **2026-06-01** | **v4.18.2** | **1.0.65** | **65** | **Fix TopBar PDF action button for clients/guests; bump build version** |
 | **2026-05-30** | **v4.18.2** | **1.0.56** | **56** | **Phase 2 app bug fixes: designation field layout fix, search query reset on tab switch, in-place client updates, flat list keyboard persistent tap, admin client status tabs pre-selection** |
 | **2026-05-22** | **v4.18.2** | **1.0.45** | **45** | **Fix: Reprint download CSRF refresh + retry; Pro Features admin UI fetch fixes; session keepalive URL handling; rebuild dist assets** |

@@ -84,7 +84,82 @@ export default function ReprintScreen({ navigation, route }) {
     }
   };
 
-  const renderItem = ({ item: client }) => {
+  const isClient = user?.role === 'client' || user?.role === 'guest_user';
+  const isAssistant = user?.role === 'client_staff';
+  const isClientOrAssistant = isClient || isAssistant;
+
+  const flatListData = isClientOrAssistant ? tables : groupedClients;
+
+  const renderItem = ({ item }) => {
+    if (isClientOrAssistant) {
+      return (
+        <View style={s.cardWrapper}>
+          <LinearGradient colors={['#ffffff', '#f8fafc']} start={{x:0, y:0}} end={{x:1, y:0}} style={s.clientCardGradient}>
+            <View style={s.clientCard}>
+              <View style={s.clientHeader}>
+                <View style={[s.clientIcon, { backgroundColor: theme.bgSoft }]}><DynamicIcon name="table" size={14} color={theme.primary} /></View>
+                <View style={s.clientInfo}>
+                  <Text style={s.clientName} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
+                  <Text style={{ fontSize: 9, color: colors.gray400, fontFamily: 'SairaSemiCondensed-Medium', marginTop: 2 }}>{item.group_name}</Text>
+                </View>
+              </View>
+
+              <View style={[s.statusButtonsRowBelow, { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10 }]}>
+                <TouchableOpacity
+                  style={[
+                    s.stBtnBelow,
+                    { 
+                      backgroundColor: '#f5f3ff',
+                      borderColor: '#8b5cf660',
+                    }
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('ReprintDetail', { tableId: item.id, initialTab: 'download_list' })}
+                >
+                  <Text style={[s.stBtnTextBelow, { color: '#8b5cf6' }]}>
+                    Reprint List ({item.reprint_count || 0})
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    s.stBtnBelow,
+                    { 
+                      backgroundColor: '#fef3c7',
+                      borderColor: '#f59e0b60',
+                    }
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('ReprintDetail', { tableId: item.id, initialTab: 'request_list' })}
+                >
+                  <Text style={[s.stBtnTextBelow, { color: '#f59e0b' }]}>
+                    Request List ({item.requested || 0})
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    s.stBtnBelow,
+                    { 
+                      backgroundColor: '#ecfdf5',
+                      borderColor: '#10b98160',
+                    }
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('ReprintDetail', { tableId: item.id, initialTab: 'confirmed' })}
+                >
+                  <Text style={[s.stBtnTextBelow, { color: '#10b981' }]}>
+                    Confirmed List ({item.confirmed || 0})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      );
+    }
+
+    const client = item;
     const isExpanded = expandedClient?.id === client.id;
     return (
       <View style={s.cardWrapper}>
@@ -181,14 +256,16 @@ export default function ReprintScreen({ navigation, route }) {
       ) : (
         <>
           {/* Summary */}
-          <View style={s.summaryRow}>
-            <SummaryBox icon="list" color="#f59e0b" bg="#fef3c7" label="Requested" value={totals.request} />
-            <SummaryBox icon="check" color="#22c55e" bg="#d1fae5" label="Confirmed" value={totals.confirmed} />
-            <SummaryBox icon="download" color="#8b5cf6" bg="#ede9fe" label="Download" value={totals.download} />
-          </View>
+          {!isClientOrAssistant && (
+            <View style={s.summaryRow}>
+              <SummaryBox icon="list" color="#f59e0b" bg="#fef3c7" label="Requested" value={totals.request} />
+              <SummaryBox icon="check" color="#22c55e" bg="#d1fae5" label="Confirmed" value={totals.confirmed} />
+              <SummaryBox icon="download" color="#8b5cf6" bg="#ede9fe" label="Download" value={totals.download} />
+            </View>
+          )}
 
           <FlatList
-            data={groupedClients}
+            data={flatListData}
             renderItem={renderItem}
             keyExtractor={item => item.id.toString()}
             contentContainerStyle={s.list}

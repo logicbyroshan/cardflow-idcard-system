@@ -16,6 +16,7 @@ import Toast from '../components/Toast';
 import CardModalForm from '../components/CardModalForm';
 import ConfirmModal from '../components/ConfirmModal';
 import FilterDrawer from '../components/FilterDrawer';
+import DownloadPdfModal from '../components/DownloadPdfModal';
 import { apiGet, apiPost, BASE_URL } from '../api/client';
 import { colors, gradients, shadows, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -91,6 +92,7 @@ export default function CardListScreen({ navigation, route }) {
 
   const [showForm, setShowForm]           = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
+  const [showPdfModal, setShowPdfModal]   = useState(false);
 
   const [confirmModal, setConfirmModal]   = useState({
     visible: false, title: '', message: '', icon: '', color: colors.brandPrimary,
@@ -535,27 +537,12 @@ export default function CardListScreen({ navigation, route }) {
     return false;
   }, [selectMode, perms]);
 
-  const handleDownloadWholePdf = useCallback(() => {
-    const queryParams = new URLSearchParams();
-    queryParams.append('status', currentStatus);
-    if (searchQuery) queryParams.append('search', searchQuery);
-    
-    Object.keys(activeFilters).forEach(key => {
-      if (activeFilters[key] !== null && activeFilters[key] !== undefined && activeFilters[key] !== '') {
-        queryParams.append(key, activeFilters[key]);
-      }
-    });
-
-    const url = `${BASE_URL}/api/mobile/table/${tableId}/download-pdf/?${queryParams.toString()}`;
-    Linking.openURL(url);
-  }, [currentStatus, searchQuery, activeFilters, tableId]);
-
   const leftOfHomeBtns = useMemo(() => {
     const list = [];
     if (showPdfBtn) {
       list.push({
         label: 'DOWNLOAD PDF',
-        onPress: handleDownloadWholePdf,
+        onPress: () => setShowPdfModal(true),
         style: { backgroundColor: '#ef4444' },
       });
     }
@@ -567,7 +554,7 @@ export default function CardListScreen({ navigation, route }) {
       });
     }
     return list.length > 0 ? list : undefined;
-  }, [showPdfBtn, selectMode, currentStatus, hasReprintPerm, tableId, navigation, handleDownloadWholePdf]);
+  }, [showPdfBtn, selectMode, currentStatus, hasReprintPerm, tableId, navigation]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -589,7 +576,6 @@ export default function CardListScreen({ navigation, route }) {
               onPress={() => {
                 setCurrentStatus(opt.key);
                 setPage(1);
-                setSearchQuery('');
                 setActiveFilters({});
               }}
               style={[s.tabItem, currentStatus === opt.key && { backgroundColor: opt.c, borderColor: opt.c }]}
@@ -710,9 +696,7 @@ export default function CardListScreen({ navigation, route }) {
                   color="#8b5cf6"
                   disabled={bulkLoading || selectedIds.size === 0}
                   onPress={() => {
-                    const ids = Array.from(selectedIds).join(',');
-                    const url = `${BASE_URL}/api/mobile/table/${tableId}/download-pdf/?status=download&selected_ids=${ids}`;
-                    Linking.openURL(url);
+                    setShowPdfModal(true);
                   }}
                 />
               )}
@@ -763,6 +747,16 @@ export default function CardListScreen({ navigation, route }) {
         message={toast.message}
         type={toast.type}
         onHide={() => setToast(p => ({ ...p, visible: false }))}
+      />
+      <DownloadPdfModal
+        visible={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        tableId={tableId}
+        tableName={tableName}
+        status={currentStatus}
+        selectedIds={Array.from(selectedIds)}
+        searchQuery={searchQuery}
+        activeFilters={activeFilters}
       />
 
     </View>
