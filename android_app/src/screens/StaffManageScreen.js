@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useDeferredValue, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, RefreshControl, Modal, ScrollView, Dimensions, Switch } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, RefreshControl, Modal, ScrollView, Dimensions, Switch, TouchableWithoutFeedback } from 'react-native';
 import { IconSearch, IconFilter, IconPlus, IconTrash, IconEdit, IconClose, IconCheck, IconMail, IconPhone, DynamicIcon } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopBar from '../components/TopBar';
@@ -57,8 +57,37 @@ export default function StaffManageScreen({ navigation, route }) {
   const [confirmModal, setConfirmModal] = useState({ 
     visible: false, title: '', message: '', icon: '', color: colors.brandPrimary, onConfirm: null 
   });
+  const [verificationModal, setVerificationModal] = useState({
+    visible: false, title: '', message: '', targetAction: null, targetData: null
+  });
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [enteredCode, setEnteredCode] = useState('');
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
+
+  const generateCode = () => {
+    return String(Math.floor(1000000000 + Math.random() * 9000000000));
+  };
+
+  const handleVerificationConfirm = async () => {
+    const { targetAction, targetData } = verificationModal;
+    setVerificationModal(p => ({ ...p, visible: false }));
+    
+    if (targetAction === 'delete') {
+      const member = targetData;
+      try {
+        const { ok, data } = await apiPost(`/api/mobile/staff/${member.id}/delete/`, {});
+        if (ok && data.success) { 
+          showToast(data.message, 'success'); 
+          refresh(); 
+        } else {
+          showToast(data.message || 'Error deleting', 'error');
+        }
+      } catch (e) { 
+        showToast('Network error', 'error'); 
+      }
+    }
+  };
 
   const loadStaff = useCallback(async () => {
     const { ok, data } = await apiGet(`/api/mobile/staff/?role=${targetRole}`);
@@ -494,16 +523,15 @@ export default function StaffManageScreen({ navigation, route }) {
   };
 
   const deleteStaff = (member) => {
-    setConfirmModal({
-      visible: true, title: 'Delete Staff?', message: `Permanently delete "${member.name}"?`, icon: 'trash', color: '#ef4444',
-      onConfirm: async () => {
-        setConfirmModal(p => ({ ...p, visible: false }));
-        try {
-          const { ok, data } = await apiPost(`/api/mobile/staff/${member.id}/delete/`, {});
-          if (ok && data.success) { showToast(data.message, 'success'); refresh(); }
-          else showToast(data.message || 'Error deleting', 'error');
-        } catch (e) { showToast('Network error', 'error'); }
-      }
+    const code = generateCode();
+    setGeneratedCode(code);
+    setEnteredCode('');
+    setVerificationModal({
+      visible: true,
+      title: 'Delete Staff?',
+      message: `To permanently delete "${member.name}", please confirm by entering the 10-digit code.`,
+      targetAction: 'delete',
+      targetData: member,
     });
   };
 
@@ -735,6 +763,63 @@ export default function StaffManageScreen({ navigation, route }) {
       </Modal>
 
       <ConfirmModal visible={confirmModal.visible} onClose={() => setConfirmModal(p => ({ ...p, visible: false }))} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message} icon={confirmModal.icon} confirmColor={confirmModal.color} />
+      
+      {/* Custom 10-Digit Verification Modal */}
+      <Modal visible={verificationModal.visible} transparent animationType="fade" onRequestClose={() => setVerificationModal(p => ({ ...p, visible: false }))}>
+        <View style={s.overlay}>
+          <TouchableWithoutFeedback onPress={() => setVerificationModal(p => ({ ...p, visible: false }))}>
+            <View style={s.backdrop} />
+          </TouchableWithoutFeedback>
+          <View style={s.verificationContent}>
+            <View style={[s.iconCircleLarge, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
+              <DynamicIcon name="shield-alt" size={28} color="#ef4444" />
+            </View>
+            <Text style={s.title}>{verificationModal.title}</Text>
+            <Text style={s.message}>{verificationModal.message}</Text>
+            
+            <View style={s.codeContainer}>
+              <Text style={s.codeLabel}>VERIFICATION CODE</Text>
+              <View style={s.codeBox}>
+                <Text style={s.codeText}>{generatedCode}</Text>
+              </View>
+            </View>
+            
+            <View style={s.inputContainer}>
+              <Text style={s.inputLabel}>ENTER CODE TO CONFIRM</Text>
+              <TextInput
+                style={[s.codeInput, enteredCode === generatedCode && s.codeInputSuccess]}
+                value={enteredCode}
+                onChangeText={t => setEnteredCode(t.replace(/\D/g, '').slice(0, 10))}
+                keyboardType="numeric"
+                placeholder="10-digit code"
+                placeholderTextColor={colors.gray300}
+                textAlign="center"
+              />
+            </View>
+            
+            <View style={s.footer}>
+              <TouchableOpacity onPress={() => setVerificationModal(p => ({ ...p, visible: false }))} style={s.cancelBtn}>
+                <Text style={s.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={handleVerificationConfirm}
+                disabled={enteredCode !== generatedCode}
+                activeOpacity={0.8}
+                style={[s.confirmBtnWrap, enteredCode !== generatedCode && { opacity: 0.4 }]}
+              >
+                <LinearGradient
+                  colors={[colors.brandPrimary, colors.brandPrimary]}
+                  style={s.confirmBtn}
+                >
+                  <Text style={s.confirmText}>Confirm</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({ ...p, visible: false }))} />
     </View>
   );
@@ -845,4 +930,35 @@ const s = StyleSheet.create({
   matrixSectionLabel: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray600 },
   matrixSectionLabelActive: { fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
   matrixEmptyText: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400, fontStyle: 'italic' },
+
+  // Verification & Custom selector styles
+  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.75)' },
+  iconCircleLarge: { width: 70, height: 70, borderRadius: radius.xs, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  title: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, textAlign: 'center', marginBottom: 8 },
+  message: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray500, textAlign: 'center', lineHeight: 18, marginBottom: 16 },
+  footer: { flexDirection: 'row', width: '100%', columnGap: 12 },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: radius.sm, backgroundColor: colors.gray100, alignItems: 'center', justifyContent: 'center' },
+  cancelText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.gray600 },
+  confirmBtnWrap: { flex: 1.5, borderRadius: radius.sm, overflow: 'hidden' },
+  confirmBtn: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  confirmText: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
+
+  verificationContent: { 
+    width: '100%', 
+    maxWidth: 340, 
+    backgroundColor: '#fff', 
+    borderRadius: radius.xs, 
+    padding: 24, 
+    alignItems: 'center',
+    ...shadows.xl 
+  },
+  codeContainer: { alignItems: 'center', marginBottom: 16, width: '100%' },
+  codeLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray400, marginBottom: 4, letterSpacing: 0.5 },
+  codeBox: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: colors.gray200, paddingVertical: 10, paddingHorizontal: 16, borderRadius: radius.xs, width: '100%', alignItems: 'center', justifyContent: 'center' },
+  codeText: { fontSize: 20, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, letterSpacing: 4 },
+  inputContainer: { width: '100%', marginBottom: 24 },
+  inputLabel: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500, marginBottom: 6, letterSpacing: 0.5, textAlign: 'center' },
+  codeInput: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.gray200, borderRadius: radius.xs, height: 46, fontSize: 16, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, width: '100%' },
+  codeInputSuccess: { borderColor: '#10b981', backgroundColor: '#f0fdf4' },
 });
