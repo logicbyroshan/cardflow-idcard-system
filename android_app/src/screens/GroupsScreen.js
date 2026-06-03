@@ -29,8 +29,6 @@ export default function GroupsScreen({ navigation }) {
     const counts = {
       p: table.pending_cards || 0,
       v: table.verified_cards || 0,
-       || 0,
-       || 0,
       po: table.pool_cards || 0,
     };
 
