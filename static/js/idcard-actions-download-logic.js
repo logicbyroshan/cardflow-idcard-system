@@ -732,6 +732,7 @@ function downloadImages(cardIds, renameOptions) {
 // ==========================================
 
 function downloadDocx(cardIds, format, templateId) {
+    format = 'docx';
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
@@ -750,9 +751,9 @@ function downloadDocx(cardIds, format, templateId) {
             timeoutMessage: 'Document export timed out. Please try again with fewer cards.',
             failMessage: 'Document export failed',
             cancelLabel: 'Document export',
-            fallbackFilename: format === 'doc' ? 'export.doc' : 'export.docx',
+            fallbackFilename: 'export.docx',
             extraPayload: {
-                format: format || 'docx',
+                format: 'docx',
                 template_id: templateId || ''
             },
             onComplete: function() {

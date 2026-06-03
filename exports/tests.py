@@ -1905,7 +1905,8 @@ class WordLayoutTuningTests(SimpleTestCase):
             p00 = image.getpixel((0, 0))
             p11 = image.getpixel((1, 1))
             self.assertTrue(all(c <= 45 for c in p00), f"Expected border near black, got {p00}")
-            self.assertTrue(all(c <= 45 for c in p11), f"Expected border near black, got {p11}")
+            # With 1px border (0.5pt), the inner pixel (1, 1) is red but may have JPEG compression leakage
+            self.assertTrue(p11[0] >= 120 and p11[1] <= 80 and p11[2] <= 80, f"Expected interior red (allowing JPEG artifacts), got {p11}")
             
             # Interior pixels should be very close to red (255, 0, 0)
             p55 = image.getpixel((5, 5))

@@ -902,18 +902,12 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     template_id = None
     if _is_json_request(request):
         data = _get_json_body(request) or {}
-        doc_format = data.get('format', 'docx')
         tpl_val = data.get('template_id', '')
         if tpl_val:
             try:
                 template_id = int(tpl_val)
             except (ValueError, TypeError):
                 pass
-    else:
-        doc_format = request.POST.get('format', 'docx')
-    
-    if doc_format not in ('docx', 'doc'):
-        doc_format = 'docx'
     
     # Route large exports to async background worker
     if len(card_ids) > _ASYNC_EXPORT_THRESHOLD:

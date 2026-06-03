@@ -20,9 +20,9 @@ class WordImagesMixin:
 
     # Border is intentionally limited to portrait photos only.
     BORDERED_IMAGE_SUBTYPES = {'photo', 'rel_photo', 'mother_photo', 'father_photo'}
-    PHOTO_BORDER_PX = 2  # ~1pt visual thickness on typical display scaling
+    PHOTO_BORDER_PX = 1  # 1px border (roughly 0.5pt on print)
     PHOTO_BORDER_COLOR = (0, 0, 0)
-    WORD_BORDER_PT = 1.0
+    WORD_BORDER_PT = 0.5
 
     def _should_add_photo_border(self, image_subtype=None, field_name=None):
         """Return True when the image should be rendered with a 1pt border."""
@@ -64,7 +64,7 @@ class WordImagesMixin:
                 draw.rectangle([0, 0, w - 1, h - 1], outline=edge, width=max_t)
 
         out_stream = BytesIO()
-        bordered.save(out_stream, format='PNG')
+        bordered.save(out_stream, format='JPEG', quality=95)
         out_stream.seek(0)
         return out_stream
 
@@ -134,22 +134,20 @@ class WordImagesMixin:
 
         if img_data and len(img_data) >= 100:
             try:
-                # For bytes that came from a direct storage read (not pre-fetched)
-                # run a quick PIL integrity check to surface corrupt files early.
-                if not skip_storage_read:
-                    with Image.open(BytesIO(img_data)) as _chk:
-                        _chk.load()
-
                 # Determine if this column needs a photo border.
-                # The border is rendered natively by Word's VML engine so there
-                # is zero PIL overhead: no re-decode, no re-encode, no CPU cost.
                 add_photo_border = self._should_add_photo_border(
                     image_subtype=image_subtype,
                     field_name=field_name,
                 )
 
-                # Embed raw bytes — no re-compression, full original print quality
-                img_stream = BytesIO(img_data)
+                if add_photo_border:
+                    # Draw Pillow border and encode as JPEG (extremely fast + high quality)
+                    # We do not use slower PNG format to avoid touching 100% CPU usage.
+                    img_stream = self._build_word_image_stream(img_data, Image, ImageOps, add_photo_border=True)
+                else:
+                    # Non-photo: embed raw bytes directly (0% CPU overhead, no re-compression)
+                    img_stream = BytesIO(img_data)
+
                 para = cell.paragraphs[0]
                 run = para.add_run()
                 inline_shape = run.add_picture(
@@ -158,9 +156,7 @@ class WordImagesMixin:
                     width=Cm(fixed_width_cm),
                 )
                 img_stream.close()
-                # DrawingML native border outline (a:ln)
-                if add_photo_border:
-                    self._add_drawingml_border(inline_shape, parse_xml)
+
                 para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 self._set_para_spacing(para, parse_xml, nsdecls)
                 return

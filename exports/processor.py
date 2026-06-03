@@ -450,9 +450,7 @@ def process_export_docx(task):
     # Get cards
     card_ids = metadata.get('card_ids', [])
     status_filter = metadata.get('status', '')
-    doc_format = str(metadata.get('doc_format', 'docx') or 'docx').strip().lower()
-    if doc_format not in ('docx', 'doc'):
-        doc_format = 'docx'
+    doc_format = 'docx'
     template_id = metadata.get('template_id')
     try:
         template_id = int(template_id) if template_id not in (None, '') else None

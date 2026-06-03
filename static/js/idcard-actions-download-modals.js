@@ -2669,42 +2669,23 @@ let pendingDocxDownloadIds = [];
 let pendingDocxFormat = 'docx';
 
 function _setDocxFormatSelection(format) {
-    const normalizedFormat = format === 'doc' ? 'doc' : 'docx';
-    pendingDocxFormat = normalizedFormat;
-
-    const docxCard = document.getElementById('downloadDocxFormatCardDocx');
-    const docCard = document.getElementById('downloadDocxFormatCardDoc');
-
-    if (docxCard) {
-        docxCard.classList.toggle('is-active', normalizedFormat === 'docx');
-    }
-    if (docCard) {
-        docCard.classList.toggle('is-active', normalizedFormat === 'doc');
-    }
+    pendingDocxFormat = 'docx';
 }
 
 function openDocFormatModal(cardIds) {
-    pendingDocxDownloadIds = cardIds;
-    const docFormatModalOverlay = document.getElementById('docFormatModalOverlay');
-    if (docFormatModalOverlay) {
-        docFormatModalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden'; // Lock body scroll
-    }
+    // Deprecated — direct to docx modal instead
+    openDownloadDocxModal(cardIds, 'docx');
 }
 
 function closeDocFormatModal() {
-    const docFormatModalOverlay = document.getElementById('docFormatModalOverlay');
-    if (docFormatModalOverlay) {
-        docFormatModalOverlay.classList.remove('active');
-        document.body.style.overflow = ''; // Restore body scroll
-    }
+    // Deprecated
     pendingDocxDownloadIds = [];
 }
 
 function openDownloadDocxModal(cardIds, format) {
     try { console.log('[DL] openDownloadDocxModal', {cardIdsCount: Array.isArray(cardIds)?cardIds.length:0, format: format}); } catch (e) {}
     pendingDocxDownloadIds = cardIds;
-    pendingDocxFormat = format || 'docx';
+    pendingDocxFormat = 'docx';
     currentDownloadType = 'docx';
     if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
         window.IDCardApp.downloadProgressPresenter.setType('docx');
