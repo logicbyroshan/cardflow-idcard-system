@@ -168,20 +168,6 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
                             </label>
                             <span class="permission-label">Pool List{% if not perm_idcard_pool_list %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
                         </div>
-                        <div class="permission-row{% if not perm_idcard_approved_list %} perm-locked{% endif %}" {% if not perm_idcard_approved_list %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_approved_list" id="perm-idcard-approved-list" {% if not perm_idcard_approved_list %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Approved List{% if not perm_idcard_approved_list %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
-                        <div class="permission-row{% if not perm_idcard_download_list %} perm-locked{% endif %}" {% if not perm_idcard_download_list %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_download_list" id="perm-idcard-download-list" {% if not perm_idcard_download_list %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Download List{% if not perm_idcard_download_list %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
                     </div>
                 </div>
 

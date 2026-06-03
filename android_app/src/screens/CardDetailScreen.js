@@ -42,7 +42,7 @@ export default function CardDetailScreen({ navigation, route }) {
 
   const { data: card, loading, refreshing, error, refresh } = useRefreshableResource(loadCard);
 
-  const isLocked = (user?.isClient || user?.isAssistant) && card && ['approved', 'download', 'pool'].includes(card.status);
+  const isLocked = (user?.isClient || user?.isAssistant) && card && ['pool'].includes(card.status);
 
   const canTransitionTo = useCallback((targetStatus) => {
     if (!card) return false;
@@ -93,9 +93,7 @@ export default function CardDetailScreen({ navigation, route }) {
     return [
       { key: 'pending', label: 'Pending', perm: 'perm_idcard_pending_list' },
       { key: 'verified', label: 'Verified', perm: 'perm_idcard_verified_list' },
-      { key: 'approved', label: 'Approved', perm: 'perm_idcard_approved_list' },
-      { key: 'download', label: 'Download', perm: 'perm_idcard_download_list' },
-      { key: 'reprint', label: 'Reprint', perm: 'perm_idcard_reprint_list' },
+                  { key: 'reprint', label: 'Reprint', perm: 'perm_idcard_reprint_list' },
       { key: 'pool', label: 'Pool', perm: 'perm_idcard_pool_list' },
     ].filter(opt => isSuperAdmin || !opt.perm || perms[opt.perm]);
   }, [user]);
@@ -104,8 +102,19 @@ export default function CardDetailScreen({ navigation, route }) {
     setUpdating(true);
     try {
       const { data } = await apiPost(`/api/mobile/card/${cardId}/status/`, { status });
-      showToast(data?.success ? 'Status updated!' : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
-      if (data?.success) refresh();
+      if (!data?.success && data?.requires_class_change) {
+        Alert.alert(
+          'Class Assignment Required',
+          data.message || 'You must update the class to retrieve this card.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Edit Card', onPress: () => setShowForm(true) }
+          ]
+        );
+      } else {
+        showToast(data?.success ? 'Status updated!' : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
+        if (data?.success) refresh();
+      }
     } catch (e) { showToast('Network error', 'error'); }
     setUpdating(false);
   };

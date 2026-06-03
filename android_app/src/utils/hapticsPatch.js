@@ -14,56 +14,57 @@ const triggerHaptic = () => {
   }, 0);
 };
 
-const wrapComponent = (OriginalComponent, name) => {
-  if (!OriginalComponent) return OriginalComponent;
-
-  const WrappedComponent = React.forwardRef((props, ref) => {
-    const { onPress, ...rest } = props;
-
-    const handlePress = React.useCallback((event) => {
-      triggerHaptic();
-      if (onPress) {
-        onPress(event);
-      }
-    }, [onPress]);
-
-    return React.createElement(OriginalComponent, {
-      ...rest,
-      ref,
-      onPress: onPress ? handlePress : undefined,
-    });
-  });
-
-  // Copy static properties of original component
-  try {
-    Object.assign(WrappedComponent, OriginalComponent);
-  } catch (e) {
-    // Suppress errors for read-only properties
+const patchProps = (type, props) => {
+  if (
+    type === RN.TouchableOpacity || 
+    type === RN.TouchableHighlight || 
+    type === RN.TouchableWithoutFeedback || 
+    type === RN.Pressable || 
+    type === RN.TouchableNativeFeedback
+  ) {
+    if (props && props.onPress) {
+      const originalOnPress = props.onPress;
+      return {
+        ...props,
+        onPress: (e) => {
+          triggerHaptic();
+          if (originalOnPress) return originalOnPress(e);
+        }
+      };
+    }
   }
-
-  WrappedComponent.displayName = `HapticWrapped(${name || OriginalComponent.displayName || OriginalComponent.name || 'Component'})`;
-
-  return WrappedComponent;
+  return props;
 };
 
-// Apply patch to react-native exports
+// Patch jsx and jsxs
 try {
-  if (RN.TouchableOpacity) {
-    RN.TouchableOpacity = wrapComponent(RN.TouchableOpacity, 'TouchableOpacity');
+  const jsxRuntime = require('react/jsx-runtime');
+  if (jsxRuntime) {
+    const originalJsx = jsxRuntime.jsx;
+    const originalJsxs = jsxRuntime.jsxs;
+
+    if (originalJsx) {
+      jsxRuntime.jsx = function(type, props, key) {
+        return originalJsx.call(this, type, patchProps(type, props), key);
+      };
+    }
+    if (originalJsxs) {
+      jsxRuntime.jsxs = function(type, props, key) {
+        return originalJsxs.call(this, type, patchProps(type, props), key);
+      };
+    }
   }
-  if (RN.TouchableHighlight) {
-    RN.TouchableHighlight = wrapComponent(RN.TouchableHighlight, 'TouchableHighlight');
-  }
-  if (RN.TouchableWithoutFeedback) {
-    RN.TouchableWithoutFeedback = wrapComponent(RN.TouchableWithoutFeedback, 'TouchableWithoutFeedback');
-  }
-  if (RN.TouchableNativeFeedback) {
-    RN.TouchableNativeFeedback = wrapComponent(RN.TouchableNativeFeedback, 'TouchableNativeFeedback');
-  }
-  if (RN.Pressable) {
-    RN.Pressable = wrapComponent(RN.Pressable, 'Pressable');
-  }
-  console.log('[HapticPatch] Successfully applied global haptic feedback to react-native clickables.');
+} catch (e) {
+  console.log('[HapticPatch] Failed to patch jsx-runtime:', e);
+}
+
+// Also patch React.createElement as fallback
+try {
+  const originalCreateElement = React.createElement;
+  React.createElement = function(type, props, ...children) {
+    return originalCreateElement.call(this, type, patchProps(type, props), ...children);
+  };
+  console.log('[HapticPatch] Successfully applied global haptic feedback.');
 } catch (e) {
   console.error('[HapticPatch] Failed to apply global haptic feedback:', e);
 }

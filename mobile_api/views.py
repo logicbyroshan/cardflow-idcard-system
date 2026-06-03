@@ -3665,8 +3665,6 @@ def api_all_card_ids(request, table_id):
         'pending': 'perm_idcard_pending_list',
         'verified': 'perm_idcard_verified_list',
         'pool': 'perm_idcard_pool_list',
-        'approved': 'perm_idcard_approved_list',
-        'download': 'perm_idcard_download_list',
         'reprint': 'perm_idcard_reprint_list',
     }
     needed_perm = perm_map.get(status_filter)
@@ -3855,8 +3853,6 @@ def api_filter_options(request, table_id):
         'pending': 'perm_idcard_pending_list',
         'verified': 'perm_idcard_verified_list',
         'pool': 'perm_idcard_pool_list',
-        'approved': 'perm_idcard_approved_list',
-        'download': 'perm_idcard_download_list',
         'reprint': 'perm_idcard_reprint_list',
     }
     needed_perm = perm_map.get(status_filter)
@@ -5831,8 +5827,17 @@ def api_groups_list(request):
 
         if PermissionService.is_client_staff(user):
             # Compute scoped counts table-by-table for assistant
+            tables_list = list(tables_qs.order_by('name'))
+            
+            # Bulk fetch pool counts for all tables to avoid N+1 queries
+            table_ids = [t.id for t in tables_list]
+            pool_counts = {}
+            if table_ids:
+                for row in IDCard.objects.filter(table_id__in=table_ids, status='pool').values('table_id').annotate(n=Count('id')):
+                    pool_counts[row['table_id']] = row['n']
+                    
             tables_annotated = []
-            for t in tables_qs.order_by('name'):
+            for t in tables_list:
                 table_cards_qs = ClientCardService._apply_client_staff_row_scope(
                     user,
                     t,
@@ -5847,7 +5852,7 @@ def api_groups_list(request):
                         t_counts[status_val] = row['n']
                 
                 # Pool cards count is the full table pool count (unfiltered)
-                t_counts['pool'] = IDCard.objects.filter(table_id=t.id, status='pool').count()
+                t_counts['pool'] = pool_counts.get(t.id, 0)
                 
                 # total_cards excludes pool to match desktop
                 t.total_cards = t_counts['pending'] + t_counts['verified'] + t_counts['approved'] + t_counts['download']
@@ -6190,8 +6195,16 @@ def api_dashboard_data(request):
 
             tables_data = []
             if is_staff:
+                # Bulk fetch pool counts for all tables to avoid N+1 queries
+                tables_list = list(tables_qs.order_by('name'))
+                table_ids = [t.id for t in tables_list]
+                pool_counts = {}
+                if table_ids:
+                    for row in IDCard.objects.filter(table_id__in=table_ids, status='pool').values('table_id').annotate(n=Count('id')):
+                        pool_counts[row['table_id']] = row['n']
+                        
                 # Scoped counts table-by-table for assistant (except pool)
-                for t in tables_qs.order_by('name'):
+                for t in tables_list:
                     table_cards_qs = ClientCardService._apply_client_staff_row_scope(
                         user,
                         t,
@@ -6208,7 +6221,7 @@ def api_dashboard_data(request):
                             counts[status_val] += row['n']
                             
                     # Pool count in tables is the full table pool count (unfiltered)
-                    t_counts['pool'] = IDCard.objects.filter(table_id=t.id, status='pool').count()
+                    t_counts['pool'] = pool_counts.get(t.id, 0)
                     
                     tables_data.append({
                         'id': t.id,

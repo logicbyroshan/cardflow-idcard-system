@@ -29,8 +29,8 @@ export default function GroupsScreen({ navigation }) {
     const counts = {
       p: table.pending_cards || 0,
       v: table.verified_cards || 0,
-      a: table.approved_cards || 0,
-      d: table.download_cards || 0,
+       || 0,
+       || 0,
       po: table.pool_cards || 0,
     };
 
@@ -53,9 +53,7 @@ export default function GroupsScreen({ navigation }) {
           {[
             { key: 'p', status: 'pending',  label: 'PENDING',  color: '#f59e0b', bg: '#fffbeb', icon: 'clock' },
             { key: 'v', status: 'verified', label: 'VERIFIED', color: '#10b981', bg: '#ecfdf5', icon: 'check-circle' },
-            { key: 'a', status: 'approved', label: 'APPROVED', color: '#3b82f6', bg: '#eff6ff', icon: 'thumbs-up' },
-            { key: 'd', status: 'download', label: 'DOWNLOAD', color: '#8b5cf6', bg: '#f5f3ff', icon: 'download' },
-            { key: 'po', status: 'pool',     label: 'POOL',     color: '#ef4444', bg: '#fef2f2', icon: 'archive' },
+                                    { key: 'po', status: 'pool',     label: 'POOL',     color: '#ef4444', bg: '#fef2f2', icon: 'archive' },
           ].map(st => (
             <TouchableOpacity key={st.key}
               style={[s.pillBtn, { backgroundColor: st.bg, borderColor: st.color + '40' }]}

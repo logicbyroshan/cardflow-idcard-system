@@ -31,13 +31,13 @@
                             <span class="count-badge">{{ table.verified_count }}</span>
                         </a>
                         {% endif %}
-                        {% if is_super_admin or perm_idcard_approved_list %}
+                        {% if is_super_admin %}
                         <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=approved" class="list-btn approved-btn">
                             <i class="fa-solid fa-thumbs-up"></i> Approved
                             <span class="count-badge">{{ table.approved_count }}</span>
                         </a>
                         {% endif %}
-                        {% if is_super_admin or perm_idcard_download_list %}
+                        {% if is_super_admin %}
                         <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=download" class="list-btn download-btn">
                             <i class="fa-solid fa-download"></i> Downloaded
                             <span class="count-badge">{{ table.download_count }}</span>

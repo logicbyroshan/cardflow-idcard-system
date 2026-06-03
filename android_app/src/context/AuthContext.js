@@ -437,18 +437,22 @@ export function AuthProvider({ children }) {
     setIsAppUnlocked(false);
     setIsMpinCreated(false);
     setIsSilentAuthFailed(false);
-    try {
-      // Standard logout endpoint
-      await apiPost('/api/mobile/auth/logout/', {});
-    } catch (e) {
-      // Network failure during logout is fine — session will expire on server
-    }
+    
+    // Clear local storage IMMEDIATELY
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
     await AsyncStorage.removeItem('adarsh_impersonate_state');
     await AsyncStorage.removeItem('adarsh_csrf_token');
     await AsyncStorage.removeItem('adarsh_cookies');
     await AsyncStorage.removeItem('adarsh_user_credentials');
     await clearAuth();
+    
+    try {
+      // Standard logout endpoint
+      // Fire and forget - do not await. We don't care if it fails.
+      apiPost('/api/mobile/auth/logout/', {}).catch(() => {});
+    } catch (e) {
+      // Network failure during logout is fine — session will expire on server
+    }
   }, [isImpersonating, stopImpersonation]);
 
   const checkSession = useCallback(async () => {

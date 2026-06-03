@@ -257,7 +257,7 @@ export async function apiGet(path, params = null) {
       if (response.status === 401) {
         if (data?.logged_in_elsewhere && onSessionKickedCallback) {
           onSessionKickedCallback();
-        } else if (!path.includes('/auth/login/')) {
+        } else if (!path.includes('/auth/login/') && !path.includes('/auth/logout/')) {
           // Attempt silent session renewal and retry once
           const renewed = await attemptSilentSessionRenewal();
           if (renewed) {
@@ -325,7 +325,7 @@ export async function apiPost(path, body = {}) {
       if (response.status === 401) {
         if (data?.logged_in_elsewhere && onSessionKickedCallback) {
           onSessionKickedCallback();
-        } else if (!path.includes('/auth/login/')) {
+        } else if (!path.includes('/auth/login/') && !path.includes('/auth/logout/')) {
           // Attempt silent session renewal and retry once
           const renewed = await attemptSilentSessionRenewal();
           if (renewed) {
@@ -381,7 +381,7 @@ export async function apiPostForm(path, formData, extraHeaders = {}) {
       if (response.status === 401) {
         if (data?.logged_in_elsewhere && onSessionKickedCallback) {
           onSessionKickedCallback();
-        } else if (!path.includes('/auth/login/')) {
+        } else if (!path.includes('/auth/login/') && !path.includes('/auth/logout/')) {
           // Attempt silent session renewal and retry once
           const renewed = await attemptSilentSessionRenewal();
           if (renewed) {

@@ -3,7 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, TextInput, ScrollView,
-  Dimensions, Linking,
+  Dimensions, Linking, Alert
 } from 'react-native';
 import { DynamicIcon, IconSearch, IconCheck } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,8 +25,6 @@ const { width } = Dimensions.get('window'); // eslint-disable-line no-unused-var
 const STATUS_OPTIONS = [
   { key: 'pending',  label: 'Pending',  bg: '#fffbeb', c: '#f59e0b', icon: 'clock' },
   { key: 'verified', label: 'Verified', bg: '#ecfdf5', c: '#10b981', icon: 'check' },
-  { key: 'approved', label: 'Approved', bg: '#eff6ff', c: '#3b82f6', icon: 'thumbs-up' },
-  { key: 'download', label: 'Download', bg: '#f5f3ff', c: '#8b5cf6', icon: 'download' },
   { key: 'pool',     label: 'Pool',     bg: '#fef2f2', c: '#ef4444', icon: 'archive' },
 ];
 
@@ -45,8 +43,6 @@ export default function CardListScreen({ navigation, route }) {
       const p = {
         pending:  'perm_idcard_pending_list',
         verified: 'perm_idcard_verified_list',
-        approved: 'perm_idcard_approved_list',
-        download: 'perm_idcard_download_list',
         pool:     'perm_idcard_pool_list',
       }[opt.key];
       return (user?.isSuperAdmin) || !p || perms[p];
@@ -281,15 +277,11 @@ export default function CardListScreen({ navigation, route }) {
     if (currentStatus === 'pending' && statusStr === 'verified') {
       title = 'Verify Selected Cards?'; icon = 'verified'; color = '#10b981';
       note  = `This will move ${selectedIds.size} selected records to Verified list.`;
-    } else if (currentStatus === 'verified' && statusStr === 'approved') {
-      title = 'Approve Selected Cards?'; icon = 'thumbs-up'; color = '#3b82f6';
-      note  = `This will move ${selectedIds.size} selected records to Approved list.`;
+
     } else if (currentStatus === 'verified' && statusStr === 'pending') {
       title = 'Unverify Selected Cards?'; icon = 'redo'; color = '#f59e0b';
       note  = `This will move ${selectedIds.size} selected records back to Pending list.`;
-    } else if (currentStatus === 'approved' && statusStr === 'verified') {
-      title = 'Disapprove Selected Cards?'; icon = 'redo'; color = '#f59e0b';
-      note  = `This will move ${selectedIds.size} selected records back to Verified list.`;
+
     } else if (currentStatus === 'download' && statusStr === 'pending') {
       title = 'Retrieve Selected Cards?'; icon = 'redo'; color = '#3b82f6';
       note  = `This will move ${selectedIds.size} selected records back to Pending list.`;
@@ -335,6 +327,12 @@ export default function CardListScreen({ navigation, route }) {
             showToast(data.message || 'Updated successfully', 'success');
             updateCardStateLocally(idsArray, currentStatus, statusStr === 'permanent_delete' ? null : statusStr);
             exitSelectMode();
+          } else if (data?.requires_class_change) {
+            Alert.alert(
+              'Class Assignment Required',
+              data.message || 'One or more selected cards require a class update. Please update them individually.',
+              [{ text: 'OK', onPress: () => exitSelectMode() }]
+            );
           } else {
             showToast(data?.message || 'Update failed', 'error');
           }
@@ -354,10 +352,20 @@ export default function CardListScreen({ navigation, route }) {
       if (data?.success) { 
         showToast(data.message || 'Updated', 'success'); 
         updateCardStateLocally([id], currentStatus, newStatus);
+      } else if (data?.requires_class_change) {
+        Alert.alert(
+          'Class Assignment Required',
+          data.message || 'You must update the class to retrieve this card.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Edit Card', onPress: () => handleEditCard({ id }) }
+          ]
+        );
+      } else {
+        showToast(data?.message || 'Failed', 'error');
       }
-      else showToast(data?.message || 'Failed', 'error');
     } catch (_e) { showToast('Network error', 'error'); }
-  }, [showToast, currentStatus, updateCardStateLocally]);
+  }, [showToast, currentStatus, updateCardStateLocally, handleEditCard]);
 
   const handleSingleDelete = useCallback((cardOrId) => {
     const id = (cardOrId && typeof cardOrId === 'object') ? cardOrId.id : cardOrId;
@@ -430,15 +438,11 @@ export default function CardListScreen({ navigation, route }) {
     if (currentStatus === 'pending' && statusStr === 'verified') {
       title = 'Verify Card?'; message = 'Are you sure you want to verify this record?';
       icon = 'verified'; color = '#10b981'; note = 'This will move the record to Verified list.';
-    } else if (currentStatus === 'verified' && statusStr === 'approved') {
-      title = 'Approve Card?'; message = 'Are you sure you want to approve this record?';
-      icon = 'thumbs-up'; color = '#3b82f6'; note = 'This will move the record to Approved list.';
+
     } else if (currentStatus === 'verified' && statusStr === 'pending') {
       title = 'Unverify Card?'; message = 'Are you sure you want to move this record from Verified to Pending?';
       icon = 'redo'; color = '#f59e0b'; note = 'This will move the record back to Pending list.';
-    } else if (currentStatus === 'approved' && statusStr === 'verified') {
-      title = 'Disapprove Card?'; message = 'Are you sure you want to move this record from Approved to Verified list?';
-      icon = 'redo'; color = '#f59e0b'; note = 'This will move the record back to Verified list.';
+
     } else if (currentStatus === 'download' && statusStr === 'pending') {
       title = 'Retrieve Card?'; message = 'Are you sure you want to move this record from Download to Pending list?';
       icon = 'redo'; color = '#3b82f6'; note = 'This will move the record back to Pending list.';
@@ -480,9 +484,7 @@ export default function CardListScreen({ navigation, route }) {
     if (currentStatus === 'verified') {
       return !!(perms.perm_idcard_verify || perms.perm_idcard_approve);
     }
-    if (currentStatus === 'approved') {
-      return !isClientRole && !!perms.perm_idcard_approve;
-    }
+
     if (currentStatus === 'download') {
       return !isClientRole && !!perms.perm_idcard_retrieve;
     }
@@ -502,7 +504,6 @@ export default function CardListScreen({ navigation, route }) {
     const canEdit = perms.perm_idcard_edit && (!isClient || ['pending', 'verified'].includes(currentStatus));
     const canDelete = currentStatus === 'pending' && perms.perm_idcard_delete;
     const statusChangeHandler = isClient && (
-      currentStatus === 'approved' ||
       currentStatus === 'download'
     ) ? undefined : handleStatusChange;
 
@@ -661,10 +662,10 @@ export default function CardListScreen({ navigation, route }) {
               {currentStatus === 'pending'  && perms.perm_idcard_verify  && <FBtn icon="check"        label="VERIFY SELECTED"  disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
               {currentStatus === 'pending'  && perms.perm_idcard_delete && <FBtn icon="trash" label="DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
               
-              {currentStatus === 'verified' && perms.perm_idcard_approve && <FBtn icon="check-double" label="APPROVE SELECTED" disabled={bulkLoading} onPress={() => handleBulkStatus('approved')} />}
+
               {currentStatus === 'verified' && perms.perm_idcard_verify  && <FBtn icon="redo"         label="UNVERIFY SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
               
-              {currentStatus === 'approved' && perms.perm_idcard_approve && !isClientRole && <FBtn icon="redo"         label="DISAPPROVE SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
+
               
               {currentStatus === 'download' && perms.perm_idcard_retrieve && !isClientRole && <FBtn icon="redo"         label="RETRIEVE SELECTED" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
 

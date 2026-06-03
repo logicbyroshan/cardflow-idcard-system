@@ -273,6 +273,9 @@ export default function StaffManageScreen({ navigation, route }) {
     try {
       const { ok, data } = await apiGet(`/api/mobile/staff/${member.id}/assignment/`);
       if (ok && data.success) {
+        if (data.data.groups) {
+          data.data.groups = data.data.groups.filter(g => !g.name?.toLowerCase().includes('default group'));
+        }
         setAssignData(data.data);
         // Load existing scopes as saved (pre-hydrated) so user sees what's already assigned
         const existingGroupIds = data.data.assigned_groups || [];
@@ -748,7 +751,18 @@ export default function StaffManageScreen({ navigation, route }) {
       </View>
 
       {error ? <ErrorBanner message={error} onRetry={refresh} /> : loading && !refreshing ? <StaffManageSkeleton /> : (
-        <FlatList data={filtered} renderItem={renderItem} keyExtractor={item => item.id.toString()} contentContainerStyle={s.list} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandPrimary} />} ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>No members found</Text></View>} />
+        <FlatList 
+          data={filtered} 
+          renderItem={renderItem} 
+          keyExtractor={item => item.id.toString()} 
+          contentContainerStyle={s.list} 
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandPrimary} />} 
+          ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>No members found</Text></View>}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+        />
       )}
 
       <Modal visible={showForm} animationType="fade" transparent onRequestClose={() => setShowForm(false)}>
@@ -897,7 +911,17 @@ export default function StaffManageScreen({ navigation, route }) {
               <Text style={s.modalTitle}>Assign Access</Text>
               <TouchableOpacity onPress={() => setShowAssign(false)}><IconClose size={20} color={colors.gray400} /></TouchableOpacity>
             </View>
-            <ScrollView style={{maxHeight: height * 0.72}} showsVerticalScrollIndicator={false}>
+            
+            <View style={[s.modalFooter, { marginTop: 0, marginBottom: 12, paddingTop: 0 }]}>
+              <TouchableOpacity style={s.modalCancel} onPress={() => setShowAssign(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={s.modalSave} onPress={saveAssignment} disabled={savingAssign}>
+                <LinearGradient colors={gradients.brand} style={s.modalSaveBtn}>
+                  {savingAssign ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.modalSaveText}>SAVE ALL CHANGES</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{maxHeight: height * 0.65}} showsVerticalScrollIndicator={false}>
               {loadingAssign ? <ActivityIndicator style={{padding:40}} color={colors.brandPrimary} /> : (
                 isOperatorMode ? (
                   <>
@@ -916,7 +940,7 @@ export default function StaffManageScreen({ navigation, route }) {
                     <Text style={s.sectionTitle}>Select Groups (Departments)</Text>
                     <Text style={s.sectionHint}>Tap a group to select it, then configure class/section access below it.</Text>
                     <View style={s.checkGrid}>
-                      {assignData.groups.filter(g => !g.name?.toLowerCase().includes('default group')).map(g => {
+                      {assignData.groups.map(g => {
                         const isSelected = selectedGroupIds.includes(g.id);
                         const isSaved = savedScopeIds.has(`group-${g.id}`);
                         return (
@@ -1042,14 +1066,6 @@ export default function StaffManageScreen({ navigation, route }) {
                 )
               )}
             </ScrollView>
-            <View style={s.modalFooter}>
-              <TouchableOpacity style={s.modalCancel} onPress={() => setShowAssign(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={s.modalSave} onPress={saveAssignment} disabled={savingAssign}>
-                <LinearGradient colors={gradients.brand} style={s.modalSaveBtn}>
-                  {savingAssign ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.modalSaveText}>SAVE ALL CHANGES</Text>}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>

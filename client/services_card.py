@@ -331,7 +331,7 @@ class ClientCardService(BaseService):
         return True
 
     @classmethod
-    def _apply_client_staff_row_scope(cls, user, table, qs):
+    def _apply_client_staff_row_scope(cls, user, table, qs, ignore_pool_bypass=False):
         """
         Apply client_staff row-level filtering based on assigned classes/sections/branches.
         Supports multiple assignment scopes (OR-ed together).
@@ -440,9 +440,14 @@ class ClientCardService(BaseService):
             final_q |= scope_q
 
         if not final_q:
-            return qs.none()
+            if ignore_pool_bypass:
+                return qs.none()
+            return qs.filter(status='pool')
 
-        return qs.filter(final_q)
+        # Allow 'pool' cards to bypass row-level filtering unless checking explicitly
+        if ignore_pool_bypass:
+            return qs.filter(final_q)
+        return qs.filter(final_q | Q(status='pool'))
     
     @classmethod
     def get_tables_for_client(cls, user, client=None) -> ServiceResult:
@@ -1051,6 +1056,7 @@ class ClientCardService(BaseService):
                     user,
                     card.table,
                     IDCard.objects.filter(id=card.id, table_id=card.table_id),
+                    ignore_pool_bypass=True
                 )
                 
                 # If out of scope, check if they requested a class change
@@ -1130,6 +1136,7 @@ class ClientCardService(BaseService):
                         user,
                         table,
                         IDCard.objects.filter(table=table, id__in=normalized_ids),
+                        ignore_pool_bypass=True
                     ).values_list('id', flat=True)
                 )
                 forbidden_ids = [cid for cid in normalized_ids if cid not in scoped_ids]

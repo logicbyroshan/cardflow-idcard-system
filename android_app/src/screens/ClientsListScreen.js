@@ -270,7 +270,19 @@ export default function ClientsListScreen({ navigation, route }) {
       </View>
 
       {error ? <ErrorBanner message={error} onRetry={refresh} /> : loading && !refreshing ? <ClientsListSkeleton /> : (
-        <FlatList data={filtered} renderItem={renderItem} keyExtractor={item => item.id.toString()} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandPrimary} />} ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>No clients found</Text></View>} />
+        <FlatList 
+          data={filtered} 
+          renderItem={renderItem} 
+          keyExtractor={item => item.id.toString()} 
+          contentContainerStyle={s.list} 
+          keyboardShouldPersistTaps="handled" 
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brandPrimary} />} 
+          ListEmptyComponent={<View style={s.empty}><Text style={s.emptyText}>No clients found</Text></View>}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+        />
       )}
 
       <Modal visible={showForm} animationType="fade" transparent onRequestClose={() => setShowForm(false)}>
@@ -471,9 +483,7 @@ const ClientCard = React.memo(({ item, perms, impersonatingId, onImpersonate, on
   
   const handlePendingPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'pending' }), [item.id, item.name, navigation]);
   const handleVerifiedPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'verified' }), [item.id, item.name, navigation]);
-  const handleApprovedPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'approved' }), [item.id, item.name, navigation]);
-  const handleDownloadPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'download' }), [item.id, item.name, navigation]);
-  const handlePoolPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'pool' }), [item.id, item.name, navigation]);
+      const handlePoolPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'pool' }), [item.id, item.name, navigation]);
 
   const handleGroupsPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name }), [item.id, item.name, navigation]);
   const handleSettingsPress = useCallback(() => navigation.navigate('GroupSettings', { clientId: item.id, clientName: item.name }), [item.id, item.name, navigation]);
@@ -525,9 +535,7 @@ const ClientCard = React.memo(({ item, perms, impersonatingId, onImpersonate, on
       <View style={s.cardStats}>
         <StatPill label="PENDING" count={item.counts?.pending} color="#f59e0b" onPress={handlePendingPress} />
         <StatPill label="VERIFIED" count={item.counts?.verified} color="#10b981" onPress={handleVerifiedPress} />
-        <StatPill label="APPROVED" count={item.counts?.approved} color="#3b82f6" onPress={handleApprovedPress} />
-        <StatPill label="DOWNLOAD" count={item.counts?.download} color="#8b5cf6" onPress={handleDownloadPress} />
-        <StatPill label="POOL" count={item.counts?.pool} color="#ec4899" onPress={handlePoolPress} />
+                        <StatPill label="POOL" count={item.counts?.pool} color="#ec4899" onPress={handlePoolPress} />
       </View>
 
       <View style={s.cardActions}>

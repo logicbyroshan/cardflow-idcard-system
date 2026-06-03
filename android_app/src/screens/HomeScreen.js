@@ -27,9 +27,7 @@ const { width } = Dimensions.get('window');
 const STATUS_CONFIG = [
   { key: 'pending',  label: 'Pending',   Svg: IconPending,   bg: '#f59e0b', bg2: '#d97706' },
   { key: 'verified', label: 'Verified',  Svg: IconVerified,  bg: '#10b981', bg2: '#059669' },
-  { key: 'approved', label: 'Approved',  Svg: IconApproved,  bg: '#3b82f6', bg2: '#2563eb' },
-  { key: 'download', label: 'Download',  Svg: IconDownload,  bg: '#8b5cf6', bg2: '#7c3aed' },
-  { key: 'pool',     label: 'Pool',      Svg: IconPool,      bg: '#ef4444', bg2: '#b91c1c' },
+      { key: 'pool',     label: 'Pool',      Svg: IconPool,      bg: '#ef4444', bg2: '#b91c1c' },
   { key: 'total',    label: 'All Cards', Svg: IconTotal,     bg: '#1e293b', bg2: '#0f172a' },
 ];
 
@@ -1050,9 +1048,7 @@ const RecentClientItem = React.memo(({ client, isExpanded, theme, handleToggleEx
           <View style={s.clientStatsRow}>
             <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={onBadgePending} />
             <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={onBadgeVerified} />
-            <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={onBadgeApproved} />
-            <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={onBadgeDownload} />
-            <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
+                                    <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
           </View>
 
           {isExpanded && (
@@ -1087,9 +1083,7 @@ const RecentClientTableItem = React.memo(({ table, navigation }) => {
         {[
           { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
           { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
-          { key: 'approved', label: 'Approved', count: table.a || 0, color: colors.approved.text, bg: colors.approved.bg },
-          { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg },
-          { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
+                              { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
         ].map((stBtn) => (
           <RecentClientTableStatusBtn
             key={stBtn.key}
@@ -1416,18 +1410,14 @@ const MyTableItem = React.memo(({ table, navigation, theme }) => {
     const list = [
       { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
       { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
-      { key: 'approved', label: 'Approved', count: table.a || 0, color: colors.approved.text, bg: colors.approved.bg },
-      { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg },
-      { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
+                  { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
     ];
     const permsObj = user?.permissions || {};
     return list.filter(opt => {
       const p = {
         pending:  'perm_idcard_pending_list',
         verified: 'perm_idcard_verified_list',
-        approved: 'perm_idcard_approved_list',
-        download: 'perm_idcard_download_list',
-        pool:     'perm_idcard_pool_list',
+                        pool:     'perm_idcard_pool_list',
       }[opt.key];
       return (user?.isSuperAdmin) || !p || permsObj[p];
     });

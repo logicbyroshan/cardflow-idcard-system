@@ -58,8 +58,7 @@ class PermissionService:
 
     IDCARD_LIST_PERMISSIONS = [
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
-        'perm_idcard_pool_list', 'perm_idcard_approved_list',
-        'perm_idcard_download_list',
+        'perm_idcard_pool_list',
         'perm_idcard_reprint_list',
     ]
     
@@ -154,8 +153,6 @@ class PermissionService:
     STATUS_LIST_PERM_MAP = {
         'pending': 'perm_idcard_pending_list',
         'verified': 'perm_idcard_verified_list',
-        'approved': 'perm_idcard_approved_list',
-        'download': 'perm_idcard_download_list',
         'pool': 'perm_idcard_pool_list',
     }
 
@@ -163,8 +160,6 @@ class PermissionService:
     STATUS_ACTION_PERM_MAP = {
         'pending': 'perm_idcard_verify',
         'verified': 'perm_idcard_verify',
-        'approved': 'perm_idcard_approve',
-        'download': 'perm_idcard_approve',
         'pool': 'perm_idcard_delete',
     }
 

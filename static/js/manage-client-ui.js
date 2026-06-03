@@ -282,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
       NS.permissionFields = [
         'perm_idcard_client_list',
         'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
-        'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list',
+        'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list',
         'perm_reprint_request_list', 'perm_confirmed_list',
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_reprint_list',
         'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
@@ -306,8 +306,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Reset all permission toggles to default (OFF by default, except the 16 auto-on permissions for new clients)
         var defaultOnPerms = [
-          'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_approved_list',
-          'perm_idcard_download_list', 'perm_idcard_pool_list', 'perm_idcard_add', 'perm_idcard_edit',
+          'perm_idcard_pending_list', 'perm_idcard_verified_list',
+          'perm_idcard_pool_list', 'perm_idcard_add', 'perm_idcard_edit',
           'perm_idcard_info', 'perm_idcard_delete', 'perm_idcard_approve', 'perm_idcard_verify',
           'perm_idcard_updated_at', 'perm_idcard_retrieve', 'perm_idcard_bulk_download',
           'perm_idcard_client_list', 'perm_set_temp_password'
@@ -420,7 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
             'perm_idcard_setting_list': 'View Template', 'perm_idcard_setting_delete': 'Delete Template',
             'perm_idcard_setting_status': 'Status Template',
             'perm_idcard_pending_list': 'Pending List', 'perm_idcard_verified_list': 'Verified List', 'perm_idcard_pool_list': 'Pool List',
-            'perm_idcard_approved_list': 'Approved List', 'perm_idcard_download_list': 'Download List',
             'perm_reprint_request_list': 'Request List (Reprint)', 'perm_confirmed_list': 'Confirmed List (Reprint)',
             'perm_idcard_add': 'Add Card', 'perm_idcard_edit': 'Edit Card', 'perm_idcard_info': 'View Card Info',
             'perm_idcard_delete': 'Delete Card', 'perm_idcard_approve': 'Approve Card', 'perm_idcard_verify': 'Verify Card',

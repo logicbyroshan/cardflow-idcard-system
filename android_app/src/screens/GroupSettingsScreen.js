@@ -349,7 +349,7 @@ export default function GroupSettingsScreen({ navigation, route }) {
             <Text style={s.tableMeta}>{table.fields?.length || 0} fields · {totalCards} cards</Text>
           </View>
           <View style={s.tableStatusRow}>
-            {['pending', 'verified', 'approved', 'download', 'pool'].map(st => {
+            {['pending', 'verified', 'pool'].map(st => {
               const count = table[`${st}_count`] || 0;
               if (!count) return null;
               const sc = STATUS_COLORS[st];

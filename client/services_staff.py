@@ -36,11 +36,8 @@ class ClientStaffService(BaseService):
     STAFF_PERMISSION_FIELDS = [
         # ── ID Card List Tabs ────────────────────────────────────────
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
-        'perm_idcard_pool_list', 'perm_idcard_approved_list',
-        'perm_idcard_download_list',
-        # ── Print & Reprint Lists ────────────────────────────────────
-        'perm_idcard_reprint_list', 'perm_reprint_request_list',
-        'perm_confirmed_list',
+        'perm_idcard_pool_list',
+        
         # ── Export / Download ───────────────────────────────────────
         'perm_idcard_bulk_download',
         # ── Card Actions ──────────────────────────────────────────────

@@ -778,8 +778,6 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm_idcard_pending_list': 'Pending List',
         'perm_idcard_verified_list': 'Verified List',
         'perm_idcard_pool_list': 'Pool List',
-        'perm_idcard_approved_list': 'Approved List',
-        'perm_idcard_download_list': 'Download List',
         'perm_reprint_request_list': 'Reprint Request List',
         'perm_confirmed_list': 'Confirmed List',
         'perm_idcard_bulk_download': 'Bulk Download',

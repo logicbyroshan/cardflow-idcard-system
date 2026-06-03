@@ -24,15 +24,13 @@ const STATUS_OPTIONS = [
   { key: 'all',      label: 'ALL',       color: colors.brandPrimary, icon: 'list' },
   { key: 'pending',  label: 'PENDING',   color: '#f59e0b',           icon: 'clock' },
   { key: 'verified', label: 'VERIFIED',  color: '#10b981',           icon: 'check-circle' },
-  { key: 'approved', label: 'APPROVED',  color: '#3b82f6',           icon: 'thumbs-up' },
-  { key: 'download', label: 'DOWNLOAD',  color: '#8b5cf6',           icon: 'download' },
-  { key: 'pool',     label: 'POOL',      color: '#ec4899',           icon: 'layer-group' },
+      { key: 'pool',     label: 'POOL',      color: '#ec4899',           icon: 'layer-group' },
 ];
 
 const STATUS_COLORS = {
   pending:  { bg: '#fffbeb', text: '#f59e0b', border: '#fef3c7', icon: 'clock' },
   verified: { bg: '#ecfdf5', text: '#10b981', border: '#d1fae5', icon: 'check-circle' },
-  approved: { bg: '#eff6ff', text: '#3b82f6', border: '#dbeafe', icon: 'thumbs-up' },
+  
   download: { bg: '#f5f3ff', text: '#8b5cf6', border: '#e0e7ff', icon: 'download' },
   pool:     { bg: '#fef2f2', text: '#ef4444', border: '#fee2fee', icon: 'layer-group' },
 };
@@ -118,11 +116,11 @@ export default function ClientGroupsScreen({ navigation, route }) {
     allTables.forEach(t => {
       counts.pending += (t.pending_count || 0);
       counts.verified += (t.verified_count || 0);
-      counts.approved += (t.approved_count || 0);
-      counts.download += (t.download_count || 0);
+       (t.approved_count || 0);
+       (t.download_count || 0);
       counts.pool += (t.pool_count || 0);
     });
-    counts.all = counts.pending + counts.verified + counts.approved + counts.download + counts.pool;
+    counts.all = counts.pending + counts.verified + counts.pool;
     return counts;
   }, [allTables]);
 

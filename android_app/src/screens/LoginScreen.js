@@ -20,10 +20,23 @@ export default function LoginScreen({ navigation }) {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'error' });
+
+  const handleNext = () => {
+    setError('');
+    if (!email.trim()) {
+      setError('Please enter your email or phone.');
+      return;
+    }
+    setStep(2);
+    setTimeout(() => {
+      passwordInputRef.current?.focus();
+    }, 200);
+  };
+
   const handleLogin = async () => {
     setError('');
     if (!email.trim() || !password) {
@@ -138,42 +151,57 @@ export default function LoginScreen({ navigation }) {
               </View>
             )}
 
-            {/* Email */}
-            <Input
-              label="EMAIL"
-              leftIcon="envelope"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordInputRef.current?.focus()}
-            />
+            {/* Step 1: Identifier */}
+            {step === 1 && (
+              <Input
+                label="EMAIL OR PHONE"
+                leftIcon="user"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Enter email or phone"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                returnKeyType="next"
+                onSubmitEditing={handleNext}
+              />
+            )}
 
-            {/* Password */}
-            <Input
-              ref={passwordInputRef}
-              label="PASSWORD"
-              leftIcon="lock"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••"
-              autoComplete="current-password"
-              secureTextEntry
-              returnKeyType="go"
-              onSubmitEditing={handleLogin}
-            />
+            {/* Step 2: Password */}
+            {step === 2 && (
+              <View>
+                <TouchableOpacity 
+                  onPress={() => { setStep(1); setPassword(''); }} 
+                  style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, backgroundColor: 'rgba(0,0,0,0.03)', padding: 10, borderRadius: radius.sm }}
+                >
+                  <DynamicIcon name="arrow-left" size={14} color={colors.brandDark} />
+                  <Text style={{ color: colors.brandDark, marginLeft: 10, fontSize: typography.md, fontFamily: 'SairaSemiCondensed-Medium' }}>
+                    {email}
+                  </Text>
+                </TouchableOpacity>
+                <Input
+                  ref={passwordInputRef}
+                  label="PASSWORD"
+                  leftIcon="lock"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••"
+                  autoComplete="current-password"
+                  secureTextEntry
+                  returnKeyType="go"
+                  onSubmitEditing={handleLogin}
+                />
+              </View>
+            )}
 
             {/* Submit */}
             <Button
-              onPress={handleLogin}
+              onPress={step === 1 ? handleNext : handleLogin}
               loading={loading}
               fullWidth
               style={styles.submitBtn}
             >
-              Sign In
+              {step === 1 ? 'Next' : 'Sign In'}
             </Button>
 
             <Button
