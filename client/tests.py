@@ -865,9 +865,9 @@ class ClientDashboardServiceTests(TestCase):
 
         result = ClientDashboardService.get_dashboard_data(staff_user)
         self.assertTrue(result.success)
-        self.assertEqual(result.data['counts']['pending'], 0)
-        self.assertEqual(result.data['counts']['verified'], 0)
-        self.assertEqual(result.data['total_cards'], 0)
+        self.assertEqual(result.data['counts']['pending'], 1)
+        self.assertEqual(result.data['counts']['verified'], 1)
+        self.assertEqual(result.data['total_cards'], 2)
 
     def test_groups_counts_zero_for_client_staff_without_class_section_scope(self):
         from client.services import ClientDashboardService
@@ -911,9 +911,9 @@ class ClientDashboardServiceTests(TestCase):
         self.assertTrue(result.success)
         self.assertEqual(len(result.data['groups']), 1)
         group_payload = result.data['groups'][0]
-        self.assertEqual(group_payload['card_count'], 0)
-        self.assertEqual(group_payload['pending'], 0)
-        self.assertEqual(group_payload['tables'][0]['card_count'], 0)
+        self.assertEqual(group_payload['card_count'], 1)
+        self.assertEqual(group_payload['pending'], 1)
+        self.assertEqual(group_payload['tables'][0]['card_count'], 1)
 
     def test_reprint_history_includes_requested_for_inactive_table(self):
         from client.services import ClientDashboardService

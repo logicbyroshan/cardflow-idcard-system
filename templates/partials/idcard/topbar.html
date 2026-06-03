@@ -55,13 +55,13 @@
         <span class="tab-count">{{ status_counts.verified }}</span>
       </a>
       {% endif %}
-      {% if is_super_admin %}
+      {% if is_super_admin or perm_idcard_approved_list %}
       <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=approved" class="action-tab approved-tab {% if current_status == 'approved' %}active{% endif %}">
         <span class="tab-label">Approved List</span>
         <span class="tab-count">{{ status_counts.approved }}</span>
       </a>
       {% endif %}
-      {% if is_super_admin %}
+      {% if is_super_admin or perm_idcard_download_list %}
       <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=download" class="action-tab download-tab {% if current_status == 'download' %}active{% endif %}">
         <span class="tab-label">Download List</span>
         <span class="tab-count">{{ status_counts.download }}</span>
