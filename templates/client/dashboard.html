@@ -53,7 +53,7 @@
   {% include 'partials/dashboard/welcome-notification-banner.html' %}
 
   <!-- Stats Cards (clickable - navigate to ID Card Group) -->
-  <div class="stats-cards">
+  <div class="stats-cards{% if not is_client_admin %} assistant-grid{% endif %}">
     <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon pending">
         <i class="fa-solid fa-clock"></i>
@@ -74,6 +74,7 @@
       </div>
     </a>
 
+    {% if is_client_admin %}
     <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon approved">
         <i class="fa-solid fa-thumbs-up"></i>
@@ -93,6 +94,7 @@
         <div class="stat-label">Downloaded Cards</div>
       </div>
     </a>
+    {% endif %}
 
     <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon pool">

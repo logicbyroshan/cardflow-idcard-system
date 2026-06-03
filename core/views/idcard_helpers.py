@@ -411,6 +411,9 @@ def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     if not PermissionService.is_client_staff(user):
         return qs
 
+    if status_filter == 'pool':
+        return qs
+
     staff = getattr(user, 'staff_profile', None)
     if not staff:
         return qs.none()

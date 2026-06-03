@@ -108,6 +108,15 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
             // Update the row in-place instead of full page reload.
             // This preserves scroll position and avoids losing user context.
             IDCardApp._updateRowInPlace(cardId, data.card);
+
+            // If we need to retrieve this card after saving, do so now
+            if (window.IDCardApp.retrieveOnSave) {
+                window.IDCardApp.retrieveOnSave = false;
+                if (typeof window.IDCardApp.bulkRetrieveSilent === 'function') {
+                    window.IDCardApp.bulkRetrieveSilent([cardId]);
+                }
+            }
+
             document.dispatchEvent(new CustomEvent('idcard:card-updated', {
                 detail: {
                     cardId: cardId,
@@ -174,7 +183,7 @@ function initModalModule() {
     }
     
     // Edit buttons
-    const editBtnIds = ['editBtn', 'editBtnV', 'editBtnA', 'editBtnD'];
+    const editBtnIds = ['editBtn', 'editBtnV', 'editBtnA', 'editBtnD', 'editBtnP'];
     editBtnIds.forEach(btnId => {
         const btn = document.getElementById(btnId);
         if (btn) {

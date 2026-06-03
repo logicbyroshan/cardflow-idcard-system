@@ -162,7 +162,7 @@ function createRowFromCard(card, index) {
                     data-original-value="${safeFieldValue}">
                     <div class="image-with-edit">
                         ${imageHtml}
-                        ${(typeof PERMS !== 'undefined' && PERMS.idcard_edit && !(typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER && typeof CLIENT_READONLY_STATUSES !== 'undefined' && CLIENT_READONLY_STATUSES.indexOf(_ts.lazyLoadState.currentStatus) !== -1)) ? `<button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card">Edit</button>` : ''}
+                        ${(typeof PERMS !== 'undefined' && (PERMS.idcard_edit || (_ts.lazyLoadState.currentStatus === 'pool' && PERMS.idcard_retrieve)) && !(typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER && typeof CLIENT_READONLY_STATUSES !== 'undefined' && CLIENT_READONLY_STATUSES.indexOf(_ts.lazyLoadState.currentStatus) !== -1)) ? `<button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card">Edit</button>` : ''}
                     </div>
                 </td>`;
             } else {

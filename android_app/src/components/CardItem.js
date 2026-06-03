@@ -239,6 +239,16 @@ const CardItem = React.memo(function CardItem({
             </TouchableOpacity>
           )}
 
+          {/* Reprint Request Button */}
+          {onReprint && (currentStatus === 'approved' || currentStatus === 'download') && (
+            <TouchableOpacity 
+              style={[s.outlineBtn, { borderColor: colors.warning }]} 
+              onPress={() => onReprint(item)}
+            >
+              <Text style={[s.outlineBtnText, { color: colors.warning }]}>REPRINT</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Edit Button */}
           {onEdit && hasPerm('perm_idcard_edit') && (
             <TouchableOpacity 

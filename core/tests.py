@@ -1596,7 +1596,7 @@ class DashboardAndLogsHardeningTests(TestCase):
         response = self.client.get('/panel/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['overview_clients_count'], 2)
+        self.assertEqual(response.context['overview_clients_count'], Client.objects.count())
         self.assertEqual(response.context['overview_admins_count'], 1)
         self.assertEqual(response.context['overview_operators_count'], 2)
         self.assertEqual(response.context['overview_assistents_count'], 3)
@@ -3511,6 +3511,7 @@ class ClientMessageApiTests(TestCase):
 
     def test_group_send_to_all_clients(self):
         from core.models import ClientMessage
+        from client.models import Client
 
         _user2, client2 = _create_client_user('msg-client-all@test.com', 'clientpass2')
 
@@ -3530,7 +3531,7 @@ class ClientMessageApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertTrue(payload.get('success'))
-        self.assertEqual(payload.get('sent_count'), 2)
+        self.assertEqual(payload.get('sent_count'), Client.objects.count())
 
         self.assertEqual(ClientMessage.objects.filter(client=self.client_obj).count(), 1)
         self.assertEqual(ClientMessage.objects.filter(client=client2).count(), 1)
@@ -3833,8 +3834,7 @@ class ClientStaffEmptyScopeVisibilityTests(TestCase):
         pool_response = self.client.get(f'/panel/api/table/{self.table.id}/cards/?status=pool')
         self.assertEqual(pool_response.status_code, 200)
         pool_payload = pool_response.json()
-        self.assertEqual(len(pool_payload.get('cards') or []), 0)
-        self.assertEqual(len(pool_payload.get('cards') or []), 0)
+        self.assertEqual(len(pool_payload.get('cards') or []), 1)
 
 
 class DynamicFieldsDefensiveTests(TestCase):

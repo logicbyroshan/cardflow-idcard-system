@@ -912,16 +912,7 @@ export default function StaffManageScreen({ navigation, route }) {
               <TouchableOpacity onPress={() => setShowAssign(false)}><IconClose size={20} color={colors.gray400} /></TouchableOpacity>
             </View>
             
-            <View style={[s.modalFooter, { marginTop: 0, marginBottom: 12, paddingTop: 0 }]}>
-              <TouchableOpacity style={s.modalCancel} onPress={() => setShowAssign(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={s.modalSave} onPress={saveAssignment} disabled={savingAssign}>
-                <LinearGradient colors={gradients.brand} style={s.modalSaveBtn}>
-                  {savingAssign ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.modalSaveText}>SAVE ALL CHANGES</Text>}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{maxHeight: height * 0.65}} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{maxHeight: height * 0.72}} showsVerticalScrollIndicator={false}>
               {loadingAssign ? <ActivityIndicator style={{padding:40}} color={colors.brandPrimary} /> : (
                 isOperatorMode ? (
                   <>
@@ -957,7 +948,7 @@ export default function StaffManageScreen({ navigation, route }) {
                         );
                       })}
                     </View>
-
+ 
                     {/* Inline config for selected groups */}
                     {selectedGroupIds.map(gid => {
                       const g = assignData.groups.find(x => x.id === gid);
@@ -978,9 +969,8 @@ export default function StaffManageScreen({ navigation, route }) {
                           </TouchableOpacity>
                           {isActive && (
                             <View style={s.scopeInner}>
-                              {renderScopeConfig(g, 'group')}
                               <TouchableOpacity
-                                style={s.innerSaveBtn}
+                                style={[s.innerSaveBtn, { marginTop: 0, marginBottom: 12 }]}
                                 onPress={() => saveScopeConfig('group', gid)}
                                 activeOpacity={0.8}
                               >
@@ -988,6 +978,7 @@ export default function StaffManageScreen({ navigation, route }) {
                                   <Text style={s.innerSaveBtnText}>✓ SAVE THIS GROUP</Text>
                                 </LinearGradient>
                               </TouchableOpacity>
+                              {renderScopeConfig(g, 'group')}
                             </View>
                           )}
                           {isSaved && !isActive && (
@@ -998,7 +989,7 @@ export default function StaffManageScreen({ navigation, route }) {
                         </View>
                       );
                     })}
-
+ 
                     {/* STEP 2: Select Tables */}
                     <Text style={[s.sectionTitle, {marginTop: 20}]}>Select Tables (Sections)</Text>
                     <Text style={s.sectionHint}>Tap a table to select it, then configure class/section access below it.</Text>
@@ -1020,7 +1011,7 @@ export default function StaffManageScreen({ navigation, route }) {
                         );
                       })}
                     </View>
-
+ 
                     {/* Inline config for selected tables */}
                     {selectedTableIds.map(tid => {
                       const t = assignData.tables.find(x => x.id === tid);
@@ -1041,9 +1032,8 @@ export default function StaffManageScreen({ navigation, route }) {
                           </TouchableOpacity>
                           {isActive && (
                             <View style={s.scopeInner}>
-                              {renderScopeConfig(t, 'table')}
                               <TouchableOpacity
-                                style={s.innerSaveBtn}
+                                style={[s.innerSaveBtn, { marginTop: 0, marginBottom: 12 }]}
                                 onPress={() => saveScopeConfig('table', tid)}
                                 activeOpacity={0.8}
                               >
@@ -1051,6 +1041,7 @@ export default function StaffManageScreen({ navigation, route }) {
                                   <Text style={s.innerSaveBtnText}>✓ SAVE THIS TABLE</Text>
                                 </LinearGradient>
                               </TouchableOpacity>
+                              {renderScopeConfig(t, 'table')}
                             </View>
                           )}
                           {isSaved && !isActive && (
@@ -1066,6 +1057,15 @@ export default function StaffManageScreen({ navigation, route }) {
                 )
               )}
             </ScrollView>
+            
+            <View style={s.modalFooter}>
+              <TouchableOpacity style={s.modalCancel} onPress={() => setShowAssign(false)}><Text style={s.modalCancelText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={s.modalSave} onPress={saveAssignment} disabled={savingAssign}>
+                <LinearGradient colors={gradients.brand} style={s.modalSaveBtn}>
+                  {savingAssign ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.modalSaveText}>SAVE ALL CHANGES</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

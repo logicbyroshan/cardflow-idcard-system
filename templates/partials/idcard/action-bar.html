@@ -286,6 +286,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">View</span>
             </button>
             {% endif %}
+            {% if perm_idcard_edit or perm_idcard_retrieve %}
+            <button class="btn action-btn btn-blue" id="editBtnP" disabled title="Edit selected card">
+                <i class="fa-solid fa-pen"></i>
+                <span class="btn-text">Edit</span>
+            </button>
+            {% endif %}
             {% if perm_idcard_retrieve %}
             <button class="btn action-btn btn-green" id="retrieveBtnP" disabled title="Move selected from pool to pending">
                 <i class="fa-solid fa-rotate-left"></i>

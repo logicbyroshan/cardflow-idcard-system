@@ -24,7 +24,9 @@ const { width } = Dimensions.get('window'); // eslint-disable-line no-unused-var
 
 const STATUS_OPTIONS = [
   { key: 'pending',  label: 'Pending',  bg: '#fffbeb', c: '#f59e0b', icon: 'clock' },
-  { key: 'verified', label: 'Verified', bg: '#ecfdf5', c: '#10b981', icon: 'check' },
+  { key: 'verified', label: 'Verified', bg: '#ecfdf5', c: '#10b981', icon: 'verified' },
+  { key: 'approved', label: 'Approved', bg: '#eff6ff', c: '#3b82f6', icon: 'approved' },
+  { key: 'download', label: 'Download', bg: '#f5f3ff', c: '#8b5cf6', icon: 'download' },
   { key: 'pool',     label: 'Pool',     bg: '#fef2f2', c: '#ef4444', icon: 'archive' },
 ];
 
@@ -39,10 +41,16 @@ export default function CardListScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
   const allowedStatuses = useMemo(() => {
+    const isAssistant = perms.role === 'client_staff';
     return STATUS_OPTIONS.filter(opt => {
+      if (isAssistant && (opt.key === 'approved' || opt.key === 'download')) {
+        return false;
+      }
       const p = {
         pending:  'perm_idcard_pending_list',
         verified: 'perm_idcard_verified_list',
+        approved: 'perm_idcard_approved_list',
+        download: 'perm_idcard_download_list',
         pool:     'perm_idcard_pool_list',
       }[opt.key];
       return (user?.isSuperAdmin) || !p || perms[p];

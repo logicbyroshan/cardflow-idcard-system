@@ -292,7 +292,25 @@ export default function HomeScreen({ navigation }) {
     setClientPickerLoading(false);
   }, [counts.recent_clients]);
 
-  const totalCards = counts.total || STATUS_CONFIG.filter(s => s.key !== 'total' && s.key !== 'pool').reduce((sum, s) => sum + (counts[s.key] || 0), 0);
+  const statusConfig = useMemo(() => {
+    const list = [
+      { key: 'pending',  label: 'Pending',   Svg: IconPending,   bg: '#f59e0b', bg2: '#d97706' },
+      { key: 'verified', label: 'Verified',  Svg: IconVerified,  bg: '#10b981', bg2: '#059669' },
+    ];
+    if (user?.role !== 'client_staff') {
+      list.push(
+        { key: 'approved', label: 'Approved',  Svg: IconApproved,  bg: '#3b82f6', bg2: '#2563eb' },
+        { key: 'download', label: 'Download',  Svg: IconDownload,  bg: '#8b5cf6', bg2: '#7c3aed' }
+      );
+    }
+    list.push(
+      { key: 'pool',     label: 'Pool',      Svg: IconPool,      bg: '#ef4444', bg2: '#b91c1c' },
+      { key: 'total',    label: 'All Cards', Svg: IconTotal,     bg: '#1e293b', bg2: '#0f172a' }
+    );
+    return list;
+  }, [user]);
+
+  const totalCards = counts.total || statusConfig.filter(s => s.key !== 'total' && s.key !== 'pool').reduce((sum, s) => sum + (counts[s.key] || 0), 0);
   
   const quickActions = useMemo(() => {
     const actions = [];
@@ -428,12 +446,14 @@ export default function HomeScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandLight} />}>
 
         <View style={s.statusGrid}>
-          {STATUS_CONFIG.map(st => {
+          {statusConfig.map(st => {
             const val = st.key === 'total' ? totalCards : (counts[st.key] || 0);
+            const isAssistant = user?.role === 'client_staff';
+            const cardWidth = isAssistant ? (width - 34) / 2 : (width - 44) / 3;
             return (
               <TouchableOpacity 
                 key={st.key} 
-                style={s.statusCardOuter}
+                style={[s.statusCardOuter, { width: cardWidth }]}
                 activeOpacity={0.8}
                 onPress={() => handleStatCardPress(st.key)}
               >
@@ -836,9 +856,9 @@ const s = StyleSheet.create({
   clientIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   clientInfo: { flex: 1 },
   clientName: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
-  clientStatsRow: { flexDirection: 'row', gap: 3, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
-  clientMiniStat: { alignItems: 'center', flex: 1 },
-  clientMiniStatLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', marginBottom: 4, letterSpacing: 0.3 },
+  clientStatsRow: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  clientMiniStat: { alignItems: 'stretch', flex: 1 },
+  clientMiniStatLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', marginBottom: 4, letterSpacing: 0.3, textAlign: 'center' },
   clientMiniStatBadge: { width: '100%', paddingHorizontal: 2, paddingVertical: 2, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   clientMiniStatCount: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
   expandedContent: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
@@ -1024,6 +1044,8 @@ const RecentClientsSection = React.memo(({ recentClients, expandedClient, setExp
 });
 
 const RecentClientItem = React.memo(({ client, isExpanded, theme, handleToggleExpandClient, handleBadgePress, navigation, setExpandedClient }) => {
+  const { user } = useAuth();
+  const isAssistant = user?.role === 'client_staff';
   const onToggleExpand = useCallback(() => handleToggleExpandClient(client.id), [client.id, handleToggleExpandClient]);
   const onBadgePending = useCallback(() => handleBadgePress(client, 'PENDING'), [client, handleBadgePress]);
   const onBadgeVerified = useCallback(() => handleBadgePress(client, 'VERIFIED'), [client, handleBadgePress]);
@@ -1048,7 +1070,13 @@ const RecentClientItem = React.memo(({ client, isExpanded, theme, handleToggleEx
           <View style={s.clientStatsRow}>
             <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={onBadgePending} />
             <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={onBadgeVerified} />
-                                    <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
+            {!isAssistant && (
+              <>
+                <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={onBadgeApproved} />
+                <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={onBadgeDownload} />
+              </>
+            )}
+            <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
           </View>
 
           {isExpanded && (
@@ -1073,6 +1101,24 @@ const RecentClientItem = React.memo(({ client, isExpanded, theme, handleToggleEx
 });
 
 const RecentClientTableItem = React.memo(({ table, navigation }) => {
+  const { user } = useAuth();
+  const isAssistant = user?.role === 'client_staff';
+
+  const statusBtnsList = useMemo(() => {
+    const list = [
+      { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
+      { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
+    ];
+    if (!isAssistant) {
+      list.push(
+        { key: 'approved', label: 'Approved', count: table.a || 0, color: colors.approved.text, bg: colors.approved.bg },
+        { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg }
+      );
+    }
+    list.push({ key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg });
+    return list;
+  }, [table, isAssistant]);
+
   return (
     <View style={s.expandedItem}>
       <View style={s.expandedItemHeader}>
@@ -1080,11 +1126,7 @@ const RecentClientTableItem = React.memo(({ table, navigation }) => {
         <Text style={s.expandedItemGroup}>{table.group}</Text>
       </View>
       <View style={s.statusButtonsRowBelow}>
-        {[
-          { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
-          { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
-                              { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
-        ].map((stBtn) => (
+        {statusBtnsList.map((stBtn) => (
           <RecentClientTableStatusBtn
             key={stBtn.key}
             stBtn={stBtn}
@@ -1407,17 +1449,27 @@ const MyTableItem = React.memo(({ table, navigation, theme }) => {
   }, [navigation, table.id]);
 
   const allowedStBtns = useMemo(() => {
+    const isAssistant = user?.role === 'client_staff';
     const list = [
       { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
       { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
-                  { key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg },
     ];
+    if (!isAssistant) {
+      list.push(
+        { key: 'approved', label: 'Approved', count: table.a || 0, color: colors.approved.text, bg: colors.approved.bg },
+        { key: 'download', label: 'Download', count: table.d || 0, color: colors.download.text, bg: colors.download.bg }
+      );
+    }
+    list.push({ key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg });
+
     const permsObj = user?.permissions || {};
     return list.filter(opt => {
       const p = {
         pending:  'perm_idcard_pending_list',
         verified: 'perm_idcard_verified_list',
-                        pool:     'perm_idcard_pool_list',
+        approved: 'perm_idcard_approved_list',
+        download: 'perm_idcard_download_list',
+        pool:     'perm_idcard_pool_list',
       }[opt.key];
       return (user?.isSuperAdmin) || !p || permsObj[p];
     });

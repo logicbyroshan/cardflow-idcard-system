@@ -331,13 +331,18 @@ class ClientCardService(BaseService):
         return True
 
     @classmethod
-    def _apply_client_staff_row_scope(cls, user, table, qs, ignore_pool_bypass=False):
+    def _apply_client_staff_row_scope(cls, user, table, qs, ignore_pool_bypass=False, status_filter=None):
         """
         Apply client_staff row-level filtering based on assigned classes/sections/branches.
         Supports multiple assignment scopes (OR-ed together).
         """
         if not PermissionService.is_client_staff(user):
             return qs
+
+        # If ignore_pool_bypass is False, bypass row-level scoping for pool status
+        if not ignore_pool_bypass:
+            if status_filter == 'pool':
+                return qs
 
         staff = getattr(user, 'staff_profile', None)
         if not staff:
@@ -594,7 +599,7 @@ class ClientCardService(BaseService):
             else:
                 cards_query = cards_query.filter(status__in=allowed_statuses)
 
-            cards_query = cls._apply_client_staff_row_scope(user, table, cards_query)
+            cards_query = cls._apply_client_staff_row_scope(user, table, cards_query, status_filter=status_filter)
             
             # Search in field_data (JSONField) using table-aware matcher.
             if search:
@@ -857,7 +862,7 @@ class ClientCardService(BaseService):
             if PermissionService.is_client_staff(user):
                 for s_key in counts:
                     counts[s_key] = cls._apply_client_staff_row_scope(
-                        user, table, IDCard.objects.filter(table=table, status=s_key)
+                        user, table, IDCard.objects.filter(table=table, status=s_key), status_filter=s_key
                     ).count()
 
             return ServiceResult(
@@ -908,6 +913,7 @@ class ClientCardService(BaseService):
                 user,
                 card.table,
                 IDCard.objects.filter(id=card.id, table_id=card.table_id),
+                status_filter=card.status,
             )
             if not scoped_card.exists():
                 return ServiceResult(success=False, message='Access denied')
@@ -1013,7 +1019,7 @@ class ClientCardService(BaseService):
     @classmethod
     def change_card_status(
         cls, user, card_id: int, new_status: str, request=None,
-        apply_class_change: bool = False, updated_class: str = ''
+        apply_class_change: bool = False, updated_class: str = '', updated_section: str = ''
     ) -> ServiceResult:
         """
         Change a card's status — delegates to WorkflowService.transition().
@@ -1047,6 +1053,7 @@ class ClientCardService(BaseService):
                     user,
                     card.table,
                     IDCard.objects.filter(id=card.id, table_id=card.table_id),
+                    status_filter=card.status,
                 )
                 if not scoped_card.exists():
                     return ServiceResult(success=False, message='Access denied')
@@ -1064,7 +1071,7 @@ class ClientCardService(BaseService):
                     from core.views.idcard_card_api import _apply_pool_retrieve_class_change, _pool_retrieve_scope_payload, _pool_retrieve_requires_class_change, _POOL_RETRIEVE_SCOPE_MESSAGE
                     
                     if apply_class_change:
-                        ok, error_message = _apply_pool_retrieve_class_change(user, card, updated_class)
+                        ok, error_message = _apply_pool_retrieve_class_change(user, card, updated_class, updated_section)
                         if not ok:
                             payload = _pool_retrieve_scope_payload(user, card)
                             return ServiceResult(
@@ -1186,6 +1193,7 @@ class ClientCardService(BaseService):
                                 user,
                                 table,
                                 IDCard.objects.filter(table=table, id__in=normalized_ids),
+                                ignore_pool_bypass=True
                             ).values_list('id', flat=True)
                         )
                         forbidden_ids = [cid for cid in normalized_ids if cid not in scoped_ids]

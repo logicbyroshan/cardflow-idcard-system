@@ -63,9 +63,16 @@ def _as_bool(value):
 
 
 @require_http_methods(["POST"])
-@api_require_permission('perm_idcard_edit')
+@api_require_any_authenticated
 def api_image_preview_convert(request):
     """Convert uploaded HEIF/HEIC to previewable bytes before save."""
+    has_edit_perm = PermissionService.has(request.user, 'perm_idcard_edit')
+    is_assistant_pool_retrieve = (
+        PermissionService.is_client_staff(request.user)
+        and PermissionService.has(request.user, 'perm_idcard_retrieve')
+    )
+    if not (has_edit_perm or is_assistant_pool_retrieve):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     uploaded_file = request.FILES.get('file')
     if not uploaded_file:
         return JsonResponse({'success': False, 'message': 'No image file provided'}, status=400)
@@ -155,6 +162,9 @@ def _pool_retrieve_scope_payload(user, card):
         'class_field': None,
         'current_class': '',
         'allowed_classes': [],
+        'section_field': None,
+        'current_section': '',
+        'allowed_sections': [],
     }
 
     if not PermissionService.is_client_staff(user):
@@ -164,15 +174,17 @@ def _pool_retrieve_scope_payload(user, card):
     if not staff:
         return payload
 
-    class_field_name, _section_field_name, _course_field_name, _branch_field_name = (
+    class_field_name, section_field_name, _course_field_name, _branch_field_name = (
         _get_class_section_course_branch_field_names(card.table)
     )
     payload['class_field'] = class_field_name
+    payload['section_field'] = section_field_name
 
     payload['allowed_classes'] = _table_scope_values_for_staff(staff, card.table, 'classes')
+    payload['allowed_sections'] = _table_scope_values_for_staff(staff, card.table, 'sections')
 
+    field_data = card.field_data or {}
     if class_field_name:
-        field_data = card.field_data or {}
         raw_value = (
             field_data.get(class_field_name)
             or field_data.get(class_field_name.upper())
@@ -181,11 +193,20 @@ def _pool_retrieve_scope_payload(user, card):
         )
         payload['current_class'] = str(raw_value).strip()
 
+    if section_field_name:
+        raw_value = (
+            field_data.get(section_field_name)
+            or field_data.get(section_field_name.upper())
+            or field_data.get(section_field_name.lower())
+            or ''
+        )
+        payload['current_section'] = str(raw_value).strip()
+
     return payload
 
 
 def _pool_retrieve_requires_class_change(user, card):
-    """Return True when pool->pending retrieve needs a class update first."""
+    """Return True when pool->pending retrieve needs a class or section update first."""
     if not PermissionService.is_client_staff(user):
         return False
 
@@ -195,68 +216,105 @@ def _pool_retrieve_requires_class_change(user, card):
     from core.utils.field_utils import normalize_class_value
 
     payload = _pool_retrieve_scope_payload(user, card)
+    
+    # Check Class
     class_field_name = payload.get('class_field')
     allowed_classes = payload.get('allowed_classes') or []
-    if not class_field_name or not allowed_classes:
-        return False
+    if class_field_name and allowed_classes:
+        normalized_allowed = {
+            normalize_class_value(value)
+            for value in allowed_classes
+            if normalize_class_value(value)
+        }
+        if normalized_allowed:
+            current_class = payload.get('current_class') or ''
+            current_normalized = normalize_class_value(current_class)
+            if current_normalized not in normalized_allowed:
+                return True
 
-    normalized_allowed = {
-        normalize_class_value(value)
-        for value in allowed_classes
-        if normalize_class_value(value)
-    }
-    if not normalized_allowed:
-        return False
+    # Check Section
+    section_field_name = payload.get('section_field')
+    allowed_sections = payload.get('allowed_sections') or []
+    if section_field_name and allowed_sections:
+        normalized_allowed_sec = {
+            str(value).strip().lower()
+            for value in allowed_sections
+            if str(value).strip()
+        }
+        if normalized_allowed_sec:
+            current_section = payload.get('current_section') or ''
+            current_normalized_sec = str(current_section).strip().lower()
+            if current_normalized_sec not in normalized_allowed_sec:
+                return True
 
-    current_class = payload.get('current_class') or ''
-    current_normalized = normalize_class_value(current_class)
-    return current_normalized not in normalized_allowed
+    return False
 
 
-def _apply_pool_retrieve_class_change(user, card, requested_class):
-    """Apply class update for out-of-scope pool retrieve before status transition."""
+def _apply_pool_retrieve_class_change(user, card, requested_class, requested_section=None):
+    """Apply class and section update for out-of-scope pool retrieve before status transition."""
     if not PermissionService.is_client_staff(user):
         return False, 'Class update is only available for assistant retrieve flow.'
 
+    if isinstance(requested_class, dict):
+        requested_section = requested_class.get('section')
+        requested_class = requested_class.get('class')
+
     requested_text = str(requested_class or '').strip()
-    if not requested_text:
-        return False, 'Select your assigned class before retrieving from pool.'
+    requested_sec_text = str(requested_section or '').strip()
 
     staff = getattr(user, 'staff_profile', None)
     if not staff:
         return False, 'Staff profile not found.'
 
-    class_field_name, _section_field_name, _course_field_name, _branch_field_name = (
+    class_field_name, section_field_name, _course_field_name, _branch_field_name = (
         _get_class_section_course_branch_field_names(card.table)
     )
-    if not class_field_name:
-        return False, 'Class field is not configured for this table.'
 
-    allowed_values = _table_scope_values_for_staff(staff, card.table, 'classes')
-    if not allowed_values:
-        return False, 'No assigned class available for this table.'
+    # 1. Update class if configured and required
+    field_updates = {}
+    
+    if class_field_name:
+        allowed_values = _table_scope_values_for_staff(staff, card.table, 'classes')
+        if allowed_values:
+            from core.utils.field_utils import normalize_class_value
+            normalized_allowed = {}
+            for value in allowed_values:
+                normalized = normalize_class_value(value)
+                if normalized and normalized not in normalized_allowed:
+                    normalized_allowed[normalized] = value
 
-    from core.utils.field_utils import normalize_class_value
+            requested_normalized = normalize_class_value(requested_text)
+            if requested_normalized in normalized_allowed:
+                selected_class_value = normalized_allowed[requested_normalized]
+                field_updates[class_field_name] = selected_class_value
 
-    normalized_allowed = {}
-    for value in allowed_values:
-        normalized = normalize_class_value(value)
-        if normalized and normalized not in normalized_allowed:
-            normalized_allowed[normalized] = value
+    # 2. Update section if configured and required
+    if section_field_name:
+        allowed_sections = _table_scope_values_for_staff(staff, card.table, 'sections')
+        if allowed_sections:
+            normalized_allowed_sec = {}
+            for value in allowed_sections:
+                normalized = str(value).strip().lower()
+                if normalized and normalized not in normalized_allowed_sec:
+                    normalized_allowed_sec[normalized] = value
 
-    requested_normalized = normalize_class_value(requested_text)
-    if not requested_normalized or requested_normalized not in normalized_allowed:
-        return False, 'Selected class is outside your assigned scope.'
+            requested_sec_normalized = requested_sec_text.lower()
+            if requested_sec_normalized in normalized_allowed_sec:
+                selected_section_value = normalized_allowed_sec[requested_sec_normalized]
+                field_updates[section_field_name] = selected_section_value
 
-    selected_class_value = normalized_allowed[requested_normalized]
+    if not field_updates:
+        return False, 'No valid class or section was provided within your assigned scope.'
+
     field_data = dict(card.field_data or {})
-    class_field_key = class_field_name
-    for key in (class_field_name, class_field_name.upper(), class_field_name.lower()):
-        if key in field_data:
-            class_field_key = key
-            break
+    for key, val in field_updates.items():
+        actual_key = key
+        for k in (key, key.upper(), key.lower()):
+            if k in field_data:
+                actual_key = k
+                break
+        field_data[actual_key] = val
 
-    field_data[class_field_key] = selected_class_value
     card.field_data = field_data
     card.modified_by = request_username = getattr(user, 'username', '') or ''
     update_fields = ['field_data', 'modified_by', 'updated_at'] if request_username else ['field_data', 'updated_at']
@@ -1252,7 +1310,7 @@ def api_idcard_history(request, card_id):
 
 
 @require_http_methods(["POST", "PUT"])
-@api_require_permission('perm_idcard_edit')
+@api_require_any_authenticated
 def api_idcard_update(request, card_id):
     """API endpoint to update an ID Card with file upload support.
 
@@ -1261,6 +1319,16 @@ def api_idcard_update(request, card_id):
     """
     _card, err = _check_client_scope_by_card(request.user, card_id)
     if err: return err
+
+    has_edit_perm = PermissionService.has(request.user, 'perm_idcard_edit')
+    is_assistant_pool_retrieve = (
+        PermissionService.is_client_staff(request.user)
+        and _card.status == 'pool'
+        and PermissionService.has(request.user, 'perm_idcard_retrieve')
+    )
+    if not (has_edit_perm or is_assistant_pool_retrieve):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
     if not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
@@ -1495,7 +1563,8 @@ def api_idcard_change_status(request, card_id):
             apply_class_change = _as_bool(data.get('apply_class_change'))
             if apply_class_change:
                 updated_class = data.get('updated_class')
-                ok, error_message = _apply_pool_retrieve_class_change(request.user, card, updated_class)
+                updated_section = data.get('updated_section')
+                ok, error_message = _apply_pool_retrieve_class_change(request.user, card, updated_class, updated_section)
                 if not ok:
                     payload = _pool_retrieve_scope_payload(request.user, card)
                     return JsonResponse({

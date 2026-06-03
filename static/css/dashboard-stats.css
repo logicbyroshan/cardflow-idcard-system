@@ -39,6 +39,10 @@
     gap: 0;
 }
 
+.stats-cards.assistant-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
 .stat-card {
     display: flex;
     align-items: center;

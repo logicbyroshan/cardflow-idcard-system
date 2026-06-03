@@ -331,8 +331,8 @@ const s = StyleSheet.create({
   emptySub: { color: colors.gray400, fontSize: 12, fontFamily: 'SairaSemiCondensed-Medium', marginTop: 4 },
   
   clientStatsRow: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
-  clientMiniStat: { alignItems: 'center', flex: 1 },
-  clientMiniStatLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', marginBottom: 4, letterSpacing: 0.3 },
+  clientMiniStat: { alignItems: 'stretch', flex: 1 },
+  clientMiniStatLabel: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', marginBottom: 4, letterSpacing: 0.3, textAlign: 'center' },
   clientMiniStatBadge: { width: '100%', paddingHorizontal: 2, paddingVertical: 6, borderRadius: radius.xs, alignItems: 'center', justifyContent: 'center' },
   clientMiniStatCount: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
 

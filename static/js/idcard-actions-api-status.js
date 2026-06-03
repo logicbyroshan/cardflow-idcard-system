@@ -618,60 +618,115 @@ function promptRetrieveClassAndConfirm(details, sourceLabel, onConfirmClass) {
     var allowedClasses = Array.isArray(details.allowed_classes)
         ? details.allowed_classes.map(function(value) { return String(value || '').trim(); }).filter(Boolean)
         : [];
-    if (!allowedClasses.length) {
+    var allowedSections = Array.isArray(details.allowed_sections)
+        ? details.allowed_sections.map(function(value) { return String(value || '').trim(); }).filter(Boolean)
+        : [];
+
+    if (!allowedClasses.length && !allowedSections.length) {
         if (typeof showToast === 'function') {
-            showToast('No assigned class available. Ask admin to set your class assignment.', false);
+            showToast('No assigned class or section available. Ask admin to set your assignment.', false);
         }
         return true;
     }
+
+    // Remove old overlay if exists
+    var old = document.getElementById('retrievePromptOverlay');
+    if (old) old.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'retrievePromptOverlay';
+    overlay.className = 'wf-confirm-overlay';
 
     var currentClass = String(details.current_class || '').trim();
-    var promptLines = [
-        'This record is outside your assigned class scope.',
-        '',
-        'Assigned classes: ' + allowedClasses.join(', '),
-    ];
-    if (currentClass) {
-        promptLines.push('Current class: ' + currentClass);
-    }
-    promptLines.push('Enter one assigned class to continue:');
+    var currentSection = String(details.current_section || '').trim();
 
-    var picked = window.prompt(promptLines.join('\n'), allowedClasses[0]);
-    if (picked === null) {
-        return true;
-    }
-
-    picked = String(picked || '').trim();
-    if (!picked) {
-        if (typeof showToast === 'function') showToast('Class is required to retrieve this card.', false);
-        return true;
-    }
-
-    var matchedClass = null;
-    var pickedLower = picked.toLowerCase();
-    for (var i = 0; i < allowedClasses.length; i++) {
-        if (allowedClasses[i].toLowerCase() === pickedLower) {
-            matchedClass = allowedClasses[i];
-            break;
+    var classOptionsHTML = '';
+    if (allowedClasses.length > 0) {
+        classOptionsHTML += '<div class="form-group" style="margin-bottom: 15px; text-align: left;">';
+        classOptionsHTML += '  <label style="display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;">ASSIGNED CLASS</label>';
+        classOptionsHTML += '  <select id="retrievePromptClassSelect" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; color: #334155; background-color: #fff;">';
+        for (var i = 0; i < allowedClasses.length; i++) {
+            var isSel = (allowedClasses[i].toLowerCase() === currentClass.toLowerCase()) ? 'selected' : '';
+            classOptionsHTML += '    <option value="' + allowedClasses[i] + '" ' + isSel + '>' + allowedClasses[i] + '</option>';
         }
-    }
-    if (!matchedClass) {
-        if (typeof showToast === 'function') {
-            showToast('Select a class from your assigned classes only.', false);
-        }
-        return true;
+        classOptionsHTML += '  </select>';
+        classOptionsHTML += '</div>';
     }
 
-    showWorkflowConfirm(
-        'Change class to "' + matchedClass + '" and move this record from ' + sourceLabel + ' to Pending list?',
-        function() {
-            onConfirmClass(matchedClass);
-        },
-        {
-            actionType: sourceLabel === 'Download' ? 'retrieveDownload' : 'retrievePool',
-            note: 'Class will be updated only after you confirm. Cancel keeps card unchanged in ' + sourceLabel + '.',
+    var sectionOptionsHTML = '';
+    if (allowedSections.length > 0) {
+        sectionOptionsHTML += '<div class="form-group" style="margin-bottom: 15px; text-align: left;">';
+        sectionOptionsHTML += '  <label style="display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;">ASSIGNED SECTION</label>';
+        sectionOptionsHTML += '  <select id="retrievePromptSectionSelect" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; color: #334155; background-color: #fff;">';
+        for (var j = 0; j < allowedSections.length; j++) {
+            var isSelSec = (allowedSections[j].toLowerCase() === currentSection.toLowerCase()) ? 'selected' : '';
+            sectionOptionsHTML += '    <option value="' + allowedSections[j] + '" ' + isSelSec + '>' + allowedSections[j] + '</option>';
         }
-    );
+        sectionOptionsHTML += '  </select>';
+        sectionOptionsHTML += '</div>';
+    }
+
+    overlay.innerHTML = `
+        <div class="wf-confirm-card" style="max-width: 440px;">
+            <div class="wf-confirm-header" style="background:#eff6ff">
+                <div class="wf-confirm-icon-wrap" style="background:#2563eb">
+                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                </div>
+                <div class="wf-confirm-title">Retrieve from ${sourceLabel}</div>
+                <button class="wf-confirm-close" id="retrievePromptClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="wf-confirm-body" style="padding: 20px;">
+                <p class="wf-confirm-msg" style="margin-bottom: 15px; color: #334155; font-size: 14px; text-align: left;">
+                    This record is outside your scope. Choose from your assigned scopes below to move it to your Pending list:
+                </p>
+                ${classOptionsHTML}
+                ${sectionOptionsHTML}
+                <div class="wf-confirm-note" style="margin-top: 15px; text-align: left;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>This will update the record's class/section and assign it to you.</span>
+                </div>
+            </div>
+            <div class="wf-confirm-footer">
+                <button class="wf-btn wf-btn-cancel" id="retrievePromptCancel"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                <button class="wf-btn wf-btn-confirm" id="retrievePromptOk" style="background:#2563eb"><i class="fa-solid fa-check"></i> Retrieve</button>
+            </div>
+        </div>`;
+
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(function() {
+        overlay.classList.add('wf-active');
+    });
+
+    document.body.style.overflow = 'hidden';
+
+    function cleanup() {
+        overlay.classList.remove('wf-active');
+        overlay.classList.add('wf-closing');
+        setTimeout(function() {
+            overlay.remove();
+            document.body.style.overflow = '';
+        }, 200);
+    }
+
+    document.getElementById('retrievePromptClose').onclick = cleanup;
+    document.getElementById('retrievePromptCancel').onclick = cleanup;
+    document.getElementById('retrievePromptOk').onclick = function() {
+        var selectedClass = '';
+        var selectClassEl = document.getElementById('retrievePromptClassSelect');
+        if (selectClassEl) {
+            selectedClass = selectClassEl.value;
+        }
+
+        var selectedSection = '';
+        var selectSectionEl = document.getElementById('retrievePromptSectionSelect');
+        if (selectSectionEl) {
+            selectedSection = selectSectionEl.value;
+        }
+
+        cleanup();
+        onConfirmClass(selectedClass, selectedSection);
+    };
 
     return true;
 }
@@ -750,9 +805,12 @@ function retrieveCard(cardId) {
             .then(function(data) {
                 if (data.success === false) {
                     var details = _extractRetrieveClassChangeDetails(data);
-                    if (details && promptRetrieveClassAndConfirm(details, sourceLabel, function(selectedClass) {
-                        performRetrieve({ status: 'pending', apply_class_change: true, updated_class: selectedClass });
-                    })) {
+                    if (details) {
+                        if (typeof showToast === 'function') {
+                            showToast('This student is not assigned to you. Please update class/section to retrieve.', false);
+                        }
+                        window.IDCardApp.retrieveOnSave = true;
+                        window.IDCardApp.fetchCardAndOpenModal('edit', cardId);
                         return;
                     }
                     if (typeof showToast === 'function') showToast(data.message || 'Error', false);
@@ -763,9 +821,12 @@ function retrieveCard(cardId) {
             })
             .catch(function(err) {
                 var details = _extractRetrieveClassChangeDetails(err && err.data);
-                if (details && promptRetrieveClassAndConfirm(details, sourceLabel, function(selectedClass) {
-                    performRetrieve({ status: 'pending', apply_class_change: true, updated_class: selectedClass });
-                })) {
+                if (details) {
+                    if (typeof showToast === 'function') {
+                        showToast('This student is not assigned to you. Please update class/section to retrieve.', false);
+                    }
+                    window.IDCardApp.retrieveOnSave = true;
+                    window.IDCardApp.fetchCardAndOpenModal('edit', cardId);
                     return;
                 }
                 if (typeof showToast === 'function') showToast((err && err.message) || 'Failed to retrieve card', false);
