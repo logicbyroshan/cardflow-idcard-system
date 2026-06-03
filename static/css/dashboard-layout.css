@@ -876,9 +876,8 @@
 }
 
 .rh-details {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
     font-weight: 500;
     color: var(--color-gray-800);
 }
@@ -919,7 +918,8 @@
 .rh-date {
     font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-gray-400);
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .rh-status {
@@ -1047,4 +1047,9 @@
     min-height: 34px;
     padding: 7px 12px;
     border-radius: 0;
+}
+
+/* Single column layout for assistant without reprint permission */
+.dashboard-grid.single-col {
+    grid-template-columns: 1fr;
 }

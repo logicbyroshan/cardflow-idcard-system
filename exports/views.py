@@ -568,7 +568,7 @@ def _check_client_pdf_only(request):
     Returns:
         None if permitted, JsonResponse with error if blocked.
     """
-    if request.user.role in ('client', 'client_staff'):
+    if PermissionService.is_client_role(request.user):
         return JsonResponse({
             'success': False,
             'message': 'Only PDF download is available for your account'

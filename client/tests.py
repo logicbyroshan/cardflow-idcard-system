@@ -971,7 +971,7 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(result.data['total_count'], 1)
         self.assertEqual(len(result.data['items']), 1)
         self.assertEqual(result.data['items'][0]['status'], 'requested')
-        self.assertIn('Card #', result.data['items'][0]['details'])
+        self.assertIn('Malformed Table', result.data['items'][0]['details'])
 
     def test_reprint_history_populates_photo_url_with_export_helper(self):
         from client.services import ClientDashboardService

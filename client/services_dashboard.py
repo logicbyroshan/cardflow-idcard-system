@@ -239,14 +239,85 @@ class ClientDashboardService(BaseService):
             except Exception:
                 photo_url = ''
 
-        details_bits = []
-        if card:
-            details_bits.append(f'Card #{card.id}')
-        if table and getattr(table, 'name', ''):
-            details_bits.append(str(table.name).strip())
+        card_details_parts = []
+        if card and isinstance(getattr(card, 'field_data', None), dict):
+            field_data = card.field_data
+            
+            # Find name
+            name_val = None
+            class_val = None
+            sec_val = None
+            
+            lower_keys = {k.lower().strip(): k for k in field_data.keys()}
+            
+            name_candidates = ['name', 'student name', 'student_name', 'candidate name', 'candidate_name', 'name of student', 'name of candidate']
+            for cand in name_candidates:
+                if cand in lower_keys:
+                    name_val = field_data[lower_keys[cand]]
+                    break
+            if not name_val:
+                for k_lower, k_orig in lower_keys.items():
+                    if 'name' in k_lower and not any(x in k_lower for x in ['father', 'mother', 'parent', 'photo', 'sig', 'file', 'url', 'husband', 'guardian']):
+                        name_val = field_data[k_orig]
+                        break
+                        
+            class_candidates = ['class', 'grade', 'standard', 'std']
+            for cand in class_candidates:
+                if cand in lower_keys:
+                    class_val = field_data[lower_keys[cand]]
+                    break
+            if not class_val:
+                for k_lower, k_orig in lower_keys.items():
+                    if 'class' in k_lower or 'grade' in k_lower:
+                        class_val = field_data[k_orig]
+                        break
 
-        if not details_bits:
-            details_bits.append('Reprint request')
+            sec_candidates = ['sec', 'section']
+            for cand in sec_candidates:
+                if cand in lower_keys:
+                    sec_val = field_data[lower_keys[cand]]
+                    break
+            if not sec_val:
+                for k_lower, k_orig in lower_keys.items():
+                    if 'sec' in k_lower or 'section' in k_lower:
+                        sec_val = field_data[k_orig]
+                        break
+
+            if name_val:
+                card_details_parts.append(f"Name: {str(name_val).strip()}")
+            if class_val:
+                card_details_parts.append(f"Class: {str(class_val).strip()}")
+            if sec_val:
+                card_details_parts.append(f"Sec: {str(sec_val).strip()}")
+
+            if not card_details_parts:
+                count = 0
+                for k, v in field_data.items():
+                    k_lower = k.lower()
+                    if not v or any(x in k_lower for x in ['photo', 'image', 'avatar', 'sig', 'file', 'url']):
+                        continue
+                    if len(str(v)) < 50:
+                        card_details_parts.append(f"{k}: {str(v).strip()}")
+                        count += 1
+                        if count >= 3:
+                            break
+
+        details_str = ""
+        table_name = str(table.name).strip() if table and getattr(table, 'name', '') else ""
+        
+        if table_name:
+            details_str = table_name
+            if card_details_parts:
+                details_str += f" ({', '.join(card_details_parts)})"
+        else:
+            if card_details_parts:
+                details_str = ", ".join(card_details_parts)
+            else:
+                details_str = f"Card #{card.id}" if card else "Reprint request"
+
+        created_at_formatted = None
+        if request_obj.created_at:
+            created_at_formatted = localtime(request_obj.created_at).strftime('%d-%m-%Y %H:%M')
 
         return {
             'id': request_obj.id,
@@ -254,10 +325,10 @@ class ClientDashboardService(BaseService):
             'status_display': request_obj.get_status_display(),
             'card_id': getattr(card, 'id', None),
             'table_id': getattr(table, 'id', None),
-            'table_name': getattr(table, 'name', '') or '',
-            'details': ' - '.join(details_bits),
+            'table_name': table_name,
+            'details': details_str,
             'photo_url': photo_url,
-            'created_at': request_obj.created_at.isoformat() if request_obj.created_at else None,
+            'created_at': created_at_formatted,
             'updated_at': request_obj.updated_at.isoformat() if request_obj.updated_at else None,
         }
 

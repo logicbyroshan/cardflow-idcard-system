@@ -160,6 +160,9 @@ def api_reprint_history(request):
     This wraps ClientDashboardService.get_reprint_history so templates
     and client-side code can fetch a single consolidated endpoint.
     """
+    if not PermissionService.has_permission(request.user, 'perm_reprint_request_list'):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
     try:
         result = ClientDashboardService.get_reprint_history(request.user)
         if result.success:

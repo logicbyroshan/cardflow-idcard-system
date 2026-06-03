@@ -121,9 +121,10 @@
   <div class="dashboard-middle-scroll">
 
   <!-- Main Grid: Reprint History (left 2fr) + Recent Activity (right 1fr) -->
-  <div class="dashboard-grid">
+  <div class="dashboard-grid{% if not perm_reprint_request_list %} single-col{% endif %}">
 
-    <!-- Reprint Requests History (no permission needed - visible to all) -->
+    {% if perm_reprint_request_list %}
+    <!-- Reprint Requests History -->
     <div class="dashboard-card">
       <div class="dashboard-card-header">
         <h3><i class="fa-solid fa-rotate"></i> Reprint Requests History</h3>
@@ -180,6 +181,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
 
     <!-- Recent Activity (right side) -->
     <div class="dashboard-card">
@@ -271,7 +273,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Load dashboard stats + activity
   loadDashboardData();
   // Load reprint history
+  {% if perm_reprint_request_list %}
   loadReprintHistory();
+  {% endif %}
 });
 
 function setStatValue(id, value) {
