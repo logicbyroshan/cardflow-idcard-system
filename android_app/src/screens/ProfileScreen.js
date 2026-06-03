@@ -15,7 +15,7 @@ import { apiGet, apiPost } from '../api/client';
 import { colors, radius, shadows, roleThemes, gradients, fontFamily } from '../theme';
 
 export default function ProfileScreen({ navigation }) {
-  const { user, refreshProfile, logout, isImpersonating, stopImpersonation } = useAuth();
+  const { user, refreshProfile, logout, isImpersonating, stopImpersonation, lockTimeout, setLockTimeout } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ name: user?.name || '', phone: user?.phone || '' });
@@ -192,6 +192,47 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+
+        <Text style={s.secTitle}>AUTO-LOCK TIMER</Text>
+        <View style={s.lockTimerCard}>
+          <View style={s.lockTimerHeader}>
+            <View style={s.lockTimerIconWrap}>
+              <DynamicIcon name="clock" size={13} color={colors.brandPrimary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.lockTimerTitle}>App Lock After Background</Text>
+              <Text style={s.lockTimerSubtitle}>App will lock after this duration in background</Text>
+            </View>
+          </View>
+          <View style={s.lockTimerOptions}>
+            {[{ label: '100 sec', val: 100 }, { label: '300 sec', val: 300 }].map(opt => {
+              const active = lockTimeout === opt.val;
+              return (
+                <TouchableOpacity
+                  key={opt.val}
+                  style={[s.lockTimerChip, active && s.lockTimerChipActive]}
+                  onPress={() => setLockTimeout(opt.val)}
+                  activeOpacity={0.75}
+                >
+                  <DynamicIcon
+                    name={active ? 'lock' : 'clock'}
+                    size={11}
+                    color={active ? '#fff' : colors.gray500}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[s.lockTimerChipText, active && s.lockTimerChipTextActive]}>{opt.label}</Text>
+                  {active && (
+                    <View style={s.lockTimerActiveDot} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={s.lockTimerNote}>
+            Currently: lock after <Text style={{ fontFamily: 'SairaSemiCondensed-Bold', color: colors.brandPrimary }}>{lockTimeout} seconds</Text> in background
+          </Text>
+        </View>
+
         <Text style={s.secTitle}>ACCOUNT SETTINGS</Text>
         <View style={s.updCard}>
           {isImpersonating && (
@@ -314,6 +355,19 @@ const s = StyleSheet.create({
 
   footer: { marginTop: 40, alignItems: 'center', paddingBottom: 20 },
   footerText: { fontSize: 10, color: colors.gray300, fontFamily: 'SairaSemiCondensed-SemiBold' },
+
+  lockTimerCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: radius.sm, padding: 14, borderWidth: 1, borderColor: '#e2e8f0', ...shadows.sm },
+  lockTimerHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  lockTimerIconWrap: { width: 34, height: 34, borderRadius: radius.xs, backgroundColor: '#f5f3ff', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1, borderColor: '#ede9fe' },
+  lockTimerTitle: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800 },
+  lockTimerSubtitle: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400, marginTop: 1 },
+  lockTimerOptions: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  lockTimerChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: radius.xs, backgroundColor: colors.gray50, borderWidth: 1.5, borderColor: '#e2e8f0' },
+  lockTimerChipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+  lockTimerChipText: { fontSize: 12, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray600 },
+  lockTimerChipTextActive: { color: '#fff' },
+  lockTimerActiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.7)', marginLeft: 6 },
+  lockTimerNote: { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray400, textAlign: 'center', marginTop: 2 },
 });
 
 const ir = StyleSheet.create({

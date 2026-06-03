@@ -916,7 +916,7 @@ export default function StaffManageScreen({ navigation, route }) {
                     <Text style={s.sectionTitle}>Select Groups (Departments)</Text>
                     <Text style={s.sectionHint}>Tap a group to select it, then configure class/section access below it.</Text>
                     <View style={s.checkGrid}>
-                      {assignData.groups.map(g => {
+                      {assignData.groups.filter(g => !g.name?.toLowerCase().includes('default group')).map(g => {
                         const isSelected = selectedGroupIds.includes(g.id);
                         const isSaved = savedScopeIds.has(`group-${g.id}`);
                         return (

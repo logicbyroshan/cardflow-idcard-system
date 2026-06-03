@@ -29,8 +29,10 @@ export function AuthProvider({ children }) {
   const [isMpinCreated, setIsMpinCreated] = useState(false);
   const [isSilentAuthFailed, setIsSilentAuthFailed] = useState(false);
   const [isSessionKicked, setIsSessionKicked] = useState(false);
+  const [lockTimeout, setLockTimeoutState] = useState(100); // seconds: 100 or 300
   const appStateRef = useRef('active');
   const backgroundTimeRef = useRef(null);
+  const lockTimeoutRef = useRef(100); // mirror for AppState listener
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -99,6 +101,15 @@ export function AuthProvider({ children }) {
         if (kicked === 'true') {
           setIsSessionKicked(true);
         }
+        // Load saved lock timeout
+        const savedTimeout = await AsyncStorage.getItem('adarsh_lock_timeout');
+        if (savedTimeout === '300') {
+          setLockTimeoutState(300);
+          lockTimeoutRef.current = 300;
+        } else {
+          setLockTimeoutState(100);
+          lockTimeoutRef.current = 100;
+        }
         await loadStoredAuth();
         const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
         if (stored) {
@@ -158,7 +169,7 @@ export function AuthProvider({ children }) {
       if (nextAppState === 'active') {
         if (backgroundTimeRef.current) {
           const elapsed = Date.now() - backgroundTimeRef.current;
-          if (elapsed >= 100000) { // 100 seconds
+          if (elapsed >= lockTimeoutRef.current * 1000) {
             setIsAppUnlocked(false);
           }
           backgroundTimeRef.current = null;
@@ -494,6 +505,13 @@ export function AuthProvider({ children }) {
     await AsyncStorage.removeItem('adarsh_session_kicked');
   }, []);
 
+  const setLockTimeout = useCallback(async (seconds) => {
+    const val = seconds === 300 ? 300 : 100;
+    setLockTimeoutState(val);
+    lockTimeoutRef.current = val;
+    await AsyncStorage.setItem('adarsh_lock_timeout', String(val));
+  }, []);
+
   const value = {
     user,
     isLoading,
@@ -504,6 +522,8 @@ export function AuthProvider({ children }) {
     isMpinCreated,
     isSilentAuthFailed,
     isSessionKicked,
+    lockTimeout,
+    setLockTimeout,
     setIsSilentAuthFailed,
     setIsAppUnlocked,
     login,
