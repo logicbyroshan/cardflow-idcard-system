@@ -1080,6 +1080,7 @@ class ClientCardService(BaseService):
                                 data={
                                     'requires_class_change': True,
                                     'retrieve_scope': 'pool_to_pending',
+                                    'card_id': card.id,
                                     **payload
                                 }
                             )
@@ -1093,6 +1094,7 @@ class ClientCardService(BaseService):
                                 data={
                                     'requires_class_change': True,
                                     'retrieve_scope': 'pool_to_pending',
+                                    'card_id': card.id,
                                     **payload
                                 }
                             )
@@ -1177,6 +1179,7 @@ class ClientCardService(BaseService):
                             )
                             if not ok:
                                 payload = _pool_retrieve_scope_payload(user, pool_card)
+                                payload['card_id'] = pool_card.id
                                 return ServiceResult(
                                     success=False,
                                     message=error_message,
@@ -1212,11 +1215,13 @@ class ClientCardService(BaseService):
                                     status='pool',
                                 )[:5]
                             )
-                            payload_cards = [
-                                _pool_retrieve_scope_payload(user, pool_card)
-                                for pool_card in pool_cards
-                                if _pool_retrieve_requires_class_change(user, pool_card)
-                            ]
+                            payload_cards = []
+                            for pool_card in pool_cards:
+                                if _pool_retrieve_requires_class_change(user, pool_card):
+                                    pc_payload = _pool_retrieve_scope_payload(user, pool_card)
+                                    pc_payload['card_id'] = pool_card.id
+                                    payload_cards.append(pc_payload)
+                                    
                             if payload_cards:
                                 return ServiceResult(
                                     success=False,

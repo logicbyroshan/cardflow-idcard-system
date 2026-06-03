@@ -1538,6 +1538,7 @@ def api_idcard_change_status(request, card_id):
                         'message': error_message,
                         'requires_class_change': True,
                         'retrieve_scope': 'pool_to_pending',
+                        'card_id': card.id,
                         **payload,
                     }, status=400)
                 card.refresh_from_db()
@@ -1550,6 +1551,7 @@ def api_idcard_change_status(request, card_id):
                         'message': _POOL_RETRIEVE_SCOPE_MESSAGE,
                         'requires_class_change': True,
                         'retrieve_scope': 'pool_to_pending',
+                        'card_id': card.id,
                         **payload,
                     }, status=409)
                 return JsonResponse({'success': False, 'message': _POOL_RETRIEVE_SCOPE_MESSAGE}, status=409)
@@ -1614,6 +1616,7 @@ def api_idcard_bulk_status(request, table_id):
                         )
                         if not ok:
                             payload = _pool_retrieve_scope_payload(request.user, pool_card)
+                            payload['card_id'] = pool_card.id
                             return JsonResponse({
                                 'success': False,
                                 'message': error_message,
@@ -1638,11 +1641,13 @@ def api_idcard_bulk_status(request, table_id):
                                 status='pool',
                             )[:5]
                         )
-                        payload_cards = [
-                            _pool_retrieve_scope_payload(request.user, pool_card)
-                            for pool_card in pool_cards
-                            if _pool_retrieve_requires_class_change(request.user, pool_card)
-                        ]
+                        payload_cards = []
+                        for pool_card in pool_cards:
+                            if _pool_retrieve_requires_class_change(request.user, pool_card):
+                                pc_payload = _pool_retrieve_scope_payload(request.user, pool_card)
+                                pc_payload['card_id'] = pool_card.id
+                                payload_cards.append(pc_payload)
+                                
                         if payload_cards:
                             return JsonResponse({
                                 'success': False,

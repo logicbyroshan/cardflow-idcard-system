@@ -453,7 +453,11 @@ export default function HomeScreen({ navigation }) {
             return (
               <TouchableOpacity 
                 key={st.key} 
-                style={[s.statusCardOuter, { width: cardWidth }]}
+                style={[
+                  s.statusCardOuter, 
+                  { width: cardWidth },
+                  isAssistant ? { aspectRatio: undefined, height: 110 } : {}
+                ]}
                 activeOpacity={0.8}
                 onPress={() => handleStatCardPress(st.key)}
               >

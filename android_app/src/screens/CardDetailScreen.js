@@ -24,6 +24,7 @@ export default function CardDetailScreen({ navigation, route }) {
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const [showForm, setShowForm] = useState(false);
+  const [autoRetrieveStatus, setAutoRetrieveStatus] = useState(null);
 
   const showToast = (msg, type = 'info') => setToast({ visible: true, message: msg, type });
 
@@ -108,7 +109,10 @@ export default function CardDetailScreen({ navigation, route }) {
           data.message || 'You must update the class to retrieve this card.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Edit Card', onPress: () => setShowForm(true) }
+            { text: 'Edit Card', onPress: () => {
+                setAutoRetrieveStatus(status);
+                setShowForm(true);
+            } }
           ]
         );
       } else {
@@ -374,7 +378,13 @@ export default function CardDetailScreen({ navigation, route }) {
         onClose={() => setShowForm(false)} 
         tableId={card.table_id}
         cardId={card.id}
-        onSuccess={() => loadCard(true)}
+        onSuccess={() => {
+          loadCard(true);
+          if (autoRetrieveStatus) {
+            updateStatus(autoRetrieveStatus);
+            setAutoRetrieveStatus(null);
+          }
+        }}
       />
 
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({...p, visible: false}))} />

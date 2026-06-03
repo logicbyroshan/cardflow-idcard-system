@@ -40,7 +40,22 @@
 }
 
 .stats-cards.assistant-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.stats-cards.assistant-grid .stat-card {
+    padding: 12px 16px;
+    gap: 8px;
+}
+
+.stats-cards.assistant-grid .stat-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+}
+
+.stats-cards.assistant-grid .stat-value {
+    font-size: 1.25rem;
 }
 
 .stat-card {

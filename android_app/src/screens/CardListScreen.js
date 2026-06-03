@@ -95,6 +95,7 @@ export default function CardListScreen({ navigation, route }) {
 
   const [showForm, setShowForm]           = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
+  const [autoRetrieveId, setAutoRetrieveId] = useState(null);
 
   const [confirmModal, setConfirmModal]   = useState({
     visible: false, title: '', message: '', icon: '', color: colors.brandPrimary,
@@ -336,11 +337,26 @@ export default function CardListScreen({ navigation, route }) {
             updateCardStateLocally(idsArray, currentStatus, statusStr === 'permanent_delete' ? null : statusStr);
             exitSelectMode();
           } else if (data?.requires_class_change) {
-            Alert.alert(
-              'Class Assignment Required',
-              data.message || 'One or more selected cards require a class update. Please update them individually.',
-              [{ text: 'OK', onPress: () => exitSelectMode() }]
-            );
+            if (idsArray.length === 1 && data.cards && data.cards.length === 1 && data.cards[0].card_id) {
+              Alert.alert(
+                'Class Assignment Required',
+                data.message || 'You must update the class to retrieve this card.',
+                [
+                  { text: 'Cancel', style: 'cancel', onPress: () => exitSelectMode() },
+                  { text: 'Edit Card', onPress: () => {
+                      exitSelectMode();
+                      setAutoRetrieveId(data.cards[0].card_id);
+                      handleEditCard({ id: data.cards[0].card_id });
+                  } }
+                ]
+              );
+            } else {
+              Alert.alert(
+                'Class Assignment Required',
+                data.message || 'One or more selected cards require a class update. Please update them individually.',
+                [{ text: 'OK', onPress: () => exitSelectMode() }]
+              );
+            }
           } else {
             showToast(data?.message || 'Update failed', 'error');
           }
@@ -366,7 +382,10 @@ export default function CardListScreen({ navigation, route }) {
           data.message || 'You must update the class to retrieve this card.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Edit Card', onPress: () => handleEditCard({ id }) }
+            { text: 'Edit Card', onPress: () => {
+                setAutoRetrieveId(id);
+                handleEditCard({ id });
+            } }
           ]
         );
       } else {
@@ -556,7 +575,7 @@ export default function CardListScreen({ navigation, route }) {
 
       {/* Status tabs */}
       <View style={s.tabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.tabScroll, perms.role === 'client_staff' && { flexGrow: 1 }]}>
           {allowedStatuses.map(opt => (
             <TouchableOpacity
               key={opt.key}
@@ -565,7 +584,11 @@ export default function CardListScreen({ navigation, route }) {
                 setPage(1);
                 setActiveFilters({});
               }}
-              style={[s.tabItem, currentStatus === opt.key && { backgroundColor: opt.c, borderColor: opt.c }]}
+              style={[
+                s.tabItem, 
+                currentStatus === opt.key && { backgroundColor: opt.c, borderColor: opt.c },
+                perms.role === 'client_staff' && { flex: 1, justifyContent: 'center' }
+              ]}
             >
               <Text style={[s.tabLabel, { color: currentStatus === opt.key ? '#fff' : opt.c }]}>{opt.label}</Text>
               <View style={[s.tabCount, { backgroundColor: currentStatus === opt.key ? 'rgba(255,255,255,0.2)' : `${opt.c}15` }]}>
@@ -704,6 +727,10 @@ export default function CardListScreen({ navigation, route }) {
             setCards(prev => prev.map(c => c.id === editingCardId ? { ...c, ...updatedCard } : c));
           } else {
             onRefresh();
+          }
+          if (autoRetrieveId && (editingCardId === autoRetrieveId)) {
+            handleSingleStatus(autoRetrieveId, 'pending');
+            setAutoRetrieveId(null);
           }
         }}
       />

@@ -122,150 +122,155 @@
   <!-- Scrollable Middle -->
   <div class="dashboard-middle-scroll">
 
-  <!-- Main Grid: Reprint History (left 2fr) + Recent Activity (right 1fr) -->
-  <div class="dashboard-grid{% if not perm_reprint_request_list %} single-col{% endif %}">
+  <div class="dashboard-workspace">
+    <div class="dashboard-main-column">
 
-    {% if perm_reprint_request_list %}
-    <!-- Reprint Requests History -->
-    <div class="dashboard-card">
-      <div class="dashboard-card-header">
-        <h3><i class="fa-solid fa-rotate"></i> Reprint Requests History</h3>
-        <span class="reprint-history-count is-hidden" id="reprintHistoryCount">0</span>
-      </div>
-      <div class="dashboard-card-body tall-body p-0">
-        <div id="reprintHistoryTableWrap">
-          <table class="reprint-history-table" id="reprintHistoryTable">
-            <thead>
-              <tr>
-                <th class="rh-col-num">Sr no.</th>
-                <th>Card Details</th>
-                <th class="rh-col-photo">Photo</th>
-                <th class="rh-col-group">Group</th>
-                <th class="rh-col-date">Date</th>
-                <th class="rh-col-status">Status</th>
-              </tr>
-            </thead>
-            <tbody id="reprintHistoryBody">
-              <tr class="reprint-history-skeleton-row">
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 82%;"></span></td>
-                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 72%;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 70%;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 60px;"></span></td>
-              </tr>
-              <tr class="reprint-history-skeleton-row">
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 74%;"></span></td>
-                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 65%;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 64%;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 58px;"></span></td>
-              </tr>
-              <tr class="reprint-history-skeleton-row">
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 79%;"></span></td>
-                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 68%;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 66%;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 54px;"></span></td>
-              </tr>
-              <tr class="reprint-history-skeleton-row">
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 69%;"></span></td>
-                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 62%;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-line" style="width: 69%;"></span></td>
-                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 62px;"></span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- Recent Activity (right side) -->
-    <div class="dashboard-card">
-      <div class="dashboard-card-header">
-        <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
-      </div>
-      <div class="dashboard-card-body tall-body">
-        <div class="activity-list" id="recentActivityList">
-          <div class="activity-item activity-skeleton" id="activityLoadingMsg">
-            <div class="dash-skeleton dash-skeleton-avatar"></div>
-            <div class="activity-content">
-              <div class="dash-skeleton dash-skeleton-line" style="width: 78%;"></div>
-              <div class="dash-skeleton dash-skeleton-line" style="width: 52%;"></div>
-            </div>
+      {% if perm_reprint_request_list %}
+      <!-- Reprint Requests History -->
+      <section class="dashboard-snap-panel is-active">
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-rotate"></i> Reprint Requests History</h3>
+            <span class="reprint-history-count is-hidden" id="reprintHistoryCount">0</span>
           </div>
-          <div class="activity-item activity-skeleton">
-            <div class="dash-skeleton dash-skeleton-avatar"></div>
-            <div class="activity-content">
-              <div class="dash-skeleton dash-skeleton-line" style="width: 70%;"></div>
-              <div class="dash-skeleton dash-skeleton-line" style="width: 48%;"></div>
-            </div>
-          </div>
-          <div class="activity-item activity-skeleton">
-            <div class="dash-skeleton dash-skeleton-avatar"></div>
-            <div class="activity-content">
-              <div class="dash-skeleton dash-skeleton-line" style="width: 75%;"></div>
-              <div class="dash-skeleton dash-skeleton-line" style="width: 44%;"></div>
+          <div class="dashboard-card-body tall-body p-0">
+            <div id="reprintHistoryTableWrap">
+              <table class="reprint-history-table" id="reprintHistoryTable">
+                <thead>
+                  <tr>
+                    <th class="rh-col-num">Sr no.</th>
+                    <th>Card Details</th>
+                    <th class="rh-col-photo">Photo</th>
+                    <th class="rh-col-group">Group</th>
+                    <th class="rh-col-date">Date</th>
+                    <th class="rh-col-status">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="reprintHistoryBody">
+                  <tr class="reprint-history-skeleton-row">
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 82%;"></span></td>
+                    <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 72%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 70%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill" style="width: 60px;"></span></td>
+                  </tr>
+                  <tr class="reprint-history-skeleton-row">
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 74%;"></span></td>
+                    <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 65%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 64%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill" style="width: 58px;"></span></td>
+                  </tr>
+                  <tr class="reprint-history-skeleton-row">
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 79%;"></span></td>
+                    <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 68%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 66%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill" style="width: 54px;"></span></td>
+                  </tr>
+                  <tr class="reprint-history-skeleton-row">
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 69%;"></span></td>
+                    <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 62%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 69%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill" style="width: 62px;"></span></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
+      </section>
+      {% endif %}
+
+      <!-- Recent Activity -->
+      <section class="dashboard-snap-panel {% if not perm_reprint_request_list %}is-active{% endif %}">
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
+          </div>
+          <div class="dashboard-card-body tall-body">
+            <div class="activity-list" id="recentActivityList">
+              <div class="activity-item activity-skeleton" id="activityLoadingMsg">
+                <div class="dash-skeleton dash-skeleton-avatar"></div>
+                <div class="activity-content">
+                  <div class="dash-skeleton dash-skeleton-line" style="width: 78%;"></div>
+                  <div class="dash-skeleton dash-skeleton-line" style="width: 52%;"></div>
+                </div>
+              </div>
+              <div class="activity-item activity-skeleton">
+                <div class="dash-skeleton dash-skeleton-avatar"></div>
+                <div class="activity-content">
+                  <div class="dash-skeleton dash-skeleton-line" style="width: 70%;"></div>
+                  <div class="dash-skeleton dash-skeleton-line" style="width: 48%;"></div>
+                </div>
+              </div>
+              <div class="activity-item activity-skeleton">
+                <div class="dash-skeleton dash-skeleton-avatar"></div>
+                <div class="activity-content">
+                  <div class="dash-skeleton dash-skeleton-line" style="width: 75%;"></div>
+                  <div class="dash-skeleton dash-skeleton-line" style="width: 44%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Side Column for Quick Actions -->
+    <aside class="dashboard-side-column">
+      <div class="dashboard-side-sticky">
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
+          </div>
+          <div class="dashboard-card-body p-0">
+            <div class="quick-actions" style="display: flex; flex-direction: column;">
+              {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
+              <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
+                <i class="fa-solid fa-id-card"></i>
+                <span>ID Card Group</span>
+              </a>
+              {% endif %}
+              {% if perm_idcard_setting_list %}
+              <a href="{% url 'client:group_settings' %}" class="quick-action-btn">
+                <i class="fa-solid fa-table-list"></i>
+                <span>Group Settings</span>
+              </a>
+              {% endif %}
+              {% if is_client_admin and perm_idcard_client_list %}
+              <a href="{% url 'client:staff' %}" class="quick-action-btn">
+                <i class="fa-solid fa-user-tie"></i>
+                <span>Manage Assistent</span>
+              </a>
+              {% endif %}
+              <button type="button" class="quick-action-btn quick-action-message" data-client-message-open>
+                <i class="fa-solid fa-message"></i>
+                <span>Messages</span>
+              </button>
+              <button type="button" class="quick-action-btn" onclick="window.location.href='{% url 'notifications_page' %}'">
+                <i class="fa-solid fa-bell"></i>
+                <span>Notifications</span>
+              </button>
+              <a href="{% url 'settings' %}" class="quick-action-btn">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </aside>
 
   </div>
-
-  </div><!-- /dashboard-middle-scroll -->
-
-  <!-- Bottom Fixed Quick Actions Row -->
-  <div class="dashboard-bottom-fixed">
-    <div class="client-quick-actions-bar">
-      {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
-      <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
-        <i class="fa-solid fa-id-card"></i>
-        <span>ID Card Group</span>
-      </a>
-      {% endif %}
-      {% if perm_idcard_setting_list %}
-      <a href="{% url 'client:group_settings' %}" class="quick-action-btn">
-        <i class="fa-solid fa-table-list"></i>
-        <span>Group Settings</span>
-      </a>
-      {% endif %}
-      {% if is_client_admin and perm_idcard_client_list %}
-      <a href="{% url 'client:staff' %}" class="quick-action-btn">
-        <i class="fa-solid fa-user-tie"></i>
-        <span>Manage Assistent</span>
-      </a>
-      {% endif %}
-      <button type="button" class="quick-action-btn quick-action-message" data-client-message-open>
-        <span class="client-message-quick-icon">
-          <i class="fa-solid fa-message"></i>
-          <span class="client-message-quick-badge" data-client-msg-count>0</span>
-        </span>
-        <span>Messages</span>
-      </button>
-      <button
-        type="button"
-        class="quick-action-btn"
-        onclick="window.location.href='{% url 'notifications_page' %}'"
-        title="Open notifications"
-      >
-        <i class="fa-solid fa-bell"></i>
-        <span>Notifications</span>
-      </button>
-      <a href="{% url 'settings' %}" class="quick-action-btn">
-        <i class="fa-solid fa-gear"></i>
-        <span>Settings</span>
-      </a>
-    </div>
-  </div>
-
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
