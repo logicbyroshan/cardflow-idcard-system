@@ -1043,7 +1043,7 @@ var _ASYNC_PDF_THRESHOLD = 500;
 /**
  * Threshold for async XLSX/DOCX/ZIP task routing.
  */
-var _ASYNC_EXPORT_THRESHOLD = 500;
+var _ASYNC_EXPORT_THRESHOLD = 200;
 
 /**
  * Poll interval for checking async export status (ms).

@@ -12,7 +12,8 @@ Features:
 - Auto-sized columns based on content
 - 7 entries per page with proper pagination
 - Image embedding with borders
-- Phase 4: Uses THUMBNAILS for optimized export file size
+- Phase 4: Uses THUMBNAILS for optimized export performance
+- Output format: .docx (Word 2007+) only
 """
 import logging
 from typing import Optional
@@ -89,12 +90,12 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         user=None,
     ) -> WordExportResult:
         """
-        Export cards to Word format.
+        Export cards to Word format (.docx only).
         
         Args:
             table: IDCardTable instance
             cards: QuerySet of IDCard instances
-            doc_format: Output format ('docx' or 'doc')
+            doc_format: Ignored — always outputs .docx (Word 2007+)
             
         Returns:
             WordExportResult with HttpResponse if successful
@@ -208,7 +209,10 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             import os
             from django.http import StreamingHttpResponse
 
-            extension = 'doc' if doc_format == 'doc' else 'docx'
+            # Always output .docx (Word 2007+ OOXML format). The legacy .doc
+            # format (Word 2003) has been removed — all modern Word versions
+            # open .docx natively and it produces smaller, faster files.
+            extension = 'docx'
             filename = generate_export_filename(table.name, extension, client_name=institution_name, status=status)
             content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 

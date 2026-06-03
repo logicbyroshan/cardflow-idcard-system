@@ -4,12 +4,16 @@ Word Export — Tables Mixin
 Data table creation, column width calculation, header/data row rendering,
 and text preparation for Word document generation.
 """
+import logging
+
 from django.core.files.storage import default_storage
 
 from mediafiles.services import ImageService
 
 from .utils import is_valid_image_path, format_field_value, humanize_label
 from .column_spec import get_column_spec, is_nowrap_column, classify_column
+
+logger = logging.getLogger(__name__)
 
 
 class WordTablesMixin:
@@ -25,9 +29,8 @@ class WordTablesMixin:
         try:
             from PIL import Image as PILImage
             for card in cards_list[:10]:
-                # Phase 3: DOCX uses original images for sizing reference
                 img_path = ImageService.get_image_path_for_export(
-                    card=card, field_name=field_name, 
+                    card=card, field_name=field_name,
                     prefer_thumbnail=False, fallback_to_field_data=True
                 )
                 if img_path and is_valid_image_path(img_path):
@@ -363,6 +366,70 @@ class WordTablesMixin:
         Delegates to column_spec intelligence.
         """
         return is_nowrap_column(field_name)
+
+    def _prefetch_image_bytes_batch(self, cards_batch, image_field_names, cancel_check=None):
+        """Pre-fetch original image bytes for a batch of cards using 5 concurrent threads.
+
+        Opens up to 5 cloud-storage connections simultaneously instead of
+        serialising every read. For 826 cards × 3 photo fields the effective
+        IO wait drops from ~N×latency to ~ceil(N/5)×latency.
+
+        Args:
+            cards_batch:       Slice of cards_list to pre-fetch for.
+            image_field_names: List of image field names to fetch per card.
+            cancel_check:      Optional callable; aborts remaining work if True.
+
+        Returns:
+            dict mapping (card.id, field_name) → bytes or None.
+            None means the image was not found / could not be read.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        result = {}
+        if not cards_batch or not image_field_names:
+            return result
+
+        def _fetch_one(card, field_name):
+            if callable(cancel_check) and cancel_check():
+                return (card.id, field_name), None
+            try:
+                img_path = ImageService.get_image_path_for_export(
+                    card=card,
+                    field_name=field_name,
+                    prefer_thumbnail=False,   # always fetch full original
+                    fallback_to_field_data=True,
+                )
+                if not img_path or not is_valid_image_path(img_path):
+                    return (card.id, field_name), None
+                with default_storage.open(img_path, 'rb') as fh:
+                    data = fh.read()
+                if data and len(data) >= 100:
+                    return (card.id, field_name), data
+                return (card.id, field_name), None
+            except Exception as exc:
+                logger.debug(
+                    'DOCX prefetch failed card=%s field=%s: %s',
+                    card.id, field_name, exc,
+                )
+                return (card.id, field_name), None
+
+        # Submit all (card, field) pairs; executor runs at most 5 at a time
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            futures = {
+                pool.submit(_fetch_one, card, field_name): (card.id, field_name)
+                for card in cards_batch
+                for field_name in image_field_names
+            }
+            for future in as_completed(futures):
+                try:
+                    key, data = future.result(timeout=60)
+                    result[key] = data
+                except Exception as exc:
+                    result[futures[future]] = None
+                    logger.debug('DOCX prefetch future error %s: %s', futures[future], exc)
+
+        return result
+
     
     def _create_data_tables(self, doc, cards_list, ordered_fields, column_widths,
                             num_cols, Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT,
@@ -432,54 +499,80 @@ class WordTablesMixin:
         tblHeader = parse_xml(r'<w:tblHeader {} />'.format(nsdecls('w')))
         trPr.append(tblHeader)
 
-        for card_idx, card in enumerate(cards_list):
+        # Collect image field names once for the pre-fetch helper.
+        _image_field_names = [f['name'] for f in ordered_fields if f['is_image']]
+
+        # Process cards in chunks.  Before rendering each chunk the image bytes
+        # are fetched concurrently (5 threads), collapsing N serial cloud-storage
+        # round-trips into ~N/5 parallel ones.  Rendering stays strictly serial
+        # because python-docx is not thread-safe for writes.
+        _PREFETCH_CHUNK = 25
+
+        for _chunk_start in range(0, len(cards_list), _PREFETCH_CHUNK):
+            _chunk = cards_list[_chunk_start:_chunk_start + _PREFETCH_CHUNK]
+
             if callable(cancel_check) and cancel_check():
                 return False
-            fd = card.field_data or {}
-            cur_class_val = (
-                str(fd.get(class_field_name, '') or '').strip().upper()
-                if class_field_name else None
-            )
 
-            # Decide whether to insert a page break before this row
-            # Note: class-based page breaks are PDF-only; Word uses
-            # continuous layout so all data flows without class gaps.
-            need_page_break = False
-            if rows_on_current_page >= self.ENTRIES_PER_PAGE:
-                need_page_break = True
+            # ------ concurrent image pre-fetch (5 threads) ------
+            _image_cache = {}
+            if _image_field_names:
+                _image_cache = self._prefetch_image_bytes_batch(
+                    _chunk, _image_field_names, cancel_check=cancel_check,
+                )
+            # ----------------------------------------------------
 
-            # Add the data row
-            self._add_data_row(
-                table_obj, card, ordered_fields, column_widths, sr_no,
-                Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
-                Image, ImageOps, image_fixed_widths=image_fixed_widths,
-                image_fixed_heights=image_fixed_heights, row_height_cm=row_height_cm,
-                font_pt=_font_pt, h_rule=_row_h_rule, cancel_check=cancel_check
-            )
+            for _idx_in_chunk, card in enumerate(_chunk):
+                card_idx = _chunk_start + _idx_in_chunk
 
-            # If a page break is needed, set it on the FIRST paragraph
-            # of the first cell of the row we just added.
-            if need_page_break:
-                new_row = table_obj.rows[-1]
-                first_para = new_row.cells[0].paragraphs[0]
-                pPr = first_para._p.get_or_add_pPr()
-                pPr.append(parse_xml(
-                    r'<w:pageBreakBefore {} />'.format(nsdecls('w'))
-                ))
-                rows_on_current_page = 0
+                if callable(cancel_check) and cancel_check():
+                    return False
+                fd = card.field_data or {}
+                cur_class_val = (
+                    str(fd.get(class_field_name, '') or '').strip().upper()
+                    if class_field_name else None
+                )
 
-            sr_no += 1
-            rows_on_current_page += 1
-            prev_class_val = cur_class_val
+                # Decide whether to insert a page break before this row.
+                # Note: class-based page breaks are PDF-only; Word uses
+                # continuous layout so all data flows without class gaps.
+                need_page_break = False
+                if rows_on_current_page >= self.ENTRIES_PER_PAGE:
+                    need_page_break = True
 
-            if callable(progress_callback):
-                # Keep callback cadence light to avoid excessive DB writes.
-                processed = card_idx + 1
-                if (processed % 10 == 0) or (processed == len(cards_list)):
-                    try:
-                        progress_callback(processed, len(cards_list))
-                    except Exception:
-                        pass
+                # Add the data row (images served from pre-fetched cache)
+                self._add_data_row(
+                    table_obj, card, ordered_fields, column_widths, sr_no,
+                    Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
+                    Image, ImageOps, image_fixed_widths=image_fixed_widths,
+                    image_fixed_heights=image_fixed_heights, row_height_cm=row_height_cm,
+                    font_pt=_font_pt, h_rule=_row_h_rule, cancel_check=cancel_check,
+                    image_cache=_image_cache,
+                )
+
+                # If a page break is needed, set it on the FIRST paragraph
+                # of the first cell of the row we just added.
+                if need_page_break:
+                    new_row = table_obj.rows[-1]
+                    first_para = new_row.cells[0].paragraphs[0]
+                    pPr = first_para._p.get_or_add_pPr()
+                    pPr.append(parse_xml(
+                        r'<w:pageBreakBefore {} />'.format(nsdecls('w'))
+                    ))
+                    rows_on_current_page = 0
+
+                sr_no += 1
+                rows_on_current_page += 1
+                prev_class_val = cur_class_val
+
+                if callable(progress_callback):
+                    # Keep callback cadence light to avoid excessive DB writes.
+                    processed = card_idx + 1
+                    if (processed % 10 == 0) or (processed == len(cards_list)):
+                        try:
+                            progress_callback(processed, len(cards_list))
+                        except Exception:
+                            pass
 
         return True
     
@@ -533,8 +626,14 @@ class WordTablesMixin:
                       Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                       Image, ImageOps, image_fixed_widths=None,
                       image_fixed_heights=None, row_height_cm=None, font_pt=9,
-                      h_rule='atLeast', cancel_check=None):
-        """Add a data row to the table."""
+                      h_rule='atLeast', cancel_check=None, image_cache=None):
+        """Add a data row to the table.
+
+        Args:
+            image_cache: dict from _prefetch_image_bytes_batch mapping
+                (card.id, field_name) → bytes-or-None.  When an entry exists
+                the storage read inside _add_image_to_cell is skipped entirely.
+        """
         new_row = table.add_row()
         cells = new_row.cells
         
@@ -569,30 +668,37 @@ class WordTablesMixin:
             cell.width = Cm(column_widths[col_idx])
             
             if field['is_image']:
-                # Photo cells: keep table grid borders visible for structural consistency.
-                # The photo image itself gets its own bitmap-level border via _build_word_image_stream.
-
-                # Phase 3: DOCX always uses ORIGINAL images for print quality
-                image_path = ImageService.get_image_path_for_export(
-                    card=card,
-                    field_name=field['name'],
-                    prefer_thumbnail=False,
-                    fallback_to_field_data=True
-                )
                 img_fixed_w = image_fixed_widths.get(field['name'], self.IMAGE_DEFAULT_WIDTH_CM)
                 img_fixed_h = image_fixed_heights.get(field['name'], self.IMAGE_HEIGHT_CM)
+
+                # Check whether bytes were pre-fetched for this (card, field) pair.
+                # If so, skip the storage read entirely in _add_image_to_cell.
+                _cache_key = (card.id, field['name'])
+                _in_cache = image_cache is not None and _cache_key in image_cache
+                _prefetched = image_cache[_cache_key] if _in_cache else None
+
+                # Only look up the path when the cache missed (fallback / logging).
+                if _in_cache:
+                    image_path = ''   # bytes already available; path not needed
+                else:
+                    image_path = ImageService.get_image_path_for_export(
+                        card=card,
+                        field_name=field['name'],
+                        prefer_thumbnail=False,   # always full originals for print
+                        fallback_to_field_data=True,
+                    ) or ''
+
                 self._add_image_to_cell(
-                    cell, image_path or '',
+                    cell, image_path,
                     Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,
                     Image, ImageOps, fixed_width_cm=img_fixed_w,
                     fixed_height_cm=img_fixed_h,
                     image_subtype=field.get('image_subtype'),
                     field_name=field.get('name'),
-                    cancel_check=cancel_check
+                    cancel_check=cancel_check,
+                    prefetched_bytes=_prefetched,
+                    skip_storage_read=_in_cache,
                 )
-                # Photo cells retain full table grid borders so rows/columns
-                # align visually with text columns. The image itself carries its
-                # own bitmap-level border painted in _build_word_image_stream.
             else:
                 value = format_field_value(field_data.get(field['name'], ''), uppercase=True)
                 value = self._prepare_text_for_word(value)

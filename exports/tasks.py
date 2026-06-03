@@ -215,7 +215,8 @@ class BackgroundExportManager:
             'table_id': table_id,
             'card_ids': list(card_ids) if card_ids else [],
             'status': status,
-            'doc_format': doc_format if doc_format in ('docx', 'doc') else 'docx',
+            # Word 2003 (.doc) format has been removed — always use .docx
+            'doc_format': 'docx',
             'template_id': template_id,
         }
         metadata.update(SuperModeService.build_task_metadata(user))

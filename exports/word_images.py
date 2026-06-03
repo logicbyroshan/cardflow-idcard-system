@@ -89,15 +89,22 @@ class WordImagesMixin:
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
                            fixed_width_cm=None, fixed_height_cm=None,
-                           image_subtype=None, field_name=None, cancel_check=None):
-        """Add an image to a cell using VML for Word 97-2003 compatibility.
-        
-        Uses VML (Vector Markup Language) instead of DrawingML to ensure
-        images are visible in Normal/Draft view and compatible with
-        Word 97-2003 format.
-        
-        For missing/pending images: draws an empty bordered rectangle
-        (no placeholder image, no text).
+                           image_subtype=None, field_name=None, cancel_check=None,
+                           prefetched_bytes=None, skip_storage_read=False):
+        """Add an image to a cell using VML for Word 2007+ compatibility.
+
+        Border is drawn natively by Word's VML renderer (stroked="t") — no
+        Pillow re-encode, no extra CPU, and the border scales correctly at any
+        DPI and zoom level.
+
+        For missing/pending images: draws an empty bordered rectangle.
+
+        Args:
+            prefetched_bytes:   Pre-read image bytes from the concurrent batch
+                                pre-fetch (may be None if the image wasn't found).
+            skip_storage_read:  When True the function trusts prefetched_bytes
+                                as the authoritative source and never opens
+                                default_storage — even if prefetched_bytes is None.
         """
         if fixed_width_cm is None:
             fixed_width_cm = self.IMAGE_DEFAULT_WIDTH_CM
@@ -106,62 +113,64 @@ class WordImagesMixin:
 
         self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
-        
+
         if callable(cancel_check) and cancel_check():
             raise Exception('Export cancelled')
 
-        if is_valid_image_path(img_path):
-            try:
-                # Direct open to save a redundant default_storage.exists() network check
-                img_data = None
+        # ── Resolve image bytes ───────────────────────────────────────────────
+        # Priority: pre-fetched bytes (from concurrent batch) → storage read.
+        if skip_storage_read:
+            # Batch pre-fetch was the authoritative IO; trust its result.
+            img_data = prefetched_bytes
+        else:
+            # No pre-fetch available — fall back to a direct storage read.
+            img_data = prefetched_bytes  # will be None here in normal flow
+            if img_data is None and is_valid_image_path(img_path):
                 try:
                     with default_storage.open(img_path, 'rb') as img_file:
                         img_data = img_file.read()
                 except Exception:
-                    pass
-                
-                if img_data and len(img_data) >= 100:
-                    # Optimization A & B: Open image exactly ONCE, validate via load(), and bypass verify()
-                    with Image.open(BytesIO(img_data)) as src_img:
-                        src_img.load()  # Decodes image in memory, validating integrity and raising exceptions if corrupt
+                    img_data = None
 
-                        add_photo_border = self._should_add_photo_border(
-                            image_subtype=image_subtype,
-                            field_name=field_name,
-                        )
-                        if add_photo_border:
-                            # Optimize border painting with Pillow native drawing
-                            img_stream = self._build_word_image_stream_from_image(
-                                src_img,
-                                Image,
-                                ImageOps,
-                            )
-                        else:
-                            # Return original raw bytes to preserve metadata & print quality exactly without re-compressing
-                            img_stream = BytesIO(img_data)
-                        
-                        para = cell.paragraphs[0]
-                        run = para.add_run()
-                        # Keep layout fixed while preserving source quality
-                        inline_shape = run.add_picture(
-                            img_stream,
-                            height=Cm(fixed_height_cm),
-                            width=Cm(fixed_width_cm)
-                        )
-                        img_stream.close()
-                        self._convert_to_vml(
-                            run,
-                            inline_shape,
-                            add_border=False,
-                        )
-                        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        self._set_para_spacing(para, parse_xml, nsdecls)
-                        return
-                else:
-                    logger.warning("Word export: Image missing or invalid/too small: %s", img_path)
+        if img_data and len(img_data) >= 100:
+            try:
+                # For bytes that came from a direct storage read (not pre-fetched)
+                # run a quick PIL integrity check to surface corrupt files early.
+                if not skip_storage_read:
+                    with Image.open(BytesIO(img_data)) as _chk:
+                        _chk.load()
+
+                # Determine if this column needs a photo border.
+                # The border is rendered natively by Word's VML engine so there
+                # is zero PIL overhead: no re-decode, no re-encode, no CPU cost.
+                add_photo_border = self._should_add_photo_border(
+                    image_subtype=image_subtype,
+                    field_name=field_name,
+                )
+
+                # Embed raw bytes — no re-compression, full original print quality
+                img_stream = BytesIO(img_data)
+                para = cell.paragraphs[0]
+                run = para.add_run()
+                inline_shape = run.add_picture(
+                    img_stream,
+                    height=Cm(fixed_height_cm),
+                    width=Cm(fixed_width_cm),
+                )
+                img_stream.close()
+                # VML native border: Word draws the 1pt stroke at render time
+                self._convert_to_vml(run, inline_shape, add_border=add_photo_border)
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                self._set_para_spacing(para, parse_xml, nsdecls)
+                return
             except Exception as e:
-                logger.warning("Word export: Image load error for %s: %s", img_path, e)
-        
+                logger.warning("Word export: Image embed error for %s: %s", img_path, e)
+        else:
+            if img_data is not None:
+                logger.warning("Word export: Image too small/empty: %s", img_path)
+            elif is_valid_image_path(img_path) and not skip_storage_read:
+                logger.warning("Word export: Image missing or unreadable: %s", img_path)
+
         # Missing/pending image → draw an empty bordered rectangle
         # (no placeholder image, no text — just empty space with a border).
         # Keep placeholder at least ROW_HEIGHT_CM so image rows remain visually

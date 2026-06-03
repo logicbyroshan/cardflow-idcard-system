@@ -223,11 +223,12 @@ class WordStylesMixin:
         run._r.append(fldChar3)
     
     def _set_compatibility_mode(self, doc):
-        """Set document to Word 97-2003 compatibility mode.
+        """Set document to Word 2007 compatibility mode.
         
-        This tells Word to render the document in compatibility mode,
-        which ensures maximum backward compatibility with older Word
-        versions and enables VML image rendering.
+        Uses val=12 (Word 2007 / OOXML native) so that Word renders the
+        document efficiently with the modern OOXML engine while still
+        supporting VML images.  val=11 (Word 2003) triggers the oldest
+        renderer which is both slower and causes display artefacts.
         """
         try:
             from docx.oxml.ns import qn
@@ -246,11 +247,11 @@ class WordStylesMixin:
                 if cs.get(qn('w:name')) == 'compatibilityMode':
                     compat.remove(cs)
             
-            # Add Word 2003 compatibility mode (val=11)
+            # Word 2007 compatibility mode (val=12)
             cs = OxmlElement('w:compatSetting')
             cs.set(qn('w:name'), 'compatibilityMode')
             cs.set(qn('w:uri'), 'http://schemas.microsoft.com/office/word')
-            cs.set(qn('w:val'), '11')
+            cs.set(qn('w:val'), '12')
             compat.append(cs)
         except Exception:
             pass  # Not critical — VML images alone provide compatibility
