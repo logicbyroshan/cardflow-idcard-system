@@ -213,41 +213,7 @@ def _pool_retrieve_requires_class_change(user, card):
     if str(card.status or '').strip().lower() != 'pool':
         return False
 
-    from core.utils.field_utils import normalize_class_value
-
-    payload = _pool_retrieve_scope_payload(user, card)
-    
-    # Check Class
-    class_field_name = payload.get('class_field')
-    allowed_classes = payload.get('allowed_classes') or []
-    if class_field_name and allowed_classes:
-        normalized_allowed = {
-            normalize_class_value(value)
-            for value in allowed_classes
-            if normalize_class_value(value)
-        }
-        if normalized_allowed:
-            current_class = payload.get('current_class') or ''
-            current_normalized = normalize_class_value(current_class)
-            if current_normalized not in normalized_allowed:
-                return True
-
-    # Check Section
-    section_field_name = payload.get('section_field')
-    allowed_sections = payload.get('allowed_sections') or []
-    if section_field_name and allowed_sections:
-        normalized_allowed_sec = {
-            str(value).strip().lower()
-            for value in allowed_sections
-            if str(value).strip()
-        }
-        if normalized_allowed_sec:
-            current_section = payload.get('current_section') or ''
-            current_normalized_sec = str(current_section).strip().lower()
-            if current_normalized_sec not in normalized_allowed_sec:
-                return True
-
-    return False
+    return True
 
 
 def _apply_pool_retrieve_class_change(user, card, requested_class, requested_section=None):

@@ -270,9 +270,10 @@ export async function apiGet(path, params = null) {
       return { 
         ok: false, 
         status: response.status, 
-        data: { 
+        data: {
+          ...data,
           success: false, 
-          message: data.message || 'Server error (' + response.status + ')' 
+          message: data?.message || 'Server error (' + response.status + ')' 
         } 
       };
     }
@@ -338,9 +339,10 @@ export async function apiPost(path, body = {}) {
       return { 
         ok: false, 
         status: response.status, 
-        data: { 
+        data: {
+          ...data,
           success: false, 
-          message: data.message || 'Server error (' + response.status + ')' 
+          message: data?.message || 'Server error (' + response.status + ')' 
         } 
       };
     }
