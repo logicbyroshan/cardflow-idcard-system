@@ -158,8 +158,9 @@ class WordImagesMixin:
                     width=Cm(fixed_width_cm),
                 )
                 img_stream.close()
-                # VML native border: Word draws the 1pt stroke at render time
-                self._convert_to_vml(run, inline_shape, add_border=add_photo_border)
+                # DrawingML native border outline (a:ln)
+                if add_photo_border:
+                    self._add_drawingml_border(inline_shape, parse_xml)
                 para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 self._set_para_spacing(para, parse_xml, nsdecls)
                 return
@@ -222,6 +223,26 @@ class WordImagesMixin:
         from lxml import etree
         pict_elem = etree.fromstring(pict_xml)
         run._r.append(pict_elem)
+
+    def _add_drawingml_border(self, inline_shape, parse_xml):
+        """Add a native DrawingML border (outline) to the inline shape."""
+        namespaces = {
+            'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
+            'pic': 'http://schemas.openxmlformats.org/drawingml/2006/picture',
+        }
+        inline_el = inline_shape._inline
+        spPr = inline_el.find('.//pic:spPr', namespaces=namespaces)
+        if spPr is not None:
+            width_emu = int(getattr(self, 'WORD_BORDER_PT', 1.0) * 12700)
+            ln_xml = (
+                f'<a:ln w="{width_emu}" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+                '  <a:solidFill>'
+                '    <a:srgbClr val="000000"/>'
+                '  </a:solidFill>'
+                '</a:ln>'
+            )
+            ln_el = parse_xml(ln_xml)
+            spPr.append(ln_el)
     
     def _convert_to_vml(self, run, inline_shape, add_border=False):
         """Convert an inline DrawingML image to VML for backward compatibility.

@@ -390,8 +390,9 @@ class WordTablesMixin:
             return result
 
         def _fetch_one(card, field_name):
+            card_id = getattr(card, 'id', None) or id(card)
             if callable(cancel_check) and cancel_check():
-                return (card.id, field_name), None
+                return (card_id, field_name), None
             try:
                 img_path = ImageService.get_image_path_for_export(
                     card=card,
@@ -400,23 +401,23 @@ class WordTablesMixin:
                     fallback_to_field_data=True,
                 )
                 if not img_path or not is_valid_image_path(img_path):
-                    return (card.id, field_name), None
+                    return (card_id, field_name), None
                 with default_storage.open(img_path, 'rb') as fh:
                     data = fh.read()
                 if data and len(data) >= 100:
-                    return (card.id, field_name), data
-                return (card.id, field_name), None
+                    return (card_id, field_name), data
+                return (card_id, field_name), None
             except Exception as exc:
                 logger.debug(
                     'DOCX prefetch failed card=%s field=%s: %s',
-                    card.id, field_name, exc,
+                    card_id, field_name, exc,
                 )
-                return (card.id, field_name), None
+                return (card_id, field_name), None
 
         # Submit all (card, field) pairs; executor runs at most 5 at a time
         with ThreadPoolExecutor(max_workers=5) as pool:
             futures = {
-                pool.submit(_fetch_one, card, field_name): (card.id, field_name)
+                pool.submit(_fetch_one, card, field_name): (getattr(card, 'id', None) or id(card), field_name)
                 for card in cards_batch
                 for field_name in image_field_names
             }
@@ -673,7 +674,8 @@ class WordTablesMixin:
 
                 # Check whether bytes were pre-fetched for this (card, field) pair.
                 # If so, skip the storage read entirely in _add_image_to_cell.
-                _cache_key = (card.id, field['name'])
+                card_id = getattr(card, 'id', None) or id(card)
+                _cache_key = (card_id, field['name'])
                 _in_cache = image_cache is not None and _cache_key in image_cache
                 _prefetched = image_cache[_cache_key] if _in_cache else None
 
