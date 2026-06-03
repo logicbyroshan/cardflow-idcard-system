@@ -1006,9 +1006,14 @@ def api_card_change_status(request, card_id):
         })
     
     status_code = _result_error_status(result.message, fallback=400)
+    # 409 Conflict indicates a scope mismatch (requires class change)
+    if 'outside your assigned' in result.message:
+        status_code = 409
+    
     return JsonResponse({
         'success': False,
-        'message': result.message
+        'message': result.message,
+        **(result.data or {})
     }, status=status_code)
 
 
@@ -1051,9 +1056,14 @@ def api_cards_bulk_status(request, table_id):
         })
     
     status_code = _result_error_status(result.message, fallback=400)
+    # 409 Conflict indicates a scope mismatch (requires class change)
+    if 'outside your assigned' in result.message:
+        status_code = 409
+        
     return JsonResponse({
         'success': False,
-        'message': result.message
+        'message': result.message,
+        **(result.data or {})
     }, status=status_code)
 
 
