@@ -338,18 +338,10 @@ export default function CardListScreen({ navigation, route }) {
             exitSelectMode();
           } else if (data?.requires_class_change) {
             if (idsArray.length === 1 && data.cards && data.cards.length === 1 && data.cards[0].card_id) {
-              Alert.alert(
-                'Class Assignment Required',
-                data.message || 'You must update the class to retrieve this card.',
-                [
-                  { text: 'Cancel', style: 'cancel', onPress: () => exitSelectMode() },
-                  { text: 'Edit Card', onPress: () => {
-                      exitSelectMode();
-                      setAutoRetrieveId(data.cards[0].card_id);
-                      handleEditCard({ id: data.cards[0].card_id });
-                  } }
-                ]
-              );
+              exitSelectMode();
+              setAutoRetrieveId(data.cards[0].card_id);
+              showToast('Please update class/section to retrieve', 'info');
+              handleEditCard({ id: data.cards[0].card_id });
             } else {
               Alert.alert(
                 'Class Assignment Required',
@@ -377,17 +369,9 @@ export default function CardListScreen({ navigation, route }) {
         showToast(data.message || 'Updated', 'success'); 
         updateCardStateLocally([id], currentStatus, newStatus);
       } else if (data?.requires_class_change) {
-        Alert.alert(
-          'Class Assignment Required',
-          data.message || 'You must update the class to retrieve this card.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Edit Card', onPress: () => {
-                setAutoRetrieveId(id);
-                handleEditCard({ id });
-            } }
-          ]
-        );
+        showToast('Please update class/section to retrieve', 'info');
+        setAutoRetrieveId(id);
+        handleEditCard({ id });
       } else {
         showToast(data?.message || 'Failed', 'error');
       }

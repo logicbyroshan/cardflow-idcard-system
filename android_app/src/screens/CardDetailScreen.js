@@ -104,17 +104,9 @@ export default function CardDetailScreen({ navigation, route }) {
     try {
       const { data } = await apiPost(`/api/mobile/card/${cardId}/status/`, { status });
       if (!data?.success && data?.requires_class_change) {
-        Alert.alert(
-          'Class Assignment Required',
-          data.message || 'You must update the class to retrieve this card.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Edit Card', onPress: () => {
-                setAutoRetrieveStatus(status);
-                setShowForm(true);
-            } }
-          ]
-        );
+        showToast('Please update class/section to retrieve', 'info');
+        setAutoRetrieveStatus(status);
+        setShowForm(true);
       } else {
         showToast(data?.success ? 'Status updated!' : (data?.message || 'Failed'), data?.success ? 'success' : 'error');
         if (data?.success) refresh();
