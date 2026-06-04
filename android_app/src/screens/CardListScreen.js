@@ -528,7 +528,7 @@ export default function CardListScreen({ navigation, route }) {
         currentStatus={currentStatus}
         onStatusChange={statusChangeHandler}
         onDelete={canDelete ? handleSingleDelete : undefined}
-        onReprint={(perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
+        onReprint={currentStatus !== 'download' && (perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
         permissions={perms}
       />
     );

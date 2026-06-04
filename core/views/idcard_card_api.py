@@ -1295,7 +1295,7 @@ def api_idcard_update(request, card_id):
     if not (has_edit_perm or is_assistant_pool_retrieve):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
-    if not _is_card_in_client_staff_scope(request.user, _card):
+    if not is_assistant_pool_retrieve and not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
         # Parse request into service-friendly args
