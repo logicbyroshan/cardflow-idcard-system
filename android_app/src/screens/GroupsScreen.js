@@ -47,15 +47,33 @@ export default function GroupsScreen({ navigation }) {
             {table.group_name ? <Text style={s.groupName} numberOfLines={1}>{table.group_name}</Text> : null}
           </View>
         </TouchableOpacity>
-        <View style={s.tablePills}>
-          {[
+        <View style={[s.tablePills, user?.role === 'client_staff' && { flexDirection: 'column' }]}>
+          {([
             { key: 'p', status: 'pending',  label: 'PENDING',  color: '#f59e0b', bg: '#fffbeb', icon: 'clock' },
             { key: 'v', status: 'verified', label: 'VERIFIED', color: '#10b981', bg: '#ecfdf5', icon: 'check-circle' },
-                                    { key: 'po', status: 'pool',     label: 'POOL',     color: '#ef4444', bg: '#fef2f2', icon: 'archive' },
-          ].map(st => (
+            { key: 'a', status: 'approved', label: 'APPROVED', color: '#3b82f6', bg: '#eff6ff', icon: 'thumbs-up' },
+            { key: 'd', status: 'download', label: 'DOWNLOAD', color: '#8b5cf6', bg: '#f5f3ff', icon: 'download' },
+            { key: 'po', status: 'pool',     label: 'POOL',     color: '#ef4444', bg: '#fef2f2', icon: 'archive' },
+            { key: 'r', status: 'reprint',  label: 'REPRINT',  color: '#f97316', bg: '#fff7ed', icon: 'redo' },
+          ]).filter(st => {
+            if (user?.role === 'client_staff') {
+              return ['pending', 'verified', 'pool'].includes(st.status);
+            }
+            return true;
+          }).map(st => (
             <TouchableOpacity key={st.key}
-              style={[s.pillBtn, { backgroundColor: st.bg, borderColor: st.color + '40' }]}
-              onPress={() => navigation.navigate('CardList', { tableId: table.id, status: st.status })}>
+              style={[
+                s.pillBtn, 
+                { backgroundColor: st.bg, borderColor: st.color + '40' },
+                user?.role === 'client_staff' && { width: '100%', marginBottom: 4 }
+              ]}
+              onPress={() => {
+                if (st.status === 'reprint') {
+                  navigation.navigate('ReprintDetail', { tableId: table.id });
+                } else {
+                  navigation.navigate('CardList', { tableId: table.id, status: st.status });
+                }
+              }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <DynamicIcon name={st.icon} size={9} color={st.color} />
                 <Text style={[s.pillLabel, { color: st.color }]}>{st.label}</Text>

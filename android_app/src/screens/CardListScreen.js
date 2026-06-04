@@ -535,16 +535,8 @@ export default function CardListScreen({ navigation, route }) {
   }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect]);
 
   const leftOfHomeBtns = useMemo(() => {
-    const list = [];
-    if (!selectMode && currentStatus === 'download' && hasReprintPerm) {
-      list.push({
-        label: 'REPRINT',
-        onPress: () => navigation.navigate('ReprintDetail', { tableId }),
-        style: { backgroundColor: '#8b5cf6' },
-      });
-    }
-    return list.length > 0 ? list : undefined;
-  }, [selectMode, currentStatus, hasReprintPerm, tableId, navigation]);
+    return undefined;
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

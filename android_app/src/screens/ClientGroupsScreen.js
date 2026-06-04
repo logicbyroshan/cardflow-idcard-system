@@ -24,15 +24,19 @@ const STATUS_OPTIONS = [
   { key: 'all',      label: 'ALL',       color: colors.brandPrimary, icon: 'list' },
   { key: 'pending',  label: 'PENDING',   color: '#f59e0b',           icon: 'clock' },
   { key: 'verified', label: 'VERIFIED',  color: '#10b981',           icon: 'check-circle' },
-      { key: 'pool',     label: 'POOL',      color: '#ec4899',           icon: 'layer-group' },
+  { key: 'approved', label: 'APPROVED',  color: '#3b82f6',           icon: 'thumbs-up' },
+  { key: 'download', label: 'DOWNLOAD',  color: '#8b5cf6',           icon: 'download' },
+  { key: 'pool',     label: 'POOL',      color: '#ef4444',           icon: 'layer-group' },
+  { key: 'reprint',  label: 'REPRINT',   color: '#f97316',           icon: 'redo' },
 ];
 
 const STATUS_COLORS = {
   pending:  { bg: '#fffbeb', text: '#f59e0b', border: '#fef3c7', icon: 'clock' },
   verified: { bg: '#ecfdf5', text: '#10b981', border: '#d1fae5', icon: 'check-circle' },
-  
-  download: { bg: '#f5f3ff', text: '#8b5cf6', border: '#e0e7ff', icon: 'download' },
-  pool:     { bg: '#fef2f2', text: '#ef4444', border: '#fee2fee', icon: 'layer-group' },
+  approved: { bg: '#eff6ff', text: '#3b82f6', border: '#dbeafe', icon: 'thumbs-up' },
+  download: { bg: '#f5f3ff', text: '#8b5cf6', border: '#ede9fe', icon: 'download' },
+  pool:     { bg: '#fef2f2', text: '#ef4444', border: '#fee2e2', icon: 'layer-group' },
+  reprint:  { bg: '#fff7ed', text: '#f97316', border: '#ffedd5', icon: 'redo' },
 };
 
 export default function ClientGroupsScreen({ navigation, route }) {
@@ -112,15 +116,16 @@ export default function ClientGroupsScreen({ navigation, route }) {
 
   // Aggregated status counts across all client tables to display in the tabs
   const statusCounts = useMemo(() => {
-    const counts = { all: 0, pending: 0, verified: 0, approved: 0, download: 0, pool: 0 };
+    const counts = { all: 0, pending: 0, verified: 0, approved: 0, download: 0, pool: 0, reprint: 0 };
     allTables.forEach(t => {
       counts.pending += (t.pending_count || 0);
       counts.verified += (t.verified_count || 0);
-       (t.approved_count || 0);
-       (t.download_count || 0);
+      counts.approved += (t.approved_count || 0);
+      counts.download += (t.download_count || 0);
       counts.pool += (t.pool_count || 0);
+      counts.reprint += (t.reprint_count || 0);
     });
-    counts.all = counts.pending + counts.verified + counts.pool;
+    counts.all = counts.pending + counts.verified + counts.approved + counts.download + counts.pool + counts.reprint;
     return counts;
   }, [allTables]);
 
@@ -639,9 +644,13 @@ const MiniCount = React.memo(function MiniCount({ count, bg, c }) {
 
 const TableBadgeButton = React.memo(({ opt, table, navigation }) => {
   const sc = STATUS_COLORS[opt.key];
-  const count = table[`${opt.key}_count`] || 0;
+  const count = table[`${opt.key}_count`] || (opt.key === 'reprint' ? table.reprint_count || 0 : 0);
   const onPress = useCallback(() => {
-    navigation.navigate('CardList', { tableId: table.id, status: opt.key });
+    if (opt.key === 'reprint') {
+      navigation.navigate('ReprintDetail', { tableId: table.id });
+    } else {
+      navigation.navigate('CardList', { tableId: table.id, status: opt.key });
+    }
   }, [navigation, table.id, opt.key]);
 
   return (
