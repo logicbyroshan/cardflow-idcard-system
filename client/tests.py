@@ -1480,6 +1480,46 @@ class ClientApiIntegrationTests(TestCase):
         self.assertIn('10', payload.get('classes', []))
         self.assertIn('A', payload.get('sections', []))
 
+    def test_api_cards_list_preserves_combined_filters_and_sort(self):
+        from idcards.models import IDCard
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Alpha', 'PHOTO': 'adarshimg/alpha.jpg'},
+        )
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Bravo', 'PHOTO': 'PENDING:bravo.jpg'},
+        )
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Charlie', 'PHOTO': 'adarshimg/charlie.jpg'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/client/api/table/{self.table.id}/cards/',
+            {
+                'status': 'pending',
+                'search': 'a',
+                'class': '10',
+                'section': 'A',
+                'photo': 'complete',
+                'sort': 'name-desc',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'], msg=str(payload))
+
+        cards = payload.get('data', {}).get('cards', [])
+        names = [card.get('field_data', {}).get('NAME') for card in cards]
+        self.assertEqual(names, ['Charlie', 'Alpha'])
+
     def test_api_staff_list_create_rejects_client_staff_role(self):
         self.client.login(username='api-staff@test.com', password='pass1234')
         response = self.client.get(

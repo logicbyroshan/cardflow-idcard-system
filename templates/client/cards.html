@@ -172,14 +172,22 @@ function debounceSearch() {
 async function loadCards() {
   const status = document.getElementById('statusFilter').value;
   const search = document.getElementById('searchInput').value;
+  const params = new URLSearchParams(window.location.search);
+  params.set('page', currentPage);
+  params.set('per_page', 20);
   
-  const params = new URLSearchParams({
-    page: currentPage,
-    per_page: 20
+  if (status) params.set('status', status);
+  else params.delete('status');
+  if (search) params.set('search', search);
+  else params.delete('search');
+
+  const optionalKeys = ['class', 'section', 'course', 'branch', 'sort', 'photo', 'image_column', 'image_condition', 'from', 'to'];
+  optionalKeys.forEach(key => {
+    const value = params.get(key);
+    if (value === null || value === '') {
+      params.delete(key);
+    }
   });
-  
-  if (status) params.append('status', status);
-  if (search) params.append('search', search);
   
   try {
     const response = await fetch(`{% url 'client:api_cards' table.id %}?${params}`);

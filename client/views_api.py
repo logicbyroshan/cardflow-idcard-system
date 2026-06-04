@@ -915,6 +915,15 @@ def api_cards_list(request, table_id):
     """
     status_filter = (request.GET.get('status', '') or '').strip().lower()
     search = (request.GET.get('search', '') or '').strip()[:120]
+    class_filter = (request.GET.get('class', '') or '').strip()
+    section_filter = (request.GET.get('section', '') or '').strip()
+    course_filter = (request.GET.get('course', '') or '').strip()
+    branch_filter = (request.GET.get('branch', '') or '').strip()
+    sort_order = (request.GET.get('sort', '') or 'sr-asc').strip().lower()
+    photo_filter = (request.GET.get('photo', '') or request.GET.get('image_condition', '') or '').strip().lower()
+    image_column = (request.GET.get('image_column', '') or '').strip()
+    from_date = (request.GET.get('from', '') or '').strip()
+    to_date = (request.GET.get('to', '') or '').strip()
     try:
         page = int(request.GET.get('page', 1))
         per_page = int(request.GET.get('per_page', 20))
@@ -930,7 +939,16 @@ def api_cards_list(request, table_id):
         status_filter if status_filter else None,
         offset,
         per_page,
-        search if search else None
+        search if search else None,
+        from_date=from_date or None,
+        to_date=to_date or None,
+        class_filter=class_filter or None,
+        section_filter=section_filter or None,
+        course_filter=course_filter or None,
+        branch_filter=branch_filter or None,
+        photo_filter=photo_filter or None,
+        sort_order=sort_order or 'sr-asc',
+        image_column=image_column or None,
     )
     
     if result.success:
