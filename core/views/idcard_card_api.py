@@ -501,7 +501,8 @@ def api_idcard_cards_json(request, table_id):
     from django.utils.timezone import localtime, make_aware, is_naive
     from datetime import datetime as dt
     from django.db.models import Q, Value, IntegerField, Case, When
-    from django.db.models.functions import Coalesce, Lower
+    from django.db.models.functions import Coalesce, Lower, Cast
+    from django.db.models import CharField
     from django.db.models.fields.json import KeyTextTransform
 
     table, err = _check_client_scope_by_table(request.user, table_id)
@@ -521,6 +522,8 @@ def api_idcard_cards_json(request, table_id):
         limit = min(500, max(1, int(request.GET.get('limit', 100))))
     except (ValueError, TypeError):
         offset, limit = 0, 100
+
+    sort_order = request.GET.get('sort', '').strip().lower()
 
     # Base queryset — newest action first in each status list.
     # Pending/Verified/Approved/Reprint use status_changed_at with created_at fallback
@@ -601,6 +604,38 @@ def api_idcard_cards_json(request, table_id):
         elif image_condition == 'incomplete':
             qs = qs.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
 
+    # Sort order must be applied after all filters so combined class/section
+    # searches stay stable when the user switches between A-Z / Z-A.
+    if sort_order in ('name-asc', 'name-desc'):
+        name_field = IDCardService._get_name_field(table)
+        if name_field:
+            qs = qs.annotate(
+                _name_raw=Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
+                _name_sort=Lower(Coalesce(
+                    Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
+                    Value(''),
+                    output_field=CharField(),
+                )),
+                _name_empty=Case(
+                    When(
+                        Q(_name_raw__isnull=True) | Q(_name_raw=''),
+                        then=Value(1),
+                    ),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                ),
+            )
+            if sort_order == 'name-asc':
+                qs = qs.order_by('_name_empty', '_name_sort', 'id')
+            else:
+                qs = qs.order_by('_name_empty', '-_name_sort', '-id')
+    elif sort_order == 'sr-desc':
+        qs = qs.order_by('created_at', '-id')
+    elif sort_order == 'date-new':
+        qs = qs.order_by('-updated_at', '-id')
+    elif sort_order == 'date-old':
+        qs = qs.order_by('updated_at', 'id')
+
     # DateTime range (download list)
     if status_filter == 'download':
         from_date = request.GET.get('from', '').strip()
@@ -625,10 +660,11 @@ def api_idcard_cards_json(request, table_id):
         name_field = IDCardService._get_name_field(table)
         if name_field:
             qs = qs.annotate(
-                _name_raw=KeyTextTransform(name_field, 'field_data'),
+                _name_raw=Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
                 _name_sort=Lower(Coalesce(
-                    KeyTextTransform(name_field, 'field_data'),
+                    Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
                     Value(''),
+                    output_field=CharField(),
                 )),
                 _name_empty=Case(
                     When(

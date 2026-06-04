@@ -1520,6 +1520,43 @@ class ClientApiIntegrationTests(TestCase):
         names = [card.get('field_data', {}).get('NAME') for card in cards]
         self.assertEqual(names, ['Charlie', 'Alpha'])
 
+    def test_panel_cards_list_preserves_class_section_sort_for_client_role(self):
+        from idcards.models import IDCard
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '11', 'SECTION': 'B', 'NAME': 'Alpha'},
+        )
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '11', 'SECTION': 'B', 'NAME': 'Bravo'},
+        )
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '11', 'SECTION': 'B', 'NAME': 'Charlie'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/api/table/{self.table.id}/cards/',
+            {
+                'status': 'pending',
+                'class': '11',
+                'section': 'B',
+                'sort': 'name-desc',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload.get('success'), msg=str(payload))
+        cards = payload.get('cards', [])
+        names = [card.get('field_data', {}).get('NAME') for card in cards]
+        self.assertEqual(names[:3], ['Charlie', 'Bravo', 'Alpha'])
+
     def test_api_staff_list_create_rejects_client_staff_role(self):
         self.client.login(username='api-staff@test.com', password='pass1234')
         response = self.client.get(
