@@ -3414,20 +3414,29 @@ def api_upload_photo(request, table_id):
 
     try:
         card_id_int = int(str(card_id).strip())
+        card = IDCard.objects.select_related('table__group').get(id=card_id_int, table_id=table_id)
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
+    except IDCard.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Card not found'}, status=404)
 
-    if not PermissionService.has(request.user, 'perm_idcard_edit'):
+    is_assistant_pool_retrieve = (
+        PermissionService.is_client_staff(request.user)
+        and card.status == 'pool'
+        and PermissionService.has(request.user, 'perm_idcard_retrieve')
+    )
+
+    if not PermissionService.has(request.user, 'perm_idcard_edit') and not is_assistant_pool_retrieve:
         return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
 
     _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
     if not _ok:
         return JsonResponse({'success': False, 'message': _err}, status=400)
+
     try:
-        card = IDCard.objects.select_related('table__group').get(id=card_id_int, table_id=table_id)
-        if not _can_access_card_with_row_scope(request.user, card):
+        if not is_assistant_pool_retrieve and not _can_access_card_with_row_scope(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-        if _is_mobile_client_edit_locked(request.user, card.status):
+        if _is_mobile_client_edit_locked(request.user, card.status) and not is_assistant_pool_retrieve:
             return _mobile_client_edit_locked_response()
 
         # Keep mobile + desktop lists in sync by writing through the same
@@ -4196,11 +4205,16 @@ def api_card_update(request, table_id, card_id):
     from core.services import IDCardService
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id, table_id=table_id)
-        if not _can_access_card_with_row_scope(request.user, card):
+        is_assistant_pool_retrieve = (
+            PermissionService.is_client_staff(request.user)
+            and card.status == 'pool'
+            and PermissionService.has(request.user, 'perm_idcard_retrieve')
+        )
+        if not is_assistant_pool_retrieve and not _can_access_card_with_row_scope(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-        if not PermissionService.has(request.user, 'perm_idcard_edit'):
+        if not PermissionService.has(request.user, 'perm_idcard_edit') and not is_assistant_pool_retrieve:
             return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
-        if _is_mobile_client_edit_locked(request.user, card.status):
+        if _is_mobile_client_edit_locked(request.user, card.status) and not is_assistant_pool_retrieve:
             return _mobile_client_edit_locked_response()
 
         field_data_raw = request.POST.get('field_data', '{}')

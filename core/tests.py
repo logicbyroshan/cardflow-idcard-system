@@ -3774,6 +3774,27 @@ class PoolRetrieveClassChangeFlowTests(TestCase):
         self.assertEqual(self.card.status, 'pending')
         self.assertEqual((self.card.field_data or {}).get('CLASS'), '1')
 
+    def test_mobile_assistant_can_edit_pool_card_for_retrieve(self):
+        # Set up mobile session
+        session = self.client.session
+        session['mobile_auth_ok'] = True
+        session.save()
+
+        # Try updating the pool card via mobile update API
+        url = f'/api/mobile/table/{self.table.id}/card/{self.card.id}/update/'
+        response = self.client.post(
+            url,
+            {
+                'field_data': json.dumps({'NAME': 'UPDATED POOL NAME', 'CLASS': '1', 'SECTION': 'A'}),
+            },
+            HTTP_USER_AGENT='adarsh-mobile-app',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.field_data.get('NAME'), 'UPDATED POOL NAME')
+
 
 class ClientStaffEmptyScopeVisibilityTests(TestCase):
     def setUp(self):
