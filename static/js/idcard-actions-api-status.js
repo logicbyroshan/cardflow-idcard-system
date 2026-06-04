@@ -806,9 +806,6 @@ function retrieveCard(cardId) {
                 if (data.success === false) {
                     var details = _extractRetrieveClassChangeDetails(data);
                     if (details) {
-                        if (typeof showToast === 'function') {
-                            showToast('This student is not assigned to you. Please update class/section to retrieve.', false);
-                        }
                         window.IDCardApp.retrieveOnSave = true;
                         window.IDCardApp.fetchCardAndOpenModal('edit', cardId);
                         return;
@@ -822,9 +819,6 @@ function retrieveCard(cardId) {
             .catch(function(err) {
                 var details = _extractRetrieveClassChangeDetails(err && err.data);
                 if (details) {
-                    if (typeof showToast === 'function') {
-                        showToast('This student is not assigned to you. Please update class/section to retrieve.', false);
-                    }
                     window.IDCardApp.retrieveOnSave = true;
                     window.IDCardApp.fetchCardAndOpenModal('edit', cardId);
                     return;

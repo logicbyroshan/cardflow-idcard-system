@@ -204,9 +204,6 @@ function bulkRetrieve(cardIds) {
                     var extractFn = window.IDCardApp && window.IDCardApp.extractRetrieveClassChangeDetails;
                     var details = (typeof extractFn === 'function') ? extractFn(data) : null;
                     if (details && cardIds.length === 1) {
-                        if (typeof showToast === 'function') {
-                            showToast('This student is not assigned to you. Please update class/section to retrieve.', false);
-                        }
                         window.IDCardApp.retrieveOnSave = true;
                         window.IDCardApp.fetchCardAndOpenModal('edit', cardIds[0]);
                         return;
@@ -231,9 +228,6 @@ function bulkRetrieve(cardIds) {
                 var extractFn = window.IDCardApp && window.IDCardApp.extractRetrieveClassChangeDetails;
                 var details = (typeof extractFn === 'function') ? extractFn(err && err.data) : null;
                 if (details && cardIds.length === 1) {
-                    if (typeof showToast === 'function') {
-                        showToast('This student is not assigned to you. Please update class/section to retrieve.', false);
-                    }
                     window.IDCardApp.retrieveOnSave = true;
                     window.IDCardApp.fetchCardAndOpenModal('edit', cardIds[0]);
                     return;
