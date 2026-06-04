@@ -449,14 +449,14 @@ export default function HomeScreen({ navigation }) {
           {statusConfig.map(st => {
             const val = st.key === 'total' ? totalCards : (counts[st.key] || 0);
             const isAssistant = user?.role === 'client_staff';
-            const cardWidth = isAssistant ? (width - 54) / 4 : (width - 44) / 3;
+            const cardWidth = isAssistant ? (width - 34) / 2 : (width - 44) / 3;
             return (
               <TouchableOpacity 
                 key={st.key} 
                 style={[
                   s.statusCardOuter, 
                   { width: cardWidth },
-                  isAssistant ? { aspectRatio: undefined, height: 80 } : {}
+                  isAssistant ? { aspectRatio: undefined, height: 110 } : {}
                 ]}
                 activeOpacity={0.8}
                 onPress={() => handleStatCardPress(st.key)}
