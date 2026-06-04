@@ -534,9 +534,52 @@ export default function CardListScreen({ navigation, route }) {
     );
   }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect]);
 
+  const showPdfBtn = useMemo(() => {
+    if (selectMode) return false;
+    if (perms.isSuperAdmin || perms.role === 'admin_staff') {
+      return true;
+    }
+    const isClientRole = perms.role === 'client' || perms.role === 'client_staff' || perms.role === 'guest_user';
+    const hasDownloadPerm = !!(perms.perm_download_pdf || perms.perm_idcard_download_pdf || perms.perm_idcard_bulk_download);
+    if (isClientRole && hasDownloadPerm) {
+      return true;
+    }
+    return false;
+  }, [selectMode, perms]);
+
+  const handleDownloadWholePdf = useCallback(() => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('status', currentStatus);
+    if (searchQuery) queryParams.append('search', searchQuery);
+    
+    Object.keys(activeFilters).forEach(key => {
+      if (activeFilters[key] !== null && activeFilters[key] !== undefined && activeFilters[key] !== '') {
+        queryParams.append(key, activeFilters[key]);
+      }
+    });
+
+    const url = `${BASE_URL}/api/mobile/table/${tableId}/download-pdf/?${queryParams.toString()}`;
+    Linking.openURL(url);
+  }, [currentStatus, searchQuery, activeFilters, tableId]);
+
   const leftOfHomeBtns = useMemo(() => {
-    return undefined;
-  }, []);
+    const list = [];
+    if (showPdfBtn) {
+      list.push({
+        label: 'DOWNLOAD PDF',
+        onPress: handleDownloadWholePdf,
+        style: { backgroundColor: '#ef4444' },
+      });
+    }
+    if (!selectMode && currentStatus === 'download' && hasReprintPerm) {
+      list.push({
+        label: 'REPRINT',
+        onPress: () => navigation.navigate('ReprintDetail', { tableId }),
+        style: { backgroundColor: '#8b5cf6' },
+      });
+    }
+    return list.length > 0 ? list : undefined;
+  }, [showPdfBtn, selectMode, currentStatus, hasReprintPerm, tableId, navigation, handleDownloadWholePdf]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

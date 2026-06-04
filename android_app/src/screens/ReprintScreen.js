@@ -209,12 +209,27 @@ export default function ReprintScreen({ navigation, route }) {
                         style={[
                           s.stBtnBelow,
                           { 
+                            backgroundColor: '#f5f3ff',
+                            borderColor: '#8b5cf660',
+                          }
+                        ]}
+                        activeOpacity={0.7}
+                        onPress={() => navigation.navigate('ReprintDetail', { tableId: table.id, initialTab: 'download_list' })}
+                      >
+                        <Text style={[s.stBtnTextBelow, { color: '#8b5cf6' }]}>
+                          Reprint ({table.reprint_count || 0})
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          s.stBtnBelow,
+                          { 
                             backgroundColor: '#fef3c7',
                             borderColor: '#f59e0b60',
                           }
                         ]}
                         activeOpacity={0.7}
-                        onPress={() => navigation.navigate('ReprintDetail', { tableId: table.id })}
+                        onPress={() => navigation.navigate('ReprintDetail', { tableId: table.id, initialTab: 'request_list' })}
                       >
                         <Text style={[s.stBtnTextBelow, { color: '#f59e0b' }]}>
                           Requested ({table.requested || 0})
@@ -229,7 +244,7 @@ export default function ReprintScreen({ navigation, route }) {
                           }
                         ]}
                         activeOpacity={0.7}
-                        onPress={() => navigation.navigate('ReprintDetail', { tableId: table.id })}
+                        onPress={() => navigation.navigate('ReprintDetail', { tableId: table.id, initialTab: 'confirmed' })}
                       >
                         <Text style={[s.stBtnTextBelow, { color: '#10b981' }]}>
                           Confirmed ({table.confirmed || 0})
