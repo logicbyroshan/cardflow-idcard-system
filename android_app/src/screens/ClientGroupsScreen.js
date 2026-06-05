@@ -668,6 +668,7 @@ const TableBadgeButton = React.memo(({ opt, table, navigation }) => {
 });
 
 const TableCardRow = React.memo(({ table, navigation, onOpenActions, currentStatus }) => {
+  const { user } = useAuth();
   const totalCount = (table.pending_count || 0) + (table.verified_count || 0) +
                      (table.approved_count || 0) + (table.download_count || 0) +
                      (table.pool_count || 0);
@@ -706,7 +707,12 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions, currentStat
 
       {/* Clickable Status Badges matching web style */}
       <View style={s.tableBadgesRow}>
-        {STATUS_OPTIONS.slice(1).map(opt => (
+        {STATUS_OPTIONS.slice(1).filter(opt => {
+          if (user?.role === 'client_staff') {
+            return ['pending', 'verified', 'pool'].includes(opt.key);
+          }
+          return true;
+        }).map(opt => (
           <TableBadgeButton
             key={opt.key}
             opt={opt}
