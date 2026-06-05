@@ -68,6 +68,7 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
             if (!handled) {
                 console.error('Card insert failed and no local fallback was applied');
             }
+            if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
         } else {
             if (typeof showToast === 'function') showToast(data.message || 'Error adding card', false);
             if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();

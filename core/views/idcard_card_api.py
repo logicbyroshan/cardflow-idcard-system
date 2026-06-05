@@ -595,7 +595,7 @@ def api_idcard_cards_json(request, table_id):
     image_column = request.GET.get('image_column', '').strip()
     image_condition = request.GET.get('image_condition', '').strip()
     if image_column and image_condition in ('complete', 'pending', 'incomplete'):
-        qs = qs.annotate(_img=KeyTextTransform(image_column, 'field_data'))
+        qs = qs.annotate(_img=Cast(KeyTextTransform(image_column, 'field_data'), CharField()))
         if image_condition == 'complete':
             qs = qs.exclude(_img__isnull=True).exclude(_img='').exclude(_img='NOT_FOUND')
             qs = qs.exclude(_img__startswith='PENDING:')
@@ -654,37 +654,6 @@ def api_idcard_cards_json(request, table_id):
                 qs = qs.filter(downloaded_at__lte=to_dt)
             except (ValueError, TypeError):
                 pass
-
-    sort_order = request.GET.get('sort', '').strip().lower()
-    if sort_order in ('name-asc', 'name-desc'):
-        name_field = IDCardService._get_name_field(table)
-        if name_field:
-            qs = qs.annotate(
-                _name_raw=Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
-                _name_sort=Lower(Coalesce(
-                    Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
-                    Value(''),
-                    output_field=CharField(),
-                )),
-                _name_empty=Case(
-                    When(
-                        Q(_name_raw__isnull=True) | Q(_name_raw=''),
-                        then=Value(1),
-                    ),
-                    default=Value(0),
-                    output_field=IntegerField(),
-                ),
-            )
-            if sort_order == 'name-asc':
-                qs = qs.order_by('_name_empty', '_name_sort', 'id')
-            else:
-                qs = qs.order_by('_name_empty', '-_name_sort', '-id')
-    elif sort_order == 'sr-desc':
-        qs = qs.order_by('created_at', '-id')
-    elif sort_order == 'date-new':
-        qs = qs.order_by('-updated_at', '-id')
-    elif sort_order == 'date-old':
-        qs = qs.order_by('updated_at', 'id')
 
     total = qs.count()
 
