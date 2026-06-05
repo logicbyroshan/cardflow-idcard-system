@@ -1131,6 +1131,33 @@ def api_idcard_create(request, table_id):
             image_files = None
             legacy_photo_file = None
 
+        if PermissionService.is_client_staff(request.user):
+            staff = getattr(request.user, 'staff_profile', None)
+            if staff:
+                class_f, sec_f, _, _ = IDCardService._get_class_section_course_branch_field_names(_tbl)
+                from core.utils.field_utils import normalize_class_value
+                
+                if class_f:
+                    allowed_classes = _table_scope_values_for_staff(staff, _tbl, 'classes')
+                    if allowed_classes:
+                        sub_class = str(field_data.get(class_f, field_data.get(class_f.upper(), field_data.get(class_f.lower(), '')))).strip()
+                        if not sub_class:
+                            return JsonResponse({'success': False, 'message': f'{class_f} is required based on your assigned scope.'}, status=400)
+                        norm_sub = normalize_class_value(sub_class)
+                        norm_allowed = {normalize_class_value(c) for c in allowed_classes}
+                        if norm_sub not in norm_allowed and sub_class not in allowed_classes:
+                            return JsonResponse({'success': False, 'message': f'Not authorized. You can only add cards for assigned classes: {", ".join(allowed_classes)}'}, status=400)
+                
+                if sec_f:
+                    allowed_secs = _table_scope_values_for_staff(staff, _tbl, 'sections')
+                    if allowed_secs:
+                        sub_sec = str(field_data.get(sec_f, field_data.get(sec_f.upper(), field_data.get(sec_f.lower(), '')))).strip()
+                        if not sub_sec:
+                            return JsonResponse({'success': False, 'message': f'{sec_f} is required based on your assigned scope.'}, status=400)
+                        allow_sec_low = {s.lower() for s in allowed_secs}
+                        if sub_sec.lower() not in allow_sec_low:
+                            return JsonResponse({'success': False, 'message': f'Not authorized. You can only add cards for assigned sections: {", ".join(allowed_secs)}'}, status=400)
+
         result = IDCardService.create_card(
             table_id=table_id,
             field_data=field_data,
@@ -1323,6 +1350,37 @@ def api_idcard_update(request, card_id):
             reprint_modal_edit = _as_bool(data.get('reprint_modal_edit'))
             image_files = None
             legacy_photo_file = None
+
+        if PermissionService.is_client_staff(request.user) and field_data is not None:
+            staff = getattr(request.user, 'staff_profile', None)
+            if staff:
+                class_f, sec_f, _, _ = IDCardService._get_class_section_course_branch_field_names(_card.table)
+                from core.utils.field_utils import normalize_class_value
+                
+                if class_f:
+                    class_keys = [class_f, class_f.upper(), class_f.lower()]
+                    if any(k in field_data for k in class_keys):
+                        allowed_classes = _table_scope_values_for_staff(staff, _card.table, 'classes')
+                        if allowed_classes:
+                            sub_class = str(field_data.get(class_f, field_data.get(class_f.upper(), field_data.get(class_f.lower(), '')))).strip()
+                            if not sub_class:
+                                return JsonResponse({'success': False, 'message': f'{class_f} is required based on your assigned scope.'}, status=400)
+                            norm_sub = normalize_class_value(sub_class)
+                            norm_allowed = {normalize_class_value(c) for c in allowed_classes}
+                            if norm_sub not in norm_allowed and sub_class not in allowed_classes:
+                                return JsonResponse({'success': False, 'message': f'Not authorized. You can only edit cards within assigned classes: {", ".join(allowed_classes)}'}, status=400)
+                
+                if sec_f:
+                    sec_keys = [sec_f, sec_f.upper(), sec_f.lower()]
+                    if any(k in field_data for k in sec_keys):
+                        allowed_secs = _table_scope_values_for_staff(staff, _card.table, 'sections')
+                        if allowed_secs:
+                            sub_sec = str(field_data.get(sec_f, field_data.get(sec_f.upper(), field_data.get(sec_f.lower(), '')))).strip()
+                            if not sub_sec:
+                                return JsonResponse({'success': False, 'message': f'{sec_f} is required based on your assigned scope.'}, status=400)
+                            allow_sec_low = {s.lower() for s in allowed_secs}
+                            if sub_sec.lower() not in allow_sec_low:
+                                return JsonResponse({'success': False, 'message': f'Not authorized. You can only edit cards within assigned sections: {", ".join(allowed_secs)}'}, status=400)
 
         # Default lock remains in place. Bypass is only for reprint-modal edits
         # when caller has reprint permission.
