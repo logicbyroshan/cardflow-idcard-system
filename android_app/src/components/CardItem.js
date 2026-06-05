@@ -240,7 +240,7 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Reprint Request Button */}
-          {onReprint && (currentStatus === 'approved' || currentStatus === 'download') && (
+          {onReprint && (currentStatus === 'download') && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.warning }]} 
               onPress={() => onReprint(item)}

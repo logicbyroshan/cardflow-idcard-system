@@ -571,15 +571,16 @@ export default function CardListScreen({ navigation, route }) {
         style: { backgroundColor: '#ef4444' },
       });
     }
-    if (!selectMode && currentStatus === 'download' && hasReprintPerm) {
+    const canReprint = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.role === 'admin' || perms.role === 'super_admin' || perms.role === 'client' || perms.role === 'client_staff';
+    if (!selectMode && currentStatus === 'download' && canReprint) {
       list.push({
-        label: 'REPRINT',
+        label: 'REPRINTS',
         onPress: () => navigation.navigate('ReprintDetail', { tableId }),
-        style: { backgroundColor: '#8b5cf6' },
+        style: { backgroundColor: '#f97316' },
       });
     }
     return list.length > 0 ? list : undefined;
-  }, [showPdfBtn, selectMode, currentStatus, hasReprintPerm, tableId, navigation, handleDownloadWholePdf]);
+  }, [showPdfBtn, selectMode, currentStatus, perms, tableId, navigation, handleDownloadWholePdf]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

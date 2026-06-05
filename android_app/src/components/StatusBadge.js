@@ -10,6 +10,7 @@ const STATUS_STYLES = {
   approved: { bg: colors.approved.bg, text: colors.approved.text, glass: colors.approvedGlass, label: 'Approved', icon: 'user-check' },
   download: { bg: colors.download.bg, text: colors.download.text, glass: colors.downloadGlass, label: 'Download', icon: 'download' },
   pool:     { bg: colors.pool.bg,     text: colors.pool.text,     glass: colors.poolGlass,     label: 'Pool', icon: 'layer-group' },
+  reprint:  { bg: '#fff7ed',          text: '#f97316',            glass: 'rgba(249, 115, 22, 0.1)', label: 'Reprint', icon: 'redo' },
 };
 
 export default function StatusBadge({ status, count, size = 'md', variant = 'solid', showIcon = false }) {

@@ -62,7 +62,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
   const [editingCardId, setEditingCardId] = useState(null);
   const [reprintConfirmModal, setReprintConfirmModal] = useState({ visible: false, cardId: null, name: '' });
 
-  const canRequestReprint = perms.perm_idcard_reprint_list || isAdminOrOperator;
+  const canRequestReprint = hasDownloadTab || isClient || isAssistant;
   
   // Search
   const [searchText, setSearchText] = useState('');
