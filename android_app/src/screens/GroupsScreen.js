@@ -54,13 +54,7 @@ export default function GroupsScreen({ navigation }) {
             { key: 'a', status: 'approved', label: 'APPROVED', color: '#3b82f6', bg: '#eff6ff', icon: 'thumbs-up' },
             { key: 'd', status: 'download', label: 'DOWNLOAD', color: '#8b5cf6', bg: '#f5f3ff', icon: 'download' },
             { key: 'po', status: 'pool',     label: 'POOL',     color: '#ef4444', bg: '#fef2f2', icon: 'archive' },
-            { key: 'r', status: 'reprint',  label: 'REPRINT',  color: '#f97316', bg: '#fff7ed', icon: 'redo' },
-          ]).filter(st => {
-            if (user?.role === 'client_staff') {
-              return ['pending', 'verified', 'pool'].includes(st.status);
-            }
-            return true;
-          }).map(st => (
+          ]).map(st => (
             <TouchableOpacity key={st.key}
               style={[
                 s.pillBtn, 

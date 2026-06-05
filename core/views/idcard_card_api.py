@@ -1134,7 +1134,7 @@ def api_idcard_create(request, table_id):
         if PermissionService.is_client_staff(request.user):
             staff = getattr(request.user, 'staff_profile', None)
             if staff:
-                class_f, sec_f, _, _ = IDCardService._get_class_section_course_branch_field_names(_tbl)
+                class_f, sec_f, _, _ = _get_class_section_course_branch_field_names(_tbl)
                 from core.utils.field_utils import normalize_class_value
                 
                 if class_f:
@@ -1354,7 +1354,7 @@ def api_idcard_update(request, card_id):
         if PermissionService.is_client_staff(request.user) and field_data is not None:
             staff = getattr(request.user, 'staff_profile', None)
             if staff:
-                class_f, sec_f, _, _ = IDCardService._get_class_section_course_branch_field_names(_card.table)
+                class_f, sec_f, _, _ = _get_class_section_course_branch_field_names(_card.table)
                 from core.utils.field_utils import normalize_class_value
                 
                 if class_f:

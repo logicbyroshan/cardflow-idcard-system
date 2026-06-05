@@ -27,7 +27,6 @@ const STATUS_OPTIONS = [
   { key: 'approved', label: 'APPROVED',  color: '#3b82f6',           icon: 'thumbs-up' },
   { key: 'download', label: 'DOWNLOAD',  color: '#8b5cf6',           icon: 'download' },
   { key: 'pool',     label: 'POOL',      color: '#ef4444',           icon: 'layer-group' },
-  { key: 'reprint',  label: 'REPRINT',   color: '#f97316',           icon: 'redo' },
 ];
 
 const STATUS_COLORS = {
@@ -36,7 +35,6 @@ const STATUS_COLORS = {
   approved: { bg: '#eff6ff', text: '#3b82f6', border: '#dbeafe', icon: 'thumbs-up' },
   download: { bg: '#f5f3ff', text: '#8b5cf6', border: '#ede9fe', icon: 'download' },
   pool:     { bg: '#fef2f2', text: '#ef4444', border: '#fee2e2', icon: 'layer-group' },
-  reprint:  { bg: '#fff7ed', text: '#f97316', border: '#ffedd5', icon: 'redo' },
 };
 
 export default function ClientGroupsScreen({ navigation, route }) {
@@ -659,8 +657,7 @@ const TableBadgeButton = React.memo(({ opt, table, navigation }) => {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <DynamicIcon name={sc.icon} size={11} color={sc.text} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <Text style={[s.badgeText, { color: sc.text }]}>{opt.label}</Text>
       </View>
       <View style={[s.badgeCountCircle, { backgroundColor: sc.text }]}>
@@ -742,12 +739,12 @@ const s = StyleSheet.create({
   tableMeta: { fontSize: 9, color: colors.gray400, marginTop: 1 },
   cogButton: { padding: 6 },
 
-  // Status badges row inside table row — 2-column flex-wrap grid
-  tableBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 2 },
-  badgeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexGrow: 1, minWidth: '47%', gap: 4, paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius.xs, borderWidth: 1 },
-  badgeText: { fontSize: 9, fontFamily: 'SairaSemiCondensed-Bold' },
-  badgeCountCircle: { width: 14, height: 14, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  badgeCountText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
+  // Status badges row inside table row — single row for all 5 badges
+  tableBadgesRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 4, paddingVertical: 4 },
+  badgeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexGrow: 1, gap: 3, paddingHorizontal: 4, paddingVertical: 4, borderRadius: radius.xs, borderWidth: 1 },
+  badgeText: { fontSize: 8, fontFamily: 'SairaSemiCondensed-Bold' },
+  badgeCountCircle: { width: 12, height: 12, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  badgeCountText: { fontSize: 7, fontFamily: 'SairaSemiCondensed-Bold', color: '#fff' },
 
   // Empty states
   empty: { alignItems: 'center', paddingTop: 80 },
