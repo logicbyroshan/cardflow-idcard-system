@@ -41,11 +41,11 @@ JS contract (Alpine bridge):
         <div class="modal-icon-circle modal-icon-circle--danger">
           <i class="fa-solid fa-trash-can"></i>
         </div>
-        <p class="modal-body-title" x-text="modalData && modalData.bodyTitle ? modalData.bodyTitle : 'Delete {{ item_name|default:\'item\' }}?'"></p>
+        <p class="modal-body-title" x-text="modalData && modalData.bodyTitle ? modalData.bodyTitle : 'Delete {% if item_name %}{{ item_name }}{% else %}item{% endif %}?'"></p>
         <p class="modal-body-subtitle">
           <span x-show="modalData && modalData.subtitle" x-text="modalData.subtitle"></span>
           <span x-show="!modalData || !modalData.subtitle">
-            You are about to delete <strong id="deleteStaffName">this {{ item_name|default:'item' }}</strong>.
+            You are about to delete <strong id="deleteStaffName">this {% if item_name %}{{ item_name }}{% else %}item{% endif %}</strong>.
           </span>
         </p>
         <div class="alert-box alert-box--danger">
