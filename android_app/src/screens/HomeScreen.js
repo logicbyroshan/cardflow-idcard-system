@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
 import { apiGet, apiPost } from '../api/client';
 import Toast from '../components/Toast';
+import UpdatePromptModal from '../components/UpdatePromptModal';
 import { DashboardSkeleton } from '../components/Skeleton';
 import { ErrorBanner, ErrorView, ERROR_TYPES } from '../components/NetworkGuard';
 
@@ -766,6 +767,7 @@ export default function HomeScreen({ navigation }) {
       </Modal>
 
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(p => ({ ...p, visible: false }))} />
+      <UpdatePromptModal />
     </View>
   );
 }

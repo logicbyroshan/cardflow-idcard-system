@@ -65,4 +65,7 @@ urlpatterns = [
     path('pub/website/contact/', views.api_website_contact_submit, name='api_website_contact_submit'),
     path('website/portfolio/upload/', views.api_website_portfolio_upload, name='api_website_portfolio_upload'),
     path('website/portfolio/category/<int:category_id>/items/', views.api_website_portfolio_category_items, name='api_website_portfolio_category_items'),
+
+    # Device token registration for push notifications
+    path('device-token/register/', views.api_register_device_token, name='api_register_device_token'),
 ]

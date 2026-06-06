@@ -108,6 +108,21 @@ class NotificationService:
             if send_email:
                 cls._send_email_alerts(notif)
 
+            # Send push notifications in a decoupled background thread
+            try:
+                push_user_ids = []
+                if target == 'selected' and target_user_ids:
+                    push_user_ids = list(recipient_user_ids)
+                elif target == 'all':
+                    push_user_ids = list(User.objects.filter(is_active=True).values_list('id', flat=True))
+                else:
+                    push_user_ids = list(User.objects.filter(is_active=True, role=target).values_list('id', flat=True))
+                
+                if push_user_ids:
+                    cls._send_push_notifications_async(push_user_ids, title.strip(), message.strip())
+            except Exception as e:
+                logger.error("Failed to trigger push notifications: %s", e)
+
             if recipient_user_ids:
                 cls._invalidate_users_notification_caches(recipient_user_ids)
 
@@ -556,3 +571,50 @@ class NotificationService:
         except Exception as exc:
             logger.error("Failed to send email alerts for notification #%d: %s",
                          notif.id, exc)
+
+    @classmethod
+    def _send_push_notifications_async(cls, user_ids, title, message):
+        """Send push notifications to mobile devices via Expo push notification service in a background thread."""
+        try:
+            import threading
+            from mobile_api.models import MobileDeviceToken
+            
+            # Fetch all tokens for these user IDs
+            tokens = list(MobileDeviceToken.objects.filter(user_id__in=user_ids).values_list('push_token', flat=True))
+            if not tokens:
+                return
+                
+            def _send_expo_push_tokens(tokens, title, message):
+                import requests
+                url = "https://exp.host/--/api/v2/push/send"
+                headers = {
+                    "Content-Type": "application/json",
+                    "accept-encoding": "gzip, deflate",
+                    "accept": "application/json",
+                }
+                # Expo recommends chunking to 100 messages at a time
+                chunk_size = 100
+                for i in range(0, len(tokens), chunk_size):
+                    chunk = tokens[i:i + chunk_size]
+                    payload = []
+                    for token in chunk:
+                        payload.append({
+                            "to": token,
+                            "sound": "default",
+                            "title": title,
+                            "body": message,
+                        })
+                    try:
+                        response = requests.post(url, json=payload, headers=headers, timeout=10)
+                        logger.info("Expo push response: status=%s, payload_len=%d", response.status_code, len(chunk))
+                    except Exception as e:
+                        logger.error("Failed to send Expo push notification chunk: %s", e)
+
+            threading.Thread(
+                target=_send_expo_push_tokens,
+                args=(tokens, title, message),
+                daemon=True
+            ).start()
+            logger.info("Triggered push notification thread for user_ids=%s", user_ids)
+        except Exception as exc:
+            logger.error("Failed to initiate push notifications: %s", exc)

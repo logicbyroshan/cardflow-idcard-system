@@ -122,6 +122,7 @@ export default function StaffManageScreen({ navigation, route }) {
 
   const [showAssign, setShowAssign] = useState(false);
   const [assigningId, setAssigningId] = useState(null);
+  const [assigningName, setAssigningName] = useState('');
   const [assignData, setAssignData] = useState({ groups: [], tables: [], clients: [], class_section_options: {}, group_options: {}, table_options: {} });
   const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [selectedTableIds, setSelectedTableIds] = useState([]);
@@ -261,6 +262,7 @@ export default function StaffManageScreen({ navigation, route }) {
 
   const openAssign = async (member) => {
     setAssigningId(member.id);
+    setAssigningName(member.name || '');
     setLoadingAssign(true);
     setShowAssign(true);
     // Reset all selections — user must select fresh, no defaults
@@ -320,6 +322,13 @@ export default function StaffManageScreen({ navigation, route }) {
         existingGroupIds.forEach(id => saved.add(`group-${id}`));
         existingTableIds.forEach(id => saved.add(`table-${id}`));
         setSavedScopeIds(saved);
+
+        // Auto-open if only one table is selected
+        if (existingTableIds.length === 1) {
+          setActiveConfigScope({ type: 'table', id: existingTableIds[0] });
+        } else {
+          setActiveConfigScope(null);
+        }
       }
     } catch (e) { showToast('Error loading assignments', 'error'); }
     setLoadingAssign(false);
@@ -343,15 +352,22 @@ export default function StaffManageScreen({ navigation, route }) {
 
   const handleToggleTableInAssign = (tid) => {
     setSelectedTableIds(prev => {
+      let next;
       if (prev.includes(tid)) {
         setSavedScopeIds(s => { const n = new Set(s); n.delete(`table-${tid}`); return n; });
         setAssignmentScopes(p => p.filter(s => !(s.scope_type === 'table' && parseInt(s.scope_id) === tid)));
-        if (activeConfigScope?.type === 'table' && activeConfigScope?.id === tid) setActiveConfigScope(null);
-        return prev.filter(i => i !== tid);
+        next = prev.filter(i => i !== tid);
       } else {
-        setActiveConfigScope({ type: 'table', id: tid });
-        return [...prev, tid];
+        next = [...prev, tid];
       }
+
+      if (next.length === 1) {
+        setActiveConfigScope({ type: 'table', id: next[0] });
+      } else {
+        setActiveConfigScope(null);
+      }
+
+      return next;
     });
   };
 
@@ -908,7 +924,7 @@ export default function StaffManageScreen({ navigation, route }) {
           <TouchableOpacity style={s.modalBg} activeOpacity={1} onPress={() => setShowAssign(false)} />
           <View style={s.modalContentFull}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Assign Access</Text>
+              <Text style={s.modalTitle}>Assign Access{assigningName ? ` (${assigningName})` : ''}</Text>
               <TouchableOpacity onPress={() => setShowAssign(false)}><IconClose size={20} color={colors.gray400} /></TouchableOpacity>
             </View>
             
@@ -927,71 +943,8 @@ export default function StaffManageScreen({ navigation, route }) {
                   </>
                 ) : (
                   <>
-                    {/* STEP 1: Select Groups */}
-                    <Text style={s.sectionTitle}>Select Groups (Departments)</Text>
-                    <Text style={s.sectionHint}>Tap a group to select it, then configure class/section access below it.</Text>
-                    <View style={s.checkGrid}>
-                      {assignData.groups.map(g => {
-                        const isSelected = selectedGroupIds.includes(g.id);
-                        const isSaved = savedScopeIds.has(`group-${g.id}`);
-                        return (
-                          <TouchableOpacity
-                            key={g.id}
-                            style={[s.checkItem, isSelected && s.checkItemActive, isSaved && s.checkItemSaved]}
-                            onPress={() => handleToggleGroupInAssign(g.id)}
-                          >
-                            <View style={s.checkItemRow}>
-                              <Text style={[s.checkLabel, isSelected && s.checkLabelActive, isSaved && s.checkLabelSaved]} numberOfLines={1}>{g.name}</Text>
-                              {isSaved && <View style={s.savedBadge}><Text style={s.savedBadgeText}>✓</Text></View>}
-                            </View>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
- 
-                    {/* Inline config for selected groups */}
-                    {selectedGroupIds.map(gid => {
-                      const g = assignData.groups.find(x => x.id === gid);
-                      if (!g) return null;
-                      const isActive = activeConfigScope?.type === 'group' && activeConfigScope?.id === gid;
-                      const isSaved = savedScopeIds.has(`group-${gid}`);
-                      return (
-                        <View key={`group-config-${gid}`} style={s.scopeWrapper}>
-                          <TouchableOpacity
-                            style={s.scopeToggleHeader}
-                            onPress={() => setActiveConfigScope(isActive ? null : { type: 'group', id: gid })}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={s.scopeToggleTitle}>{g.name.toUpperCase()} — Configure Access</Text>
-                            <View style={[s.scopeToggleChevron, isActive && s.scopeToggleChevronOpen]}>
-                              <Text style={s.scopeToggleChevronText}>{isActive ? '▲' : '▼'}</Text>
-                            </View>
-                          </TouchableOpacity>
-                          {isActive && (
-                            <View style={s.scopeInner}>
-                              <TouchableOpacity
-                                style={[s.innerSaveBtn, { marginTop: 0, marginBottom: 12 }]}
-                                onPress={() => saveScopeConfig('group', gid)}
-                                activeOpacity={0.8}
-                              >
-                                <LinearGradient colors={['#10b981', '#059669']} style={s.innerSaveBtnInner}>
-                                  <Text style={s.innerSaveBtnText}>✓ SAVE THIS GROUP</Text>
-                                </LinearGradient>
-                              </TouchableOpacity>
-                              {renderScopeConfig(g, 'group')}
-                            </View>
-                          )}
-                          {isSaved && !isActive && (
-                            <View style={s.scopeSavedBanner}>
-                              <Text style={s.scopeSavedBannerText}>✓ Configured & Saved</Text>
-                            </View>
-                          )}
-                        </View>
-                      );
-                    })}
- 
                     {/* STEP 2: Select Tables */}
-                    <Text style={[s.sectionTitle, {marginTop: 20}]}>Select Tables (Sections)</Text>
+                    <Text style={s.sectionTitle}>Select Tables (Sections)</Text>
                     <Text style={s.sectionHint}>Tap a table to select it, then configure class/section access below it.</Text>
                     <View style={s.checkGrid}>
                       {assignData.tables.map(t => {

@@ -3868,19 +3868,8 @@ def api_filter_options(request, table_id):
     if needed_perm and not PermissionService.has(request.user, needed_perm):
         return JsonResponse({'success': False, 'message': 'No permission to view this list'}, status=403)
 
-    if status_filter == 'download':
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-downloaded_at', '-id')
-    elif status_filter == 'pool':
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-deleted_at', '-id')
-    elif status_filter in ('verified', 'approved'):
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-status_changed_at', '-id')
-    else:
-        from django.db.models.functions import Coalesce
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).annotate(
-            _status_sort_at=Coalesce('status_changed_at', 'created_at')
-        ).order_by('-_status_sort_at', '-id')
-
-    cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs)
+    cards_qs = IDCard.objects.filter(table=table)
+    cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs, status_filter=status_filter)
 
     class_field_name, section_field_name, course_field_name, branch_field_name = (
         IDCardService._get_class_section_course_branch_field_names(table)
@@ -7132,9 +7121,29 @@ def api_client_permissions(request, client_user_id):
 @require_http_methods(['GET'])
 def api_app_version(request):
     """
-    Returns the latest mobile app version from settings, and redirect/installation URLs.
+    Returns the latest mobile app version from settings or dynamically reads it from
+    android_app/app.json, and redirect/installation URLs.
     """
-    latest_version = getattr(settings, 'LATEST_MOBILE_VERSION', '1.0.56')
+    import os
+    import json
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    latest_version = getattr(settings, 'LATEST_MOBILE_VERSION', None)
+    
+    if not latest_version:
+        try:
+            app_json_path = os.path.join(settings.BASE_DIR, 'android_app', 'app.json')
+            if os.path.exists(app_json_path):
+                with open(app_json_path, 'r', encoding='utf-8') as f:
+                    app_data = json.load(f)
+                    latest_version = app_data.get('expo', {}).get('version')
+        except Exception as e:
+            logger.warning("Failed to parse app.json dynamically: %s", e)
+
+    if not latest_version:
+        latest_version = '1.0.81'
+
     return JsonResponse({
         'success': True,
         'latest_version': latest_version,
@@ -7273,3 +7282,37 @@ def api_website_portfolio_category_items(request, category_id):
     category = get_object_or_404(PortfolioCategory, id=category_id)
     items = list(category.items.filter(is_active=True).values('id', 'title', 'item_type', 'video_url', 'order'))
     return JsonResponse({'success': True, 'items': items, 'count': len(items)})
+
+
+@require_mobile_client
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_register_device_token(request):
+    """
+    Registers or updates an Expo push token for the authenticated user.
+    """
+    try:
+        data = json.loads(request.body)
+        token = data.get('push_token') or data.get('token')
+        if not token:
+            return JsonResponse({'success': False, 'message': 'Push token is required'}, status=400)
+            
+        from mobile_api.models import MobileDeviceToken
+        
+        # Save or update the token. A token is bound to one user.
+        device_token, created = MobileDeviceToken.objects.update_or_create(
+            push_token=token,
+            defaults={'user': request.user}
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Token registered successfully',
+            'created': created
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("Failed to register device token")
+        return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)

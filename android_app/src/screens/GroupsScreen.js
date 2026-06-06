@@ -25,10 +25,11 @@ export default function GroupsScreen({ navigation }) {
   const { data: tables = [], loading, refreshing, error, refresh } = useRefreshableResource(loadData, { initialData: [] });
 
   const renderTable = ({ item: table }) => {
-    // API returns keys like pending_cards, verified_cards for groups/tables API
     const counts = {
       p: table.pending_cards || 0,
       v: table.verified_cards || 0,
+      a: table.approved_cards || 0,
+      d: table.download_cards || 0,
       po: table.pool_cards || 0,
     };
 
