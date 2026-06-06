@@ -1,6 +1,6 @@
 {
   "name": "android_app",
-  "version": "1.0.81",
+  "version": "1.0.82",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -23,7 +23,7 @@
     "expo-image-manipulator": "~13.0.5",
     "expo-image-picker": "~16.0.5",
     "expo-linear-gradient": "~14.0.1",
-    "expo-notifications": "^56.0.16",
+    "expo-notifications": "~0.29.14",
     "expo-sensors": "~14.0.1",
     "expo-splash-screen": "~0.29.21",
     "expo-status-bar": "~2.0.1",

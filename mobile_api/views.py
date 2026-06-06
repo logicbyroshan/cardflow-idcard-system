@@ -7142,7 +7142,7 @@ def api_app_version(request):
             logger.warning("Failed to parse app.json dynamically: %s", e)
 
     if not latest_version:
-        latest_version = '1.0.81'
+        latest_version = '1.0.82'
 
     return JsonResponse({
         'success': True,
