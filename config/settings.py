@@ -156,6 +156,7 @@ INSTALLED_APPS = [
     'panel',
     # 'officework',  # Removed - app not found
     'mobile_api',
+    'desktop_app',
 ]
 
 # Debug toolbar is optional; only enable if DEBUG is on and package is installed.
@@ -228,6 +229,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
+
+DESKTOP_APP_ENABLED = _env_bool('DESKTOP_APP_ENABLED', True)
+DESKTOP_APP_BOOTSTRAP_TOKEN = os.getenv('DESKTOP_APP_BOOTSTRAP_TOKEN', '').strip()
+DESKTOP_APP_MAX_CONNECTIONS = _env_int('DESKTOP_APP_MAX_CONNECTIONS', 5, minimum=1, maximum=50)
+DESKTOP_APP_TOKEN_MAX_AGE_SECONDS = _env_int('DESKTOP_APP_TOKEN_MAX_AGE_SECONDS', 60 * 60 * 24 * 30, minimum=3600)
+DESKTOP_APP_DOWNLOAD_CHUNK_SIZE = _env_int('DESKTOP_APP_DOWNLOAD_CHUNK_SIZE', 1024 * 1024, minimum=64 * 1024, maximum=8 * 1024 * 1024)
 
 
 if DEBUG:
