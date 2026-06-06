@@ -179,10 +179,12 @@
               <i class="fa-solid fa-building"></i>
               <span>Manage Clients</span>
             </a>
+            {% if is_super_admin %}
             <a href="{% url 'manage_staff' %}" class="quick-action-btn">
               <i class="fa-solid fa-users"></i>
               <span>Manage Operator</span>
             </a>
+            {% endif %}
             <a href="{% url 'settings' %}" class="quick-action-btn">
               <i class="fa-solid fa-gear"></i>
               <span>Settings</span>

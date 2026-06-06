@@ -44,6 +44,7 @@
         <span class="card-overview-value">{{ overview_admins_count|default:0 }}</span>
       </div>
 
+      {% if is_super_admin %}
       <a href="{% url 'manage_staff' %}" class="card-overview-item" title="Open Manage Operator">
         <div class="card-overview-left">
           <div class="card-overview-icon staff">
@@ -53,6 +54,17 @@
         </div>
         <span class="card-overview-value">{{ overview_operators_count|default:0 }}</span>
       </a>
+      {% else %}
+      <div class="card-overview-item card-overview-item-static" title="Operators">
+        <div class="card-overview-left">
+          <div class="card-overview-icon staff">
+            <i class="fa-solid fa-user-tie"></i>
+          </div>
+          <span class="card-overview-label">Operators</span>
+        </div>
+        <span class="card-overview-value">{{ overview_operators_count|default:0 }}</span>
+      </div>
+      {% endif %}
 
       {% if is_super_admin or is_admin_staff %}
       <div class="card-overview-item card-overview-item-static">
