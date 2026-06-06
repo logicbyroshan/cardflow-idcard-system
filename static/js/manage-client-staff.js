@@ -514,9 +514,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function _pruneSelectedValues(selectedSet, allowedValues) {
         if (!selectedSet) return;
-        var allowed = new Set((allowedValues || []).map(function (v) { return String(v); }));
+        var allowed = new Set((allowedValues || []).map(function (v) { return _toCompareKey(v); }));
         Array.from(selectedSet).forEach(function (v) {
-            if (!allowed.has(String(v))) selectedSet.delete(v);
+            if (!allowed.has(_toCompareKey(v))) selectedSet.delete(v);
         });
     }
 
@@ -631,11 +631,56 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function _normalizeStringList(values) {
-        return Array.from(new Set((values || []).map(function (v) {
-            return String(v || '').trim();
-        }).filter(function (v) {
-            return !!v;
-        })));
+        var out = [];
+        var seen = new Set();
+        (values || []).forEach(function (v) {
+            var s = String(v || '').trim();
+            if (!s) return;
+            var key = _toCompareKey(s);
+            if (seen.has(key)) return;
+            seen.add(key);
+            out.push(s);
+        });
+        return out;
+    }
+
+    // Convert a visible value to a canonical compare key.
+    // - lowercases text
+    // - treats equivalent roman numerals and arabic numbers as the same key (eg. "II" -> "2")
+    function _toCompareKey(val) {
+        var s = String(val || '').trim();
+        if (!s) return '';
+        var lower = s.toLowerCase();
+
+        // If the value looks like a roman numeral, convert to integer.
+        // Accept characters I V X L C D M (case-insensitive).
+        if (/^[ivxlcdm]+$/i.test(lower)) {
+            var num = _romanToInt(lower.toUpperCase());
+            if (Number.isFinite(num) && num > 0) return String(num);
+        }
+
+        // If it's a simple numeric string, normalize digits
+        if (/^\d+$/.test(lower)) return String(parseInt(lower, 10));
+
+        return lower;
+    }
+
+    function _romanToInt(roman) {
+        if (!roman) return NaN;
+        var map = {I:1, V:5, X:10, L:50, C:100, D:500, M:1000};
+        var total = 0;
+        var prev = 0;
+        for (var i = roman.length - 1; i >= 0; i--) {
+            var ch = roman[i];
+            var val = map[ch] || 0;
+            if (val < prev) {
+                total -= val;
+            } else {
+                total += val;
+                prev = val;
+            }
+        }
+        return total;
     }
 
     function _cloneClassSectionMap(mapObj) {
@@ -1178,7 +1223,23 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        keys.forEach(function (key) {
+        // Filter out chips whose group name is only the numeric fallback
+        // and for which we have no metadata from the groups API. This
+        // avoids showing `Group #157` when the client/groups endpoint
+        // doesn't know about that id (stale or cross-client data).
+        var displayKeys = keys.filter(function (key) {
+            var chip = assignmentScopeChips[key];
+            var name = chip && (chip.groupName || _getGroupName(chip.groupId));
+            var isFallback = /^Group #\d+$/.test(String(name || ''));
+            var hasMeta = Boolean(assignmentGroupMetaById && assignmentGroupMetaById[String(chip && chip.groupId)]);
+            if (isFallback && !hasMeta) {
+                console.debug('[staff] skipping fallback-only group chip', key, name);
+                return false;
+            }
+            return true;
+        });
+
+        displayKeys.forEach(function (key) {
             var chip = assignmentScopeChips[key];
             chip.groupName = _getGroupName(chip.groupId);
 
