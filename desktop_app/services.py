@@ -354,7 +354,7 @@ class DesktopAppService:
         return media_entries
 
     @classmethod
-    def build_manifest(cls, *, client_id: Optional[int] = None, table_id: Optional[int] = None, request=None) -> Dict[str, Any]:
+    def build_manifest(cls, *, client_id: Optional[int] = None, table_id: Optional[int] = None, request=None, include_data: bool = True) -> Dict[str, Any]:
         scope = cls._scope_objects(client_id=client_id, table_id=table_id)
         if not scope:
             if table_id:
@@ -364,6 +364,10 @@ class DesktopAppService:
             return {'success': False, 'message': 'No data found.'}
 
         clients, groups, tables, cards = scope
+        
+        if not include_data:
+            cards = cards.none()
+            
         media_entries = cls._collect_media_entries(cards, request=request)
         manifest = {
             'success': True,

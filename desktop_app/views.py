@@ -125,6 +125,7 @@ def clients_manifest(request):
         client_id=int(client_id) if client_id and client_id.isdigit() else None,
         table_id=int(table_id) if table_id and table_id.isdigit() else None,
         request=request,
+        include_data=bool(table_id),
     )
     return JsonResponse(manifest, status=200 if manifest.get('success') else 404)
 
