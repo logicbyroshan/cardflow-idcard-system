@@ -188,6 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     GSP.openDrawer = function(mode, data = null) {
         GSP.currentMode = mode;
+        GSP.pendingDeleteAction = null;
         GSP.addDrawer.classList.remove('view-mode');
 
         if (mode === 'add') {
@@ -210,6 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
             GSP.saveDrawer.innerHTML = '<i class="fa-solid fa-check"></i> Update';
             GSP.saveDrawer.className = 'btn btn-md btn-primary';
             if (GSP.addFieldSection) GSP.addFieldSection.style.display = 'block';
+            GSP.pendingDeleteAction = null;
         } else if (mode === 'view') {
             GSP.drawerTitle.textContent = 'View Table';
             GSP.drawerIcon.className = 'fa-solid fa-eye';
@@ -231,6 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
         GSP.addDrawer.classList.remove('view-mode');
         document.body.style.overflow = '';
         GSP.currentFields = [];
+        GSP.pendingDeleteAction = null;
         if (GSP.newFieldName) GSP.newFieldName.value = '';
         GSP.resetFieldTypeDropdown();
     };

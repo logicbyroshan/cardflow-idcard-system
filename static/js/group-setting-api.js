@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
     GSP.selectedTableId = null;
     GSP.currentMode = 'add';
     GSP.currentFields = [];
+    GSP.pendingDeleteAction = null;
     GSP.MAX_FIELDS = 20;
     GSP.groupId = typeof GROUP_ID !== 'undefined' ? GROUP_ID : null;
     GSP.currentFilter = 'all';
@@ -275,6 +276,19 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             showToast('Error fetching table data', 'error');
             return null;
+        }
+    };
+
+    GSP.tableHasData = async function(tableId) {
+        if (!tableId) return false;
+        try {
+            const resp = await ApiClient.get(`/api/table/${tableId}/status-counts/`);
+            const counts = resp && resp.status_counts ? resp.status_counts : null;
+            const total = counts && typeof counts.total !== 'undefined' ? parseInt(counts.total, 10) : 0;
+            return Number.isFinite(total) && total > 0;
+        } catch (error) {
+            console.warn('Could not verify table data before field removal', error);
+            return false;
         }
     };
 

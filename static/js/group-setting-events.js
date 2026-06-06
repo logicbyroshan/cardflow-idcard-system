@@ -117,6 +117,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (GSP.deleteStaffName) GSP.deleteStaffName.textContent = name;
+            GSP.pendingDeleteAction = {
+                kind: 'table',
+                tableId: tableId,
+                tableName: name,
+            };
             if (window.alpineOpenModal) window.alpineOpenModal('delete');
         });
     }
@@ -127,13 +132,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close handlers now managed by Alpine x-show + @click in template
     if (GSP.confirmDeleteBtn) {
         GSP.confirmDeleteBtn.addEventListener('click', async () => {
-            if (window.alpineCloseModal) window.alpineCloseModal();
-            if (!GSP.selectedTableId) return;
+            const action = GSP.pendingDeleteAction || {};
+            const confirmButton = GSP.confirmDeleteBtn;
 
-            // Prevent double-click
-            GSP.confirmDeleteBtn.disabled = true;
+            // Prevent double-click while the API or local update runs.
+            if (confirmButton) confirmButton.disabled = true;
 
             try {
+                if (action.kind === 'field') {
+                    const idx = parseInt(action.fieldIndex, 10);
+                    if (!Number.isFinite(idx) || idx < 0 || idx >= GSP.currentFields.length) {
+                        showToast('Could not remove that field.', 'error');
+                        return;
+                    }
+
+                    GSP.currentFields.splice(idx, 1);
+                    GSP.renderFieldList();
+                    showToast(action.toastMessage || 'Field removed successfully!', 'success');
+                    return;
+                }
+
+                if (window.alpineCloseModal) window.alpineCloseModal();
+                if (!GSP.selectedTableId) return;
+
                 const data = await ApiClient.delete(`/api/table/${GSP.selectedTableId}/delete/`);
 
                 if (data.success) {
@@ -149,7 +170,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (error) {
                 console.error('Error deleting table:', error);
                 showToast('Error deleting table', 'error');
-                GSP.confirmDeleteBtn.disabled = false;
+            } finally {
+                if (confirmButton) confirmButton.disabled = false;
+                GSP.pendingDeleteAction = null;
+                if (window.alpineCloseModal) window.alpineCloseModal();
             }
         });
     }
@@ -283,10 +307,50 @@ document.addEventListener('DOMContentLoaded', function() {
     if (GSP.fieldList) {
         GSP.fieldList.addEventListener('click', (e) => {
             if (e.target.closest('.remove-field-btn')) {
-                const idx = parseInt(e.target.closest('.remove-field-btn').dataset.idx);
+                const btn = e.target.closest('.remove-field-btn');
+                const idx = parseInt(btn.dataset.idx, 10);
+                const field = GSP.currentFields[idx];
+
+                if (GSP.currentMode === 'edit' && GSP.selectedTableId) {
+                    GSP.tableHasData(GSP.selectedTableId).then((hasData) => {
+                        if (!hasData) {
+                            GSP.currentFields.splice(idx, 1);
+                            GSP.renderFieldList();
+                            showToast('Field removed successfully!', 'success');
+                            return;
+                        }
+
+                        GSP.pendingDeleteAction = {
+                            kind: 'field',
+                            fieldIndex: idx,
+                            fieldName: field ? field.name : 'field',
+                            toastMessage: 'Field removed successfully!',
+                        };
+
+                        if (GSP.deleteStaffName) GSP.deleteStaffName.textContent = field ? field.name : 'this field';
+                        if (window.alpineOpenModal) {
+                            window.alpineOpenModal('delete', {
+                                title: 'Confirm Field Removal',
+                                item_name: 'field',
+                                item_label: field ? field.name : 'this field',
+                                bodyTitle: 'Remove this field?',
+                                subtitle: 'Removing this field will delete all column data for it when you save the table.',
+                                warningTitle: 'Warning',
+                                warningItems: [
+                                    'All existing values in this column will be deleted from every row',
+                                    'This action cannot be undone',
+                                ],
+                                verifyHint: 'Type the code below to confirm this field removal.',
+                                confirmText: 'Remove Field',
+                            });
+                        }
+                    });
+                    return;
+                }
+
                 GSP.currentFields.splice(idx, 1);
                 GSP.renderFieldList();
-                showToast('Field removed!', 'info');
+                showToast('Field removed successfully!', 'success');
             }
         });
 

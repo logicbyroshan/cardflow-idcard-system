@@ -27,7 +27,7 @@ JS contract (Alpine bridge):
 
     <!-- Header -->
     <div class="modal-header">
-      <h3 id="{{ modal_id|default:'delete-modal' }}-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
+      <h3 id="{{ modal_id|default:'delete-modal' }}-title"><i class="fa-solid fa-triangle-exclamation"></i> <span x-text="modalData && modalData.title ? modalData.title : 'Confirm Delete'"></span></h3>
       <button type="button" class="modal-close"
               @click="closeModal"
               aria-label="Close">
@@ -41,18 +41,30 @@ JS contract (Alpine bridge):
         <div class="modal-icon-circle modal-icon-circle--danger">
           <i class="fa-solid fa-trash-can"></i>
         </div>
-        <p class="modal-body-title">Delete {{ item_name|default:'item' }}?</p>
+        <p class="modal-body-title" x-text="modalData && modalData.bodyTitle ? modalData.bodyTitle : 'Delete {{ item_name|default:\'item\' }}?'"></p>
         <p class="modal-body-subtitle">
-          You are about to delete <strong id="deleteStaffName">this {{ item_name|default:'item' }}</strong>.
+          <span x-show="modalData && modalData.subtitle" x-text="modalData.subtitle"></span>
+          <span x-show="!modalData || !modalData.subtitle">
+            You are about to delete <strong id="deleteStaffName">this {{ item_name|default:'item' }}</strong>.
+          </span>
         </p>
         <div class="alert-box alert-box--danger">
           <p class="alert-box-heading">
-            <i class="fa-solid fa-circle-exclamation"></i> Warning
+            <i class="fa-solid fa-circle-exclamation"></i> <span x-text="modalData && modalData.warningTitle ? modalData.warningTitle : 'Warning'"></span>
           </p>
-          <ul class="alert-box-list">
-            <li>All associated data will be permanently removed</li>
-            <li>This action cannot be undone</li>
-          </ul>
+          <template x-if="modalData && Array.isArray(modalData.warningItems) && modalData.warningItems.length">
+            <ul class="alert-box-list">
+              <template x-for="(item, idx) in modalData.warningItems" :key="'delete-warning-' + idx">
+                <li x-text="item"></li>
+              </template>
+            </ul>
+          </template>
+          <template x-if="!modalData || !Array.isArray(modalData.warningItems) || !modalData.warningItems.length">
+            <ul class="alert-box-list">
+              <li>All associated data will be permanently removed</li>
+              <li>This action cannot be undone</li>
+            </ul>
+          </template>
         </div>
         <!-- 10-digit confirmation code -->
         <div class="verify-section">
@@ -60,7 +72,7 @@ JS contract (Alpine bridge):
             <i class="fa-solid fa-shield-halved"></i> Verification Required
           </p>
           <p class="verify-hint">
-            To confirm deletion, type this code:
+            <span x-text="modalData && modalData.verifyHint ? modalData.verifyHint : 'To confirm deletion, type this code:'"></span>
           </p>
             <div id="delete-confirm-code-alpine" class="verify-code" x-text="deleteVerificationCodeDisplay"></div>
           <div class="confirm-code-input-wrap"
@@ -99,7 +111,7 @@ JS contract (Alpine bridge):
       </button>
       <button type="button" class="btn btn-md btn-danger" id="confirmDeleteBtn"
               :disabled="disableDeleteConfirm">
-        <i class="fa-solid fa-trash-can"></i> Delete
+        <i class="fa-solid fa-trash-can"></i> <span x-text="modalData && modalData.confirmText ? modalData.confirmText : 'Delete'"></span>
       </button>
     </div>
 
