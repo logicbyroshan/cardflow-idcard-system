@@ -29,10 +29,10 @@ export function AuthProvider({ children }) {
   const [isMpinCreated, setIsMpinCreated] = useState(false);
   const [isSilentAuthFailed, setIsSilentAuthFailed] = useState(false);
   const [isSessionKicked, setIsSessionKicked] = useState(false);
-  const [lockTimeout, setLockTimeoutState] = useState(100); // seconds: 100 or 300
+  const [lockTimeout, setLockTimeoutState] = useState(300); // seconds: 300 or 500
   const appStateRef = useRef('active');
   const backgroundTimeRef = useRef(null);
-  const lockTimeoutRef = useRef(100); // mirror for AppState listener
+  const lockTimeoutRef = useRef(300); // mirror for AppState listener
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -103,12 +103,12 @@ export function AuthProvider({ children }) {
         }
         // Load saved lock timeout
         const savedTimeout = await AsyncStorage.getItem('adarsh_lock_timeout');
-        if (savedTimeout === '300') {
+        if (savedTimeout === '500') {
+          setLockTimeoutState(500);
+          lockTimeoutRef.current = 500;
+        } else {
           setLockTimeoutState(300);
           lockTimeoutRef.current = 300;
-        } else {
-          setLockTimeoutState(100);
-          lockTimeoutRef.current = 100;
         }
         await loadStoredAuth();
         const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
@@ -527,7 +527,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const setLockTimeout = useCallback(async (seconds) => {
-    const val = seconds === 300 ? 300 : 100;
+    const val = seconds === 500 ? 500 : 300;
     setLockTimeoutState(val);
     lockTimeoutRef.current = val;
     await AsyncStorage.setItem('adarsh_lock_timeout', String(val));

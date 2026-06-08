@@ -3869,7 +3869,10 @@ def api_filter_options(request, table_id):
         return JsonResponse({'success': False, 'message': 'No permission to view this list'}, status=403)
 
     cards_qs = IDCard.objects.filter(table=table)
-    cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs, status_filter=status_filter)
+    if status_filter != 'pool' and PermissionService.is_client_staff(request.user):
+        cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs, status_filter=status_filter, ignore_pool_bypass=True)
+    else:
+        cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs, status_filter=status_filter)
 
     class_field_name, section_field_name, course_field_name, branch_field_name = (
         IDCardService._get_class_section_course_branch_field_names(table)

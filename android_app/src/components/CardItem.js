@@ -152,8 +152,8 @@ const CardItem = React.memo(function CardItem({
         <View style={s.fieldsList}>
           {textFields.map((f, i) => (
             <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
-              <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
-              <Text style={s.fieldValue} numberOfLines={2}>
+              <Text style={s.fieldLabel}>{f.label}</Text>
+              <Text style={s.fieldValue}>
                 {(() => {
                   const cleaned = cleanFieldValue(f.value);
                   return cleaned ? String(cleaned).toUpperCase() : '-';

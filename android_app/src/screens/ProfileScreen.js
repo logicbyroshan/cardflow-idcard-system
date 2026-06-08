@@ -205,7 +205,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
           </View>
           <View style={s.lockTimerOptions}>
-            {[{ label: '100 sec', val: 100 }, { label: '300 sec', val: 300 }].map(opt => {
+            {[{ label: '300 sec', val: 300 }, { label: '500 sec', val: 500 }].map(opt => {
               const active = lockTimeout === opt.val;
               return (
                 <TouchableOpacity

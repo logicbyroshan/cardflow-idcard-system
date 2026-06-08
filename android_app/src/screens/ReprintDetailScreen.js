@@ -448,21 +448,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
 
     return (
       <View style={[s.card, { borderColor: tabTheme.border, borderLeftWidth: 4, borderLeftColor: tabTheme.primary }]}>
-        {/* Card Header Row */}
-        <TouchableOpacity 
-          style={[s.cardHeaderRow, { backgroundColor: tabTheme.bgSoft, borderBottomColor: tabTheme.border }]} 
-          activeOpacity={0.7} 
-          onPress={() => navigation.navigate('CardDetail', { cardId })}
-        >
-          <View style={s.cardHeaderLeft}>
-            <DynamicIcon name="id-card" size={14} color={tabTheme.primary} style={{ marginRight: 8 }} />
-            <Text style={s.cardHeaderTitle} numberOfLines={1}>{name}</Text>
-          </View>
-          <View style={s.cardHeaderRight}>
-            <StatusBadge status={activeTab === 'download_list' ? 'download' : (activeTab === 'request_list' ? 'pending' : 'approved')} size="sm" />
-            <DynamicIcon name="chevron-right" size={10} color={colors.gray300} style={{ marginLeft: 8 }} />
-          </View>
-        </TouchableOpacity>
+
 
         {/* Horizontal Photo strip if images exist */}
         {imageFields.length > 0 && (
@@ -483,8 +469,8 @@ export default function ReprintDetailScreen({ navigation, route }) {
               const cleaned = cleanVal(f.value);
               return (
                 <View key={f.name} style={[s.fieldRow, i === 0 && { borderTopWidth: 0 }]}>
-                  <Text style={[s.fieldLabel, { color: tabTheme.primary }]} numberOfLines={1}>{f.label}</Text>
-                  <Text style={s.fieldValue} numberOfLines={1}>
+                  <Text style={[s.fieldLabel, { color: tabTheme.primary }]}>{f.label}</Text>
+                  <Text style={s.fieldValue}>
                     {cleaned ? String(cleaned).toUpperCase() : '-'}
                   </Text>
                 </View>
@@ -594,8 +580,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
   return (
     <View style={s.root}>
       <TopBar
-        title="Reprint Detail"
-        subtitle={tableName || `Table #${tableId}`}
+        title="Reprint List"
         onBack={() => navigation.goBack()}
         leftOfHomeBtn={{
           label: 'DOWNLOAD LIST',
