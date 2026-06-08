@@ -27,7 +27,11 @@ def _get_token(request):
     auth_header = (request.META.get('HTTP_AUTHORIZATION') or '').strip()
     if auth_header.lower().startswith('bearer '):
         return auth_header.split(' ', 1)[1].strip()
-    return (request.META.get('HTTP_X_DESKTOP_API_KEY') or request.META.get('HTTP_X_DESKTOP_TOKEN') or '').strip()
+    header_token = (request.META.get('HTTP_X_DESKTOP_API_KEY') or request.META.get('HTTP_X_DESKTOP_TOKEN') or '').strip()
+    if header_token:
+        return header_token
+    # Support query parameter for <img> tags which cannot pass headers
+    return request.GET.get('token', '').strip()
 
 
 def desktop_api_required(view_func):
