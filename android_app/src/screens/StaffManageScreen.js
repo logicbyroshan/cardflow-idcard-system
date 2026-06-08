@@ -352,22 +352,24 @@ export default function StaffManageScreen({ navigation, route }) {
 
   const handleToggleTableInAssign = (tid) => {
     setSelectedTableIds(prev => {
-      let next;
       if (prev.includes(tid)) {
         setSavedScopeIds(s => { const n = new Set(s); n.delete(`table-${tid}`); return n; });
         setAssignmentScopes(p => p.filter(s => !(s.scope_type === 'table' && parseInt(s.scope_id) === tid)));
-        next = prev.filter(i => i !== tid);
+        if (activeConfigScope?.type === 'table' && activeConfigScope?.id === tid) setActiveConfigScope(null);
+        return prev.filter(i => i !== tid);
       } else {
-        next = [...prev, tid];
+        const optMap = assignData.table_options;
+        const options = optMap?.[tid] || { classes: [], sections: [], branches: [], class_sections: {} };
+        const hasOptions = (options.classes && options.classes.length > 0) || (options.branches && options.branches.length > 0);
+        
+        if (hasOptions) {
+          setActiveConfigScope({ type: 'table', id: tid });
+        } else {
+          setActiveConfigScope(null);
+        }
+        
+        return [...prev, tid];
       }
-
-      if (next.length === 1) {
-        setActiveConfigScope({ type: 'table', id: next[0] });
-      } else {
-        setActiveConfigScope(null);
-      }
-
-      return next;
     });
   };
 
