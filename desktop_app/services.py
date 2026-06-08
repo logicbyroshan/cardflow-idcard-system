@@ -194,7 +194,7 @@ class DesktopAppService:
             clients = Client.objects.filter(id=client_id).order_by('id')
             groups = IDCardGroup.objects.select_related('client').filter(client_id=client_id).order_by('id')
             tables = IDCardTable.objects.select_related('group', 'group__client').filter(group__client_id=client_id).order_by('id')
-            cards = IDCard.objects.select_related('table', 'table__group', 'table__group__client').filter(table_id=table.id).order_by('-id') if include_data else IDCard.objects.none()
+            cards = IDCard.objects.select_related('table', 'table__group', 'table__group__client').filter(table_id=table.id, status__in=['approved', 'download']).order_by('-id') if include_data else IDCard.objects.none()
             return clients, groups, tables, cards
 
         clients = Client.objects.all().order_by('id')
@@ -212,7 +212,7 @@ class DesktopAppService:
         groups = IDCardGroup.objects.select_related('client').filter(client_id__in=client_ids).order_by('id')
         tables = IDCardTable.objects.select_related('group', 'group__client').filter(group__client_id__in=client_ids).order_by('id')
         table_ids = list(tables.values_list('id', flat=True))
-        cards = IDCard.objects.select_related('table', 'table__group', 'table__group__client').filter(table_id__in=table_ids).order_by('-id')
+        cards = IDCard.objects.select_related('table', 'table__group', 'table__group__client').filter(table_id__in=table_ids, status__in=['approved', 'download']).order_by('-id')
         return clients, groups, tables, cards
 
     @staticmethod
