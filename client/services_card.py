@@ -440,8 +440,10 @@ class ClientCardService(BaseService):
                     scope_q &= Q(id__isnull=True)
 
             if not has_any_filter:
-                # No filters mean full access to this scope
-                pass
+                # No filters mean full access to this scope.
+                # Since multiple scopes are OR'd together, if ANY scope grants full access, 
+                # the user has full access to the table.
+                return qs
 
             final_q |= scope_q
 

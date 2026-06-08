@@ -229,8 +229,13 @@ class ClientAccessService:
                 assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
 
-                if assigned_group_ids and group.id in assigned_group_ids:
-                    return True
+                if assigned_table_ids and assigned_group_ids:
+                    return (group.id in assigned_group_ids) or IDCardTable.objects.filter(
+                        id__in=assigned_table_ids,
+                        group_id=group.id,
+                        group__client_id=group.client_id,
+                        deleted_by_client=False,
+                    ).exists()
 
                 if assigned_table_ids:
                     return IDCardTable.objects.filter(
@@ -242,6 +247,8 @@ class ClientAccessService:
 
                 if assigned_group_ids:
                     return group.id in assigned_group_ids
+                
+                return False
         return True
 
     @staticmethod
@@ -276,8 +283,10 @@ class ClientAccessService:
                     return (table.id in assigned_table_ids) or (table.group_id in assigned_group_ids)
                 if assigned_table_ids:
                     return table.id in assigned_table_ids
-                if assigned_group_ids:  # Empty means all groups are accessible
+                if assigned_group_ids:
                     return table.group_id in assigned_group_ids
+                
+                return False
         return True
 
     @staticmethod
@@ -323,6 +332,8 @@ class ClientAccessService:
                             deleted_by_client=False,
                         ).values_list('id', flat=True)
                     )
+                
+                return []
         return None  # None means no restriction (all client tables accessible)
 
     @staticmethod
