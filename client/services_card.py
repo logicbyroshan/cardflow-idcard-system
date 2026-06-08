@@ -328,7 +328,7 @@ class ClientCardService(BaseService):
             return int(table.id) in assigned_table_ids
         if assigned_group_ids:
             return int(table.group_id) in assigned_group_ids
-        return True
+        return False
 
     @classmethod
     def _apply_client_staff_row_scope(cls, user, table, qs, ignore_pool_bypass=False, status_filter=None):
@@ -440,10 +440,12 @@ class ClientCardService(BaseService):
                     scope_q &= Q(id__isnull=True)
 
             if not has_any_filter:
-                # No filters mean full access to this scope.
-                # Since multiple scopes are OR'd together, if ANY scope grants full access, 
-                # the user has full access to the table.
-                return qs
+                if class_field or section_field or branch_field:
+                    # Table supports filtering, but scope has no filters selected -> zero access
+                    scope_q &= Q(id__isnull=True)
+                else:
+                    # Table does not support filtering (e.g. Staff list) -> full access
+                    return qs
 
             final_q |= scope_q
 
