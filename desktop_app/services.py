@@ -185,7 +185,7 @@ class DesktopAppService:
         return DesktopAuthResult(True, 'Device revoked.', device=device)
 
     @classmethod
-    def _scope_objects(cls, *, client_id: Optional[int] = None, table_id: Optional[int] = None):
+    def _scope_objects(cls, *, client_id: Optional[int] = None, table_id: Optional[int] = None, search_query: Optional[str] = None, include_data: bool = True):
         if table_id:
             table = IDCardTable.objects.select_related('group', 'group__client').filter(id=table_id).first()
             if not table:
@@ -194,14 +194,20 @@ class DesktopAppService:
             clients = Client.objects.filter(id=client_id).order_by('id')
             groups = IDCardGroup.objects.select_related('client').filter(client_id=client_id).order_by('id')
             tables = IDCardTable.objects.select_related('group', 'group__client').filter(group__client_id=client_id).order_by('id')
-            cards = IDCard.objects.select_related('table', 'table__group', 'table__group__client').filter(table_id=table.id).order_by('-id')
+            cards = IDCard.objects.select_related('table', 'table__group', 'table__group__client').filter(table_id=table.id).order_by('-id') if include_data else IDCard.objects.none()
             return clients, groups, tables, cards
 
         clients = Client.objects.all().order_by('id')
+        if search_query:
+            clients = clients.filter(name__icontains=search_query)
         if client_id:
             clients = clients.filter(id=client_id)
             if not clients.exists():
                 return None
+        
+        if not include_data:
+            return clients, IDCardGroup.objects.none(), IDCardTable.objects.none(), IDCard.objects.none()
+
         client_ids = list(clients.values_list('id', flat=True))
         groups = IDCardGroup.objects.select_related('client').filter(client_id__in=client_ids).order_by('id')
         tables = IDCardTable.objects.select_related('group', 'group__client').filter(group__client_id__in=client_ids).order_by('id')
@@ -354,8 +360,8 @@ class DesktopAppService:
         return media_entries
 
     @classmethod
-    def build_manifest(cls, *, client_id: Optional[int] = None, table_id: Optional[int] = None, request=None, include_data: bool = True) -> Dict[str, Any]:
-        scope = cls._scope_objects(client_id=client_id, table_id=table_id)
+    def build_manifest(cls, *, client_id: Optional[int] = None, table_id: Optional[int] = None, search_query: Optional[str] = None, request=None, include_data: bool = True) -> Dict[str, Any]:
+        scope = cls._scope_objects(client_id=client_id, table_id=table_id, search_query=search_query, include_data=include_data)
         if not scope:
             if table_id:
                 return {'success': False, 'message': 'Table not found.'}

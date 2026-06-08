@@ -121,11 +121,16 @@ def status(request):
 def clients_manifest(request):
     client_id = request.GET.get('client_id')
     table_id = request.GET.get('table_id')
+    search_query = request.GET.get('q')
+    
+    include_data = bool(client_id or table_id)
+    
     manifest = DesktopAppService.build_manifest(
         client_id=int(client_id) if client_id and client_id.isdigit() else None,
         table_id=int(table_id) if table_id and table_id.isdigit() else None,
+        search_query=search_query,
         request=request,
-        include_data=True,
+        include_data=include_data,
     )
     return JsonResponse(manifest, status=200 if manifest.get('success') else 404)
 
