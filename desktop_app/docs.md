@@ -52,7 +52,12 @@ Optional query params:
 - `client_id=<id>`
 - `table_id=<id>`
 
-Returns JSON for clients, groups, tables, cards, and media metadata.
+Returns a JSON object containing the full data manifest:
+- `clients`: List of all returned clients.
+- `groups`: List of table groups.
+- `tables`: List of all ID card tables.
+- `cards`: List of cards including their status (e.g., approved/downloaded counts context) and field data. The cards are ordered by descending ID to perfectly match the ordering of XLSX exports.
+- `media`: List of media file metadata.
 
 ### Download full export
 
