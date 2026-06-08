@@ -628,7 +628,7 @@ export default function ReprintDetailScreen({ navigation, route }) {
         <View style={s.searchBar}>
           <DynamicIcon name="search" size={12} color={colors.gray400} style={{ marginRight: 8 }} />
           <TextInput
-            placeholder="Search student names, class, roll..."
+            placeholder="Search names, class, id..."
             value={searchText}
             onChangeText={setSearchText}
             style={s.searchInput}

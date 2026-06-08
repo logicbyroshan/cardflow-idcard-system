@@ -158,7 +158,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
     setConfirmModal({
       visible: true,
       title: 'Reupload Photos?',
-      message: `Select a ZIP archive containing student photos for "${table.name}". Photos must match Student IDs. Proceed to select a file?`,
+      message: `Select a ZIP archive containing photos for "${table.name}". Photos must match IDs. Proceed to select a file?`,
       icon: 'upload',
       color: '#10b981',
       onConfirm: () => {
@@ -505,7 +505,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
                 </View>
                 <View style={s.actionInfo}>
                   <Text style={s.actionLabel}>Reupload Image ZIP</Text>
-                  <Text style={s.actionDescription}>Upload and match student photos ZIP</Text>
+                  <Text style={s.actionDescription}>Upload and match photos ZIP</Text>
                 </View>
               </TouchableOpacity>
 

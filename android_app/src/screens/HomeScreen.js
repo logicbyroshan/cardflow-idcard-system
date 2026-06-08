@@ -101,7 +101,7 @@ export default function HomeScreen({ navigation }) {
         if (needsPrompt && isAppUpdated) {
           Alert.alert(
             'Permissions Required',
-            'Adarsh has been updated to the latest premium version! To capture and upload student/staff ID photos, please ensure Camera and Photo Library permissions are enabled.',
+            'Adarsh has been updated to the latest premium version! To capture and upload ID photos, please ensure Camera and Photo Library permissions are enabled.',
             [
               { text: 'Later', style: 'cancel' },
               { 

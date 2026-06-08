@@ -440,7 +440,8 @@ class ClientCardService(BaseService):
                     scope_q &= Q(id__isnull=True)
 
             if not has_any_filter:
-                scope_q = Q(id__isnull=True)
+                # No filters mean full access to this scope
+                pass
 
             final_q |= scope_q
 

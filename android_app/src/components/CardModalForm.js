@@ -320,7 +320,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
               
               <View style={s.header}>
                 <View style={s.titleBox}>
-                  <Text style={s.title}>{isEdit ? 'Edit Student Card' : 'Add New Student'}</Text>
+                  <Text style={s.title}>{isEdit ? 'Edit Card Details' : 'Add New Card'}</Text>
                   {tableName ? (
                     <Text style={s.subtitle}>{tableName}</Text>
                   ) : (
