@@ -142,6 +142,29 @@ class PermissionService:
         # 'perm_manage_client_staff' removed to allow client role access
     }
 
+    # Map UI boolean perm keys to Django permissions for admin_staff
+    ADMIN_STAFF_DJANGO_PERM_MAP = {
+        'perm_idcard_pending_list': 'can_view_idcard_data',
+        'perm_idcard_verified_list': 'can_view_idcard_data',
+        'perm_idcard_approved_list': 'can_view_idcard_data',
+        'perm_idcard_download_list': 'can_view_idcard_data',
+        'perm_idcard_pool_list': 'can_view_idcard_data',
+        'perm_idcard_reprint_list': 'can_view_idcard_data',
+        'perm_reprint_request_list': 'can_view_idcard_data',
+        'perm_idcard_info': 'can_view_idcard_data',
+        'perm_idcard_retrieve': 'can_view_idcard_data',
+        'perm_idcard_add': 'can_add_idcard_data',
+        'perm_idcard_edit': 'can_edit_idcard_data',
+        'perm_idcard_updated_at': 'can_edit_idcard_data',
+        'perm_idcard_delete': 'can_delete_idcard_data',
+        'perm_idcard_delete_from_pool': 'can_delete_idcard_data',
+        'perm_idcard_verify': 'can_verify_idcard',
+        'perm_idcard_approve': 'can_approve_idcard',
+        'perm_idcard_bulk_download': 'can_bulk_download',
+        'perm_idcard_bulk_upload': 'can_bulk_upload',
+        'perm_idcard_setting_list': 'can_view_idcard_settings',
+    }
+
     # Sensitive permissions that client_staff can never hold, even if present on Staff model.
     CLIENT_STAFF_BLOCKED_PERMS: set = set()
 
@@ -334,12 +357,19 @@ class PermissionService:
             # Perms intentionally removed from Staff model (super_admin-only) — silent False
             if perm_key in cls.STAFF_BLOCKED_PERMS:
                 return False
-            # Check the perm field on staff
-            if not hasattr(staff, perm_key):
-                logger.warning("PermissionService.has: unknown perm_key '%s' for admin_staff user %s", perm_key, user.pk)
-                return False
-            if not getattr(staff, perm_key, False):
-                return False
+            # Check Django permission mapping first
+            has_mapped_perm = False
+            if perm_key in cls.ADMIN_STAFF_DJANGO_PERM_MAP:
+                django_perm = cls.ADMIN_STAFF_DJANGO_PERM_MAP[perm_key]
+                has_mapped_perm = user.has_perm(f'core.{django_perm}') or user.has_perm(django_perm)
+            
+            # If no mapped perm (or failed), fallback to boolean fields
+            if not has_mapped_perm:
+                if not hasattr(staff, perm_key):
+                    logger.warning("PermissionService.has: unknown perm_key '%s' for admin_staff user %s", perm_key, user.pk)
+                    return False
+                if not getattr(staff, perm_key, False):
+                    return False
             # Scope check: if a client is supplied, staff must be assigned to it
             if client_obj is not None:
                 if client_obj.id not in cls.get_accessible_client_ids(user):
@@ -581,6 +611,12 @@ class PermissionService:
                 elif perm in cls.STAFF_BLOCKED_PERMS:
                     # Intentionally absent from Staff model — super_admin-only
                     context[perm] = False
+                elif perm in cls.ADMIN_STAFF_DJANGO_PERM_MAP:
+                    django_perm = cls.ADMIN_STAFF_DJANGO_PERM_MAP[perm]
+                    if user.has_perm(f'core.{django_perm}') or user.has_perm(django_perm):
+                        context[perm] = True
+                    else:
+                        context[perm] = bool(getattr(staff, perm, False)) if staff and hasattr(staff, perm) else False
                 elif staff and hasattr(staff, perm):
                     context[perm] = bool(getattr(staff, perm, False))
                 else:
