@@ -82,6 +82,7 @@ class ClientStaffService(BaseService):
             return
         CacheVersionService.bump('dash_team_overview', 'global')
         CacheVersionService.bump('client_staff', f'client:{cid}')
+        CacheVersionService.bump('client_dash_counts', f'client:{cid}')
 
     @staticmethod
     def _resolve_assignment_scope_ids(
