@@ -895,11 +895,12 @@ class ClientStaffService(BaseService):
                     if str(v).strip().isdigit() and int(v) > 0
                 ]
 
-                if ('assigned_groups' in data) or (normalized_assignment_scopes is not None):
+                if ('assigned_groups' in data) or ('assignment_scopes' in data):
                     explicit_assignment_payload = 'assigned_groups' in data
-                    assignment_ids = data.get('assigned_groups', [])
+                    explicit_scopes_payload = 'assignment_scopes' in data
                     
                     if explicit_assignment_payload:
+                        assignment_ids = data.get('assigned_groups', [])
                         if (not assignment_ids) and normalized_assignment_scopes:
                             assignment_ids = scope_group_ids
 
@@ -911,8 +912,12 @@ class ClientStaffService(BaseService):
                             )
                         else:
                             resolved_group_ids, resolved_table_ids = [], []
+                    elif explicit_scopes_payload:
+                        # If assigned_groups is not sent but assignment_scopes is,
+                        # clear old DB values to allow complete overwrite
+                        resolved_group_ids, resolved_table_ids = [], []
 
-                    if normalized_assignment_scopes:
+                    if explicit_scopes_payload and normalized_assignment_scopes:
                         resolved_group_ids = sorted(set(resolved_group_ids) | set(scope_group_ids))
                         resolved_table_ids = sorted(set(resolved_table_ids) | set(scope_table_ids))
 
@@ -924,7 +929,7 @@ class ClientStaffService(BaseService):
                     staff.assigned_table_ids = resolved_table_ids
                     staff.save(update_fields=['assigned_table_ids'])
 
-                if normalized_assignment_scopes is not None:
+                if 'assignment_scopes' in data:
                     valid_group_set = set(int(v) for v in (resolved_group_ids or []))
                     valid_table_set = set(int(v) for v in (resolved_table_ids or []))
                     filtered_scopes = []
