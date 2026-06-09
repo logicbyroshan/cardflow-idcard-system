@@ -1816,9 +1816,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var key = _chipKey(currentDraftGroupId);
             
-            // Check if they selected any classes/sections/branches
+            // Check if they selected any classes/sections/branches, if the list supports them
+            var requiresSelections = activeBuilderScope.hasClass || activeBuilderScope.hasSection || activeBuilderScope.hasBranch;
             var hasSelections = activeBuilderScope.classes.length || activeBuilderScope.sections.length || activeBuilderScope.branches.length;
-            if (!hasSelections) {
+            
+            if (requiresSelections && !hasSelections) {
                 if (typeof showToast === 'function') {
                     showToast('Please select at least one class, section, or branch to save.', 'warning');
                 }
