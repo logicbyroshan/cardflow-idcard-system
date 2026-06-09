@@ -323,12 +323,24 @@ export default function StaffManageScreen({ navigation, route }) {
         existingTableIds.forEach(id => saved.add(`table-${id}`));
         setSavedScopeIds(saved);
 
-        // Auto-open if only one table is selected
-        if (existingTableIds.length === 1) {
-          setActiveConfigScope({ type: 'table', id: existingTableIds[0] });
-        } else {
-          setActiveConfigScope(null);
+        let autoOpenTarget = null;
+        const idSource = data.data.id_source || 'table';
+        
+        if (idSource === 'table' && existingTableIds.length === 1) {
+          const tid = existingTableIds[0];
+          const opts = data.data.table_options?.[tid];
+          if (opts && ((opts.classes && opts.classes.length > 0) || (opts.branches && opts.branches.length > 0))) {
+            autoOpenTarget = { type: 'table', id: tid };
+          }
+        } else if (idSource === 'group' && existingGroupIds.length === 1) {
+          const gid = existingGroupIds[0];
+          const opts = data.data.group_options?.[gid];
+          if (opts && ((opts.classes && opts.classes.length > 0) || (opts.branches && opts.branches.length > 0))) {
+            autoOpenTarget = { type: 'group', id: gid };
+          }
         }
+        
+        setActiveConfigScope(autoOpenTarget);
       }
     } catch (e) { showToast('Error loading assignments', 'error'); }
     setLoadingAssign(false);

@@ -898,17 +898,19 @@ class ClientStaffService(BaseService):
                 if ('assigned_groups' in data) or (normalized_assignment_scopes is not None):
                     explicit_assignment_payload = 'assigned_groups' in data
                     assignment_ids = data.get('assigned_groups', [])
-                    if (not assignment_ids) and normalized_assignment_scopes:
-                        assignment_ids = scope_group_ids
+                    
+                    if explicit_assignment_payload:
+                        if (not assignment_ids) and normalized_assignment_scopes:
+                            assignment_ids = scope_group_ids
 
-                    if assignment_ids:
-                        resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
-                            client,
-                            assignment_ids,
-                            data.get('assignment_id_source', 'auto'),
-                        )
-                    elif explicit_assignment_payload and not normalized_assignment_scopes:
-                        resolved_group_ids, resolved_table_ids = [], []
+                        if assignment_ids:
+                            resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
+                                client,
+                                assignment_ids,
+                                data.get('assignment_id_source', 'auto'),
+                            )
+                        else:
+                            resolved_group_ids, resolved_table_ids = [], []
 
                     if normalized_assignment_scopes:
                         resolved_group_ids = sorted(set(resolved_group_ids) | set(scope_group_ids))
