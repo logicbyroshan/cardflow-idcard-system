@@ -143,14 +143,7 @@ class PermissionService:
     }
 
     # Sensitive permissions that client_staff can never hold, even if present on Staff model.
-    CLIENT_STAFF_BLOCKED_PERMS: set = {
-        'perm_idcard_approve',
-        'perm_idcard_delete_from_pool',
-        'perm_idcard_download_image_rename_mode',
-        'perm_idcard_download_image_generate_mode',
-        'perm_idcard_approved_list',
-        'perm_idcard_download_list',
-    }
+    CLIENT_STAFF_BLOCKED_PERMS: set = set()
 
     # Status → list-permission mapping (shared across views)
     STATUS_LIST_PERM_MAP = {

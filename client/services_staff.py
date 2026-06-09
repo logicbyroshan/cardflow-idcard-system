@@ -36,26 +36,22 @@ class ClientStaffService(BaseService):
     STAFF_PERMISSION_FIELDS = [
         # ── ID Card List Tabs ────────────────────────────────────────
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
+        'perm_idcard_approved_list', 'perm_idcard_download_list',
         'perm_idcard_pool_list',
         
         # ── Export / Download ───────────────────────────────────────
         'perm_idcard_bulk_download',
         # ── Card Actions ──────────────────────────────────────────────
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
-        'perm_idcard_info', 'perm_idcard_verify',
-        'perm_idcard_updated_at',
+        'perm_idcard_info', 'perm_idcard_verify', 'perm_idcard_approve',
+        'perm_idcard_updated_at', 'perm_idcard_delete_from_pool',
         'perm_idcard_retrieve',
         # ── App & Access ───────────────────────────────────────────
         'perm_mobile_app',
     ]
 
     # Sensitive permissions that client_staff must never hold.
-    NON_DELEGABLE_CLIENT_STAFF_PERMS = [
-        'perm_idcard_approve',
-        'perm_idcard_delete_from_pool',
-        'perm_idcard_download_image_rename_mode',
-        'perm_idcard_download_image_generate_mode',
-    ]
+    NON_DELEGABLE_CLIENT_STAFF_PERMS = []
 
     @staticmethod
     def _public_email(email: str) -> str:
