@@ -785,12 +785,12 @@ class ClientStaffService(BaseService):
             return cls._unexpected_error_result('create_staff', e)
     
     @classmethod
-    def update_staff(cls, user, staff_id: int, data: Dict[str, Any]) -> ServiceResult:
+    def update_staff(cls, user, staff_id: int, data: Dict[str, Any], target_client=None) -> ServiceResult:
         """
         Update a client staff member.
         """
         try:
-            client = ClientAccessService.get_client_for_user(user)
+            client = target_client or ClientAccessService.get_client_for_user(user)
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
             

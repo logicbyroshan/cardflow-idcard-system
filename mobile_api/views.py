@@ -5317,8 +5317,12 @@ def api_staff_assign(request, staff_id):
     try:
         data = json.loads(request.body)
         if PermissionService.is_client(user) or PermissionService.is_admin_staff(user):
+            target_client = None
+            if PermissionService.is_admin_staff(user):
+                staff = get_object_or_404(Staff, id=staff_id)
+                target_client = staff.client
             # Use update_staff which handles assigned_groups and assigned_table_ids
-            result = ClientStaffService.update_staff(user, staff_id, data)
+            result = ClientStaffService.update_staff(user, staff_id, data, target_client=target_client)
             if result.success:
                 return JsonResponse({'success': True, 'message': 'Assignments updated successfully'})
             return JsonResponse({'success': False, 'message': result.message}, status=400)
@@ -5632,7 +5636,7 @@ def api_mobile_staff_assignment_update(request, staff_id):
                 'assignment_id_source': id_source,
                 'assignment_scopes': payload['assignment_scopes']
             }
-            result = ClientStaffService.update_staff(user, staff_id, client_staff_payload)
+            result = ClientStaffService.update_staff(user, staff_id, client_staff_payload, target_client=target_client)
 
         if result.success:
             return JsonResponse({'success': True, 'message': 'Assignments updated successfully'})
