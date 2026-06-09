@@ -5829,6 +5829,8 @@ def api_tables_list(request):
         if PermissionService.is_client_staff(user):
             accessible_ids = ClientAccessService.get_accessible_table_ids(user)
             if accessible_ids is not None:
+                if not accessible_ids:
+                    return JsonResponse({'success': True, 'tables': [], 'count': 0})
                 tables_qs = tables_qs.filter(id__in=accessible_ids)
 
         # 2. Annotate with status count if status is provided
@@ -5884,6 +5886,8 @@ def api_groups_list(request):
         if PermissionService.is_client_staff(user):
             accessible_ids = ClientAccessService.get_accessible_table_ids(user)
             if accessible_ids is not None:
+                if not accessible_ids:
+                    return JsonResponse({'success': True, 'data': {'groups': [], 'tables': []}})
                 tables_qs = tables_qs.filter(id__in=accessible_ids)
 
         if PermissionService.is_client_staff(user):
@@ -6230,6 +6234,23 @@ def api_dashboard_data(request):
             if not client:
                 return JsonResponse({'success': False, 'message': 'No client context'}, status=400)
             
+            # For assistant, explicitly compute access FIRST to avoid stale cache overriding security.
+            is_staff_empty = False
+            if is_staff:
+                accessible_ids = ClientAccessService.get_accessible_table_ids(user)
+                if accessible_ids is not None:
+                    if not accessible_ids:
+                        # STRICT BYPASS: Assistant has no assignments, return empty immediately
+                        cached_data = {
+                            'client_id': client.id,
+                            'client_name': getattr(client, 'business_name', client.name),
+                            'pending': 0, 'verified': 0, 'approved': 0,
+                            'download': 0, 'pool': 0, 'total': 0,
+                            'tables': [],
+                            'recent_activity': recent_activity
+                        }
+                        return JsonResponse({'success': True, 'data': cached_data})
+            
             cache_key = f"mob_dash_{client.id}_{user.id}" if is_staff else f"mob_dash_{client.id}"
             cache_version = CacheVersionService.get('client_dash_counts', f'client:{client.id}')
             full_cache_key = f"{cache_key}_v{cache_version}"
@@ -6241,10 +6262,8 @@ def api_dashboard_data(request):
             
             # Get accessible tables
             tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
-            if is_staff:
-                accessible_ids = ClientAccessService.get_accessible_table_ids(user)
-                if accessible_ids is not None:
-                    tables_qs = tables_qs.filter(id__in=accessible_ids)
+            if is_staff and accessible_ids is not None:
+                tables_qs = tables_qs.filter(id__in=accessible_ids)
             
             scoped_table_ids = list(tables_qs.values_list('id', flat=True))
             
