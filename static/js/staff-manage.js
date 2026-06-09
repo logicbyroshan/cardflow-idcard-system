@@ -7,7 +7,7 @@ let _staffFormStep = 1;
 // Permission categories
 const PERMISSION_CATEGORIES = {
   client: ['can_view_clients', 'can_add_clients', 'can_edit_clients', 'can_delete_clients', 'can_toggle_client_status'],
-  idcard: ['can_view_idcard_data', 'can_add_idcard_data', 'can_edit_idcard_data', 'can_delete_idcard_data', 'can_verify_idcard', 'can_approve_idcard'],
+  idcard: ['can_view_idcard_data', 'can_add_idcard_data', 'can_edit_idcard_data', 'can_delete_idcard_data', 'can_verify_idcard', 'can_approve_idcard', 'can_view_approved_list', 'can_view_download_list'],
   settings: ['can_view_idcard_settings', 'can_add_idcard_settings', 'can_edit_idcard_settings', 'can_delete_idcard_settings', 'can_upload_images', 'can_reupload_images', 'can_bulk_upload', 'can_bulk_download', 'can_export_data', 'can_download_cards', 'can_view_workflow', 'can_manage_workflow']
 };
 

@@ -65,6 +65,8 @@ ADMIN_STAFF_PERMISSIONS = {
     'can_delete_idcard_data': 'Can delete Card entry',
     'can_verify_idcard': 'Can verify Card data',
     'can_approve_idcard': 'Can approve Card status',
+    'can_view_approved_list': 'Can view Approved List',
+    'can_view_download_list': 'Can view Download List',
     
     # ID Card Settings
     'can_view_idcard_settings': 'Can view Template list',

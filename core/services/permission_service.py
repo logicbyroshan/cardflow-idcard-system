@@ -146,8 +146,8 @@ class PermissionService:
     ADMIN_STAFF_DJANGO_PERM_MAP = {
         'perm_idcard_pending_list': 'can_view_idcard_data',
         'perm_idcard_verified_list': 'can_view_idcard_data',
-        'perm_idcard_approved_list': 'can_view_idcard_data',
-        'perm_idcard_download_list': 'can_view_idcard_data',
+        'perm_idcard_approved_list': 'can_view_approved_list',
+        'perm_idcard_download_list': 'can_view_download_list',
         'perm_idcard_pool_list': 'can_view_idcard_data',
         'perm_idcard_reprint_list': 'can_view_idcard_data',
         'perm_reprint_request_list': 'can_view_idcard_data',
