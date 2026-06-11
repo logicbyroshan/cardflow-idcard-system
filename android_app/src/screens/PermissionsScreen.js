@@ -19,10 +19,17 @@ export default function PermissionsScreen({ navigation }) {
   const checkPermissions = useCallback(async () => {
     try {
       const cam = await ImagePicker.getCameraPermissionsAsync();
-      const media = await ImagePicker.getMediaLibraryPermissionsAsync();
+      
+      const isAndroid13OrHigher = Platform.OS === 'android' && Platform.Version >= 33;
+      let mediaStatus = 'granted';
+      if (!isAndroid13OrHigher) {
+        const media = await ImagePicker.getMediaLibraryPermissionsAsync();
+        mediaStatus = media.status;
+      }
+
       setPermissions({
         camera: cam.status,
-        mediaLibrary: media.status,
+        mediaLibrary: mediaStatus,
       });
     } catch (e) {
       // silent
@@ -43,6 +50,12 @@ export default function PermissionsScreen({ navigation }) {
   };
 
   const requestMediaLibrary = async () => {
+    const isAndroid13OrHigher = Platform.OS === 'android' && Platform.Version >= 33;
+    if (isAndroid13OrHigher) {
+      showToast('Photo library access managed by system.', 'success');
+      setPermissions(p => ({ ...p, mediaLibrary: 'granted' }));
+      return;
+    }
     try {
       const result = await ImagePicker.requestMediaLibraryPermissionsAsync();
       setPermissions(p => ({ ...p, mediaLibrary: result.status }));
@@ -69,7 +82,8 @@ export default function PermissionsScreen({ navigation }) {
       status: permissions.camera,
       onRequest: requestCamera,
     },
-    {
+    // Only show Photo Library permission if it is required (i.e. not Android 13+)
+    ...(Platform.OS === 'android' && Platform.Version >= 33 ? [] : [{
       key: 'mediaLibrary',
       icon: 'images',
       iconColor: '#8b5cf6',
@@ -78,7 +92,7 @@ export default function PermissionsScreen({ navigation }) {
       description: 'Required for selecting existing photos from your gallery',
       status: permissions.mediaLibrary,
       onRequest: requestMediaLibrary,
-    },
+    }]),
   ];
 
   const getStatusConfig = (status) => {
