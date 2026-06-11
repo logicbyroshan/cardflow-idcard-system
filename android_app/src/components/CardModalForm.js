@@ -4,9 +4,10 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DynamicIcon } from './Icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiGet, apiPostForm, BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
+import { showLocalNotification } from '../utils/notifications';
 
 const resolveImageSource = (val) => {
   const resolved = resolveAdarshImageUrl(val);
@@ -227,6 +228,10 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       const { data } = await apiPostForm(url, formData);
       if (data?.success) {
         showToast(data.message || (isEdit ? 'Updated!' : 'Saved!'), 'success');
+        showLocalNotification(
+          isEdit ? 'Card Updated' : 'Card Saved',
+          data.message || (isEdit ? 'The ID card has been successfully updated.' : 'The ID card has been successfully saved.')
+        );
         setTimeout(() => {
           onSuccess && onSuccess(data.card);
           onClose();
@@ -262,10 +267,10 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         const preScale = Math.min(scaleW, scaleH);
         if (preScale < 1) {
           try {
-            const pre = await ImageManipulator.manipulateAsync(
+            const pre = await manipulateAsync(
               uri,
               [{ resize: { width: Math.round(assetWidth * preScale), height: Math.round(assetHeight * preScale) } }],
-              { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+              { compress: 0.9, format: SaveFormat.JPEG }
             );
             uri = pre.uri;
             assetWidth = pre.width;

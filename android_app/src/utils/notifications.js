@@ -70,3 +70,18 @@ export async function registerDeviceTokenOnBackend(token) {
     console.warn('[PushNotification] Error sending token to backend:', e);
   }
 }
+
+export async function showLocalNotification(title, body) {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+      },
+      trigger: null,
+    });
+  } catch (e) {
+    console.warn('[PushNotification] Error showing local notification:', e);
+  }
+}
