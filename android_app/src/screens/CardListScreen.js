@@ -361,6 +361,11 @@ export default function CardListScreen({ navigation, route }) {
     });
   }, [selectedIds, currentStatus, tableId, showToast, exitSelectMode, updateCardStateLocally]);
 
+  const handleEditCard = useCallback((card) => {
+    setEditingCardId(card.id);
+    setShowForm(true);
+  }, []);
+
   // ── Single card actions ───────────────────────────────────────────────────
   const handleSingleStatus = useCallback(async (id, newStatus) => {
     try {
@@ -505,10 +510,6 @@ export default function CardListScreen({ navigation, route }) {
     return false;
   }, [isClientRole, currentStatus, perms]);
 
-  const handleEditCard = useCallback((card) => {
-    setEditingCardId(card.id);
-    setShowForm(true);
-  }, []);
 
   const renderItem = useCallback(({ item }) => {
     const isClient = perms.role === 'client' || perms.role === 'client_staff' || perms.role === 'guest_user';
