@@ -1,6 +1,6 @@
 {
   "name": "adarsh-id",
-  "version": "1.0.92",
+  "version": "1.0.93",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -9,34 +9,34 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/netinfo": "11.4.1",
     "@react-navigation/native": "^7.0.0",
     "@react-navigation/native-stack": "^7.0.0",
-    "expo": "~52.0.30",
-    "expo-asset": "~11.0.5",
-    "expo-camera": "~16.0.14",
-    "expo-document-picker": "~13.0.3",
-    "expo-file-system": "~18.0.12",
-    "expo-font": "~13.0.3",
-    "expo-haptics": "~14.0.1",
-    "expo-image-manipulator": "~13.0.5",
-    "expo-image-picker": "~16.0.5",
-    "expo-linear-gradient": "~14.0.1",
-    "expo-notifications": "~0.29.14",
-    "expo-sensors": "~14.0.1",
-    "expo-splash-screen": "~0.29.21",
-    "expo-status-bar": "~2.0.1",
-    "expo-system-ui": "~4.0.7",
-    "react": "18.3.1",
-    "react-native": "0.76.6",
-    "react-native-safe-area-context": "4.12.0",
-    "react-native-screens": "~4.4.0",
-    "react-native-svg": "15.8.0"
+    "expo": "^53.0.27",
+    "expo-asset": "~11.1.7",
+    "expo-camera": "~16.1.11",
+    "expo-document-picker": "~13.1.6",
+    "expo-file-system": "~18.1.11",
+    "expo-font": "~13.3.2",
+    "expo-haptics": "~14.1.4",
+    "expo-image-manipulator": "~13.1.7",
+    "expo-image-picker": "~16.1.4",
+    "expo-linear-gradient": "~14.1.5",
+    "expo-notifications": "~0.31.5",
+    "expo-sensors": "~14.1.4",
+    "expo-splash-screen": "~0.30.10",
+    "expo-status-bar": "~2.2.3",
+    "expo-system-ui": "~5.0.11",
+    "react": "19.0.0",
+    "react-native": "0.79.6",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "react-native-svg": "15.11.2"
   },
   "private": true,
   "devDependencies": {
     "@babel/core": "^7.29.0",
-    "babel-preset-expo": "~12.0.5"
+    "babel-preset-expo": "~13.0.0"
   }
 }
