@@ -22,7 +22,6 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": false,
       "package": "com.adarshid.app",
       "versionCode": 91,
       "permissions": [
