@@ -74,6 +74,8 @@ def client_idcard_group(request):
                     tables_qs = tables_qs.filter(id__in=assigned_table_ids)
                 elif assigned_group_ids:
                     tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+                else:
+                    tables_qs = tables_qs.none()
 
             ordered_tables = list(tables_qs.order_by('-updated_at'))
             table_ids = [table.id for table in ordered_tables]

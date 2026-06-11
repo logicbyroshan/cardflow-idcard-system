@@ -10,17 +10,17 @@
  */
 
 export const colors = {
-  // Brand — exact website gradient endpoints
-  brandPrimary: '#667eea',
-  brandPrimaryDark: '#5a67d8',
-  brandPrimaryLight: '#818cf8',
-  brandSecondary: '#764ba2',
-  brandSecondaryDark: '#5b21b6',
+  // Brand — orange-to-red gradient endpoints (subtle, less poppy/harsh)
+  brandPrimary: '#de821b',         // subtle yellow-orange
+  brandPrimaryDark: '#c66910',     // darker yellow-orange
+  brandPrimaryLight: '#f09f44',    // lighter yellow-orange
+  brandSecondary: '#bd2552',       // subtle pinkish-red
+  brandSecondaryDark: '#9b183d',   // darker pinkish-red
 
   // Legacy aliases
-  brand: '#667eea',
-  brandLight: '#667eea',
-  brandDark: '#764ba2',
+  brand: '#de821b',
+  brandLight: '#de821b',
+  brandDark: '#bd2552',
 
   // Surfaces
   surfaceBg: '#f4f4f4',

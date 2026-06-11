@@ -722,7 +722,7 @@ def _staff_can_access_table(staff, table):
         return int(table.id) in assigned_table_ids
     if assigned_group_ids:
         return int(table.group_id) in assigned_group_ids
-    return True
+    return False
 
 
 def _staff_table_scope_filters(staff, table):
@@ -1643,6 +1643,8 @@ def home(request):
                 tables = tables.filter(id__in=assigned_table_ids)
             elif assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
+            else:
+                tables = tables.none()
 
     tables_list = list(tables)  # evaluate once â€” avoids 3 separate DB hits
     first_table = tables_list[0] if tables_list else None
@@ -1890,6 +1892,8 @@ def home(request):
                         _tables_qs = _tables_qs.filter(id__in=_assigned_table_ids)
                     elif _assigned_group_ids:
                         _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
+                    else:
+                        _tables_qs = _tables_qs.none()
 
             _tables = list(_tables_qs.order_by('group__name', 'name')[:80])
             _table_ids = [t.id for t in _tables]
@@ -2059,6 +2063,8 @@ def home(request):
                         _tables_qs = _tables_qs.filter(id__in=_assigned_table_ids)
                     elif _assigned_group_ids:
                         _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
+                    else:
+                        _tables_qs = _tables_qs.none()
 
             _tables = list(_tables_qs.order_by('group__name', 'name')[:80])
             _table_ids = [t.id for t in _tables]
@@ -2283,6 +2289,8 @@ def table_picker(request, status):
                 tables = tables.filter(id__in=assigned_table_ids)
             elif assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
+            else:
+                tables = tables.none()
 
     tables_list = list(tables)  # evaluate once â€” avoids 2 extra DB hits
     if len(tables_list) == 1:
@@ -2889,6 +2897,8 @@ def reprint_lists(request, client_id):
                 tables_qs = tables_qs.filter(id__in=assigned_table_ids)
             elif assigned_group_ids:
                 tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+            else:
+                tables_qs = tables_qs.none()
 
     tables = list(tables_qs)
     table_ids = [t.id for t in tables]
@@ -4738,6 +4748,8 @@ def groups_overview(request):
                 tables = tables.filter(id__in=assigned_table_ids)
             elif assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
+            else:
+                tables = tables.none()
 
     scoped_table_ids = tables.values('id')
     scoped_group_ids = tables.values('group_id')
@@ -4844,6 +4856,8 @@ def settings_page(request):
                     _tables_scope = _tables_scope.filter(id__in=assigned_table_ids)
                 elif assigned_group_ids:
                     _tables_scope = _tables_scope.filter(group_id__in=assigned_group_ids)
+                else:
+                    _tables_scope = _tables_scope.none()
             else:
                 _tables_scope = _tables_scope.none()
 
@@ -5818,7 +5832,7 @@ def api_tables_list(request):
                 if accessible_client_ids:
                     tables_qs = tables_qs.filter(group__client_id__in=accessible_client_ids)
                 else:
-                    return JsonResponse({'success': True, 'tables': [], 'count': 0})
+                    return JsonResponse({'success': True, 'data': [], 'tables': [], 'count': 0})
             else:
                 # Regular client/client_staff
                 client, _ = _client_ctx(user)
@@ -5830,7 +5844,7 @@ def api_tables_list(request):
             accessible_ids = ClientAccessService.get_accessible_table_ids(user)
             if accessible_ids is not None:
                 if not accessible_ids:
-                    return JsonResponse({'success': True, 'tables': [], 'count': 0})
+                    return JsonResponse({'success': True, 'data': [], 'tables': [], 'count': 0})
                 tables_qs = tables_qs.filter(id__in=accessible_ids)
 
         # 2. Annotate with status count if status is provided
@@ -6438,6 +6452,8 @@ def api_reprint_data(request, client_id):
                     tables_qs = tables_qs.filter(id__in=assigned_table_ids)
                 elif assigned_group_ids:
                     tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+                else:
+                    tables_qs = tables_qs.none()
 
         tables = list(tables_qs)
         table_ids = [t.id for t in tables]

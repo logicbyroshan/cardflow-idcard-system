@@ -686,3 +686,63 @@ class StaffApiIntegrationTests(TestCase):
         allowed = self.client.get(f'/panel/staff/api/clients/{self.client_obj.id}/idcard-groups/')
         self.assertEqual(allowed.status_code, 200)
         self.assertTrue(allowed.json()['success'])
+
+
+class ClientStaffAccessControlTests(TestCase):
+    """Regression tests for Client Staff access restrictions with empty or populated assignments."""
+
+    def test_client_staff_with_no_assignments_has_zero_access(self):
+        from staff.models import Staff
+        from client.models import Client
+        from idcards.models import IDCardTable, IDCardGroup
+        from client.services_access import ClientAccessService
+
+        client_user = User.objects.create_user(
+            username='c_owner@test.com', email='c_owner@test.com', password='pass1234', role='client'
+        )
+        client = Client.objects.create(user=client_user, name='Test Client')
+
+        staff_user = User.objects.create_user(
+            username='c_assistant@test.com', email='c_assistant@test.com', password='pass1234', role='client_staff'
+        )
+        staff = Staff.objects.create(user=staff_user, staff_type='client_staff', client=client)
+
+        group = IDCardGroup.objects.create(client=client, name='Staff List')
+        table = IDCardTable.objects.create(group=group, name='Teachers', is_active=True)
+
+        # 1. get_accessible_table_ids must be empty list
+        accessible_tables = ClientAccessService.get_accessible_table_ids(staff_user)
+        self.assertEqual(accessible_tables, [])
+
+        # 2. can_access_table must return False
+        self.assertFalse(ClientAccessService.can_access_table(staff_user, table))
+        
+        # 3. can_access_group must return False
+        self.assertFalse(ClientAccessService.can_access_group(staff_user, group))
+
+    def test_client_staff_with_assignments_has_access(self):
+        from staff.models import Staff
+        from client.models import Client
+        from idcards.models import IDCardTable, IDCardGroup
+        from client.services_access import ClientAccessService
+
+        client_user = User.objects.create_user(
+            username='c_owner2@test.com', email='c_owner2@test.com', password='pass1234', role='client'
+        )
+        client = Client.objects.create(user=client_user, name='Test Client 2')
+
+        staff_user = User.objects.create_user(
+            username='c_assistant2@test.com', email='c_assistant2@test.com', password='pass1234', role='client_staff'
+        )
+        staff = Staff.objects.create(user=staff_user, staff_type='client_staff', client=client)
+
+        group = IDCardGroup.objects.create(client=client, name='Staff List 2')
+        table = IDCardTable.objects.create(group=group, name='Teachers 2', is_active=True)
+
+        staff.assigned_table_ids = [str(table.id)]
+        staff.save()
+
+        accessible_tables = ClientAccessService.get_accessible_table_ids(staff_user)
+        self.assertEqual(accessible_tables, [table.id])
+        self.assertTrue(ClientAccessService.can_access_table(staff_user, table))
+

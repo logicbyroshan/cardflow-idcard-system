@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { colors } from '../theme';
 
 export class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -35,6 +36,6 @@ const s = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: '#fff' },
   title: { fontSize: 20, fontFamily: 'SairaSemiCondensed-Bold', color: '#ef4444', marginBottom: 10 },
   message: { fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 20 },
-  btn: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#667eea', borderRadius: 8 },
+  btn: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: colors.brandPrimary, borderRadius: 8 },
   btnText: { color: '#fff', fontFamily: 'SairaSemiCondensed-Bold' },
 });

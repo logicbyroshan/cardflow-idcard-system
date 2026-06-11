@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, Animated, Dimensions, Platform,
   TextInput, KeyboardAvoidingView, ActivityIndicator,
-  Alert,
+  Alert, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -346,7 +346,7 @@ export default function MpinScreen({ navigation, route }) {
 
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2', '#5b21b6']}
+      colors={gradients.brandFull}
       start={{ x: 0.3, y: 0 }}
       end={{ x: 0.7, y: 1 }}
       style={s.root}
@@ -364,7 +364,7 @@ export default function MpinScreen({ navigation, route }) {
         {/* Brand / Header Section */}
         <View style={s.headerSection}>
           <View style={s.appIcon}>
-            <DynamicIcon name="lock" size={24} color={colors.white} />
+            <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
           </View>
           <Text style={s.title}>{header.title}</Text>
           <Text style={s.subtitle}>{header.subtitle}</Text>
@@ -406,7 +406,7 @@ export default function MpinScreen({ navigation, route }) {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color="#5b21b6" />
+                  <ActivityIndicator size="small" color={colors.brandSecondaryDark} />
                 ) : (
                   <Text style={s.passwordSubmitText}>{isSilentAuthFailed ? 'Unlock App' : 'Verify'}</Text>
                 )}
@@ -648,8 +648,9 @@ const s = StyleSheet.create({
     ...shadows.lg,
   },
   passwordSubmitText: {
-    color: '#5b21b6',
+    color: colors.brandSecondaryDark,
     fontSize: 15,
     fontFamily: 'SairaSemiCondensed-Bold',
   },
+  logo: { width: '80%', height: '80%' },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DynamicIcon } from '../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen({ navigation }) {
   const cfg = stepConfig[step];
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2', '#5b21b6']} start={{ x: 0.3, y: 0 }} end={{ x: 0.7, y: 1 }} style={s.root}>
+    <LinearGradient colors={gradients.brandFull} start={{ x: 0.3, y: 0 }} end={{ x: 0.7, y: 1 }} style={s.root}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top }]} keyboardShouldPersistTaps="handled" bounces={false}>
           {/* Back */}
@@ -82,7 +82,9 @@ export default function ForgotPasswordScreen({ navigation }) {
 
           {/* Header */}
           <View style={s.header}>
-            <View style={s.headerIcon}><DynamicIcon name={cfg.icon} size={28} color="#fff" /></View>
+            <View style={s.headerIcon}>
+              <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
+            </View>
             <Text style={s.headerTitle}>{cfg.title}</Text>
             <Text style={s.headerSub}>{cfg.subtitle}</Text>
             {/* Step Indicator */}
@@ -174,4 +176,5 @@ const s = StyleSheet.create({
   doneBadge: { width: 72, height: 72, borderRadius: radius.sm, backgroundColor: '#d1fae5', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 2, borderColor: '#a7f3d0' },
   doneTitle: { fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 6 },
   doneSub: { fontSize: 13, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray400, textAlign: 'center', marginBottom: 20 },
+  logo: { width: '80%', height: '80%' },
 });

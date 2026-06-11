@@ -225,6 +225,12 @@ class ClientAccessService:
         # For client_staff with assigned groups: restrict to assigned only
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
+            if staff is None:
+                from staff.models import Staff
+                try:
+                    staff = Staff.objects.filter(user=user).first()
+                except Exception:
+                    pass
             if staff:
                 assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
@@ -248,7 +254,7 @@ class ClientAccessService:
                 if assigned_group_ids:
                     return group.id in assigned_group_ids
                 
-                return False
+            return False
         return True
 
     @staticmethod
@@ -275,6 +281,12 @@ class ClientAccessService:
         # For client_staff with assigned groups: restrict to assigned groups only
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
+            if staff is None:
+                from staff.models import Staff
+                try:
+                    staff = Staff.objects.filter(user=user).first()
+                except Exception:
+                    pass
             if staff:
                 assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
@@ -286,7 +298,7 @@ class ClientAccessService:
                 if assigned_group_ids:
                     return table.group_id in assigned_group_ids
                 
-                return False
+            return False
         return True
 
     @staticmethod
@@ -300,6 +312,12 @@ class ClientAccessService:
 
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
+            if staff is None:
+                from staff.models import Staff
+                try:
+                    staff = Staff.objects.filter(user=user).first()
+                except Exception:
+                    pass
             if staff:
                 assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
@@ -334,6 +352,7 @@ class ClientAccessService:
                     )
                 
                 return []
+            return []
         return None  # None means no restriction (all client tables accessible)
 
     @staticmethod
@@ -362,6 +381,12 @@ class ClientAccessService:
         # For client_staff with assigned groups
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
+            if staff is None:
+                from staff.models import Staff
+                try:
+                    staff = Staff.objects.filter(user=user).first()
+                except Exception:
+                    pass
             if staff:
                 assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
@@ -372,4 +397,6 @@ class ClientAccessService:
                     return card.table_id in assigned_table_ids
                 if assigned_group_ids:
                     return card.table.group_id in assigned_group_ids
+                
+            return False
         return True

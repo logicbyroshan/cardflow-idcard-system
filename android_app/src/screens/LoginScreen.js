@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, Alert, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -110,7 +110,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2', '#5b21b6']}
+      colors={gradients.brandFull}
       start={{ x: 0.3, y: 0 }}
       end={{ x: 0.7, y: 1 }}
       style={styles.root}
@@ -132,7 +132,7 @@ export default function LoginScreen({ navigation }) {
           {/* Top branding */}
           <View style={styles.brandSection}>
             <View style={styles.appIcon}>
-              <DynamicIcon name="id-card" size={30} color={colors.white} />
+              <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
             </View>
             <Text style={styles.brandTitle}>Adarsh ID Cards</Text>
             <Text style={styles.brandSubtitle}>Management Portal</Text>
@@ -350,4 +350,5 @@ const styles = StyleSheet.create({
     color: colors.brandDark,
     textDecorationLine: 'underline',
   },
+  logo: { width: '80%', height: '80%' },
 });
