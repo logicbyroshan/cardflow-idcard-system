@@ -258,7 +258,7 @@ export default function GroupSettingsScreen({ navigation, route }) {
   // ── Field editor ──────────────────────────────────────────────────────────
   const openFieldEditor = async (table) => {
     setFieldEditorTable(table);
-    setFields(table.fields || []);
+    setFields((table.fields || []).filter(f => f && f.name));
     setNewFieldName('');
     setNewFieldType('text');
     setNewFieldMandatory(false);
@@ -392,7 +392,7 @@ export default function GroupSettingsScreen({ navigation, route }) {
               <View style={s.fieldsPreview}>
                 <Text style={s.fieldsPreviewTitle}>FIELDS ({table.fields.length})</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.fieldChipsRow}>
-                  {table.fields.map((f, i) => {
+                  {(table.fields || []).filter(f => f && f.name).map((f, i) => {
                     const ft = FIELD_TYPES.find(x => x.key === f.type) || FIELD_TYPES[0];
                     return (
                       <View key={i} style={[s.fieldChip, { borderColor: ft.color + '40', backgroundColor: ft.color + '10' }]}>

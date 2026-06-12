@@ -511,7 +511,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
 
               {/* Action: Upgrade Classes */}
               {(() => {
-                const hasClass = selectedTable?.fields && selectedTable.fields.some(f => f.type === 'class' || f.type === 'class_section');
+                const hasClass = selectedTable?.fields && selectedTable.fields.some(f => f && (f.type === 'class' || f.type === 'class_section'));
                 const allowed = canUpgradeAll && hasClass;
                 return (
                   <TouchableOpacity

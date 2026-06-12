@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Adarsh ID Cards",
+    "name": "Adarsh ID",
     "slug": "adarsh-final-deploye",
-    "version": "1.0.90",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -15,22 +15,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.adarshid.app",
-      "buildNumber": "90"
+      "buildNumber": "101"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
       },
-      "edgeToEdgeEnabled": false,
       "package": "com.adarshid.app",
-      "versionCode": 90,
+      "versionCode": 101,
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VISUAL_USER_SELECTED"
+        "CAMERA"
       ]
     },
     "web": {
@@ -44,6 +39,13 @@
         "expo-image-picker",
         {
           "photosPermission": "The app accesses your photos to let you choose ID card photos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon.png",
+          "color": "#0f172a"
         }
       ]
     ],

@@ -69,4 +69,35 @@ export async function registerDeviceTokenOnBackend(token) {
   } catch (e) {
     console.warn('[PushNotification] Error sending token to backend:', e);
   }
+}export async function showLocalNotification(title, body) {
+  try {
+    if (!Notifications || typeof Notifications.scheduleNotificationAsync !== 'function') {
+      console.warn('[PushNotification] scheduleNotificationAsync is not available');
+      return;
+    }
+    
+    // Request permission if not already granted
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    
+    if (finalStatus === 'granted') {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: true,
+        },
+        trigger: null,
+      });
+    } else {
+      console.warn('[PushNotification] Local notification permission denied');
+    }
+  } catch (e) {
+    console.warn('[PushNotification] Error showing local notification:', e);
+  }
 }
+

@@ -134,7 +134,8 @@ class ClientDashboardService(BaseService):
         if assigned_group_ids:
             return tables.filter(group_id__in=assigned_group_ids)
 
-        return tables
+        # No assignments → strict deny: unassigned staff see nothing
+        return tables.none()
 
     @staticmethod
     def _status_template():

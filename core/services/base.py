@@ -418,6 +418,7 @@ class BaseService:
         - Remove double slashes
         - Strip leading slashes
         - Strip MEDIA_ROOT prefix if accidentally included
+        - Strip absolute HTTP/HTTPS URL host and /media/ prefix if present
         - Strip leading 'media/' prefix if present
         - Preserve PENDING: and NOT_FOUND markers as-is
         - Return empty string for None/empty input
@@ -436,6 +437,14 @@ class BaseService:
         # Preserve special markers
         if path.startswith('PENDING:') or path == 'NOT_FOUND':
             return path
+            
+        # Strip HTTP/HTTPS host and media prefix if absolute URL
+        if '://' in path:
+            path = path.split('?', 1)[0].split('#', 1)[0]
+            if '/media/' in path:
+                path = path[path.find('/media/') + 7:]
+            elif 'media/' in path:
+                path = path[path.find('media/') + 6:]
         
         # Backslashes → forward slashes
         path = path.replace('\\', '/')

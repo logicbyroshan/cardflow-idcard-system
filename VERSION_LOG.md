@@ -2,6 +2,9 @@
 
 | Date | Platform Version | Mobile Version | Mobile Build | Key Changes |
 | :--- | :--- | :--- | :--- | :--- |
+| **2026-06-12** | **v4.18.4** | **1.0.99** | **99** | **Fix: Resolve Android touch event conflicts for photo picking menu and column filters; fix backend image path normalization for unchanged URLs.** |
+| **2026-06-12** | **v4.18.4** | **1.0.97** | **97** | **Fix: TypeError crash in forms/lists on null fields, safeguard FilterDrawer, ClientGroups, CardList, and GroupSettings against empty fields, and verify backend normalized image matches.** |
+| **2026-06-12** | **v4.18.4** | **1.0.96** | **96** | **Fix: Update crash with type error, center logo to prevent cropping on Android, request notification permissions, and sign with correct release key fingerprint.** |
 | **2026-06-02** | **v4.18.2** | **1.0.67** | **67** | **Fix search persistence across tabs in reprint and main lists, customize ReprintScreen for clients with 3 workflow badges** |
 | **2026-06-02** | **v4.18.2** | **1.0.66** | **66** | **Implement inline background PDF download modal to fix authenticated redirection errors for clients and assistants** |
 | **2026-06-01** | **v4.18.2** | **1.0.65** | **65** | **Fix TopBar PDF action button for clients/guests; bump build version** |

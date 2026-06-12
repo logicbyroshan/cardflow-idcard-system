@@ -71,7 +71,18 @@ export default function HomeScreen({ navigation }) {
         const lastVersion = await AsyncStorage.getItem('adarsh_last_seen_version');
         
         const { status: camStatus, canAskAgain: camCanAsk } = await ImagePicker.getCameraPermissionsAsync();
-        const { status: mediaStatus, canAskAgain: mediaCanAsk } = await ImagePicker.getMediaLibraryPermissionsAsync();
+        
+        // Android 13+ (SDK 33) does not require photo library permissions when using the system photo picker
+        const isAndroid13OrHigher = Platform.OS === 'android' && Platform.Version >= 33;
+        
+        let mediaStatus = 'granted';
+        let mediaCanAsk = false;
+        
+        if (!isAndroid13OrHigher) {
+          const media = await ImagePicker.getMediaLibraryPermissionsAsync();
+          mediaStatus = media.status;
+          mediaCanAsk = media.canAskAgain;
+        }
 
         let needsPrompt = false;
         

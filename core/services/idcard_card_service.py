@@ -1105,7 +1105,7 @@ class IDCardCardService(BaseService):
                                 if not file_key_upper.startswith('IMAGE_'):
                                     continue
                                 key_suffix_upper = file_key_upper[6:].strip().upper()
-                                if key_suffix_upper == img_field_upper:
+                                if cls.normalize_name(key_suffix_upper) == cls.normalize_name(img_field_upper):
                                     uploaded_file = file_obj
                                     break
 

@@ -371,7 +371,7 @@ export default function CardDetailScreen({ navigation, route }) {
         tableId={card.table_id}
         cardId={card.id}
         onSuccess={() => {
-          loadCard(true);
+          refresh();
           if (autoRetrieveStatus) {
             updateStatus(autoRetrieveStatus);
             setAutoRetrieveStatus(null);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Dimensions, Platform, StatusBar, Animated } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useIsFocused } from '@react-navigation/native';
 import { Accelerometer } from 'expo-sensors';
 import { DynamicIcon } from '../components/Icons';
@@ -171,10 +171,10 @@ export default function CameraScreen({ navigation, route }) {
         ? [{ resize: { width: Math.round(srcW * scale), height: Math.round(srcH * scale) } }]
         : [];
 
-      const manipulated = await ImageManipulator.manipulateAsync(
+      const manipulated = await manipulateAsync(
         photo.uri,
         resizeActions,
-        { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.9, format: SaveFormat.JPEG }
       );
 
       if (route.params?.onCapture) {
