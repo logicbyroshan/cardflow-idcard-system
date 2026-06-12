@@ -1012,13 +1012,14 @@ class ExportDeepLimitAndRoleTests(TestCase):
             password='pass1234',
             role='client_staff',
         )
-        Staff.objects.create(
+        self.client_staff_profile = Staff.objects.create(
             user=self.client_staff_user,
             staff_type='client_staff',
             client=self.client_obj,
             perm_idcard_bulk_download=True,
             perm_idcard_approved_list=True,
             perm_idcard_download_list=True,
+            perm_idcard_pending_list=True,
         )
 
         group = IDCardGroup.objects.create(client=self.client_obj, name='Deep Group')
@@ -1035,6 +1036,10 @@ class ExportDeepLimitAndRoleTests(TestCase):
             field_data={'NAME': 'Student A', 'PHOTO': 'clients_imgs/deep/photo_a.jpg'},
             status='pending',
         )
+
+        # Assign the table to client_staff now that it exists (strict deny requires explicit assignment)
+        self.client_staff_profile.assigned_table_ids = [self.table.id]
+        self.client_staff_profile.save(update_fields=['assigned_table_ids'])
 
     def test_export_pdf_requires_status_list_permission(self):
         from idcards.models import IDCard

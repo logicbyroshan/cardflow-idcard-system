@@ -1972,6 +1972,7 @@ class SecurityApiRegressionTests(TestCase):
             client=self.client_a,
             perm_idcard_pending_list=True,
             perm_idcard_updated_at=True,
+            assigned_table_ids=[self.table_a.id],
             allowed_classes=['10'],
         )
 

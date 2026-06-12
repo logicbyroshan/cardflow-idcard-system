@@ -1,6 +1,6 @@
 {
   "name": "adarsh-id",
-  "version": "1.0.97",
+  "version": "1.0.98",
   "main": "index.js",
   "scripts": {
     "start": "expo start",

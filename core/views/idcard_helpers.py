@@ -104,7 +104,11 @@ def _assigned_group_ids_for_access(staff):
 
 
 def _table_is_assigned_to_staff(staff, table):
-    """Allow table if assigned by table ID OR by owning group ID."""
+    """Allow table if assigned by table ID OR by owning group ID.
+
+    Returns False when staff has no assignments — unassigned staff must not
+    see any table data (matches ClientAccessService.can_access_table policy).
+    """
     assigned_table_ids = set(_normalized_assigned_table_ids(staff))
     assigned_group_ids = set(_assigned_group_ids_for_access(staff))
 
@@ -114,7 +118,8 @@ def _table_is_assigned_to_staff(staff, table):
         return int(table.id) in assigned_table_ids
     if assigned_group_ids:
         return int(table.group_id) in assigned_group_ids
-    return True
+    # No assignments → strict deny (do NOT fall through to full-access)
+    return False
 
 
 def _table_scope_filters_for_staff(staff, table):

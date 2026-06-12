@@ -1922,9 +1922,11 @@ class ClientApiIntegrationTests(TestCase):
         owner_classes = [row.get('value') for row in owner_payload.get('class_values', [])]
         self.assertGreaterEqual(len(owner_classes), 2)
 
+        # Assign the table so staff passes the table-access check, then set class/section scope
+        self.staff_profile.assigned_table_ids = [self.table.id]
         self.staff_profile.allowed_classes = ['10']
         self.staff_profile.allowed_sections = ['A']
-        self.staff_profile.save(update_fields=['allowed_classes', 'allowed_sections'])
+        self.staff_profile.save(update_fields=['assigned_table_ids', 'allowed_classes', 'allowed_sections'])
 
         self.client.login(username='api-staff@test.com', password='pass1234')
         staff_response = self.client.get(f'/panel/api/table/{self.table.id}/filter-options/')
@@ -2207,8 +2209,10 @@ class ClientApiIntegrationTests(TestCase):
             field_data={'CLASS': 'III', 'SECTION': 'A', 'NAME': 'Roman Class'},
         )
 
+        # Assign the table so staff passes the table-access check
+        self.staff_profile.assigned_table_ids = [self.table.id]
         self.staff_profile.perm_idcard_pending_list = True
-        self.staff_profile.save(update_fields=['perm_idcard_pending_list'])
+        self.staff_profile.save(update_fields=['assigned_table_ids', 'perm_idcard_pending_list'])
 
         self.client.login(username='api-staff@test.com', password='pass1234')
         response = self.client.get(
@@ -2435,6 +2439,8 @@ class ClientApiIntegrationTests(TestCase):
             field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Approved Card'},
         )
 
+        # Assign the table so staff is allowed to access it (unassigned = strict deny)
+        self.staff_profile.assigned_table_ids = [self.table.id]
         self.staff_profile.perm_idcard_pending_list = True
         self.staff_profile.perm_idcard_approved_list = False
         self.staff_profile.perm_idcard_verified_list = False
@@ -2442,6 +2448,7 @@ class ClientApiIntegrationTests(TestCase):
         self.staff_profile.perm_idcard_download_list = False
         self.staff_profile.perm_idcard_reprint_list = False
         self.staff_profile.save(update_fields=[
+            'assigned_table_ids',
             'perm_idcard_pending_list',
             'perm_idcard_approved_list',
             'perm_idcard_verified_list',

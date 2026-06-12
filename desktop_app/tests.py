@@ -47,6 +47,7 @@ class DesktopAppApiTests(TestCase):
         self.card = IDCard.objects.create(
             table=self.table,
             field_data={'PHOTO': '', 'NAME': 'Ada'},
+            status='approved',
         )
 
     def tearDown(self):
@@ -68,11 +69,15 @@ class DesktopAppApiTests(TestCase):
 
     def test_register_device_and_pull_manifest(self):
         token = self._register_device()
-        response = self.client.get('/api/desktop/clients/', HTTP_AUTHORIZATION=f'Bearer {token}')
+        # Pass client_id so include_data=True and tables/cards appear in summary
+        response = self.client.get(
+            f'/api/desktop/clients/?client_id={self.client_obj.id}',
+            HTTP_AUTHORIZATION=f'Bearer {token}',
+        )
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertTrue(payload['success'])
-        self.assertEqual(payload['summary']['clients'], Client.objects.count())
+        self.assertEqual(payload['summary']['clients'], 1)  # scoped to client_id
         self.assertEqual(payload['summary']['tables'], 1)
         self.assertEqual(payload['summary']['cards'], 1)
 
