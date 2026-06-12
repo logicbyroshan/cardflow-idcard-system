@@ -49,6 +49,14 @@ export async function registerForPushNotificationsAsync() {
     
     console.log('[PushNotification] Registered token:', token);
   } catch (e) {
+    // Treat known Firebase-not-initialized errors as non-fatal (silent)
+    try {
+      const msg = (e && e.message) ? String(e.message) : '';
+      if (msg.includes('Default FirebaseApp is not initialized') || msg.includes('Make sure to complete the guide at https://docs.expo.dev/push-notifications')) {
+        console.info('[PushNotification] FCM not configured for this build — skipping token registration');
+        return null;
+      }
+    } catch (__) {}
     console.warn('[PushNotification] Error getting push token:', e);
   }
 
