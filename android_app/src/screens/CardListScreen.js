@@ -130,7 +130,7 @@ export default function CardListScreen({ navigation, route }) {
 
       if (ok && data?.success) {
         const fetchedCards  = data.data?.cards || [];
-        const tableFields   = data.data?.table?.fields || [];
+        const tableFields   = (data.data?.table?.fields || []).filter(f => f && f.name);
         const mappedCards   = fetchedCards.map(c => ({ ...c, ordered_fields: tableFields }));
 
         setCards(prev => append ? [...prev, ...mappedCards] : mappedCards);

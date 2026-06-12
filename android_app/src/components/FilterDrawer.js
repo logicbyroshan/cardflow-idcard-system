@@ -89,9 +89,10 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
     ? (courseToBranches[tempFilters.course] || [])
     : branches;
 
-  const imageFields = fields.filter(f => {
+  const imageFields = (fields || []).filter(f => {
+    if (!f || !f.name) return false;
     const t = (f.type || '').toLowerCase();
-    const n = (f.name || '').toLowerCase();
+    const n = f.name.toLowerCase();
     return t.includes('image') || t.includes('photo') || n.includes('photo') || (n.includes('sign') && !n.includes('designation')) || n.includes('pic');
   });
 

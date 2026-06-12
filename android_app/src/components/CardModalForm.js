@@ -115,8 +115,8 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       const { ok: fOk, data: fData } = await apiGet(`/api/mobile/table/${tableId}/fields/`);
       
       let activeFields = [];
-      if (fOk && fData?.success && fData.table?.fields) {
-        activeFields = fData.table.fields;
+      if (fOk && fData?.success && Array.isArray(fData.table?.fields)) {
+        activeFields = fData.table.fields.filter(f => f && f.name);
         setFields(activeFields);
         if (fData.table.name) setTableName(fData.table.name);
       }
@@ -307,9 +307,9 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
     }
   };
 
-  const fieldList = fields.length > 0
+  const fieldList = (fields && fields.length > 0)
     ? fields.map(f => ({ name: f.name, type: f.type || 'text', mandatory: f.mandatory }))
-    : Object.keys(values).filter(k => typeof values[k] === 'string').map(k => ({ name: k, type: 'text', mandatory: false }));
+    : Object.keys(values || {}).filter(k => typeof (values || {})[k] === 'string').map(k => ({ name: k, type: 'text', mandatory: false }));
 
   if (!shouldRender) return null;
 
