@@ -10,17 +10,17 @@ import { apiGet, apiPostForm, BASE_URL, getSessionCookies, resolveAdarshImageUrl
 import { showLocalNotification } from '../utils/notifications';
 
 const resolveImageSource = (val) => {
-  const resolved = resolveAdarshImageUrl(val);
-  if (!resolved) return null;
+  const resolved = typeof resolveAdarshImageUrl === 'function' ? resolveAdarshImageUrl(val) : String(val || '');
+  if (!resolved || typeof resolved !== 'string') return null;
   if (resolved.startsWith('file://') || resolved.startsWith('content://') || resolved.startsWith('data:image')) {
     return { uri: resolved };
   }
-  return {
-    uri: resolved,
-    headers: {
-      Cookie: getSessionCookies()
-    }
-  };
+  const cookie = typeof getSessionCookies === 'function' ? getSessionCookies() : '';
+  const imageSource = { uri: resolved };
+  if (cookie) {
+    imageSource.headers = { Cookie: cookie };
+  }
+  return imageSource;
 };
 import { colors, gradients, shadows, radius, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -32,9 +32,9 @@ import { cleanFieldData, cleanFieldValue } from '../utils/data';
  * Bottom-to-top dynamic form drawer for adding/editing cards.
  */
 export default function CardModalForm({ visible, onClose, tableId, cardId, onSuccess }) {
-  const navigation = useNavigation();
-  const isFocused = useIsFocused();
-  const insets = useSafeAreaInsets();
+  const navigation = typeof useNavigation === 'function' ? useNavigation() : { navigate: () => {}, goBack: () => {}, reset: () => {} };
+  const isFocused = typeof useIsFocused === 'function' ? useIsFocused() : true;
+  const insets = typeof useSafeAreaInsets === 'function' ? useSafeAreaInsets() : { top: 0, bottom: 0, left: 0, right: 0 };
   const isEdit = !!cardId;
   const [fields, setFields] = useState([]);
   const [values, setValues] = useState({});
@@ -47,8 +47,9 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
   // Photo menu state
   const [photoMenu, setPhotoMenu] = useState({ visible: false, field: null, hasImage: false });
 
-  const { user } = useAuth();
-  const theme = roleThemes[user?.role] || roleThemes.default;
+  const authState = typeof useAuth === 'function' ? useAuth() : {};
+  const { user } = authState;
+  const theme = (roleThemes && roleThemes[user?.role]) ? roleThemes[user?.role] : (roleThemes?.default || { gradient: ['#000', '#000'] });
 
   const [shouldRender, setShouldRender] = useState(visible);
   const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
@@ -61,14 +62,17 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
           setPhotoMenu(p => ({ ...p, visible: false }));
           return true;
         }
-        onClose();
+        if (typeof onClose === 'function') {
+          onClose();
+        }
         return true;
       };
-      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => {
-        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+        subscription?.remove?.();
       };
     }
+    return undefined;
   }, [visible, isFocused, photoMenu.visible, onClose]);
 
   useEffect(() => {
@@ -228,10 +232,6 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       const { data } = await apiPostForm(url, formData);
       if (data?.success) {
         showToast(data.message || (isEdit ? 'Updated!' : 'Saved!'), 'success');
-        showLocalNotification(
-          isEdit ? 'Card Updated' : 'Card Saved',
-          data.message || (isEdit ? 'The ID card has been successfully updated.' : 'The ID card has been successfully saved.')
-        );
         setTimeout(() => {
           onSuccess && onSuccess(data.card);
           onClose();
@@ -245,21 +245,53 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
 
   const handlePickFromGallery = async () => {
     const fieldName = photoMenu.field; // Capture BEFORE closing menu (avoids stale closure)
+    if (!ImagePicker || typeof ImagePicker.getMediaLibraryPermissionsAsync !== 'function') {
+      showToast('Gallery picker is unavailable on this device.', 'error');
+      return;
+    }
+
     try {
+      const permission = await ImagePicker.getMediaLibraryPermissionsAsync();
+      if (!permission?.granted) {
+        if (typeof ImagePicker.requestMediaLibraryPermissionsAsync !== 'function') {
+          showToast('Gallery permissions cannot be requested on this device.', 'error');
+          return;
+        }
+        const request = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!request?.granted) {
+          Alert.alert(
+            'Gallery Permission Required',
+            'Gallery access is required to select photos. Please enable it in system settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => {
+                if (Platform.OS === 'ios') Linking.openURL('app-settings:');
+                else Linking.openSettings();
+              }}
+            ]
+          );
+          return;
+        }
+      }
+
+      if (typeof ImagePicker.launchImageLibraryAsync !== 'function') {
+        showToast('Gallery picker is unavailable on this device.', 'error');
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images,
         quality: 0.8,
-        allowsEditing: false, // Bypass system crop; use our custom crop screen
+        allowsEditing: false,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const asset = result.assets[0];
+      const canceled = result?.canceled ?? result?.cancelled ?? false;
+      const asset = result?.assets?.[0];
+      if (!canceled && asset) {
         let uri = asset.uri;
         let assetWidth = asset.width || 1000;
         let assetHeight = asset.height || 1000;
 
-        // Pre-compress large gallery images to prevent upload timeouts.
-        // Cap at 1600×2000 before passing to the crop screen.
         const PRE_MAX_W = 1600;
         const PRE_MAX_H = 2000;
         const scaleW = assetWidth > PRE_MAX_W ? PRE_MAX_W / assetWidth : 1;
@@ -276,20 +308,22 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
             assetWidth = pre.width;
             assetHeight = pre.height;
           } catch (err) {
-            // If pre-compress fails, use original (still better than crashing)
             console.warn('[Gallery] Pre-compress failed, using original:', err);
           }
         }
 
         setPhotoMenu(p => ({ ...p, visible: false }));
 
-        // Navigate to Camera screen for custom cropping
-        navigation.navigate('Camera', {
-          imageUri: uri,
-          imageWidth: assetWidth,
-          imageHeight: assetHeight,
-          onCapture: (croppedUri) => setValues(prev => ({ ...prev, [fieldName]: croppedUri }))
-        });
+        if (navigation && typeof navigation.navigate === 'function') {
+          navigation.navigate('Camera', {
+            imageUri: uri,
+            imageWidth: assetWidth,
+            imageHeight: assetHeight,
+            onCapture: (croppedUri) => setValues(prev => ({ ...prev, [fieldName]: croppedUri }))
+          });
+        } else {
+          showToast('Unable to open camera screen.', 'error');
+        }
       }
     } catch (e) {
       console.warn('[Gallery] Error or permission denied:', e);
@@ -316,7 +350,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
   return (
     <Animated.View style={[s.modalContainer, { opacity: fadeAnim }]}>
       <View style={s.overlay}>
-        <TouchableOpacity style={s.dismissSpacer} activeOpacity={1} onPress={onClose} />
+        <TouchableOpacity style={s.dismissSpacer} activeOpacity={1} onPress={() => { if (typeof onClose === 'function') onClose(); }} />
         
         <Animated.View style={[s.sheetWrap, { transform: [{ translateY: slideAnim }] }]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -332,7 +366,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                     <Text style={s.subtitle}>Loading table details...</Text>
                   )}
                 </View>
-                <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+                <TouchableOpacity onPress={() => { if (typeof onClose === 'function') onClose(); }} style={s.closeBtn}>
                   <DynamicIcon name="times" size={16} color={colors.gray400} />
                 </TouchableOpacity>
               </View>
@@ -425,7 +459,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                   {/* Fixed Footer at bottom of sheet */}
                   <View style={[s.footerContainer, { paddingBottom: (insets.bottom || 0) > 0 ? (insets.bottom || 0) + 12 : 28 }]}>
                     <HStack spacing={12} style={s.footer} align="center">
-                      <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
+                      <TouchableOpacity onPress={() => { if (typeof onClose === 'function') onClose(); }} style={s.cancelBtn}>
                         <Text style={s.cancelBtnText}>Discard</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={handleSave} disabled={saving || fieldList.length === 0} activeOpacity={0.85} style={s.saveBtnWrap}>
@@ -461,9 +495,13 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
               <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
                 const captureField = photoMenu.field; // Capture BEFORE closing menu
                 setPhotoMenu(p => ({ ...p, visible: false }));
-                navigation.navigate('Camera', { 
-                  onCapture: (uri) => setValues(prev => ({ ...prev, [captureField]: uri })) 
-                });
+                if (navigation && typeof navigation.navigate === 'function') {
+                  navigation.navigate('Camera', {
+                    onCapture: (uri) => setValues(prev => ({ ...prev, [captureField]: uri }))
+                  });
+                } else {
+                  showToast('Unable to open camera screen.', 'error');
+                }
               }}>
                 <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><DynamicIcon name="camera" size={14} color="#6366f1" /></View>
                 <Text style={s.menuItemText}>Take New Photo</Text>

@@ -504,23 +504,8 @@ export function AuthProvider({ children }) {
     };
   }, [handleSessionKicked]);
 
-  // Register push notifications when user is authenticated
-  useEffect(() => {
-    if (user) {
-      (async () => {
-        try {
-          const { registerForPushNotificationsAsync, registerDeviceTokenOnBackend } = require('../utils/notifications');
-          const token = await registerForPushNotificationsAsync();
-          if (token) {
-            await registerDeviceTokenOnBackend(token);
-          }
-        } catch (e) {
-          console.warn('[Auth] Failed to register push token:', e);
-        }
-      })();
-    }
-  }, [user]);
-
+  // Push registration is disabled on auth startup to avoid noisy permission prompts.
+  // Remote notification delivery should be controlled by backend events only.
   const resolveKicked = useCallback(async () => {
     setIsSessionKicked(false);
     await AsyncStorage.removeItem('adarsh_session_kicked');
