@@ -185,3 +185,23 @@ def csrf_failure(request, reason=''):
         heading='Request Expired',
         message='Your session may have expired. Please refresh and try again.',
     )
+
+
+def mobile_download_page(request, dummy=None):
+    """
+    Renders the dedicated mobile download page for mobile users
+    attempting to access the admin panel.
+    """
+    return render(
+        request,
+        'errors/error_mobile.html',
+        {
+            'status_code': 200,
+            'title': 'Download Mobile App',
+            'heading': 'Admin Panel Not Available on Mobile Browsers',
+            'message': 'To manage ID cards and access all admin features on your phone, please download the official Adarsh ID Cards app.',
+            'home_url': '/',
+        },
+        status=200,
+    )
+

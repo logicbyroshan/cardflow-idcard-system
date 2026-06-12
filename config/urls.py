@@ -158,7 +158,7 @@ if getattr(settings, 'DEBUG', False) and not _running_tests():
     from django.urls import path as _path
 
     def _trigger_error(request):
-        division_by_zero = 1 / 0
+        raise ZeroDivisionError("division by zero")
 
     urlpatterns += [
         _path('sentry-debug/', _trigger_error),
@@ -191,6 +191,10 @@ urlpatterns += [
     path('staff/', include(('staff.urls', 'staff'), namespace='staff_root')),
     path('work/', include(('idcards.urls', 'idcards'), namespace='idcards_root')),
     path('reprint/', include(('reprintcard.urls', 'reprintcard'), namespace='reprintcard_root')),
+
+    # ==================== MOBILE APP DOWNLOAD LANDING (/app/*) ====================
+    path('app/', core_views.mobile_download_page, name='mobile_download_page'),
+    path('app/<path:dummy>/', core_views.mobile_download_page),
 
     # ==================== NATIVE MOBILE APP API (/api/mobile/) ====================
     path('api/mobile/', include('mobile_api.urls')),
