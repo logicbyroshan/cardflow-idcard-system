@@ -262,41 +262,43 @@ export default function FilterDrawer({ visible, onClose, tableId, status, onAppl
         {/* Photo Column Selector Overlay */}
         {showColumnPicker && (
           <View style={s.menuOverlayContainer}>
-            <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setShowColumnPicker(false)}>
-              <View style={s.menuContent}>
-                <Text style={s.menuTitle}>Select Image Column</Text>
-                
-                <TouchableOpacity 
-                  style={[s.menuItem, !tempFilters.image_column && s.menuItemActive]} 
-                  onPress={() => {
-                    setTempFilters(prev => ({ ...prev, image_column: null }));
-                    setShowColumnPicker(false);
-                  }}
-                >
-                  <Text style={[s.menuItemText, !tempFilters.image_column && s.menuItemTextActive]}>Default (PHOTO)</Text>
-                </TouchableOpacity>
+            <TouchableWithoutFeedback onPress={() => setShowColumnPicker(false)}>
+              <View style={StyleSheet.absoluteFillObject} />
+            </TouchableWithoutFeedback>
+            
+            <View style={s.menuContent}>
+              <Text style={s.menuTitle}>Select Image Column</Text>
+              
+              <TouchableOpacity 
+                style={[s.menuItem, !tempFilters.image_column && s.menuItemActive]} 
+                onPress={() => {
+                  setTempFilters(prev => ({ ...prev, image_column: null }));
+                  setShowColumnPicker(false);
+                }}
+              >
+                <Text style={[s.menuItemText, !tempFilters.image_column && s.menuItemTextActive]}>Default (PHOTO)</Text>
+              </TouchableOpacity>
 
-                {imageColumnOptions.map(col => {
-                  const isActive = tempFilters.image_column === col;
-                  return (
-                    <TouchableOpacity 
-                      key={col} 
-                      style={[s.menuItem, isActive && s.menuItemActive]} 
-                      onPress={() => {
-                        setTempFilters(prev => ({ ...prev, image_column: col }));
-                        setShowColumnPicker(false);
-                      }}
-                    >
-                      <Text style={[s.menuItemText, isActive && s.menuItemTextActive]}>{col.toUpperCase()}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              {imageColumnOptions.map(col => {
+                const isActive = tempFilters.image_column === col;
+                return (
+                  <TouchableOpacity 
+                    key={col} 
+                    style={[s.menuItem, isActive && s.menuItemActive]} 
+                    onPress={() => {
+                      setTempFilters(prev => ({ ...prev, image_column: col }));
+                      setShowColumnPicker(false);
+                    }}
+                  >
+                    <Text style={[s.menuItemText, isActive && s.menuItemTextActive]}>{col.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                );
+              })}
 
-                <TouchableOpacity style={s.menuCancel} onPress={() => setShowColumnPicker(false)}>
-                  <Text style={s.menuCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
+              <TouchableOpacity style={s.menuCancel} onPress={() => setShowColumnPicker(false)}>
+                <Text style={s.menuCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </View>
@@ -382,6 +384,8 @@ const s = StyleSheet.create({
     bottom: 0,
     zIndex: 1000,
     backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+    padding: 16,
   },
   menuOverlay: {
     flex: 1,

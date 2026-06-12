@@ -450,47 +450,49 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       {/* Photo Options Drawer Menu */}
       {photoMenu.visible && (
         <View style={s.menuOverlayContainer}>
-          <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setPhotoMenu(p => ({ ...p, visible: false }))}>
-            <View style={s.menuContent}>
-              <Text style={s.menuTitle}>Manage {photoMenu.field}</Text>
-              
-              <HStack spacing={14} style={s.menuItem} align="center" onStartShouldSetResponder={() => false}>
-                <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
+          <TouchableWithoutFeedback onPress={() => setPhotoMenu(p => ({ ...p, visible: false }))}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
+          
+          <View style={s.menuContent}>
+            <Text style={s.menuTitle}>Manage {photoMenu.field}</Text>
+            
+            <HStack spacing={14} style={s.menuItem} align="center">
+              <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
                 const captureField = photoMenu.field; // Capture BEFORE closing menu
                 setPhotoMenu(p => ({ ...p, visible: false }));
                 navigation.navigate('Camera', { 
                   onCapture: (uri) => setValues(prev => ({ ...prev, [captureField]: uri })) 
                 });
-                }}>
-                  <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><DynamicIcon name="camera" size={14} color="#6366f1" /></View>
-                  <Text style={s.menuItemText}>Take New Photo</Text>
-                </TouchableOpacity>
-              </HStack>
-
-              <HStack spacing={14} style={s.menuItem} align="center">
-                <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={handlePickFromGallery}>
-                  <View style={[s.menuIconBox, { backgroundColor: '#f0fdf4' }]}><DynamicIcon name="images" size={14} color="#22c55e" /></View>
-                  <Text style={s.menuItemText}>Choose from Gallery</Text>
-                </TouchableOpacity>
-              </HStack>
-
-              {photoMenu.hasImage && (
-                <HStack spacing={14} style={s.menuItem} align="center">
-                  <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
-                    setValues(prev => ({ ...prev, [photoMenu.field]: '' }));
-                    setPhotoMenu(p => ({ ...p, visible: false }));
-                  }}>
-                    <View style={[s.menuIconBox, { backgroundColor: '#fef2f2' }]}><DynamicIcon name="trash-alt" size={14} color="#ef4444" /></View>
-                    <Text style={[s.menuItemText, { color: '#ef4444' }]}>Remove Current Photo</Text>
-                  </TouchableOpacity>
-                </HStack>
-              )}
-
-              <TouchableOpacity style={s.menuCancel} onPress={() => setPhotoMenu(p => ({ ...p, visible: false }))}>
-                <Text style={s.menuCancelText}>Cancel</Text>
+              }}>
+                <View style={[s.menuIconBox, { backgroundColor: '#eef2ff' }]}><DynamicIcon name="camera" size={14} color="#6366f1" /></View>
+                <Text style={s.menuItemText}>Take New Photo</Text>
               </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+            </HStack>
+
+            <HStack spacing={14} style={s.menuItem} align="center">
+              <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={handlePickFromGallery}>
+                <View style={[s.menuIconBox, { backgroundColor: '#f0fdf4' }]}><DynamicIcon name="images" size={14} color="#22c55e" /></View>
+                <Text style={s.menuItemText}>Choose from Gallery</Text>
+              </TouchableOpacity>
+            </HStack>
+
+            {photoMenu.hasImage && (
+              <HStack spacing={14} style={s.menuItem} align="center">
+                <TouchableOpacity style={{flexDirection:'row', alignItems:'center', width:'100%'}} onPress={() => {
+                  setValues(prev => ({ ...prev, [photoMenu.field]: '' }));
+                  setPhotoMenu(p => ({ ...p, visible: false }));
+                }}>
+                  <View style={[s.menuIconBox, { backgroundColor: '#fef2f2' }]}><DynamicIcon name="trash-alt" size={14} color="#ef4444" /></View>
+                  <Text style={[s.menuItemText, { color: '#ef4444' }]}>Remove Current Photo</Text>
+                </TouchableOpacity>
+              </HStack>
+            )}
+
+            <TouchableOpacity style={s.menuCancel} onPress={() => setPhotoMenu(p => ({ ...p, visible: false }))}>
+              <Text style={s.menuCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </Animated.View>
@@ -499,7 +501,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
 
 const s = StyleSheet.create({
   modalContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, width: '100%', height: '100%' },
-  menuOverlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.4)' },
+  menuOverlayContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end', padding: 16 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   dismissSpacer: { flex: 1 },
   sheetWrap: { width: '100%', height: '90%' },
