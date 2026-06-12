@@ -22,8 +22,14 @@ subprojects {
       project.android.defaultConfig {
         externalNativeBuild {
           cmake {
+            cFlags "-Wl,-z,max-page-size=16384"
             cppFlags "-Wl,-z,max-page-size=16384"
-            arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+            arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
+          }
+          ndkBuild {
+            arguments "APP_SUPPORT_FLEXIBLE_PAGE_SIZES:=true"
+            cFlags "-Wl,-z,max-page-size=16384"
+            cppFlags "-Wl,-z,max-page-size=16384"
           }
         }
       }
