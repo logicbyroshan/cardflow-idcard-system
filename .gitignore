@@ -238,8 +238,20 @@ mobile_shell_app/android/app/build/
 *.jks
 *.keystore
 
+# Android/React Native build artifacts
+*.apk
+*.aab
+android_app/android/app/build/
+android_app/.gradle/
+android_app/android/.gradle/
+
+# Temp debug & source map files
+.tmp_*.js
+*_source_map_lookup.js
+
 # Temp test scripts
 test_*.py
+parse_logs.py
 
 # Generated reports (dev-only)
 CODE_REVIEW_REPORT.md
