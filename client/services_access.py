@@ -301,59 +301,47 @@ class ClientAccessService:
             return False
         return True
 
-    @staticmethod
-    def get_accessible_table_ids(user):
-        """Return a queryset filter of accessible table IDs for a user.
-        Returns None if all tables are accessible (no restriction).
+    @classmethod
+    def get_scoped_tables_qs(cls, user, client, base_qs=None):
+        """Return a queryset of tables scoped to the user's access level.
+        
+        This is the SINGLE AUTHORITY for table-level scoping.
+        All views and services MUST use this method instead of inline Q filters.
+        
+        Returns:
+            QuerySet of IDCardTable, filtered to only tables the user can access.
+            For client_staff with no assignments, returns tables.none().
         """
-        client = ClientAccessService.get_client_for_user(user)
-        if client is None:
-            return []
+        if base_qs is None:
+            from idcards.models import IDCardTable
+            base_qs = IDCardTable.objects.filter(
+                group__client=client,
+                is_active=True,
+                deleted_by_client=False,
+            )
+        
+        if not PermissionService.is_client_staff(user):
+            return base_qs
+        
+        staff = getattr(user, 'staff_profile', None)
+        if not staff:
+            return base_qs.none()
+        
+        assigned_table_ids = cls._assigned_table_ids_for_access(staff)
+        assigned_group_ids = cls._assigned_group_ids_for_access(staff)
+        
+        if assigned_table_ids and assigned_group_ids:
+            return base_qs.filter(
+                Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids)
+            )
+        if assigned_table_ids:
+            return base_qs.filter(id__in=assigned_table_ids)
+        if assigned_group_ids:
+            return base_qs.filter(group_id__in=assigned_group_ids)
+        
+        return base_qs.none()
 
-        if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff is None:
-                from staff.models import Staff
-                try:
-                    staff = Staff.objects.filter(user=user).first()
-                except Exception:
-                    pass
-            if staff:
-                assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
-                assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
-                from idcards.models import IDCardTable as _IDCardTable
 
-                if assigned_table_ids and assigned_group_ids:
-                    return list(
-                        _IDCardTable.objects.filter(
-                            group__client=client,
-                            deleted_by_client=False,
-                        ).filter(
-                            Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids)
-                        ).values_list('id', flat=True)
-                    )
-
-                if assigned_table_ids:
-                    return list(
-                        _IDCardTable.objects.filter(
-                            group__client=client,
-                            id__in=assigned_table_ids,
-                            deleted_by_client=False,
-                        ).values_list('id', flat=True)
-                    )
-
-                if assigned_group_ids:
-                    return list(
-                        _IDCardTable.objects.filter(
-                            group__client=client,
-                            group_id__in=assigned_group_ids,
-                            deleted_by_client=False,
-                        ).values_list('id', flat=True)
-                    )
-                
-                return []
-            return []
-        return None  # None means no restriction (all client tables accessible)
 
     @staticmethod
     def can_access_card(user, card: IDCard) -> bool:

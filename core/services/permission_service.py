@@ -166,7 +166,14 @@ class PermissionService:
     }
 
     # Sensitive permissions that client_staff can never hold, even if present on Staff model.
-    CLIENT_STAFF_BLOCKED_PERMS: set = set()
+    CLIENT_STAFF_BLOCKED_PERMS: set = {
+        'perm_manage_client_staff',       # Assistants cannot manage other staff
+        'perm_idcard_setting_add',        # Assistants cannot create new tables
+        'perm_idcard_setting_delete',     # Assistants cannot delete tables
+        'perm_idcard_setting_edit',       # Assistants cannot edit table structure
+        'perm_manage_panel_backup',       # Admin-only
+        'perm_manage_panel_email',        # Admin-only
+    }
 
     # Status → list-permission mapping (shared across views)
     STATUS_LIST_PERM_MAP = {
@@ -439,8 +446,12 @@ class PermissionService:
             if hasattr(staff, perm_key):
                 staff_value = getattr(staff, perm_key, False)
             else:
-                # Perm not on Staff model ⇒ inherit from client only
-                staff_value = True  # no staff gate
+                # Perm not on Staff model — log and fail closed
+                logger.warning(
+                    "PermissionService.has: perm_key '%s' not on Staff model for client_staff user %s",
+                    perm_key, user.pk
+                )
+                staff_value = False  # fail closed: deny if not explicitly defined
 
             # Client perm
             if hasattr(staff.client, perm_key):
@@ -649,7 +660,7 @@ class PermissionService:
                 if not active:
                     context[perm] = False
                     continue
-                staff_val = bool(getattr(staff, perm, True)) if hasattr(staff, perm) else True
+                staff_val = bool(getattr(staff, perm, False)) if hasattr(staff, perm) else False
                 client_val = bool(getattr(client_obj, perm, False)) if hasattr(client_obj, perm) else False
                 context[perm] = staff_val and client_val
         else:

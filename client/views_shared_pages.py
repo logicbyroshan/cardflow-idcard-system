@@ -58,24 +58,7 @@ def client_idcard_group(request):
 
         # For client_staff with assigned groups: restrict to those groups only
         if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if not staff:
-                tables_qs = tables_qs.none()
-            else:
-                assigned_table_ids = [
-                    int(v) for v in (staff.assigned_table_ids or [])
-                    if str(v).strip().isdigit() and int(v) > 0
-                ]
-                assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
-
-                if assigned_table_ids and assigned_group_ids:
-                    tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-                elif assigned_table_ids:
-                    tables_qs = tables_qs.filter(id__in=assigned_table_ids)
-                elif assigned_group_ids:
-                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
-                else:
-                    tables_qs = tables_qs.none()
+            tables_qs = ClientAccessService.get_scoped_tables_qs(user, client, tables_qs)
 
             ordered_tables = list(tables_qs.order_by('-updated_at'))
             table_ids = [table.id for table in ordered_tables]

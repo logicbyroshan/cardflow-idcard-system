@@ -643,129 +643,8 @@ def _dedupe_scope_values(values):
     return out
 
 
-def _staff_assigned_group_ids_for_access(staff):
-    """Return group IDs that explicitly grant group-level access."""
-    scopes = getattr(staff, 'assignment_scopes', None)
-    if isinstance(scopes, list) and scopes:
-        group_ids = []
-        seen = set()
-        has_any_valid_scope = False
 
-        for scope in scopes:
-            if not isinstance(scope, dict):
-                continue
-            stype = str(scope.get('scope_type', '') or '').strip().lower()
-            if stype not in ('group', 'table'):
-                continue
-            has_any_valid_scope = True
-            if stype != 'group':
-                continue
-
-            sid = scope.get('scope_id')
-            try:
-                sid_int = int(str(sid).strip())
-            except (TypeError, ValueError):
-                continue
-            if sid_int <= 0 or sid_int in seen:
-                continue
-            seen.add(sid_int)
-            group_ids.append(sid_int)
-
-        if has_any_valid_scope:
-            return group_ids
-
-    return list(staff.assigned_groups.values_list('id', flat=True))
-
-
-def _staff_assigned_table_ids_for_access(staff):
-    """Return table IDs that explicitly grant table-level access."""
-    scopes = getattr(staff, 'assignment_scopes', None)
-    if isinstance(scopes, list) and scopes:
-        table_ids = []
-        seen = set()
-        has_any_valid_scope = False
-
-        for scope in scopes:
-            if not isinstance(scope, dict):
-                continue
-            stype = str(scope.get('scope_type', '') or '').strip().lower()
-            if stype not in ('group', 'table'):
-                continue
-            has_any_valid_scope = True
-            if stype != 'table':
-                continue
-
-            sid = scope.get('scope_id')
-            try:
-                sid_int = int(str(sid).strip())
-            except (TypeError, ValueError):
-                continue
-            if sid_int <= 0 or sid_int in seen:
-                continue
-            seen.add(sid_int)
-            table_ids.append(sid_int)
-
-        if has_any_valid_scope:
-            return table_ids
-
-    return _normalize_positive_int_ids(getattr(staff, 'assigned_table_ids', None) or [])
-
-
-def _staff_can_access_table(staff, table):
-    """Allow access if table is assigned directly or via assigned group."""
-    assigned_table_ids = set(_staff_assigned_table_ids_for_access(staff))
-    assigned_group_ids = set(_staff_assigned_group_ids_for_access(staff))
-
-    if assigned_table_ids and assigned_group_ids:
-        return (int(table.id) in assigned_table_ids) or (int(table.group_id) in assigned_group_ids)
-    if assigned_table_ids:
-        return int(table.id) in assigned_table_ids
-    if assigned_group_ids:
-        return int(table.group_id) in assigned_group_ids
-    return False
-
-
-def _staff_table_scope_filters(staff, table):
-    """Resolve class/section filters for current table from assignment scopes."""
-    scopes = getattr(staff, 'assignment_scopes', None)
-    if not isinstance(scopes, list) or not scopes:
-        return (
-            _dedupe_scope_values(staff.allowed_classes or []),
-            _dedupe_scope_values(staff.allowed_sections or []),
-        )
-
-    matched = []
-    for scope in scopes:
-        if not isinstance(scope, dict):
-            continue
-        stype = str(scope.get('scope_type', '') or '').strip().lower()
-        sid = scope.get('scope_id')
-        try:
-            sid = int(str(sid).strip())
-        except (TypeError, ValueError):
-            continue
-
-        if stype == 'table' and sid == int(table.id):
-            matched.append(scope)
-        elif stype == 'group' and sid == int(table.group_id):
-            matched.append(scope)
-
-    if not matched:
-        return (
-            _dedupe_scope_values(staff.allowed_classes or []),
-            _dedupe_scope_values(staff.allowed_sections or []),
-        )
-
-    classes = []
-    sections = []
-    for scope in matched:
-        classes.extend(scope.get('classes') or [])
-        sections.extend(scope.get('sections') or [])
-
-    return (_dedupe_scope_values(classes), _dedupe_scope_values(sections))
-
-
-def _get_table_filter_metadata(table, table_fields):
+def _get_table_filter_metadata(table, table_fields, user=None):
     """Build class/section filter metadata for list page."""
     class_field_name = None
     section_field_name = None
@@ -780,6 +659,12 @@ def _get_table_filter_metadata(table, table_fields):
             section_field_name = _fname
 
     options_qs = IDCard.objects.filter(table=table)
+    
+    # Apply client_staff row-level scope if applicable
+    if user and PermissionService.is_client_staff(user):
+        options_qs = ClientCardService._apply_client_staff_row_scope(
+            user, table, options_qs, ignore_pool_bypass=True
+        )
 
     all_classes = []
     if class_field_name:
@@ -1586,17 +1471,7 @@ def home(request):
 
         _tables_qs = IDCardTable.objects.filter(group__client=_client_obj, is_active=True)
         if PermissionService.is_client_staff(_user):
-            _staff = getattr(_user, 'staff_profile', None)
-            if not _staff:
-                return _counts
-            _assigned_tids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
-            _assigned_gids = _staff_assigned_group_ids_for_access(_staff)
-            if _assigned_tids and _assigned_gids:
-                _tables_qs = _tables_qs.filter(Q(id__in=_assigned_tids) | Q(group_id__in=_assigned_gids))
-            elif _assigned_tids:
-                _tables_qs = _tables_qs.filter(id__in=_assigned_tids)
-            elif _assigned_gids:
-                _tables_qs = _tables_qs.filter(group_id__in=_assigned_gids)
+            _tables_qs = ClientAccessService.get_scoped_tables_qs(_user, _client_obj, _tables_qs)
 
         _tables = list(_tables_qs.only('id', 'fields'))
         if not _tables:
@@ -1633,18 +1508,7 @@ def home(request):
 
     # Restrict client_staff to their assigned groups
     if PermissionService.is_client_staff(user):
-        staff = getattr(user, 'staff_profile', None)
-        if staff:
-            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
-            if assigned_table_ids and assigned_group_ids:
-                tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-            elif assigned_table_ids:
-                tables = tables.filter(id__in=assigned_table_ids)
-            elif assigned_group_ids:
-                tables = tables.filter(group_id__in=assigned_group_ids)
-            else:
-                tables = tables.none()
+        tables = ClientAccessService.get_scoped_tables_qs(user, client, tables)
 
     tables_list = list(tables)  # evaluate once â€” avoids 3 separate DB hits
     first_table = tables_list[0] if tables_list else None
@@ -1758,18 +1622,9 @@ def home(request):
         _cards_scope = _cards_scope.filter(table__group__client_id__in=accessible_ids)
     # For client_staff: restrict activity to their assigned groups only
     if PermissionService.is_client_staff(user):
-        _staff = getattr(user, 'staff_profile', None)
-        if _staff:
-            _assigned_tids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
-            _assigned_gids = _staff_assigned_group_ids_for_access(_staff)
-            if _assigned_tids and _assigned_gids:
-                _cards_scope = _cards_scope.filter(
-                    Q(table_id__in=_assigned_tids) | Q(table__group_id__in=_assigned_gids)
-                )
-            elif _assigned_tids:
-                _cards_scope = _cards_scope.filter(table_id__in=_assigned_tids)
-            elif _assigned_gids:
-                _cards_scope = _cards_scope.filter(table__group_id__in=_assigned_gids)
+        client_ctx = ClientAccessService.get_client_for_user(user)
+        scoped_tables = ClientAccessService.get_scoped_tables_qs(user, client_ctx)
+        _cards_scope = _cards_scope.filter(table_id__in=scoped_tables.values_list('id', flat=True))
     _recent_acts = []
     for _card in _cards_scope.select_related('table').order_by('-updated_at')[:10]:
         _fd = _card.field_data or {}
@@ -1815,16 +1670,9 @@ def home(request):
             if PermissionService.is_client_staff(user):
                 # For staff, we must iterate clients/tables because row-scope is table-specific.
                 # However, for the dashboard top-level, we can at least filter by assigned tables.
-                staff = getattr(user, 'staff_profile', None)
-                if staff:
-                    _assigned_tids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-                    _assigned_gids = _staff_assigned_group_ids_for_access(staff)
-                    if _assigned_tids and _assigned_gids:
-                        _cc_qs = _cc_qs.filter(Q(table_id__in=_assigned_tids) | Q(table__group_id__in=_assigned_gids))
-                    elif _assigned_tids:
-                        _cc_qs = _cc_qs.filter(table_id__in=_assigned_tids)
-                    elif _assigned_gids:
-                        _cc_qs = _cc_qs.filter(table__group_id__in=_assigned_gids)
+                client_ctx = ClientAccessService.get_client_for_user(user)
+                scoped_tables = ClientAccessService.get_scoped_tables_qs(user, client_ctx)
+                _cc_qs = _cc_qs.filter(table_id__in=scoped_tables.values_list('id', flat=True))
 
             _cc_raw = _cc_qs.values('table__group__client_id', 'status').annotate(n=Count('id'))
             _cc_map = {}
@@ -1882,18 +1730,7 @@ def home(request):
             # Client/client_staff: group-first rows with expandable tables.
             _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True).select_related('group')
             if PermissionService.is_client_staff(user):
-                _staff = getattr(user, 'staff_profile', None)
-                if _staff:
-                    _assigned_table_ids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
-                    _assigned_group_ids = _staff_assigned_group_ids_for_access(_staff)
-                    if _assigned_table_ids and _assigned_group_ids:
-                        _tables_qs = _tables_qs.filter(Q(id__in=_assigned_table_ids) | Q(group_id__in=_assigned_group_ids))
-                    elif _assigned_table_ids:
-                        _tables_qs = _tables_qs.filter(id__in=_assigned_table_ids)
-                    elif _assigned_group_ids:
-                        _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
-                    else:
-                        _tables_qs = _tables_qs.none()
+                _tables_qs = ClientAccessService.get_scoped_tables_qs(user, client, _tables_qs)
 
             _tables = list(_tables_qs.order_by('group__name', 'name')[:80])
             _table_ids = [t.id for t in _tables]
@@ -2053,18 +1890,7 @@ def home(request):
         else:
             _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True).select_related('group')
             if PermissionService.is_client_staff(user):
-                _staff = getattr(user, 'staff_profile', None)
-                if _staff:
-                    _assigned_table_ids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
-                    _assigned_group_ids = _staff_assigned_group_ids_for_access(_staff)
-                    if _assigned_table_ids and _assigned_group_ids:
-                        _tables_qs = _tables_qs.filter(Q(id__in=_assigned_table_ids) | Q(group_id__in=_assigned_group_ids))
-                    elif _assigned_table_ids:
-                        _tables_qs = _tables_qs.filter(id__in=_assigned_table_ids)
-                    elif _assigned_group_ids:
-                        _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
-                    else:
-                        _tables_qs = _tables_qs.none()
+                _tables_qs = ClientAccessService.get_scoped_tables_qs(user, client, _tables_qs)
 
             _tables = list(_tables_qs.order_by('group__name', 'name')[:80])
             _table_ids = [t.id for t in _tables]
@@ -2279,18 +2105,7 @@ def table_picker(request, status):
 
     # Restrict client_staff to their assigned groups
     if PermissionService.is_client_staff(user):
-        staff = getattr(user, 'staff_profile', None)
-        if staff:
-            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
-            if assigned_table_ids and assigned_group_ids:
-                tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-            elif assigned_table_ids:
-                tables = tables.filter(id__in=assigned_table_ids)
-            elif assigned_group_ids:
-                tables = tables.filter(group_id__in=assigned_group_ids)
-            else:
-                tables = tables.none()
+        tables = ClientAccessService.get_scoped_tables_qs(user, client, tables)
 
     tables_list = list(tables)  # evaluate once â€” avoids 2 extra DB hits
     if len(tables_list) == 1:
@@ -2320,7 +2135,7 @@ def card_list(request, table_id, status):
 
     if PermissionService.is_client_staff(user):
         staff = getattr(user, 'staff_profile', None)
-        if not staff or not _staff_can_access_table(staff, table):
+        if not staff or not ClientAccessService.can_access_table(user, table):
             return redirect('mobile_app:home')
 
     status_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
@@ -2402,7 +2217,7 @@ def card_list(request, table_id, status):
     if PermissionService.is_client_staff(user):
         staff = getattr(user, 'staff_profile', None)
         if staff:
-            allowed_classes, allowed_sections = _staff_table_scope_filters(staff, table)
+            allowed_classes, allowed_sections = ClientCardService._table_scope_filters(staff, table)
         cards_qs = ClientCardService._apply_client_staff_row_scope(user, table, cards_qs)
 
     if selected_class:
@@ -2728,7 +2543,7 @@ def card_list(request, table_id, status):
     has_more = _has_more_raw
 
     # Build and cache filter options from full table data to avoid repeated full-table scans.
-    filter_meta = _get_table_filter_metadata(table, table_fields)
+    filter_meta = _get_table_filter_metadata(table, table_fields, user=user)
     all_classes = list(filter_meta.get('all_classes') or [])
     all_sections = list(filter_meta.get('all_sections') or [])
     class_to_sections = dict(filter_meta.get('class_to_sections') or {})
@@ -2887,18 +2702,7 @@ def reprint_lists(request, client_id):
     )
 
     if PermissionService.is_client_staff(user):
-        staff = getattr(user, 'staff_profile', None)
-        if staff:
-            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
-            if assigned_table_ids and assigned_group_ids:
-                tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-            elif assigned_table_ids:
-                tables_qs = tables_qs.filter(id__in=assigned_table_ids)
-            elif assigned_group_ids:
-                tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
-            else:
-                tables_qs = tables_qs.none()
+        tables_qs = ClientAccessService.get_scoped_tables_qs(user, target_client, tables_qs)
 
     tables = list(tables_qs)
     table_ids = [t.id for t in tables]
@@ -4738,18 +4542,7 @@ def groups_overview(request):
     tables = IDCardTable.objects.filter(group__client=client).select_related('group')
 
     if PermissionService.is_client_staff(user):
-        staff = getattr(user, 'staff_profile', None)
-        if staff:
-            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
-            if assigned_table_ids and assigned_group_ids:
-                tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-            elif assigned_table_ids:
-                tables = tables.filter(id__in=assigned_table_ids)
-            elif assigned_group_ids:
-                tables = tables.filter(group_id__in=assigned_group_ids)
-            else:
-                tables = tables.none()
+        tables = ClientAccessService.get_scoped_tables_qs(user, client, tables)
 
     scoped_table_ids = tables.values('id')
     scoped_group_ids = tables.values('group_id')
@@ -4846,20 +4639,7 @@ def settings_page(request):
             )
         elif PermissionService.is_client_staff(user):
             _tables_scope = IDCardTable.objects.filter(group__client=client, is_active=True)
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
-                if assigned_table_ids and assigned_group_ids:
-                    _tables_scope = _tables_scope.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-                elif assigned_table_ids:
-                    _tables_scope = _tables_scope.filter(id__in=assigned_table_ids)
-                elif assigned_group_ids:
-                    _tables_scope = _tables_scope.filter(group_id__in=assigned_group_ids)
-                else:
-                    _tables_scope = _tables_scope.none()
-            else:
-                _tables_scope = _tables_scope.none()
+            _tables_scope = ClientAccessService.get_scoped_tables_qs(user, client, _tables_scope)
 
             # Pull a larger candidate set, then apply per-card row scope checks.
             _candidate_cards = (
@@ -5841,29 +5621,41 @@ def api_tables_list(request):
                 tables_qs = tables_qs.filter(group__client=client)
 
         if PermissionService.is_client_staff(user):
-            accessible_ids = ClientAccessService.get_accessible_table_ids(user)
-            if accessible_ids is not None:
-                if not accessible_ids:
-                    return JsonResponse({'success': True, 'data': [], 'tables': [], 'count': 0})
-                tables_qs = tables_qs.filter(id__in=accessible_ids)
-
-        # 2. Annotate with status count if status is provided
-        # 'total' is a virtual status from the native app â€” treat like 'all'
-        if status and status not in ('all', 'total'):
-            tables_qs = tables_qs.annotate(
-                status_count=Count('id_cards', filter=Q(id_cards__status=status))
-            ).filter(status_count__gt=0)
-        else:
-            tables_qs = tables_qs.annotate(status_count=Count('id_cards'))
+            tables_qs = ClientAccessService.get_scoped_tables_qs(user, client, tables_qs)
+            if not tables_qs.exists():
+                return JsonResponse({'success': True, 'data': [], 'tables': [], 'count': 0})
 
         items = []
-        for t in tables_qs.select_related('group', 'group__client').order_by('name'):
+        is_staff = PermissionService.is_client_staff(user)
+        
+        # 2. Annotate with status count if status is provided
+        # 'total' is a virtual status from the native app — treat like 'all'
+        if not is_staff:
+            if status and status not in ('all', 'total'):
+                tables_qs = tables_qs.annotate(
+                    status_count=Count('id_cards', filter=Q(id_cards__status=status))
+                ).filter(status_count__gt=0)
+            else:
+                tables_qs = tables_qs.annotate(status_count=Count('id_cards'))
+
+        tables_list = list(tables_qs.select_related('group', 'group__client').order_by('name'))
+        for t in tables_list:
+            if is_staff:
+                card_qs = ClientCardService._apply_client_staff_row_scope(user, t, IDCard.objects.filter(table_id=t.id))
+                if status and status not in ('all', 'total'):
+                    t_status_count = card_qs.filter(status=status).count()
+                    if t_status_count == 0:
+                        continue
+                    t.status_count = t_status_count
+                else:
+                    t.status_count = card_qs.count()
+
             items.append({
                 'id': t.id,
                 'name': t.name,
                 'group_name': t.group.name if t.group else '',
                 'client_name': t.group.client.name if t.group and t.group.client else '',
-                'status_count': t.status_count,
+                'status_count': getattr(t, 'status_count', 0),
             })
 
         return JsonResponse({'success': True, 'data': items})
@@ -5898,11 +5690,9 @@ def api_groups_list(request):
                 tables_qs = tables_qs.filter(group__client=client)
 
         if PermissionService.is_client_staff(user):
-            accessible_ids = ClientAccessService.get_accessible_table_ids(user)
-            if accessible_ids is not None:
-                if not accessible_ids:
-                    return JsonResponse({'success': True, 'data': {'groups': [], 'tables': []}})
-                tables_qs = tables_qs.filter(id__in=accessible_ids)
+            tables_qs = ClientAccessService.get_scoped_tables_qs(user, client, tables_qs)
+            if not tables_qs.exists():
+                return JsonResponse({'success': True, 'data': {'groups': [], 'tables': []}})
 
         if PermissionService.is_client_staff(user):
             # Compute scoped counts table-by-table for assistant
@@ -6251,19 +6041,18 @@ def api_dashboard_data(request):
             # For assistant, explicitly compute access FIRST to avoid stale cache overriding security.
             is_staff_empty = False
             if is_staff:
-                accessible_ids = ClientAccessService.get_accessible_table_ids(user)
-                if accessible_ids is not None:
-                    if not accessible_ids:
-                        # STRICT BYPASS: Assistant has no assignments, return empty immediately
-                        cached_data = {
-                            'client_id': client.id,
-                            'client_name': getattr(client, 'business_name', client.name),
-                            'pending': 0, 'verified': 0, 'approved': 0,
-                            'download': 0, 'pool': 0, 'total': 0,
-                            'tables': [],
-                            'recent_activity': recent_activity
-                        }
-                        return JsonResponse({'success': True, 'data': cached_data})
+                scoped_qs = ClientAccessService.get_scoped_tables_qs(user, client)
+                if not scoped_qs.exists():
+                    # STRICT BYPASS: Assistant has no assignments, return empty immediately
+                    cached_data = {
+                        'client_id': client.id,
+                        'client_name': getattr(client, 'business_name', client.name),
+                        'pending': 0, 'verified': 0, 'approved': 0,
+                        'download': 0, 'pool': 0, 'total': 0,
+                        'tables': [],
+                        'recent_activity': recent_activity
+                    }
+                    return JsonResponse({'success': True, 'data': cached_data})
             
             cache_key = f"mob_dash_{client.id}_{user.id}" if is_staff else f"mob_dash_{client.id}"
             cache_version = CacheVersionService.get('client_dash_counts', f'client:{client.id}')
@@ -6327,8 +6116,8 @@ def api_dashboard_data(request):
                         'po': t_counts['pool'],
                     })
                 
-                # Fetch full client-wide pool count
-                counts['pool'] = IDCard.objects.filter(table__group__client=client, status='pool').count()
+                # Fetch pool count scoped to the assistant's assigned tables
+                counts['pool'] = IDCard.objects.filter(table_id__in=scoped_table_ids, status='pool').count()
             else:
                 # Regular client: standard query
                 cards_qs = IDCard.objects.filter(table_id__in=scoped_table_ids)
@@ -6442,18 +6231,8 @@ def api_reprint_data(request, client_id):
             tables_qs = IDCardTable.objects.filter(group__client_id=client_id, is_active=True).select_related('group', 'group__client').order_by('group__name', 'name')
 
         if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
-                if assigned_table_ids and assigned_group_ids:
-                    tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-                elif assigned_table_ids:
-                    tables_qs = tables_qs.filter(id__in=assigned_table_ids)
-                elif assigned_group_ids:
-                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
-                else:
-                    tables_qs = tables_qs.none()
+            client_ctx = ClientAccessService.get_client_for_user(user)
+            tables_qs = ClientAccessService.get_scoped_tables_qs(user, client_ctx, tables_qs)
 
         tables = list(tables_qs)
         table_ids = [t.id for t in tables]

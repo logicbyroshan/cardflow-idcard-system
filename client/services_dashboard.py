@@ -34,42 +34,7 @@ class ClientDashboardService(BaseService):
     GROUP_COUNTS_CACHE_TTL = 20
     STAFF_COUNT_CACHE_TTL = 60
     
-    @staticmethod
-    def _normalized_assigned_table_ids(staff):
-        return [
-            int(v) for v in (getattr(staff, 'assigned_table_ids', None) or [])
-            if str(v).strip().isdigit() and int(v) > 0
-        ]
 
-    @staticmethod
-    def _assigned_group_ids_for_access(staff):
-        scopes = getattr(staff, 'assignment_scopes', None)
-        if isinstance(scopes, list) and scopes:
-            group_ids = []
-            seen = set()
-            has_any_valid_scope = False
-            for scope in scopes:
-                if not isinstance(scope, dict):
-                    continue
-                stype = str(scope.get('scope_type', '') or '').strip().lower()
-                if stype not in ('group', 'table'):
-                    continue
-                has_any_valid_scope = True
-                if stype != 'group':
-                    continue
-                sid = scope.get('scope_id')
-                try:
-                    sid_int = int(str(sid).strip())
-                except (TypeError, ValueError):
-                    continue
-                if sid_int <= 0 or sid_int in seen:
-                    continue
-                seen.add(sid_int)
-                group_ids.append(sid_int)
-            if has_any_valid_scope:
-                return group_ids
-
-        return list(staff.assigned_groups.values_list('id', flat=True))
 
     @staticmethod
     def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
@@ -116,26 +81,7 @@ class ClientDashboardService(BaseService):
     @classmethod
     def _get_accessible_tables_qs(cls, user, client):
         tables = IDCardTable.objects.filter(group__client=client, is_active=True)
-
-        if not PermissionService.is_client_staff(user):
-            return tables
-
-        staff = getattr(user, 'staff_profile', None)
-        if not staff:
-            return tables.none()
-
-        assigned_table_ids = cls._normalized_assigned_table_ids(staff)
-        assigned_group_ids = cls._assigned_group_ids_for_access(staff)
-
-        if assigned_table_ids and assigned_group_ids:
-            return tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
-        if assigned_table_ids:
-            return tables.filter(id__in=assigned_table_ids)
-        if assigned_group_ids:
-            return tables.filter(group_id__in=assigned_group_ids)
-
-        # No assignments → strict deny: unassigned staff see nothing
-        return tables.none()
+        return ClientAccessService.get_scoped_tables_qs(user, client, tables)
 
     @staticmethod
     def _status_template():
