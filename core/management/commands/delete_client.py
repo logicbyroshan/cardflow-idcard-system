@@ -74,11 +74,24 @@ class Command(BaseCommand):
             with transaction.atomic():
                 user = client.user
                 
-                # Clean up legacy M2M references that might exist in production DB
+                # Clean up legacy references that might exist in production DB
                 from django.db import connection
-                if 'core_guestassignment_assigned_clients' in connection.introspection.table_names():
+                tables = connection.introspection.table_names()
+                
+                if 'core_guestassignment_assigned_clients' in tables:
                     with connection.cursor() as cursor:
                         cursor.execute("DELETE FROM core_guestassignment_assigned_clients WHERE client_id = %s", [client.id])
+                        
+                if 'cardprint_printrequest' in tables:
+                    from idcards.models import IDCard
+                    card_ids = list(IDCard.objects.filter(table__group__client=client).values_list('id', flat=True))
+                    if card_ids:
+                        with connection.cursor() as cursor:
+                            batch_size = 500
+                            for i in range(0, len(card_ids), batch_size):
+                                batch = card_ids[i:i + batch_size]
+                                placeholders = ','.join(['%s'] * len(batch))
+                                cursor.execute(f"DELETE FROM cardprint_printrequest WHERE card_id IN ({placeholders})", batch)
                 
                 # Delete the client. This will trigger client.delete() which
                 # calls delete_image_folder() to delete physical image files.
