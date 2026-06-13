@@ -6065,8 +6065,8 @@ def api_dashboard_data(request):
             
             # Get accessible tables
             tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True, deleted_by_client=False)
-            if is_staff and accessible_ids is not None:
-                tables_qs = tables_qs.filter(id__in=accessible_ids)
+            if is_staff:
+                tables_qs = ClientAccessService.get_scoped_tables_qs(user, client, tables_qs)
             
             scoped_table_ids = list(tables_qs.values_list('id', flat=True))
             
