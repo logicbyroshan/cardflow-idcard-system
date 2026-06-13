@@ -317,6 +317,12 @@ class IDCard(models.Model):
                 logger.warning("Could not delete photo: %s", e)
     
     def delete(self, *args, **kwargs):
+        # Clean up legacy print requests to prevent IntegrityError
+        from django.db import connection
+        if 'cardprint_printrequest' in connection.introspection.table_names():
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM cardprint_printrequest WHERE card_id = %s", [self.id])
+
         # Delete images before deleting card
         self.delete_images()
         super().delete(*args, **kwargs)
