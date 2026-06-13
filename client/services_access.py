@@ -330,6 +330,14 @@ class ClientAccessService:
         assigned_table_ids = cls._assigned_table_ids_for_access(staff)
         assigned_group_ids = cls._assigned_group_ids_for_access(staff)
         
+        # Security hardening: Prevent group-level assignments from leaking unintended
+        # tables when a client operates in "table mode" (single group). 
+        # If they have specific tables assigned, we ignore the legacy/side-effect group assignments.
+        if assigned_table_ids and assigned_group_ids:
+            from idcards.models import IDCardGroup
+            if IDCardGroup.objects.filter(client=client).count() <= 1:
+                assigned_group_ids = []
+
         if assigned_table_ids and assigned_group_ids:
             return base_qs.filter(
                 Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids)

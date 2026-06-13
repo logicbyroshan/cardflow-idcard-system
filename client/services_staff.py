@@ -668,7 +668,7 @@ class ClientStaffService(BaseService):
                     resolved_group_ids = sorted(set(resolved_group_ids) | set(scope_group_ids))
                     resolved_table_ids = sorted(set(resolved_table_ids) | set(scope_table_ids))
 
-                if resolved_group_ids or resolved_table_ids:
+                if assigned_groups or normalized_assignment_scopes is not None:
                     valid_groups = IDCardGroup.objects.filter(
                         id__in=resolved_group_ids,
                         client=client,
