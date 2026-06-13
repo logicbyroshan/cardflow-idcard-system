@@ -530,36 +530,19 @@
   {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_data_deletion_guard' %}
 
   <div class="guard-action-bar">
-    <div class="guard-action-title">
-      <span class="guard-action-icon"><i class="fa-solid fa-trash-can"></i></span>
-      <div>
-        <div class="guard-action-main">Permanent Filtered Data Deletion</div>
-        <div class="guard-action-sub">Pro User can target any client and table, but every destructive action requires code + phrase confirmation.</div>
-      </div>
+    <div class="guard-field" style="flex: 1; max-width: 400px; display: flex; align-items: center; gap: 10px;">
+      <label for="guardClientSelect" style="margin: 0; white-space: nowrap;"><i class="fa-solid fa-magnifying-glass" style="margin-right: 4px; color: #94a3b8;"></i> Search Client:</label>
+      <select id="guardClientSelect" style="width: 100%;">
+        <option value="">Select client</option>
+      </select>
     </div>
-    <span class="guard-action-pill">Permanent Delete Enabled</span>
   </div>
 
   <div class="data-guard-content">
     <div class="data-guard-inner">
-      <div class="guard-card guard-card-surface guard-card-soft">
-        <h3 class="guard-card-title"><i class="fa-solid fa-lock"></i> Safety Contract</h3>
-        <div class="guard-note">
-          All actions here perform permanent delete from database records. This cannot be undone.
-          Use preview first, then confirm with one-time 10-digit code and confirmation phrase.
-        </div>
-      </div>
-
       <div class="guard-card guard-card-surface">
-        <span class="guard-section-label"><i class="fa-solid fa-layer-group"></i> Scope</span>
         <h3 class="guard-card-title"><i class="fa-solid fa-list-check"></i> Scope Selection</h3>
-        <div class="guard-grid guard-grid-3">
-          <div class="guard-field">
-            <label for="guardClientSelect">Client</label>
-            <select id="guardClientSelect">
-              <option value="">Select client</option>
-            </select>
-          </div>
+        <div class="guard-grid guard-grid-2">
           <div class="guard-field">
             <label for="guardTableSelect">Table</label>
             <select id="guardTableSelect" disabled>
@@ -582,94 +565,88 @@
       </div>
 
       <div class="guard-card guard-card-surface">
-        <span class="guard-section-label"><i class="fa-solid fa-filter"></i> Filters</span>
-        <h3 class="guard-card-title"><i class="fa-solid fa-sliders"></i> Match Conditions</h3>
-
-        <div class="guard-note" style="margin-bottom: 10px;">
-          These filters define the records that will appear in the preview and, after confirmation, be deleted.
-        </div>
-
-        <div class="guard-section-label">Text filters</div>
-        <div class="guard-grid guard-grid-5" style="margin-bottom: 12px;">
-          <div class="guard-field">
-            <label for="guardSearchInput">Search</label>
-            <input id="guardSearchInput" type="text" placeholder="Name, number, or any text" />
-          </div>
-          <div class="guard-field">
-            <label for="guardClassInput">Class</label>
-            <input id="guardClassInput" type="text" placeholder="e.g. 10" />
-          </div>
-          <div class="guard-field">
-            <label for="guardSectionInput">Section</label>
-            <input id="guardSectionInput" type="text" placeholder="e.g. A" />
-          </div>
-          <div class="guard-field">
-            <label for="guardCourseInput">Course</label>
-            <input id="guardCourseInput" type="text" placeholder="Optional" />
-          </div>
-          <div class="guard-field">
-            <label for="guardBranchInput">Branch</label>
-            <input id="guardBranchInput" type="text" placeholder="Optional" />
-          </div>
-        </div>
-
-        <div class="guard-section-label">Date and image filters</div>
-        <div class="guard-grid guard-grid-4" style="margin-bottom: 12px;">
-          <div class="guard-field">
-            <label for="guardImageColumnSelect">Image Column</label>
-            <select id="guardImageColumnSelect">
-              <option value="">Select image column</option>
-            </select>
-          </div>
-          <div class="guard-field">
-            <label for="guardImageConditionSelect">Image Condition</label>
-            <select id="guardImageConditionSelect">
-              <option value="">Any</option>
-              <option value="pending">Pending Image</option>
-              <option value="complete">Completed Image</option>
-              <option value="incomplete">Incomplete Image</option>
-            </select>
-          </div>
-          <div class="guard-field">
-            <label for="guardFromInput">From (download)</label>
-            <input id="guardFromInput" type="datetime-local" />
-          </div>
-          <div class="guard-field">
-            <label for="guardToInput">To (download)</label>
-            <input id="guardToInput" type="datetime-local" />
-          </div>
-        </div>
-
-        <div class="guard-section-label">Column filter</div>
-        <div class="guard-grid guard-grid-3">
-          <div class="guard-field">
-            <label for="guardColumnSelect">Column Filter</label>
-            <select id="guardColumnSelect">
-              <option value="">Select column</option>
-            </select>
-          </div>
-          <div class="guard-field">
-            <label for="guardColumnValueInput">Column Value</label>
-            <input id="guardColumnValueInput" type="text" placeholder="Value to match" />
-          </div>
-          <div class="guard-field">
-            <label for="guardColumnMatchSelect">Column Match</label>
-            <select id="guardColumnMatchSelect">
-              <option value="contains">Contains</option>
-              <option value="exact">Exact</option>
-              <option value="startswith">Starts With</option>
-              <option value="endswith">Ends With</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div class="guard-card guard-card-surface">
-        <h3 class="guard-card-title"><i class="fa-solid fa-bolt"></i> Actions</h3>
-        <div class="guard-actions">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <h3 class="guard-card-title" style="margin: 0;"><i class="fa-solid fa-sliders"></i> Match Conditions</h3>
           <button type="button" class="btn btn-sm btn-outline-primary" id="guardPreviewBtn">
             <i class="fa-solid fa-magnifying-glass"></i> Preview Matches
           </button>
+        </div>
+
+        <div style="border-bottom: 1px solid #dbe5f1; padding-bottom: 16px; margin-bottom: 16px;">
+          <div class="guard-grid guard-grid-5">
+            <div class="guard-field">
+              <label for="guardSearchInput">Search</label>
+              <input id="guardSearchInput" type="text" placeholder="Name, number, or any text" />
+            </div>
+            <div class="guard-field">
+              <label for="guardClassInput">Class</label>
+              <input id="guardClassInput" type="text" placeholder="e.g. 10" />
+            </div>
+            <div class="guard-field">
+              <label for="guardSectionInput">Section</label>
+              <input id="guardSectionInput" type="text" placeholder="e.g. A" />
+            </div>
+            <div class="guard-field">
+              <label for="guardCourseInput">Course</label>
+              <input id="guardCourseInput" type="text" placeholder="Optional" />
+            </div>
+            <div class="guard-field">
+              <label for="guardBranchInput">Branch</label>
+              <input id="guardBranchInput" type="text" placeholder="Optional" />
+            </div>
+          </div>
+        </div>
+
+        <div style="border-bottom: 1px solid #dbe5f1; padding-bottom: 16px; margin-bottom: 16px;">
+          <div class="guard-grid guard-grid-4">
+            <div class="guard-field">
+              <label for="guardImageColumnSelect">Image Column</label>
+              <select id="guardImageColumnSelect">
+                <option value="">Select image column</option>
+              </select>
+            </div>
+            <div class="guard-field">
+              <label for="guardImageConditionSelect">Image Condition</label>
+              <select id="guardImageConditionSelect">
+                <option value="">Any</option>
+                <option value="pending">Pending Image</option>
+                <option value="complete">Completed Image</option>
+                <option value="incomplete">Incomplete Image</option>
+              </select>
+            </div>
+            <div class="guard-field">
+              <label for="guardFromInput">From (download)</label>
+              <input id="guardFromInput" type="datetime-local" />
+            </div>
+            <div class="guard-field">
+              <label for="guardToInput">To (download)</label>
+              <input id="guardToInput" type="datetime-local" />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="guard-grid guard-grid-3">
+            <div class="guard-field">
+              <label for="guardColumnSelect">Column Filter</label>
+              <select id="guardColumnSelect">
+                <option value="">Select column</option>
+              </select>
+            </div>
+            <div class="guard-field">
+              <label for="guardColumnValueInput">Column Value</label>
+              <input id="guardColumnValueInput" type="text" placeholder="Value to match" />
+            </div>
+            <div class="guard-field">
+              <label for="guardColumnMatchSelect">Column Match</label>
+              <select id="guardColumnMatchSelect">
+                <option value="contains">Contains</option>
+                <option value="exact">Exact</option>
+                <option value="startswith">Starts With</option>
+                <option value="endswith">Ends With</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -679,42 +656,25 @@
             <h3 class="guard-card-title" style="margin-bottom: 4px;"><i class="fa-solid fa-vial-circle-check"></i> Preview Result</h3>
             <div class="guard-note">The table below shows full values for the matched sample rows.</div>
           </div>
-          <span class="guard-preview-pill" id="guardPreviewCount">No preview yet</span>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <span class="guard-preview-pill" id="guardPreviewCount">No preview yet</span>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-danger dropdown-toggle" type="button" id="guardDangerZoneBtn" data-bs-toggle="dropdown" aria-expanded="false" disabled>
+                <i class="fa-solid fa-triangle-exclamation"></i> Danger Zone
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="guardDangerZoneBtn" style="width: 260px; padding: 10px; z-index: 1050; border: 1px solid #fecaca; background: #fffdfd;">
+                <li style="margin-bottom: 6px;"><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteFilteredBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-trash-can me-2"></i> Delete Filtered Data</button></li>
+                <li style="margin-bottom: 6px;"><button type="button" class="dropdown-item text-danger rounded" id="guardDeletePendingImgBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-image me-2"></i> Delete Pending Images</button></li>
+                <li style="margin-bottom: 6px;"><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteCompletedImgBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-images me-2"></i> Delete Completed Images</button></li>
+                <li><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteByColumnBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-columns me-2"></i> Delete By Column</button></li>
+              </ul>
+            </div>
+          </div>
         </div>
         <div class="guard-preview-table-wrap" id="guardPreviewTableWrap">
           <div class="guard-preview-empty">Run preview to inspect matching records before delete.</div>
         </div>
       </div>
-
-      <details class="guard-danger-zone" id="guardDangerZone">
-        <summary>
-          <span><i class="fa-solid fa-triangle-exclamation"></i> Danger Zone - destructive actions</span>
-          <span class="guard-danger-hint">Open only when you are sure</span>
-        </summary>
-        <div class="guard-danger-zone-body">
-          <div class="guard-danger-note">
-            These actions permanently delete matching records. They stay visually separate from the preview so they are not easy to click by accident.
-          </div>
-          <div class="guard-danger-actions">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="guardPreviewBtnBottom">
-              <i class="fa-solid fa-magnifying-glass"></i> Preview Again
-            </button>
-            <button type="button" class="btn btn-sm btn-danger" id="guardDeleteFilteredBtn" disabled>
-              <i class="fa-solid fa-trash-can"></i> Delete Filtered Data
-            </button>
-            <button type="button" class="btn btn-sm btn-danger" id="guardDeletePendingImgBtn" disabled>
-              <i class="fa-solid fa-image"></i> Delete Pending Images
-            </button>
-            <button type="button" class="btn btn-sm btn-danger" id="guardDeleteCompletedImgBtn" disabled>
-              <i class="fa-solid fa-images"></i> Delete Completed Images
-            </button>
-            <button type="button" class="btn btn-sm btn-danger" id="guardDeleteByColumnBtn" disabled>
-              <i class="fa-solid fa-columns"></i> Delete By Column
-            </button>
-          </div>
-          <div class="guard-danger-hint" id="guardDeleteHint">Run a preview first to enable the field-clear actions.</div>
-        </div>
-      </details>
     </div>
   </div>
 </div>
@@ -781,8 +741,6 @@
     document.getElementById('guardDeleteCompletedImgBtn'),
     document.getElementById('guardDeleteByColumnBtn'),
   ].filter(Boolean);
-  const deleteHint = document.getElementById('guardDeleteHint');
-  const previewAgainBtn = document.getElementById('guardPreviewBtnBottom');
 
   let tablesByClient = [];
   let selectedTable = null;
@@ -890,10 +848,19 @@
       const cells = columns.map(function(column) {
         const key = column.key;
         let val = row && row[key] != null ? String(row[key]) : '';
-        if (val === 'NOT_FOUND') val = '<span class="text-slate-400">Not Found</span>';
+        
+        if (val === 'NOT_FOUND') {
+            val = '<span class="text-slate-400">Not Found</span>';
+        } else if (val.startsWith('PENDING:')) {
+            val = '<span class="badge" style="background:#fef08a;color:#854d0e;padding:4px 8px;">Pending</span>';
+        } else if (val.startsWith('/') || val.startsWith('http') || val.match(/\\.(jpg|jpeg|png|webp|heic)$/i)) {
+            val = '<img src="' + escapeHtml(val) + '" style="max-width: 44px; max-height: 44px; border-radius: 6px; object-fit: cover; border: 1px solid #e2e8f0; background: #f8fafc;" onerror="this.style.display=\\'none\\'" />';
+        } else {
+            val = escapeHtml(val);
+        }
         
         const tdClass = column.td_class || '';
-        return '<td class="' + tdClass + '">' + (val.includes('<span') ? val : escapeHtml(val)) + '</td>';
+        return '<td class="' + tdClass + '">' + val + '</td>';
       }).join('');
       return '<tr>' + cells + '</tr>';
     }).join('');
@@ -916,14 +883,12 @@
   }
 
   function setDeleteButtonsEnabled(enabled) {
+    const dangerZoneBtn = document.getElementById('guardDangerZoneBtn');
+    if (dangerZoneBtn) dangerZoneBtn.disabled = !enabled;
+
     deleteButtons.forEach(function(button) {
       button.disabled = !enabled;
     });
-    if (deleteHint) {
-      deleteHint.textContent = enabled
-        ? 'Deletion buttons are enabled because a preview has been generated.'
-        : 'Run a preview first to enable deletion buttons.';
-    }
   }
 
   function normalizeCodeInput() {
@@ -1148,13 +1113,7 @@
     });
   });
 
-  if (previewAgainBtn) {
-    previewAgainBtn.addEventListener('click', function() {
-      runPreview('filtered_delete').catch(function(err) {
-        notify(err.message || 'Preview failed.', false);
-      });
-    });
-  }
+
 
   document.getElementById('guardDeleteFilteredBtn').addEventListener('click', function() {
     startDeleteAction('filtered_delete');
