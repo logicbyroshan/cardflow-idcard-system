@@ -38,8 +38,7 @@ _ALLOWED_IMAGE_CONDITIONS = {'complete', 'pending', 'incomplete'}
 _ALLOWED_COLUMN_MATCHES = {'exact', 'contains', 'startswith', 'endswith'}
 _ALLOWED_ACTION_TYPES = {
     'filtered_delete',
-    'delete_pending_images',
-    'delete_completed_images',
+    'delete_image_paths',
     'delete_by_column',
 }
 
@@ -221,10 +220,8 @@ def _build_filtered_queryset(table, payload: Dict[str, Any], action_type: str):
     if status_filter and status_filter not in _ALLOWED_STATUSES:
         return None, JsonResponse({'success': False, 'message': 'Invalid status filter.'}, status=400), None
 
-    if action_type == 'delete_pending_images':
-        image_condition = 'pending'
-    elif action_type == 'delete_completed_images':
-        image_condition = 'complete'
+    if action_type == 'delete_image_paths':
+        pass
 
     if image_condition and image_condition not in _ALLOWED_IMAGE_CONDITIONS:
         return None, JsonResponse({'success': False, 'message': 'Invalid image condition filter.'}, status=400), None
@@ -588,7 +585,39 @@ def api_pro_user_data_guard_delete(request):
                 'message': f'Permanently deleted {deleted_total} record(s).',
             })
 
-        if action_type in {'delete_pending_images', 'delete_completed_images', 'delete_by_column'}:
+        if action_type == 'delete_image_paths':
+            if not normalized.get('image_column'):
+                return JsonResponse({'success': False, 'message': 'Select an image column first.'}, status=400)
+                
+            success, cleared_total, error_msg = _apply_field_clear_action(
+                request, target_ids, normalized['image_column']
+            )
+            if not success:
+                logger.error('Pro data guard image clear failed: table=%s message=%s', table.id, error_msg)
+                return JsonResponse({
+                    'success': False,
+                    'message': error_msg or 'Field clear failed during execution.',
+                    'partial_deleted_count': cleared_total,
+                }, status=500)
+
+            action_desc = f'cleared image paths in column "{normalized["image_column"]}" from table "{table.name}"'
+            ActivityService.log_bulk_delete(
+                request,
+                action_desc + f' ({filter_summary})',
+                cleared_total,
+            )
+
+            return JsonResponse({
+                'success': True,
+                'deleted_count': cleared_total,
+                'table_name': table.name,
+                'client_name': table.group.client.name if table.group_id and table.group.client_id else '',
+                'action_type': action_type,
+                'filter_summary': filter_summary,
+                'message': f'Successfully cleared {cleared_total} image path(s).',
+            })
+
+        if action_type in {'delete_by_column'}:
             # These action types delete records (not just clear fields)
             deleted_total = 0
             chunk_size = 400
@@ -604,13 +633,7 @@ def api_pro_user_data_guard_delete(request):
                     }, status=500)
                 deleted_total += int((result.data or {}).get('deleted_count') or 0)
 
-            action_desc = ''
-            if action_type == 'delete_pending_images':
-                action_desc = f'deleted ID cards with pending images (column "{normalized["image_column"]}") from table "{table.name}"'
-            elif action_type == 'delete_completed_images':
-                action_desc = f'deleted ID cards with completed images (column "{normalized["image_column"]}") from table "{table.name}"'
-            else:  # delete_by_column
-                action_desc = f'deleted ID cards matching column "{normalized["filter_column"]}" = "{normalized["filter_value"]}" from table "{table.name}"'
+            action_desc = f'deleted ID cards matching column "{normalized["filter_column"]}" = "{normalized["filter_value"]}" from table "{table.name}"'
 
             ActivityService.log_bulk_delete(
                 request,

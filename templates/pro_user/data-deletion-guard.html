@@ -663,10 +663,9 @@
                 <i class="fa-solid fa-triangle-exclamation"></i> Danger Zone
               </button>
               <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="guardDangerZoneBtn" style="width: 260px; padding: 10px; z-index: 1050; border: 1px solid #fecaca; background: #fffdfd;">
-                <li style="margin-bottom: 6px;"><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteFilteredBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-trash-can me-2"></i> Delete Filtered Data</button></li>
-                <li style="margin-bottom: 6px;"><button type="button" class="dropdown-item text-danger rounded" id="guardDeletePendingImgBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-image me-2"></i> Delete Pending Images</button></li>
-                <li style="margin-bottom: 6px;"><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteCompletedImgBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-images me-2"></i> Delete Completed Images</button></li>
-                <li><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteByColumnBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-columns me-2"></i> Delete By Column</button></li>
+                <li style="margin-bottom: 6px;"><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteFilteredBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-trash-can me-2"></i> Delete Matching Data</button></li>
+                <li style="margin-bottom: 6px;"><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteImagePathsBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-image me-2"></i> Delete Matching Image Paths</button></li>
+                <li><button type="button" class="dropdown-item text-danger rounded" id="guardDeleteByColumnBtn" disabled style="font-weight: 700;"><i class="fa-solid fa-columns me-2"></i> Delete Matching Column Data</button></li>
               </ul>
             </div>
           </div>
@@ -737,8 +736,7 @@
   const confirmSubmit = document.getElementById('guardConfirmSubmitBtn');
   const deleteButtons = [
     document.getElementById('guardDeleteFilteredBtn'),
-    document.getElementById('guardDeletePendingImgBtn'),
-    document.getElementById('guardDeleteCompletedImgBtn'),
+    document.getElementById('guardDeleteImagePathsBtn'),
     document.getElementById('guardDeleteByColumnBtn'),
   ].filter(Boolean);
 
@@ -926,8 +924,7 @@
   }
 
   function selectedActionLabel(actionType) {
-    if (actionType === 'delete_pending_images') return 'Delete Pending Images';
-    if (actionType === 'delete_completed_images') return 'Delete Completed Images';
+    if (actionType === 'delete_image_paths') return 'Delete Image Paths';
     if (actionType === 'delete_by_column') return 'Delete By Column';
     return 'Delete Filtered Data';
   }
@@ -1119,12 +1116,8 @@
     startDeleteAction('filtered_delete');
   });
 
-  document.getElementById('guardDeletePendingImgBtn').addEventListener('click', function() {
-    startDeleteAction('delete_pending_images');
-  });
-
-  document.getElementById('guardDeleteCompletedImgBtn').addEventListener('click', function() {
-    startDeleteAction('delete_completed_images');
+  document.getElementById('guardDeleteImagePathsBtn').addEventListener('click', function() {
+    startDeleteAction('delete_image_paths');
   });
 
   document.getElementById('guardDeleteByColumnBtn').addEventListener('click', function() {
