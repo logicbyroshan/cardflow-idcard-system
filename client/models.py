@@ -301,27 +301,6 @@ class Client(models.Model):
         self._original_name = self.name
     
     def delete(self, *args, **kwargs):
-        # Clean up legacy tables before Django cascade starts to prevent IntegrityError
-        from django.db import connection
-        tables = connection.introspection.table_names()
-
-        if 'core_guestassignment_assigned_clients' in tables:
-            with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM core_guestassignment_assigned_clients WHERE client_id = %s", [self.id])
-                
-        if 'cardprint_printrequest' in tables:
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    DELETE FROM cardprint_printrequest 
-                    WHERE card_id IN (
-                        SELECT idcard.id 
-                        FROM core_idcard idcard
-                        INNER JOIN core_idcardtable tbl ON idcard.table_id = tbl.id
-                        INNER JOIN core_idcardgroup grp ON tbl.group_id = grp.id
-                        WHERE grp.client_id = %s
-                    )
-                """, [self.id])
-
         # Delete image folder when client is deleted
         self.delete_image_folder()
         super().delete(*args, **kwargs)
