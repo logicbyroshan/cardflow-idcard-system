@@ -173,6 +173,9 @@ class PermissionService:
         'perm_idcard_setting_edit',       # Assistants cannot edit table structure
         'perm_manage_panel_backup',       # Admin-only
         'perm_manage_panel_email',        # Admin-only
+        'perm_idcard_approved_list',      # Assistants cannot see approved list
+        'perm_idcard_download_list',      # Assistants cannot see download list
+        'perm_idcard_approve',            # Assistants cannot approve cards
     }
 
     # Status → list-permission mapping (shared across views)
