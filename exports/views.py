@@ -639,7 +639,7 @@ def _log_export_failure(request, export_type, message, table_id=None, table_name
         logger.exception('Failed to write export failure activity log')
 
 
-def _acquire_export_lock(user_id, table_id, export_type='generic', max_concurrent=3, ttl=300, request_user=None):
+def _acquire_export_lock(user_id, table_id, export_type='generic', max_concurrent=5, ttl=300, request_user=None):
     """Allow up to max_concurrent concurrent exports per user/table/type.
 
     Each export type (pdf, xlsx, docx, images, download_all) gets its own
