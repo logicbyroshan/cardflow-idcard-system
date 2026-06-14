@@ -1687,13 +1687,7 @@ def stream_zip_response(zip_path: str, filename: str, delete_after: bool = True,
         filename=filename
     )
 
-    if user is not None:
-        try:
-            from core.services.super_mode_service import SuperModeService
 
-            response.block_size = SuperModeService.download_block_size_bytes(user)
-        except Exception:
-            logger.exception('Failed applying Super Mode block size for ZIP stream response')
     
     if delete_after:
         # Attach cleanup callback so temp file is deleted after streaming

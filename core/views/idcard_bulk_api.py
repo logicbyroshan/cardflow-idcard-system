@@ -25,7 +25,6 @@ from ..services import IDCardService
 from mediafiles.services import ImageService
 from ..services.base import BaseService
 from ..services.cache_version_service import CacheVersionService
-from ..services.super_mode_service import SuperModeService
 from ..services.permission_service import (
     api_require_any_authenticated,
     api_require_permission,
@@ -146,9 +145,9 @@ def api_idcard_bulk_upload(request, table_id):
     generated_folder_zip_paths = []
 
     try:
-        super_mode_sync_ram_only = bool(SuperModeService.is_effective_enabled(request.user))
+        super_mode_sync_ram_only = False
         if super_mode_sync_ram_only:
-            effective_super_ram_mb = max(0, int(SuperModeService.get_effective_ram_mb(request.user) or 0))
+            effective_super_ram_mb = 0
     except Exception:
         logger.exception("Failed resolving Super Mode RAM-only state for sync bulk upload")
         super_mode_sync_ram_only = False

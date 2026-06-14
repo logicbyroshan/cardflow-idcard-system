@@ -31,11 +31,8 @@ from .base_helpers import (                          # noqa: F401
 # ── Dashboard views ─────────────────────────────────────────────────────
 from .dashboard_views import (                       # noqa: F401
     login_as_user_page,
-    pro_user_log_deletion_guard_page,
-    pro_user_data_deletion_guard_page,
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
-    pro_user_super_mode_page,
     pro_user_guest_users_page,
     dashboard,
     api_presence_track,

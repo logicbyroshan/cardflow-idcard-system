@@ -27,11 +27,8 @@ from .base import (
     get_user_role,
     super_admin_required,
     login_as_user_page,
-    pro_user_log_deletion_guard_page,
-    pro_user_data_deletion_guard_page,
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
-    pro_user_super_mode_page,
     pro_user_guest_users_page,
     dashboard,
     api_presence_track,
@@ -132,7 +129,6 @@ from .settings_api import (
     api_update_profile,
     api_change_password,
     api_update_security_settings,
-    api_toggle_super_mode,
     api_upload_profile_image,
     api_remove_profile_image,
 )
@@ -190,19 +186,7 @@ from .maintenance_api import (
     system_maintenance_page,
 )
 
-from .pro_user_data_guard_api import (
-    api_pro_user_data_guard_clients,
-    api_pro_user_data_guard_tables,
-    api_pro_user_data_guard_preview,
-    api_pro_user_data_guard_generate_code,
-    api_pro_user_data_guard_delete,
-)
 
-from .pro_user_super_mode_api import (
-    api_pro_user_super_mode_users,
-    api_pro_user_super_mode_assign,
-    api_pro_user_super_mode_self,
-)
 from .pro_user_guest_users_api import (
     api_pro_user_guest_users,
     api_pro_user_guest_source_clients,

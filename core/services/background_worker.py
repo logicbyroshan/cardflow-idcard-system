@@ -119,7 +119,6 @@ class _BackgroundWorkerProxy:
             return 'super'
 
         try:
-            from core.services.super_mode_service import SuperModeService
 
             if SuperModeService.is_effective_enabled(task.user):
                 return 'super'

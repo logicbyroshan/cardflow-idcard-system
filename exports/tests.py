@@ -1944,14 +1944,6 @@ class StreamFileResponseSuperModeTests(TestCase):
             role='admin_staff',
         )
 
-        from core.services.super_mode_service import SuperModeService
-
-        SuperModeService.configure_pro_user_self(
-            self.pro_user,
-            enabled=True,
-            ram_mb=750,
-        )
-
     def test_super_mode_large_file_streams_from_ram_without_temp_file(self):
         from exports.utils import stream_file_response
 

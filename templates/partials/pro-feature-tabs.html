@@ -6,26 +6,7 @@
   </a>
   {% endif %}
 
-  {# Super Mode — only for pro_user #}
-  {% if is_pro_user %}
-  <a href="{% url 'pro_user_super_mode' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_super_mode' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_super_mode' %}true{% else %}false{% endif %}">
-    <i class="fa-solid fa-gauge-high"></i> Super Mode
-  </a>
-  {% endif %}
 
-  {# Log Deletion Guard — only for pro_user or explicit perm (exclude super_admin) #}
-  {% if perm_pro_log_deletion_guard or is_pro_user %}
-  <a href="{% url 'pro_user_log_deletion_guard' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_log_deletion_guard' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_log_deletion_guard' %}true{% else %}false{% endif %}">
-    <i class="fa-solid fa-shield"></i> Log Deletion Guard
-  </a>
-  {% endif %}
-
-  {# Data Deletion Guard — visible to pro_user, super_admin, and admin_staff #}
-  {% if perm_pro_data_deletion_guard or is_pro_user or is_super_admin %}
-  <a href="{% url 'pro_user_data_deletion_guard' %}" class="pro-feature-tab{% if pro_tab == 'pro_user_data_deletion_guard' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'pro_user_data_deletion_guard' %}true{% else %}false{% endif %}">
-    <i class="fa-solid fa-database"></i> Data Deletion Guard
-  </a>
-  {% endif %}
 
   {# Guest Users — visible to pro_user and super_admin #}
   {% if is_pro_user or is_super_admin %}

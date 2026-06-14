@@ -615,13 +615,11 @@ def stream_file_response(file_bytes, filename, content_type, chunk_size=1024 * 1
     super_mode_active = False
     if user is not None:
         try:
-            from core.services.super_mode_service import SuperModeService
-
-            super_mode_active = bool(SuperModeService.is_effective_enabled(user))
+            super_mode_active = False
             if super_mode_active:
                 stream_chunk_size = max(
                     stream_chunk_size,
-                    int(SuperModeService.download_block_size_bytes(user) or stream_chunk_size),
+                    stream_chunk_size,
                 )
         except Exception:
             logger.exception('Failed resolving Super Mode stream settings for %s', filename)

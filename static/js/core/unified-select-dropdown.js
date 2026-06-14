@@ -266,6 +266,46 @@
         entry.signature = currentSig;
         entry.optionsEl.innerHTML = '';
 
+        if (entry.selectEl.getAttribute('data-searchable') === 'true') {
+            var searchWrap = document.createElement('div');
+            searchWrap.className = 'usd-search-wrap';
+            searchWrap.style.padding = '8px';
+            searchWrap.style.borderBottom = '1px solid #e2e8f0';
+            searchWrap.style.position = 'sticky';
+            searchWrap.style.top = '0';
+            searchWrap.style.background = '#fff';
+            searchWrap.style.zIndex = '10';
+
+            var searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'usd-search-input';
+            searchInput.placeholder = 'Search...';
+            searchInput.style.width = '100%';
+            searchInput.style.height = '30px';
+            searchInput.style.padding = '0 8px';
+            searchInput.style.fontSize = '12px';
+            searchInput.style.border = '1px solid #cbd5e1';
+            searchInput.style.borderRadius = '4px';
+
+            searchInput.addEventListener('input', function(e) {
+                var val = e.target.value.toLowerCase();
+                var items = entry.optionsEl.querySelectorAll('.dropdown-option');
+                items.forEach(function(item) {
+                    if (item.textContent.toLowerCase().indexOf(val) > -1) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+
+            searchWrap.addEventListener('click', function(e) { e.stopPropagation(); });
+            searchInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+
+            searchWrap.appendChild(searchInput);
+            entry.optionsEl.appendChild(searchWrap);
+        }
+
         var options = entry.selectEl.options || [];
         for (var i = 0; i < options.length; i += 1) {
             var opt = options[i];

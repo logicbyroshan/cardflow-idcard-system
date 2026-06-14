@@ -26,7 +26,6 @@ from django.views.decorators.http import require_http_methods
 from core.models import BackupTask
 from core.services.activity_service import ActivityService
 from core.services.permission_service import require_permission, api_require_permission, PermissionService
-from core.services.super_mode_service import SuperModeService
 from client.models import Client
 
 logger = logging.getLogger(__name__)
@@ -314,7 +313,6 @@ def api_backup_download(request, task_id):
         as_attachment=True,
         filename=filename,
     )
-    response.block_size = SuperModeService.download_block_size_bytes(request.user)
     return response
 
 

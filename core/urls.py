@@ -84,9 +84,6 @@ urlpatterns = [
 
     # Backward-compatible deep-history list URL (redirects to User Options)
     path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
-    path('pro-user/log-deletion-guard/', views.pro_user_log_deletion_guard_page, name='pro_user_log_deletion_guard'),
-    path('pro-user/data-deletion-guard/', views.pro_user_data_deletion_guard_page, name='pro_user_data_deletion_guard'),
-    path('pro-user/super-mode/', views.pro_user_super_mode_page, name='pro_user_super_mode'),
     path('pro-user/guest-users/', views.pro_user_guest_users_page, name='pro_user_guest_users'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
     
@@ -237,14 +234,6 @@ urlpatterns = [
     path('api/activity-logs/clear/', views.api_clear_activity_logs, name='api_clear_activity_logs'),
 
     # Pro User data deletion guard API
-    path('api/pro-user/data-guard/clients/', views.api_pro_user_data_guard_clients, name='api_pro_user_data_guard_clients'),
-    path('api/pro-user/data-guard/tables/', views.api_pro_user_data_guard_tables, name='api_pro_user_data_guard_tables'),
-    path('api/pro-user/data-guard/preview/', views.api_pro_user_data_guard_preview, name='api_pro_user_data_guard_preview'),
-    path('api/pro-user/data-guard/generate-code/', views.api_pro_user_data_guard_generate_code, name='api_pro_user_data_guard_generate_code'),
-    path('api/pro-user/data-guard/delete/', views.api_pro_user_data_guard_delete, name='api_pro_user_data_guard_delete'),
-    path('api/pro-user/super-mode/users/', views.api_pro_user_super_mode_users, name='api_pro_user_super_mode_users'),
-    path('api/pro-user/super-mode/assign/', views.api_pro_user_super_mode_assign, name='api_pro_user_super_mode_assign'),
-    path('api/pro-user/super-mode/self/', views.api_pro_user_super_mode_self, name='api_pro_user_super_mode_self'),
     path('api/pro-user/guest-users/', views.api_pro_user_guest_users, name='api_pro_user_guest_users'),
     path('api/pro-user/guest-users/clients/', views.api_pro_user_guest_source_clients, name='api_pro_user_guest_source_clients'),
     path('api/pro-user/guest-users/create/', views.api_pro_user_guest_user_create, name='api_pro_user_guest_user_create'),
@@ -259,7 +248,6 @@ urlpatterns = [
     path('api/profile/update/', views.api_update_profile, name='api_update_profile'),
     path('api/profile/change-password/', views.api_change_password, name='api_change_password'),
     path('api/profile/security-settings/update/', views.api_update_security_settings, name='api_update_security_settings'),
-    path('api/profile/super-mode/toggle/', views.api_toggle_super_mode, name='api_toggle_super_mode'),
     path('api/profile/upload-image/', views.api_upload_profile_image, name='api_upload_profile_image'),
     path('api/profile/remove-image/', views.api_remove_profile_image, name='api_remove_profile_image'),
 

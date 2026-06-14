@@ -26,7 +26,6 @@ from ..services import IDCardService
 from ..services.activity_service import ActivityService
 from ..services.cache_version_service import CacheVersionService
 from ..services.live_presence_service import LiveClientPresenceService
-from ..services.super_mode_service import SuperModeService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
@@ -376,45 +375,6 @@ def pro_user_activity_logs_page(request):
     return redirect('login_as_user')
 
 
-@login_required
-def pro_user_log_deletion_guard_page(request):
-    """Dedicated page for Pro User guarded activity-log deletion controls."""
-    if not PermissionService.can_use_pro_log_deletion_guard(request.user):
-        return redirect('dashboard')
-    context = {
-        'active_page': 'pro_user_log_deletion_guard',
-        'user_role': get_user_role(request.user),
-    }
-    return render(request, 'pro_user/log-deletion-guard.html', context)
-
-
-@login_required
-def pro_user_data_deletion_guard_page(request):
-    """Dedicated page for Pro User guarded permanent data deletion controls."""
-    if not PermissionService.can_use_pro_data_deletion_guard(request.user):
-        return redirect('dashboard')
-
-    context = {
-        'active_page': 'pro_user_data_deletion_guard',
-        'user_role': get_user_role(request.user),
-    }
-    return render(request, 'pro_user/data-deletion-guard.html', context)
-
-
-@login_required
-def pro_user_super_mode_page(request):
-    """Dedicated page for Pro User Super Mode assignment and self controls."""
-    if not PermissionService.is_pro_user(request.user):
-        return redirect('dashboard')
-
-    self_status = SuperModeService.build_status(request.user)
-    context = {
-        'active_page': 'pro_user_super_mode',
-        'user_role': get_user_role(request.user),
-        'super_mode_self': self_status,
-        'super_mode_self_options': SuperModeService.allowed_options_for_role(request.user),
-    }
-    return render(request, 'pro_user/super-mode-manager.html', context)
 
 
 @login_required

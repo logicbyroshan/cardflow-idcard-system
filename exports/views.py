@@ -23,7 +23,6 @@ from django.shortcuts import get_object_or_404
 
 from idcards.models import IDCardTable
 from core.services.permission_service import PermissionService
-from core.services.super_mode_service import SuperModeService
 from accounts.rate_limit import rate_limit
 
 from django.core.cache import cache as django_cache
@@ -652,11 +651,6 @@ def _acquire_export_lock(user_id, table_id, export_type='generic', max_concurren
     Returns (acquired: bool, lock_key: str).
     """
     effective_max_concurrent = max(1, int(max_concurrent or 1))
-    if request_user is not None:
-        try:
-            effective_max_concurrent += int(SuperModeService.calculate_export_lock_boost(request_user) or 0)
-        except Exception:
-            logger.exception('Failed resolving Super Mode lock boost for export_type=%s', export_type)
     effective_max_concurrent = max(1, min(effective_max_concurrent, 10))
 
     for slot in range(effective_max_concurrent):
@@ -944,7 +938,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         return JsonResponse({'success': False, 'level': 'warning', 'message': _GLOBAL_THROTTLE_MSG}, status=429)
     try:
         service = ExportService(request.user)
-        allow_large_exports = bool(is_super_admin or SuperModeService.is_effective_enabled(request.user))
+        allow_large_exports = is_super_admin
 
         result = service.export_word(
             table_id,
@@ -1306,7 +1300,7 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         if mode_perm_error:
             return mode_perm_error
         is_pdf_zip_mode = bool(rename_options and rename_options.get('output_format') == 'pdf_zip')
-        allow_large_exports = bool(is_super_admin or SuperModeService.is_effective_enabled(request.user))
+        allow_large_exports = is_super_admin
 
         result = service.export_images(
             table_id,

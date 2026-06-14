@@ -182,6 +182,7 @@ label,
   font-size: var(--ui-consistent-table-body-font-size) !important;
   font-weight: var(--ui-consistent-table-body-font-weight) !important;
   line-height: 1.3 !important;
+  text-transform: uppercase !important;
 }
 
 /* Keep action cells from drifting back to tiny icon rendering. */

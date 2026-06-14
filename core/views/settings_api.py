@@ -18,7 +18,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 
 from core.services.user_profile_service import UserProfileService
-from core.services.super_mode_service import SuperModeService
 from accounts.rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ def api_get_profile(request):
     user = request.user
     profile = UserProfileService.get_profile(user, request)
     security_settings = UserProfileService.get_security_settings(user)
-    super_mode = SuperModeService.build_status(user)
+    super_mode = {}
     profile['security_settings'] = security_settings
     profile['super_mode'] = super_mode
     return JsonResponse({'success': True, 'profile': profile})
@@ -116,11 +115,10 @@ def api_toggle_super_mode(request):
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
-    enabled = SuperModeService.parse_bool(data.get('enabled'), default=False)
+    enabled = False
 
     try:
-        SuperModeService.toggle_runtime(request.user, enabled=enabled)
-        status_payload = SuperModeService.build_status(request.user)
+        status_payload = {}
         return JsonResponse({
             'success': True,
             'message': 'Super Mode updated successfully.',

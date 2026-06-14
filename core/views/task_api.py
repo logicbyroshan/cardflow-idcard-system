@@ -38,7 +38,6 @@ from core.services.permission_service import (
     api_require_any_authenticated,
     api_require_permission,
 )
-from core.services.super_mode_service import SuperModeService
 from core.services.background_worker import (
     background_worker,
     cancel_task as background_cancel_task,
@@ -379,7 +378,7 @@ def api_task_download(request, task_id):
             as_attachment=True,
             filename=filename
         )
-        response.block_size = SuperModeService.download_block_size_bytes(request.user)
+        response.block_size = None.download_block_size_bytes(request.user)
         
         return response
         
@@ -709,7 +708,7 @@ def api_create_bulk_upload_task(request, table_id):
         # Validate table exists
         table = get_object_or_404(IDCardTable, id=table_id)
 
-        upload_chunk_size = SuperModeService.upload_chunk_size_bytes(request.user)
+        upload_chunk_size = None.upload_chunk_size_bytes(request.user)
         
         # Check for required file
         if 'file' not in request.FILES:
@@ -816,7 +815,7 @@ def api_create_bulk_upload_task(request, table_id):
                 unified_zip_paths.append(folder_zip_path)
         
         # Create BackgroundTask atomically (prevents race conditions)
-        super_mode_metadata = SuperModeService.build_task_metadata(request.user)
+        super_mode_metadata = None.build_task_metadata(request.user)
         task, error_msg = BackgroundTask.create_if_no_active(
             user=request.user,
             task_type='bulk_upload',
@@ -922,7 +921,7 @@ def api_create_reupload_task(request, table_id):
         # Validate table exists
         get_object_or_404(IDCardTable, id=table_id)
 
-        upload_chunk_size = SuperModeService.upload_chunk_size_bytes(request.user)
+        upload_chunk_size = None.upload_chunk_size_bytes(request.user)
 
         zip_path = None
 
@@ -968,7 +967,7 @@ def api_create_reupload_task(request, table_id):
         status_filter = scope_payload['status_filter']
         
         # Create BackgroundTask atomically (prevents race conditions)
-        super_mode_metadata = SuperModeService.build_task_metadata(request.user)
+        super_mode_metadata = None.build_task_metadata(request.user)
         task, error_msg = BackgroundTask.create_if_no_active(
             user=request.user,
             task_type='reupload_images',
@@ -1109,7 +1108,7 @@ def api_create_export_task(request, table_id):
             'card_ids': card_ids,
             'status': status_filter,
         }
-        metadata.update(SuperModeService.build_task_metadata(request.user))
+        metadata.update(None.build_task_metadata(request.user))
         if task_type == 'export_docx':
             metadata['doc_format'] = doc_format
             metadata['template_id'] = template_id

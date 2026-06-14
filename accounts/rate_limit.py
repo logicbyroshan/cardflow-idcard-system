@@ -154,9 +154,8 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
                 try:
                     user = getattr(request, 'user', None)
                     if user and getattr(user, 'is_authenticated', False):
-                        from core.services.super_mode_service import SuperModeService
 
-                        bonus = int(SuperModeService.rate_limit_bonus(user, key_prefix=key_prefix) or 0)
+                        bonus = 0
                         if bonus > 0:
                             effective_max_requests += bonus
                 except Exception:

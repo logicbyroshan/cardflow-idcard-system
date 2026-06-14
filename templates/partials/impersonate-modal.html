@@ -219,7 +219,7 @@
       html += '<div class="imp-user-card" onclick="window.__startImpersonation(' + u.id + ')" title="Login as ' + _escHtml(u.name) + '">'
         + '<div class="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style="background:' + _roleColor(u.role) + '">' + initial + '</div>'
         + '<div class="flex-1 min-w-0">'
-        + '<div class="text-[#f8fafc] text-sm font-medium truncate">' + _escHtml(u.name) + '</div>'
+        + '<div class="text-[#f8fafc] text-sm font-medium truncate uppercase">' + _escHtml(u.name) + '</div>'
         + '<div class="text-[#718096] text-xs truncate">' + _escHtml(u.email) + '</div>'
         + '</div>'
         + '<span class="imp-role-badge role-' + u.role + '">' + _escHtml(u.role_display) + '</span>'

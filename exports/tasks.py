@@ -106,7 +106,6 @@ class BackgroundExportManager:
         """
         from core.models import BackgroundTask
         from core.services.task_queue import dispatch_background_task
-        from core.services.super_mode_service import SuperModeService
 
         metadata: Dict[str, Any] = {
             'table_id': table_id,
@@ -117,7 +116,6 @@ class BackgroundExportManager:
             'shorten_titles': bool(shorten_titles),
             'break_mode': 'class_only' if str(break_mode or '').strip().lower() == 'class_only' else 'class_section',
         }
-        metadata.update(SuperModeService.build_task_metadata(user))
 
         task, error = BackgroundTask.create_if_no_active(
             user=user,
@@ -162,14 +160,12 @@ class BackgroundExportManager:
         """Enqueue an Excel export and return a task_id string."""
         from core.models import BackgroundTask
         from core.services.task_queue import dispatch_background_task
-        from core.services.super_mode_service import SuperModeService
 
         metadata: Dict[str, Any] = {
             'table_id': table_id,
             'card_ids': list(card_ids) if card_ids else [],
             'status': status,
         }
-        metadata.update(SuperModeService.build_task_metadata(user))
 
         task, error = BackgroundTask.create_if_no_active(
             user=user,
@@ -209,7 +205,6 @@ class BackgroundExportManager:
         """Enqueue a Word export and return a task_id string."""
         from core.models import BackgroundTask
         from core.services.task_queue import dispatch_background_task
-        from core.services.super_mode_service import SuperModeService
 
         metadata: Dict[str, Any] = {
             'table_id': table_id,
@@ -219,7 +214,6 @@ class BackgroundExportManager:
             'doc_format': 'docx',
             'template_id': template_id,
         }
-        metadata.update(SuperModeService.build_task_metadata(user))
 
         task, error = BackgroundTask.create_if_no_active(
             user=user,
