@@ -1539,3 +1539,5 @@ document.addEventListener('DOMContentLoaded', function() {
         loadReprintOverview();
     }
 });
+
+window.filterBulkClients = function() { var input = document.getElementById(bulkClientSearch); var filter = input.value.toUpperCase(); var select = document.getElementById(bulkClientSelect); var options = select.getElementsByTagName(option); for (var i = 0; i < options.length; i++) { if (options[i].value === ") continue; var txtValue = options[i].textContent || options[i].innerText; if (txtValue.toUpperCase().indexOf(filter) > -1) { options[i].style.display = ; } else { options[i].style.display = none; } } }

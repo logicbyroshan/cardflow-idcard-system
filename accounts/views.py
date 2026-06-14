@@ -194,6 +194,11 @@ class LogoutView(View):
                         }, status=400)
                     return redirect('/panel/?pro_logout_blocked=1')
 
+            # Sandbox Cleanup
+            if getattr(request.user, 'role', '') == 'guest_user' and request.user.username.startswith('guestclone_'):
+                from client.services_sandbox import SandboxService
+                SandboxService.cleanup_clone(request.user.id)
+
             ActivityService.log_logout(request, request.user)
         logout(request)
         # Respect ?next= or POST body next (e.g. from PWA logout)
@@ -337,6 +342,13 @@ class LoginAPIView(View):
             
             if result['success']:
                 user = result['user']
+                
+                # Clone guest user for strict session sandbox isolation
+                if getattr(user, 'role', '') == 'guest_user':
+                    from client.services_sandbox import SandboxService
+                    user = SandboxService.create_session_clone(user)
+                    result['user'] = user
+
                 resolved_role = getattr(user, 'role', '')
                 browser_fingerprint = AuthService.browser_fingerprint_from_request(request)
                 current_session_key = ''

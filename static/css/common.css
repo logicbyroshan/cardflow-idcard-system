@@ -2545,3 +2545,11 @@ body.bulk-operation-active #blockingOverlay * {
   border-radius: 8px !important;
 }
 
+
+/* User requested all tables to use ALL CAPS */
+table.table td, table.table th, .uppercase { text-transform: uppercase !important; }
+
+.verify-code { letter-spacing: 0 !important; font-size: 18px !important; } .recent-updates-search-box { width: 100% !important; max-width: none !important; flex: 1; }
+
+/* Added global uppercase to fulfill requirements */
+table.table td, table.table th, td, th, select, select option, .client-card, .operator-card, .impersonate-user { text-transform: uppercase !important; }

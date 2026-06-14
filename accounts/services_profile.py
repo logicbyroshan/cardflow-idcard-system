@@ -36,47 +36,6 @@ class UserProfileService:
         return f'user_security:{user_id}:{field_name}'
 
     @staticmethod
-    def _guest_sandbox_key(request, user_id):
-        if request is None or not hasattr(request, 'session'):
-            return ''
-
-        session_key = getattr(request.session, 'session_key', '') or ''
-        if not session_key:
-            try:
-                request.session.save()
-            except Exception:
-                return ''
-            session_key = getattr(request.session, 'session_key', '') or ''
-
-        if not session_key:
-            return ''
-
-        return f'guest_sandbox:{session_key}'
-
-    @staticmethod
-    def _guest_sandbox_legacy_key(user_id):
-        return f'guest_sandbox:{user_id}'
-
-    @classmethod
-    def _get_guest_sandbox_overrides(cls, user, request):
-        if getattr(user, 'role', '') != 'guest_user' or request is None or not hasattr(request, 'session'):
-            return {}, ''
-
-        sandbox_key = cls._guest_sandbox_key(request, user.id)
-        legacy_key = cls._guest_sandbox_legacy_key(user.id)
-
-        if sandbox_key:
-            overrides = request.session.get(sandbox_key)
-            if overrides is None:
-                overrides = request.session.get(legacy_key, {}) or {}
-                if overrides:
-                    request.session[sandbox_key] = dict(overrides)
-                    request.session.modified = True
-            return dict(overrides or {}), sandbox_key
-
-        return dict(request.session.get(legacy_key, {}) or {}), legacy_key
-
-    @staticmethod
     def _to_bool(value):
         if isinstance(value, bool):
             return value
@@ -90,41 +49,6 @@ class UserProfileService:
         Returns (success: bool, message: str, profile_data: dict|None).
         """
         from core.models import User
-
-        # For guest/sandbox users we keep profile changes session-scoped.
-        if getattr(user, 'role', '') == 'guest_user' and request is not None:
-            try:
-                overrides, sandbox_key = UserProfileService._get_guest_sandbox_overrides(user, request)
-                # Only allow these fields to be overridden in-session
-                allowed = {'first_name', 'last_name', 'username', 'email', 'phone'}
-                for k in allowed:
-                    if k in data:
-                        val = data[k].strip() if isinstance(data[k], str) else data[k]
-                        if val:
-                            overrides[k] = val
-                        else:
-                            overrides.pop(k, None)
-                request.session[sandbox_key] = overrides
-                request.session.modified = True
-
-                # Build profile payload from session overrides merged with real user
-                merged = {
-                    'first_name': overrides.get('first_name', user.first_name),
-                    'last_name': overrides.get('last_name', user.last_name),
-                    'username': overrides.get('username', user.username),
-                    'email': overrides.get('email', user.email),
-                    'phone': overrides.get('phone', getattr(user, 'phone', '') or ''),
-                }
-                full_name = (merged.get('first_name') or '') + ' ' + (merged.get('last_name') or '')
-                full_name = full_name.strip() or merged.get('username')
-                return True, 'Profile updated (sandbox)', {
-                    'full_name': full_name,
-                    'email': merged.get('email') or '',
-                    'username': merged.get('username') or '',
-                }
-            except Exception as e:
-                logger.exception('Guest sandbox profile update failed: %s', e)
-                return False, 'Failed to update sandbox profile', None
 
         with transaction.atomic():
             if 'first_name' in data:
@@ -252,21 +176,12 @@ class UserProfileService:
 
     @staticmethod
     def get_profile(user, request=None):
-        """Return merged profile data, applying session sandbox overrides for guests."""
-        # If a guest user with a session sandbox exists, merge overrides
-        if getattr(user, 'role', '') == 'guest_user' and request is not None:
-            overrides, _sandbox_key = UserProfileService._get_guest_sandbox_overrides(user, request)
-            first_name = overrides.get('first_name', user.first_name)
-            last_name = overrides.get('last_name', user.last_name)
-            username = overrides.get('username', user.username)
-            email = overrides.get('email', user.email)
-            phone = overrides.get('phone', getattr(user, 'phone', '') or '')
-        else:
-            first_name = user.first_name
-            last_name = user.last_name
-            username = user.username
-            email = user.email
-            phone = getattr(user, 'phone', '') or ''
+        """Return profile data."""
+        first_name = user.first_name
+        last_name = user.last_name
+        username = user.username
+        email = user.email
+        phone = getattr(user, 'phone', '') or ''
 
         full_name = (first_name or '') + ' ' + (last_name or '')
         full_name = full_name.strip() or username
