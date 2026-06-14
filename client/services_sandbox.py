@@ -3,7 +3,7 @@ import logging
 from django.db import transaction
 from core.models import User
 from client.models import Client
-from idcards.models import IDCardSetting, IDCardGroup
+from idcards.models import IDCardTable, IDCardGroup
 
 logger = logging.getLogger(__name__)
 
@@ -67,20 +67,23 @@ class SandboxService:
                     setattr(cloned_client, perm, getattr(original_client, perm, False))
                 cloned_client.save()
                 
-                # Clone IDCardSettings (Templates)
-                for setting in IDCardSetting.objects.filter(client=original_client):
-                    # Duplicate the setting by removing pk
-                    setting_clone = IDCardSetting.objects.get(id=setting.id)
-                    setting_clone.pk = None
-                    setting_clone.client = cloned_client
-                    setting_clone.save()
-                    
-                # Clone IDCardGroups (Optional, but good for table grouping)
+                # Clone IDCardGroups and their Tables
                 for group in IDCardGroup.objects.filter(client=original_client):
+                    # Get original tables before cloning the group
+                    original_tables = list(IDCardTable.objects.filter(group=group))
+                    
+                    # Duplicate the group
                     group_clone = IDCardGroup.objects.get(id=group.id)
                     group_clone.pk = None
                     group_clone.client = cloned_client
                     group_clone.save()
+                    
+                    # Clone tables for this group
+                    for table in original_tables:
+                        table_clone = IDCardTable.objects.get(id=table.id)
+                        table_clone.pk = None
+                        table_clone.group = group_clone
+                        table_clone.save()
                 
                 logger.info("Created guest sandbox clone: %s (from user %s)", clone_username, original_user.id)
                 return cloned_user
