@@ -1179,10 +1179,15 @@ function requestListStep() {
         }
       }
 
-      await performSendToPrint(rrIds, {
-        successMessage: modeLabel + ' request item(s) downloaded and moved to Confirmed List (' + moveCount + ')',
-        silentErrorToast: true,
-      });
+      var shouldMove = (exportType === 'docx' || exportType === 'xlsx');
+      if (shouldMove) {
+        await performSendToPrint(rrIds, {
+          successMessage: modeLabel + ' request item(s) downloaded and moved to Confirmed List (' + moveCount + ')',
+          silentErrorToast: true,
+        });
+      } else {
+        showToast(modeLabel + ' request item(s) downloaded successfully (' + moveCount + ')', 'success');
+      }
     } catch (err) {
       showToast((err && err.message) ? err.message : 'Download failed. Please try again.', 'error');
       console.error('[RequestList] download failed:', err);
