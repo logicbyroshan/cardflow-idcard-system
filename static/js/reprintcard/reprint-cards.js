@@ -979,6 +979,7 @@ function requestListStep() {
   var rejectBtn = document.getElementById('requestRejectBtn');
   var editBtn = document.getElementById('requestEditBtn');
   var viewBtn = document.getElementById('requestViewBtn');
+  var reuploadImageBtn = document.getElementById('requestReuploadImageBtn');
   var fromDateInput = document.getElementById('requestFromDate');
   var toDateInput = document.getElementById('requestToDate');
   var clearDateFilterBtn = document.getElementById('requestClearDateFilterBtn');
@@ -1259,6 +1260,20 @@ function requestListStep() {
     });
   }
 
+  if (reuploadImageBtn) {
+    reuploadImageBtn.addEventListener('click', async function() {
+      this.disabled = true;
+      try {
+        var cardIds = getAllVisibleCardIds();
+        if (window.IDCardApp && typeof window.IDCardApp.reuploadImages === 'function') {
+          window.IDCardApp.reuploadImages(cardIds);
+        }
+      } finally {
+        this.disabled = false;
+      }
+    });
+  }
+
   function removeRowsByIds(rrIds) {
     rrIds.forEach(function(id) {
       var row = tableBody.querySelector('tr[data-rr-id="' + id + '"]');
@@ -1457,6 +1472,7 @@ function confirmedListStep() {
   var editBtn = document.getElementById('confirmedEditBtn');
   var retrieveBtn = document.getElementById('confirmedRetrieveBtn');
   var viewBtn = document.getElementById('confirmedViewBtn');
+  var reuploadImageBtn = document.getElementById('confirmedReuploadImageBtn');
   var showingRange = document.getElementById('confirmedShowingRange');
   var totalCountEl = document.getElementById('confirmedTotalCount');
   var currentQuery = '';
@@ -1591,6 +1607,20 @@ function confirmedListStep() {
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
       openCardDrawer('edit', ids[0]);
+    });
+  }
+
+  if (reuploadImageBtn) {
+    reuploadImageBtn.addEventListener('click', async function() {
+      this.disabled = true;
+      try {
+        var cardIds = getAllVisibleCardIds();
+        if (window.IDCardApp && typeof window.IDCardApp.reuploadImages === 'function') {
+          window.IDCardApp.reuploadImages(cardIds);
+        }
+      } finally {
+        this.disabled = false;
+      }
     });
   }
 
@@ -1841,6 +1871,16 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
   if (!evt || !evt.target) return;
   if (evt.target.matches && evt.target.matches('main.reprint-cards-page')) {
     initReprintCardsPage();
+  }
+});
+
+// Initialize the reupload modal handlers once all deferred scripts have loaded.
+// idcard-actions-download-init.js (loaded after this file) exposes initReuploadHandlers
+// via window.IDCardApp. We call it on window load so the modal DOM is wired before
+// any user interaction.
+window.addEventListener('load', function() {
+  if (window.IDCardApp && typeof window.IDCardApp.initReuploadHandlers === 'function') {
+    window.IDCardApp.initReuploadHandlers();
   }
 });
 

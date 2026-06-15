@@ -19,6 +19,12 @@
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
+        {% if not is_client and not is_client_staff %}
+        <button class="btn action-btn btn-amber" id="confirmedReuploadImageBtn" title="Reupload images from ZIP">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span class="btn-text">Reupload Image</span>
+        </button>
+        {% endif %}
         <div class="action-divider"></div>
         <button class="btn action-btn btn-blue" id="confirmedDownloadPdfBtn" title="Download as PDF">
             <i class="fa-solid fa-file-pdf"></i>

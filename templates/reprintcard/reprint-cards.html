@@ -54,11 +54,13 @@
   {% include 'partials/idcard/side-modal.html' %}
   {% include 'partials/components/toast.html' %}
   {% include 'reprintcard/partials/reprint-confirm-modal.html' %}
+  {% include 'partials/idcard/modal-reupload-images.html' %}
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'js/core/unified-select-dropdown.js' %}"></script>
   <script defer src="{% static 'dist/js/cardprint-shared.min.js' %}"></script>
   <script defer src="{% static 'js/vendor/flatpickr.min.js' %}"></script>
   <script defer src="{% static 'js/reprintcard/reprint-cards.js' %}"></script>
+  <script defer src="{% static 'js/idcard-actions-download-init.js' %}"></script>
   <script defer src="{% static 'js/card-history-drawer.js' %}"></script>
   <script>
     (function() {
