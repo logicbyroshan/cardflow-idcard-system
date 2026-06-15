@@ -1929,14 +1929,8 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertFalse(exporter._is_hindi_abbasi_font('arial'))
 
 
-class StreamFileResponseSuperModeTests(TestCase):
+class StreamFileResponseTests(TestCase):
     def setUp(self):
-        self.pro_user = User.objects.create_user(
-            username='stream-pro@test.com',
-            email='stream-pro@test.com',
-            password='pass12345',
-            role='pro_user',
-        )
         self.normal_user = User.objects.create_user(
             username='stream-normal@test.com',
             email='stream-normal@test.com',
@@ -1944,24 +1938,7 @@ class StreamFileResponseSuperModeTests(TestCase):
             role='admin_staff',
         )
 
-    def test_super_mode_large_file_streams_from_ram_without_temp_file(self):
-        from exports.utils import stream_file_response
-
-        payload = b'A' * (11 * 1024 * 1024)
-
-        with mock.patch('tempfile.NamedTemporaryFile', side_effect=AssertionError('temp spool should not run')):
-            response = stream_file_response(
-                payload,
-                'super.bin',
-                'application/octet-stream',
-                user=self.pro_user,
-            )
-            streamed = b''.join(response.streaming_content)
-
-        self.assertEqual(streamed, payload)
-        self.assertEqual(int(response['Content-Length']), len(payload))
-
-    def test_non_super_mode_large_file_keeps_existing_temp_spool_behavior(self):
+    def test_large_file_keeps_existing_temp_spool_behavior(self):
         import tempfile
         from exports.utils import stream_file_response
 

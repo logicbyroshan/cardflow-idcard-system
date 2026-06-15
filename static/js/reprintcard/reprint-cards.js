@@ -548,14 +548,16 @@ function getCsrfToken() {
     return window.getCSRFToken();
   }
 
+  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+  if (match) return decodeURIComponent(match[1]);
+
   var meta = document.querySelector('meta[name="csrf-token"]');
   if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
 
   var hidden = document.querySelector('input[name="csrfmiddlewaretoken"]');
   if (hidden && hidden.value) return hidden.value;
 
-  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
+  return '';
 }
 
 function getSessionRefreshUrl() {
