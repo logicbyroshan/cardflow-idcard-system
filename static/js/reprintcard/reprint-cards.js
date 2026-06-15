@@ -1455,6 +1455,7 @@ function confirmedListStep() {
   var downloadXlsxBtn = document.getElementById('confirmedDownloadXlsxBtn');
   var downloadImagesBtn = document.getElementById('confirmedDownloadImagesBtn');
   var editBtn = document.getElementById('confirmedEditBtn');
+  var retrieveBtn = document.getElementById('confirmedRetrieveBtn');
   var viewBtn = document.getElementById('confirmedViewBtn');
   var showingRange = document.getElementById('confirmedShowingRange');
   var totalCountEl = document.getElementById('confirmedTotalCount');
@@ -1485,6 +1486,11 @@ function confirmedListStep() {
       .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
   }
 
+  function getSelectedRrIds() {
+    return getCheckboxes().filter(function(cb) { return cb.checked; })
+      .map(function(cb) { return parseInt(cb.closest('tr').dataset.rrId, 10); });
+  }
+
   function getAllVisibleCardIds() {
     return getCheckboxes().map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
   }
@@ -1504,6 +1510,7 @@ function confirmedListStep() {
     if (downloadXlsxBtn) downloadXlsxBtn.disabled = totalRows === 0;
     if (downloadImagesBtn) downloadImagesBtn.disabled = totalRows === 0;
     if (editBtn) editBtn.disabled = count !== 1;
+    if (retrieveBtn) retrieveBtn.disabled = count === 0;
     if (paginator) paginator.updateSelectionCount(count);
 
     if (selectAllCb) {
@@ -1584,6 +1591,22 @@ function confirmedListStep() {
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
       openCardDrawer('edit', ids[0]);
+    });
+  }
+
+  if (retrieveBtn) {
+    retrieveBtn.addEventListener('click', async function() {
+      var ids = getSelectedRrIds();
+      if (!ids.length) return;
+      var ok = await showConfirm({
+        title: 'Retrieve Requests?',
+        text: 'Retrieve ' + ids.length + ' selected confirmed request(s) back to Request List?',
+        icon: 'fa-solid fa-rotate-left',
+        confirmLabel: 'Retrieve',
+        hideWarning: true,
+      });
+      if (!ok) return;
+      performRetrieve(ids);
     });
   }
 
