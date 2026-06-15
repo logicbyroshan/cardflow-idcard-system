@@ -1266,7 +1266,11 @@ function requestListStep() {
       try {
         var cardIds = getAllVisibleCardIds();
         if (window.IDCardApp && typeof window.IDCardApp.reuploadImages === 'function') {
+          // Temporarily set CURRENT_STATUS so the modal label shows "Request List"
+          var _prev = window.CURRENT_STATUS;
+          window.CURRENT_STATUS = 'request';
           window.IDCardApp.reuploadImages(cardIds);
+          window.CURRENT_STATUS = _prev;
         }
       } finally {
         this.disabled = false;
@@ -1616,7 +1620,11 @@ function confirmedListStep() {
       try {
         var cardIds = getAllVisibleCardIds();
         if (window.IDCardApp && typeof window.IDCardApp.reuploadImages === 'function') {
+          // Temporarily set CURRENT_STATUS so the modal label shows "Confirmed List"
+          var _prev = window.CURRENT_STATUS;
+          window.CURRENT_STATUS = 'confirmed';
           window.IDCardApp.reuploadImages(cardIds);
+          window.CURRENT_STATUS = _prev;
         }
       } finally {
         this.disabled = false;
