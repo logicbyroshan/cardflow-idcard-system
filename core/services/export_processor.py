@@ -1,4 +1,4 @@
-﻿"""
+"""
 Backward-compatible shim.
 Canonical location: exports/processor.py
 

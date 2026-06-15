@@ -1,4 +1,4 @@
-﻿"""
+"""
 Notification API Views  (core/views shim)
 ==========================================
 

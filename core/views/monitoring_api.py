@@ -1,4 +1,4 @@
-﻿"""
+"""
 Monitoring API  (core/views shim)
 ==================================
 

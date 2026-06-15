@@ -1,4 +1,4 @@
-﻿"""
+"""
 Backward-compatible shim.
 Canonical location: accounts/services_profile.py
 

@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 
 # CRITICAL: Set RUNNING_TESTS BEFORE DJANGO IMPORTS

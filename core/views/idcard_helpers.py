@@ -395,6 +395,7 @@ def _get_distinct_field_values_cached(table, field_key, variants):
         IDCard.objects.filter(table=table)
         .annotate(_temp_val=coalesce_annotation)
         .exclude(_temp_val='')
+        .order_by()
         .values_list('_temp_val', flat=True)
         .distinct()
     )

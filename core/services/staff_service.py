@@ -1,4 +1,4 @@
-﻿"""
+"""
 Backward-compatible shim.
 Canonical location: staff/services_staff_core.py
 
