@@ -548,11 +548,14 @@ function getCsrfToken() {
     return window.getCSRFToken();
   }
 
-  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
-  if (match) return decodeURIComponent(match[1]);
-
   var meta = document.querySelector('meta[name="csrf-token"]');
   if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+
+  var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  if (match) {
+    var token = decodeURIComponent(match[1]);
+    return token.replace(/^"|"$/g, '');
+  }
 
   var hidden = document.querySelector('input[name="csrfmiddlewaretoken"]');
   if (hidden && hidden.value) return hidden.value;
@@ -1110,17 +1113,39 @@ function requestListStep() {
 
     try {
       if (exportType === 'images') {
-        var imgResp = await fetch(ENDPOINTS.downloadImages, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken(),
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: JSON.stringify(body)
-        });
-        var imgData = await imgResp.json();
-        if (!imgResp.ok || !imgData.success) {
+        async function fetchImages(retried) {
+          var imgResp = await fetch(ENDPOINTS.downloadImages, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCsrfToken(),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(body)
+          });
+          var errText = '';
+          if (!imgResp.ok) {
+            try {
+              var errJson = await imgResp.json();
+              errText = errJson.message || 'Image download failed';
+            } catch (_e) {
+              try {
+                errText = await imgResp.text();
+              } catch (_e2) {}
+            }
+            if (!retried && isSessionExpiredError(imgResp.status, errText)) {
+              var freshToken = await refreshSessionToken();
+              if (freshToken) {
+                return fetchImages(true);
+              }
+            }
+            throw new Error(errText || 'Image download failed');
+          }
+          return imgResp.json();
+        }
+
+        var imgData = await fetchImages(false);
+        if (!imgData || !imgData.success) {
           throw new Error((imgData && imgData.message) || 'Image download failed');
         }
 

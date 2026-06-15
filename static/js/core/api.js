@@ -143,14 +143,15 @@
     // CSRF TOKEN
     // ------------------------------------------
     function getCSRFToken() {
-        // Priority: cookie > meta tag (updated by session-keepalive) > hidden input
-        var cookie = document.cookie.split(';').find(function (c) {
-            return c.trim().startsWith('csrftoken=');
-        });
-        if (cookie) return cookie.split('=')[1];
-
+        // Priority: meta tag (updated by session-keepalive) > cookie > hidden input
         var meta = document.querySelector('meta[name="csrf-token"]');
         if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+
+        var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        if (match) {
+            var token = decodeURIComponent(match[1]);
+            return token.replace(/^"|"$/g, '');
+        }
 
         var hidden = document.querySelector('input[name="csrfmiddlewaretoken"]');
         if (hidden) return hidden.value;
