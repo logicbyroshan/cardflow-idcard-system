@@ -1861,6 +1861,33 @@ function initReprintCardsPage() {
 window.ReprintCards = window.ReprintCards || {};
 window.ReprintCards.reinitialize = initReprintCardsPage;
 
+// Bridge: expose refreshCardTable on IDCardApp so the reupload completion
+// handler in idcard-actions-download-init.js can refresh the reprint page.
+window.IDCardApp = window.IDCardApp || {};
+window.IDCardApp.refreshCardTable = function() {
+  initReprintCardsPage();
+};
+
+// Bridge: collect all visible card IDs from the currently-active step so
+// idcard-actions-download-init.js can pass them to the reupload task.
+window.IDCardApp.getAllCardIdsForAction = function() {
+  // Find which step is currently visible and pull card IDs from its table
+  var stepIds = [
+    'requestTableBody',
+    'confirmedTableBody',
+    'reprintListTableBody',
+  ];
+  for (var i = 0; i < stepIds.length; i++) {
+    var body = document.getElementById(stepIds[i]);
+    if (body && body.offsetParent !== null) {
+      return Array.from(body.querySelectorAll('tr[data-card-id]'))
+        .map(function(tr) { return parseInt(tr.dataset.cardId, 10); })
+        .filter(function(id) { return !isNaN(id); });
+    }
+  }
+  return [];
+};
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initReprintCardsPage);
 } else {
