@@ -46,8 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Phase 1: Profile photo upload removed - using avatar placeholder
 
       function resolveClientLogoUrl(clientData) {
-        if (!clientData || typeof clientData !== 'object') return '';
-        return clientData.logo_url || clientData.website_logo_url || clientData.photo_url || '';
+        return '';
       }
 
       function panelBasePath() {
@@ -58,14 +57,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return panelBasePath() + '/client/' + encodeURIComponent(String(clientId)) + '/settings/';
       }
 
-      function renderClientDrawerAvatar(name, logoUrl) {
-        if (!clientDrawerAvatar) return;
-        if (logoUrl) {
-          var safeName = String(name || 'Client').replace(/"/g, '&quot;');
-          clientDrawerAvatar.innerHTML = '<img src="' + logoUrl + '" alt="' + safeName + '" style="width:56px;height:56px;object-fit:contain;border-radius:10px;border:1px solid #e2e8f0;background:#fff;padding:4px;">';
-          return;
-        }
-        clientDrawerAvatar.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client user-avatar-placeholder--lg"><i class="fa-solid fa-building"></i></div>';
+      function renderClientDrawerAvatar(name, iconClass) {
+        // No clientDrawerAvatar needed since we have a dedicated live preview
       }
 
       // ==================== FORM STATUS DROPDOWN ====================
@@ -301,6 +294,12 @@ document.addEventListener('DOMContentLoaded', function() {
         NS.setClientStatusDropdown('false'); // Default Inactive for new clients
         setClientPasswordHidden();
         renderClientDrawerAvatar('', '');
+        var defaultIcon = 'fa-solid fa-building';
+        var iconInput = document.getElementById('clientIcon');
+        if (iconInput) {
+          iconInput.value = defaultIcon;
+          if (window.updateClientIconPreview) window.updateClientIconPreview(defaultIcon);
+        }
         
         // Phase 1: Photo upload removed - using avatar placeholder
         
@@ -360,6 +359,12 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('clientAddress').value = clientData.address || '';
             NS.setClientStatusDropdown(clientData.status === 'active' ? 'true' : 'false');
             renderClientDrawerAvatar(clientData.name || '', resolveClientLogoUrl(clientData));
+            var iconVal = clientData.icon || 'fa-solid fa-building';
+            var iconInput = document.getElementById('clientIcon');
+            if (iconInput) {
+              iconInput.value = iconVal;
+              if (window.updateClientIconPreview) window.updateClientIconPreview(iconVal);
+            }
             
             // Phase 1: Photo upload removed - using avatar placeholder
             
@@ -393,19 +398,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('viewClientCreated').value = clientData.created_at || '-';
         document.getElementById('viewClientUpdated').value = clientData.updated_at || '-';
         
-        // Update avatar with photo if available
+        // Update avatar with client icon
         var avatarEl = document.getElementById('viewClientAvatar');
-        var resolvedLogoUrl = resolveClientLogoUrl(clientData);
-        if (resolvedLogoUrl) {
-          avatarEl.innerHTML = '';
-          var img = document.createElement('img');
-          img.src = resolvedLogoUrl;
-          img.alt = clientData.name || '';
-          img.className = 'w-full h-full object-contain';
-          img.style.cssText = 'width:48px;height:48px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;padding:4px;';
-          avatarEl.appendChild(img);
-        } else {
-          avatarEl.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client" style="width:48px;height:48px;border-radius:10px;font-size:20px;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-building"></i></div>';
+        if (avatarEl) {
+          var iconClass = String(clientData.icon || 'fa-solid fa-building').replace(/"/g, '&quot;');
+          avatarEl.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client" style="width:48px;height:48px;border-radius:10px;font-size:20px;display:flex;align-items:center;justify-content:center;"><i class="' + iconClass + '"></i></div>';
         }
         
         var statusEl = document.getElementById('viewClientStatus');

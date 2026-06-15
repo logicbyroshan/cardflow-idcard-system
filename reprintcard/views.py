@@ -515,6 +515,8 @@ def reprint_cards(request, table_id):
     context = {
         'active_page': 'manage_clients',
         'user_role': get_user_role(request.user),
+        'is_client': PermissionService.is_client(request.user),
+        'is_client_staff': PermissionService.is_client_staff(request.user),
         'table': table,
         'group': table.group,
         'client': table.group.client,

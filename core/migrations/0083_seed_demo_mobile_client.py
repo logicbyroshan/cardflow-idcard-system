@@ -13,8 +13,9 @@ DEMO_NAME = 'Demo Guest User'
 def seed_demo_mobile_client(apps, schema_editor):
     User = apps.get_model('core', 'User')
     Client = apps.get_model('core', 'Client')
+    db_alias = schema_editor.connection.alias
 
-    user = User.objects.filter(email=DEMO_EMAIL).first() or User.objects.filter(username=DEMO_USERNAME).first()
+    user = User.objects.using(db_alias).filter(email=DEMO_EMAIL).first() or User.objects.using(db_alias).filter(username=DEMO_USERNAME).first()
     if user is None:
         user = User(username=DEMO_USERNAME, email=DEMO_EMAIL, role='guest_user', is_active=True)
     else:
@@ -24,9 +25,9 @@ def seed_demo_mobile_client(apps, schema_editor):
         user.is_active = True
 
     user.password = make_password(DEMO_PASSWORD)
-    user.save()
+    user.save(using=db_alias)
 
-    client = Client.objects.filter(user_id=user.pk).first()
+    client = Client.objects.using(db_alias).filter(user_id=user.pk).first()
     if client is None:
         client = Client(user_id=user.pk, name=DEMO_NAME, status='active', is_guest=True)
 
@@ -43,20 +44,21 @@ def seed_demo_mobile_client(apps, schema_editor):
     client.perm_reprint_request_list = True
     client.perm_confirmed_list = True
     client.perm_idcard_info = True
-    client.save()
+    client.save(using=db_alias)
 
 
 def unseed_demo_mobile_client(apps, schema_editor):
     User = apps.get_model('core', 'User')
     Client = apps.get_model('core', 'Client')
+    db_alias = schema_editor.connection.alias
 
-    client = Client.objects.filter(user__email=DEMO_EMAIL).first() or Client.objects.filter(user__username=DEMO_USERNAME).first()
+    client = Client.objects.using(db_alias).filter(user__email=DEMO_EMAIL).first() or Client.objects.using(db_alias).filter(user__username=DEMO_USERNAME).first()
     if client is not None:
-        client.delete()
+        client.delete(using=db_alias)
 
-    user = User.objects.filter(email=DEMO_EMAIL).first() or User.objects.filter(username=DEMO_USERNAME).first()
+    user = User.objects.using(db_alias).filter(email=DEMO_EMAIL).first() or User.objects.using(db_alias).filter(username=DEMO_USERNAME).first()
     if user is not None:
-        user.delete()
+        user.delete(using=db_alias)
 
 
 class Migration(migrations.Migration):

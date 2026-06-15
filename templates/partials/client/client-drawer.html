@@ -10,27 +10,15 @@
           <input type="hidden" id="clientId" name="clientId" value="">
           <div class="drawer-body">
             
-            <!-- Client Logo Upload Section -->
-            <div class="profile-upload-section flex flex-col items-start gap-3 mb-6">
-              <label class="form-label mb-1">Client Logo</label>
-              <div class="flex items-center gap-4">
-                <div id="clientDrawerLogoPreview" class="client-logo-badge" style="width: 60px; height: 60px; border-radius: 8px; border: 2px dashed #cbd5e1; background: #f8fafc; cursor: pointer;" onclick="document.getElementById('clientLogoInput').click()">
-                  <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-xl"></i>
+            <!-- Client Icon Section -->
+            <div class="form-group mb-6" style="width: 100%;">
+              <label class="form-label mb-1" for="clientIcon">Client Icon (FontAwesome class) <span class="required">*</span></label>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <div id="clientIconPreview" class="user-avatar-placeholder user-avatar-placeholder--client user-avatar-placeholder--lg" style="width: 50px; height: 50px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--color-slate-100); color: var(--color-slate-600); font-size: 20px;">
+                  <i class="fa-solid fa-building" id="clientIconPreviewInner"></i>
                 </div>
-                <div class="flex flex-col gap-1">
-                  <div style="display:flex;gap:6px;align-items:center;">
-                    <button type="button" class="btn btn-xs btn-neutral" onclick="document.getElementById('clientLogoInput').click()">
-                    <i class="fa-solid fa-upload"></i> Upload Logo
-                  </button>
-                    <button type="button" class="btn btn-xs btn-danger" id="removeClientLogoBtn" onclick="removeClientLogo()">
-                      <i class="fa-solid fa-trash"></i> Remove
-                    </button>
-                  </div>
-                  <p class="text-gray-500 m-0 text-2xs">Recommended: 200x200px (PNG/JPG)</p>
-                </div>
+                <input class="form-input" style="flex: 1;" type="text" id="clientIcon" name="icon" placeholder="e.g. fa-solid fa-building" value="fa-solid fa-building" required oninput="updateClientIconPreview(this.value)">
               </div>
-              <input type="file" id="clientLogoInput" name="logo" accept="image/*" class="hidden" onchange="previewClientLogo(this)">
-              <input type="hidden" id="clientLogoRemove" name="remove_logo" value="0">
             </div>
 
             <!-- Client Info Section -->

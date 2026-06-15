@@ -118,13 +118,6 @@ class _BackgroundWorkerProxy:
         if metadata.get('super_mode_active'):
             return 'super'
 
-        try:
-
-            if SuperModeService.is_effective_enabled(task.user):
-                return 'super'
-        except Exception:
-            logger.exception('Failed checking live super mode state for task_id=%s', task_id)
-
         return 'normal'
     
     def submit_task(self, task_id: int):

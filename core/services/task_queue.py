@@ -25,6 +25,15 @@ def _celery_enabled() -> bool:
 
 def dispatch_background_task(task_id: int):
     """Dispatch a task to Celery when available, otherwise use the local worker."""
+    # Check if a guest sandbox database is active in the current thread
+    from core.db_router import GuestSandboxRouter
+    guest_db = GuestSandboxRouter.get_guest_db()
+    if guest_db:
+        from core.services.background_worker import background_worker
+        logger.info('Running task_id=%s synchronously for guest sandbox %s', task_id, guest_db)
+        background_worker._process_task(task_id)
+        return {'backend': 'synchronous', 'status': 'processed'}
+
     if _celery_enabled():
         try:
             from core.tasks import process_background_task

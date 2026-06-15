@@ -139,9 +139,7 @@ urlpatterns = [
     path('api/client/<int:client_id>/staff/<int:staff_id>/toggle-status/', views.api_client_staff_toggle_status, name='api_client_staff_toggle_status'),
     path('api/client/<int:client_id>/staff/<int:staff_id>/permissions/', views.api_client_staff_permissions, name='api_client_staff_permissions'),
     path('api/client/<int:client_id>/set-temp-password/', views.api_client_set_temp_password, name='api_client_set_temp_password'),
-    path('api/client/<int:client_id>/logo/', views.api_client_logo_get, name='api_client_logo_get'),
-    path('api/client/<int:client_id>/logo/upload/', views.api_client_logo_upload, name='api_client_logo_upload'),
-    path('api/client/<int:client_id>/logo/delete/', views.api_client_logo_delete, name='api_client_logo_delete'),
+
     path('api/client/<int:client_id>/messages/', views.api_client_messages, name='api_client_messages'),
     path('api/client/<int:client_id>/messages/send/', views.api_client_message_send, name='api_client_message_send'),
     path('api/client/messages/targets/', views.api_client_message_targets, name='api_client_message_targets'),

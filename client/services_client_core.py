@@ -76,7 +76,6 @@ class ClientService(BaseService):
     @classmethod
     def serialize(cls, client: Client, include_permissions: bool = True) -> Dict[str, Any]:
         """Serialize Client instance to dict"""
-        logo_url = client.logo.url if client.logo else None
         data = {
             'id': client.id,
             'name': client.name,
@@ -88,9 +87,10 @@ class ClientService(BaseService):
             'state': client.state or '',
             'pincode': client.pincode or '',
             'status': client.status,
-            # Keep photo_url key for existing UI compatibility.
-            'photo_url': logo_url,
-            'logo_url': logo_url,
+            # Keep photo_url/logo_url keys as empty strings for backward compatibility.
+            'photo_url': '',
+            'logo_url': '',
+            'icon': client.icon,
             'created_at': localtime(client.created_at).strftime('%d-%m-%Y %H:%M'),
             'updated_at': localtime(client.updated_at).strftime('%d-%m-%Y %H:%M'),
         }
@@ -133,17 +133,16 @@ class ClientService(BaseService):
         CacheVersionService.bump('client_messages_drawer_client', f'client:{cid}')
     
     @classmethod
-    def create(cls, data: Dict[str, Any], request=None, photo=None) -> ServiceResult:
+    def create(cls, data: Dict[str, Any], request=None) -> ServiceResult:
         """
         Create a new client with associated user account.
         
         Args:
-            data: Dict with client data (name, email, phone, address, etc.)
-            request: HTTP request (for email context)
-            photo: Uploaded photo file
+          data: Dict with client data (name, email, phone, address, etc.)
+          request: HTTP request (for email context)
         
         Returns:
-            ServiceResult with client data
+          ServiceResult with client data
         """
         try:
             name = str(data.get('name') or '').strip()
@@ -237,6 +236,7 @@ class ClientService(BaseService):
                     'city': data.get('city', ''),
                     'state': data.get('state', ''),
                     'pincode': data.get('pincode', ''),
+                    'icon': data.get('icon', 'fa-solid fa-building'),
                     'status': 'active' if create_as_active else 'inactive',
                 }
 
@@ -257,11 +257,6 @@ class ClientService(BaseService):
                         client_kwargs[perm] = (perm in DEFAULT_ACTIVE_PERMISSIONS)
 
                 client = Client.objects.create(**client_kwargs)
-
-                # Set logo if provided
-                if photo:
-                    client.logo = photo
-                    client.save(update_fields=['logo'])
 
                 # Queue welcome email only when it is actually needed:
                 # - active now, a real email exists, and this is not a guest sandbox
@@ -401,7 +396,7 @@ class ClientService(BaseService):
             return cls._unexpected_error_result('get', e)
     
     @classmethod
-    def update(cls, client_id: int, data: Dict[str, Any], photo=None) -> ServiceResult:
+    def update(cls, client_id: int, data: Dict[str, Any]) -> ServiceResult:
         """Update a client"""
         try:
             client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
@@ -426,7 +421,7 @@ class ClientService(BaseService):
                 # Update client fields
                 if data.get('name'):
                     client.name = data['name']
-                for field in ['address', 'city', 'state', 'pincode']:
+                for field in ['address', 'city', 'state', 'pincode', 'icon']:
                     if field in data:
                         setattr(client, field, data[field])
                 
@@ -440,10 +435,6 @@ class ClientService(BaseService):
                         # Cascade deactivation to all client staff
                         if not new_active:
                             cls._cascade_deactivate_staff(client)
-
-                # Update logo if provided
-                if photo:
-                    client.logo = photo
                 
                 # Track revoked permissions for cascade to staff
                 revoked_permissions = []

@@ -191,6 +191,8 @@ MIDDLEWARE += [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Guest Sandbox Middleware - routes guest requests to isolated SQLite DB
+    'core.middleware.GuestSandboxMiddleware',
     # Device-based session management — tracks last_active per device/session
     'accounts.middleware.DeviceSessionMiddleware',
     # Messages MUST be before custom middleware so force-logout redirects
@@ -353,6 +355,8 @@ else:
         'DATABASE_URL is not set. Add it to your .env file for production. '
         'Example: DATABASE_URL=postgres://user:password@host:5432/dbname'
     )
+
+DATABASE_ROUTERS = ['core.db_router.GuestSandboxRouter']
 
 
 # =============================================================================

@@ -410,6 +410,8 @@ class PermissionService:
 
             # Client management access is also controlled by the client profile toggle.
             if perm_key in cls.IDCARD_CLIENT_PERMISSIONS or perm_key == 'perm_manage_client_staff':
+                if perm_key == 'perm_manage_client_staff':
+                    return bool(getattr(client_profile, 'perm_idcard_client_list', False))
                 if hasattr(client_profile, perm_key):
                     return bool(getattr(client_profile, perm_key, False))
                 return False
@@ -646,6 +648,8 @@ class PermissionService:
                     context[perm] = True
                 elif active and profile and hasattr(profile, perm):
                     context[perm] = bool(getattr(profile, perm, False))
+                elif active and profile and perm == 'perm_manage_client_staff':
+                    context[perm] = bool(getattr(profile, 'perm_idcard_client_list', False))
                 else:
                     context[perm] = False
         elif is_cs:

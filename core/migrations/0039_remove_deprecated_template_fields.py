@@ -19,7 +19,8 @@ def migrate_template_images_forward(apps, schema_editor):
     IDCardGroup = apps.get_model('core', 'IDCardGroup')
     CardMedia = apps.get_model('mediafiles', 'CardMedia')
 
-    for group in IDCardGroup.objects.all().iterator():
+    db_alias = schema_editor.connection.alias
+    for group in IDCardGroup.objects.using(db_alias).all().iterator():
         client_id = group.client_id
 
         for media_type, path in (
@@ -29,13 +30,13 @@ def migrate_template_images_forward(apps, schema_editor):
             if not path:
                 continue
             # Idempotent — skip if CardMedia already exists for this path
-            exists = CardMedia.objects.filter(
+            exists = CardMedia.objects.using(db_alias).filter(
                 group_id=group.pk,
                 media_type=media_type,
                 file=path,
             ).exists()
             if not exists:
-                CardMedia.objects.create(
+                CardMedia.objects.using(db_alias).create(
                     group_id=group.pk,
                     client_id=client_id,
                     media_type=media_type,

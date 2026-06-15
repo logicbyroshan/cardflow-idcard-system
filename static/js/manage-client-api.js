@@ -21,21 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       };
       
-      NS.createClient = async function(formData, file) {
-        if (file === undefined) file = null;
+      NS.createClient = async function(formData) {
         try {
-          // Use FormData if there's a file to upload
-          if (file) {
-            var data = new FormData();
-            data.append('photo', file);
-            // Add all other form fields
-            Object.keys(formData).forEach(function(key) {
-              data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
-            });
-            return await ApiClient.upload('/api/client/create/', data);
-          } else {
-            return await ApiClient.post('/api/client/create/', formData);
-          }
+          return await ApiClient.post('/api/client/create/', formData);
         } catch (error) {
           // If the server returned a structured error (from XHR upload or fetch), pass it through
           if (error && error.data && typeof error.data === 'object') return error.data;
@@ -43,21 +31,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       };
       
-      NS.updateClient = async function(clientId, formData, file) {
-        if (file === undefined) file = null;
+      NS.updateClient = async function(clientId, formData) {
         try {
-          // Use FormData if there's a file to upload
-          if (file) {
-            var data = new FormData();
-            data.append('photo', file);
-            // Add all other form fields
-            Object.keys(formData).forEach(function(key) {
-              data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
-            });
-            return await ApiClient.upload('/api/client/' + clientId + '/update/', data);
-          } else {
-            return await ApiClient.post('/api/client/' + clientId + '/update/', formData);
-          }
+          return await ApiClient.post('/api/client/' + clientId + '/update/', formData);
         } catch (error) {
           if (error && error.data && typeof error.data === 'object') return error.data;
           return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
