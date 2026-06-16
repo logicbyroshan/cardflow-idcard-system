@@ -12,6 +12,21 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/backup.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  <style>
+    #backupClientsTable tbody tr.selected {
+      background-color: var(--color-indigo-50, #f0f4ff) !important;
+    }
+    #backupClientsTable tbody tr.selected td {
+      background-color: var(--color-indigo-50, #f0f4ff) !important;
+    }
+    #backupClientsTable tbody tr {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    #backupClientsTable tbody tr:hover {
+      background-color: var(--color-gray-50, #f8fafc);
+    }
+  </style>
     {% include 'partials/common/alpine-loader.html' %}
 </head>
 <body class="backup-select-page" x-data="layoutState" x-init="init">
@@ -43,8 +58,8 @@
         </div>
       </div>
 
-      <!-- Sort bar -->
-      <div class="backup-sort-bar">
+      <!-- Sort bar & Search bar -->
+      <div class="backup-sort-bar" style="display: flex; align-items: center; gap: 12px; padding: 10px 18px;">
         <span class="backup-sort-label">Sort by:</span>
         <a href="?task={{ task.pk }}&sort=most_data"
            class="backup-sort-btn {% if current_sort == 'most_data' %}active{% endif %}">
@@ -63,40 +78,78 @@
           <i class="fa-solid fa-font"></i> Name
         </a>
 
-        <div class="backup-sort-spacer"></div>
+        <!-- Inline Search Box using unified component -->
+        <div style="flex-grow: 1; max-width: 320px; margin-left: 12px;">
+          {% include 'components/search-box.html' with input_id="backupSearchInput" placeholder="Search client name..." clear_id="backupSearchClearBtn" %}
+        </div>
+
+        <div class="backup-sort-spacer" style="flex: 1;"></div>
 
         <button type="button" class="backup-btn-select-all" onclick="toggleSelectAll()">
           <i class="fa-solid fa-check-double"></i> <span id="selectAllText">Select All</span>
         </button>
       </div>
 
-      <!-- Client cards grid container (scrollable) -->
-      <div class="backup-clients-scroll-area">
-        <div class="backup-clients-grid" id="clientsGrid">
-          {% for c in clients %}
-          <div class="backup-client-card" data-client-id="{{ c.pk }}" onclick="toggleClientSelection(this)">
-            <input type="checkbox" class="backup-client-check" value="{{ c.pk }}" @click.stop>
-            <div class="backup-client-info">
-              <div class="backup-client-name">{{ c.name }}</div>
-              <div class="backup-client-meta">
-                <span><i class="fa-solid fa-table"></i> {{ c.total_tables }} table{{ c.total_tables|pluralize }}</span>
-                <span><i class="fa-solid fa-id-card"></i> {{ c.total_cards }} card{{ c.total_cards|pluralize }}</span>
-              </div>
-              <div class="backup-client-date">
-                Created {{ c.created_at|date:"d M Y" }}
-              </div>
-            </div>
-              <span class="backup-client-logo" aria-hidden="true">
-                <i class="fa-solid fa-building"></i>
-              </span>
-            <div class="backup-client-check-icon"><i class="fa-solid fa-circle-check"></i></div>
-          </div>
-          {% empty %}
-          <div class="backup-empty">
-            <i class="fa-solid fa-inbox"></i>
-            <p>No active clients found.</p>
-          </div>
-          {% endfor %}
+      <!-- Client table container (scrollable) -->
+      <div class="backup-clients-scroll-area" style="padding: 20px; background: #fafbfc; flex: 1; min-height: 0; overflow-y: auto;">
+        <div class="table-wrapper" style="background: #ffffff; border: 1px solid var(--color-gray-200); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <table class="data-table" id="backupClientsTable" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f8fafc; border-bottom: 2px solid var(--color-gray-200);">
+                <th class="text-center" style="width: 50px; padding: 12px 16px;">
+                  <input type="checkbox" id="selectAllHeader" onclick="toggleSelectAllHeader(this)" style="width:16px; height:16px; accent-color: var(--color-primary); cursor: pointer;">
+                </th>
+                <th class="text-left" style="padding: 12px 16px; font-weight: 700; color: var(--color-slate-700);">Client Name</th>
+                <th class="text-center" style="width: 160px; padding: 12px 16px; font-weight: 700; color: var(--color-slate-700);">Tables</th>
+                <th class="text-center" style="width: 160px; padding: 12px 16px; font-weight: 700; color: var(--color-slate-700);">ID Cards</th>
+                <th class="text-center" style="width: 180px; padding: 12px 16px; font-weight: 700; color: var(--color-slate-700);">Created Date</th>
+              </tr>
+            </thead>
+            <tbody id="backupClientsBody">
+              {% for c in clients %}
+              <tr data-client-id="{{ c.pk }}" data-client-name="{{ c.name|escape }}" onclick="toggleClientSelection(this, event)" style="height: 52px; border-bottom: 1px solid var(--color-gray-100); cursor: pointer; transition: background-color 0.15s ease;">
+                <td class="text-center" style="padding: 12px 16px;" onclick="event.stopPropagation()">
+                  <input type="checkbox" class="backup-client-check" value="{{ c.pk }}" style="width:16px; height:16px; accent-color: var(--color-primary); cursor: pointer;">
+                </td>
+                <td class="text-left font-semibold" style="padding: 12px 16px; color: var(--color-slate-800);">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: var(--color-slate-500);">
+                      <i class="fa-solid fa-building"></i>
+                    </span>
+                    <span>{{ c.name }}</span>
+                  </div>
+                </td>
+                <td class="text-center" style="padding: 12px 16px;">
+                  <span class="status-badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-table"></i> {{ c.total_tables }} table{{ c.total_tables|pluralize }}
+                  </span>
+                </td>
+                <td class="text-center" style="padding: 12px 16px;">
+                  <span class="status-badge" style="background: #faf5ff; color: #6b21a8; border: 1px solid #e9d5ff; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-id-card"></i> {{ c.total_cards }} card{{ c.total_cards|pluralize }}
+                  </span>
+                </td>
+                <td class="text-center" style="padding: 12px 16px; font-size: 12px; color: #64748b;">
+                  {{ c.created_at|date:"d M Y" }}
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="backup-empty-row" id="backupEmptyRow">
+                <td colspan="5" class="text-center" style="padding: 40px 20px; color: var(--color-slate-400);">
+                  <i class="fa-solid fa-inbox" style="font-size: 28px; margin-bottom: 8px; display: block;"></i>
+                  <p>No active clients found.</p>
+                </td>
+              </tr>
+              {% endfor %}
+              <!-- Dynamic empty search result row -->
+              <tr class="backup-empty-row" id="backupEmptyRow" style="display: none;">
+                <td colspan="5" class="text-center" style="padding: 40px 20px; color: var(--color-slate-400);">
+                  <i class="fa-solid fa-magnifying-glass-slash" style="font-size: 28px; margin-bottom: 8px; display: block;"></i>
+                  <p>No clients match your search query.</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -184,14 +237,17 @@
       }
     }
 
-    window.toggleClientSelection = function(card) {
-      const cb = card.querySelector('.backup-client-check');
+    window.toggleClientSelection = function(row, event) {
+      if (event && (event.target.type === 'checkbox' || event.target.tagName === 'A' || event.target.closest('a'))) {
+        return;
+      }
+      const cb = row.querySelector('.backup-client-check');
       if (!cb) return;
       cb.checked = !cb.checked;
       if (cb.checked) {
-        card.classList.add('selected');
+        row.classList.add('selected');
       } else {
-        card.classList.remove('selected');
+        row.classList.remove('selected');
       }
       updateBottomBar();
     };
@@ -199,12 +255,12 @@
     // Checkbox direct change (in case keyboard used)
     document.addEventListener('change', function(e) {
       if (e.target.classList.contains('backup-client-check')) {
-        const card = e.target.closest('.backup-client-card');
-        if (!card) return;
+        const row = e.target.closest('tr');
+        if (!row) return;
         if (e.target.checked) {
-          card.classList.add('selected');
+          row.classList.add('selected');
         } else {
-          card.classList.remove('selected');
+          row.classList.remove('selected');
         }
         updateBottomBar();
       }
@@ -215,12 +271,32 @@
       const allChecked = [...boxes].every(b => b.checked);
       boxes.forEach(b => {
         b.checked = !allChecked;
-        const card = b.closest('.backup-client-card');
-        if (!card) return;
+        const row = b.closest('tr');
+        if (!row) return;
         if (b.checked) {
-          card.classList.add('selected');
+          row.classList.add('selected');
         } else {
-          card.classList.remove('selected');
+          row.classList.remove('selected');
+        }
+      });
+      const headerCb = document.getElementById('selectAllHeader');
+      if (headerCb) {
+        headerCb.checked = !allChecked;
+      }
+      updateBottomBar();
+    };
+
+    window.toggleSelectAllHeader = function(headerCb) {
+      const checked = headerCb.checked;
+      const boxes = getCheckboxes();
+      boxes.forEach(b => {
+        b.checked = checked;
+        const row = b.closest('tr');
+        if (!row) return;
+        if (checked) {
+          row.classList.add('selected');
+        } else {
+          row.classList.remove('selected');
         }
       });
       updateBottomBar();
@@ -288,6 +364,62 @@
         btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Start Backup Now';
       });
     };
+
+    // Client-side search logic
+    const searchInput = document.getElementById('backupSearchInput');
+    const searchClearBtn = document.getElementById('backupSearchClearBtn');
+
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        const query = searchInput.value.toLowerCase().trim();
+        if (searchClearBtn) {
+          if (query.length > 0) {
+            searchClearBtn.classList.remove('hidden');
+            searchClearBtn.style.display = 'flex';
+          } else {
+            searchClearBtn.classList.add('hidden');
+            searchClearBtn.style.display = 'none';
+          }
+        }
+        filterClients(query);
+      });
+    }
+
+    if (searchClearBtn) {
+      searchClearBtn.addEventListener('click', function() {
+        if (searchInput) {
+          searchInput.value = '';
+          searchInput.dispatchEvent(new Event('input'));
+        }
+      });
+    }
+
+    function filterClients(query) {
+      const rows = document.querySelectorAll('#backupClientsBody tr:not(.backup-empty-row)');
+      let matchCount = 0;
+      rows.forEach(row => {
+        const name = (row.getAttribute('data-client-name') || '').toLowerCase();
+        if (name.includes(query)) {
+          row.style.display = '';
+          matchCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      const emptyRows = document.querySelectorAll('.backup-empty-row');
+      emptyRows.forEach(row => {
+        row.style.display = 'none';
+      });
+
+      if (matchCount === 0) {
+        // Show empty search result row (the second empty row)
+        const emptySearchRow = document.querySelectorAll('.backup-empty-row')[1] || document.querySelectorAll('.backup-empty-row')[0];
+        if (emptySearchRow) {
+          emptySearchRow.style.display = '';
+        }
+      }
+    }
 
     // Initial state sync for pre-checked items (if any).
     updateBottomBar();
