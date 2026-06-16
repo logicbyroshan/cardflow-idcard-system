@@ -9,6 +9,26 @@
     </div>
   </div>
   <div class="nav-right">
+    <div class="user-overview-live-badges" aria-label="Active device usage" style="margin-right: 12px;">
+      {% with desktop_count=overview_live_desktop_count|default:0 mobile_count=overview_live_mobile_count|default:0 %}
+      {% if desktop_count or mobile_count %}
+        {% if desktop_count %}
+      <span class="user-overview-live-badge user-overview-live-badge-desktop" title="Users active on desktop web">
+        <i class="fa-solid fa-desktop"></i> Desktop active: {{ desktop_count }}
+      </span>
+        {% endif %}
+        {% if mobile_count %}
+      <span class="user-overview-live-badge user-overview-live-badge-mobile" title="Users active on mobile app">
+        <i class="fa-solid fa-mobile-screen-button"></i> Mobile active: {{ mobile_count }}
+      </span>
+        {% endif %}
+      {% else %}
+      <span class="user-overview-live-badge user-overview-live-badge-desktop" title="No users are active right now">
+        <i class="fa-solid fa-circle-info"></i> No active users
+      </span>
+      {% endif %}
+      {% endwith %}
+    </div>
     <button class="global-search-btn" id="globalSearchBtn">
       <i class="fa-solid fa-magnifying-glass"></i>
       <span>Search ID cards...</span>

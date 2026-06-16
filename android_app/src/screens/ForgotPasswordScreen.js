@@ -169,7 +169,7 @@ const s = StyleSheet.create({
   inputWrap: { position: 'relative', flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   inputIcon: { position: 'absolute', left: 14, zIndex: 1 },
   input: { flex: 1, backgroundColor: colors.gray50, borderWidth: 1, borderColor: colors.gray200, borderRadius: radius.md, paddingLeft: 40, paddingRight: 16, paddingVertical: 14, fontSize: 14, fontFamily: 'SairaSemiCondensed-Regular', color: colors.gray800 },
-  ctaBtnWrap: { marginTop: 12, borderRadius: radius.xl, overflow: 'hidden', ...shadows.lg },
+  ctaBtnWrap: { marginTop: 12, borderRadius: radius.xl, overflow: 'hidden' },
   resendBtn: { marginTop: 4, alignSelf: 'center' },
   resendText: { color: colors.brandLight, textDecorationLine: 'underline' },
   doneSection: { alignItems: 'center', paddingVertical: 20 },

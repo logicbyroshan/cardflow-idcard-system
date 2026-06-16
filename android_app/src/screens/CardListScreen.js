@@ -291,6 +291,14 @@ export default function CardListScreen({ navigation, route }) {
       title = 'Unverify Selected Cards?'; icon = 'redo'; color = '#f59e0b';
       note  = `This will move ${selectedIds.size} selected records back to Pending list.`;
 
+    } else if (currentStatus === 'verified' && statusStr === 'approved') {
+      title = 'Approve Selected Cards?'; icon = 'check'; color = '#3b82f6';
+      note  = `This will move ${selectedIds.size} selected records to Approved list.`;
+
+    } else if (currentStatus === 'approved' && statusStr === 'verified') {
+      title = 'Disapprove Selected Cards?'; icon = 'redo'; color = '#ef4444';
+      note  = `This will move ${selectedIds.size} selected records back to Verified list.`;
+
     } else if (currentStatus === 'download' && statusStr === 'pending') {
       title = 'Retrieve Selected Cards?'; icon = 'redo'; color = '#3b82f6';
       note  = `This will move ${selectedIds.size} selected records back to Pending list.`;
@@ -676,19 +684,18 @@ export default function CardListScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.fActions}>
-              {currentStatus === 'pending'  && perms.perm_idcard_verify  && <FBtn icon="check"        label="VERIFY SELECTED"  disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
-              {currentStatus === 'pending'  && perms.perm_idcard_delete && <FBtn icon="trash" label="DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
+              {currentStatus === 'pending'  && perms.perm_idcard_verify  && <FBtn icon="check" label="VERIFY SELECTED" disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
+              {currentStatus === 'pending'  && perms.perm_idcard_delete && <FBtn icon="trash" label="DELETE SELECTED" color="#fff" bgColor="rgba(239, 68, 68, 0.8)" disabled={bulkLoading} onPress={() => handleBulkStatus('pool')} />}
               
+              {currentStatus === 'verified' && perms.perm_idcard_verify  && <FBtn icon="redo" label="UNVERIFY SELECTED" color="#fff" bgColor="rgba(245, 158, 11, 0.8)" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              {currentStatus === 'verified' && (perms.isSuperAdmin || perms.role === 'client') && <FBtn icon="check" label="APPROVE SELECTED" color="#fff" bgColor="rgba(59, 130, 246, 0.8)" disabled={bulkLoading} onPress={() => handleBulkStatus('approved')} />}
+              
+              {currentStatus === 'approved' && perms.isSuperAdmin && <FBtn icon="redo" label="DISAPPROVE SELECTED" color="#fff" bgColor="rgba(239, 68, 68, 0.8)" disabled={bulkLoading} onPress={() => handleBulkStatus('verified')} />}
 
-              {currentStatus === 'verified' && perms.perm_idcard_verify  && <FBtn icon="redo"         label="UNVERIFY SELECTED" color="#f59e0b" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              {currentStatus === 'download' && perms.perm_idcard_retrieve && !isClientRole && <FBtn icon="redo" label="RETRIEVE SELECTED" color="#fff" bgColor="rgba(59, 130, 246, 0.8)" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
               
-
-              
-              {currentStatus === 'download' && perms.perm_idcard_retrieve && !isClientRole && <FBtn icon="redo"         label="RETRIEVE SELECTED" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
-
-              
-              {currentStatus === 'pool'     && (perms.perm_idcard_retrieve || isClientRole) && <FBtn icon="redo"         label="RETRIEVE FROM POOL" color="#3b82f6" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
-              {currentStatus === 'pool'     && perms.perm_idcard_delete_from_pool && !isClientRole && <FBtn icon="trash" label="PERMANENTLY DELETE SELECTED" color="#ef4444" disabled={bulkLoading} onPress={() => handleBulkStatus('permanent_delete')} />}
+              {currentStatus === 'pool'     && (perms.perm_idcard_retrieve || isClientRole) && <FBtn icon="redo" label="RETRIEVE FROM POOL" color="#fff" bgColor="rgba(59, 130, 246, 0.8)" disabled={bulkLoading} onPress={() => handleBulkStatus('pending')} />}
+              {currentStatus === 'pool'     && perms.perm_idcard_delete_from_pool && !isClientRole && <FBtn icon="trash" label="PERMANENTLY DELETE SELECTED" color="#fff" bgColor="rgba(239, 68, 68, 0.8)" disabled={bulkLoading} onPress={() => handleBulkStatus('permanent_delete')} />}
             </ScrollView>
           </LinearGradient>
         </View>
@@ -705,9 +712,15 @@ export default function CardListScreen({ navigation, route }) {
       />
       <CardModalForm
         visible={showForm}
-        onClose={() => setShowForm(false)}
+        onClose={() => {
+          setShowForm(false);
+          if (autoRetrieveId && editingCardId === autoRetrieveId) {
+            setAutoRetrieveId(null);
+          }
+        }}
         tableId={tableId}
         cardId={editingCardId}
+        requireClassChangeWarning={!!(autoRetrieveId && editingCardId === autoRetrieveId)}
         onSuccess={(updatedCard) => {
           if (editingCardId && updatedCard) {
             setCards(prev => prev.map(c => c.id === editingCardId ? { ...c, ...updatedCard } : c));
@@ -744,9 +757,9 @@ export default function CardListScreen({ navigation, route }) {
   );
 }
 
-function FBtn({ icon, label, onPress, color = '#fff', disabled = false }) {
+function FBtn({ icon, label, onPress, color = '#fff', bgColor = 'rgba(255,255,255,0.15)', disabled = false }) {
   return (
-    <TouchableOpacity style={[s.fBtn, disabled && { opacity: 0.4 }]} onPress={onPress} disabled={disabled}>
+    <TouchableOpacity style={[s.fBtn, { backgroundColor: bgColor }, disabled && { opacity: 0.4 }]} onPress={onPress} disabled={disabled}>
       <DynamicIcon name={icon} size={12} color={color} style={{ marginRight: 8 }} />
       <Text style={[s.fBtnText, { color }]}>{label}</Text>
     </TouchableOpacity>

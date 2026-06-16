@@ -3884,6 +3884,10 @@ def api_card_add(request, table_id):
         if not isinstance(field_data, dict):
             field_data = {}
 
+        from core.services import IDCardService
+        if hasattr(table, 'fields'):
+            field_data = IDCardService.uppercase_field_data_selective(field_data, table.fields)
+
         legacy_photo = request.FILES.get('photo')
         image_files = {}
         for file_key in request.FILES:
@@ -4025,6 +4029,10 @@ def api_card_update(request, table_id, card_id):
             field_data = {}
         if not isinstance(field_data, dict):
             field_data = {}
+
+        from core.services import IDCardService
+        if hasattr(card.table, 'fields'):
+            field_data = IDCardService.uppercase_field_data_selective(field_data, card.table.fields)
 
         legacy_photo = request.FILES.get('photo')
         image_files = {}

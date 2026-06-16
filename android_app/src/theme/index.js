@@ -10,12 +10,12 @@
  */
 
 export const colors = {
-  // Brand — orange-to-red gradient endpoints (subtle, less poppy/harsh)
-  brandPrimary: '#de821b',         // subtle yellow-orange
-  brandPrimaryDark: '#c66910',     // darker yellow-orange
-  brandPrimaryLight: '#f09f44',    // lighter yellow-orange
-  brandSecondary: '#bd2552',       // subtle pinkish-red
-  brandSecondaryDark: '#9b183d',   // darker pinkish-red
+  // Brand — bhagwa (saffron) to reddish-orange gradient
+  brandPrimary: '#ff671f',         // bhagwa/saffron
+  brandPrimaryDark: '#e65c1c',     // darker bhagwa
+  brandPrimaryLight: '#ff854c',    // lighter bhagwa
+  brandSecondary: '#e63900',       // reddish orange
+  brandSecondaryDark: '#cc3300',   // darker reddish orange
 
   // Legacy aliases
   brand: '#de821b',

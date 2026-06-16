@@ -100,6 +100,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
+      // ==================== FILTER DROPDOWN ====================
+      var filterDropdown = document.getElementById('filterDropdown');
+      if (filterDropdown) {
+        var fToggleBtn = filterDropdown.querySelector('.dropdown-toggle');
+        var fOptions = filterDropdown.querySelectorAll('.dropdown-option');
+        if (fToggleBtn) {
+          fToggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.querySelectorAll('.custom-dropdown.open').forEach(function(d) { if (d !== filterDropdown) d.classList.remove('open'); });
+            filterDropdown.classList.toggle('open');
+          });
+        }
+        fOptions.forEach(function(option) {
+          option.addEventListener('click', function(e) {
+            var selectedText = filterDropdown.querySelector('#selectedText');
+            if (selectedText) selectedText.textContent = this.textContent;
+            fOptions.forEach(function(o) { o.classList.remove('selected'); });
+            this.classList.add('selected');
+            filterDropdown.classList.remove('open');
+          });
+        });
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('.custom-dropdown')) filterDropdown.classList.remove('open');
+        });
+      }
+
       // ==================== TOAST FUNCTIONS ====================
       // Using shared showToast from utils.js
 

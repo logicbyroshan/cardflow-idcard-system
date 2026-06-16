@@ -31,7 +31,7 @@ import { cleanFieldData, cleanFieldValue } from '../utils/data';
 /**
  * Bottom-to-top dynamic form drawer for adding/editing cards.
  */
-export default function CardModalForm({ visible, onClose, tableId, cardId, onSuccess }) {
+export default function CardModalForm({ visible, onClose, tableId, cardId, onSuccess, requireClassChangeWarning }) {
   const navigation = typeof useNavigation === 'function' ? useNavigation() : { navigate: () => {}, goBack: () => {}, reset: () => {} };
   const isFocused = typeof useIsFocused === 'function' ? useIsFocused() : true;
   const insets = typeof useSafeAreaInsets === 'function' ? useSafeAreaInsets() : { top: 0, bottom: 0, left: 0, right: 0 };
@@ -420,6 +420,15 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                         <HStack spacing={8} style={s.errorBox} align="center">
                           <DynamicIcon name="exclamation-circle" size={12} color="#ef4444" />
                           <Text style={s.errorText}>{error}</Text>
+                        </HStack>
+                      )}
+
+                      {requireClassChangeWarning && (
+                        <HStack spacing={8} style={[s.errorBox, { backgroundColor: '#fef2f2', borderColor: '#ef4444' }]} align="center">
+                          <DynamicIcon name="exclamation-triangle" size={16} color="#ef4444" />
+                          <Text style={[s.errorText, { flex: 1, fontSize: 13, lineHeight: 18 }]}>
+                            Action Required: Please update the class/section to match your assigned group in order to retrieve this record from the pool.
+                          </Text>
                         </HStack>
                       )}
 

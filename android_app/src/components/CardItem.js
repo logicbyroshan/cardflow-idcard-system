@@ -191,7 +191,7 @@ const CardItem = React.memo(function CardItem({
           )}
 
           {/* Verified List Action Buttons */}
-          {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_approve') && (
+          {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_approve') && permissions?.role !== 'client_staff' && (
             <TouchableOpacity 
               style={[s.outlineBtn, { borderColor: colors.green }]} 
               onPress={() => onStatusChange(item.id, 'approved')}

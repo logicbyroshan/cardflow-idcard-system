@@ -349,12 +349,12 @@ def manage_clients(request):
         .all()
         .select_related('user')
         .annotate(
-            group_count=Count('id_card_groups', distinct=True),
+            table_count=Count('id_card_groups__tables', distinct=True),
             has_media=Exists(CardMedia.objects.filter(client_id=OuterRef('pk'))),
         )
         .annotate(
             has_data=Case(
-                When(Q(group_count__gt=0) | Q(has_media=True), then=Value(True)),
+                When(Q(table_count__gt=0) | Q(has_media=True), then=Value(True)),
                 default=Value(False),
                 output_field=BooleanField(),
             )

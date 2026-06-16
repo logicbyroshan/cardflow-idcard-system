@@ -76,7 +76,7 @@
 }
 
 .dashboard-grid.dashboard-grid-main {
-    grid-template-columns: 3fr 1fr;
+    grid-template-columns: 85fr 15fr;
 }
 
 /* ====================
@@ -85,7 +85,7 @@
    ==================== */
 .dashboard-workspace {
     display: grid;
-    grid-template-columns: 3fr 1fr;
+    grid-template-columns: 85fr 15fr;
     gap: 0;
     min-height: 100%;
     align-items: start;
@@ -431,7 +431,7 @@
 
 @media (min-width: 1000px) and (max-width: 1366px) {
     .dashboard-workspace {
-        grid-template-columns: minmax(0, 2.6fr) minmax(260px, 1fr);
+        grid-template-columns: minmax(0, 5.66fr) minmax(150px, 1fr);
     }
 
     .dashboard-card-header {

@@ -42,7 +42,7 @@ Required context:
                     <div class="group-badges">
                         <a href="{% url 'idcard_group' client.id %}" class="active-client-group-btn" title="Open ID Card Group page">
                             <i class="fa-solid fa-layer-group"></i>
-                            {{ client.group_count|default:0 }} group{{ client.group_count|default:0|pluralize }}
+                            {{ client.table_count|default:0 }} table{{ client.table_count|default:0|pluralize }}
                         </a>
                     </div>
                 </td>

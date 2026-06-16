@@ -333,7 +333,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: radius.md,
     height: 50,
-    ...shadows.lg,
   },
   helpText: {
     textAlign: 'center',

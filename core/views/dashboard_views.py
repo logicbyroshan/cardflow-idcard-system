@@ -143,7 +143,7 @@ def _dashboard_recent_activity_cache_key(*, user, limit, surface):
 
 def _get_dashboard_recent_activities(*, user, limit):
     """Return latest activity entries for the dashboard recent-updates feed."""
-    return ActivityService.get_recent(limit=limit, hours=None, user=user, merge_card_activity=False)
+    return ActivityService.get_recent(limit=limit, hours=None, user=user, merge_card_activity=True)
 
 
 def _normalize_activity_name(value):
@@ -460,11 +460,8 @@ def dashboard(request):
             assistents_qs = assistents_qs.filter(client_id__in=accessible_ids)
 
         overview_stats = {
-            'clients': clients_qs.count(),
-            # Keep pro_user permissions intact, but do not count them as admins
-            # in the dashboard's user overview card.
-            'admins': User.objects.filter(role='super_admin').count(),
-            'operators': User.objects.filter(role='admin_staff').count(),
+            'clients': clients_qs.filter(is_guest=False).count(),
+            'guest_users': clients_qs.filter(is_guest=True).count(),
             'assistents': assistents_qs.count(),
         }
         cache.set(overview_cache_key, overview_stats, 30)
@@ -485,8 +482,7 @@ def dashboard(request):
         'downloaded_cards': card_stats['downloaded'],
         'pool_cards': card_stats.get('pool', 0),
         'overview_clients_count': overview_stats.get('clients', 0),
-        'overview_admins_count': overview_stats.get('admins', 0),
-        'overview_operators_count': overview_stats.get('operators', 0),
+        'overview_guest_users_count': overview_stats.get('guest_users', 0),
         'overview_assistents_count': overview_stats.get('assistents', 0),
         'overview_live_desktop_count': live_surface_counts.get('desktop', 0),
         'overview_live_mobile_count': live_surface_counts.get('mobile', 0),
