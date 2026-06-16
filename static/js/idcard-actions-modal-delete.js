@@ -322,6 +322,137 @@ function initSimpleDeleteModal() {
 }
 
 // ==========================================
+// CLEAR PENDING PATH MODAL
+// ==========================================
+
+function closeClearPendingPathModalFn() {
+    const modal = document.getElementById('clearPendingPathModalOverlay');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+function openClearPendingPathModal() {
+    const modal = document.getElementById('clearPendingPathModalOverlay');
+    if (!modal) return;
+    
+    // Reset steps
+    const confirmStep = document.getElementById('clearPendingPathConfirmStep');
+    const loadingStep = document.getElementById('clearPendingPathLoadingStep');
+    const resultStep = document.getElementById('clearPendingPathResultStep');
+    
+    if (confirmStep) confirmStep.style.display = 'block';
+    if (loadingStep) loadingStep.style.display = 'none';
+    if (resultStep) resultStep.style.display = 'none';
+    
+    // Reset buttons
+    const cancelBtn = document.getElementById('cancelClearPendingPathModal');
+    const confirmBtn = document.getElementById('confirmClearPendingPathModal');
+    const okBtn = document.getElementById('closeClearPendingPathResultModal');
+    
+    if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    if (confirmBtn) {
+        confirmBtn.style.display = 'inline-block';
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Scan & Clear';
+    }
+    if (okBtn) okBtn.style.display = 'none';
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function initClearPendingPathModal() {
+    const modal = document.getElementById('clearPendingPathModalOverlay');
+    const closeBtn = document.getElementById('closeClearPendingPathModal');
+    const cancelBtn = document.getElementById('cancelClearPendingPathModal');
+    const confirmBtn = document.getElementById('confirmClearPendingPathModal');
+    const okBtn = document.getElementById('closeClearPendingPathResultModal');
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeClearPendingPathModalFn);
+    }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeClearPendingPathModalFn);
+    }
+    if (okBtn) {
+        okBtn.addEventListener('click', function() {
+            closeClearPendingPathModalFn();
+            // Refresh table / page
+            window.location.reload();
+        });
+    }
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal?.classList.contains('active')) {
+            closeClearPendingPathModalFn();
+        }
+    });
+    
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+            const currentStatus = typeof CURRENT_STATUS !== 'undefined' ? String(CURRENT_STATUS).toLowerCase() : 'pending';
+            
+            if (!tableId) {
+                if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+                closeClearPendingPathModalFn();
+                return;
+            }
+            
+            // Switch to loading step
+            const confirmStep = document.getElementById('clearPendingPathConfirmStep');
+            const loadingStep = document.getElementById('clearPendingPathLoadingStep');
+            
+            if (confirmStep) confirmStep.style.display = 'none';
+            if (loadingStep) {
+                loadingStep.style.display = 'flex';
+                loadingStep.style.justifyContent = 'center';
+                loadingStep.style.alignItems = 'center';
+            }
+            
+            confirmBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            
+            ApiClient.post(`/api/table/${tableId}/cards/clear-pending-paths/`, { status: currentStatus })
+            .then(data => {
+                if (loadingStep) loadingStep.style.display = 'none';
+                
+                const resultStep = document.getElementById('clearPendingPathResultStep');
+                const resultText = document.getElementById('clearPendingPathResultText');
+                
+                if (data.success) {
+                    if (resultText) {
+                        resultText.innerHTML = `Scan complete. Cleared paths for <strong>${data.cleared_count}</strong> card(s) out of <strong>${data.total_scanned}</strong> scanned.`;
+                    }
+                    if (resultStep) resultStep.style.display = 'block';
+                    if (okBtn) okBtn.style.display = 'inline-block';
+                    if (typeof showToast === 'function') showToast(data.message || `Cleared ${data.cleared_count} paths.`);
+                } else {
+                    if (typeof showToast === 'function') showToast(data.message || 'Error clearing paths', false);
+                    // Reset to confirmation step on failure
+                    if (confirmStep) confirmStep.style.display = 'block';
+                    confirmBtn.style.display = 'inline-block';
+                    confirmBtn.disabled = false;
+                    cancelBtn.style.display = 'inline-block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (loadingStep) loadingStep.style.display = 'none';
+                if (typeof showToast === 'function') showToast('Error clearing paths', false);
+                
+                if (confirmStep) confirmStep.style.display = 'block';
+                confirmBtn.style.display = 'inline-block';
+                confirmBtn.disabled = false;
+                cancelBtn.style.display = 'inline-block';
+            });
+        });
+    }
+}
+
+// ==========================================
 // EXPORTS
 // ==========================================
 
@@ -335,4 +466,9 @@ window.IDCardApp.closeSimpleDeleteModalFn = closeSimpleDeleteModalFn;
 window.openSimpleDeleteModal = openSimpleDeleteModal;
 window.openPermanentDeleteModal = openPermanentDeleteModal;
 
+window.IDCardApp.initClearPendingPathModal = initClearPendingPathModal;
+window.IDCardApp.openClearPendingPathModal = openClearPendingPathModal;
+window.IDCardApp.closeClearPendingPathModalFn = closeClearPendingPathModalFn;
+
 })();
+

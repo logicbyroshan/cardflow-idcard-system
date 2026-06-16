@@ -50,6 +50,7 @@ class ActivityService:
         'staff_update',
         'staff_assignment',
         'staff_status',
+        'card_create',
         'card_update',
         'card_status',
         'card_bulk_status',
@@ -61,6 +62,7 @@ class ActivityService:
         'settings_update',
         'bulk_upgrade',
         'bulk_delete',
+        'card_bulk_download',
     }
     CARD_ACTIVITY_DESCRIPTION_RE = re.compile(
         r'^(?P<count>\d+)\s+cards?\s+(?P<status>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
@@ -563,32 +565,42 @@ class ActivityService:
 
     @classmethod
     def log_cards_download(cls, request, card_ids, format_name):
-        """Bulk log data download for individual cards to maintain deep history."""
+        """Log card download summary to prevent activity log flooding."""
         if not card_ids:
             return
             
         try:
             from core.models import ActivityLog
+            from idcards.models import IDCard
             user = getattr(request, 'user', None)
             ip_address = cls._get_ip(request)
+            count = len(card_ids)
             
-            logs = []
-            for cid in card_ids:
-                logs.append(ActivityLog(
-                    user=user if getattr(user, 'is_authenticated', False) else None,
-                    action='card_bulk_download',
-                    description=f'Data downloaded ({format_name})',
-                    ip_address=ip_address,
-                    target_model='IDCard',
-                    target_id=cid,
-                    target_name=f'Card #{cid}'
-                ))
+            # Fetch table context from the first card to get rich display info
+            first_id = next(iter(card_ids))
+            first_card = IDCard.objects.select_related('table').filter(id=first_id).first()
+            target_id = None
+            target_name = ''
+            target_model = 'IDCard'
+            if first_card and first_card.table:
+                target_model = 'IDCardTable'
+                target_id = first_card.table.id
+                target_name = first_card.table.name
             
-            # Use bulk_create for performance, batch size 1000
-            ActivityLog.objects.bulk_create(logs, batch_size=1000)
+            description = f'{count} card{"s" if count != 1 else ""} downloaded ({format_name})'
+            
+            ActivityLog.objects.create(
+                user=user if getattr(user, 'is_authenticated', False) else None,
+                action='card_bulk_download',
+                description=description,
+                ip_address=ip_address,
+                target_model=target_model,
+                target_id=target_id,
+                target_name=target_name,
+            )
         except Exception:
             import logging
-            logging.getLogger(__name__).exception('Failed to bulk log card downloads')
+            logging.getLogger(__name__).exception('Failed to log card downloads summary')
 
     @classmethod
     def log_website_update(cls, request, section=''):
@@ -873,7 +885,7 @@ class ActivityService:
                 return _with_merge_suffix(f'{actor_descriptor} {verb}')
             return _with_merge_suffix(text)
 
-        if action in {'card_update', 'card_status', 'card_bulk_status', 'card_create', 'bulk_upgrade', 'bulk_delete'}:
+        if action in {'card_update', 'card_status', 'card_bulk_status', 'card_create', 'bulk_upgrade', 'bulk_delete', 'card_bulk_download'}:
             if actor_descriptor != 'System' and actor_descriptor.lower() not in text.lower():
                 text = f'{actor_descriptor}: {text}'
             if client_context and client_context.lower() not in text.lower() and actor_role not in ('client', 'client_staff'):
@@ -1224,6 +1236,9 @@ class ActivityService:
                 detail_discriminator = f'{parsed[1]}|{parsed[2].strip().lower()}'
             else:
                 detail_discriminator = description[:160]
+        elif action in {'card_update', 'card_create'}:
+            target_id = -1
+            detail_discriminator = 'bulk_action'
         elif action in {'client_status', 'staff_status', 'reprint_status'}:
             detail_discriminator = cls._extract_status_from_description(description) or description[:160]
         elif not target_id:
@@ -1250,11 +1265,15 @@ class ActivityService:
 
         for item in items:
             merge_key, card_units = cls._build_similar_merge_key(item)
+            action = str(item.get('action') or '').strip().lower()
+
             item['_merged_event_count'] = 1
             item['_merged_span_seconds'] = 0
             item['_merged_card_units'] = max(int(card_units or 1), 1)
             item['_similar_merge_key'] = merge_key
             item['_oldest_created_at_dt'] = item.get('created_at_dt')
+            if action in {'card_update', 'card_create'}:
+                item['_updated_card_ids'] = {item.get('target_id')} if item.get('target_id') else set()
 
             if merge_key and merged:
                 last = merged[-1]
@@ -1274,7 +1293,9 @@ class ActivityService:
                     last['_oldest_created_at_dt'] = item_dt
                     last['_merged_span_seconds'] = max(int((last_dt - item_dt).total_seconds()), 0)
 
-                    if str(last.get('action') or '').strip().lower() in {'card_status', 'card_bulk_status'}:
+                    last_action = str(last.get('action') or '').strip().lower()
+
+                    if last_action in {'card_status', 'card_bulk_status'}:
                         total_cards = int(last.get('_merged_card_units') or 1) + int(item.get('_merged_card_units') or 1)
                         last['_merged_card_units'] = total_cards
                         parsed = cls._parse_card_activity_description(last.get('description', ''))
@@ -1285,6 +1306,26 @@ class ActivityService:
                             noun = 'card' if total_cards == 1 else 'cards'
                             last['description'] = f'{total_cards} {noun} {status}{suffix}'
                             last['action'] = 'card_bulk_status' if total_cards > 1 else 'card_status'
+                    elif last_action == 'card_update':
+                        if '_updated_card_ids' not in last:
+                            last['_updated_card_ids'] = {last.get('target_id')} if last.get('target_id') else set()
+                        if item.get('target_id'):
+                            last['_updated_card_ids'].add(item.get('target_id'))
+                        total_unique_cards = len(last['_updated_card_ids'])
+                        noun = 'card' if total_unique_cards == 1 else 'cards'
+                        last['description'] = f'{total_unique_cards} {noun} edited'
+                        last['target_id'] = None
+                        last['target_name'] = ''
+                    elif last_action == 'card_create':
+                        if '_updated_card_ids' not in last:
+                            last['_updated_card_ids'] = {last.get('target_id')} if last.get('target_id') else set()
+                        if item.get('target_id'):
+                            last['_updated_card_ids'].add(item.get('target_id'))
+                        total_unique_cards = len(last['_updated_card_ids'])
+                        noun = 'card' if total_unique_cards == 1 else 'cards'
+                        last['description'] = f'{total_unique_cards} new ID {noun} added'
+                        last['target_id'] = None
+                        last['target_name'] = ''
                     continue
 
             merged.append(item)

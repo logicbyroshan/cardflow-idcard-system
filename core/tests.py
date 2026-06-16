@@ -1596,9 +1596,8 @@ class DashboardAndLogsHardeningTests(TestCase):
         response = self.client.get('/panel/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['overview_clients_count'], Client.objects.count())
-        self.assertEqual(response.context['overview_admins_count'], 1)
-        self.assertEqual(response.context['overview_operators_count'], 2)
+        self.assertEqual(response.context['overview_clients_count'], Client.objects.filter(is_guest=False).count())
+        self.assertEqual(response.context['overview_guest_users_count'], Client.objects.filter(is_guest=True).count())
         self.assertEqual(response.context['overview_assistents_count'], 3)
 
     def test_dashboard_limit_parser_clamps_values(self):
@@ -2679,6 +2678,82 @@ class ActivityFeedIsolationTests(TestCase):
         display_text = str(rendered.get('display_text') or '')
         self.assertIn(self.client_obj.name, display_text)
         self.assertIn('activated client', display_text.lower())
+
+    def test_bulk_card_updates_and_creates_are_collapsed_on_dashboard(self):
+        from core.models import ActivityLog
+        from core.services.activity_service import ActivityService
+        from django.utils import timezone
+
+        now = timezone.now()
+
+        # Clear all logs to have a clean slate and prevent interleaving from setUp logs
+        ActivityLog.objects.all().delete()
+
+        # 1. Simulate user editing multiple cards (card_update) within 15 mins
+        log1 = ActivityLog.objects.create(
+            user=self.admin,
+            action='card_update',
+            description='Field "Name" updated',
+            target_model='IDCard',
+            target_id=201,
+            target_name='Card #201',
+        )
+        log2 = ActivityLog.objects.create(
+            user=self.admin,
+            action='card_update',
+            description='Field "Class" updated',
+            target_model='IDCard',
+            target_id=202,
+            target_name='Card #202',
+        )
+        log3 = ActivityLog.objects.create(
+            user=self.admin,
+            action='card_update',
+            description='Field "Section" updated',
+            target_model='IDCard',
+            target_id=201,
+            target_name='Card #201',
+        )
+
+        ActivityLog.objects.filter(pk=log1.pk).update(created_at=now)
+        ActivityLog.objects.filter(pk=log2.pk).update(created_at=now - timezone.timedelta(minutes=2))
+        ActivityLog.objects.filter(pk=log3.pk).update(created_at=now - timezone.timedelta(minutes=5))
+
+        # 2. Simulate user adding multiple cards (card_create)
+        log4 = ActivityLog.objects.create(
+            user=self.admin,
+            action='card_create',
+            description='ID card created',
+            target_model='IDCard',
+            target_id=301,
+            target_name='Card #301',
+        )
+        log5 = ActivityLog.objects.create(
+            user=self.admin,
+            action='card_create',
+            description='ID card created',
+            target_model='IDCard',
+            target_id=302,
+            target_name='Card #302',
+        )
+
+        ActivityLog.objects.filter(pk=log4.pk).update(created_at=now - timezone.timedelta(minutes=6))
+        ActivityLog.objects.filter(pk=log5.pk).update(created_at=now - timezone.timedelta(minutes=7))
+
+        # Fetch recent activities for dashboard
+        rows = ActivityService.get_recent(limit=30, hours=None, user=self.admin)
+
+        # Filter the rows belonging to card_update and card_create
+        update_rows = [row for row in rows if row.get('action') == 'card_update']
+        create_rows = [row for row in rows if row.get('action') == 'card_create']
+
+        # We expect card updates to be collapsed into a single row
+        self.assertEqual(len(update_rows), 1)
+        self.assertEqual(update_rows[0]['description'], '2 cards edited')
+
+        # We expect card creations to be collapsed into a single row
+        self.assertEqual(len(create_rows), 1)
+        self.assertEqual(create_rows[0]['description'], '2 new ID cards added')
 
 
 class ReuploadDirectTaskFlowTests(TestCase):
@@ -3903,4 +3978,179 @@ class DynamicFieldsDefensiveTests(TestCase):
         self.assertTrue(result.success)
         self.assertEqual(len(result.data['cards']), 1)
         self.assertEqual(result.data['cards'][0]['name'], 'JOHN DOE')
+
+
+class ClearPendingPathsApiTests(TestCase):
+    def setUp(self):
+        # Create super admin
+        self.super_admin = _create_super_admin('clear-paths-admin@test.com', 'adminpass1')
+        
+        # Create client and table
+        self.client_user, self.client_obj = _create_client_user('clear-paths-client@test.com', 'clientpass1')
+        self.group, self.table = _create_table(
+            self.client_obj,
+            fields=[
+                {'name': 'NAME', 'type': 'text', 'order': 1},
+                {'name': 'PHOTO', 'type': 'photo', 'order': 2},
+                {'name': 'SIGNATURE', 'type': 'signature', 'order': 3},
+            ]
+        )
+        
+        # Create admin staff with and without permission
+        self.staff_user_with_perm = User.objects.create_user(
+            username='staff-with-perm@test.com',
+            email='staff-with-perm@test.com',
+            password='staffpass123',
+            role='admin_staff',
+        )
+        from staff.models import Staff
+        staff_with_perm = Staff.objects.create(
+            user=self.staff_user_with_perm,
+            staff_type='admin_staff',
+            perm_idcard_clear_pending_path=True,
+        )
+        staff_with_perm.assigned_clients.add(self.client_obj)
+        
+        self.staff_user_no_perm = User.objects.create_user(
+            username='staff-no-perm@test.com',
+            email='staff-no-perm@test.com',
+            password='staffpass123',
+            role='admin_staff',
+        )
+        staff_no_perm = Staff.objects.create(
+            user=self.staff_user_no_perm,
+            staff_type='admin_staff',
+            perm_idcard_clear_pending_path=False,
+        )
+        staff_no_perm.assigned_clients.add(self.client_obj)
+
+
+        # Create cards
+        from mediafiles.models import CardMedia
+        
+        # Card 1: Pending, has photo (exists) and signature (missing)
+        self.card1 = _create_card(
+            self.table,
+            field_data={
+                'NAME': 'STUDENT ONE',
+                'PHOTO': 'adarshimg/photo1.jpg',
+                'SIGNATURE': 'adarshimg/sig1.jpg'
+            },
+            status='pending'
+        )
+        CardMedia.objects.create(card=self.card1, client=self.client_obj, field_name='PHOTO', file='adarshimg/photo1.jpg')
+        CardMedia.objects.create(card=self.card1, client=self.client_obj, field_name='SIGNATURE', file='adarshimg/sig1.jpg')
+        
+        # Card 2: Verified, has photo (missing)
+        self.card2 = _create_card(
+            self.table,
+            field_data={
+                'NAME': 'STUDENT TWO',
+                'PHOTO': 'adarshimg/photo2.jpg',
+                'SIGNATURE': ''
+            },
+            status='verified'
+        )
+        CardMedia.objects.create(card=self.card2, client=self.client_obj, field_name='PHOTO', file='adarshimg/photo2.jpg')
+
+        # Card 3: Approved, has photo (missing) - should NOT be touched
+        self.card3 = _create_card(
+            self.table,
+            field_data={
+                'NAME': 'STUDENT THREE',
+                'PHOTO': 'adarshimg/photo3.jpg',
+                'SIGNATURE': ''
+            },
+            status='approved'
+        )
+        CardMedia.objects.create(card=self.card3, client=self.client_obj, field_name='PHOTO', file='adarshimg/photo3.jpg')
+
+
+    @patch('django.core.files.storage.default_storage.exists')
+    def test_clear_pending_paths_success_super_admin(self, mock_exists):
+        # Mock storage: photo1.jpg exists, all others missing
+        def exists_side_effect(path):
+            return 'photo1.jpg' in path
+        mock_exists.side_effect = exists_side_effect
+        
+        self.client.force_login(self.super_admin)
+        
+        # Clear 'pending' status paths
+        url = reverse('api_clear_pending_paths', args=[self.table.id])
+        response = self.client.post(
+            url,
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['total_scanned'], 1)  # Only card1 is pending
+        self.assertEqual(data['cleared_count'], 1)  # Only signature on card1 should clear
+        
+        self.card1.refresh_from_db()
+        self.assertEqual(self.card1.field_data['NAME'], 'STUDENT ONE')
+        self.assertEqual(self.card1.field_data['PHOTO'], 'adarshimg/photo1.jpg')
+        self.assertEqual(self.card1.field_data['SIGNATURE'], '')  # Cleared!
+        
+        # Check CardMedia deleted
+        from mediafiles.models import CardMedia
+        self.assertTrue(CardMedia.objects.filter(card=self.card1, field_name='PHOTO').exists())
+        self.assertFalse(CardMedia.objects.filter(card=self.card1, field_name='SIGNATURE').exists())
+        
+        # Card 2 and 3 should not be touched
+        self.card2.refresh_from_db()
+        self.assertEqual(self.card2.field_data['PHOTO'], 'adarshimg/photo2.jpg')
+
+    @patch('django.core.files.storage.default_storage.exists')
+    def test_clear_pending_paths_success_staff_with_perm(self, mock_exists):
+        mock_exists.return_value = False  # Everything is missing
+        
+        self.client.force_login(self.staff_user_with_perm)
+        
+        # Clear 'verified' status paths
+        url = reverse('api_clear_pending_paths', args=[self.table.id])
+        response = self.client.post(
+            url,
+            data=json.dumps({'status': 'verified'}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['total_scanned'], 1)  # Only card2 is verified
+        self.assertEqual(data['cleared_count'], 1)  # PHOTO on card2 should clear
+        
+        self.card2.refresh_from_db()
+        self.assertEqual(self.card2.field_data['PHOTO'], '')
+        
+        from mediafiles.models import CardMedia
+        self.assertFalse(CardMedia.objects.filter(card=self.card2, field_name='PHOTO').exists())
+
+    def test_clear_pending_paths_permission_denied_staff_no_perm(self):
+        self.client.force_login(self.staff_user_no_perm)
+        
+        url = reverse('api_clear_pending_paths', args=[self.table.id])
+        response = self.client.post(
+            url,
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(response.json()['success'])
+
+    def test_clear_pending_paths_permission_denied_client(self):
+        self.client.force_login(self.client_user)
+        
+        url = reverse('api_clear_pending_paths', args=[self.table.id])
+        response = self.client.post(
+            url,
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(response.json()['success'])
+
 

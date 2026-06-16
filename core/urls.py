@@ -187,6 +187,7 @@ urlpatterns = [
     path('api/card/<int:card_id>/status/', views.api_idcard_change_status, name='api_idcard_change_status'),
     path('api/table/<int:table_id>/cards/bulk-status/', views.api_idcard_bulk_status, name='api_idcard_bulk_status'),
     path('api/table/<int:table_id>/cards/bulk-delete/', views.api_idcard_bulk_delete, name='api_idcard_bulk_delete'),
+    path('api/table/<int:table_id>/cards/clear-pending-paths/', views.api_clear_pending_paths, name='api_clear_pending_paths'),
     path('api/table/<int:table_id>/cards/generate-delete-code/', views.api_generate_delete_code, name='api_generate_delete_code'),
     path('api/table/<int:table_id>/cards/generate-upgrade-code/', views.api_generate_upgrade_code, name='api_generate_upgrade_code'),
     path('api/table/<int:table_id>/cards/upgrade-classes/', views.api_upgrade_all_classes, name='api_upgrade_all_classes'),

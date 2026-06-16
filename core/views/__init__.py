@@ -111,6 +111,7 @@ from .idcard_api import (
     api_idcard_change_status,
     api_idcard_bulk_status,
     api_idcard_bulk_delete,
+    api_clear_pending_paths,
     api_generate_delete_code,
     api_generate_upgrade_code,
     api_upgrade_all_classes,

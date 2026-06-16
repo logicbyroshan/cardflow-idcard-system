@@ -31,4 +31,13 @@
         </button>
     </div>
     {% endif %}
+    {% if current_status == 'pending' or current_status == 'verified' or not current_status %}
+        {% if is_super_admin or is_admin_staff and perm_idcard_clear_pending_path %}
+        <button class="btn action-btn btn-orange" id="clearPendingPathBtn" title="Clear paths for missing images" style="margin-left: 6px;">
+            <i class="fa-solid fa-eraser"></i>
+            <span class="btn-text">Clear Pending Path</span>
+        </button>
+        {% endif %}
+    {% endif %}
 </div>
+

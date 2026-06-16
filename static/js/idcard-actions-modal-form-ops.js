@@ -292,6 +292,12 @@ function initModalModule() {
     
     // Initialize simple delete modal (for pending/verified)
     IDCardApp.initSimpleDeleteModal();
+
+    // Initialize clear pending path modal
+    if (typeof IDCardApp.initClearPendingPathModal === 'function') {
+        IDCardApp.initClearPendingPathModal();
+    }
+
     
     // Delete key handler
     document.addEventListener('keydown', function(e) {

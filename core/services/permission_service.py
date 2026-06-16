@@ -78,6 +78,7 @@ class PermissionService:
         'perm_idcard_delete_from_pool', 'perm_delete_all_idcard',
         'perm_reupload_idcard_image', 'perm_idcard_retrieve',
         'perm_idcard_upgrade_all',
+        'perm_idcard_clear_pending_path',
     ]
 
     MANAGE_PANEL_PERMISSIONS = [
@@ -140,6 +141,7 @@ class PermissionService:
         'perm_manage_panel_backup',
         'perm_manage_panel_email',
         # 'perm_manage_client_staff' removed to allow client role access
+        'perm_idcard_clear_pending_path',
     }
 
     # Map UI boolean perm keys to Django permissions for admin_staff

@@ -414,6 +414,13 @@ function initBulkActionHandlers() {
         }
     });
 
+    // Clear Pending Path button (Pending / Verified lists)
+    document.getElementById('clearPendingPathBtn')?.addEventListener('click', function() {
+        if (typeof IDCardApp.openClearPendingPathModal === 'function') {
+            IDCardApp.openClearPendingPathModal();
+        }
+    });
+
 }
 
 // ==========================================
