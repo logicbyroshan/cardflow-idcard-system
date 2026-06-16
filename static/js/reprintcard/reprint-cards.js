@@ -551,11 +551,16 @@ function getCsrfToken() {
   var meta = document.querySelector('meta[name="csrf-token"]');
   if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
 
+  var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  if (match) {
+    var token = decodeURIComponent(match[1]);
+    return token.replace(/^"|"$/g, '');
+  }
+
   var hidden = document.querySelector('input[name="csrfmiddlewaretoken"]');
   if (hidden && hidden.value) return hidden.value;
 
-  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
+  return '';
 }
 
 function getSessionRefreshUrl() {
@@ -974,6 +979,7 @@ function requestListStep() {
   var rejectBtn = document.getElementById('requestRejectBtn');
   var editBtn = document.getElementById('requestEditBtn');
   var viewBtn = document.getElementById('requestViewBtn');
+  var reuploadImageBtn = document.getElementById('requestReuploadImageBtn');
   var fromDateInput = document.getElementById('requestFromDate');
   var toDateInput = document.getElementById('requestToDate');
   var clearDateFilterBtn = document.getElementById('requestClearDateFilterBtn');
@@ -1108,17 +1114,39 @@ function requestListStep() {
 
     try {
       if (exportType === 'images') {
-        var imgResp = await fetch(ENDPOINTS.downloadImages, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken(),
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: JSON.stringify(body)
-        });
-        var imgData = await imgResp.json();
-        if (!imgResp.ok || !imgData.success) {
+        async function fetchImages(retried) {
+          var imgResp = await fetch(ENDPOINTS.downloadImages, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCsrfToken(),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(body)
+          });
+          var errText = '';
+          if (!imgResp.ok) {
+            try {
+              var errJson = await imgResp.json();
+              errText = errJson.message || 'Image download failed';
+            } catch (_e) {
+              try {
+                errText = await imgResp.text();
+              } catch (_e2) {}
+            }
+            if (!retried && isSessionExpiredError(imgResp.status, errText)) {
+              var freshToken = await refreshSessionToken();
+              if (freshToken) {
+                return fetchImages(true);
+              }
+            }
+            throw new Error(errText || 'Image download failed');
+          }
+          return imgResp.json();
+        }
+
+        var imgData = await fetchImages(false);
+        if (!imgData || !imgData.success) {
           throw new Error((imgData && imgData.message) || 'Image download failed');
         }
 
@@ -1152,10 +1180,15 @@ function requestListStep() {
         }
       }
 
-      await performSendToPrint(rrIds, {
-        successMessage: modeLabel + ' request item(s) downloaded and moved to Confirmed List (' + moveCount + ')',
-        silentErrorToast: true,
-      });
+      var shouldMove = (exportType === 'docx' || exportType === 'xlsx');
+      if (shouldMove) {
+        await performSendToPrint(rrIds, {
+          successMessage: modeLabel + ' request item(s) downloaded and moved to Confirmed List (' + moveCount + ')',
+          silentErrorToast: true,
+        });
+      } else {
+        showToast(modeLabel + ' request item(s) downloaded successfully (' + moveCount + ')', 'success');
+      }
     } catch (err) {
       showToast((err && err.message) ? err.message : 'Download failed. Please try again.', 'error');
       console.error('[RequestList] download failed:', err);
@@ -1224,6 +1257,24 @@ function requestListStep() {
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
       openCardDrawer('edit', ids[0]);
+    });
+  }
+
+  if (reuploadImageBtn) {
+    reuploadImageBtn.addEventListener('click', async function() {
+      this.disabled = true;
+      try {
+        var cardIds = getAllVisibleCardIds();
+        if (window.IDCardApp && typeof window.IDCardApp.reuploadImages === 'function') {
+          // Temporarily set CURRENT_STATUS so the modal label shows "Request List"
+          var _prev = window.CURRENT_STATUS;
+          window.CURRENT_STATUS = 'request';
+          window.IDCardApp.reuploadImages(cardIds);
+          window.CURRENT_STATUS = _prev;
+        }
+      } finally {
+        this.disabled = false;
+      }
     });
   }
 
@@ -1423,7 +1474,9 @@ function confirmedListStep() {
   var downloadXlsxBtn = document.getElementById('confirmedDownloadXlsxBtn');
   var downloadImagesBtn = document.getElementById('confirmedDownloadImagesBtn');
   var editBtn = document.getElementById('confirmedEditBtn');
+  var retrieveBtn = document.getElementById('confirmedRetrieveBtn');
   var viewBtn = document.getElementById('confirmedViewBtn');
+  var reuploadImageBtn = document.getElementById('confirmedReuploadImageBtn');
   var showingRange = document.getElementById('confirmedShowingRange');
   var totalCountEl = document.getElementById('confirmedTotalCount');
   var currentQuery = '';
@@ -1453,6 +1506,11 @@ function confirmedListStep() {
       .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
   }
 
+  function getSelectedRrIds() {
+    return getCheckboxes().filter(function(cb) { return cb.checked; })
+      .map(function(cb) { return parseInt(cb.closest('tr').dataset.rrId, 10); });
+  }
+
   function getAllVisibleCardIds() {
     return getCheckboxes().map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId, 10); });
   }
@@ -1472,6 +1530,7 @@ function confirmedListStep() {
     if (downloadXlsxBtn) downloadXlsxBtn.disabled = totalRows === 0;
     if (downloadImagesBtn) downloadImagesBtn.disabled = totalRows === 0;
     if (editBtn) editBtn.disabled = count !== 1;
+    if (retrieveBtn) retrieveBtn.disabled = count === 0;
     if (paginator) paginator.updateSelectionCount(count);
 
     if (selectAllCb) {
@@ -1552,6 +1611,40 @@ function confirmedListStep() {
       var ids = getSelectedCardIds();
       if (ids.length !== 1) return;
       openCardDrawer('edit', ids[0]);
+    });
+  }
+
+  if (reuploadImageBtn) {
+    reuploadImageBtn.addEventListener('click', async function() {
+      this.disabled = true;
+      try {
+        var cardIds = getAllVisibleCardIds();
+        if (window.IDCardApp && typeof window.IDCardApp.reuploadImages === 'function') {
+          // Temporarily set CURRENT_STATUS so the modal label shows "Confirmed List"
+          var _prev = window.CURRENT_STATUS;
+          window.CURRENT_STATUS = 'confirmed';
+          window.IDCardApp.reuploadImages(cardIds);
+          window.CURRENT_STATUS = _prev;
+        }
+      } finally {
+        this.disabled = false;
+      }
+    });
+  }
+
+  if (retrieveBtn) {
+    retrieveBtn.addEventListener('click', async function() {
+      var ids = getSelectedRrIds();
+      if (!ids.length) return;
+      var ok = await showConfirm({
+        title: 'Retrieve Requests?',
+        text: 'Retrieve ' + ids.length + ' selected confirmed request(s) back to Request List?',
+        icon: 'fa-solid fa-rotate-left',
+        confirmLabel: 'Retrieve',
+        hideWarning: true,
+      });
+      if (!ok) return;
+      performRetrieve(ids);
     });
   }
 
@@ -1776,6 +1869,33 @@ function initReprintCardsPage() {
 window.ReprintCards = window.ReprintCards || {};
 window.ReprintCards.reinitialize = initReprintCardsPage;
 
+// Bridge: expose refreshCardTable on IDCardApp so the reupload completion
+// handler in idcard-actions-download-init.js can refresh the reprint page.
+window.IDCardApp = window.IDCardApp || {};
+window.IDCardApp.refreshCardTable = function() {
+  initReprintCardsPage();
+};
+
+// Bridge: collect all visible card IDs from the currently-active step so
+// idcard-actions-download-init.js can pass them to the reupload task.
+window.IDCardApp.getAllCardIdsForAction = function() {
+  // Find which step is currently visible and pull card IDs from its table
+  var stepIds = [
+    'requestTableBody',
+    'confirmedTableBody',
+    'reprintListTableBody',
+  ];
+  for (var i = 0; i < stepIds.length; i++) {
+    var body = document.getElementById(stepIds[i]);
+    if (body && body.offsetParent !== null) {
+      return Array.from(body.querySelectorAll('tr[data-card-id]'))
+        .map(function(tr) { return parseInt(tr.dataset.cardId, 10); })
+        .filter(function(id) { return !isNaN(id); });
+    }
+  }
+  return [];
+};
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initReprintCardsPage);
 } else {
@@ -1786,6 +1906,16 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
   if (!evt || !evt.target) return;
   if (evt.target.matches && evt.target.matches('main.reprint-cards-page')) {
     initReprintCardsPage();
+  }
+});
+
+// Initialize the reupload modal handlers once all deferred scripts have loaded.
+// idcard-actions-download-init.js (loaded after this file) exposes initReuploadHandlers
+// via window.IDCardApp. We call it on window load so the modal DOM is wired before
+// any user interaction.
+window.addEventListener('load', function() {
+  if (window.IDCardApp && typeof window.IDCardApp.initReuploadHandlers === 'function') {
+    window.IDCardApp.initReuploadHandlers();
   }
 });
 

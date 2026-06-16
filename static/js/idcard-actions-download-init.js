@@ -607,5 +607,6 @@ window.IDCardApp = window.IDCardApp || {};
 window.IDCardApp.initDownloadModule = initDownloadModule;
 window.IDCardApp.reuploadImages = reuploadImages;
 window.IDCardApp._loadExportTemplates = _loadExportTemplates;
+window.IDCardApp.initReuploadHandlers = initReuploadHandlers;
 
 })();

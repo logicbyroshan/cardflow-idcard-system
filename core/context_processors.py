@@ -110,7 +110,6 @@ def permissions(request):
         current_client = None
 
     context['current_client'] = current_client
-    context['current_client_logo_url'] = current_client.logo.url if current_client and current_client.logo else None
 
     
     # Cache on request for this request lifecycle

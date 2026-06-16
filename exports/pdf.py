@@ -561,13 +561,15 @@ class PdfExporter:
                         return uri
 
                     # xhtml2pdf fallback — write to file-like object
+                    import datetime
+                    _pisa_start = datetime.datetime.utcnow()
                     with open(tmpf_path, 'wb') as _out:
                         pisa_status = pisa.CreatePDF(
                             io.BytesIO(html_string.encode('utf-8')),
                             dest=_out,
                             link_callback=link_callback
                         )
-                    _pisa_end = datetime.utcnow()
+                    _pisa_end = datetime.datetime.utcnow()
                     logger.info('xhtml2pdf.render duration_seconds=%.2f', (_pisa_end - _pisa_start).total_seconds())
                     if pisa_status.err:
                         logger.error("xhtml2pdf errors: %s", pisa_status.err)

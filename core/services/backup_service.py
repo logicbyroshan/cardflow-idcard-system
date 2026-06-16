@@ -1,4 +1,4 @@
-﻿"""
+"""
 core/services/backup_service.py  (shim)
 =========================================
 

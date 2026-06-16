@@ -286,7 +286,7 @@ class WordStylesMixin:
                 tcPr.remove(nw)
     
     def _set_table_borders(self, table, parse_xml, nsdecls):
-        """Set table borders to 0.5pt."""
+        """Set table borders to 0.75pt."""
         tbl = table._tbl
         tblPr = tbl.tblPr if tbl.tblPr is not None else parse_xml(
             r'<w:tblPr {}/>'.format(nsdecls('w'))
@@ -301,12 +301,12 @@ class WordStylesMixin:
         
         tblBorders = parse_xml(
             r'<w:tblBorders {}>'
-            r'<w:top w:val="single" w:sz="4" w:color="000000"/>'
-            r'<w:left w:val="single" w:sz="4" w:color="000000"/>'
-            r'<w:bottom w:val="single" w:sz="4" w:color="000000"/>'
-            r'<w:right w:val="single" w:sz="4" w:color="000000"/>'
-            r'<w:insideH w:val="single" w:sz="4" w:color="000000"/>'
-            r'<w:insideV w:val="single" w:sz="4" w:color="000000"/>'
+            r'<w:top w:val="single" w:sz="6" w:color="000000"/>'
+            r'<w:left w:val="single" w:sz="6" w:color="000000"/>'
+            r'<w:bottom w:val="single" w:sz="6" w:color="000000"/>'
+            r'<w:right w:val="single" w:sz="6" w:color="000000"/>'
+            r'<w:insideH w:val="single" w:sz="6" w:color="000000"/>'
+            r'<w:insideV w:val="single" w:sz="6" w:color="000000"/>'
             r'</w:tblBorders>'.format(nsdecls('w'))
         )
         tblPr.append(tblBorders)

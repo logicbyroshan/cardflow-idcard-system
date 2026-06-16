@@ -10,11 +10,21 @@
             <i class="fa-solid fa-pen"></i>
             <span class="btn-text">Edit</span>
         </button>
+        <button class="btn action-btn btn-green" id="confirmedRetrieveBtn" disabled title="Retrieve selected back to Request list">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span class="btn-text">Retrieve</span>
+        </button>
         {% endif %}
         <button class="btn action-btn btn-gray" id="confirmedViewBtn" disabled title="View selected card details">
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
+        {% if not is_client and not is_client_staff %}
+        <button class="btn action-btn btn-amber" id="confirmedReuploadImageBtn" title="Reupload images from ZIP">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span class="btn-text">Reupload Image</span>
+        </button>
+        {% endif %}
         <div class="action-divider"></div>
         <button class="btn action-btn btn-blue" id="confirmedDownloadPdfBtn" title="Download as PDF">
             <i class="fa-solid fa-file-pdf"></i>

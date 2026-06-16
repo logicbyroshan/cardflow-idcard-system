@@ -79,8 +79,8 @@ class Client(models.Model):
     # Basic Information
     name = models.CharField(max_length=200, db_index=True)
     is_guest = models.BooleanField(default=False, db_index=True)
-    # Logo for panel branding
-    logo = models.ImageField(upload_to='client_logos/', null=True, blank=True)
+    # Icon class for panel branding (FontAwesome class name)
+    icon = models.CharField(max_length=100, default='fa-solid fa-building')
     
     # Address
     address = models.TextField(blank=True, null=True)
@@ -151,7 +151,7 @@ class Client(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Cache original name to detect changes without an extra DB query in save()
-        self._original_name = self.name if self.pk else None
+        self._original_name = self.__dict__.get('name') if self.pk else None
     
     def generate_folder_code(self):
         """Generate and set the image folder code based on client name"""

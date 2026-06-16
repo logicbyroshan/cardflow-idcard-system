@@ -1501,3 +1501,116 @@ class ImpersonationApiTests(TestCase):
         self.assertNotIn('_pro_original_user_id', session)
 
         self.assertEqual(int(session.get('_auth_user_id')), self.pro_user.id)
+
+
+class GuestSandboxDatabaseTests(TestCase):
+    databases = '__all__'
+
+    def setUp(self):
+        from client.models import Client
+        self.guest_user = User.objects.create_user(
+            username='guest-test-sandbox@example.com',
+            email='guest-test-sandbox@example.com',
+            password='testpass123',
+            role='guest_user',
+        )
+        self.client_profile = Client.objects.create(
+            user=self.guest_user,
+            name='Guest Sandbox Client',
+            status='active',
+            is_guest=True,
+        )
+
+    def test_guest_database_sandbox_isolation_and_logout_cleanup(self):
+        from django.test.client import RequestFactory
+        from django.contrib.sessions.backends.db import SessionStore
+        from core.middleware import GuestSandboxMiddleware
+        from idcards.models import IDCardGroup
+        import os
+        from django.conf import settings
+
+        factory = RequestFactory()
+        middleware = GuestSandboxMiddleware(lambda r: None)
+
+        # 1. Establish Session One
+        request_one = factory.get('/panel/')
+        request_one.user = self.guest_user
+        request_one.session = SessionStore()
+        request_one.session.save()
+        session_key_one = request_one.session.session_key
+
+        # Allow dynamic test databases in Django's test runner
+        self.__class__.databases = self.__class__.databases | {
+            'guest_template_init',
+            f"guest_{session_key_one}",
+        }
+
+        # 2. Run request one through middleware (this will setup Guest 1's sandbox DB)
+        middleware(request_one)
+
+        # Verify Guest 1's database file is created
+        db_file_one = os.path.join(settings.BASE_DIR, 'guest_sandboxes', f"{session_key_one}.sqlite3")
+        self.assertTrue(os.path.exists(db_file_one))
+
+        # 3. Simulate Guest 1 creating a card group
+        from core.db_router import GuestSandboxRouter
+        GuestSandboxRouter.set_guest_db(f"guest_{session_key_one}")
+        try:
+            # Create a card group inside Guest 1's sandbox
+            g1 = IDCardGroup.objects.create(
+                client=self.client_profile,
+                name="Group Guest One",
+            )
+            # Verify it exists in sandbox 1
+            self.assertTrue(IDCardGroup.objects.filter(id=g1.id).exists())
+        finally:
+            GuestSandboxRouter.clear_guest_db()
+
+        # Verify that it does NOT exist in the default database!
+        self.assertFalse(IDCardGroup.objects.using('default').filter(name="Group Guest One").exists())
+
+        # 4. Establish Session Two
+        request_two = factory.get('/panel/')
+        request_two.user = self.guest_user
+        request_two.session = SessionStore()
+        request_two.session.save()
+        session_key_two = request_two.session.session_key
+
+        # Allow dynamic database for Session Two
+        self.__class__.databases = self.__class__.databases | {
+            f"guest_{session_key_two}",
+        }
+
+        # 5. Run request two through middleware (this will setup Guest 2's sandbox DB)
+        middleware(request_two)
+
+        db_file_two = os.path.join(settings.BASE_DIR, 'guest_sandboxes', f"{session_key_two}.sqlite3")
+        self.assertTrue(os.path.exists(db_file_two))
+
+        # 6. Verify Guest 2 cannot see Guest 1's card group
+        GuestSandboxRouter.set_guest_db(f"guest_{session_key_two}")
+        try:
+            self.assertFalse(IDCardGroup.objects.filter(name="Group Guest One").exists())
+        finally:
+            GuestSandboxRouter.clear_guest_db()
+
+        # 7. Test Logout Signal Cleanup
+        from django.contrib.auth.signals import user_logged_out
+        from accounts.signals import cleanup_device_session
+        
+        cleanup_device_session(sender=None, request=request_one, user=self.guest_user)
+        # Verify Guest 1's DB file is deleted
+        self.assertFalse(os.path.exists(db_file_one))
+        
+        # Verify Guest 2's DB file is still intact
+        self.assertTrue(os.path.exists(db_file_two))
+
+        # 8. Test Expired Sandboxes Cleanup via task_cleanup
+        # Delete Session Two so it is marked as expired/non-existent
+        request_two.session.delete()
+        
+        from core.services.task_cleanup import cleanup_expired_guest_sandboxes
+        count = cleanup_expired_guest_sandboxes()
+        self.assertEqual(count, 1)
+        # Verify Guest 2's DB file is deleted now
+        self.assertFalse(os.path.exists(db_file_two))

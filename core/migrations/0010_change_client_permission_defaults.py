@@ -29,7 +29,8 @@ def update_existing_clients(apps, schema_editor):
         'perm_idcard_retrieve',
     ]
     update_kwargs = {field: True for field in fields_to_enable}
-    count = Client.objects.update(**update_kwargs)
+    db_alias = schema_editor.connection.alias
+    count = Client.objects.using(db_alias).update(**update_kwargs)
     # Note: migration output is intentionally silent; check via Django admin if needed.
 
 
@@ -55,7 +56,8 @@ def reverse_update(apps, schema_editor):
         'perm_idcard_retrieve',
     ]
     update_kwargs = {field: False for field in fields_to_disable}
-    Client.objects.update(**update_kwargs)
+    db_alias = schema_editor.connection.alias
+    Client.objects.using(db_alias).update(**update_kwargs)
 
 
 class Migration(migrations.Migration):

@@ -1026,3 +1026,214 @@ class SecurityHeadersMiddleware:
 
 
         return response
+
+
+# =============================================================================
+# GUEST SANDBOX DATABASE MIDDLEWARE
+# =============================================================================
+
+import os
+import shutil
+from django.db import connections
+from django.core.management import call_command
+from core.db_router import GuestSandboxRouter
+
+TEMPLATE_DB_PATH = os.path.join(django_settings.BASE_DIR, 'guest_sandboxes', 'template.sqlite3')
+
+_TEMPLATE_DB_MIGRATED = False
+
+def ensure_template_db():
+    """Ensure the sandbox template database exists and is migrated to the latest state."""
+    global _TEMPLATE_DB_MIGRATED
+    if _TEMPLATE_DB_MIGRATED:
+        return
+
+    os.makedirs(os.path.dirname(TEMPLATE_DB_PATH), exist_ok=True)
+    
+    db_alias = "guest_template_init"
+    db_config = dict(connections['default'].settings_dict)
+    db_config['ENGINE'] = 'django.db.backends.sqlite3'
+    db_config['NAME'] = TEMPLATE_DB_PATH
+    db_config['OPTIONS'] = {'timeout': 60}
+    
+    django_settings.DATABASES[db_alias] = db_config
+    connections.databases[db_alias] = db_config
+    
+    try:
+        logger.info("Ensuring guest sandbox template database is up to date...")
+        call_command('migrate', database=db_alias, interactive=False, verbosity=0)
+        
+        # Clear seeded database rows to start with a clean schema
+        from core.models import User
+        from client.models import Client
+        User.objects.using(db_alias).all().delete()
+        Client.objects.using(db_alias).all().delete()
+        
+        _TEMPLATE_DB_MIGRATED = True
+        logger.info("Guest sandbox template database is up to date.")
+    except Exception as e:
+        logger.exception("Failed to initialize guest sandbox template database: %s", e)
+        if os.path.exists(TEMPLATE_DB_PATH):
+            try:
+                os.remove(TEMPLATE_DB_PATH)
+            except Exception:
+                pass
+        raise e
+    finally:
+        if db_alias in connections:
+            try:
+                connections[db_alias].close()
+            except Exception:
+                pass
+        if db_alias in connections.databases:
+            del connections.databases[db_alias]
+        if db_alias in django_settings.DATABASES:
+            del django_settings.DATABASES[db_alias]
+
+
+def populate_sandbox_database(client_id, db_alias):
+    """Copy client-scoped records from the default database to the guest sandbox database."""
+    from client.models import Client
+    from core.models import User
+    from staff.models import Staff
+    from idcards.models import IDCardGroup, IDCardTable, IDCard
+    from reprintcard.models import ReprintRequest
+    from mediafiles.models import CardMedia
+    
+    # 1. Clear any seeded data in the destination database first to avoid unique constraints
+    User.objects.using(db_alias).all().delete()
+    Client.objects.using(db_alias).all().delete()
+    Staff.objects.using(db_alias).all().delete()
+    IDCardGroup.objects.using(db_alias).all().delete()
+    IDCardTable.objects.using(db_alias).all().delete()
+    IDCard.objects.using(db_alias).all().delete()
+    ReprintRequest.objects.using(db_alias).all().delete()
+    CardMedia.objects.using(db_alias).all().delete()
+
+    # 2. Query data from default database
+    try:
+        client = Client.objects.using('default').get(id=client_id)
+    except Client.DoesNotExist:
+        logger.warning("Client profile with id=%s not found during sandbox population", client_id)
+        return
+        
+    client_user = User.objects.using('default').get(id=client.user_id)
+    
+    staff_members = list(Staff.objects.using('default').filter(client_id=client_id))
+    staff_user_ids = [s.user_id for s in staff_members]
+    staff_users = list(User.objects.using('default').filter(id__in=staff_user_ids))
+    
+    # 3. Save Users (client user and staff users)
+    client_user.save(using=db_alias)
+    for u in staff_users:
+        u.save(using=db_alias)
+        
+    # 4. Save Client
+    client.save(using=db_alias)
+    
+    # 5. Save Staff members and their Many-to-Many fields
+    for s in staff_members:
+        s.save(using=db_alias)
+        # Sync ManyToMany fields to the sandbox connection
+        s.assigned_clients.set(list(s.assigned_clients.using('default').all()), clear=True)
+        s.assigned_groups.set(list(s.assigned_groups.using('default').all()), clear=True)
+        
+    # 6. Save IDCardGroup, IDCardTable, IDCard, ReprintRequest, CardMedia
+    groups = list(IDCardGroup.objects.using('default').filter(client_id=client_id))
+    for g in groups:
+        g.save(using=db_alias)
+        
+        tables = list(IDCardTable.objects.using('default').filter(group_id=g.id))
+        for t in tables:
+            t.save(using=db_alias)
+            
+            cards = list(IDCard.objects.using('default').filter(table_id=t.id))
+            for c in cards:
+                c.save(using=db_alias)
+                
+            reprints = list(ReprintRequest.objects.using('default').filter(table_id=t.id))
+            for r in reprints:
+                r.save(using=db_alias)
+                
+    # Copy all CardMedia records linked to this client
+    media_records = list(CardMedia.objects.using('default').filter(client_id=client_id))
+    for m in media_records:
+        m.save(using=db_alias)
+
+
+class GuestSandboxMiddleware:
+    """
+    Middleware to dynamically setup, populate and route request database operations
+    to an isolated, session-scoped SQLite database for guest users.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        guest_db = None
+        user = getattr(request, 'user', None)
+        
+        if user and user.is_authenticated and getattr(user, 'role', '') == 'guest_user':
+            session_key = getattr(request.session, 'session_key', '') or ''
+            if not session_key:
+                try:
+                    request.session.save()
+                    session_key = request.session.session_key or ''
+                except Exception:
+                    pass
+            
+            if session_key:
+                sandbox_dir = os.path.join(django_settings.BASE_DIR, 'guest_sandboxes')
+                db_file = os.path.join(sandbox_dir, f"{session_key}.sqlite3")
+                db_alias = f"guest_{session_key}"
+                
+                # Double-checked locking pattern for template & sandbox file creation
+                if not os.path.exists(db_file):
+                    ensure_template_db()
+                    os.makedirs(sandbox_dir, exist_ok=True)
+                    try:
+                        shutil.copy2(TEMPLATE_DB_PATH, db_file)
+                        
+                        # Register connection dynamically
+                        db_config = dict(connections['default'].settings_dict)
+                        db_config['ENGINE'] = 'django.db.backends.sqlite3'
+                        db_config['NAME'] = db_file
+                        db_config['OPTIONS'] = {'timeout': 60}
+                        
+                        django_settings.DATABASES[db_alias] = db_config
+                        connections.databases[db_alias] = db_config
+                        
+                        # Populate data from the default database
+                        client_profile = getattr(user, 'client_profile', None)
+                        if client_profile:
+                            populate_sandbox_database(client_profile.id, db_alias)
+                            
+                    except Exception as e:
+                        logger.exception("Failed to initialize guest sandbox session database: %s", e)
+                        if os.path.exists(db_file):
+                            try:
+                                os.remove(db_file)
+                            except Exception:
+                                pass
+                        db_alias = None
+                else:
+                    # Connection might not be registered in a fresh process/thread
+                    if db_alias not in django_settings.DATABASES:
+                        db_config = dict(connections['default'].settings_dict)
+                        db_config['ENGINE'] = 'django.db.backends.sqlite3'
+                        db_config['NAME'] = db_file
+                        db_config['OPTIONS'] = {'timeout': 60}
+                        django_settings.DATABASES[db_alias] = db_config
+                        connections.databases[db_alias] = db_config
+
+                if db_alias:
+                    guest_db = db_alias
+                    GuestSandboxRouter.set_guest_db(guest_db)
+        
+        try:
+            response = self.get_response(request)
+        finally:
+            GuestSandboxRouter.clear_guest_db()
+            
+        return response
+

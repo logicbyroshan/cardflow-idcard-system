@@ -1,4 +1,4 @@
-﻿"""
+"""
 Backward-compatible shim.
 Canonical location: client/services_client_core.py
 

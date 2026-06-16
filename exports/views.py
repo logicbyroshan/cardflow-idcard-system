@@ -505,12 +505,14 @@ def _check_export_permission(request, skip_status_check=False):
     # Keep export access aligned with status list permissions.
     status = _get_status_from_request(request)
     if status:
-        required_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
-        if required_perm and not PermissionService.has(request.user, required_perm):
-            return JsonResponse({
-                'success': False,
-                'message': 'Permission denied: You do not have access to this list'
-            }, status=403)
+        is_client_role = request.user.role in ('client', 'client_staff') or getattr(request.user, 'role', '') == 'guest_user'
+        if not (skip_status_check and is_client_role):
+            required_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
+            if required_perm and not PermissionService.has(request.user, required_perm):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Permission denied: You do not have access to this list'
+                }, status=403)
     
     # Block client/client_staff from exporting approved or download status cards
     # (skipped for PDF exports — clients can download PDF on all statuses)

@@ -1611,8 +1611,7 @@ def home(request):
     _now = _tz.now()
 
     def _safe_client_logo_url(_client_obj):
-        _logo = getattr(_client_obj, 'logo', getattr(_client_obj, 'website_logo', None))
-        return _safe_file_url(_logo)
+        return ''
 
     _cards_scope = (
         IDCard.objects.all() if _is_admin
@@ -1990,11 +1989,7 @@ def clients_list(request):
     ).order_by('name')
 
     def _safe_client_logo_url(_client_obj):
-        try:
-            _logo = getattr(_client_obj, 'logo', None)
-            return _logo.url if _logo else ''
-        except Exception:
-            return ''
+        return ''
 
     client_data = []
     for c in clients:
@@ -6631,7 +6626,7 @@ def api_clients_list(request):
                 continue
         except Exception:
             continue
-        logo_url = _safe_file_url(c.logo) if c.logo else ''
+        logo_url = ''
             
         users_list.append({
             'id': c.id,       # Client model ID — used by toggle/delete/update endpoints

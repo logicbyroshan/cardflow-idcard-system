@@ -197,7 +197,30 @@ def manage_user_device_sessions(sender, request, user, **kwargs):
 
 @receiver(user_logged_out)
 def cleanup_device_session(sender, request, user, **kwargs):
-    """Remove the device session record upon manual logout."""
+    """Remove the device session record and clean up guest sandbox database upon manual logout."""
     session_key = request.session.session_key
     if session_key:
         UserDeviceSession.objects.filter(session_key=session_key).delete()
+
+        # Clean up guest sandbox database and connections
+        from django.conf import settings
+        from django.db import connections
+        import os
+
+        db_alias = f"guest_{session_key}"
+        db_file = os.path.join(settings.BASE_DIR, 'guest_sandboxes', f"{session_key}.sqlite3")
+
+        try:
+            if db_alias in connections:
+                connections[db_alias].close()
+                del connections.databases[db_alias]
+            if db_alias in settings.DATABASES:
+                del settings.DATABASES[db_alias]
+        except Exception as conn_err:
+            logger.warning("Failed to clean up sandbox DB connections for alias %s: %s", db_alias, conn_err)
+
+        if os.path.exists(db_file):
+            try:
+                os.remove(db_file)
+            except Exception as e:
+                logger.warning("Failed to delete guest sandbox database file %s: %s", db_file, e)

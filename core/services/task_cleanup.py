@@ -273,6 +273,57 @@ def cleanup_old_exports(days=3):
     return count
 
 
+def cleanup_expired_guest_sandboxes():
+    """
+    Remove guest sandbox SQLite database files whose sessions have expired or been deleted.
+    """
+    from django.contrib.sessions.models import Session
+    from django.utils import timezone
+
+    sandbox_dir = os.path.join(settings.BASE_DIR, 'guest_sandboxes')
+    if not os.path.exists(sandbox_dir):
+        return 0
+
+    try:
+        filenames = os.listdir(sandbox_dir)
+    except OSError:
+        return 0
+
+    count = 0
+    now = timezone.now()
+
+    for filename in filenames:
+        if not filename.endswith('.sqlite3') or filename == 'template.sqlite3':
+            continue
+
+        session_key = filename[:-8]  # Remove '.sqlite3'
+
+        # Check if session still exists and is not expired
+        session_exists = Session.objects.filter(session_key=session_key, expire_date__gt=now).exists()
+        if not session_exists:
+            file_path = os.path.join(sandbox_dir, filename)
+            try:
+                # Close connection if registered
+                db_alias = f"guest_{session_key}"
+                from django.db import connections
+                if db_alias in connections:
+                    connections[db_alias].close()
+                    del connections.databases[db_alias]
+                if db_alias in settings.DATABASES:
+                    del settings.DATABASES[db_alias]
+            except Exception:
+                pass
+
+            try:
+                os.remove(file_path)
+                count += 1
+                logger.info("Deleted expired guest sandbox database file: %s", filename)
+            except Exception as e:
+                logger.warning("Failed to delete expired sandbox database file %s: %s", file_path, e)
+
+    return count
+
+
 def run_all_cleanup():
     """
     Run all cleanup operations.
@@ -285,6 +336,7 @@ def run_all_cleanup():
         'old_results': cleanup_old_results(days=7),
         'orphaned_temp': cleanup_orphaned_temp_files(hours=24),
         'old_exports': cleanup_old_exports(days=3),
+        'expired_sandboxes': cleanup_expired_guest_sandboxes(),
     }
     # Activity logs are intentionally NOT auto-cleared.
     # They can be cleared manually from Operations Hub.

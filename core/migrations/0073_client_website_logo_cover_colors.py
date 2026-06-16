@@ -50,9 +50,10 @@ def _compute_theme_colors_from_file(file_obj):
 
 def forwards(apps, schema_editor):
     Client = apps.get_model('core', 'Client')
-    for client in Client.objects.exclude(website_logo='').exclude(website_logo__isnull=True).iterator():
+    db_alias = schema_editor.connection.alias
+    for client in Client.objects.using(db_alias).exclude(website_logo='').exclude(website_logo__isnull=True).iterator():
         cover_color, cover_color_dark = _compute_theme_colors_from_file(client.website_logo)
-        Client.objects.filter(pk=client.pk).update(
+        Client.objects.using(db_alias).filter(pk=client.pk).update(
             website_logo_cover_color=cover_color,
             website_logo_cover_color_dark=cover_color_dark,
         )
@@ -60,7 +61,8 @@ def forwards(apps, schema_editor):
 
 def backwards(apps, schema_editor):
     Client = apps.get_model('core', 'Client')
-    Client.objects.update(
+    db_alias = schema_editor.connection.alias
+    Client.objects.using(db_alias).update(
         website_logo_cover_color=None,
         website_logo_cover_color_dark=None,
     )

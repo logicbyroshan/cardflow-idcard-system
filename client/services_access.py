@@ -396,3 +396,17 @@ class ClientAccessService:
                 
             return False
         return True
+
+    @staticmethod
+    def get_accessible_table_ids(user):
+        """Return a list of accessible table IDs for a user.
+        Returns None if all tables are accessible (no restriction).
+        """
+        client = ClientAccessService.get_client_for_user(user)
+        if client is None:
+            return []
+        if PermissionService.is_client_staff(user):
+            qs = ClientAccessService.get_scoped_tables_qs(user, client)
+            return list(qs.values_list('id', flat=True))
+        return None
+

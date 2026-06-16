@@ -87,9 +87,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return firstCell ? String(firstCell.textContent || '').trim() : '';
       }
 
-      function getSelectedClientLogo() {
-        if (!NS.selectedRow || !NS.selectedRow.dataset) return '';
-        return String(NS.selectedRow.dataset.clientLogo || '').trim();
+      function getSelectedClientIcon() {
+        if (!NS.selectedRow || !NS.selectedRow.dataset) return 'fa-solid fa-building';
+        return String(NS.selectedRow.dataset.clientIcon || 'fa-solid fa-building').trim();
       }
 
       function renderClientMessageHistory(messages, historyNode) {
@@ -405,6 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
           email: document.getElementById('clientEmail').value.trim(),
           phone: document.getElementById('clientPhone').value.trim(),
           address: document.getElementById('clientAddress').value,
+          icon: document.getElementById('clientIcon').value.trim() || 'fa-solid fa-building',
           is_active: document.getElementById('clientStatus').value === 'true',
         };
 
@@ -452,23 +453,14 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
 
-        // Include client logo removal flag if set (remove_logo). If a new file is selected, ignore remove flag.
-        try {
-          var logoRemoveEl = document.getElementById('clientLogoRemove');
-          var removeLogoVal = logoRemoveEl ? (logoRemoveEl.value === '1' || logoRemoveEl.value === 'true') : false;
-          if (NS.selectedProfileFile) removeLogoVal = false;
-          formData.remove_logo = removeLogoVal;
-        } catch (ex) {
-          // noop
-        }
-
+        // Removed client logo removal check since upload is disabled
         var result;
 
         try {
           if (clientId) {
-            result = await NS.updateClient(clientId, formData, NS.selectedProfileFile);
+            result = await NS.updateClient(clientId, formData);
           } else {
-            result = await NS.createClient(formData, NS.selectedProfileFile);
+            result = await NS.createClient(formData);
           }
 
           // Clear any previous email error
@@ -880,16 +872,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!NS.selectedClientId || !NS.selectedRow) return;
 
         var clientName = getSelectedClientName() || 'Client';
-        var clientLogo = getSelectedClientLogo();
+        var clientIcon = getSelectedClientIcon();
         if (staffDrawerClientName) {
           staffDrawerClientName.textContent = clientName;
         }
         if (staffDrawerClientLogo) {
-          if (clientLogo) {
-            staffDrawerClientLogo.innerHTML = '<img src="' + escapeHtmlLocal(clientLogo) + '" alt="' + escapeHtmlLocal(clientName) + ' logo" style="width:100%;height:100%;object-fit:contain;background:#fff;padding:3px;">';
-          } else {
-            staffDrawerClientLogo.innerHTML = '<i class="fa-solid fa-building" style="font-size:12px;"></i>';
-          }
+          staffDrawerClientLogo.innerHTML = '<i class="' + escapeHtmlLocal(clientIcon) + '" style="font-size:12px;"></i>';
         }
 
         // Show loading state

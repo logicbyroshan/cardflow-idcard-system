@@ -1,4 +1,4 @@
-﻿"""
+"""
 Backup API views  (core/views shim)
 =====================================
 

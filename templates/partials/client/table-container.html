@@ -29,16 +29,9 @@ Required context:
         </thead>
         <tbody id="client-table-body">
             {% for client in clients %}
-            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}" data-client-has-data="{{ client.has_data|yesno:'true,false' }}">
+            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}" data-client-has-data="{{ client.has_data|yesno:'true,false' }}" data-client-icon="{{ client.icon|default:'fa-solid fa-building' }}">
                 <td class="text-left">
                     <div class="client-name-cell" title="{{ client.name }}">
-                        <span class="client-logo-badge" aria-hidden="true">
-                            {% if client.logo %}
-                                <img src="{{ client.logo.url }}" alt="{{ client.name }} Logo">
-                            {% else %}
-                                <i class="fa-solid fa-building"></i>
-                            {% endif %}
-                        </span>
                         <span class="client-name-text">{{ client.name }}</span>
                     </div>
                 </td>
