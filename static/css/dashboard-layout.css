@@ -206,7 +206,6 @@
     min-height: 200px;
     overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-gutter: stable;
     scrollbar-color: var(--color-slate-400) transparent;
 }
 
@@ -376,7 +375,6 @@
 
 .recent-table thead th.recent-updates-sortable.is-sort-active {
     /* Keep the same header gradient look; only text/icon indicate active sort */
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
     color: #ffecb3 !important;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
 }
