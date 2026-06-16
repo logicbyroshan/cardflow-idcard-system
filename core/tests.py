@@ -4153,4 +4153,29 @@ class ClearPendingPathsApiTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(response.json()['success'])
 
+    @patch('django.core.files.storage.default_storage.exists')
+    def test_clear_pending_paths_by_column(self, mock_exists):
+        mock_exists.return_value = False  # Everything is missing
+        
+        self.client.force_login(self.super_admin)
+        
+        # We clear only 'SIGNATURE' column on card1 (which is pending)
+        url = reverse('api_clear_pending_paths', args=[self.table.id])
+        response = self.client.post(
+            url,
+            data=json.dumps({'status': 'pending', 'column': 'SIGNATURE'}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['cleared_count'], 1)
+        
+        self.card1.refresh_from_db()
+        # PHOTO (even though missing) must NOT be cleared because we only specified SIGNATURE
+        self.assertEqual(self.card1.field_data['PHOTO'], 'adarshimg/photo1.jpg')
+        self.assertEqual(self.card1.field_data['SIGNATURE'], '')  # Cleared!
+
+
 

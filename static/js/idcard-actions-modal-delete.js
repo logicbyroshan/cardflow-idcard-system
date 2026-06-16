@@ -345,6 +345,10 @@ function openClearPendingPathModal() {
     if (confirmStep) confirmStep.style.display = 'block';
     if (loadingStep) loadingStep.style.display = 'none';
     if (resultStep) resultStep.style.display = 'none';
+
+    // Reset column select dropdown
+    const columnSelect = document.getElementById('clearPendingPathColumn');
+    if (columnSelect) columnSelect.value = '';
     
     // Reset buttons
     const cancelBtn = document.getElementById('cancelClearPendingPathModal');
@@ -400,6 +404,17 @@ function initClearPendingPathModal() {
                 closeClearPendingPathModalFn();
                 return;
             }
+
+            const columnSelect = document.getElementById('clearPendingPathColumn');
+            const selectedColumn = columnSelect ? columnSelect.value : '';
+            if (!selectedColumn) {
+                if (typeof showToast === 'function') {
+                    showToast('Please select an image column to clear', false);
+                } else {
+                    alert('Please select an image column to clear');
+                }
+                return;
+            }
             
             // Switch to loading step
             const confirmStep = document.getElementById('clearPendingPathConfirmStep');
@@ -415,7 +430,10 @@ function initClearPendingPathModal() {
             confirmBtn.style.display = 'none';
             cancelBtn.style.display = 'none';
             
-            ApiClient.post(`/api/table/${tableId}/cards/clear-pending-paths/`, { status: currentStatus })
+            ApiClient.post(`/api/table/${tableId}/cards/clear-pending-paths/`, { 
+                status: currentStatus,
+                column: selectedColumn
+            })
             .then(data => {
                 if (loadingStep) loadingStep.style.display = 'none';
                 

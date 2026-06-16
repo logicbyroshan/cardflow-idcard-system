@@ -2019,97 +2019,124 @@ def api_clear_pending_paths(request, table_id):
             return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
             
     try:
-        data = json.loads(request.body)
-        status = data.get('status')
-        
-        # Enforce that it only clears pending or verified lists (or both)
-        if status in ('pending', 'verified'):
-            statuses = [status]
-        else:
-            statuses = ['pending', 'verified']
-            
         from django.core.files.storage import default_storage
-        from mediafiles.services import ImageService
         from mediafiles.models import CardMedia
-        
-        # Get all image fields configured for this table
-        image_fields = ImageService.get_image_field_names(_tbl.fields or [])
-        if not image_fields:
-            return JsonResponse({
-                'success': True,
-                'total_scanned': 0,
-                'cleared_count': 0,
-                'message': 'No image fields configured for this table.'
-            })
-            
-        # Get all cards in the specified status(es)
-        cards = IDCard.objects.filter(table=_tbl, status__in=statuses)
-        total_scanned = len(cards)
+        from mediafiles.constants import IMAGE_FIELD_TYPES
+        from core.templatetags.custom_filters import is_image_field_by_name
+
+        try:
+            body = json.loads(request.body)
+        except Exception:
+            body = {}
+
+        status = body.get('status')
+        column = body.get('column')
+
+        if status:
+            cards = IDCard.objects.filter(table=_tbl, status=status.lower())
+        else:
+            cards = IDCard.objects.filter(table=_tbl, status__in=['pending', 'verified'])
+
+        # Identify all valid image fields configured for this table
+        image_fields = []
+        for f in _tbl.fields:
+            f_type = f.get('type', '')
+            f_name = f.get('name', '')
+            if f_type in IMAGE_FIELD_TYPES or is_image_field_by_name(f_name):
+                image_fields.append(f_name)
+
+        if column:
+            matched_field = None
+            for f_name in image_fields:
+                if f_name.lower() == column.lower():
+                    matched_field = f_name
+                    break
+            if not matched_field:
+                return JsonResponse({'success': False, 'message': f'Invalid image column: {column}'}, status=400)
+            fields_to_clear = [matched_field]
+        else:
+            fields_to_clear = image_fields
+
+        total_scanned = cards.count()
         cleared_count = 0
-        
-        # We will save cards using update_fields for safety/speed
-        modified_by = request.user.username if request.user.is_authenticated else 'system'
-        
+
         for card in cards:
-            field_data = card.field_data or {}
-            card_changed = False
-            
-            for field_name in image_fields:
-                path = field_data.get(field_name)
-                
-                # We only clear if a path exists, is not empty, and not already PENDING or NOT_FOUND
-                if path and path not in ('', 'NOT_FOUND') and not path.startswith('PENDING:'):
-                    # Check if file exists via default_storage
-                    normalized_path = BaseService.normalize_image_path(path)
-                    if normalized_path and not default_storage.exists(normalized_path):
-                        # File is missing! Clear the path.
-                        field_data[field_name] = ''
-                        card_changed = True
-                        cleared_count += 1
-                        
-                        # Delete corresponding CardMedia record
-                        CardMedia.objects.filter(card=card, field_name=field_name).delete()
-                        
-                        # If field name is PHOTO, also clear the legacy photo ImageField
-                        if field_name.upper() == 'PHOTO' and card.photo:
-                            try:
-                                card.photo.delete(save=False)
-                            except Exception as pe:
-                                logger.warning("Failed to delete legacy photo ImageField for card %s: %s", card.id, pe)
-            
-            if card_changed:
-                card.field_data = field_data
-                card.modified_by = modified_by
-                card.save(update_fields=['field_data', 'modified_by', 'photo'])
-                
-        if cleared_count > 0:
-            # Invalidate caches
+            card_updated = False
+            for f_name in fields_to_clear:
+                path = card.field_data.get(f_name)
+                if not path or path == 'NOT_FOUND':
+                    continue
+
+                is_pending = path.startswith('PENDING:')
+                exists_on_disk = False
+                if not is_pending:
+                    try:
+                        exists_on_disk = default_storage.exists(path)
+                    except Exception as e:
+                        logger.warning("Error checking file existence for %s: %s", path, e)
+                        exists_on_disk = False
+
+                if is_pending or not exists_on_disk:
+                    card.field_data[f_name] = ""
+                    card_updated = True
+
+                    # Delete matching CardMedia record
+                    CardMedia.objects.filter(card=card, field_name__iexact=f_name).delete()
+
+                    # Clear legacy photo field if applicable
+                    if f_name.lower() == 'photo' and getattr(card, 'photo', None):
+                        try:
+                            if default_storage.exists(card.photo.name):
+                                default_storage.delete(card.photo.name)
+                        except Exception as e:
+                            logger.warning("Could not delete legacy photo file: %s", e)
+                        card.photo = None
+
+            if card_updated:
+                # Determine which fields to update
+                fields_to_update = ['field_data']
+                if 'photo' in [f.name for f in card._meta.fields]:
+                    fields_to_update.append('photo')
+                card.save(update_fields=fields_to_update)
+                cleared_count += 1
+
+        # Bump cache versions
+        try:
+            invalidate_class_variant_cache(table_id)
+            invalidate_filter_options_cache(table_id)
             CacheVersionService.bump('mob_filter', int(table_id))
             CacheVersionService.bump('global_search', 'all')
-            if _tbl.group and _tbl.group.client_id:
-                CacheVersionService.bump('class_section', int(_tbl.group.client_id))
-                
-            # Log bulk activity
+            table_client_id = getattr(getattr(_tbl, 'group', None), 'client_id', None)
+            if table_client_id:
+                CacheVersionService.bump('class_section', int(table_client_id))
+        except Exception as e:
+            logger.warning("Error bumping cache in api_clear_pending_paths: %s", e)
+
+        # Log the activity
+        try:
+            col_desc = f"column '{column}'" if column else "all image columns"
             ActivityService.log(
-                'card_update',
-                f'Cleared missing image paths for {cleared_count} card(s)',
+                action='card_update',
+                description=f"Cleared pending/missing paths for {col_desc} on {cleared_count} card(s)",
                 user=request.user,
                 request=request,
                 target_model='IDCardTable',
                 target_id=table_id,
                 target_name=_tbl.name
             )
-            
+        except Exception as e:
+            logger.warning("Error logging activity in api_clear_pending_paths: %s", e)
+
         return JsonResponse({
             'success': True,
+            'message': f'Scan complete. Cleared paths for {cleared_count} card(s) out of {total_scanned} scanned.',
             'total_scanned': total_scanned,
-            'cleared_count': cleared_count,
-            'message': f'Scan complete. Cleared paths for {cleared_count} cards out of {total_scanned} scanned.'
+            'cleared_count': cleared_count
         })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
+
     except Exception as e:
-        logger.exception("Error in api_clear_pending_paths: %s", e)
+        logger.exception("Error clearing pending paths: %s", e)
         return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
 

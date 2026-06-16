@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <!-- Clear Pending Path Modal -->
 <div class="upload-modal-overlay" id="clearPendingPathModalOverlay">
   <div class="upload-modal simple-delete-modal">
@@ -11,9 +12,22 @@
         <div class="simple-delete-icon" style="background: #f59e0b; color: white;">
           <i class="fa-solid fa-eraser"></i>
         </div>
-        <div class="simple-delete-text">
+        <div class="simple-delete-text" style="width: 100%;">
           <p class="delete-count"><strong>Scan & Clear Paths</strong></p>
-          <p class="delete-info">This will scan all cards in the current list and clear the image paths for cards whose image files are missing on disk.<br><br><strong>Note:</strong> No card data/text will be deleted. Only the missing image references will be cleared.</p>
+          <p class="delete-info" style="margin-bottom: 15px;">This will scan all cards in the current list and clear the image paths for cards whose image files are missing on disk.<br><br><strong>Note:</strong> No card data/text will be deleted. Only the missing image references will be cleared.</p>
+          
+          <div class="form-group" style="text-align: left; margin-top: 15px; width: 100%;">
+            <label for="clearPendingPathColumn" style="font-weight: 600; display: block; margin-bottom: 5px;"><i class="fa-solid fa-table-columns"></i> Select Image Column</label>
+            <select id="clearPendingPathColumn" class="form-select" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: white; color: #333;">
+              <option value="">-- Select Column --</option>
+              {% for field in table.fields %}
+                {% check_image_field field.type field.name as is_img %}
+                {% if is_img %}
+                <option value="{{ field.name }}">{{ field.name|upper }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
         </div>
       </div>
       
