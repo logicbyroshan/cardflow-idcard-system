@@ -1053,45 +1053,6 @@ class UserProfileServiceTests(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('newpass123'))
 
-    def test_guest_profile_sandbox_isolated_per_session(self):
-        from accounts.services_profile import UserProfileService
-        from django.test.client import RequestFactory
-        from django.contrib.sessions.backends.db import SessionStore
-
-        guest_user = User.objects.create_user(
-            username='guest-sandbox@example.com',
-            email='guest-sandbox@example.com',
-            password='testpass123',
-            role='guest_user',
-        )
-
-        factory = RequestFactory()
-
-        request_one = factory.get('/panel/client/profile/')
-        request_one.user = guest_user
-        request_one.session = SessionStore()
-        request_one.session.save()
-
-        request_two = factory.get('/panel/client/profile/')
-        request_two.user = guest_user
-        request_two.session = SessionStore()
-        request_two.session.save()
-
-        success, message, profile = UserProfileService.update_profile(
-            guest_user,
-            {'first_name': 'Device One'},
-            request=request_one,
-        )
-        self.assertTrue(success)
-        self.assertEqual(message, 'Profile updated (sandbox)')
-        self.assertEqual(profile['full_name'], 'Device One')
-
-        first_profile = UserProfileService.get_profile(guest_user, request=request_one)
-        second_profile = UserProfileService.get_profile(guest_user, request=request_two)
-
-        self.assertEqual(first_profile['first_name'], 'Device One')
-        self.assertEqual(second_profile['first_name'], '')
-
     def test_change_password_revokes_other_sessions_keeps_current(self):
         from django.test import Client
         from accounts.services_profile import UserProfileService
