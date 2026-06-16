@@ -64,7 +64,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				"c:/Users/roshan/Desktop/Adarsh Admin New/.vscode/runserver.ps1"
+				"${workspaceFolder}/.vscode/runserver.ps1"
 			],
 			"isBackground": true,
 			"problemMatcher": [],

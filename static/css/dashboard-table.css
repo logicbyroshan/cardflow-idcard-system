@@ -46,44 +46,11 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--color-white);
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+    background: linear-gradient(135deg, #4b5563 0%, #1f2937 100%) !important;
     border: 1px solid rgba(255,255,255,0.15);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-/* Status-specific table column header gradients */
-.recent-table th:first-child,
-.recent-table-6col th:nth-child(1) {
-    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%) !important;
-}
-
-.recent-table th[data-recent-sort-key="pending"],
-.recent-table th[data-overview-sort-key="pending"],
-.recent-table-6col th:nth-child(2) {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-}
-
-.recent-table th[data-recent-sort-key="verified"],
-.recent-table th[data-overview-sort-key="verified"],
-.recent-table-6col th:nth-child(3) {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-}
-
-.recent-table th[data-recent-sort-key="approved"],
-.recent-table-6col th:nth-child(4) {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-}
-
-.recent-table th[data-recent-sort-key="downloaded"],
-.recent-table-6col th:nth-child(5) {
-    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
-}
-
-.recent-table th[data-recent-sort-key="pool"],
-.recent-table-6col th:nth-child(6) {
-    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
 }
 
 .recent-table td {
