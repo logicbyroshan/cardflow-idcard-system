@@ -4,6 +4,32 @@
    ============================================ */
 
 /* ====================
+   Global Dashboard Scrollbars (Thin & Premium)
+   ==================== */
+.dashboard-main *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.dashboard-main *::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dashboard-main *::-webkit-scrollbar-thumb {
+    background: var(--color-slate-400, #94a3b8);
+    border-radius: 8px;
+}
+
+.dashboard-main *::-webkit-scrollbar-thumb:hover {
+    background: var(--color-slate-500, #64748b);
+}
+
+.dashboard-main * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-400, #94a3b8) transparent;
+}
+
+/* ====================
    Dashboard Layout — fixed top + scrollable middle + fixed bottom
    ==================== */
 /* Dashboard main — flex column fills entire viewport */
