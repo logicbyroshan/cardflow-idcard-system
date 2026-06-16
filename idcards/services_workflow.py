@@ -595,6 +595,7 @@ class WorkflowService:
         """Log a bulk transition."""
         try:
             from core.services.activity_service import ActivityService
+            from collections import defaultdict
             client_name = ''
             try:
                 client_name = table.group.client.name
@@ -607,17 +608,33 @@ class WorkflowService:
             new_label = status_labels.get(new_status, str(new_status).replace('_', ' ').title())
             client_suffix = f' for {client_name}' if client_name else ''
 
+            # Group card status pairs by their starting (old) status to summarize bulk changes
+            grouped = defaultdict(list)
             for card_id, old_status in card_status_pairs:
+                grouped[old_status].append(card_id)
+
+            for old_status, card_ids in grouped.items():
+                count = len(card_ids)
                 old_label = status_labels.get(old_status, str(old_status).replace('_', ' ').title())
-                ActivityService.log(
-                    'card_status',
-                    f'Card moved from {old_label} to {new_label}{client_suffix}',
-                    user=user,
-                    request=request,
-                    target_model='IDCard',
-                    target_id=card_id,
-                    target_name=f'Card #{card_id}',
-                )
+                if count == 1:
+                    card_id = card_ids[0]
+                    ActivityService.log(
+                        'card_status',
+                        f'Card moved from {old_label} to {new_label}{client_suffix}',
+                        user=user,
+                        request=request,
+                        target_model='IDCard',
+                        target_id=card_id,
+                        target_name=f'Card #{card_id}',
+                    )
+                else:
+                    ActivityService.log(
+                        'card_bulk_status',
+                        f'{count} cards moved from {old_label} to {new_label}{client_suffix}',
+                        user=user,
+                        request=request,
+                        target_model='IDCard',
+                    )
         except Exception:
             logger.exception('WorkflowService: failed to log bulk transition')
 

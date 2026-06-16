@@ -336,7 +336,7 @@ class WorkflowServiceTests(TestCase):
 			).exists()
 		)
 
-	def test_bulk_transition_logs_each_card_activity_entry(self):
+	def test_bulk_transition_logs_single_bulk_activity_entry(self):
 		from idcards.models import IDCard
 		from idcards.services_workflow import WorkflowService
 		from core.models import ActivityLog
@@ -355,14 +355,21 @@ class WorkflowServiceTests(TestCase):
 		)
 		self.assertTrue(result.success)
 
-		logged_ids = set(
+		# Bulk transition should create one single bulk status log entry
+		bulk_logs = ActivityLog.objects.filter(
+			action='card_bulk_status',
+			target_model='IDCard',
+		)
+		self.assertEqual(bulk_logs.count(), 1)
+		self.assertIn('2 cards moved from Pending to Verified', bulk_logs.first().description)
+
+		# It should not create individual status log entries
+		self.assertFalse(
 			ActivityLog.objects.filter(
 				action='card_status',
 				target_model='IDCard',
-			).values_list('target_id', flat=True)
+			).exists()
 		)
-		self.assertIn(self.card_good_pending.id, logged_ids)
-		self.assertIn(second_card.id, logged_ids)
 
 	def test_bulk_transition_normalizes_invalid_card_ids(self):
 		from idcards.services_workflow import WorkflowService
