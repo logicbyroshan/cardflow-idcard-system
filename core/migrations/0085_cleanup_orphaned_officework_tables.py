@@ -9,13 +9,13 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunSQL(
             """
-            DROP TABLE IF EXISTS core_officeworkchatgroupmember;
-            DROP TABLE IF EXISTS core_officeworkchatgroup;
-            DROP TABLE IF EXISTS core_officeworkchatmessage;
-            DROP TABLE IF EXISTS core_officeworktaskcomment;
-            DROP TABLE IF EXISTS core_officeworktask;
-            DROP TABLE IF EXISTS core_officeworksharedfile;
-            DROP TABLE IF EXISTS core_officeworklead;
+            DROP TABLE IF EXISTS core_officeworkchatgroupmember CASCADE;
+            DROP TABLE IF EXISTS core_officeworkchatgroup CASCADE;
+            DROP TABLE IF EXISTS core_officeworkchatmessage CASCADE;
+            DROP TABLE IF EXISTS core_officeworktaskcomment CASCADE;
+            DROP TABLE IF EXISTS core_officeworktask CASCADE;
+            DROP TABLE IF EXISTS core_officeworksharedfile CASCADE;
+            DROP TABLE IF EXISTS core_officeworklead CASCADE;
             """,
             reverse_sql=""
         )
