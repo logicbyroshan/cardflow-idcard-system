@@ -950,16 +950,19 @@ def api_idcard_filter_options(request, table_id):
         )
 
     if section_field_name:
-        section_values = sorted(
-            [
-                str(v) for v in
-                qs.annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
-                .exclude(_sv__isnull=True).exclude(_sv='')
-                .order_by()
-                .values_list('_sv', flat=True).distinct()
-                if v is not None
-            ],
+        raw_sections = (
+            qs.annotate(_sv=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
+            .exclude(_sv__isnull=True).exclude(_sv='')
+            .order_by()
+            .values_list('_sv', flat=True).distinct()
         )
+        section_set = set()
+        for v in raw_sections:
+            if v is not None:
+                cleaned = str(v).strip().upper()
+                if cleaned:
+                    section_set.add(cleaned)
+        section_values = sorted(list(section_set))
 
     if course_field_name:
         raw_with_counts = (
@@ -1022,7 +1025,7 @@ def api_idcard_filter_options(request, table_id):
         section_class_sets = defaultdict(set)
         for raw_class, raw_section in pair_rows:
             canonical_class = normalize_class_value(str(raw_class).strip())
-            section_text = str(raw_section).strip()
+            section_text = str(raw_section).strip().upper()
             if not canonical_class or not section_text:
                 continue
             class_section_sets[canonical_class].add(section_text)
