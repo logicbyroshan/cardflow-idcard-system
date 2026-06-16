@@ -10,16 +10,8 @@
           <input type="hidden" id="clientId" name="clientId" value="">
           <div class="drawer-body">
             
-            <!-- Client Icon Section -->
-            <div class="form-group mb-6" style="width: 100%;">
-              <label class="form-label mb-1" for="clientIcon">Client Icon (FontAwesome class) <span class="required">*</span></label>
-              <div style="display: flex; gap: 12px; align-items: center;">
-                <div id="clientIconPreview" class="user-avatar-placeholder user-avatar-placeholder--client user-avatar-placeholder--lg" style="width: 50px; height: 50px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--color-slate-100); color: var(--color-slate-600); font-size: 20px;">
-                  <i class="fa-solid fa-building" id="clientIconPreviewInner"></i>
-                </div>
-                <input class="form-input" style="flex: 1;" type="text" id="clientIcon" name="icon" placeholder="e.g. fa-solid fa-building" value="fa-solid fa-building" required oninput="updateClientIconPreview(this.value)">
-              </div>
-            </div>
+            <!-- Client Icon Section (Hidden from UI as requested) -->
+            <input type="hidden" id="clientIcon" name="icon" value="fa-solid fa-building">
 
             <!-- Client Info Section -->
             <div class="form-section">

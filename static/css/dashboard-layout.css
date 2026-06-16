@@ -206,6 +206,25 @@
     min-height: 200px;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-gutter: stable;
+    scrollbar-color: var(--color-slate-400) transparent;
+}
+
+.dashboard-card-body.tall-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.dashboard-card-body.tall-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dashboard-card-body.tall-body::-webkit-scrollbar-thumb {
+    background: var(--color-slate-400);
+    border-radius: 8px;
+}
+
+.dashboard-card-body.tall-body::-webkit-scrollbar-thumb:hover {
+    background: var(--color-slate-500);
 }
 
 .dashboard-card-body.p-0 {
@@ -220,14 +239,14 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
 }
 
 .dashboard-card-header h3 {
     font-size: var(--ui-font-size-base, 14px);
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--color-white) !important;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -235,7 +254,7 @@
 }
 
 .dashboard-card-header h3 i {
-    color: var(--color-primary);
+    color: rgba(255, 255, 255, 0.9) !important;
     font-size: var(--ui-font-size-md, 13px);
 }
 
