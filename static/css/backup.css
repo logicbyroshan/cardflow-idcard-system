@@ -479,9 +479,9 @@
 
 /* Bottom bar */
 .backup-bottom-bar {
-  position: fixed !important;
+  position: absolute !important;
   bottom: 0 !important;
-  left: var(--sidebar-width, 150px) !important;
+  left: 0 !important;
   right: 0 !important;
   height: 58px !important;
   background: #ffffff !important;
@@ -490,19 +490,8 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  z-index: 99999 !important;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15) !important;
-  transition: left 0.3s ease !important;
-}
-
-body.sidebar-collapsed .backup-bottom-bar {
-  left: 0 !important;
-}
-
-@media (max-width: 1024px) {
-  .backup-bottom-bar {
-    left: 0 !important;
-  }
+  z-index: 50 !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
 }
 
 .backup-bottom-info {

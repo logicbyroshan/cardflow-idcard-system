@@ -132,6 +132,9 @@ def api_backup_initiate(request):
     if len(code) != 10 or not code.isdigit():
         return _json_error('Please enter a valid 10-digit confirmation code.')
 
+    # Delete any abandoned pending backup tasks first to avoid database clutter
+    BackupTask.objects.filter(status='pending').delete()
+
     task = BackupTask.objects.create(
         created_by=request.user,
         confirmation_code=code,
@@ -181,7 +184,7 @@ def api_backup_start(request):
         return _json_error('This backup task has already been started.')
 
     # Heavy I/O safety: allow only one active backup at a time.
-    if BackupTask.objects.filter(status__in=('pending', 'processing')).exclude(pk=task.pk).exists():
+    if BackupTask.objects.filter(status='processing').exists():
         return _json_error('Another backup is already running. Please wait for it to finish.', status=429)
 
     valid_clients = list(Client.objects.filter(pk__in=client_ids, status='active').only('pk', 'name'))

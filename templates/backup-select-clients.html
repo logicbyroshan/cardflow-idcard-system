@@ -37,7 +37,7 @@
   <main class="main backup-main" id="main-content">
     {% include 'partials/panel/topbar.html' with breadcrumb_label="Backup" %}
 
-    <div class="backup-page">
+    <div class="backup-page" style="position: relative;">
       {% if error %}
       <div class="backup-error-box">
         <i class="fa-solid fa-triangle-exclamation"></i> {{ error }}
@@ -91,7 +91,7 @@
       </div>
 
       <!-- Client table container (scrollable) -->
-      <div class="backup-clients-scroll-area" style="padding: 20px; background: #fafbfc; flex: 1; min-height: 0; overflow-y: auto;">
+      <div class="backup-clients-scroll-area" style="padding: 20px; padding-bottom: 80px; background: #fafbfc; flex: 1; min-height: 0; overflow-y: auto;">
         <div class="table-wrapper" style="background: #ffffff; border: 1px solid var(--color-gray-200); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
           <table class="data-table" id="backupClientsTable" style="width: 100%; border-collapse: collapse;">
             <thead>
@@ -167,7 +167,7 @@
       <div id="backupStartModal" class="backup-modal-overlay" style="display:none;">
         <div class="backup-modal backup-modal-sm">
           <div class="backup-modal-header">
-            <h2><i class="fa-solid fa-triangle-exclamation" style="color:var(--color-warning);"></i> Confirm Backup</h2>
+            <h2><i class="fa-solid fa-database"></i> Confirm Backup</h2>
             <button type="button" class="backup-modal-close" onclick="closeStartModal()">&times;</button>
           </div>
           <div class="backup-modal-body">
@@ -176,7 +176,6 @@
               <li>A single <strong>"Adarsh Backup {date}.zip"</strong> will be created with one folder per school.</li>
               <li>Backup will run in the background  -  you can close this page.</li>
               <li>Track progress in <strong>Manage Panel -> Backups</strong> tab.</li>
-              <li>Files will be <strong>auto-deleted after 24 hours</strong>.</li>
             </ul>
           </div>
           <div class="backup-modal-footer">
