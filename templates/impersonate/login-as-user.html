@@ -149,15 +149,12 @@
     color: var(--color-white);
   }
 
-  /* Users table + global pagination */
+  /* ─── Impersonate table — matches .data-table visual style ─── */
   .imp-table-shell {
     height: 100%;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border-color, #e0e0e0);
-    border-left: 0;
-    border-right: 0;
     background: var(--color-white);
   }
 
@@ -167,18 +164,16 @@
     overflow: auto;
   }
 
+  /* Reuse global data-table styles; only override what differs */
   .imp-table {
     width: 100%;
-    min-width: 760px;
+    min-width: 820px;
     border-collapse: collapse;
     font-size: var(--ui-font-size-sm, 12px);
   }
 
-  .imp-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+  .imp-table thead tr {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary, #764ba2) 100%);
   }
 
   .imp-table th {
@@ -186,77 +181,47 @@
     font-size: var(--ui-font-size-2xs, 10px);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     text-align: left;
-    padding: 10px 12px;
-    border: 0;
+    padding: 10px 14px;
+    border: none;
+    white-space: nowrap;
   }
 
   .imp-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #edf2f7;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
     vertical-align: middle;
-    text-transform: uppercase;
+    color: var(--text-primary, #374151);
+    font-size: var(--ui-font-size-sm, 12px);
   }
 
   .imp-table tbody tr:hover td {
-    background: rgba(var(--primary-rgb), 0.04);
+    background: var(--color-gray-50, #f8fafc);
   }
 
-  .imp-table tbody tr.is-clickable {
-    cursor: pointer;
-  }
+  .imp-table tbody tr.is-clickable { cursor: pointer; }
 
+  /* Sr No column */
   .imp-col-index {
-    width: 56px;
+    width: 52px;
     text-align: center;
     color: var(--color-slate-400);
     font-weight: 600;
+    font-size: var(--ui-font-size-xs, 11px);
   }
 
-  .imp-user-cell {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-  }
-
-  .imp-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-white);
-    font-size: var(--ui-font-size-sm, 12px);
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .imp-info {
-    flex: 1;
-    min-width: 0;
-  }
-
+  /* Name cell — teal clickable link style matching client table */
   .imp-name {
-    color: var(--text-primary, #2c3e50);
+    color: var(--color-primary, #667eea);
     font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: clamp(180px, 22vw, 480px);
+    display: inline-block;
     text-transform: uppercase;
-  }
-
-  .imp-email {
-    color: var(--text-secondary, #666);
-    font-size: var(--ui-font-size-xs, 11px);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
-    text-transform: lowercase;
   }
 
   .imp-client-meta {
@@ -268,6 +233,17 @@
     text-overflow: ellipsis;
   }
 
+  /* Email column */
+  .imp-email-cell {
+    color: var(--text-secondary, #6b7280);
+    font-size: var(--ui-font-size-xs, 11px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+
+  /* Role badge */
   .imp-role-tag {
     display: inline-flex;
     align-items: center;
@@ -281,145 +257,87 @@
   }
 
   .imp-role-tag.r-super_admin  { background: var(--color-violet-100); color: #6d28d9; }
-  .imp-role-tag.r-pro_user     { background: var(--color-rose-100); color: #be123c; }
-  .imp-role-tag.r-admin_staff  { background: var(--color-amber-100); color: var(--color-warning-dark); }
+  .imp-role-tag.r-pro_user     { background: var(--color-rose-100);   color: #be123c; }
+  .imp-role-tag.r-admin_staff  { background: var(--color-amber-100);  color: var(--color-warning-dark); }
   .imp-role-tag.r-client       { background: var(--color-emerald-100); color: var(--color-emerald-800); }
-  .imp-role-tag.r-client_staff { background: var(--color-blue-100); color: #1e40af; }
-  .imp-role-tag.r-guest_user   { background: var(--color-slate-100); color: var(--color-slate-700); }
+  .imp-role-tag.r-client_staff { background: var(--color-blue-100);   color: #1e40af; }
+  .imp-role-tag.r-guest_user   { background: var(--color-slate-100);  color: var(--color-slate-700); }
 
-  .imp-action-stack {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
+  /* Status — reuse system status-badge */
   .imp-status-pill {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 72px;
+    min-width: 68px;
     border-radius: 6px;
     padding: 2px 8px;
     font-size: var(--ui-font-size-2xs, 10px);
     font-weight: 700;
     border: 1px solid transparent;
   }
+  .imp-status-pill.active  { color: var(--color-green-800); background: var(--color-green-100); border-color: var(--color-green-300); }
+  .imp-status-pill.inactive { color: var(--color-red-800);  background: var(--color-red-100);  border-color: var(--color-red-300);  }
 
-  .imp-status-pill.active {
-    color: var(--color-green-800);
-    background: var(--color-green-100);
-    border-color: var(--color-green-300);
-  }
-
-  .imp-status-pill.inactive {
-    color: var(--color-red-800);
-    background: var(--color-red-100);
-    border-color: var(--color-red-300);
-  }
+  /* Options buttons */
+  .imp-action-stack { display: flex; align-items: center; gap: 6px; }
 
   .imp-action-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border: 1px solid var(--color-indigo-600);
-    background: linear-gradient(135deg, var(--color-primary), var(--secondary));
+    gap: 5px;
+    background: linear-gradient(135deg, var(--color-primary), var(--secondary, #764ba2));
     color: var(--color-white);
+    border: none;
     font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     border-radius: 4px;
-    height: 28px;
+    height: 26px;
     padding: 0 10px;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: opacity 0.15s;
+    white-space: nowrap;
   }
-
-  .imp-action-btn:hover:not(:disabled) {
-    filter: brightness(0.96);
-  }
-
-  .imp-action-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-    filter: grayscale(0.15);
-  }
+  .imp-action-btn:hover:not(:disabled) { opacity: 0.88; }
+  .imp-action-btn:disabled { cursor: not-allowed; opacity: 0.45; }
 
   .imp-history-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
+    gap: 5px;
     border: 1px solid var(--color-slate-300);
     background: var(--color-white);
-    color: var(--color-slate-700);
+    color: var(--color-slate-600);
     font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     border-radius: 4px;
-    height: 28px;
+    height: 26px;
     padding: 0 10px;
     cursor: pointer;
     transition: all 0.15s;
+    white-space: nowrap;
   }
+  .imp-history-btn:hover { background: var(--color-slate-50); border-color: var(--color-slate-400); }
 
-  .imp-history-btn:hover {
-    background: var(--color-slate-50);
-    border-color: var(--color-slate-400);
-  }
-
-  .imp-empty {
-    text-align: center;
-    padding: 56px 20px;
-    color: var(--text-muted, #888);
-  }
-
-  .imp-empty i {
-    font-size: var(--ui-font-size-6xl, 30px);
-    display: block;
-    margin-bottom: 10px;
-    color: var(--text-light, #aaa);
-  }
+  /* Empty & skeleton */
+  .imp-empty { text-align: center; padding: 56px 20px; color: var(--text-muted, #888); }
+  .imp-empty i { font-size: 30px; display: block; margin-bottom: 10px; color: var(--text-light, #aaa); }
 
   .imp-skeleton-block {
-    display: inline-block;
-    width: 100%;
-    height: 10px;
-    border-radius: 8px;
+    display: inline-block; width: 100%; height: 10px; border-radius: 8px;
     background: linear-gradient(90deg, var(--color-slate-200) 25%, #f8fafc 37%, var(--color-slate-200) 63%);
     background-size: 200% 100%;
     animation: imp-skeleton-shimmer 1.35s linear infinite;
   }
+  .imp-skeleton-row td { padding-top: 11px; padding-bottom: 11px; }
 
-  .imp-skeleton-row td {
-    padding-top: 11px;
-    padding-bottom: 11px;
-  }
-
-  .imp-table-shell .pagination-bar {
-    border-top: 1px solid var(--border-color, #e0e0e0);
-    padding: 6px 10px;
-  }
-
-  .imp-table-shell .pagination-right {
-    gap: 8px;
-  }
-
-  .imp-table-shell .pagination-right label {
-    font-size: var(--ui-font-size-sm, 12px);
-    color: var(--text-secondary, #666);
-    white-space: nowrap;
-  }
+  /* Pagination inside shell */
+  .imp-table-shell .pagination-bar { border-top: 1px solid var(--color-gray-200); padding: 6px 10px; }
+  .imp-table-shell .pagination-right { gap: 8px; }
+  .imp-table-shell .pagination-right label { font-size: var(--ui-font-size-sm, 12px); color: var(--text-secondary, #666); white-space: nowrap; }
 
   @media (max-width: 768px) {
-    .imp-table-wrap {
-      overflow-x: auto;
-    }
-
-    .imp-table-shell .pagination-bar {
-      padding: 6px;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    .imp-table-wrap { overflow-x: auto; }
+    .imp-table-shell .pagination-bar { padding: 6px; gap: 8px; flex-wrap: wrap; }
   }
 </style>
 {% endblock %}
@@ -471,11 +389,12 @@
         <table class="imp-table" aria-label="Impersonation table">
           <thead>
             <tr>
-              <th style="width:6%;text-align:center;">Sr no.</th>
-              <th style="width:44%;">User</th>
-              <th style="width:18%;">Role</th>
-              <th style="width:14%;">Status</th>
-              <th style="width:18%;">Options</th>
+              <th style="width:5%;text-align:center;">SR NO.</th>
+              <th style="width:28%;">Name</th>
+              <th style="width:24%;">Email</th>
+              <th style="width:13%;">Role</th>
+              <th style="width:10%;text-align:center;">Status</th>
+              <th style="width:20%;text-align:center;">Options</th>
             </tr>
           </thead>
           <tbody id="impTableBody">
@@ -483,6 +402,7 @@
             <tr class="imp-skeleton-row" aria-hidden="true">
               <td><span class="imp-skeleton-block" style="width:20px;margin:0 auto;"></span></td>
               <td><span class="imp-skeleton-block" style="width:74%;"></span></td>
+              <td><span class="imp-skeleton-block" style="width:80%;"></span></td>
               <td><span class="imp-skeleton-block" style="width:60%;"></span></td>
               <td><span class="imp-skeleton-block" style="width:56%;"></span></td>
               <td><span class="imp-skeleton-block" style="width:64%;"></span></td>
@@ -651,7 +571,7 @@
   function _renderEmpty(iconClass, title, subtitle) {
     var tbody = document.getElementById('impTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5"><div class="imp-empty"><i class="fa-solid ' + _esc(iconClass || 'fa-users-slash') + '"></i><div>' + _esc(title || 'No users found') + '</div>' + (subtitle ? '<small>' + _esc(subtitle) + '</small>' : '') + '</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6"><div class="imp-empty"><i class="fa-solid ' + _esc(iconClass || 'fa-users-slash') + '"></i><div>' + _esc(title || 'No users found') + '</div>' + (subtitle ? '<small>' + _esc(subtitle) + '</small>' : '') + '</div></td></tr>';
     _togglePager(false);
   }
 
@@ -707,35 +627,34 @@
     var h = '';
     pageUsers.forEach(function(u, i) {
       var nameText = String(u.name || 'User');
-      var init = (nameText[0] || '?').toUpperCase();
       var canImpersonate = u.is_active !== false;
       var statusClass = canImpersonate ? 'active' : 'inactive';
       var statusText = canImpersonate ? 'Active' : 'Inactive';
       var roleDisplay = _displayRole(u.role, u.role_display);
       var showClientMeta = u.role === 'client_staff';
-      var clientMeta = (showClientMeta && u.client_name) ? '<div class="imp-client-meta">Client: ' + _esc(u.client_name) + '</div>' : '';
+      var clientMeta = (showClientMeta && u.client_name)
+        ? '<div class="imp-client-meta"><i class="fa-solid fa-building" style="margin-right:3px;font-size:9px;"></i>' + _esc(u.client_name) + '</div>'
+        : '';
       var rowIndex = startIndex + i + 1;
+      var nameOpacity = canImpersonate ? '' : ' style="opacity:0.55;"';
       h += '<tr class="is-clickable" ondblclick="__impOpenHistory(' + u.id + ')" title="Double-click to open history">'
         + '<td class="imp-col-index">' + rowIndex + '</td>'
         + '<td>'
-          + '<div class="imp-user-cell">'
-            + '<div class="imp-avatar" style="background:' + (COLORS[u.role] || 'var(--color-primary)') + (canImpersonate ? '' : ';opacity:0.6') + '">' + init + '</div>'
-            + '<div class="imp-info">'
-              + '<div class="imp-name">' + _esc(nameText) + '</div>'
-              + '<div class="imp-email">' + _esc(u.email || '-') + '</div>'
-              + clientMeta
-            + '</div>'
+          + '<div' + nameOpacity + '>'
+            + '<div class="imp-name">' + _esc(nameText) + '</div>'
+            + clientMeta
           + '</div>'
         + '</td>'
+        + '<td class="imp-email-cell">' + _esc(u.email || '-') + '</td>'
         + '<td><span class="imp-role-tag r-' + _esc(u.role) + '">' + _esc(roleDisplay) + '</span></td>'
-        + '<td><span class="imp-status-pill ' + statusClass + '">' + statusText + '</span></td>'
-        + '<td>'
-          + '<div class="imp-action-stack">'
+        + '<td style="text-align:center;"><span class="imp-status-pill ' + statusClass + '">' + statusText + '</span></td>'
+        + '<td style="text-align:center;">'
+          + '<div class="imp-action-stack" style="justify-content:center;">'
             + '<button type="button" class="imp-action-btn"' + (canImpersonate ? ' onclick="event.stopPropagation();__impStart(' + u.id + ')"' : ' disabled') + '>'
               + '<i class="fa-solid fa-right-to-bracket"></i> Login As'
             + '</button>'
             + '<button type="button" class="imp-history-btn" onclick="event.stopPropagation();__impOpenHistory(' + u.id + ')">'
-              + '<i class="fa-solid fa-clock-rotate-left"></i> Open History'
+              + '<i class="fa-solid fa-clock-rotate-left"></i> History'
             + '</button>'
           + '</div>'
         + '</td>'
