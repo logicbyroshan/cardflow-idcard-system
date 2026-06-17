@@ -269,11 +269,11 @@
               <table class="recent-table dashboard-scroll-table recent-table-5col" id="assistantTable">
                 <thead>
                   <tr>
-                    <th scope="col">Assistant</th>
-                    <th scope="col" class="text-center">Pending</th>
-                    <th scope="col" class="text-center">Verified</th>
-                    <th scope="col" class="text-center">Pool</th>
-                    <th scope="col">Assigned</th>
+                    <th scope="col" style="width: 25%;">Assistant</th>
+                    <th scope="col" class="text-center" style="width: 10%;">Pending</th>
+                    <th scope="col" class="text-center" style="width: 10%;">Verified</th>
+                    <th scope="col" class="text-center" style="width: 10%;">Pool</th>
+                    <th scope="col" style="width: 45%; max-width: 350px;">Assigned</th>
                   </tr>
                 </thead>
                 <tbody id="assistantListBody">
@@ -569,13 +569,13 @@ async function loadRecentAssistants() {
         var badgesHtml = '';
         if (badges.length > 0) {
            badgesHtml = badges.map(function(b) {
-               return '<span class="assigned-badge badge-class" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px;">' + b + '</span>';
+               return '<span class="assigned-badge badge-class" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px; text-decoration: none !important;">' + b + '</span>';
            }).join('');
         } else {
            if (s.has_assignments === false || s.has_list_perms === false) {
-             badgesHtml = '<span class="assigned-badge badge-none" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px;">None</span>';
+             badgesHtml = '<span class="assigned-badge badge-none" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px; text-decoration: none !important;">None</span>';
            } else {
-             badgesHtml = '<span class="assigned-badge badge-all" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: var(--color-emerald-800); background: var(--color-emerald-50); border: 1px solid #a7f3d0; border-radius: 6px; padding: 2px 8px;">All Classes & Sections</span>';
+             badgesHtml = '<span class="assigned-badge badge-all" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: var(--color-emerald-800); background: var(--color-emerald-50); border: 1px solid #a7f3d0; border-radius: 6px; padding: 2px 8px; text-decoration: none !important;">All Classes & Sections</span>';
            }
         }
         
@@ -586,11 +586,11 @@ async function loadRecentAssistants() {
 
         return '<tr>' +
           '<td>' + nameHtml + '</td>' +
-          '<td class="text-center"><span class="count-badge pending">' + (s.pending || 0) + '</span></td>' +
-          '<td class="text-center"><span class="count-badge verified">' + (s.verified || 0) + '</span></td>' +
-          '<td class="text-center"><span class="count-badge pool">' + (s.pool || 0) + '</span></td>' +
-          '<td style="min-width: 250px;"><div class="dynamic-badge-container" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-height: 24px; overflow: hidden; position: relative;">' + badgesHtml + 
-          '<button type="button" class="staff-assignment-view-more" style="display: none; position: absolute; right: 0; bottom: 0; align-items: center; justify-content: center; min-width: 28px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 6px; cursor: default; box-shadow: -4px 0 8px rgba(255,255,255,0.9);">...</button>' +
+          '<td class="text-center" style="width: 10%;"><span class="count-badge pending">' + (s.pending || 0) + '</span></td>' +
+          '<td class="text-center" style="width: 10%;"><span class="count-badge verified">' + (s.verified || 0) + '</span></td>' +
+          '<td class="text-center" style="width: 10%;"><span class="count-badge pool">' + (s.pool || 0) + '</span></td>' +
+          '<td style="width: 45%; max-width: 350px;"><div class="dynamic-badge-container" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; max-height: 24px; overflow: hidden; position: relative; max-width: 100%;">' + badgesHtml + 
+          '<button type="button" class="staff-assignment-view-more" style="display: none; position: absolute; right: 0; bottom: 0; align-items: center; justify-content: center; min-width: 28px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 6px; cursor: default; box-shadow: -4px 0 8px rgba(255,255,255,0.9); text-decoration: none !important;">...</button>' +
           '</div></td>' +
           '</tr>';
       }).join('');

@@ -19,7 +19,7 @@ Uses Tailwind CSS component classes.
                 {% if active_page == 'manage_staff' and not is_client_admin %}
                 <th scope="col" class="w-20 text-center" title="Log">Log</th>
                 {% else %}
-                <th scope="col" class="text-left" style="min-width: 250px;">Assigned Classes &amp; Sections</th>
+                <th scope="col" class="text-left" style="width: 350px; max-width: 400px;">Assigned Classes &amp; Sections</th>
                 {% endif %}
             </tr>
         </thead>
@@ -62,27 +62,27 @@ Uses Tailwind CSS component classes.
                     </div>
                 </td>
                 {% else %}
-                <td class="text-left" style="min-width: 250px;">
-                    <div class="dynamic-badge-container" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-height: 24px; overflow: hidden; position: relative;">
+                <td class="text-left" style="width: 350px; max-width: 400px;">
+                    <div class="dynamic-badge-container" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; max-height: 24px; overflow: hidden; position: relative; max-width: 100%;">
                         {% if staff.allowed_classes and staff.allowed_sections %}
                             {% for class_name in staff.allowed_classes %}
                                 {% for section_name in staff.allowed_sections %}
-                                    <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px;">{{ class_name }} "{{ section_name }}"</span>
+                                    <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px; text-decoration: none !important;">{{ class_name }} "{{ section_name }}"</span>
                                 {% endfor %}
                             {% endfor %}
                         {% elif staff.allowed_classes %}
                             {% for class_name in staff.allowed_classes %}
-                                <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px;">{{ class_name }}</span>
+                                <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px; text-decoration: none !important;">{{ class_name }}</span>
                             {% endfor %}
                         {% elif staff.allowed_sections %}
                             {% for section_name in staff.allowed_sections %}
-                                <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px;">"{{ section_name }}"</span>
+                                <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px; text-decoration: none !important;">"{{ section_name }}"</span>
                             {% endfor %}
                         {% else %}
-                            <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px;">No Classes Assigned</span>
-                            <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px;">No Sections Assigned</span>
+                            <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px; text-decoration: none !important;">No Classes Assigned</span>
+                            <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px; text-decoration: none !important;">No Sections Assigned</span>
                         {% endif %}
-                        <button type="button" class="staff-assignment-view-more" data-staff-id="{{ staff.id }}" style="display: none; position: absolute; right: 0; bottom: 0; align-items: center; justify-content: center; min-width: 28px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 6px; cursor: pointer; box-shadow: -4px 0 8px rgba(255,255,255,0.9);">...</button>
+                        <button type="button" class="staff-assignment-view-more" data-staff-id="{{ staff.id }}" style="display: none; position: absolute; right: 0; bottom: 0; align-items: center; justify-content: center; min-width: 28px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 6px; cursor: pointer; box-shadow: -4px 0 8px rgba(255,255,255,0.9); text-decoration: none !important;">...</button>
                     </div>
                 </td>
                 {% endif %}
