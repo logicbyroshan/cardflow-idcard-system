@@ -553,23 +553,30 @@ async function loadRecentAssistants() {
         var active = s.is_active !== false;
         var statusBadge = '<span class="assist-status-badge' + (active ? '' : ' inactive') + '">' + (active ? 'Active' : 'Inactive') + '</span>';
         
-        var badgesHtml = '';
-        if (s.classes && s.classes.length) {
+        var badges = [];
+        if (s.classes && s.classes.length && s.sections && s.sections.length) {
           s.classes.forEach(function(c) {
-            badgesHtml += '<span class="assigned-badge badge-class" title="Class">' + escHtml(c) + '</span>';
+            s.sections.forEach(function(sec) {
+              badges.push(escHtml(c) + ' "' + escHtml(sec) + '"');
+            });
           });
+        } else if (s.classes && s.classes.length) {
+          s.classes.forEach(function(c) { badges.push(escHtml(c)); });
+        } else if (s.sections && s.sections.length) {
+          s.sections.forEach(function(sec) { badges.push('"' + escHtml(sec) + '"'); });
         }
-        if (s.sections && s.sections.length) {
-          s.sections.forEach(function(sec) {
-            badgesHtml += '<span class="assigned-badge badge-section" title="Section">' + escHtml(sec) + '</span>';
-          });
-        }
-        if (!badgesHtml) {
-          if (s.has_assignments === false || s.has_list_perms === false) {
-            badgesHtml = '<span class="assigned-badge badge-none">None</span>';
-          } else {
-            badgesHtml = '<span class="assigned-badge badge-all">All</span>';
-          }
+
+        var badgesHtml = '';
+        if (badges.length > 0) {
+           badgesHtml = badges.map(function(b) {
+               return '<span class="assigned-badge badge-class" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px;">' + b + '</span>';
+           }).join('');
+        } else {
+           if (s.has_assignments === false || s.has_list_perms === false) {
+             badgesHtml = '<span class="assigned-badge badge-none" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px;">None</span>';
+           } else {
+             badgesHtml = '<span class="assigned-badge badge-all" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: var(--color-emerald-800); background: var(--color-emerald-50); border: 1px solid #a7f3d0; border-radius: 6px; padding: 2px 8px;">All Classes & Sections</span>';
+           }
         }
         
         var nameHtml = '<div class="assist-name-wrap">' +
@@ -582,9 +589,12 @@ async function loadRecentAssistants() {
           '<td class="text-center"><span class="count-badge pending">' + (s.pending || 0) + '</span></td>' +
           '<td class="text-center"><span class="count-badge verified">' + (s.verified || 0) + '</span></td>' +
           '<td class="text-center"><span class="count-badge pool">' + (s.pool || 0) + '</span></td>' +
-          '<td><div class="flex flex-wrap gap-1">' + badgesHtml + '</div></td>' +
+          '<td style="min-width: 250px;"><div class="dynamic-badge-container" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-height: 24px; overflow: hidden; position: relative;">' + badgesHtml + 
+          '<button type="button" class="staff-assignment-view-more" style="display: none; position: absolute; right: 0; bottom: 0; align-items: center; justify-content: center; min-width: 28px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 6px; cursor: default; box-shadow: -4px 0 8px rgba(255,255,255,0.9);">...</button>' +
+          '</div></td>' +
           '</tr>';
       }).join('');
+      setTimeout(updateDashboardDynamicBadges, 50);
     } else {
       tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 24px; color: var(--text-muted);">No assistants found</td></tr>';
     }
@@ -593,6 +603,21 @@ async function loadRecentAssistants() {
     tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 24px; color: var(--color-red-600);">Could not load assistants</td></tr>';
   }
 }
+
+function updateDashboardDynamicBadges() {
+    document.querySelectorAll('.dynamic-badge-container').forEach(function(container) {
+        var viewMore = container.querySelector('.staff-assignment-view-more');
+        if (!viewMore) return;
+        viewMore.style.display = 'none';
+        container.style.paddingRight = '0';
+        if (container.scrollHeight > container.clientHeight + 2) {
+            viewMore.style.display = 'inline-flex';
+            container.style.paddingRight = '32px';
+        }
+    });
+}
+
+window.addEventListener('resize', updateDashboardDynamicBadges);
 
 function escHtml(s) {
   if (!s) return '-';

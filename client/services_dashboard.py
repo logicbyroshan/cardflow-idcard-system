@@ -408,12 +408,12 @@ class ClientDashboardService(BaseService):
                 staff_type='client_staff'
             ).count()
 
-            # Get recent assistants (last 5, for dashboard Recent Assistants panel)
+            # Get recent assistants (for dashboard Recent Assistants panel)
             try:
                 recent_staff_qs = (
                     Staff.objects.filter(client=client, staff_type='client_staff')
                     .select_related('user')
-                    .order_by('-id')[:5]
+                    .order_by('-id')
                 )
                 active_tables = list(IDCardTable.objects.filter(group__client=client, is_active=True))
                 recent_staff = []

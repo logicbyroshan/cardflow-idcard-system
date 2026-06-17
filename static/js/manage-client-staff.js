@@ -2049,6 +2049,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!meta || meta.mode !== 'assign') return;
 
+            if (activeBuilderScope && currentDraftGroupId) {
+                var requiresSelections = activeBuilderScope.hasClass || activeBuilderScope.hasSection || activeBuilderScope.hasBranch;
+                var hasSelections = activeBuilderScope.classes.length || activeBuilderScope.sections.length || activeBuilderScope.branches.length;
+                if (requiresSelections && !hasSelections) {
+                    throw new Error('Please select at least one class, section, or branch for the selected group before saving.');
+                }
+                
+                var key = _chipKey(currentDraftGroupId);
+                activeBuilderScope.isEditing = false;
+                _pruneChipSelection(activeBuilderScope);
+                assignmentScopeChips[key] = activeBuilderScope;
+                
+                activeBuilderScope = null;
+                currentDraftGroupId = null;
+                var builderSection = document.getElementById('group-builder-section');
+                if (builderSection) builderSection.style.display = 'none';
+            }
+
             var payload = getAssignmentPayloadFromChips();
             formData.assigned_groups = payload.assigned_groups;
             formData.assignment_id_source = (

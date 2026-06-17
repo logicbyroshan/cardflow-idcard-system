@@ -338,6 +338,7 @@ window.initStaffPage = function (cfg) {
         if (!tb) return;
         allRows = Array.from(tb.querySelectorAll('tr[data-staff-id]'));
         performSearch();
+        updateDynamicBadges();
     }
 
     function selectRowById(staffId) {
@@ -347,6 +348,27 @@ window.initStaffPage = function (cfg) {
         var row = tb.querySelector('tr[data-staff-id="' + String(staffId) + '"]');
         if (row) selectStaffRow(row);
     }
+
+    function updateDynamicBadges() {
+        document.querySelectorAll('.dynamic-badge-container').forEach(function(container) {
+            var viewMore = container.querySelector('.staff-assignment-view-more');
+            if (!viewMore) return;
+            // Hide the button first to measure real content
+            viewMore.style.display = 'none';
+            container.style.paddingRight = '0';
+            
+            // Allow time for layout to recalculate if in a loop, but synchronous usually works
+            if (container.scrollHeight > container.clientHeight + 2) {
+                viewMore.style.display = 'inline-flex';
+                container.style.paddingRight = '32px';
+            }
+        });
+    }
+
+    // Bind to window resize
+    window.addEventListener('resize', updateDynamicBadges);
+    // Initial call
+    setTimeout(updateDynamicBadges, 50);
 
     // ==================== PUBLIC API ====================
     return {
