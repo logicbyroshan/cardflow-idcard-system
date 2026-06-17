@@ -118,7 +118,7 @@
       </div>
       <div class="user-info">
         <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
-        <span class="user-role">{{ user_role|default:"User" }}</span>
+        <span class="user-role">{{ user.get_role_display|default:user_role|default:"User" }}</span>
       </div>
     </a>
   </div>

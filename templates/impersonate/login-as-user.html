@@ -285,6 +285,7 @@
   .imp-role-tag.r-admin_staff  { background: var(--color-amber-100); color: var(--color-warning-dark); }
   .imp-role-tag.r-client       { background: var(--color-emerald-100); color: var(--color-emerald-800); }
   .imp-role-tag.r-client_staff { background: var(--color-blue-100); color: #1e40af; }
+  .imp-role-tag.r-guest_user   { background: var(--color-slate-100); color: var(--color-slate-700); }
 
   .imp-action-stack {
     display: flex;
@@ -454,6 +455,7 @@
           <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistant <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="guest_user" onclick="__impSetRole('guest_user',this)">Guest User <span class="imp-pill-count">0</span></button>
         </div>
       </div>
       <div class="action-right">
@@ -507,8 +509,8 @@
   var _page = 1;
   var _perPage = 25;
   var _pagerBound = false;
-  var COLORS = { admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
-  var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant' };
+  var COLORS = { admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce', guest_user:'#64748b' };
+  var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant', guest_user:'Guest User' };
 
   function _displayRole(role, fallback) {
     return ROLE_LABELS[role] || fallback || String(role || '').replace('_', ' ');
@@ -521,7 +523,7 @@
   }
 
   function _updateRolePillCounts() {
-    var counts = { all: 0, admin_staff: 0, client: 0, client_staff: 0 };
+    var counts = { all: 0, admin_staff: 0, client: 0, client_staff: 0, guest_user: 0 };
     _users.forEach(function(u) {
       counts.all += 1;
       if (Object.prototype.hasOwnProperty.call(counts, u.role)) {

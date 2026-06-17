@@ -1193,11 +1193,17 @@ body[style*="overflow:hidden"] {
 .user-avatar-label--admin_staff { color: var(--color-blue-600); }
 .user-avatar-label--client { color: var(--color-green-600); }
 .user-avatar-label--client_staff { color: #319795; }
+.user-avatar-label--guest_user { color: var(--color-slate-600); }
+span.user-avatar-label--guest_user { background: var(--color-slate-500); color: var(--color-white); }
 
 /* Pro User avatar gradient (other roles in tailwind.css) */
 .user-avatar-placeholder--pro_user {
   color: var(--color-amber-100);
   background: linear-gradient(145deg, var(--color-warning-dark), var(--color-amber-700));
+}
+.user-avatar-placeholder--guest_user {
+  color: var(--color-slate-100);
+  background: linear-gradient(145deg, var(--color-slate-500), var(--color-slate-700));
 }
 
 /* Sidebar-specific avatar styling */

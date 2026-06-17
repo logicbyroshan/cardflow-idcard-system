@@ -1296,43 +1296,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.classList.remove('is-editing');
             }
 
-            if (chip.isEditing && (chip.hasClass || chip.hasSection)) {
-                var bulkActions = document.createElement('div');
-                bulkActions.className = 'assignment-scope-chip-bulk-actions';
 
-                if (chip.hasClass) {
-                    var assignAllClassBtn = document.createElement('button');
-                    assignAllClassBtn.type = 'button';
-                    assignAllClassBtn.className = 'assignment-scope-chip-bulk-btn';
-                    assignAllClassBtn.textContent = 'Assign All Classes';
-                    assignAllClassBtn.disabled = !chip.classOptions.length;
-                    assignAllClassBtn.addEventListener('click', function () {
-                        chip.classes = _normalizeStringList(chip.classOptions || []);
-                        _pruneChipSelection(chip);
-                        renderAssignmentScopeChips();
-                    });
-                    bulkActions.appendChild(assignAllClassBtn);
-                }
-
-                if (chip.hasSection) {
-                    var assignAllSectionBtn = document.createElement('button');
-                    assignAllSectionBtn.type = 'button';
-                    assignAllSectionBtn.className = 'assignment-scope-chip-bulk-btn';
-                    assignAllSectionBtn.textContent = 'Assign All Sections';
-                    var allSectionsForChip = _normalizeStringList(_getChipAvailableSections(chip));
-                    assignAllSectionBtn.disabled = !allSectionsForChip.length;
-                    assignAllSectionBtn.addEventListener('click', function () {
-                        chip.sections = _normalizeStringList(_getChipAvailableSections(chip));
-                        _pruneChipSelection(chip);
-                        renderAssignmentScopeChips();
-                    });
-                    bulkActions.appendChild(assignAllSectionBtn);
-                }
-
-                if (bulkActions.childElementCount > 0) {
-                    card.appendChild(bulkActions);
-                }
-            }
 
             var groups = document.createElement('div');
             groups.className = 'assignment-scope-chip-groups';

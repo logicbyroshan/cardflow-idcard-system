@@ -1161,6 +1161,9 @@ def populate_sandbox_database(client_id, db_alias):
         m.save(using=db_alias)
 
 
+import threading
+_sandbox_lock = threading.Lock()
+
 class GuestSandboxMiddleware:
     """
     Middleware to dynamically setup, populate and route request database operations
@@ -1187,38 +1190,61 @@ class GuestSandboxMiddleware:
                 db_file = os.path.join(sandbox_dir, f"{session_key}.sqlite3")
                 db_alias = f"guest_{session_key}"
                 
-                # Double-checked locking pattern for template & sandbox file creation
-                if not os.path.exists(db_file):
-                    ensure_template_db()
-                    os.makedirs(sandbox_dir, exist_ok=True)
-                    try:
-                        shutil.copy2(TEMPLATE_DB_PATH, db_file)
-                        
-                        # Register connection dynamically
-                        db_config = dict(connections['default'].settings_dict)
-                        db_config['ENGINE'] = 'django.db.backends.sqlite3'
-                        db_config['NAME'] = db_file
-                        db_config['OPTIONS'] = {'timeout': 60}
-                        
-                        django_settings.DATABASES[db_alias] = db_config
-                        connections.databases[db_alias] = db_config
-                        
-                        # Populate data from the default database
-                        client_profile = getattr(user, 'client_profile', None)
-                        if client_profile:
-                            populate_sandbox_database(client_profile.id, db_alias)
-                            
-                    except Exception as e:
-                        logger.exception("Failed to initialize guest sandbox session database: %s", e)
-                        if os.path.exists(db_file):
+                with _sandbox_lock:
+                    if not os.path.exists(db_file):
+                        ensure_template_db()
+                        os.makedirs(sandbox_dir, exist_ok=True)
+                        tmp_file = db_file + ".tmp"
+                        if os.path.exists(tmp_file):
                             try:
-                                os.remove(db_file)
+                                os.remove(tmp_file)
                             except Exception:
                                 pass
-                        db_alias = None
-                else:
-                    # Connection might not be registered in a fresh process/thread
-                    if db_alias not in django_settings.DATABASES:
+                        try:
+                            shutil.copy2(TEMPLATE_DB_PATH, tmp_file)
+                            
+                            # Register connection to temp file dynamically
+                            db_config = dict(connections['default'].settings_dict)
+                            db_config['ENGINE'] = 'django.db.backends.sqlite3'
+                            db_config['NAME'] = tmp_file
+                            db_config['OPTIONS'] = {'timeout': 60}
+                            
+                            django_settings.DATABASES[db_alias] = db_config
+                            connections.databases[db_alias] = db_config
+                            
+                            # Populate data from the default database
+                            client_profile = getattr(user, 'client_profile', None)
+                            if client_profile:
+                                populate_sandbox_database(client_profile.id, db_alias)
+                            
+                            # Close the dynamically registered temp connection to free the file handle on Windows
+                            if db_alias in connections:
+                                try:
+                                    connections[db_alias].close()
+                                except Exception:
+                                    pass
+                                try:
+                                    del connections[db_alias]
+                                except Exception:
+                                    pass
+                            
+                            # Atomically move temp database to final session filename
+                            os.replace(tmp_file, db_file)
+                            
+                        except Exception as e:
+                            logger.exception("Failed to initialize guest sandbox session database: %s", e)
+                            for path in (tmp_file, db_file):
+                                if os.path.exists(path):
+                                    try:
+                                        os.remove(path)
+                                    except Exception:
+                                        pass
+                            db_alias = None
+                    
+                    if db_alias:
+                        # Always ensure the registered connection config points to the final db_file.
+                        # After the atomic rename, any previously registered config still pointed to
+                        # tmp_file (which no longer exists), so we unconditionally update it here.
                         db_config = dict(connections['default'].settings_dict)
                         db_config['ENGINE'] = 'django.db.backends.sqlite3'
                         db_config['NAME'] = db_file

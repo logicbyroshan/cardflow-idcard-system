@@ -287,3 +287,10 @@ android_app/.env
 
 # Upload certificate (PEM)
 upload_certificate.pem
+
+# Guest sandbox session databases (per-user ephemeral SQLite files, never committed)
+guest_sandboxes/*.sqlite3
+guest_sandboxes/*.sqlite3.tmp
+guest_sandboxes/*.sqlite3-journal
+guest_sandboxes/*.sqlite3-shm
+guest_sandboxes/*.sqlite3-wal
