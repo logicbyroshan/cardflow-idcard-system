@@ -1152,7 +1152,7 @@ class ActivityService:
 
     @classmethod
     def _merge_recent_card_activities(cls, items):
-        """Collapse adjacent card status entries into combined count rows."""
+        """Collapse adjacent or temporally close card status entries into combined count rows."""
         if not items:
             return []
 
@@ -1169,28 +1169,31 @@ class ActivityService:
 
             count, status, client = parsed
             item_key = (item.get('user_id'), status, client.lower())
+            
+            matched = False
+            item_dt = item.get('created_at_dt')
 
-            if merged:
-                last = merged[-1]
-                last_key = last.get('_merge_key')
-                last_dt = last.get('created_at_dt')
-                item_dt = item.get('created_at_dt')
+            if item_dt is not None:
+                for past_item in reversed(merged):
+                    past_key = past_item.get('_merge_key')
+                    past_dt = past_item.get('created_at_dt')
 
-                can_merge = (
-                    last_key == item_key and
-                    last_dt is not None and
-                    item_dt is not None and
-                    (last_dt - item_dt).total_seconds() <= cls.RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS
-                )
+                    if past_key == item_key and past_dt is not None:
+                        if (past_dt - item_dt).total_seconds() <= cls.RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS:
+                            past_item['_merge_count'] = past_item.get('_merge_count', 1) + count
+                            total = past_item['_merge_count']
+                            suffix = f' for {client}' if client else ''
+                            noun = 'card' if total == 1 else 'cards'
+                            past_item['description'] = f'{total} {noun} {status}{suffix}'
+                            past_item['action'] = 'card_bulk_status' if total > 1 else 'card_status'
+                            matched = True
+                            break
 
-                if can_merge:
-                    last['_merge_count'] = last.get('_merge_count', 1) + count
-                    total = last['_merge_count']
-                    suffix = f' for {client}' if client else ''
-                    noun = 'card' if total == 1 else 'cards'
-                    last['description'] = f'{total} {noun} {status}{suffix}'
-                    last['action'] = 'card_bulk_status' if total > 1 else 'card_status'
-                    continue
+                    if past_dt is not None and (past_dt - item_dt).total_seconds() > cls.RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS:
+                        break
+
+            if matched:
+                continue
 
             suffix = f' for {client}' if client else ''
             noun = 'card' if count == 1 else 'cards'
@@ -1257,7 +1260,7 @@ class ActivityService:
 
     @classmethod
     def _merge_recent_similar_activities(cls, items):
-        """Collapse adjacent repeated actions from the same actor within a one-hour work burst."""
+        """Collapse adjacent or temporally close repeated actions from the same actor within a time burst."""
         if not items:
             return []
 
@@ -1275,58 +1278,62 @@ class ActivityService:
             if action in {'card_update', 'card_create'}:
                 item['_updated_card_ids'] = {item.get('target_id')} if item.get('target_id') else set()
 
-            if merge_key and merged:
-                last = merged[-1]
-                last_key = last.get('_similar_merge_key')
-                last_dt = last.get('created_at_dt')
-                item_dt = item.get('created_at_dt')
+            matched = False
+            item_dt = item.get('created_at_dt')
 
-                can_merge = (
-                    last_key == merge_key
-                    and last_dt is not None
-                    and item_dt is not None
-                    and (last_dt - item_dt).total_seconds() <= cls.RECENT_ACTIVITY_SIMILAR_COMBINE_WINDOW_SECONDS
-                )
+            if merge_key and item_dt is not None:
+                for past_item in reversed(merged):
+                    past_key = past_item.get('_similar_merge_key')
+                    past_dt = past_item.get('created_at_dt')
 
-                if can_merge:
-                    last['_merged_event_count'] = int(last.get('_merged_event_count') or 1) + 1
-                    last['_oldest_created_at_dt'] = item_dt
-                    last['_merged_span_seconds'] = max(int((last_dt - item_dt).total_seconds()), 0)
+                    if past_key == merge_key and past_dt is not None:
+                        if (past_dt - item_dt).total_seconds() <= cls.RECENT_ACTIVITY_SIMILAR_COMBINE_WINDOW_SECONDS:
+                            past_item['_merged_event_count'] = int(past_item.get('_merged_event_count') or 1) + 1
+                            past_item['_oldest_created_at_dt'] = item_dt
+                            past_item['_merged_span_seconds'] = max(int((past_dt - item_dt).total_seconds()), 0)
 
-                    last_action = str(last.get('action') or '').strip().lower()
+                            last_action = str(past_item.get('action') or '').strip().lower()
 
-                    if last_action in {'card_status', 'card_bulk_status'}:
-                        total_cards = int(last.get('_merged_card_units') or 1) + int(item.get('_merged_card_units') or 1)
-                        last['_merged_card_units'] = total_cards
-                        parsed = cls._parse_card_activity_description(last.get('description', ''))
-                        if parsed:
-                            status = parsed[1]
-                            client = parsed[2]
-                            suffix = f' for {client}' if client else ''
-                            noun = 'card' if total_cards == 1 else 'cards'
-                            last['description'] = f'{total_cards} {noun} {status}{suffix}'
-                            last['action'] = 'card_bulk_status' if total_cards > 1 else 'card_status'
-                    elif last_action == 'card_update':
-                        if '_updated_card_ids' not in last:
-                            last['_updated_card_ids'] = {last.get('target_id')} if last.get('target_id') else set()
-                        if item.get('target_id'):
-                            last['_updated_card_ids'].add(item.get('target_id'))
-                        total_unique_cards = len(last['_updated_card_ids'])
-                        noun = 'card' if total_unique_cards == 1 else 'cards'
-                        last['description'] = f'{total_unique_cards} {noun} edited'
-                        last['target_id'] = None
-                        last['target_name'] = ''
-                    elif last_action == 'card_create':
-                        if '_updated_card_ids' not in last:
-                            last['_updated_card_ids'] = {last.get('target_id')} if last.get('target_id') else set()
-                        if item.get('target_id'):
-                            last['_updated_card_ids'].add(item.get('target_id'))
-                        total_unique_cards = len(last['_updated_card_ids'])
-                        noun = 'card' if total_unique_cards == 1 else 'cards'
-                        last['description'] = f'{total_unique_cards} new ID {noun} added'
-                        last['target_id'] = None
-                        last['target_name'] = ''
-                    continue
+                            if last_action in {'card_status', 'card_bulk_status'}:
+                                total_cards = int(past_item.get('_merged_card_units') or 1) + int(item.get('_merged_card_units') or 1)
+                                past_item['_merged_card_units'] = total_cards
+                                parsed = cls._parse_card_activity_description(past_item.get('description', ''))
+                                if parsed:
+                                    status = parsed[1]
+                                    client = parsed[2]
+                                    suffix = f' for {client}' if client else ''
+                                    noun = 'card' if total_cards == 1 else 'cards'
+                                    past_item['description'] = f'{total_cards} {noun} {status}{suffix}'
+                                    past_item['action'] = 'card_bulk_status' if total_cards > 1 else 'card_status'
+                            elif last_action == 'card_update':
+                                if '_updated_card_ids' not in past_item:
+                                    past_item['_updated_card_ids'] = {past_item.get('target_id')} if past_item.get('target_id') else set()
+                                if item.get('target_id'):
+                                    past_item['_updated_card_ids'].add(item.get('target_id'))
+                                total_unique_cards = len(past_item['_updated_card_ids'])
+                                noun = 'card' if total_unique_cards == 1 else 'cards'
+                                past_item['description'] = f'{total_unique_cards} {noun} edited'
+                                past_item['target_id'] = None
+                                past_item['target_name'] = ''
+                            elif last_action == 'card_create':
+                                if '_updated_card_ids' not in past_item:
+                                    past_item['_updated_card_ids'] = {past_item.get('target_id')} if past_item.get('target_id') else set()
+                                if item.get('target_id'):
+                                    past_item['_updated_card_ids'].add(item.get('target_id'))
+                                total_unique_cards = len(past_item['_updated_card_ids'])
+                                noun = 'card' if total_unique_cards == 1 else 'cards'
+                                past_item['description'] = f'{total_unique_cards} new ID {noun} added'
+                                past_item['target_id'] = None
+                                past_item['target_name'] = ''
+                            
+                            matched = True
+                            break
+
+                    if past_dt is not None and (past_dt - item_dt).total_seconds() > cls.RECENT_ACTIVITY_SIMILAR_COMBINE_WINDOW_SECONDS:
+                        break
+
+            if matched:
+                continue
 
             merged.append(item)
 
