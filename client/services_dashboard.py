@@ -407,7 +407,26 @@ class ClientDashboardService(BaseService):
                 client=client,
                 staff_type='client_staff'
             ).count()
-            
+
+            # Get recent assistants (last 5, for dashboard Recent Assistants panel)
+            try:
+                recent_staff_qs = (
+                    Staff.objects.filter(client=client, staff_type='client_staff')
+                    .select_related('user')
+                    .order_by('-id')[:5]
+                )
+                recent_staff = [
+                    {
+                        'id': s.id,
+                        'name': s.user.get_full_name() or s.user.username,
+                        'email': s.user.email or '',
+                        'is_active': s.is_active,
+                    }
+                    for s in recent_staff_qs
+                ]
+            except Exception:
+                recent_staff = []
+
             # Use centralized role-aware activity feed so legacy per-card logs are merged.
             # Keep dashboard counts resilient if the activity feed hits a malformed row.
             try:
@@ -435,6 +454,7 @@ class ClientDashboardService(BaseService):
                     'group_count': group_count,
                     'table_count': table_count,
                     'staff_count': staff_count,
+                    'recent_staff': recent_staff,
                     'recent_activity': recent_activity,
                 }
             )
