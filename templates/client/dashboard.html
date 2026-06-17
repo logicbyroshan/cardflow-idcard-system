@@ -48,6 +48,11 @@
   color: #374151;
   border: 1px solid #e5e7eb;
 }
+.assigned-badge.badge-none {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
 .assist-name-wrap {
   display: flex;
   align-items: center;
@@ -87,11 +92,12 @@
   <button
     type="button"
     class="client-message-top-shortcut client-notification-top-shortcut"
-    onclick="window.location.href='{% url 'notifications_page' %}'"
+    data-client-notification-open
     title="Open notifications"
   >
     <span class="client-message-top-shortcut-icon">
       <i class="fa-solid fa-bell"></i>
+      <span class="client-notification-top-shortcut-badge" data-client-notif-count>0</span>
     </span>
     <span>Notifications</span>
   </button>
@@ -169,7 +175,7 @@
   <div class="dashboard-workspace">
 
     <!-- ═══ LEFT COLUMN — tab panels ═══ -->
-    <div class="dashboard-main-column">
+    <div class="dashboard-main-column tabbed-layout">
 
       <!-- Panel: Recent Activity (default active) -->
       <section class="dashboard-snap-panel is-active" id="panel-activity">
@@ -288,9 +294,6 @@
                 </tbody>
               </table>
             </div>
-            <div style="padding:10px 16px; border-top: 1px solid var(--color-gray-200);">
-              <a href="{% url 'client:staff' %}" class="view-all" style="font-size:12px;">View All Assistants <i class="fa-solid fa-arrow-right"></i></a>
-            </div>
           </div>
         </div>
       </section>
@@ -349,26 +352,7 @@
           </div>
         </div>
 
-        <!-- SECTION 2: Messages (quick-action-btn style) -->
-        <div class="dashboard-card">
-          <div class="dashboard-card-header">
-            <h3><i class="fa-solid fa-message"></i> Messages</h3>
-          </div>
-          <div class="dashboard-card-body p-0">
-            <div class="quick-actions">
-              <button type="button" class="quick-action-btn" data-client-message-open id="qa-btn-messages">
-                <i class="fa-solid fa-envelope"></i>
-                <span>Inbox Messages</span>
-              </button>
-              <button type="button" class="quick-action-btn" onclick="window.location.href='{% url 'notifications_page' %}'" id="qa-btn-notifications">
-                <i class="fa-solid fa-bell"></i>
-                <span>Notifications</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- SECTION 3: Management (quick-action-btn style) -->
+        <!-- SECTION 2: Management (quick-action-btn style) -->
         <div class="dashboard-card">
           <div class="dashboard-card-header">
             <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
@@ -391,6 +375,25 @@
                 <i class="fa-solid fa-gear"></i>
                 <span>Settings</span>
               </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 3: Messages (quick-action-btn style) -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-message"></i> Messages</h3>
+          </div>
+          <div class="dashboard-card-body p-0">
+            <div class="quick-actions">
+              <button type="button" class="quick-action-btn" data-client-message-open id="qa-btn-messages">
+                <i class="fa-solid fa-envelope"></i>
+                <span>Inbox Messages</span>
+              </button>
+              <button type="button" class="quick-action-btn" data-client-notification-open id="qa-btn-notifications">
+                <i class="fa-solid fa-bell"></i>
+                <span>Notifications</span>
+              </button>
             </div>
           </div>
         </div>
@@ -562,7 +565,11 @@ async function loadRecentAssistants() {
           });
         }
         if (!badgesHtml) {
-          badgesHtml = '<span class="assigned-badge badge-all">All</span>';
+          if (s.has_assignments === false || s.has_list_perms === false) {
+            badgesHtml = '<span class="assigned-badge badge-none">None</span>';
+          } else {
+            badgesHtml = '<span class="assigned-badge badge-all">All</span>';
+          }
         }
         
         var nameHtml = '<div class="assist-name-wrap">' +

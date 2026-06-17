@@ -452,6 +452,29 @@ class ClientDashboardService(BaseService):
                                 for sec in scope.get('sections') or []:
                                     if sec: sections.add(str(sec))
                     
+                    has_group_assign = s.assigned_groups.exists()
+                    has_table_assign = bool(s.assigned_table_ids)
+                    has_scope_assign = False
+                    if isinstance(s.assignment_scopes, list):
+                        for scope in s.assignment_scopes:
+                            if isinstance(scope, dict) and (scope.get('classes') or scope.get('sections') or scope.get('scope_id')):
+                                has_scope_assign = True
+                                break
+                    has_legacy_assign = bool(s.allowed_classes) or bool(s.allowed_sections)
+                    has_assignments = has_group_assign or has_table_assign or has_scope_assign or has_legacy_assign
+
+                    has_list_perms = any([
+                        s.perm_idcard_client_list,
+                        s.perm_idcard_pending_list,
+                        s.perm_idcard_verified_list,
+                        s.perm_idcard_pool_list,
+                        s.perm_idcard_approved_list,
+                        s.perm_idcard_download_list,
+                        s.perm_idcard_reprint_list,
+                        s.perm_reprint_request_list,
+                        s.perm_confirmed_list,
+                    ])
+
                     recent_staff.append({
                         'id': s.id,
                         'name': s.user.get_full_name() or s.user.username,
@@ -462,6 +485,8 @@ class ClientDashboardService(BaseService):
                         'pool': pool_cnt,
                         'classes': sorted(list(classes)),
                         'sections': sorted(list(sections)),
+                        'has_assignments': has_assignments,
+                        'has_list_perms': has_list_perms,
                     })
             except Exception as e:
                 logger.exception('Failed to build recent assistants list in client dashboard: %s', e)

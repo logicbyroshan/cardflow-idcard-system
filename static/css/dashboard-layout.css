@@ -114,7 +114,7 @@
     grid-template-columns: 85fr 15fr;
     gap: 0;
     min-height: 100%;
-    align-items: start;
+    align-items: stretch;
 }
 
 .dashboard-main-column {
@@ -132,15 +132,18 @@
     min-width: 0;
     position: sticky;
     top: 0;
-    align-self: start;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
 }
+
 
 .dashboard-side-sticky {
     position: static;
     display: flex;
     flex-direction: column;
-    height: var(--dashboard-panel-height, calc(100vh - 250px));
-    max-height: var(--dashboard-panel-height, 100%);
+    height: 100%;
+    max-height: 100%;
     min-height: clamp(360px, 52vh, 760px);
     overflow: hidden;
 }
@@ -895,7 +898,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--color-white);
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+    background: linear-gradient(135deg, #4b5563 0%, #1f2937 100%) !important;
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
 

@@ -45,11 +45,11 @@ def _contains_word(text: str, word: str) -> bool:
 
 
 def _looks_like_relation_photo_name(name: str) -> bool:
-    """Return True for relation-photo naming patterns like REL_1 / Relation 2."""
+    """Return True for relation-photo naming patterns like REL_1 / Relation 2 or Relation Photo."""
     if not name:
         return False
     normalized = re.sub(r'[\s_-]+', ' ', str(name).strip().lower())
-    if re.match(r'^(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$', normalized):
+    if re.match(r'^(?:rel(?:ation)?|relative)\s*(?:1|one|2|two)?\s*(?:photo|image|pic|picture)$', normalized):
         return True
     return bool(re.search(r'\b(?:father|mother)\b\s*(?:photo|image|pic|picture)\b', normalized))
 
@@ -99,8 +99,8 @@ def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
     _TYPE_MAP = {
         'photo': 'photo', 'rel_photo': 'rel_photo',
         'mother_photo': 'rel_photo', 'father_photo': 'rel_photo',
-        'signature': 'signature',
-        'barcode': 'barcode', 'qr_code': 'qr_code', 'image': 'photo',
+        'signature': 'signature', 'sign': 'signature',
+        'barcode': 'barcode', 'qr_code': 'qr_code', 'qr': 'qr_code', 'image': 'photo',
     }
     if field_type in _TYPE_MAP:
         return _TYPE_MAP[field_type]

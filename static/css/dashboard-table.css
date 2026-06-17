@@ -546,7 +546,8 @@
 }
 
 .rh-col-num {
-    width: 36px;
+    width: 60px;
+    white-space: nowrap;
 }
 
 .rh-col-photo {
