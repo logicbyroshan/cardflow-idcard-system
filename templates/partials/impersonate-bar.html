@@ -29,12 +29,14 @@
   /* If pages had previously applied main margin-top, prefer padding on body
      so we don't need to update every layout; keep main flow unaffected. */
   body.impersonating .main { margin-top: 0; }
+  body.impersonating .main.dashboard-main { height: calc(100vh - 44px); }
 
   /* Small screens: increase bar height for readability */
   @media (max-width: 640px) {
     #impersonateBar { height: 56px; padding-top: 8px; padding-bottom: 8px; }
     body.impersonating { padding-top: 56px; }
     body.impersonating .sidebar { top: 56px; height: calc(100vh - 56px); }
+    body.impersonating .main.dashboard-main { height: calc(100vh - 56px); }
   }
 </style>
 <script>

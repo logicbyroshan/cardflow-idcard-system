@@ -10,49 +10,57 @@
 .dashboard-snap-panel { display: none; }
 .dashboard-snap-panel.is-active { display: block; }
 
-/* Tab-trigger: same card-overview-item that admin uses, but also acts as button */
-.dashboard-tab-item {
-  cursor: pointer;
-  width: 100%;
-  background: transparent;
-  border: none;
-  text-align: left;
-}
-.dashboard-tab-item.is-active {
-  background: rgba(var(--primary-rgb, 102,126,234), 0.06);
-}
-.dashboard-tab-item.is-active .card-overview-icon {
-  background: var(--color-primary) !important;
-  color: var(--color-white) !important;
-}
-.dashboard-tab-item.is-active .card-overview-label {
-  color: var(--color-primary);
-  font-weight: 700;
-}
 
-/* Assistants panel list */
-.assist-list { list-style:none; margin:0; padding:8px 0; }
-.assist-item {
-  display:flex; align-items:center; gap:10px;
-  padding:9px 16px;
-  border-bottom:1px solid var(--color-gray-50);
-  font-size:var(--ui-font-size-sm,12px);
-}
-.assist-item:last-child { border-bottom:none; }
-.assist-avatar {
-  width:30px; height:30px; border-radius:50%;
-  background:var(--color-primary); color:#fff;
-  display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; flex-shrink:0;
-}
-.assist-name { font-weight:600; color:var(--text-primary); }
-.assist-meta { color:var(--text-muted); font-size:11px; margin-top:1px; }
-.assist-status { margin-left:auto; }
+/* Assistants panel styling */
 .assist-status-badge {
-  font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px;
-  background:var(--color-emerald-100); color:var(--color-emerald-800);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--color-emerald-100);
+  color: var(--color-emerald-800);
+  flex-shrink: 0;
 }
-.assist-status-badge.inactive { background:var(--color-red-100); color:var(--color-red-800); }
+.assist-status-badge.inactive {
+  background: var(--color-red-100);
+  color: var(--color-red-800);
+}
+.assigned-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin: 1px;
+}
+.assigned-badge.badge-class {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+.assigned-badge.badge-section {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.assigned-badge.badge-all {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+.assist-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+.assist-name-text {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 </style>
 {% endblock %}
 
@@ -250,25 +258,37 @@
           <div class="dashboard-card-header">
             <h3><i class="fa-solid fa-user-tie"></i> Recent Assistants</h3>
           </div>
-          <div class="dashboard-card-body tall-body p-0">
-            <ul class="assist-list" id="assistantList">
-              <!-- skeleton -->
-              <li class="assist-item">
-                <div class="dash-skeleton dash-skeleton-avatar"></div>
-                <div class="activity-content" style="flex:1;">
-                  <div class="dash-skeleton dash-skeleton-line" style="width:60%;"></div>
-                  <div class="dash-skeleton dash-skeleton-line" style="width:40%;margin-top:4px;"></div>
-                </div>
-              </li>
-              <li class="assist-item">
-                <div class="dash-skeleton dash-skeleton-avatar"></div>
-                <div class="activity-content" style="flex:1;">
-                  <div class="dash-skeleton dash-skeleton-line" style="width:55%;"></div>
-                  <div class="dash-skeleton dash-skeleton-line" style="width:38%;margin-top:4px;"></div>
-                </div>
-              </li>
-            </ul>
-            <div style="padding:10px 16px;">
+          <div class="dashboard-card-body tall-body p-0 table-scroll-body">
+            <div class="recent-table-wrapper dashboard-scroll-table-wrapper">
+              <table class="recent-table dashboard-scroll-table recent-table-5col" id="assistantTable">
+                <thead>
+                  <tr>
+                    <th scope="col">Assistant</th>
+                    <th scope="col" class="text-center">Pending</th>
+                    <th scope="col" class="text-center">Verified</th>
+                    <th scope="col" class="text-center">Pool</th>
+                    <th scope="col">Assigned</th>
+                  </tr>
+                </thead>
+                <tbody id="assistantListBody">
+                  <tr class="dashboard-table-skeleton-row">
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 78%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 50%;"></span></td>
+                  </tr>
+                  <tr class="dashboard-table-skeleton-row">
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 66%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-line" style="width: 40%;"></span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="padding:10px 16px; border-top: 1px solid var(--color-gray-200);">
               <a href="{% url 'client:staff' %}" class="view-all" style="font-size:12px;">View All Assistants <i class="fa-solid fa-arrow-right"></i></a>
             </div>
           </div>
@@ -520,22 +540,50 @@ async function loadReprintHistory() {
 }
 
 async function loadRecentAssistants() {
-  var list = document.getElementById('assistantList');
-  if (!list) return;
+  var tbody = document.getElementById('assistantListBody');
+  if (!tbody) return;
   try {
     const res  = await fetch('{% url "client:api_dashboard" %}');
     const data = await res.json();
     if (data.success && data.data.recent_staff && data.data.recent_staff.length) {
-      list.innerHTML = data.data.recent_staff.map(function(s) {
-        var init   = (s.name || '?')[0].toUpperCase();
+      tbody.innerHTML = data.data.recent_staff.map(function(s) {
         var active = s.is_active !== false;
-        return '<li class="assist-item"><div class="assist-avatar">' + escHtml(init) + '</div><div><div class="assist-name">' + escHtml(s.name || '-') + '</div><div class="assist-meta">' + escHtml(s.email || '') + '</div></div><div class="assist-status"><span class="assist-status-badge' + (active ? '' : ' inactive') + '">' + (active ? 'Active' : 'Inactive') + '</span></div></li>';
+        var statusBadge = '<span class="assist-status-badge' + (active ? '' : ' inactive') + '">' + (active ? 'Active' : 'Inactive') + '</span>';
+        
+        var badgesHtml = '';
+        if (s.classes && s.classes.length) {
+          s.classes.forEach(function(c) {
+            badgesHtml += '<span class="assigned-badge badge-class" title="Class">' + escHtml(c) + '</span>';
+          });
+        }
+        if (s.sections && s.sections.length) {
+          s.sections.forEach(function(sec) {
+            badgesHtml += '<span class="assigned-badge badge-section" title="Section">' + escHtml(sec) + '</span>';
+          });
+        }
+        if (!badgesHtml) {
+          badgesHtml = '<span class="assigned-badge badge-all">All</span>';
+        }
+        
+        var nameHtml = '<div class="assist-name-wrap">' +
+          statusBadge + 
+          '<span class="assist-name-text" title="' + escapeAttr(s.email) + '">' + escHtml(s.name || '-') + '</span>' +
+          '</div>';
+
+        return '<tr>' +
+          '<td>' + nameHtml + '</td>' +
+          '<td class="text-center"><span class="count-badge pending">' + (s.pending || 0) + '</span></td>' +
+          '<td class="text-center"><span class="count-badge verified">' + (s.verified || 0) + '</span></td>' +
+          '<td class="text-center"><span class="count-badge pool">' + (s.pool || 0) + '</span></td>' +
+          '<td><div class="flex flex-wrap gap-1">' + badgesHtml + '</div></td>' +
+          '</tr>';
       }).join('');
     } else {
-      list.innerHTML = '<li class="assist-item" style="color:var(--text-muted);font-size:12px;justify-content:center;">No assistants found</li>';
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 24px; color: var(--text-muted);">No assistants found</td></tr>';
     }
   } catch(err) {
-    list.innerHTML = '<li class="assist-item" style="color:var(--text-muted);font-size:12px;justify-content:center;">Could not load assistants</li>';
+    console.error('Recent assistants load error:', err);
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 24px; color: var(--color-red-600);">Could not load assistants</td></tr>';
   }
 }
 

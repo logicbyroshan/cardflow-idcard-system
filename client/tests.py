@@ -1085,6 +1085,61 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(result.data['reprint_confirmed'], 1)
         self.assertEqual(result.data['reprint_total'], 2)
 
+    def test_dashboard_data_includes_recent_assistants_counts_and_badges(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='dash-owner-assist@test.com', email='dash-owner-assist@test.com',
+            password='pass1234', role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Assist Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Group')
+        table = IDCardTable.objects.create(
+            group=group, name='Table',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+            ]
+        )
+
+        # Create assistant (client_staff)
+        staff_user = User.objects.create_user(
+            username='assist-dash@test.com', email='assist-dash@test.com',
+            password='pass1234', role='client_staff',
+        )
+        staff = Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=client_obj,
+            assigned_table_ids=[table.id],
+            allowed_classes=['10'],
+            allowed_sections=['A'],
+        )
+
+        # Create some cards
+        # Pending in scope
+        IDCard.objects.create(table=table, status='pending', field_data={'CLASS': '10', 'SECTION': 'A'})
+        # Verified out of scope (class 11)
+        IDCard.objects.create(table=table, status='verified', field_data={'CLASS': '11', 'SECTION': 'A'})
+        # Pool in scope
+        IDCard.objects.create(table=table, status='pool', field_data={'CLASS': '10', 'SECTION': 'A'})
+
+        result = ClientDashboardService.get_dashboard_data(owner)
+        self.assertTrue(result.success)
+        self.assertIn('recent_staff', result.data)
+        self.assertEqual(len(result.data['recent_staff']), 1)
+        
+        ast_data = result.data['recent_staff'][0]
+        self.assertEqual(ast_data['name'], staff_user.get_full_name() or staff_user.username)
+        self.assertEqual(ast_data['pending'], 1)
+        self.assertEqual(ast_data['verified'], 0) # out of scope
+        self.assertEqual(ast_data['pool'], 1)
+        self.assertEqual(ast_data['classes'], ['10'])
+        self.assertEqual(ast_data['sections'], ['A'])
+
 
 class ClientImageServiceTests(TestCase):
     def setUp(self):

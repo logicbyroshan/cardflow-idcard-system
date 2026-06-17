@@ -415,16 +415,56 @@ class ClientDashboardService(BaseService):
                     .select_related('user')
                     .order_by('-id')[:5]
                 )
-                recent_staff = [
-                    {
+                active_tables = list(IDCardTable.objects.filter(group__client=client, is_active=True))
+                recent_staff = []
+                
+                for s in recent_staff_qs:
+                    s.user.staff_profile = s
+                    pending_cnt = 0
+                    verified_cnt = 0
+                    pool_cnt = 0
+                    
+                    for table in active_tables:
+                        cards_qs = IDCard.objects.filter(table_id=table.id)
+                        pending_cnt += ClientCardService._apply_client_staff_row_scope(
+                            s.user, table, cards_qs.filter(status='pending'), ignore_pool_bypass=True
+                        ).count()
+                        verified_cnt += ClientCardService._apply_client_staff_row_scope(
+                            s.user, table, cards_qs.filter(status='verified'), ignore_pool_bypass=True
+                        ).count()
+                        pool_cnt += ClientCardService._apply_client_staff_row_scope(
+                            s.user, table, cards_qs.filter(status='pool'), ignore_pool_bypass=True
+                        ).count()
+                    
+                    classes = set()
+                    sections = set()
+                    if isinstance(s.allowed_classes, list):
+                        for c in s.allowed_classes:
+                            if c: classes.add(str(c))
+                    if isinstance(s.allowed_sections, list):
+                        for sec in s.allowed_sections:
+                            if sec: sections.add(str(sec))
+                    if isinstance(s.assignment_scopes, list):
+                        for scope in s.assignment_scopes:
+                            if isinstance(scope, dict):
+                                for c in scope.get('classes') or []:
+                                    if c: classes.add(str(c))
+                                for sec in scope.get('sections') or []:
+                                    if sec: sections.add(str(sec))
+                    
+                    recent_staff.append({
                         'id': s.id,
                         'name': s.user.get_full_name() or s.user.username,
                         'email': s.user.email or '',
-                        'is_active': s.is_active,
-                    }
-                    for s in recent_staff_qs
-                ]
-            except Exception:
+                        'is_active': s.user.is_active,
+                        'pending': pending_cnt,
+                        'verified': verified_cnt,
+                        'pool': pool_cnt,
+                        'classes': sorted(list(classes)),
+                        'sections': sorted(list(sections)),
+                    })
+            except Exception as e:
+                logger.exception('Failed to build recent assistants list in client dashboard: %s', e)
                 recent_staff = []
 
             # Use centralized role-aware activity feed so legacy per-card logs are merged.
