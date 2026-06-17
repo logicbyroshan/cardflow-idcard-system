@@ -35,11 +35,6 @@
           <i class="fa-solid fa-bell"></i> Notifications
         </button>
         {% endif %}
-        {% if is_super_admin or is_pro_user %}
-        <button class="panel-tab" data-tab="sessions">
-          <i class="fa-solid fa-right-from-bracket"></i> Sessions
-        </button>
-        {% endif %}
         {% if is_super_admin or perm_manage_panel_email %}
         <button class="panel-tab" data-tab="email-logs">
           <i class="fa-solid fa-envelope"></i> Email Management
@@ -128,7 +123,6 @@
       </script>
 
       {% if is_super_admin %}{% include 'partials/panel/tab-notifications.html' %}{% endif %}
-      {% if is_super_admin or is_pro_user %}{% include 'partials/panel/tab-sessions.html' %}{% endif %}
       {% if is_super_admin or perm_manage_panel_email %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-log-history.html' %}{% endif %}
       {% include 'partials/panel/tab-batch-jobs.html' %}

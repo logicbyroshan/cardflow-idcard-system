@@ -45,19 +45,6 @@
       </div>
       {% else %}
 
-      <!-- Page header -->
-      <div class="backup-page-header">
-        <div class="backup-page-header-left">
-          <h1><i class="fa-solid fa-database"></i> Select Clients for Backup</h1>
-          <p>Choose the schools whose data you want to backup. All selected schools will be packaged into a single <strong>Adarsh Backup ZIP</strong> with one folder per school.</p>
-        </div>
-        <div class="backup-page-header-right">
-          <a href="{% url 'dashboard' %}" class="backup-btn-secondary">
-            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
-          </a>
-        </div>
-      </div>
-
       <!-- Sort bar & Search bar -->
       <div class="backup-sort-bar" style="display: flex; align-items: center; gap: 12px; padding: 10px 18px;">
         <span class="backup-sort-label">Sort by:</span>
@@ -91,8 +78,8 @@
       </div>
 
       <!-- Client table container (scrollable) -->
-      <div class="backup-clients-scroll-area" style="padding: 20px; padding-bottom: 80px; background: #fafbfc; flex: 1; min-height: 0; overflow-y: auto;">
-        <div class="table-wrapper" style="background: #ffffff; border: 1px solid var(--color-gray-200); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div class="backup-clients-scroll-area" style="padding: 0; padding-bottom: 80px; background: #fafbfc; flex: 1; min-height: 0; overflow-y: auto;">
+        <div class="table-wrapper" style="background: #ffffff; border: none; border-bottom: 1px solid var(--color-gray-200); border-radius: 0; overflow: hidden; box-shadow: none;">
           <table class="data-table" id="backupClientsTable" style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr style="background: #f8fafc; border-bottom: 2px solid var(--color-gray-200);">
@@ -153,14 +140,19 @@
         </div>
       </div>
 
-      <!-- Selected count + confirm -->
-      <div class="backup-bottom-bar" id="backupBottomBar" style="display:none;">
-        <div class="backup-bottom-info">
-          <span id="selectedCountText">0 client(s) selected</span>
+      <!-- Selected count + confirm bottom bar (always visible) -->
+      <div class="backup-bottom-bar" id="backupBottomBar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 20px;">
+        <div class="backup-bottom-left">
+          <a href="{% url 'dashboard' %}" class="backup-btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+          </a>
         </div>
-        <button type="button" class="backup-btn-confirm" onclick="confirmBackupStart()">
-          <i class="fa-solid fa-play"></i> Start Backup
-        </button>
+        <div class="backup-bottom-right" style="display: flex; align-items: center; gap: 12px;">
+          <span id="selectedCountText" style="font-size: 13px; font-weight: 700; color: #1e293b;">0 client(s) selected</span>
+          <button type="button" class="backup-btn-confirm" id="backupStartConfirmBtn" onclick="confirmBackupStart()" disabled>
+            <i class="fa-solid fa-play"></i> Start Backup
+          </button>
+        </div>
       </div>
 
       <!-- Confirm warning modal -->
@@ -174,7 +166,7 @@
             <p>You are about to start a <strong>background backup</strong> for <strong><span id="confirmClientCount">0</span> school(s)</strong>.</p>
             <ul class="backup-confirm-list">
               <li>A single <strong>"Adarsh Backup {date}.zip"</strong> will be created with one folder per school.</li>
-              <li>Backup will run in the background  -  you can close this page.</li>
+              <li>Backup will run in the background - you can close this page.</li>
               <li>Track progress in <strong>Manage Panel -> Backups</strong> tab.</li>
             </ul>
           </div>
@@ -183,6 +175,33 @@
             <button type="button" class="btn btn-md btn-primary" id="startBackupBtn" onclick="startBackup()">
               <i class="fa-solid fa-rocket"></i> Start Backup Now
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress overlay/modal -->
+      <div id="backupProgressModal" class="backup-modal-overlay" style="display:none;">
+        <div class="backup-modal backup-modal-sm">
+          <div class="backup-modal-header" style="background: linear-gradient(135deg, var(--color-primary-dark, #1e40af) 0%, var(--color-primary, #2563eb) 100%);">
+            <h2><i class="fa-solid fa-spinner fa-spin"></i> Generating Backup</h2>
+          </div>
+          <div class="backup-modal-body" style="text-align: center; padding: 24px 18px;">
+            <p style="font-weight: 600; color: var(--color-slate-800); margin-bottom: 12px;">We are preparing your backup file. Please do not close this window.</p>
+            
+            <div class="backup-progress-wrap" style="margin: 20px 0;">
+              <div class="backup-progress-info" style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--color-slate-600); margin-bottom: 6px;">
+                <span id="backupProgressStatusText">Processing schools...</span>
+                <span id="backupProgressPctText">0%</span>
+              </div>
+              <div class="backup-progress-bar" style="height: 12px; background: var(--color-gray-200); border-radius: 6px; overflow: hidden;">
+                <div id="backupProgressBarFill" class="backup-progress-fill" style="width: 0%; height: 100%; background: var(--color-primary, #2563eb); border-radius: 6px; transition: width 0.3s ease;"></div>
+              </div>
+            </div>
+            
+            <p style="font-size: 12px; color: var(--color-slate-500);">Current School: <strong id="backupProgressSchoolText" style="color: var(--color-slate-800);">-</strong></p>
+          </div>
+          <div class="backup-modal-footer" id="backupProgressFooter" style="display: none;">
+            <button type="button" class="btn btn-md btn-danger" onclick="closeProgressModal()">Close</button>
           </div>
         </div>
       </div>
@@ -198,6 +217,7 @@
   (function(){
     const TASK_ID = {{ task.pk|default:"0" }};
     let backupStartInFlight = false;
+    let pollInterval = null;
 
     function getCheckboxes() {
       return [...document.querySelectorAll('.backup-client-check')];
@@ -222,17 +242,15 @@
 
     function updateBottomBar() {
       const ids = getSelectedIds();
-      const bar = document.getElementById('backupBottomBar');
       const text = document.getElementById('selectedCountText');
+      const btn = document.getElementById('backupStartConfirmBtn');
       updateSelectAllLabel();
 
-      if (!bar || !text) return;
-
-      if (ids.length > 0) {
-        bar.style.display = 'flex';
+      if (text) {
         text.textContent = ids.length + ' client(s) selected';
-      } else {
-        bar.style.display = 'none';
+      }
+      if (btn) {
+        btn.disabled = ids.length === 0;
       }
     }
 
@@ -312,6 +330,60 @@
       document.getElementById('backupStartModal').style.display = 'none';
     };
 
+    window.closeProgressModal = function() {
+      document.getElementById('backupProgressModal').style.display = 'none';
+      if (pollInterval) clearInterval(pollInterval);
+    };
+
+    function pollBackupProgress(taskId) {
+      const pctText = document.getElementById('backupProgressPctText');
+      const barFill = document.getElementById('backupProgressBarFill');
+      const statusText = document.getElementById('backupProgressStatusText');
+      const schoolText = document.getElementById('backupProgressSchoolText');
+      const footer = document.getElementById('backupProgressFooter');
+
+      pollInterval = setInterval(() => {
+        fetch('/panel/api/backup/status/' + taskId + '/')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.success) {
+            const pct = data.progress_pct || 0;
+            const status = data.status;
+            const currentSchool = data.current_client || '-';
+
+            if (pctText) pctText.textContent = pct + '%';
+            if (barFill) barFill.style.width = pct + '%';
+            if (schoolText) schoolText.textContent = currentSchool;
+
+            if (status === 'processing') {
+              if (statusText) statusText.textContent = 'Processing schools... (' + (data.progress || 0) + '/' + (data.total || 0) + ')';
+            } else if (status === 'completed') {
+              clearInterval(pollInterval);
+              if (statusText) statusText.textContent = 'Backup Complete! Downloading...';
+              if (window.showToast) showToast('Backup completed! Triggering download.', 'success');
+              
+              // Trigger download
+              window.location.href = '/panel/api/backup/download/' + taskId + '/';
+              
+              // Redirect to manage panel backups tab after short delay
+              setTimeout(() => {
+                window.location.href = '/panel/manage-panel/?tab=backups';
+              }, 2000);
+            } else if (status === 'failed') {
+              clearInterval(pollInterval);
+              if (statusText) statusText.textContent = 'Backup Failed!';
+              if (schoolText) schoolText.textContent = data.error_message || 'An unknown error occurred.';
+              if (footer) footer.style.display = 'flex';
+              if (window.showToast) showToast('Backup failed: ' + (data.error_message || 'Error'), 'error');
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Polling error:', err);
+        });
+      }, 1000);
+    }
+
     window.startBackup = function() {
       if (backupStartInFlight) return;
 
@@ -347,8 +419,9 @@
       })
       .then(data => {
         if (data.ok && data.data && data.data.success) {
-          if (window.showToast) showToast(data.data.message || 'Backup started successfully.', 'success');
-          setTimeout(() => { window.location.href = '/panel/manage-panel/?tab=backups'; }, 1500);
+          closeStartModal();
+          document.getElementById('backupProgressModal').style.display = 'flex';
+          pollBackupProgress(TASK_ID);
         } else {
           if (window.showToast) showToast((data.data && data.data.message) || 'Failed to start backup.', 'error');
           backupStartInFlight = false;
@@ -412,7 +485,6 @@
       });
 
       if (matchCount === 0) {
-        // Show empty search result row (the second empty row)
         const emptySearchRow = document.querySelectorAll('.backup-empty-row')[1] || document.querySelectorAll('.backup-empty-row')[0];
         if (emptySearchRow) {
           emptySearchRow.style.display = '';

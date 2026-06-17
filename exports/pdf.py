@@ -70,12 +70,8 @@ _STATUS_LIST_LABELS = {
 
 def _path_to_file_uri(abs_path: str) -> str:
     """Convert an absolute filesystem path to a file:// URI for WeasyPrint."""
-    # Normalise to forward slashes
-    fwd = abs_path.replace('\\', '/')
-    if not fwd.startswith('/'):
-        # Windows: C:/... → /C:/...
-        fwd = '/' + fwd
-    return 'file://' + fwd
+    from pathlib import Path
+    return Path(abs_path).as_uri()
 
 
 def _resolve_safe_media_path(img_path: str) -> Optional[str]:

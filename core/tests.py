@@ -1659,7 +1659,7 @@ class DashboardAndLogsHardeningTests(TestCase):
             )
 
         self.client.force_login(admin)
-        response = self.client.get('/panel/api/recent-activity/', {'limit': 100})
+        response = self.client.get('/panel/api/recent-activity/', {'limit': 100, 'merge': '0'})
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()

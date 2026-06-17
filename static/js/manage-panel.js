@@ -479,19 +479,13 @@ function _loadInitialManagePanelTabData(tabName) {
     initServerInfoTab();
     return;
   }
-  if (tabName === 'sessions') {
-    initSessionsTab();
-    return;
-  }
+
   if (tabName === 'maintenance' && typeof loadMaintenanceStatus === 'function') {
     loadMaintenanceStatus();
   }
 }
 
-function initSessionsTab() {
-  const section = document.getElementById('panelSessionsSection');
-  if (!section) return;
-}
+
 
 /* ============ Init ============ */
 document.addEventListener('DOMContentLoaded', function() {
@@ -539,7 +533,6 @@ function switchTab(tabName) {
 (function () {
   try {
     if (typeof switchTab === 'function') window.switchTab = switchTab;
-    if (typeof initSessionsTab === 'function') window.initSessionsTab = initSessionsTab;
     if (typeof initServerInfoTab === 'function') window.initServerInfoTab = initServerInfoTab;
     if (typeof loadEmailLogs === 'function') window.loadEmailLogs = loadEmailLogs;
     if (typeof loadOperationsFeed === 'function') window.loadOperationsFeed = loadOperationsFeed;
@@ -554,7 +547,6 @@ function switchTab(tabName) {
     setTimeout(function () {
       try {
         if (typeof switchTab === 'function') window.switchTab = switchTab;
-        if (typeof initSessionsTab === 'function') window.initSessionsTab = initSessionsTab;
         if (typeof initServerInfoTab === 'function') window.initServerInfoTab = initServerInfoTab;
         if (typeof loadEmailLogs === 'function') window.loadEmailLogs = loadEmailLogs;
         if (typeof loadOperationsFeed === 'function') window.loadOperationsFeed = loadOperationsFeed;
@@ -2416,6 +2408,7 @@ function renderTemplateTable() {
     const preview = previewSource.length > 80 ? previewSource.substring(0, 80) + '...' : previewSource;
     const fontLabel = t.font_name === 'hindi' ? 'Hindi' : 'Arial';
     const boldLabel = t.is_bold ? '<span class="template-style-pill">Bold</span>' : '<span class="template-style-pill muted">Normal</span>';
+    const previewStyle = t.font_name === 'hindi' ? 'font-family: \'AbbasiNatraj\', \'AbbasiNagari\', sans-serif; font-size: 13.5px;' : '';
     return `<tr>
       <td class="text-center text-xs text-gray-400">${startIndex + i + 1}</td>
       <td>
@@ -2423,7 +2416,7 @@ function renderTemplateTable() {
           <strong class="text-sm">${escHtml(t.name)}</strong>
         </div>
       </td>
-      <td><span class="text-xs text-gray-600">${escHtml(preview)}</span></td>
+      <td><span class="text-xs text-gray-600" style="${previewStyle}">${escHtml(preview)}</span></td>
       <td>
         <div class="template-style-cell">
           <span class="template-style-pill">${fontLabel}</span>
@@ -3655,9 +3648,12 @@ switchTab = function(tabName) {
   if (tabName === 'batch-jobs') window.loadManagePanelBatchJobProgressCenter(false);
   if (tabName === 'download-templates' && !panelTemplates.length) loadTemplates();
   if (tabName === 'log-history' && !operationsFeed.length) loadOperationsFeed();
+  if (tabName === 'server-info') initServerInfoTab();
+  if (tabName === 'email-logs' && !Object.keys(_emailLogsById).length) loadEmailLogs(1);
   _syncOpsAutoRefresh(tabName === 'log-history');
   _syncBatchJobsAutoRefresh(tabName === 'batch-jobs');
 };
+window.switchTab = switchTab;
 
 /* ============ Monitoring (legacy alias -> Logs & Updates) ============ */
 
@@ -3835,26 +3831,7 @@ function initServerInfoTab() {
   const otherRows = document.getElementById('serverOtherBreakdownRows');
   if (!rows || !otherRows) return;
 
-  if (!serverInfoSnapshot) {
-    const cachedSnapshot = _readServerInfoLocalCache();
-    if (cachedSnapshot) {
-      serverInfoSnapshot = cachedSnapshot;
-      serverInfoHasFetched = true;
-    }
-  }
-
-  if (serverInfoSnapshot) {
-    renderServerInfo(serverInfoSnapshot, true);
-    _syncServerInfoButtons();
-    return;
-  }
-
-  if (!serverInfoHasFetched) {
-    rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-cloud-arrow-down"></i><p>Snapshot not loaded</p><span>Click "Fetch Snapshot" to load current server usage.</span></div>`;
-    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>System usage details not loaded</p><span>Fetch snapshot to load system usage categories.</span></div>`;
-  }
-
-  _syncServerInfoButtons();
+  loadServerInfo(false);
 }
 
 async function loadServerInfo(forceRefresh) {

@@ -767,8 +767,56 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ====================
-    // Recent Activity (Auto Refresh)
+    // Recent Activity (Auto Refresh) — persistent, never-delete chip list
     // ====================
+    // Tracks all activity entries that have ever been shown (by canonical key).
+    // Format: Map<key, { id, html, activity }>
+    const _activityChipMap = new Map();
+    // Ordered list of keys in the order they should appear (newest first).
+    const _activityChipOrder = [];
+    const ACTIVITY_CHIP_MAX = 100;
+
+    function _activityChipKey(activity) {
+        // Prefer the DB id as the key; fall back to a composite description key.
+        const dbId = activity && activity.id;
+        if (dbId != null && dbId !== '') return String(dbId);
+        const action = String(activity.action || '').trim();
+        const desc = String(activity.description || '').trim().toLowerCase().slice(0, 80);
+        const ts = String(activity.created_at || '').trim();
+        return `${action}:${desc}:${ts}`;
+    }
+
+    function _buildActivityChipHtml(activity, esc) {
+        const iconColor = esc(activity.icon_color || 'edit');
+        const iconClass = esc(activity.icon_class || 'fa-circle-info');
+        const description = esc(activity.display_text || activity.description || 'Activity update');
+        const rawTimeAgo = String(activity.time_ago || '').trim();
+        const rawTimestamp = String(activity.created_at_display || '').trim();
+        const detailUrl = String(activity.url || '').trim();
+        const timeAgo = rawTimeAgo
+            ? (/ago$/i.test(rawTimeAgo) ? rawTimeAgo : `${rawTimeAgo} ago`)
+            : 'just now';
+
+        const timeMeta = rawTimestamp
+            ? `${esc(timeAgo)} <span class="activity-time-dot">&bull;</span> <span class="activity-time-absolute">${esc(rawTimestamp)}</span>`
+            : esc(timeAgo);
+
+        const itemInner = `
+            <div class="activity-icon ${iconColor}">
+                <i class="fa-solid ${iconClass}"></i>
+            </div>
+            <div class="activity-content">
+                <div class="activity-text">${description}</div>
+                <div class="activity-time">${timeMeta}</div>
+            </div>
+        `;
+
+        if (detailUrl) {
+            return `<a href="${esc(detailUrl)}" class="activity-item activity-item-link">${itemInner}</a>`;
+        }
+        return `<div class="activity-item">${itemInner}</div>`;
+    }
+
     function loadRecentActivity() {
         if (!isAdminDashboardContext) return;
 
@@ -784,8 +832,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!data || !data.success) return;
 
                 const activities = Array.isArray(data.activities) ? data.activities : [];
-                setDashboardTabCount(dashboardTabCountRecentUpdates, activities.length);
-                if (!activities.length) {
+
+                if (!activities.length && _activityChipMap.size === 0) {
+                    setDashboardTabCount(dashboardTabCountRecentUpdates, 0);
                     activityList.innerHTML = `
                         <div class="activity-item" id="noActivityMessage">
                             <div class="activity-icon edit">
@@ -800,45 +849,51 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                activityList.innerHTML = activities.map(activity => {
-                    const iconColor = esc(activity.icon_color || 'edit');
-                    const iconClass = esc(activity.icon_class || 'fa-circle-info');
-                    const description = esc(activity.display_text || activity.description || 'Activity update');
-                    const rawTimeAgo = String(activity.time_ago || '').trim();
-                    const rawTimestamp = String(activity.created_at_display || '').trim();
-                    const detailUrl = String(activity.url || '').trim();
-                    const timeAgo = rawTimeAgo
-                        ? (/ago$/i.test(rawTimeAgo) ? rawTimeAgo : `${rawTimeAgo} ago`)
-                        : 'just now';
+                // Build set of incoming keys for fast lookup
+                const incomingKeys = new Set();
+                activities.forEach(a => incomingKeys.add(_activityChipKey(a)));
 
-                    const timeMeta = rawTimestamp
-                        ? `${esc(timeAgo)} <span class="activity-time-dot">&bull;</span> <span class="activity-time-absolute">${esc(rawTimestamp)}</span>`
-                        : esc(timeAgo);
-
-                    const itemInner = `
-                        <div class="activity-icon ${iconColor}">
-                            <i class="fa-solid ${iconClass}"></i>
-                        </div>
-                        <div class="activity-content">
-                            <div class="activity-text">${description}</div>
-                            <div class="activity-time">${timeMeta}</div>
-                        </div>
-                    `;
-
-                    if (detailUrl) {
-                        return `<a href="${esc(detailUrl)}" class="activity-item activity-item-link">${itemInner}</a>`;
+                // Process incoming activities: update existing chips or prepend new ones
+                const newKeys = [];
+                activities.forEach(activity => {
+                    const key = _activityChipKey(activity);
+                    const html = _buildActivityChipHtml(activity, esc);
+                    if (_activityChipMap.has(key)) {
+                        // Update the existing chip's HTML in case description/time changed
+                        _activityChipMap.get(key).html = html;
+                    } else {
+                        // Brand new activity – prepend to the order list
+                        newKeys.push(key);
+                        _activityChipMap.set(key, { key, html, activity });
                     }
+                });
 
-                    return `
-                        <div class="activity-item">
-                            ${itemInner}
-                        </div>
-                    `;
-                }).join('');
+                // Prepend new keys to the front of the order array
+                if (newKeys.length > 0) {
+                    _activityChipOrder.unshift(...newKeys);
+                }
+
+                // Trim order list to ACTIVITY_CHIP_MAX (remove oldest from tail)
+                while (_activityChipOrder.length > ACTIVITY_CHIP_MAX) {
+                    const removedKey = _activityChipOrder.pop();
+                    _activityChipMap.delete(removedKey);
+                }
+
+                // Render all chips in order
+                const totalShown = _activityChipOrder.length;
+                setDashboardTabCount(dashboardTabCountRecentUpdates, totalShown);
+
+                activityList.innerHTML = _activityChipOrder
+                    .map(key => {
+                        const entry = _activityChipMap.get(key);
+                        return entry ? entry.html : '';
+                    })
+                    .filter(Boolean)
+                    .join('');
             })
             .catch(error => {
                 console.error('Error loading recent activity:', error);
-                setDashboardTabCount(dashboardTabCountRecentUpdates, 0);
+                // Do NOT clear existing chips on error — preserve what's shown
             });
     }
 

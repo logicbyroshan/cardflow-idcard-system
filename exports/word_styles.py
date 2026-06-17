@@ -349,7 +349,7 @@ class WordStylesMixin:
             if not line:
                 continue
             body_para = doc.add_paragraph()
-            body_run = body_para.add_run(line.upper())
+            body_run = body_para.add_run(line if use_hindi else line.upper())
             body_run.bold = use_bold
             self._force_run_font(body_run, font_name)
             body_run.font.size = Pt(8)

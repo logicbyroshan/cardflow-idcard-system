@@ -5,6 +5,14 @@
 <style>
 
 /* --- Font Faces --------------------------------------------------- */
+@font-face {
+    font-family: 'AbbasiNatraj';
+    src: url('{{ font_dir }}/ABBANM__.TTF');
+}
+@font-face {
+    font-family: 'AbbasiNagari';
+    src: url('{{ font_dir }}/ABBANN__.TTF');
+}
 {% if not use_pisa_fallback %}
 @font-face {
     font-family: 'Arial';
@@ -28,20 +36,6 @@
     font-family: 'SairaSemiCondensed';
     src: url('{{ font_dir }}/saira-semi-condensed-700.ttf');
     font-weight: bold;
-    font-style: normal;
-}
-@font-face {
-    font-family: 'AbbasiNatraj';
-    src: url('{{ font_dir }}/ABBANM__.TTF') format('truetype'),
-         url('{{ font_dir }}/ABBANN__.TTF') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-@font-face {
-    font-family: 'AbbasiNagari';
-    src: url('{{ font_dir }}/ABBANN__.TTF') format('truetype'),
-         url('{{ font_dir }}/ABBANM__.TTF') format('truetype');
-    font-weight: normal;
     font-style: normal;
 }
 {% endif %}
@@ -323,6 +317,12 @@ table.data-table td.img-cell.placeholder-cell img {
             {% endfor %}
         </tbody>
     </table>
+
+    {% if use_pisa_fallback and template_footer_text %}
+    <div class="pisa-footer" style="margin-top: 10px; font-family: {% if template_use_abbasi %}AbbasiNatraj, AbbasiNagari, Arial, sans-serif{% else %}Arial, Helvetica, sans-serif{% endif %}; font-size: 8.5pt; font-weight: {% if template_bold %}bold{% else %}normal{% endif %}; white-space: pre-line;">
+        {{ template_footer_text }}
+    </div>
+    {% endif %}
 
 </div>
 {% endfor %}

@@ -1296,6 +1296,15 @@ def api_server_info_snapshot(request):
     force_refresh = request.GET.get('force_refresh') == '1'
     if not force_refresh:
         cached = cache.get(_SERVER_INFO_CACHE_KEY)
+        if not cached:
+            from core.models import SystemSettings
+            db_cached_raw = SystemSettings.get_value('panel_server_info_snapshot_persistent', default='')
+            if db_cached_raw:
+                try:
+                    cached = json.loads(db_cached_raw)
+                    cache.set(_SERVER_INFO_CACHE_KEY, cached, _SERVER_INFO_CACHE_TTL)
+                except Exception:
+                    cached = None
         if cached:
             return JsonResponse({
                 'success': True,
@@ -1496,6 +1505,17 @@ def api_server_info_snapshot(request):
     }
 
     cache.set(_SERVER_INFO_CACHE_KEY, snapshot, _SERVER_INFO_CACHE_TTL)
+
+    # Save snapshot persistently to SystemSettings
+    from core.models import SystemSettings
+    try:
+        SystemSettings.set_value(
+            'panel_server_info_snapshot_persistent',
+            json.dumps(snapshot, cls=DjangoJSONEncoder),
+            description='Persistent cache of the last calculated server info snapshot.'
+        )
+    except Exception as exc:
+        logger.exception("Failed to save server info snapshot to SystemSettings persistent cache")
 
     return JsonResponse({
         'success': True,

@@ -317,7 +317,13 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         // Let page-specific hook run (e.g. reset status dropdown)
         if (cfg.onDrawerReset) cfg.onDrawerReset();
 
-        cfg.permissionFields.forEach(function (f) { var el = document.getElementById(f); if (el) el.checked = false; });
+        cfg.permissionFields.forEach(function (f) {
+            var el = document.getElementById(f);
+            if (el) {
+                var isLocked = el.closest('.perm-locked') ? true : false;
+                el.checked = (currentMode === 'add') ? !isLocked : false;
+            }
+        });
         resetAssignment();
         resetPasswordOption();
         setDrawerSectionVisibility(currentMode);

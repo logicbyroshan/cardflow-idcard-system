@@ -195,10 +195,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Phase 1: Profile image upload removed - using avatar placeholder
 
-        // Reset all permission toggles to unchecked
+        // Reset all permission toggles to checked by default in add mode, unchecked in other modes
         NS.permissionFields.forEach(function(field) {
             var el = document.getElementById(field);
-            if (el) el.checked = false;
+            if (el) {
+                el.checked = (mode === 'add') ? true : false;
+            }
         });
 
         // Reset client assignment

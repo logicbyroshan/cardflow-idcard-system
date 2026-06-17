@@ -615,7 +615,7 @@ class ActivityService:
     # ── query methods ───────────────────────────────────────
 
     @classmethod
-    def get_recent(cls, limit=8, hours=24, user=None, hide_admin_names=False, merge_card_activity=True):
+    def get_recent(cls, limit=8, hours=24, user=None, hide_admin_names=False, merge_card_activity=None, merge_similar_activity=True):
         """
         Return the most recent activity entries for the dashboard.
         Only shows entries from the last `hours` hours (default 24).
@@ -631,19 +631,19 @@ class ActivityService:
             hide_admin_names: If True, replace admin/admin_staff names with "System".
                 Automatically enabled for client and client_staff users.
             merge_card_activity: If True, collapse similar card-status rows into grouped entries.
+            merge_similar_activity: If True, collapse adjacent similar actions into grouped entries.
         
         Returns:
             List of dicts ready for template rendering.
         """
         now = timezone.now()
 
-        # Unbounded history queries are used for audit-style views and tests that
-        # expect exact rows to remain visible instead of being collapsed.
-        if hours is None:
-            merge_card_activity = False
+        # Unbounded history queries default to no merging unless explicitly requested
+        if merge_card_activity is None:
+            merge_card_activity = True if hours is not None else False
 
         # Base queryset (no time filter when hours is None)
-        qs = ActivityLog.objects.select_related('user', 'user__client_profile', 'user__staff_profile__client').order_by('-created_at')
+        qs = ActivityLog.objects.select_related('user', 'user__client_profile', 'user__staff_profile__client').order_by('-created_at', '-id')
         if hours is not None:
             cutoff = now - timezone.timedelta(hours=hours)
             qs = qs.filter(created_at__gte=cutoff)
@@ -691,7 +691,7 @@ class ActivityService:
             })
 
         card_merged_results = cls._merge_recent_card_activities(raw_results) if merge_card_activity else raw_results
-        merged_results = cls._merge_recent_similar_activities(card_merged_results)
+        merged_results = cls._merge_recent_similar_activities(card_merged_results) if merge_similar_activity else card_merged_results
 
         results = []
         for item in merged_results[:limit]:
@@ -886,10 +886,12 @@ class ActivityService:
             return _with_merge_suffix(text)
 
         if action in {'card_update', 'card_status', 'card_bulk_status', 'card_create', 'bulk_upgrade', 'bulk_delete', 'card_bulk_download'}:
+            # Show clean concise text for card actions — description already has full context.
+            # Only prepend actor when it adds genuine value (not for system actions or when
+            # actor name is already embedded), and never append "| Client:" suffix which
+            # makes chips too verbose compared to the editing display style.
             if actor_descriptor != 'System' and actor_descriptor.lower() not in text.lower():
                 text = f'{actor_descriptor}: {text}'
-            if client_context and client_context.lower() not in text.lower() and actor_role not in ('client', 'client_staff'):
-                text = f'{text} | Client: {client_context}'
             return _with_merge_suffix(text)
 
         if actor_descriptor != 'System' and actor_descriptor.lower() not in text.lower():
@@ -1232,7 +1234,8 @@ class ActivityService:
         card_unit_count = 1
         detail_discriminator = ''
 
-        if action in {'card_status', 'card_bulk_status'}:
+        if action in {'card_status', 'card_bulk_status', 'card_bulk_download', 'bulk_upgrade', 'bulk_delete'}:
+            target_id = -1
             parsed = cls._parse_card_activity_description(description)
             if parsed:
                 card_unit_count = max(int(parsed[0] or 1), 1)
@@ -1294,7 +1297,7 @@ class ActivityService:
 
                             last_action = str(past_item.get('action') or '').strip().lower()
 
-                            if last_action in {'card_status', 'card_bulk_status'}:
+                            if last_action in {'card_status', 'card_bulk_status', 'card_bulk_download', 'bulk_upgrade', 'bulk_delete'}:
                                 total_cards = int(past_item.get('_merged_card_units') or 1) + int(item.get('_merged_card_units') or 1)
                                 past_item['_merged_card_units'] = total_cards
                                 parsed = cls._parse_card_activity_description(past_item.get('description', ''))
@@ -1304,7 +1307,8 @@ class ActivityService:
                                     suffix = f' for {client}' if client else ''
                                     noun = 'card' if total_cards == 1 else 'cards'
                                     past_item['description'] = f'{total_cards} {noun} {status}{suffix}'
-                                    past_item['action'] = 'card_bulk_status' if total_cards > 1 else 'card_status'
+                                    if last_action in ('card_status', 'card_bulk_status'):
+                                        past_item['action'] = 'card_bulk_status' if total_cards > 1 else 'card_status'
                             elif last_action == 'card_update':
                                 if '_updated_card_ids' not in past_item:
                                     past_item['_updated_card_ids'] = {past_item.get('target_id')} if past_item.get('target_id') else set()

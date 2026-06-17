@@ -141,9 +141,9 @@ def _dashboard_recent_activity_cache_key(*, user, limit, surface):
     return f'dash:recent-activity:{surface}:{user_id}:{user_role}:{int(limit)}'
 
 
-def _get_dashboard_recent_activities(*, user, limit):
+def _get_dashboard_recent_activities(*, user, limit, merge_card_activity=True):
     """Return latest activity entries for the dashboard recent-updates feed."""
-    return ActivityService.get_recent(limit=limit, hours=None, user=user, merge_card_activity=True)
+    return ActivityService.get_recent(limit=limit, hours=None, user=user, merge_card_activity=merge_card_activity, merge_similar_activity=merge_card_activity)
 
 
 def _normalize_activity_name(value):
@@ -924,9 +924,10 @@ def api_recent_activity(request):
             default=ACTIVITY_FEED_MAX,
             max_limit=ACTIVITY_FEED_MAX,
         )
+        merge = request.GET.get('merge', '1') != '0'
         activities = _enrich_recent_activities_for_dashboard(
             request.user,
-            _get_dashboard_recent_activities(user=request.user, limit=limit),
+            _get_dashboard_recent_activities(user=request.user, limit=limit, merge_card_activity=merge),
         )
         return JsonResponse({'success': True, 'activities': activities})
     except Exception as e:

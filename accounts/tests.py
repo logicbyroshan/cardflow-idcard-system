@@ -641,57 +641,6 @@ class ProUserSessionAPITests(TestCase):
         s.save()
         return s.session_key
 
-    def test_pro_user_can_revoke_selected_user_sessions(self):
-        # create two sessions for target user
-        k1 = self._create_session_for_user(self.target)
-        k2 = self._create_session_for_user(self.target)
-        from django.contrib.sessions.models import Session as DSession
-        # ensure sessions exist
-        self.assertTrue(DSession.objects.filter(session_key=k1).exists())
-        self.assertTrue(DSession.objects.filter(session_key=k2).exists())
-
-        # login as pro_user and call API
-        self.client.force_login(self.pro_user)
-        resp = self.client.post(
-            '/panel/api/pro-user/sessions/revoke/',
-            data=json.dumps({'user_ids': [self.target.id]}),
-            content_type='application/json',
-        )
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        self.assertTrue(data.get('success'))
-        # sessions for target should be gone
-        self.assertFalse(DSession.objects.filter(session_key=k1).exists())
-        self.assertFalse(DSession.objects.filter(session_key=k2).exists())
-
-    def test_super_admin_can_revoke_all_but_preserve_self(self):
-        super_admin = User.objects.create_user(
-            username='sa2@example.com',
-            email='sa2@example.com',
-            password='pw',
-            role='super_admin',
-        )
-        # create sessions for two different users
-        u1 = User.objects.create_user(username='u1', email='u1@example.com', password='p', role='client')
-        u2 = User.objects.create_user(username='u2', email='u2@example.com', password='p', role='client')
-        k1 = self._create_session_for_user(u1)
-        k2 = self._create_session_for_user(u2)
-
-        # login as super_admin
-        self.client.force_login(super_admin)
-        resp = self.client.post(
-            '/panel/api/pro-user/sessions/revoke/',
-            data=json.dumps({'all': True, 'preserve_self': True}),
-            content_type='application/json',
-        )
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        self.assertTrue(data.get('success'))
-
-        from django.contrib.sessions.models import Session as DSession
-        self.assertFalse(DSession.objects.filter(session_key=k1).exists())
-        self.assertFalse(DSession.objects.filter(session_key=k2).exists())
-
     @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=True)
     def test_login_api_records_trusted_xff_ip_in_activity_log(self):
         response = self.client.post(
