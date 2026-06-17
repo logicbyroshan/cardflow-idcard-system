@@ -6,123 +6,53 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 <style>
-/* ── Right panel sections ───────────────────────────── */
-.qa-section {
-  padding: 8px 0 4px;
-  border-bottom: 1px solid var(--color-gray-100);
-}
-.qa-section:last-child { border-bottom: none; }
-
-.qa-section-label {
-  font-size: var(--ui-font-size-2xs, 10px);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--color-slate-400);
-  padding: 0 14px 6px;
-  display: block;
-}
-
-/* Nav button – like admin quick-action-btn but works as a tab trigger */
-.qa-tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 14px;
-  background: transparent;
-  border: none;
-  text-align: left;
-  font-size: var(--ui-font-size-sm, 13px);
-  font-weight: 500;
-  color: var(--text-secondary, #555);
-  cursor: pointer;
-  border-radius: 0;
-  transition: background 0.12s, color 0.12s;
-  text-decoration: none;
-}
-.qa-tab-btn i {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--color-gray-100);
-  color: var(--color-primary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  flex-shrink: 0;
-  transition: background 0.12s, color 0.12s;
-}
-.qa-tab-btn:hover {
-  background: var(--color-gray-50);
-  color: var(--color-primary);
-}
-.qa-tab-btn.is-active,
-.qa-tab-btn:hover i {
-  color: var(--color-white);
-}
-.qa-tab-btn.is-active {
-  background: rgba(var(--primary-rgb, 102,126,234), 0.07);
-  color: var(--color-primary);
-  font-weight: 600;
-}
-.qa-tab-btn.is-active i {
-  background: var(--color-primary);
-  color: var(--color-white);
-}
-
-/* ── Left panel tabs ─────────────────────────────────── */
-.dashboard-panel-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--ui-font-size-sm, 13px);
-  font-weight: 600;
-  color: var(--text-primary, #222);
-  padding: 12px 16px 10px;
-  border-bottom: 1px solid var(--color-gray-100);
-  background: var(--color-white);
-}
-.dashboard-panel-label i {
-  color: var(--color-primary);
-  font-size: 14px;
-}
-
+/* ── Tab panels (left side) ── */
 .dashboard-snap-panel { display: none; }
 .dashboard-snap-panel.is-active { display: block; }
 
-/* Assist list inside panel */
-.assist-list {
-  list-style: none;
-  margin: 0;
-  padding: 8px 0;
+/* Tab-trigger: same card-overview-item that admin uses, but also acts as button */
+.dashboard-tab-item {
+  cursor: pointer;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
 }
+.dashboard-tab-item.is-active {
+  background: rgba(var(--primary-rgb, 102,126,234), 0.06);
+}
+.dashboard-tab-item.is-active .card-overview-icon {
+  background: var(--color-primary) !important;
+  color: var(--color-white) !important;
+}
+.dashboard-tab-item.is-active .card-overview-label {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* Assistants panel list */
+.assist-list { list-style:none; margin:0; padding:8px 0; }
 .assist-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 16px;
-  border-bottom: 1px solid var(--color-gray-50);
-  font-size: var(--ui-font-size-sm, 12px);
+  display:flex; align-items:center; gap:10px;
+  padding:9px 16px;
+  border-bottom:1px solid var(--color-gray-50);
+  font-size:var(--ui-font-size-sm,12px);
 }
-.assist-item:last-child { border-bottom: none; }
+.assist-item:last-child { border-bottom:none; }
 .assist-avatar {
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; flex-shrink: 0;
+  width:30px; height:30px; border-radius:50%;
+  background:var(--color-primary); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; flex-shrink:0;
 }
-.assist-name { font-weight: 600; color: var(--text-primary); }
-.assist-meta { color: var(--text-muted); font-size: 11px; margin-top: 1px; }
-.assist-status { margin-left: auto; }
+.assist-name { font-weight:600; color:var(--text-primary); }
+.assist-meta { color:var(--text-muted); font-size:11px; margin-top:1px; }
+.assist-status { margin-left:auto; }
 .assist-status-badge {
-  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
-  background: var(--color-emerald-100); color: var(--color-emerald-800);
+  font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px;
+  background:var(--color-emerald-100); color:var(--color-emerald-800);
 }
-.assist-status-badge.inactive { background: var(--color-red-100); color: var(--color-red-800); }
+.assist-status-badge.inactive { background:var(--color-red-100); color:var(--color-red-800); }
 </style>
 {% endblock %}
 
@@ -236,8 +166,8 @@
       <!-- Panel: Recent Activity (default active) -->
       <section class="dashboard-snap-panel is-active" id="panel-activity">
         <div class="dashboard-card">
-          <div class="dashboard-panel-label">
-            <i class="fa-solid fa-history"></i> Recent Activity
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
           </div>
           <div class="dashboard-card-body tall-body">
             <div class="activity-list" id="recentActivityList">
@@ -271,9 +201,9 @@
       {% if perm_reprint_request_list %}
       <section class="dashboard-snap-panel" id="panel-reprints">
         <div class="dashboard-card">
-          <div class="dashboard-panel-label">
-            <i class="fa-solid fa-rotate"></i> Recent Reprints
-            <span class="reprint-history-count is-hidden" id="reprintHistoryCount" style="margin-left:6px;">0</span>
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-rotate"></i> Recent Reprints</h3>
+            <span class="reprint-history-count is-hidden" id="reprintHistoryCount">0</span>
           </div>
           <div class="dashboard-card-body tall-body p-0">
             <div id="reprintHistoryTableWrap">
@@ -317,8 +247,8 @@
       {% if is_client_admin and perm_idcard_client_list %}
       <section class="dashboard-snap-panel" id="panel-assistants">
         <div class="dashboard-card">
-          <div class="dashboard-panel-label">
-            <i class="fa-solid fa-user-tie"></i> Recent Assistants
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-user-tie"></i> Recent Assistants</h3>
           </div>
           <div class="dashboard-card-body tall-body p-0">
             <ul class="assist-list" id="assistantList">
@@ -348,77 +278,103 @@
 
     </div><!-- /dashboard-main-column -->
 
-    <!-- ═══ RIGHT SIDE COLUMN — grouped sections ═══ -->
+    <!-- ═══ RIGHT SIDE COLUMN — admin-matching grouped sections ═══ -->
     <aside class="dashboard-side-column">
       <div class="dashboard-side-sticky">
-        <div class="dashboard-card" style="padding:0;">
 
-          <!-- SECTION 1: Dashboard -->
-          <div class="qa-section">
-            <span class="qa-section-label">Dashboard</span>
-            <button type="button" class="qa-tab-btn is-active" data-panel="panel-activity" id="qa-btn-activity">
-              <i class="fa-solid fa-history"></i>
-              <span>Recent Activity</span>
-            </button>
-            {% if perm_reprint_request_list %}
-            <button type="button" class="qa-tab-btn" data-panel="panel-reprints" id="qa-btn-reprints">
-              <i class="fa-solid fa-rotate"></i>
-              <span>Recent Reprints</span>
-            </button>
-            {% endif %}
-            {% if is_client_admin and perm_idcard_client_list %}
-            <button type="button" class="qa-tab-btn" data-panel="panel-assistants" id="qa-btn-assistants">
-              <i class="fa-solid fa-user-tie"></i>
-              <span>Recent Assistants</span>
-            </button>
-            {% endif %}
+        <!-- SECTION 1: Dashboard (tab switchers) -->
+        <div class="dashboard-card dashboard-section-tabs-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-compass"></i> Dashboard Sections</h3>
           </div>
+          <div class="dashboard-card-body p-0">
+            <div class="cards-overview dashboard-section-tabs">
 
-          <!-- SECTION 2: Messages -->
-          <div class="qa-section">
-            <span class="qa-section-label">Messages</span>
-            <button type="button" class="qa-tab-btn" data-client-message-open id="qa-btn-messages">
-              <i class="fa-solid fa-envelope"></i>
-              <span>Inbox Messages</span>
-            </button>
-            <button type="button" class="qa-tab-btn" onclick="window.location.href='{% url 'notifications_page' %}'" id="qa-btn-notifications">
-              <i class="fa-solid fa-bell"></i>
-              <span>Notifications</span>
-            </button>
-          </div>
+              <button type="button" class="card-overview-item dashboard-tab-item is-active"
+                      data-panel="panel-activity" id="qa-btn-activity" aria-pressed="true">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon clients">
+                    <i class="fa-solid fa-history"></i>
+                  </div>
+                  <div class="card-overview-label">Recent Activity</div>
+                </div>
+              </button>
 
-          <!-- SECTION 3: Management -->
-          {% if perm_idcard_setting_list or perm_idcard_client_list or perm_idcard_setting_list %}
-          <div class="qa-section">
-            <span class="qa-section-label">Management</span>
-            {% if perm_idcard_setting_list %}
-            <a href="{% url 'client:group_settings' %}" class="qa-tab-btn">
-              <i class="fa-solid fa-table-list"></i>
-              <span>Group Setting</span>
-            </a>
-            {% endif %}
-            {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
-            <a href="{% url 'client:idcard_group' %}" class="qa-tab-btn">
-              <i class="fa-solid fa-id-card"></i>
-              <span>ID Card Group</span>
-            </a>
-            {% endif %}
-            <a href="{% url 'settings' %}" class="qa-tab-btn">
-              <i class="fa-solid fa-gear"></i>
-              <span>Settings</span>
-            </a>
-          </div>
-          {% else %}
-          <div class="qa-section">
-            <span class="qa-section-label">Management</span>
-            <a href="{% url 'settings' %}" class="qa-tab-btn">
-              <i class="fa-solid fa-gear"></i>
-              <span>Settings</span>
-            </a>
-          </div>
-          {% endif %}
+              {% if perm_reprint_request_list %}
+              <button type="button" class="card-overview-item dashboard-tab-item"
+                      data-panel="panel-reprints" id="qa-btn-reprints" aria-pressed="false">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon">
+                    <i class="fa-solid fa-print"></i>
+                  </div>
+                  <div class="card-overview-label">Recent Reprints</div>
+                </div>
+                <div class="card-overview-value" id="reprintSideCount">0</div>
+              </button>
+              {% endif %}
 
+              {% if is_client_admin and perm_idcard_client_list %}
+              <button type="button" class="card-overview-item dashboard-tab-item"
+                      data-panel="panel-assistants" id="qa-btn-assistants" aria-pressed="false">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon verified">
+                    <i class="fa-solid fa-user-tie"></i>
+                  </div>
+                  <div class="card-overview-label">Recent Assistants</div>
+                </div>
+              </button>
+              {% endif %}
+
+            </div>
+          </div>
         </div>
+
+        <!-- SECTION 2: Messages (quick-action-btn style) -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-message"></i> Messages</h3>
+          </div>
+          <div class="dashboard-card-body p-0">
+            <div class="quick-actions">
+              <button type="button" class="quick-action-btn" data-client-message-open id="qa-btn-messages">
+                <i class="fa-solid fa-envelope"></i>
+                <span>Inbox Messages</span>
+              </button>
+              <button type="button" class="quick-action-btn" onclick="window.location.href='{% url 'notifications_page' %}'" id="qa-btn-notifications">
+                <i class="fa-solid fa-bell"></i>
+                <span>Notifications</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 3: Management (quick-action-btn style) -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
+          </div>
+          <div class="dashboard-card-body p-0">
+            <div class="quick-actions">
+              {% if perm_idcard_setting_list %}
+              <a href="{% url 'client:group_settings' %}" class="quick-action-btn">
+                <i class="fa-solid fa-table-list"></i>
+                <span>Group Setting</span>
+              </a>
+              {% endif %}
+              {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
+              <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
+                <i class="fa-solid fa-id-card"></i>
+                <span>ID Card Group</span>
+              </a>
+              {% endif %}
+              <a href="{% url 'settings' %}" class="quick-action-btn">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
       </div>
     </aside>
 
@@ -432,20 +388,25 @@
 {% block extra_js %}
 {% include 'partials/dashboard/welcome-notification-js.html' %}
 <script>
-/* ── Tab switching ─────────────────────────────────── */
+/* ── Tab switching (admin-style card-overview-item buttons) ── */
 (function() {
-  var tabBtns = document.querySelectorAll('.qa-tab-btn[data-panel]');
+  var tabBtns = document.querySelectorAll('.dashboard-tab-item[data-panel]');
   var panels  = document.querySelectorAll('.dashboard-snap-panel');
 
   function activatePanel(panelId) {
     panels.forEach(function(p) { p.classList.remove('is-active'); });
-    tabBtns.forEach(function(b) { b.classList.remove('is-active'); });
+    tabBtns.forEach(function(b) {
+      b.classList.remove('is-active');
+      b.setAttribute('aria-pressed', 'false');
+    });
     var target = document.getElementById(panelId);
     if (target) target.classList.add('is-active');
     tabBtns.forEach(function(b) {
-      if (b.getAttribute('data-panel') === panelId) b.classList.add('is-active');
+      if (b.getAttribute('data-panel') === panelId) {
+        b.classList.add('is-active');
+        b.setAttribute('aria-pressed', 'true');
+      }
     });
-    // Persist selection
     try { sessionStorage.setItem('clientDashPanel', panelId); } catch(e) {}
   }
 
@@ -455,12 +416,10 @@
     });
   });
 
-  // Restore last selected panel
+  // Restore last selected
   try {
     var saved = sessionStorage.getItem('clientDashPanel');
-    if (saved && document.getElementById(saved)) {
-      activatePanel(saved);
-    }
+    if (saved && document.getElementById(saved)) activatePanel(saved);
   } catch(e) {}
 })();
 
@@ -536,6 +495,8 @@ async function loadReprintHistory() {
       const items = data.data.items  || [];
       const total = data.data.total_count || 0;
       if (countBadge) { countBadge.textContent = total; countBadge.style.display = total > 0 ? '' : 'none'; }
+      var sideCount = document.getElementById('reprintSideCount');
+      if (sideCount) sideCount.textContent = total;
       if (!tbody) return;
       if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="rh-state-cell rh-state-cell-lg"><i class="fa-solid fa-inbox rh-state-icon"></i>No reprint requests yet</td></tr>';
