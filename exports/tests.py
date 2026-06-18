@@ -493,14 +493,14 @@ class PdfExporterUnitTests(SimpleTestCase):
             pass
 
         ordered_fields = [
-            {'name': 'PHOTO', 'type': 'image', 'is_image': True, 'image_width_cm': 1.95, 'image_height_cm': 2.5}
+            {'name': 'PHOTO', 'type': 'image', 'is_image': True, 'image_width_cm': 1.9, 'image_height_cm': 2.5}
         ]
 
         # Minimal card-like object with field_data attribute
         card = SimpleNamespace(field_data={'PHOTO': 'NOT_FOUND'})
         exporter = PdfExporter()
 
-        rows = exporter._build_rows(ordered_fields, [card], column_configs=[{'is_image': False}, {'is_image': True, 'image_width_cm': 1.95, 'image_height_cm': 2.5}])
+        rows = exporter._build_rows(ordered_fields, [card], column_configs=[{'is_image': False}, {'is_image': True, 'image_width_cm': 1.9, 'image_height_cm': 2.5}])
         self.assertTrue(rows)
         # The image cell content should be either a file URI or data URI; ensure no exception occurred
         img_cell = rows[0][1]
@@ -1820,6 +1820,23 @@ class WordLayoutTuningTests(SimpleTestCase):
         # Non-photo image types and normal text columns should not get this border.
         self.assertFalse(exporter._should_add_photo_border(image_subtype='signature', field_name='SIGNATURE'))
         self.assertFalse(exporter._should_add_photo_border(image_subtype=None, field_name='DESIGNATION'))
+
+    def test_classify_image_subtype_for_relation_photos_with_generic_types(self):
+        from exports.utils import classify_image_subtype
+        
+        # Test that columns named 'FATHER PHOTO' or 'MOTHER PHOTO' with type 'photo' or 'image'
+        # are classified as 'rel_photo' (relationship photos) rather than 'photo'.
+        self.assertEqual(classify_image_subtype({'name': 'FATHER PHOTO', 'type': 'photo'}), 'rel_photo')
+        self.assertEqual(classify_image_subtype({'name': 'MOTHER PHOTO', 'type': 'image'}), 'rel_photo')
+        self.assertEqual(classify_image_subtype({'name': 'father', 'type': 'photo'}), 'rel_photo')
+        self.assertEqual(classify_image_subtype({'name': 'Mother Photo', 'type': 'photo'}), 'rel_photo')
+        
+        # Main student photo or generic photos should remain 'photo'
+        self.assertEqual(classify_image_subtype({'name': 'PHOTO', 'type': 'photo'}), 'photo')
+        self.assertEqual(classify_image_subtype({'name': 'STUDENT PHOTO', 'type': 'image'}), 'photo')
+        
+        # Signature/Barcodes should still match their types/names
+        self.assertEqual(classify_image_subtype({'name': 'FATHER SIGNATURE', 'type': 'signature'}), 'signature')
 
     def test_pdf_template_uses_image_border_not_photo_cell_box_border(self):
         template_path = os.path.join(settings.BASE_DIR, 'templates', 'exports', 'pdf_report.html')

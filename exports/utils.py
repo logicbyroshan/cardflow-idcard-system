@@ -25,16 +25,16 @@ _IMAGE_NAME_KEYWORDS = [
 
 # Fixed dimensions for each image subtype (height × width in cm)
 IMAGE_SUBTYPE_DIMENSIONS = {
-    'photo':        {'height_cm': 2.5,  'width_cm': 1.95},
-    'rel_photo':    {'height_cm': 2.0,  'width_cm': 1.5},
+    'photo':        {'height_cm': 2.5,  'width_cm': 1.9},
+    'rel_photo':    {'height_cm': 2.0,  'width_cm': 1.52},
     # Legacy aliases retained for historical exports.
-    'mother_photo': {'height_cm': 2.0,  'width_cm': 1.5},
-    'father_photo': {'height_cm': 2.0,  'width_cm': 1.5},
+    'mother_photo': {'height_cm': 2.0,  'width_cm': 1.52},
+    'father_photo': {'height_cm': 2.0,  'width_cm': 1.52},
     'signature':    {'height_cm': 0.5,  'width_cm': 1.9},
     'qr_code':      {'height_cm': 1.0,  'width_cm': 1.0},
     'barcode':      {'height_cm': 1.0,  'width_cm': 1.5},
 }
-_DEFAULT_IMAGE_DIMENSIONS = {'height_cm': 2.5, 'width_cm': 1.95}
+_DEFAULT_IMAGE_DIMENSIONS = {'height_cm': 2.5, 'width_cm': 1.9}
 
 
 def _contains_word(text: str, word: str) -> bool:
@@ -94,7 +94,22 @@ def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
     The subtype determines fixed export dimensions (see IMAGE_SUBTYPE_DIMENSIONS).
     """
     field_type = field.get('type', 'text').lower()
-    
+    name_lower = field.get('name', '').lower().strip()
+    name_norm = re.sub(r'[\s_]+', ' ', name_lower)
+
+    # 1. Relation photos checking by name - takes precedence over generic 'photo'/'image' types
+    if _looks_like_relation_photo_name(name_norm) or name_norm in ('m photo', 'f photo'):
+        return 'rel_photo'
+
+    # 2. Check relation keywords if it's generally an image field (but not a signature/barcode/qr)
+    is_img = (field_type in ('photo', 'rel_photo', 'image', 'mother_photo', 'father_photo') or
+              any(kw in name_lower for kw in ('photo', 'pic', 'picture', 'image')))
+    if is_img:
+        has_relation_keyword = bool(re.search(r'\b(?:father|mother|parent|guardian|relation|relative|rel)\b', name_norm))
+        has_other_media_keyword = any(kw in name_norm for kw in ('signature', 'sign', 'barcode', 'qr'))
+        if has_relation_keyword and not has_other_media_keyword:
+            return 'rel_photo'
+
     # Direct type mapping (most reliable — set explicitly in table config)
     _TYPE_MAP = {
         'photo': 'photo', 'rel_photo': 'rel_photo',
@@ -105,13 +120,6 @@ def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
     if field_type in _TYPE_MAP:
         return _TYPE_MAP[field_type]
     
-    # Name-based detection (fallback for type='text' with image-like name)
-    name_lower = field.get('name', '').lower().strip()
-    name_norm = re.sub(r'[\s_]+', ' ', name_lower)
-    
-    # Relation photos — includes mother/father and explicit rel_1photo style names.
-    if _looks_like_relation_photo_name(name_norm) or name_norm in ('m photo', 'f photo'):
-        return 'rel_photo'
     # Signature
     if _contains_word(name_lower, 'signature') or _contains_word(name_lower, 'sign'):
         return 'signature'

@@ -7,7 +7,7 @@ and staff management.
 from django.urls import reverse
 from django.shortcuts import render, redirect
 from django.core.paginator import Paginator
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef, Q, Count
 from django.utils import timezone
 
 from idcards.models import IDCardTable
@@ -57,6 +57,94 @@ def dashboard(request):
     
     if result.success:
         context.update(result.data)
+    
+    # Fetch accessible tables for reprint links/dropdown and ID Card Group dashboard section
+    tables_qs = IDCardTable.objects.filter(
+        group__client=client,
+        deleted_by_client=False,
+    ).select_related('group', 'group__client')
+
+    has_any_list_perm = any(PermissionService.has_permission(user, p) for p in [
+        'perm_idcard_setting_list', 'perm_idcard_pending_list',
+        'perm_idcard_verified_list', 'perm_idcard_approved_list',
+        'perm_idcard_download_list', 'perm_idcard_pool_list',
+        'perm_idcard_reprint_list', 'perm_reprint_request_list',
+        'perm_confirmed_list',
+    ])
+
+    if has_any_list_perm:
+        if PermissionService.is_client_staff(user):
+            from django.core.cache import cache
+            from core.views.idcard_helpers import _apply_client_staff_row_scope
+            from idcards.models import IDCard
+
+            tables_qs = ClientAccessService.get_scoped_tables_qs(user, client, tables_qs)
+            ordered_tables = list(tables_qs.order_by('-updated_at'))
+            table_ids = [table.id for table in ordered_tables]
+            pool_counts = {
+                row['table_id']: row['count']
+                for row in (
+                    IDCard.objects
+                    .filter(table_id__in=table_ids, status='pool')
+                    .values('table_id')
+                    .annotate(count=Count('id'))
+                )
+            } if table_ids else {}
+
+            try:
+                from core.services.session_revalidation import get_user_revalidation_marker
+                marker = str(get_user_revalidation_marker(getattr(user, 'pk', None)) or '')
+            except Exception:
+                marker = ''
+
+            scoped_tables = []
+            for table in ordered_tables:
+                counts_cache_key = (
+                    f'client:idcard_group:staff_counts:v1:'
+                    f'user:{user.id}:table:{table.id}:m:{marker}'
+                )
+                counts_by_status = cache.get(counts_cache_key)
+                if not isinstance(counts_by_status, dict):
+                    scoped_cards = _apply_client_staff_row_scope(
+                        IDCard.objects.filter(table=table),
+                        user,
+                        table,
+                    )
+                    counts_by_status = {
+                        row['status']: row['count']
+                        for row in scoped_cards.values('status').annotate(count=Count('id'))
+                    }
+                    cache.set(counts_cache_key, counts_by_status, 10)
+
+                table.pending_count = counts_by_status.get('pending', 0)
+                table.verified_count = counts_by_status.get('verified', 0)
+                table.pool_count = pool_counts.get(table.id, 0)
+                table.approved_count = counts_by_status.get('approved', 0)
+                table.download_count = counts_by_status.get('download', 0)
+
+                table.total_cards = (
+                    table.pending_count
+                    + table.verified_count
+                    + table.pool_count
+                    + table.approved_count
+                    + table.download_count
+                )
+                scoped_tables.append(table)
+            tables = scoped_tables
+        else:
+            tables = list(tables_qs.annotate(
+                pending_count=Count('id_cards', filter=Q(id_cards__status='pending')),
+                verified_count=Count('id_cards', filter=Q(id_cards__status='verified')),
+                pool_count=Count('id_cards', filter=Q(id_cards__status='pool')),
+                approved_count=Count('id_cards', filter=Q(id_cards__status='approved')),
+                download_count=Count('id_cards', filter=Q(id_cards__status='download')),
+                total_cards=Count('id_cards')
+            ).order_by('-updated_at'))
+    else:
+        tables = []
+
+    context['tables'] = tables
+    context['accessible_tables'] = tables
     
     return render(request, 'client/dashboard.html', context)
 

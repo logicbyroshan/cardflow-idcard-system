@@ -271,59 +271,41 @@ document.addEventListener('DOMContentLoaded', function () {
     function buildAssignmentCellHtml(detail) {
         var classes = _normalizeStringListForTable(detail && detail.allowed_classes);
         var sections = _normalizeStringListForTable(detail && detail.allowed_sections);
-        var maxVisible = 3;
         var chips = [];
 
         if (classes.length && sections.length) {
             for (var ci = 0; ci < classes.length; ci += 1) {
                 for (var si = 0; si < sections.length; si += 1) {
                     chips.push(
-                        '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200);border-radius:6px;padding:2px 8px;">' +
+                        '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200) !important;border-bottom:1px solid var(--color-indigo-200) !important;border-radius:6px;padding:2px 8px;text-decoration:none !important;">' +
                         _esc(classes[ci]) + ' "' + _esc(sections[si]) + '"</span>'
                     );
-                    if (chips.length >= maxVisible) break;
                 }
-                if (chips.length >= maxVisible) break;
-            }
-
-            var totalPairs = classes.length * sections.length;
-            if (totalPairs > maxVisible) {
-                chips.push(
-                    '<button type="button" class="staff-assignment-view-more" data-staff-id="' + _esc(String(detail && detail.id || '')) + '" style="display:inline-flex;align-items:center;justify-content:center;min-width:72px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-white);border:1px dashed var(--color-blue-300);border-radius:6px;padding:2px 8px;cursor:pointer;">View More</button>'
-                );
             }
         } else if (classes.length) {
-            classes.slice(0, maxVisible).forEach(function (cls) {
+            classes.forEach(function (cls) {
                 chips.push(
-                    '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200);border-radius:6px;padding:2px 8px;">' + _esc(cls) + '</span>'
+                    '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200) !important;border-bottom:1px solid var(--color-indigo-200) !important;border-radius:6px;padding:2px 8px;text-decoration:none !important;">' + _esc(cls) + '</span>'
                 );
             });
-            if (classes.length > maxVisible) {
-                chips.push(
-                    '<button type="button" class="staff-assignment-view-more" data-staff-id="' + _esc(String(detail && detail.id || '')) + '" style="display:inline-flex;align-items:center;justify-content:center;min-width:72px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-white);border:1px dashed var(--color-blue-300);border-radius:6px;padding:2px 8px;cursor:pointer;">View More</button>'
-                );
-            }
         } else if (sections.length) {
-            sections.slice(0, maxVisible).forEach(function (sec) {
+            sections.forEach(function (sec) {
                 chips.push(
-                    '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200);border-radius:6px;padding:2px 8px;">"' + _esc(sec) + '"</span>'
+                    '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-indigo-50);border:1px solid var(--color-indigo-200) !important;border-bottom:1px solid var(--color-indigo-200) !important;border-radius:6px;padding:2px 8px;text-decoration:none !important;">"' + _esc(sec) + '"</span>'
                 );
             });
-            if (sections.length > maxVisible) {
-                chips.push(
-                    '<button type="button" class="staff-assignment-view-more" data-staff-id="' + _esc(String(detail && detail.id || '')) + '" style="display:inline-flex;align-items:center;justify-content:center;min-width:72px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#1e3a8a;background:var(--color-white);border:1px dashed var(--color-blue-300);border-radius:6px;padding:2px 8px;cursor:pointer;">View More</button>'
-                );
-            }
         } else {
             chips.push(
-                '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:2px 8px;">No Classes Assigned</span>'
+                '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#991b1b;background:#fef2f2;border:1px solid #fecaca !important;border-bottom:1px solid #fecaca !important;border-radius:6px;padding:2px 8px;text-decoration:none !important;">No Classes Assigned</span>'
             );
             chips.push(
-                '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:2px 8px;">No Sections Assigned</span>'
+                '<span class="staff-assignment-chip" style="display:inline-flex;align-items:center;justify-content:center;min-width:56px;font-size:var(--ui-font-size-2xs,10px);font-weight:700;color:#991b1b;background:#fef2f2;border:1px solid #fecaca !important;border-bottom:1px solid #fecaca !important;border-radius:6px;padding:2px 8px;text-decoration:none !important;">No Sections Assigned</span>'
             );
         }
 
-        return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;">' + chips.join('') + '</div>';
+        var viewMoreHtml = '<button type="button" class="staff-assignment-view-more" data-staff-id="' + _esc(String(detail && detail.id || '')) + '" style="display: none; position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 10; align-items: center; justify-content: center; min-width: 28px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 6px; cursor: pointer; box-shadow: -4px 0 8px rgba(255,255,255,0.9); text-decoration: none !important;">...</button>';
+
+        return '<div class="dynamic-badge-container" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; max-height: 24px; overflow: hidden; position: relative; max-width: 100%;">' + chips.join('') + viewMoreHtml + '</div>';
     }
 
     function upsertStaffRow(detail, mode) {
@@ -2138,6 +2120,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (typeof htmx !== 'undefined' && htmx && typeof htmx.trigger === 'function') {
                 htmx.trigger(document.body, 'refreshTable');
+            }
+
+            if (typeof window.loadRecentAssistants === 'function') {
+                window.loadRecentAssistants();
             }
         },
     });

@@ -10,7 +10,7 @@ Features:
 - Supports text + image fields
 - Repeating header/footer on every page via CSS @page margin boxes
 - UPPERCASE text for printing clarity
-- Images rendered at fixed subtype dimensions (photo: 1.95×2.5cm, etc.)
+- Images rendered at fixed subtype dimensions (photo: 1.9×2.5cm, etc.)
 - 0.5cm left/right, 2.0cm top / 1.2cm bottom page margins
 - Exactly 6 rows per page (class-break aware) via CSS page-break
 - CSS overflow-wrap / word-break / hyphens for proper Unicode wrapping
@@ -256,7 +256,7 @@ class PdfExporter:
     - Text fields + image fields rendered side by side
     - Repeating header and footer on every page via CSS @page margin boxes
     - UPPERCASE text for printing clarity
-    - Image dimensions fixed per subtype (photo: 1.95×2.5cm, signature: 1.9×0.5cm, etc.)
+    - Image dimensions fixed per subtype (photo: 1.9×2.5cm, signature: 1.9×0.5cm, etc.)
     - 0.5cm left/right, 1.5cm top/bottom page margins
     - Exactly 6 rows per page (class-break aware) using CSS page-break
 
@@ -720,7 +720,7 @@ class PdfExporter:
             if cfg['is_image']:
                 image_indices.add(i)
                 field = ordered_fields[i - 1]
-                render_w = field.get('image_width_cm', 1.95)
+                render_w = field.get('image_width_cm', 1.9)
                 render_h = field.get('image_height_cm', 2.5)
                 # Cap image height so 6 rows always fit on one A4 landscape page.
                 if render_h > self.MAX_IMAGE_HEIGHT_CM:
@@ -945,7 +945,7 @@ class PdfExporter:
                 }
 
                 if is_image:
-                    cell['image_width_cm'] = image_width_map.get(field_idx, 1.95)
+                    cell['image_width_cm'] = image_width_map.get(field_idx, 1.9)
                     cell['image_height_cm'] = image_height_map.get(field_idx, 2.5)
 
                     # Use thumbnail if available (Phase 4 optimisation)

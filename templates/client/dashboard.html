@@ -5,6 +5,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/idcard-group.css' %}">
+<link rel="stylesheet" href="{% static 'css/staff-drawer-shared.css' %}">
 <style>
 /* ── Tab panels (left side) ── */
 .dashboard-snap-panel { display: none; }
@@ -65,6 +67,131 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ── Reprint Header Actions styling ── */
+.reprint-header-actions-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.reprint-table-select-wrap select {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 24px 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15) url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") no-repeat right 6px center / 16px;
+  color: var(--color-white);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  height: 26px;
+}
+.reprint-table-select-wrap select:hover,
+.reprint-table-select-wrap select:focus {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.reprint-table-select-wrap select option {
+  background-color: var(--color-slate-800, #1e293b);
+  color: var(--color-white);
+}
+.reprint-header-btn-group {
+  display: flex;
+  gap: 6px;
+}
+.reprint-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-decoration: none !important;
+  transition: all 0.2s ease;
+  line-height: 1.5;
+  white-space: nowrap;
+  height: 26px;
+  box-sizing: border-box;
+}
+.reprint-header-btn-secondary {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--color-white);
+}
+.reprint-header-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.reprint-header-btn-primary {
+  background: var(--color-emerald-500, #10b981);
+  border: 1px solid var(--color-emerald-600, #059669);
+  color: var(--color-white);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.reprint-header-btn-primary:hover {
+  background: var(--color-emerald-600, #059669);
+  border-color: var(--color-emerald-700, #047857);
+  transform: translateY(-0.5px);
+}
+.reprint-header-btn i {
+  font-size: 10px;
+}
+
+/* Column widths for Recent Assistants 6-column table on dashboard */
+#assistantTable th:nth-child(1),
+#assistantTable td:nth-child(1) { width: 20% !important; }
+#assistantTable th:nth-child(2),
+#assistantTable td:nth-child(2),
+#assistantTable th:nth-child(3),
+#assistantTable td:nth-child(3),
+#assistantTable th:nth-child(4),
+#assistantTable td:nth-child(4) { width: 10% !important; }
+#assistantTable th:nth-child(5),
+#assistantTable td:nth-child(5) { width: 35% !important; }
+#assistantTable th:nth-child(6),
+#assistantTable td:nth-child(6) { width: 15% !important; }
+
+/* Custom premium styles for reprint header buttons */
+.reprint-header-btn-request-list {
+  background: #f59e0b !important;
+  border: 1px solid #d97706 !important;
+  color: var(--color-white) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.reprint-header-btn-request-list:hover {
+  background: #d97706 !important;
+  border-color: #b45309 !important;
+  transform: translateY(-0.5px);
+}
+.reprint-header-btn-confirmed-list {
+  background: #2563eb !important;
+  border: 1px solid #1d4ed8 !important;
+  color: var(--color-white) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.reprint-header-btn-confirmed-list:hover {
+  background: #1d4ed8 !important;
+  border-color: #1e40af !important;
+  transform: translateY(-0.5px);
+}
+
+/* Make all main card headers on the dashboard uniform in size/height */
+.dashboard-card-header {
+  height: 52px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+/* Align ID Card Group table header height and font-size with other dashboard tables */
+#panel-idcard-group .idcard-table th {
+  padding: 6px 12px !important;
+  font-size: var(--ui-font-size-xs, 11px) !important;
 }
 </style>
 {% endblock %}
@@ -177,8 +304,23 @@
     <!-- ═══ LEFT COLUMN — tab panels ═══ -->
     <div class="dashboard-main-column tabbed-layout">
 
-      <!-- Panel: Recent Activity (default active) -->
-      <section class="dashboard-snap-panel is-active" id="panel-activity">
+      <!-- Panel: ID Card Group (default active) -->
+      {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
+      <section class="dashboard-snap-panel is-active" id="panel-idcard-group">
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <h3><i class="fa-solid fa-id-card"></i> ID Card Group</h3>
+          </div>
+          <div class="dashboard-card-body p-0">
+            {% include 'partials/idcard-group/table.html' %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if not perm_reprint_request_list or not is_client_admin or not perm_idcard_client_list %}
+      <!-- Panel: Recent Activity -->
+      <section class="dashboard-snap-panel{% if not perm_idcard_setting_list and not perm_idcard_pending_list and not perm_idcard_verified_list and not perm_idcard_pool_list and not perm_idcard_reprint_list and not perm_reprint_request_list and not perm_confirmed_list %} is-active{% endif %}" id="panel-activity">
         <div class="dashboard-card">
           <div class="dashboard-card-header">
             <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
@@ -210,14 +352,47 @@
           </div>
         </div>
       </section>
+      {% endif %}
 
       <!-- Panel: Recent Reprints (conditional) -->
       {% if perm_reprint_request_list %}
       <section class="dashboard-snap-panel" id="panel-reprints">
         <div class="dashboard-card">
           <div class="dashboard-card-header">
-            <h3><i class="fa-solid fa-rotate"></i> Recent Reprints</h3>
-            <span class="reprint-history-count is-hidden" id="reprintHistoryCount">0</span>
+            <div class="flex items-center gap-2">
+              <h3><i class="fa-solid fa-rotate"></i> Recent Reprints</h3>
+              <span class="reprint-history-count is-hidden" id="reprintHistoryCount">0</span>
+            </div>
+            {% if accessible_tables %}
+            <div class="reprint-header-actions-container">
+              {% if accessible_tables|length > 1 %}
+              <div class="reprint-table-select-wrap">
+                <select id="reprintHeaderTableSelect" title="Select a table to manage reprints">
+                  {% for t in accessible_tables %}
+                  <option value="{{ t.id }}">{{ t.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% endif %}
+              <div class="reprint-header-btn-group">
+                {% if perm_reprint_request_list %}
+                <a href="#" id="headerReprintRequestListBtn" class="reprint-header-btn reprint-header-btn-request-list" title="View Reprint Request List">
+                  <i class="fa-solid fa-list-check"></i> Request List
+                </a>
+                {% endif %}
+                {% if perm_confirmed_list %}
+                <a href="#" id="headerReprintConfirmedListBtn" class="reprint-header-btn reprint-header-btn-confirmed-list" title="View Reprint Confirmed List">
+                  <i class="fa-solid fa-circle-check"></i> Confirmed List
+                </a>
+                {% endif %}
+                {% if perm_idcard_reprint_list or perm_reprint_request_list %}
+                <a href="#" id="headerReprintRequestCardBtn" class="reprint-header-btn reprint-header-btn-primary" title="Request card reprint">
+                  <i class="fa-solid fa-rotate"></i> Request Reprint
+                </a>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %}
           </div>
           <div class="dashboard-card-body tall-body p-0">
             <div id="reprintHistoryTableWrap">
@@ -266,14 +441,15 @@
           </div>
           <div class="dashboard-card-body tall-body p-0 table-scroll-body">
             <div class="recent-table-wrapper dashboard-scroll-table-wrapper">
-              <table class="recent-table dashboard-scroll-table recent-table-5col" id="assistantTable">
+              <table class="recent-table dashboard-scroll-table" id="assistantTable">
                 <thead>
                   <tr>
-                    <th scope="col" style="width: 25%;">Assistant</th>
-                    <th scope="col" class="text-center" style="width: 10%;">Pending</th>
-                    <th scope="col" class="text-center" style="width: 10%;">Verified</th>
-                    <th scope="col" class="text-center" style="width: 10%;">Pool</th>
-                    <th scope="col" style="width: 45%; max-width: 350px;">Assigned</th>
+                    <th scope="col">Assistant</th>
+                    <th scope="col" class="text-center">Pending</th>
+                    <th scope="col" class="text-center">Verified</th>
+                    <th scope="col" class="text-center">Pool</th>
+                    <th scope="col">Assigned</th>
+                    <th scope="col" class="text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody id="assistantListBody">
@@ -283,6 +459,7 @@
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-line" style="width: 50%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill" style="width: 50px; margin: 0 auto; display: block;"></span></td>
                   </tr>
                   <tr class="dashboard-table-skeleton-row">
                     <td><span class="dash-skeleton dash-skeleton-line" style="width: 66%;"></span></td>
@@ -290,6 +467,7 @@
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-line" style="width: 40%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill" style="width: 50px; margin: 0 auto; display: block;"></span></td>
                   </tr>
                 </tbody>
               </table>
@@ -313,8 +491,21 @@
           <div class="dashboard-card-body p-0">
             <div class="cards-overview dashboard-section-tabs">
 
+              {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
               <button type="button" class="card-overview-item dashboard-tab-item is-active"
-                      data-panel="panel-activity" id="qa-btn-activity" aria-pressed="true">
+                      data-panel="panel-idcard-group" id="qa-btn-idcard-group" aria-pressed="true">
+                <div class="card-overview-left">
+                  <div class="card-overview-icon">
+                    <i class="fa-solid fa-id-card"></i>
+                  </div>
+                  <div class="card-overview-label">ID Card Group</div>
+                </div>
+              </button>
+              {% endif %}
+
+              {% if not perm_reprint_request_list or not is_client_admin or not perm_idcard_client_list %}
+              <button type="button" class="card-overview-item dashboard-tab-item{% if not perm_idcard_setting_list and not perm_idcard_pending_list and not perm_idcard_verified_list and not perm_idcard_pool_list and not perm_idcard_reprint_list and not perm_reprint_request_list and not perm_confirmed_list %} is-active{% endif %}"
+                      data-panel="panel-activity" id="qa-btn-activity" aria-pressed="{% if not perm_idcard_setting_list and not perm_idcard_pending_list and not perm_idcard_verified_list and not perm_idcard_pool_list and not perm_idcard_reprint_list and not perm_reprint_request_list and not perm_confirmed_list %}true{% else %}false{% endif %}">
                 <div class="card-overview-left">
                   <div class="card-overview-icon clients">
                     <i class="fa-solid fa-history"></i>
@@ -322,6 +513,7 @@
                   <div class="card-overview-label">Recent Activity</div>
                 </div>
               </button>
+              {% endif %}
 
               {% if perm_reprint_request_list %}
               <button type="button" class="card-overview-item dashboard-tab-item"
@@ -359,16 +551,16 @@
           </div>
           <div class="dashboard-card-body p-0">
             <div class="quick-actions">
+              {% if is_client_admin and perm_manage_client_staff %}
+              <a href="{% url 'client:staff' %}?add=1" class="quick-action-btn">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>New Assistant</span>
+              </a>
+              {% endif %}
               {% if perm_idcard_setting_list %}
               <a href="{% url 'client:group_settings' %}" class="quick-action-btn">
                 <i class="fa-solid fa-table-list"></i>
                 <span>Group Setting</span>
-              </a>
-              {% endif %}
-              {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
-              <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
-                <i class="fa-solid fa-id-card"></i>
-                <span>ID Card Group</span>
               </a>
               {% endif %}
               <a href="{% url 'settings' %}" class="quick-action-btn">
@@ -394,6 +586,10 @@
                 <i class="fa-solid fa-bell"></i>
                 <span>Notifications</span>
               </button>
+              <a href="{% url 'tutorial' %}" class="quick-action-btn" id="qa-btn-tutorial">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span>Tutorial</span>
+              </a>
             </div>
           </div>
         </div>
@@ -404,7 +600,16 @@
   </div>
 </div>
 
-</div>
+{% if is_client_admin and perm_idcard_client_list %}
+<!-- Staff Drawer (Add/Edit) - Client version with Group Assignment -->
+{% include 'partials/staff/client-staff-drawer.html' %}
+
+<!-- Temp Password Modal -->
+{% include 'partials/client/temp-password-modal.html' %}
+
+<!-- Delete Confirmation Modal -->
+{% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="assistent" %}
+{% endif %}
 
 {% endblock %}
 
@@ -454,6 +659,19 @@ document.addEventListener('DOMContentLoaded', function() {
   {% endif %}
   {% if is_client_admin and perm_idcard_client_list %}
   loadRecentAssistants();
+
+  var assistantTable = document.getElementById('assistantTable');
+  if (assistantTable) {
+    assistantTable.addEventListener('click', function(e) {
+      var btn = e.target.closest('.edit-assign-btn');
+      if (btn) {
+        var staffId = btn.getAttribute('data-staff-id');
+        if (staffId && typeof window.openStaffAssignmentDrawerFromTable === 'function') {
+          window.openStaffAssignmentDrawerFromTable(staffId);
+        }
+      }
+    });
+  }
   {% endif %}
 });
 
@@ -586,23 +804,25 @@ async function loadRecentAssistants() {
 
         return '<tr>' +
           '<td>' + nameHtml + '</td>' +
-          '<td class="text-center" style="width: 10%;"><span class="count-badge pending">' + (s.pending || 0) + '</span></td>' +
-          '<td class="text-center" style="width: 10%;"><span class="count-badge verified">' + (s.verified || 0) + '</span></td>' +
-          '<td class="text-center" style="width: 10%;"><span class="count-badge pool">' + (s.pool || 0) + '</span></td>' +
-          '<td style="width: 45%; max-width: 350px;"><div class="dynamic-badge-container" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; max-height: 24px; overflow: hidden; position: relative; max-width: 100%;">' + badgesHtml + 
-          '<button type="button" class="staff-assignment-view-more" style="display: none; position: absolute; right: 0; bottom: 0; align-items: center; justify-content: center; min-width: 28px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 6px; cursor: default; box-shadow: -4px 0 8px rgba(255,255,255,0.9); text-decoration: none !important;">...</button>' +
+          '<td class="text-center"><span class="count-badge pending">' + (s.pending || 0) + '</span></td>' +
+          '<td class="text-center"><span class="count-badge verified">' + (s.verified || 0) + '</span></td>' +
+          '<td class="text-center"><span class="count-badge pool">' + (s.pool || 0) + '</span></td>' +
+          '<td><div class="dynamic-badge-container" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; max-height: 24px; overflow: hidden; position: relative; max-width: 100%;">' + badgesHtml + 
+          '<a href="{% url "client:staff" %}" class="staff-assignment-view-more" style="display: none; position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 10; align-items: center; justify-content: center; min-width: 28px; font-size: var(--ui-font-size-2xs, 10px); font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 6px; cursor: pointer; box-shadow: -4px 0 8px rgba(255,255,255,0.9); text-decoration: none !important;">...</a>' +
           '</div></td>' +
+          '<td class="text-center"><button type="button" class="btn btn-xs btn-primary edit-assign-btn" data-staff-id="' + s.id + '" style="font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: var(--color-indigo-600, #4f46e5); color: #fff; border: none; cursor: pointer;">Edit Assign</button></td>' +
           '</tr>';
       }).join('');
       setTimeout(updateDashboardDynamicBadges, 50);
     } else {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 24px; color: var(--text-muted);">No assistants found</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 24px; color: var(--text-muted);">No assistants found</td></tr>';
     }
   } catch(err) {
     console.error('Recent assistants load error:', err);
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 24px; color: var(--color-red-600);">Could not load assistants</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 24px; color: var(--color-red-600);">Could not load assistants</td></tr>';
   }
 }
+window.loadRecentAssistants = loadRecentAssistants;
 
 function updateDashboardDynamicBadges() {
     document.querySelectorAll('.dynamic-badge-container').forEach(function(container) {
@@ -631,5 +851,50 @@ function escapeAttr(s) {
     return {'&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'}[c];
   });
 }
+
+/* ── Reprint Header Actions Dynamic Links ── */
+(function() {
+  var tableSelect = document.getElementById('reprintHeaderTableSelect');
+  var requestListBtn = document.getElementById('headerReprintRequestListBtn');
+  var confirmedListBtn = document.getElementById('headerReprintConfirmedListBtn');
+  var requestCardBtn = document.getElementById('headerReprintRequestCardBtn');
+
+  // URL patterns with placeholder 999999
+  var urlRequestListPattern = "{% if accessible_tables %}{% url 'client:reprint_cards' 999999 %}?step=request_list{% endif %}";
+  var urlConfirmedListPattern = "{% if accessible_tables %}{% url 'client:reprint_cards' 999999 %}?step=confirmed{% endif %}";
+  var urlRequestCardPattern = "{% if accessible_tables %}{% url 'client:idcard_actions' 999999 %}?status=download&open_reprint_modal=1{% endif %}";
+
+  var singleTableId = {% if accessible_tables|length == 1 %}{{ accessible_tables.0.id }}{% else %}null{% endif %};
+
+  function updateHeaderLinks(tableId) {
+    if (!tableId) return;
+    if (requestListBtn) {
+      requestListBtn.href = urlRequestListPattern.replace('999999', tableId);
+    }
+    if (confirmedListBtn) {
+      confirmedListBtn.href = urlConfirmedListPattern.replace('999999', tableId);
+    }
+    if (requestCardBtn) {
+      requestCardBtn.href = urlRequestCardPattern.replace('999999', tableId);
+    }
+  }
+
+  if (tableSelect) {
+    tableSelect.addEventListener('change', function() {
+      updateHeaderLinks(this.value);
+    });
+    // Initial load
+    updateHeaderLinks(tableSelect.value);
+  } else if (singleTableId) {
+    updateHeaderLinks(singleTableId);
+  }
+})();
 </script>
+
+{% if is_client_admin and perm_idcard_client_list %}
+<script defer src="{% static 'js/manage-staff-common-api.js' %}"></script>
+<script defer src="{% static 'js/manage-staff-common-drawer.js' %}"></script>
+<script defer src="{% static 'js/manage-staff-common-list.js' %}"></script>
+<script defer src="{% static 'js/manage-client-staff.js' %}"></script>
+{% endif %}
 {% endblock %}

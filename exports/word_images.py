@@ -20,7 +20,7 @@ class WordImagesMixin:
 
     # Border is intentionally limited to portrait photos only.
     BORDERED_IMAGE_SUBTYPES = {'photo', 'rel_photo', 'mother_photo', 'father_photo'}
-    PHOTO_BORDER_PX = 1  # 1px border (roughly 0.5pt on print)
+    PHOTO_BORDER_PX = 1  # 1px border fallback
     PHOTO_BORDER_COLOR = (0, 0, 0)
     WORD_BORDER_PT = 0.5
 
@@ -111,7 +111,23 @@ class WordImagesMixin:
         if fixed_height_cm is None:
             fixed_height_cm = self.IMAGE_HEIGHT_CM
 
-        self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
+        # Determine if this column needs a photo border.
+        add_photo_border = self._should_add_photo_border(
+            image_subtype=image_subtype,
+            field_name=field_name,
+        )
+
+        if add_photo_border:
+            # 30 twips margins on all sides (about 1.5pt) to ensure the 0.5pt border is fully visible on all sides
+            self._set_cell_margins(cell, parse_xml, nsdecls, 30, 30, 30, 30)
+            # Subtract 2 * 0.5pt (approx 0.035 cm) from image content dimensions so the total size including 0.5pt border is exactly target size (e.g. 2.5 cm)
+            img_h = max(0.1, fixed_height_cm - 0.035)
+            img_w = max(0.1, fixed_width_cm - 0.035)
+        else:
+            self._set_cell_margins(cell, parse_xml, nsdecls, 0, 0, 0, 0)
+            img_h = fixed_height_cm
+            img_w = fixed_width_cm
+
         self._set_cell_vertical_align(cell, parse_xml, nsdecls)
 
         if callable(cancel_check) and cancel_check():
@@ -134,12 +150,6 @@ class WordImagesMixin:
 
         if img_data and len(img_data) >= 100:
             try:
-                # Determine if this column needs a photo border.
-                add_photo_border = self._should_add_photo_border(
-                    image_subtype=image_subtype,
-                    field_name=field_name,
-                )
-
                 if add_photo_border:
                     # Draw Pillow border and encode as JPEG (extremely fast + high quality)
                     # We do not use slower PNG format to avoid touching 100% CPU usage.
@@ -152,13 +162,22 @@ class WordImagesMixin:
                 run = para.add_run()
                 inline_shape = run.add_picture(
                     img_stream,
-                    height=Cm(fixed_height_cm),
-                    width=Cm(fixed_width_cm),
+                    height=Cm(img_h),
+                    width=Cm(img_w),
                 )
                 img_stream.close()
 
+                if add_photo_border:
+                    self._add_drawingml_border(inline_shape, parse_xml)
+
                 para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                self._set_para_spacing(para, parse_xml, nsdecls)
+                # Set paragraph spacing with 40 twips (2pt) padding before/after and lineRule="auto" to prevent MS Word clipping top/bottom edges of the image
+                pPr = para._p.get_or_add_pPr()
+                from docx.oxml.ns import qn as _qn
+                for existing in pPr.findall(_qn('w:spacing')):
+                    pPr.remove(existing)
+                spacing = parse_xml(r'<w:spacing {} w:before="40" w:after="40" w:lineRule="auto"/>'.format(nsdecls('w')))
+                pPr.append(spacing)
                 return
             except Exception as e:
                 logger.warning("Word export: Image embed error for %s: %s", img_path, e)
@@ -187,7 +206,13 @@ class WordImagesMixin:
 
         para = cell.paragraphs[0]
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        self._set_para_spacing(para, parse_xml, nsdecls)
+        # Set paragraph spacing with 40 twips (2pt) padding before/after and lineRule="auto" to prevent MS Word clipping top/bottom edges of the VML box
+        pPr = para._p.get_or_add_pPr()
+        from docx.oxml.ns import qn as _qn
+        for existing in pPr.findall(_qn('w:spacing')):
+            pPr.remove(existing)
+        spacing = parse_xml(r'<w:spacing {} w:before="40" w:after="40" w:lineRule="auto"/>'.format(nsdecls('w')))
+        pPr.append(spacing)
 
         # Clear any default text
         for run in para.runs:
@@ -229,6 +254,9 @@ class WordImagesMixin:
         inline_el = inline_shape._inline
         spPr = inline_el.find('.//pic:spPr', namespaces=namespaces)
         if spPr is not None:
+            # Remove existing outlines if any
+            for existing in spPr.findall('a:ln', namespaces=namespaces):
+                spPr.remove(existing)
             width_emu = int(getattr(self, 'WORD_BORDER_PT', 1.0) * 12700)
             ln_xml = (
                 f'<a:ln w="{width_emu}" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
