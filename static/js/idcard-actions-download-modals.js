@@ -2530,6 +2530,8 @@ function openDownloadImgModal(cardIds) {
 }
 
 function closeDownloadImgModal() {
+    // Clear the bulk-ui lock flag (do not block close)
+    if (window.IDCardApp) window.IDCardApp._nextBulkUiLock = false;
     if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
         window.IDCardApp.downloadProgressPresenter.cancel();
     }
@@ -2708,11 +2710,8 @@ function openDownloadDocxModal(cardIds, format) {
 
 function closeDownloadDocxModal() {
     const modal = document.getElementById('downloadDocxModal');
-    // If a bulk-download flow was just initiated, avoid closing the modal immediately.
-    if (window.IDCardApp && window.IDCardApp._nextBulkUiLock) {
-        try { console.log('[DL] skip closeDownloadDocxModal due to _nextBulkUiLock'); } catch (e) {}
-        return;
-    }
+    // Clear the lock flag so Close/Cancel always works (do not return early)
+    if (window.IDCardApp) window.IDCardApp._nextBulkUiLock = false;
 
     if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
         window.IDCardApp.downloadProgressPresenter.cancel();
@@ -2810,10 +2809,8 @@ function openDownloadXlsxModal(cardIds) {
 }
 
 function closeDownloadXlsxModal() {
-    if (window.IDCardApp && window.IDCardApp._nextBulkUiLock) {
-        try { console.log('[DL] skip closeDownloadXlsxModal due to _nextBulkUiLock'); } catch (e) {}
-        return;
-    }
+    // Clear the lock flag so Close/Cancel always works (do not return early)
+    if (window.IDCardApp) window.IDCardApp._nextBulkUiLock = false;
 
     if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
         window.IDCardApp.downloadProgressPresenter.cancel();
@@ -2954,10 +2951,8 @@ function openDownloadPdfModal(cardIds) {
 }
 
 function closeDownloadPdfModal() {
-    if (window.IDCardApp && window.IDCardApp._nextBulkUiLock) {
-        try { console.log('[DL] skip closeDownloadPdfModal due to _nextBulkUiLock'); } catch (e) {}
-        return;
-    }
+    // Clear the lock flag so Close/Cancel always works (do not return early)
+    if (window.IDCardApp) window.IDCardApp._nextBulkUiLock = false;
 
     if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter && window.IDCardApp.downloadProgressPresenter.isActive()) {
         window.IDCardApp.downloadProgressPresenter.cancel();
