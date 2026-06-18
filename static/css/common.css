@@ -1550,7 +1550,7 @@ body.bulk-operation-active {
   overflow: hidden;
 }
 
-body.bulk-operation-active > *:not(#blockingOverlay):not(.alpine-toast-wrapper):not(#downloadToastContainer) {
+body.bulk-operation-active > *:not(#blockingOverlay):not(.alpine-toast-wrapper):not(#downloadToastContainer):not(.download-modal) {
   pointer-events: none !important;
   user-select: none !important;
 }
