@@ -16,11 +16,11 @@
       ondragleave="this.style.borderColor='#d1d5db'; this.style.backgroundColor='';">
       <i class="fa-solid fa-file-zipper"></i>
       <p id="reuploadActionsFileName">Click or drag &amp; drop a ZIP file</p>
-      <input type="file" id="reuploadActionsFileInput" accept=".zip" style="display:none;">
+      <input type="file" id="reuploadActionsFileInput" accept=".zip" class="sr-only">
     </div>
     {% if is_pro_user %}
     <div style="margin-top:8px;text-align:left;">
-      <input type="file" id="reuploadActionsFolderInput" style="display:none;" multiple webkitdirectory directory>
+      <input type="file" id="reuploadActionsFolderInput" class="sr-only" multiple webkitdirectory directory>
       <button type="button" id="reuploadActionsFolderBrowse" class="center-modal-btn center-modal-btn-cancel" style="padding:6px 10px;"><i class="fa-solid fa-folder-open"></i> Select Folder</button>
       <p id="reuploadActionsFolderName" class="center-modal-progress-text" style="margin-top:6px;">No folder selected</p>
       <input type="text" id="reuploadActionsFolderPath" class="form-input" style="margin-top:6px;" placeholder="Optional server folder path (e.g. C:/Images/School A)">

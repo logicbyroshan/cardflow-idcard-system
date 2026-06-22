@@ -30,7 +30,7 @@
             </div>
             <h4>Select Excel File to Upload</h4>
             <p class="file-select-info">Choose an Excel (.xlsx, .xls) or CSV file containing your data</p>
-            <input type="file" id="xlsxFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+            <input type="file" id="xlsxFileInput" accept=".xlsx,.xls,.csv" class="sr-only">
             <button class="btn btn-primary btn-lg" id="selectXlsxFileBtn">
               <i class="fa-solid fa-folder-open"></i> Browse Files
             </button>
@@ -95,7 +95,7 @@
 
           <!-- Single unified ZIP input -->
           <div class="unified-zip-input">
-            <input type="file" id="unifiedZipInput" accept=".zip" multiple style="display: none;">
+            <input type="file" id="unifiedZipInput" accept=".zip" multiple class="sr-only">
             <button class="btn btn-upload-zip" id="selectZipFilesBtn">
               <i class="fa-solid fa-folder-open"></i> Select ZIP File(s)
             </button>
@@ -106,7 +106,7 @@
 
           {% if is_pro_user %}
           <div class="unified-zip-input" style="margin-top:8px;">
-            <input type="file" id="unifiedFolderInput" multiple webkitdirectory directory style="display: none;">
+            <input type="file" id="unifiedFolderInput" multiple webkitdirectory directory class="sr-only">
             <button class="btn btn-upload-zip" id="selectFolderFilesBtn" type="button">
               <i class="fa-solid fa-folder-tree"></i> Select Folder
             </button>

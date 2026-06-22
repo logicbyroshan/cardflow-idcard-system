@@ -54,11 +54,11 @@ id="sideModalOverlay"
                         <input type="file" 
                                id="field_img_{{ field.name|slugify }}" 
                                name="{{ field.name }}" 
-                               class="form-control image-input"
+                               class="form-control image-input sr-only"
                                data-field-name="{{ field.name }}"
                                data-field-type="image"
                                data-preview-id="preview_{{ field.name|slugify }}"
-                               accept="image/*,.heic,.heif,.hei" hidden>
+                               accept="image/*,.heic,.heif,.hei">
                         <span class="btn btn-upload-field">
                           <i class="fa-solid fa-upload"></i> Upload
                         </span>

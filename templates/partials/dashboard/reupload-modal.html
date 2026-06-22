@@ -18,11 +18,11 @@
           ondragleave="this.classList.remove('border-primary','bg-primary/5');">
           <i class="fa-solid fa-file-zipper text-gray-400 mb-1 text-lg"></i>
           <p class="text-sm text-gray-500 m-0" id="dashReuploadFileName">Click or drag & drop a ZIP file</p>
-          <input type="file" id="dashReuploadFileInput" accept=".zip" class="hidden">
+          <input type="file" id="dashReuploadFileInput" accept=".zip" class="sr-only">
         </div>
         {% if is_pro_user %}
         <div class="w-full mb-2 text-left">
-          <input type="file" id="dashReuploadFolderInput" class="hidden" multiple webkitdirectory directory>
+          <input type="file" id="dashReuploadFolderInput" class="sr-only" multiple webkitdirectory directory>
           <button type="button" id="dashReuploadFolderBrowse" class="btn btn-xs btn-neutral mb-1"><i class="fa-solid fa-folder-open"></i> Select Folder</button>
           <p class="text-xs text-gray-500 m-0" id="dashReuploadFolderName">No folder selected</p>
         </div>

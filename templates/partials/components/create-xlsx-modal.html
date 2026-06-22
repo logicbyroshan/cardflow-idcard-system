@@ -65,7 +65,7 @@ and the JS block at the bottom which wires up the logic.
           <p style="margin:4px 0 0;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-400,var(--color-gray-400));">Max 50 MB &middot; .xlsx, .xls, .csv</p>
         </div>
       </div>
-      <input type="file" id="cxFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+      <input type="file" id="cxFileInput" accept=".xlsx,.xls,.csv" class="sr-only">
       <div id="cxFileInfo" style="display:none;margin-top:8px;padding:8px 10px;background:var(--color-success-bg,var(--color-green-50));border-radius:6px;border:1px solid var(--color-emerald-200);">
         <div style="display:flex;align-items:center;gap:8px;">
           <i class="fa-solid fa-file-excel" style="color:var(--color-success,var(--color-success));"></i>
@@ -142,7 +142,7 @@ and the JS block at the bottom which wires up the logic.
           <p style="margin:4px 0 0;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-400,var(--color-gray-400));">Max 1 GB per ZIP &middot; .zip only</p>
         </div>
       </div>
-      <input type="file" id="cxZipInput" accept=".zip" multiple style="display:none;">
+      <input type="file" id="cxZipInput" accept=".zip" multiple class="sr-only">
       <div id="cxZipList" style="margin-top:8px;"></div>
 
       {% if is_pro_user %}
@@ -153,7 +153,7 @@ and the JS block at the bottom which wires up the logic.
             <i class="fa-solid fa-folder-open" style="margin-right:4px;"></i>Select Local Folder
           </button>
         </div>
-        <input type="file" id="cxFolderInput" multiple webkitdirectory directory style="display:none;">
+        <input type="file" id="cxFolderInput" multiple webkitdirectory directory class="sr-only">
         <div id="cxFolderSummary" style="margin-top:6px;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-500,var(--color-gray-500));">No folder selected</div>
         <div style="margin-top:4px;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-400,var(--color-gray-400));">Tip: For very large folders, Server Folder Path is more reliable.</div>
       </div>
