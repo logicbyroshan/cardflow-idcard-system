@@ -545,6 +545,12 @@ function initFormDataHandlers() {
     const cardFormEl = document.getElementById('cardForm');
     if (cardFormEl) {
         cardFormEl.addEventListener('click', function(e) {
+            // Do not intercept click events originating directly on the file input,
+            // as calling preventDefault() on them cancels the file dialog opening.
+            if (e.target.tagName === 'INPUT' && e.target.type === 'file') {
+                return;
+            }
+
             const uploadBtn = e.target.closest('.image-upload-btn');
             if (!uploadBtn) return;
 
