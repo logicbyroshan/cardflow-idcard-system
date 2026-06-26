@@ -16,6 +16,16 @@ const { width } = Dimensions.get('window');
 
 const getAssignmentChips = (item) => {
   const chips = [];
+  
+  if (item.assigned_client_names && Array.isArray(item.assigned_client_names)) {
+    if (item.assigned_client_names.length > 0) {
+      item.assigned_client_names.forEach(c => chips.push({ text: c, type: 'assigned' }));
+    } else {
+      chips.push({ text: 'No Clients Assigned', type: 'unassigned' });
+    }
+    return chips;
+  }
+
   const scopes = item.assignment_scopes || [];
   
   if (scopes.length > 0) {
@@ -705,7 +715,7 @@ export default function StaffManageScreen({ navigation, route }) {
 
         {/* Assigned Classes and Sections Badge Row */}
         <View style={s.assignmentRow}>
-          <Text style={s.assignmentRowTitle}>ASSIGNED CLASSES & SECTIONS</Text>
+          <Text style={s.assignmentRowTitle}>{isOperatorMode ? 'ASSIGNED CLIENTS' : 'ASSIGNED CLASSES & SECTIONS'}</Text>
           <View style={s.chipsGrid}>
             {visibleChips.map((chip, idx) => (
               <View 
@@ -946,11 +956,11 @@ export default function StaffManageScreen({ navigation, route }) {
               {loadingAssign ? <ActivityIndicator style={{padding:40}} color={colors.brandPrimary} /> : (
                 isOperatorMode ? (
                   <>
-                    <Text style={s.sectionTitle}>Assign Clients</Text>
+                    <Text style={s.sectionTitle}>Assign Client Access</Text>
                     <View style={s.checkGrid}>
                       {assignData.clients.map(c => (
-                        <TouchableOpacity key={c.id} style={[s.checkItem, selectedClientIds.includes(c.id) && s.checkItemActive]} onPress={() => setSelectedClientIds(p => p.includes(c.id) ? p.filter(i => i !== c.id) : [...p, c.id])}>
-                          <Text style={[s.checkLabel, selectedClientIds.includes(c.id) && s.checkLabelActive]} numberOfLines={1}>{c.name}</Text>
+                        <TouchableOpacity key={c.id} style={[s.checkItem, selectedClientIds.includes(c.id) ? s.checkItemSaved : s.checkItemUnassigned]} onPress={() => setSelectedClientIds(p => p.includes(c.id) ? p.filter(i => i !== c.id) : [...p, c.id])}>
+                          <Text style={[s.checkLabel, selectedClientIds.includes(c.id) ? s.checkLabelSaved : s.checkLabelUnassigned]} numberOfLines={1}>{c.name}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -1157,10 +1167,12 @@ const s = StyleSheet.create({
   checkItem: { backgroundColor: colors.gray50, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0', minWidth: '48%' },
   checkItemActive: { backgroundColor: 'rgba(102,126,234,0.1)', borderColor: colors.brandPrimary },
   checkItemSaved: { backgroundColor: 'rgba(16,185,129,0.07)', borderColor: '#10b981' },
+  checkItemUnassigned: { backgroundColor: 'rgba(245,158,11,0.07)', borderColor: '#f59e0b' },
   checkItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   checkLabel: { fontSize: 11, color: colors.gray600, fontFamily: 'SairaSemiCondensed-Medium', flex: 1 },
   checkLabelActive: { color: colors.brandPrimary, fontFamily: 'SairaSemiCondensed-Bold' },
   checkLabelSaved: { color: '#065f46', fontFamily: 'SairaSemiCondensed-Bold' },
+  checkLabelUnassigned: { color: '#b45309', fontFamily: 'SairaSemiCondensed-Medium' },
   savedBadge: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#10b981', alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
   savedBadgeText: { fontSize: 8, color: '#fff', fontFamily: 'SairaSemiCondensed-Bold' },
   // Scope wrapper with collapsible header

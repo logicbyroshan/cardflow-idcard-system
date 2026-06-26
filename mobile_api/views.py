@@ -886,6 +886,7 @@ def _serialize_mobile_admin_staff(staff):
         'staff_type': staff.get_staff_type_display(),
         'created_at': staff.created_at.strftime('%d %b %Y'),
         'assigned_client_ids': [client.id for client in staff.assigned_clients.all()],
+        'assigned_client_names': [client.name for client in staff.assigned_clients.all()],
     }
     for perm in StaffService.PERMISSION_FIELDS:
         row[perm] = bool(getattr(staff, perm, False))
