@@ -6242,8 +6242,14 @@ def api_reprint_data(request, client_id):
 
         reprint_map = {}
         if table_ids:
-            for row in ReprintRequest.objects.filter(table_id__in=table_ids, status__in=['requested', 'confirmed']).values('table_id', 'status').annotate(n=Count('id')):
-                reprint_map.setdefault(row['table_id'], {})[row['status']] = row['n']
+            for row in ReprintRequest.objects.filter(table_id__in=table_ids, status__in=['requested', 'confirmed']).values('table_id', 'status').annotate(n=Count('id'), latest_request=Max('created_at')):
+                if row['table_id'] not in reprint_map:
+                    reprint_map[row['table_id']] = {'requested': 0, 'confirmed': 0, 'latest_request': None}
+                reprint_map[row['table_id']][row['status']] = row['n']
+                if row['latest_request']:
+                    cur = reprint_map[row['table_id']]['latest_request']
+                    if not cur or row['latest_request'] > cur:
+                        reprint_map[row['table_id']]['latest_request'] = row['latest_request']
 
         download_map = {}
         if table_ids:
@@ -6272,7 +6278,8 @@ def api_reprint_data(request, client_id):
                 'requested': requested,
                 'confirmed': confirmed,
                 'reprint_count': reprint_count,
-                'download': dl_count
+                'download': dl_count,
+                'latest_request': sm.get('latest_request').isoformat() if sm.get('latest_request') else None
             })
 
         return JsonResponse({'success': True, 'data': {'tables': items, 'request_total': request_total, 'confirmed_total': confirmed_total, 'download_total': download_total}})

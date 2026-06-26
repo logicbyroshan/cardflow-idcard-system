@@ -774,12 +774,12 @@ def api_reprint_overview(request):
 
         # Order reprint clients by latest request-list activity, then newest client.
         reprint_clients_qs = accessible_clients.annotate(
-            latest_request_update=Max(
-                'id_card_groups__tables__reprint_requests__updated_at',
+            latest_request_time=Max(
+                'id_card_groups__tables__reprint_requests__created_at',
                 filter=Q(id_card_groups__tables__reprint_requests__status='requested')
             )
         ).order_by(
-            F('latest_request_update').desc(nulls_last=True),
+            F('latest_request_time').desc(nulls_last=True),
             F('created_at').desc(nulls_last=True),
             F('id').desc(),
         )[:limit]

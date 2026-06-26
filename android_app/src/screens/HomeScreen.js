@@ -805,7 +805,7 @@ const s = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingBottom: 20, borderBottomLeftRadius: radius.sm, borderBottomRightRadius: radius.sm, ...shadows.md },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logo: { width: 24, height: 24 },
-  logoSquare: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  logoSquare: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   brandName: { color: '#fff', fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold' },
   profileBtn: { },
   profileSquare: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
@@ -1244,6 +1244,7 @@ const ReprintRequestsSection = React.memo(({ recentReprints, recentClients, expa
         name: client.name || 'Unknown Client',
         requested: 0,
         confirmed: 0,
+        latest_request: 0,
         tables: {},
       };
       if (client.tables && Array.isArray(client.tables)) {
@@ -1268,6 +1269,7 @@ const ReprintRequestsSection = React.memo(({ recentReprints, recentClients, expa
           name: rep.client_name || 'Unknown Client',
           requested: 0,
           confirmed: 0,
+          latest_request: 0,
           tables: {},
         };
       }
@@ -1286,9 +1288,16 @@ const ReprintRequestsSection = React.memo(({ recentReprints, recentClients, expa
       }
       if (rep.status === 'requested') clientReprintMap[cid].tables[tid].requested += 1;
       else if (rep.status === 'confirmed') clientReprintMap[cid].tables[tid].confirmed += 1;
+      
+      if (rep.created_at) {
+        const t = new Date(rep.created_at).getTime();
+        if (t > clientReprintMap[cid].latest_request) {
+          clientReprintMap[cid].latest_request = t;
+        }
+      }
     });
 
-    return Object.values(clientReprintMap).sort((a, b) => (b.requested + b.confirmed) - (a.requested + a.confirmed));
+    return Object.values(clientReprintMap).sort((a, b) => b.latest_request - a.latest_request);
   }, [recentReprints, recentClients]);
 
   const handleReprintBadgePress = useCallback((client) => {

@@ -132,9 +132,15 @@ class ImpersonateService:
 
         impersonated_name = request.user.get_full_name() or request.user.username
 
+        # Remove impersonation markers so they don't persist after login()
+        if cls.SESSION_KEY in request.session:
+            del request.session[cls.SESSION_KEY]
+        if cls.SESSION_NAME_KEY in request.session:
+            del request.session[cls.SESSION_NAME_KEY]
+
         # Returning from impersonation should also avoid side-effect session revocations.
         request._skip_device_session_enforcement = True
-        # Switch back — login() flushes the session (clears impersonation markers)
+        # Switch back — login() flushes the session but preserves dict, so we manually deleted markers above
         login(request, original_user, backend='django.contrib.auth.backends.ModelBackend')
 
         try:

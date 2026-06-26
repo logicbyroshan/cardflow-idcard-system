@@ -563,7 +563,6 @@ class StaffService(BaseService):
             # Phase 1: profile_image cleanup removed - using avatar placeholder
             
             with transaction.atomic():
-                staff.delete()
                 user.delete()
             
             return ServiceResult(
