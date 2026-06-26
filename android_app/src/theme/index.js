@@ -11,16 +11,16 @@
 
 export const colors = {
   // Brand — bhagwa (saffron) to reddish-orange gradient
-  brandPrimary: '#ff671f',         // bhagwa/saffron
-  brandPrimaryDark: '#e65c1c',     // darker bhagwa
-  brandPrimaryLight: '#ff854c',    // lighter bhagwa
-  brandSecondary: '#e63900',       // reddish orange
-  brandSecondaryDark: '#cc3300',   // darker reddish orange
+  brandPrimary: '#ff9a76',         // pastel orange
+  brandPrimaryDark: '#ff7b54',     // darker pastel orange
+  brandPrimaryLight: '#ffb396',    // lighter pastel orange
+  brandSecondary: '#ff6b6b',       // pastel red
+  brandSecondaryDark: '#ee5253',   // darker pastel red
 
   // Legacy aliases
-  brand: '#de821b',
-  brandLight: '#de821b',
-  brandDark: '#bd2552',
+  brand: '#ff9a76',
+  brandLight: '#ffb396',
+  brandDark: '#ee5253',
 
   // Surfaces
   surfaceBg: '#f4f4f4',

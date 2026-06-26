@@ -2,7 +2,7 @@
   "expo": {
     "name": "Adarsh ID",
     "slug": "adarsh-final-deploye",
-    "version": "1.1.2",
+    "version": "1.1.3",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -23,7 +23,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.adarshid.app",
-      "versionCode": 101,
+      "versionCode": 102,
       "permissions": [
         "CAMERA"
       ]
