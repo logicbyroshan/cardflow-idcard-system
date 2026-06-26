@@ -113,6 +113,13 @@
 
 <script>
   (function() {
+    // If injected after initial page load (e.g. HTMX swap), hide immediately
+    if (document.readyState !== 'loading') {
+        const pl = document.getElementById('appPreloader');
+        if (pl) pl.style.display = 'none';
+        return;
+    }
+
     // Check if reloaded or first session load
     const isReload = (
         performance.navigation && performance.navigation.type === 1
@@ -125,7 +132,11 @@
     
     if (preloaderShown && !isReload) {
         // Bypass preloader completely
-        document.write('<style>#appPreloader { display: none !important; }</style>');
+        const style = document.createElement('style');
+        style.textContent = '#appPreloader { display: none !important; }';
+        document.head.appendChild(style);
+        const pl = document.getElementById('appPreloader');
+        if (pl) pl.style.display = 'none';
     } else {
         // Mark as shown
         sessionStorage.setItem('preloader_shown', 'true');
@@ -173,7 +184,7 @@
                                     setTimeout(function() {
                                         preloader.style.display = 'none';
                                     }, 600);
-                                }, 11500);
+                                }, 1500);
                             }, 350);
                         }, 500);
                     }
