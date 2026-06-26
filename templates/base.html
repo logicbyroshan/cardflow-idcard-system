@@ -26,6 +26,9 @@
 </head>
 <body data-user-role="{{ request.user.role|default:'' }}" {% block body_class %}{% endblock %} x-data="layoutState" x-init="init">
 
+  <!-- Premium preloader -->
+  {% include 'partials/preloader.html' %}
+
   <!-- Impersonation Banner (Pro User) -->
   {% include 'partials/impersonate-bar.html' %}
 

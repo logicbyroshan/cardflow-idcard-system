@@ -236,6 +236,7 @@ class LiveClientPresenceService:
         all_client_ids = set()
         assistant_user_ids = set()
         assistant_client_ids = set()
+        active_user_ids = set()
 
         for client_id, user_id, user_role in active_rows:
             if is_scoped and allowed_ids and client_id not in allowed_ids:
@@ -246,6 +247,7 @@ class LiveClientPresenceService:
                 assistant_user_ids.add(user_id)
                 if client_id is not None:
                     assistant_client_ids.add(client_id)
+            active_user_ids.add(user_id)
 
         sorted_client_ids = sorted(all_client_ids)
         sorted_assistant_client_ids = sorted(assistant_client_ids)
@@ -255,4 +257,5 @@ class LiveClientPresenceService:
             'active_client_ids': sorted_client_ids,
             'active_assistants_now': len(assistant_user_ids),
             'active_assistant_client_ids': sorted_assistant_client_ids,
+            'active_users_now': len(active_user_ids),
         }

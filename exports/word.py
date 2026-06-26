@@ -88,6 +88,9 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         progress_callback=None,
         cancel_check=None,
         user=None,
+        break_enabled: bool = False,
+        break_pages: int = 0,
+        output_path: Optional[str] = None,
     ) -> WordExportResult:
         """
         Export cards to Word format (.docx only).
@@ -127,6 +130,122 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
                 success=False,
                 message='No cards to export!'
             )
+
+        # Handle page budget splitting (Custom Break)
+        if break_enabled and break_pages > 0:
+            chunk_size = break_pages * self.ENTRIES_PER_PAGE
+            cards_list = sort_cards_for_export(cards, table.fields)
+            cards_array = list(cards_list)
+            total_cards = len(cards_array)
+            
+            if total_cards == 0:
+                return WordExportResult(
+                    success=False,
+                    message='No cards to export!'
+                )
+
+            # Determine institution name
+            institution_name = "Institution"
+            if table.group and table.group.client:
+                institution_name = table.group.client.name
+
+            import tempfile
+            import os
+            import zipfile
+            from django.http import StreamingHttpResponse
+            from .utils import SortedCardList
+
+            zip_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+            zip_tmp_name = zip_tmp.name
+            zip_tmp.close()
+
+            temp_files_to_cleanup = []
+            try:
+                with zipfile.ZipFile(zip_tmp_name, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    chunk_idx = 0
+                    for i in range(0, total_cards, chunk_size):
+                        chunk_idx += 1
+                        chunk_cards = cards_array[i : i + chunk_size]
+                        
+                        part_filename = f"{generate_export_filename(table.name, 'docx', client_name=institution_name, status=status).replace('.docx', '')}_Part_{chunk_idx}.docx"
+                        
+                        chunk_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
+                        chunk_tmp_name = chunk_tmp.name
+                        chunk_tmp.close()
+                        temp_files_to_cleanup.append(chunk_tmp_name)
+                        
+                        chunk_result = self.export_cards(
+                            table=table,
+                            cards=SortedCardList(chunk_cards),
+                            doc_format=doc_format,
+                            status=status,
+                            template_id=template_id,
+                            allow_large=allow_large,
+                            progress_callback=None,
+                            cancel_check=cancel_check,
+                            user=user,
+                            break_enabled=False,
+                            break_pages=0,
+                            output_path=chunk_tmp_name
+                        )
+                        
+                        if not chunk_result.success:
+                            # Cleanup
+                            for f in temp_files_to_cleanup:
+                                try: os.unlink(f)
+                                except Exception: pass
+                            try: os.unlink(zip_tmp_name)
+                            except Exception: pass
+                            return chunk_result
+                        
+                        zf.write(chunk_tmp_name, part_filename)
+
+                # Cleanup the temp docx files immediately after zipping
+                for f in temp_files_to_cleanup:
+                    try: os.unlink(f)
+                    except Exception: pass
+
+                zip_filename = f"{generate_export_filename(table.name, 'zip', client_name=institution_name, status=status)}"
+                content_type = 'application/zip'
+                file_size = os.path.getsize(zip_tmp_name)
+
+                def _iter_file():
+                    try:
+                        with open(zip_tmp_name, 'rb') as fh:
+                            while True:
+                                chunk = fh.read(1024 * 1024)
+                                if not chunk:
+                                    break
+                                yield chunk
+                    finally:
+                        try:
+                            os.unlink(zip_tmp_name)
+                        except Exception:
+                            pass
+
+                response = StreamingHttpResponse(_iter_file(), content_type=content_type)
+                response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+                if file_size:
+                    response['Content-Length'] = str(file_size)
+
+                return WordExportResult(
+                    success=True,
+                    response=response,
+                    filename=zip_filename,
+                    card_count=total_cards
+                )
+
+            except Exception as e:
+                try: os.unlink(zip_tmp_name)
+                except Exception: pass
+                for f in temp_files_to_cleanup:
+                    try: os.unlink(f)
+                    except Exception: pass
+                logger.error("Word export break failed: %s", e, exc_info=True)
+                return WordExportResult(
+                    success=False,
+                    message='Word export custom break failed. Please try again.'
+                )
 
         try:
             # Separate fields by type: text fields first, then image fields
@@ -215,6 +334,15 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             extension = 'docx'
             filename = generate_export_filename(table.name, extension, client_name=institution_name, status=status)
             content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+            if output_path:
+                logger.info("DOCX_SAVE_START table=%s cards=%d file=%s", table.id, len(cards_list), output_path)
+                doc.save(output_path)
+                return WordExportResult(
+                    success=True,
+                    filename=filename,
+                    card_count=len(cards_list)
+                )
 
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.' + extension)
             tmp_name = tmp.name

@@ -201,6 +201,8 @@ class BackgroundExportManager:
         status: str = '',
         doc_format: str = 'docx',
         template_id: int = None,
+        break_enabled: bool = False,
+        break_pages: int = 0,
     ) -> str:
         """Enqueue a Word export and return a task_id string."""
         from core.models import BackgroundTask
@@ -213,6 +215,8 @@ class BackgroundExportManager:
             # Word 2003 (.doc) format has been removed — always use .docx
             'doc_format': 'docx',
             'template_id': template_id,
+            'break_enabled': break_enabled,
+            'break_pages': break_pages,
         }
 
         task, error = BackgroundTask.create_if_no_active(

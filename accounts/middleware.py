@@ -27,6 +27,24 @@ class DeviceSessionMiddleware:
                     
                     if updated:
                         request.session['_last_device_session_update'] = now.timestamp()
+
+                    # Track mobile presence if it's a mobile client/assistant request
+                    is_mobile = (
+                        request.session.get('mobile_auth_ok') or
+                        request.path.startswith('/api/mobile/') or
+                        request.headers.get('X-Mobile-App') == 'true'
+                    )
+                    if is_mobile:
+                        try:
+                            from core.services.live_presence_service import LiveClientPresenceService
+                            LiveClientPresenceService.record_event(
+                                user=request.user,
+                                session_key=request.session.session_key,
+                                tab_id='mobile_app',
+                                action='heartbeat'
+                            )
+                        except Exception as presence_err:
+                            logger.error(f"Error updating mobile client presence session: {presence_err}")
                 except Exception as e:
                     logger.error(f"Error updating device session activity: {e}")
 

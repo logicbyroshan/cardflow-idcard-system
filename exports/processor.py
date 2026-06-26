@@ -457,6 +457,12 @@ def process_export_docx(task):
     except (TypeError, ValueError):
         template_id = None
     
+    break_enabled = bool(metadata.get('break_enabled'))
+    try:
+        break_pages = int(metadata.get('break_pages') or 0)
+    except (TypeError, ValueError):
+        break_pages = 0
+    
     if card_ids:
         cards_qs = IDCard.objects.filter(table=table, id__in=card_ids)
     elif status_filter:
@@ -506,6 +512,8 @@ def process_export_docx(task):
             allow_large=allow_large,
             progress_callback=_docx_progress_callback,
             cancel_check=lambda: _task_cancelled(task),
+            break_enabled=break_enabled,
+            break_pages=break_pages,
         )
 
         if not result.success and str(result.message).strip().lower() == 'export cancelled':
@@ -520,7 +528,8 @@ def process_export_docx(task):
         # Stream exporter response directly to disk.
         exports_dir = ensure_exports_directory()
         client_name = table.group.client.name if table.group and table.group.client else ''
-        extension = 'doc' if doc_format == 'doc' else 'docx'
+        is_zip = result.filename.endswith('.zip') if result.filename else False
+        extension = 'zip' if is_zip else ('doc' if doc_format == 'doc' else 'docx')
         filename = generate_export_filename(table.name, extension, client_name=client_name, status=status_filter)
 
         docx_path = os.path.join(exports_dir, filename)

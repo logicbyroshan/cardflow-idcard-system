@@ -842,5 +842,8 @@ IDCardApp.applyClassSectionFilters = applyClassSectionFilters;
 IDCardApp.clearImageSortFilter = clearImageSortFilter;
 IDCardApp.updateClearFiltersVisibility = updateClearFiltersVisibility;
 IDCardApp.getClassSectionColumnIndices = getClassSectionColumnIndices;
+IDCardApp.getAllClassOptions = function() { return _allClassOptions; };
+IDCardApp.getClassOptionValue = _classOptionValue;
+IDCardApp.getClassOptionLabel = _classOptionLabel;
 
 })();

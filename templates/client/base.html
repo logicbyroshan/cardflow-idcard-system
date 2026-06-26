@@ -28,6 +28,9 @@
 
 <body data-user-role="{{ request.user.role|default:'' }}" x-data="layoutState" x-init="init">
 
+  <!-- Premium preloader -->
+  {% include 'partials/preloader.html' %}
+
   <!-- Impersonation Banner (Pro User) -->
   {% include 'partials/impersonate-bar.html' %}
 

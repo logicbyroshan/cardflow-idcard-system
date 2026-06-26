@@ -739,6 +739,23 @@ function downloadDocx(cardIds, format, templateId) {
         return;
     }
     
+    // Read custom options from DOM
+    const classFilterEnabledEl = document.getElementById('downloadDocxClassFilterEnabled');
+    const classFilterEnabled = classFilterEnabledEl ? classFilterEnabledEl.checked : false;
+    
+    let selectedClasses = [];
+    if (classFilterEnabled) {
+        document.querySelectorAll('.download-docx-class-checkbox:checked').forEach(chk => {
+            selectedClasses.push(chk.value);
+        });
+    }
+
+    const breakEnabledEl = document.getElementById('downloadDocxCustomBreakEnabled');
+    const breakEnabled = breakEnabledEl ? breakEnabledEl.checked : false;
+    
+    const breakPagesEl = document.getElementById('downloadDocxCustomBreakPages');
+    const breakPages = (breakEnabled && breakPagesEl) ? parseInt(breakPagesEl.value, 10) : 0;
+
     // Do not close/hide the modal here; if a modal presenter is active
     // it will manage the UI. Keep modal open so the stepper stays visible.
 
@@ -754,7 +771,11 @@ function downloadDocx(cardIds, format, templateId) {
             fallbackFilename: 'export.docx',
             extraPayload: {
                 format: 'docx',
-                template_id: templateId || ''
+                template_id: templateId || '',
+                class_filter_enabled: classFilterEnabled,
+                selected_classes: selectedClasses,
+                break_enabled: breakEnabled,
+                break_pages: breakPages
             },
             onComplete: function() {
                 _moveCardsToDownloadIfApproved(cardIds);
@@ -774,7 +795,16 @@ function downloadDocx(cardIds, format, templateId) {
         window.DownloadManager.start({
             name: format.toUpperCase() + ' Document',
             url: `/api/table/${tableId}/cards/download-docx/`,
-            body: Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters()),
+            body: Object.assign({
+                card_ids: cardIds,
+                format: format,
+                template_id: templateId || '',
+                status: _getCurrentStatus(),
+                class_filter_enabled: classFilterEnabled,
+                selected_classes: selectedClasses,
+                break_enabled: breakEnabled,
+                break_pages: breakPages
+            }, _getActiveFilters()),
             lockUi: true,
             modalType: 'docx',
             fallbackExt: format,
@@ -873,7 +903,16 @@ function downloadDocx(cardIds, format, templateId) {
         _releaseLegacyDocxLock();
     };
     
-    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters())));
+    xhr.send(JSON.stringify(Object.assign({
+        card_ids: cardIds,
+        format: format,
+        template_id: templateId || '',
+        status: _getCurrentStatus(),
+        class_filter_enabled: classFilterEnabled,
+        selected_classes: selectedClasses,
+        break_enabled: breakEnabled,
+        break_pages: breakPages
+    }, _getActiveFilters())));
 }
 
 // ==========================================

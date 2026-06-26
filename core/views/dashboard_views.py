@@ -56,7 +56,7 @@ _ACTIVITY_CLIENT_SUFFIX_RE = re.compile(r'\bfor\s+"?([^"\n]+?)"?\s*$', re.IGNORE
 
 
 def _dashboard_live_surface_counts(*, user, is_scoped=False, accessible_ids=None):
-    """Return unique logged-in user counts split by desktop/mobile surface."""
+    """Return unique logged-in user counts split by desktop/mobile surface and never-active status."""
     now = timezone.now()
     cache_key = f'dashboard_live_surface_counts:{user.pk if is_scoped else "all"}'
     cached = cache.get(cache_key)
@@ -79,37 +79,43 @@ def _dashboard_live_surface_counts(*, user, is_scoped=False, accessible_ids=None
             User.objects.filter(role__in=['super_admin', 'admin_staff', 'pro_user']).values_list('id', flat=True)
         )
         allowed_user_ids = client_user_ids | assistant_user_ids | admin_user_ids
+    else:
+        allowed_user_ids = set(User.objects.filter(is_active=True).values_list('id', flat=True))
 
-    per_user_surfaces = defaultdict(set)
-    for session in Session.objects.filter(expire_date__gt=now).iterator(chunk_size=200):
-        try:
-            data = session.get_decoded()
-        except Exception:
-            continue
+    from accounts.models import UserDeviceSession
 
-        raw_uid = data.get('_auth_user_id')
-        if not raw_uid:
-            continue
-        uid = str(raw_uid).strip()
-        if not uid.isdigit():
-            continue
-        user_id = int(uid)
+    # Get unexpired active session keys
+    active_session_keys = set(Session.objects.filter(expire_date__gt=now).values_list('session_key', flat=True))
 
-        if allowed_user_ids is not None and user_id not in allowed_user_ids:
-            continue
+    # Fetch device sessions matching the active sessions, ordered by last_active descending (most recent first)
+    device_sessions = UserDeviceSession.objects.filter(
+        session_key__in=active_session_keys,
+        user_id__in=allowed_user_ids
+    ).order_by('-last_active')
 
-        surface = str(data.get('_auth_login_surface') or '').strip().lower()
-        if surface not in {'desktop', 'mobile'}:
-            surface = 'mobile' if bool(data.get('mobile_auth_ok')) else 'desktop'
+    # Get the latest device surface type for each active user
+    user_latest_surface = {}
+    for ds in device_sessions:
+        if ds.user_id not in user_latest_surface:
+            user_latest_surface[ds.user_id] = ds.device_type
 
-        per_user_surfaces[user_id].add(surface)
+    desktop_count = 0
+    mobile_count = 0
+    never_active_count = 0
 
-    desktop_users = sum(1 for surfaces in per_user_surfaces.values() if 'desktop' in surfaces)
-    mobile_users = sum(1 for surfaces in per_user_surfaces.values() if 'mobile' in surfaces)
+    for uid in allowed_user_ids:
+        device_type = user_latest_surface.get(uid)
+        if device_type == 'web':
+            desktop_count += 1
+        elif device_type == 'mobile':
+            mobile_count += 1
+        else:
+            never_active_count += 1
 
     result = {
-        'desktop': desktop_users,
-        'mobile': mobile_users,
+        'desktop': desktop_count,
+        'mobile': mobile_count,
+        'never_active': never_active_count,
     }
     cache.set(cache_key, result, 15)
     return result
@@ -486,6 +492,7 @@ def dashboard(request):
         'overview_assistents_count': overview_stats.get('assistents', 0),
         'overview_live_desktop_count': live_surface_counts.get('desktop', 0),
         'overview_live_mobile_count': live_surface_counts.get('mobile', 0),
+        'overview_live_never_active_count': live_surface_counts.get('never_active', 0),
     }
 
     recent_cache_key = _dashboard_recent_activity_cache_key(
