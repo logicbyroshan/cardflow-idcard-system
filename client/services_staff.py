@@ -435,7 +435,6 @@ class ClientStaffService(BaseService):
                 'phone': staff.user.phone or '',
                 'department': staff.department or '',
                 'designation': staff.designation or '',
-                'address': staff.address or '',
                 'is_active': staff.user.is_active,
                 'status': 'active' if staff.user.is_active else 'inactive',
                 'created_at': staff.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
@@ -596,7 +595,6 @@ class ClientStaffService(BaseService):
                     'client': client,
                     'department': data.get('department', ''),
                     'designation': data.get('designation', ''),
-                    'address': data.get('address', ''),
                     'allowed_classes': [
                         str(v).strip() for v in (data.get('allowed_classes') or [])
                         if isinstance(v, str) and str(v).strip()
@@ -853,8 +851,6 @@ class ClientStaffService(BaseService):
                     staff.department = data['department']
                 if 'designation' in data:
                     staff.designation = data['designation']
-                if 'address' in data:
-                    staff.address = data['address']
 
                 # Update permissions (only those the client themselves has)
                 for perm in cls.STAFF_PERMISSION_FIELDS:

@@ -1,0 +1,48 @@
+<!-- Client Assignment Section with Expiration -->
+<div class="form-section" id="client-assignment-section" style="display: none;">
+    <h3 class="section-title">
+        <i class="fa-solid fa-building-user"></i> Client Assignment
+    </h3>
+    <div class="form-group">
+        <label class="form-label">Assign Clients &amp; Expiration Hours</label>
+        
+        <!-- Sticky Search Bar -->
+        <div style="position: sticky; top: 0; background: #fff; z-index: 10; padding-bottom: 8px; border-bottom: 1px solid var(--color-slate-100); margin-bottom: 8px;">
+            <div class="client-multiselect-search" style="border: 1px solid var(--color-slate-200); border-radius: 6px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; background: #f8fafc;">
+                <i class="fa-solid fa-magnifying-glass" style="color: var(--color-slate-400); font-size: 13px;"></i>
+                <input type="text" id="client-search-input" placeholder="Search clients..." autocomplete="off" style="border: none; background: transparent; font-size: 13px; outline: none; width: 100%; color: var(--color-slate-800);">
+            </div>
+        </div>
+
+        <div class="photographer-client-assignment-container" style="border: 1px solid var(--color-slate-200); border-radius: 6px; padding: 12px; background: #fff; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            {% for client in active_clients %}
+            <div class="photographer-client-row" data-client-id="{{ client.id }}" data-client-name="{{ client.name }}" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--color-slate-100); border-radius: 6px; background: var(--color-slate-50); transition: all 0.2s ease;">
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                    <input type="checkbox" id="client-checkbox-{{ client.id }}" class="photographer-client-cb" value="{{ client.id }}" style="width: 16px; height: 16px; cursor: pointer;">
+                    <label for="client-checkbox-{{ client.id }}" style="font-weight: 500; font-size: 13px; color: var(--color-slate-800); cursor: pointer; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ client.name }}</label>
+                </div>
+                
+                <!-- Hours input — shown only when checked -->
+                <div class="expiry-options-container" style="display: none; align-items: center; gap: 6px;">
+                    <i class="fa-regular fa-clock" style="color: var(--color-slate-400); font-size: 12px;"></i>
+                    <input type="number" class="photographer-client-expiry form-input" min="1" max="8760" placeholder="Hours" style="padding: 4px 8px; font-size: 12px; width: 90px; height: 28px; border: 1px solid var(--color-indigo-300); border-radius: 6px; color: var(--color-slate-800); font-weight: 600;">
+                    <span style="font-size: 11px; color: var(--color-slate-500); white-space: nowrap;">hrs access</span>
+                </div>
+            </div>
+            {% empty %}
+            <div style="text-align: center; color: var(--color-slate-400); padding: 12px; font-size: 13px;">
+                No active clients found
+            </div>
+            {% endfor %}
+        </div>
+        <small class="field-hint">Check a client to assign access, then enter how many hours they should have access.</small>
+    </div>
+
+    <!-- Chips list for assigned clients -->
+    <div class="photographer-assigned-chips-section" style="margin-top: 16px;">
+        <label class="form-label" style="font-size: 12px; color: var(--color-slate-500); font-weight: 600;">Currently Assigned Clients:</label>
+        <div id="photographer-assigned-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+            <div style="font-size: 12px; color: var(--color-slate-400); font-style: italic;">No client assignments added yet.</div>
+        </div>
+    </div>
+</div>

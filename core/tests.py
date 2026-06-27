@@ -2311,7 +2311,6 @@ class SecurityApiRegressionTests(TestCase):
             user=managed_user,
             name='View Edit Client',
             status='inactive',
-            address='Old Address',
         )
 
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')
@@ -2327,7 +2326,6 @@ class SecurityApiRegressionTests(TestCase):
             data=json.dumps({
                 'name': 'View Edit Client Updated',
                 'phone': '9998887777',
-                'address': 'New Address',
                 'is_active': True,
             }),
             content_type='application/json',

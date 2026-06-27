@@ -187,15 +187,12 @@ class ClientAccessService:
     def can_access_client(user, client_id: int) -> bool:
         """Check if user can access a specific client's data.
         super_admin has unrestricted access.
-        admin_staff is restricted to assigned clients.
+        admin_staff/photographer is restricted to assigned clients.
         """
         if PermissionService.is_super_admin(user):
             return True
-        if PermissionService.is_admin_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if not staff:
-                return False
-            return client_id in ClientAccessService._assigned_client_ids_for_access(staff)
+        if PermissionService.is_admin_staff(user) or PermissionService.is_photographer(user):
+            return PermissionService.can_access_client(user, client_id)
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -205,16 +202,13 @@ class ClientAccessService:
     def can_access_group(user, group: IDCardGroup) -> bool:
         """Check if user can access a specific group.
         super_admin has unrestricted access.
-        admin_staff is restricted to assigned clients.
+        admin_staff/photographer is restricted to assigned clients.
         client_staff: must have group in assigned_groups (empty = all groups).
         """
         if PermissionService.is_super_admin(user):
             return True
-        if PermissionService.is_admin_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if not staff:
-                return False
-            return group.client_id in ClientAccessService._assigned_client_ids_for_access(staff)
+        if PermissionService.is_admin_staff(user) or PermissionService.is_photographer(user):
+            return PermissionService.can_access_client(user, group.client_id)
 
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
@@ -261,16 +255,13 @@ class ClientAccessService:
     def can_access_table(user, table: IDCardTable) -> bool:
         """Check if user can access a specific table.
         super_admin has unrestricted access.
-        admin_staff is restricted to assigned clients.
+        admin_staff/photographer is restricted to assigned clients.
         client_staff: limited to assigned groups (empty assigned_groups = all groups).
         """
         if PermissionService.is_super_admin(user):
             return True
-        if PermissionService.is_admin_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if not staff:
-                return False
-            return table.group.client_id in ClientAccessService._assigned_client_ids_for_access(staff)
+        if PermissionService.is_admin_staff(user) or PermissionService.is_photographer(user):
+            return PermissionService.can_access_client(user, table.group.client_id)
 
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
@@ -355,18 +346,15 @@ class ClientAccessService:
     def can_access_card(user, card: IDCard) -> bool:
         """Check if user can access a specific card.
         super_admin has unrestricted access.
-        admin_staff is restricted to assigned clients.
+        admin_staff/photographer is restricted to assigned clients.
 
         NOTE: ``card`` should be fetched with
         ``.select_related('table__group')`` to avoid extra queries.
         """
         if PermissionService.is_super_admin(user):
             return True
-        if PermissionService.is_admin_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if not staff:
-                return False
-            return card.table.group.client_id in ClientAccessService._assigned_client_ids_for_access(staff)
+        if PermissionService.is_admin_staff(user) or PermissionService.is_photographer(user):
+            return PermissionService.can_access_client(user, card.table.group.client_id)
 
         client = ClientAccessService.get_client_for_user(user)
         if client is None:

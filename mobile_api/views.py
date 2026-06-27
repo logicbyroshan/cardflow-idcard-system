@@ -239,7 +239,7 @@ def require_mobile_client(view_func=None, allow_public=False):
 
             # 4. Enforce valid roles
             user = request.user
-            valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff')
+            valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff', 'photographer')
             if not hasattr(user, 'role') or user.role not in valid_roles:
                 if is_api_request:
                     return JsonResponse({'success': False, 'message': 'Invalid account role.'}, status=403)
@@ -417,8 +417,8 @@ def _client_ctx(user):
         # Super admin can access all clients â€” pick the first active one
         from client.models import Client
         client = Client.objects.filter(status='active').first()
-    elif client is None and PermissionService.is_admin_staff(user):
-        # Admin staff fallback must stay within assigned-client scope
+    elif client is None and (PermissionService.is_admin_staff(user) or PermissionService.is_photographer(user)):
+        # Admin staff/photographer fallback must stay within assigned-client scope
         from client.models import Client
         accessible_ids = PermissionService.get_accessible_client_ids(user)
         if accessible_ids:
@@ -469,14 +469,24 @@ def _admin_accessible_client_ids(user):
 
     if PermissionService.is_super_admin(user):
         result = None
-    elif PermissionService.is_admin_staff(user):
+    elif PermissionService.is_admin_staff(user) or PermissionService.is_photographer(user):
         result = PermissionService.get_accessible_client_ids(user)
         # Defensive fallback: if cached scope is empty but staff has assignments,
-        # read directly from M2M to avoid temporary stale-zero dashboards.
+        # read directly from assignments to avoid temporary stale-zero dashboards.
         if not result:
             staff = getattr(user, 'staff_profile', None)
             if staff is not None:
-                result = list(staff.assigned_clients.values_list('id', flat=True))
+                if PermissionService.is_photographer(user):
+                    from django.utils import timezone
+                    from django.db.models import Q
+                    now = timezone.now()
+                    result = list(
+                        staff.photographer_assignments.filter(
+                            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+                        ).values_list('client_id', flat=True)
+                    )
+                else:
+                    result = list(staff.assigned_clients.values_list('id', flat=True))
     else:
         result = []
 
@@ -917,7 +927,7 @@ def mobile_login(request):
     """
     if request.user.is_authenticated:
         user = request.user
-        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff')
+        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff', 'photographer')
         if not hasattr(user, 'role') or user.role not in valid_roles:
             return redirect('/panel/auth/logout/?next=/app/login/')
         # Separate mobile auth flow: do not auto-enter app unless mobile auth checkpoint passed.
@@ -981,7 +991,7 @@ def api_mobile_login(request):
             return JsonResponse({'success': False, 'message': result.get('message', 'Invalid credentials.')}, status=400)
 
         user = result.get('user')
-        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff')
+        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff', 'photographer')
         if not user or getattr(user, 'role', '') not in valid_roles:
             return JsonResponse({'success': False, 'message': 'This account cannot access the mobile app.'}, status=403)
 
@@ -1537,7 +1547,8 @@ def home(request):
             scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
             scoped_staff = scoped_staff.filter(
                 Q(client_id__in=accessible_ids) |
-                Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
+                Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids) |
+                Q(staff_type='photographer', photographer_assignments__client_id__in=accessible_ids)
             ).distinct()
 
         _admin_counts = {
@@ -4611,7 +4622,8 @@ def settings_page(request):
             scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
             scoped_staff = scoped_staff.filter(
                 Q(client_id__in=accessible_ids) |
-                Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
+                Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids) |
+                Q(staff_type='photographer', photographer_assignments__client_id__in=accessible_ids)
             ).distinct()
         ctx['admin_client_count'] = scoped_clients.count()
         ctx['admin_staff_count'] = scoped_staff.count()
@@ -5150,15 +5162,25 @@ def api_mobile_staff_assignment(request, staff_id):
     try:
         staff = get_object_or_404(Staff, id=staff_id)
         
-        # operator mode (admin_staff)
-        is_operator_mode = staff.staff_type == 'admin_staff'
+        # operator mode (admin_staff / photographer)
+        is_operator_mode = staff.staff_type in ('admin_staff', 'photographer')
         
         if is_operator_mode:
             # Operator: return all active clients
             from client.models import Client
             clients = Client.objects.filter(status='active').order_by('name')
             clients_list = [{'id': c.id, 'name': c.name} for c in clients]
-            assigned_clients = list(staff.assigned_clients.values_list('id', flat=True))
+            if staff.staff_type == 'photographer':
+                from django.utils import timezone
+                from django.db.models import Q
+                now = timezone.now()
+                assigned_clients = list(
+                    staff.photographer_assignments.filter(
+                        Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+                    ).values_list('client_id', flat=True)
+                )
+            else:
+                assigned_clients = list(staff.assigned_clients.values_list('id', flat=True))
             
             return JsonResponse({
                 'success': True,
@@ -5814,7 +5836,11 @@ def api_settings_data(request):
                 _c = _c.filter(id__in=accessible_ids)
                 _t = _t.filter(group__client_id__in=accessible_ids)
                 _cd = _cd.filter(table__group__client_id__in=accessible_ids)
-                _st = _st.filter(Q(client_id__in=accessible_ids) | Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)).distinct()
+                _st = _st.filter(
+                    Q(client_id__in=accessible_ids) | 
+                    Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids) |
+                    Q(staff_type='photographer', photographer_assignments__client_id__in=accessible_ids)
+                ).distinct()
             d['admin_client_count'] = _c.count()
             d['admin_staff_count'] = _st.count()
             d['admin_table_count'] = _t.count()
@@ -6650,7 +6676,6 @@ def api_clients_list(request):
             'name': c.name,
             'email': u.email,
             'phone': getattr(u, 'phone', '') or '',
-            'address': c.address or '',
             'is_active': u.is_active,
             'logo_url': logo_url,
             'counts': counts_map.get(c.id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
@@ -6685,7 +6710,7 @@ def api_impersonate_start(request):
     if not target:
         return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
 
-    valid_mobile_roles = {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff'}
+    valid_mobile_roles = {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff', 'photographer'}
     if getattr(target, 'role', '') not in valid_mobile_roles:
         return JsonResponse({'success': False, 'message': 'Target user cannot access the mobile app.'}, status=400)
 

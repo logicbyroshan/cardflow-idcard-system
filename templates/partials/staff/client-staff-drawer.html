@@ -21,11 +21,7 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
         <input type="hidden" id="staff-id" name="staff_id">
         
         <div class="drawer-body">
-            <!-- Profile Avatar Placeholder -->
-            <div class="profile-upload-section flex-row items-center gap-4">
-                {% include 'partials/components/user-avatar.html' with role='client_staff' size='large' %}
-                <span class="text-gray-500 text-sm">Assistent avatar</span>
-            </div>
+
 
             <!-- Group Assignment Section (Assistent Only) -->
             <div class="form-section" id="group-assignment-section">
@@ -105,10 +101,7 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label class="form-label" for="staff-address">Address</label>
-                    <textarea id="staff-address" name="address" class="form-textarea" rows="2" placeholder="Enter address (optional)"></textarea>
-                </div>
+
 
                 <div class="form-row" id="staffPasswordOptionRow">
                     <div class="form-group">

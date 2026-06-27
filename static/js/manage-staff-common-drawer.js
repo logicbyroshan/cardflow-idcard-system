@@ -413,7 +413,8 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         document.getElementById('staff-name').value    = d.name    || '';
         document.getElementById('staff-email').value   = d.email   || '';
         document.getElementById('staff-phone').value   = d.phone   || '';
-        document.getElementById('staff-address').value = d.address || '';
+        var staffAddressInput = document.getElementById('staff-address');
+        if (staffAddressInput) staffAddressInput.value = d.address || '';
 
         // Status  page-specific hook sets the dropdown or hidden input
         if (cfg.onSetStatus) cfg.onSetStatus(d.status === 'active' ? 'true' : 'false');

@@ -41,6 +41,9 @@
     <a href="{% url 'manage_staff' %}" class="{% if active_page == 'manage_staff' %}active{% endif %}">
       <i class="fa-solid fa-user-tie"></i><span>Manage Operator</span>
     </a>
+    <a href="{% url 'manage_photographers' %}" class="{% if active_page == 'manage_photographers' %}active{% endif %}">
+      <i class="fa-solid fa-camera"></i><span>Manage Photographer</span>
+    </a>
     {% endif %}
     <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' or active_page == 'idcard_group' or active_page == 'group_settings' %}active{% endif %}">
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>

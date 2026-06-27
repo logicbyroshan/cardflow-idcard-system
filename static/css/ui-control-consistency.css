@@ -1,6 +1,8 @@
 /* Cross-page control/table consistency layer.
    Keeps icon sizes, control typography, and table typography aligned. */
 :root {
+  --sidebar-width: 175px !important;
+  --spacing-sidebar: 175px !important;
   --ui-font-family-sans: var(--font-sans, var(--font-family, "Saira Semi Condensed", "Segoe UI", "Helvetica Neue", Arial, sans-serif));
 
   /* Core UI type scale (small-to-large). */
@@ -85,7 +87,7 @@ h6 { font-size: var(--ui-heading-h6-size); }
 /* Keep the app/sidebar brand title on one compact, uniform scale everywhere. */
 .sidebar .sidebar-header {
   height: var(--spacing-topbar, 40px) !important;
-  padding: 0 12px !important;
+  padding: 0 8px !important;
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
@@ -118,8 +120,8 @@ h6 { font-size: var(--ui-heading-h6-size); }
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.15;
-  letter-spacing: -0.025em !important;
-  font-size: 11px !important;
+  letter-spacing: -0.015em !important;
+  font-size: 13.5px !important;
   font-weight: 700 !important;
 }
 

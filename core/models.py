@@ -42,6 +42,7 @@ class User(AbstractUser):
         ('client', 'Client'),
         ('guest_user', 'Guest User'),
         ('client_staff', 'Client Staff'),
+        ('photographer', 'Photographer'),
     ]
     
     phone = models.CharField(max_length=15, blank=True, null=True)
@@ -127,6 +128,10 @@ class User(AbstractUser):
     @property
     def is_admin_staff(self):
         return self.role == 'admin_staff'
+
+    @property
+    def is_photographer(self):
+        return self.role == 'photographer'
     
     @property
     def is_client(self):

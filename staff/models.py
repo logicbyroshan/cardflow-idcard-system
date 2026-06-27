@@ -17,6 +17,7 @@ class Staff(models.Model):
     STAFF_TYPE_CHOICES = [
         ('admin_staff', 'Admin Staff'),
         ('client_staff', 'Client Staff'),
+        ('photographer', 'Photographer'),
     ]
     
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='staff_profile')
@@ -67,7 +68,6 @@ class Staff(models.Model):
         help_text='Per-scope class/section/branch filters for client staff assignments.'
     )
     
-    address = models.TextField(blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)
     designation = models.CharField(max_length=100, blank=True, null=True)
     
@@ -155,3 +155,18 @@ class Staff(models.Model):
             models.Index(fields=['client', 'staff_type']),
             models.Index(fields=['client', 'staff_type', '-created_at'], name='staff_client_type_time_idx'),
         ]
+
+
+class PhotographerAssignment(models.Model):
+    photographer = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='photographer_assignments')
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='photographer_assignments')
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'core'
+        unique_together = ('photographer', 'client')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.photographer.user.get_full_name()} -> {self.client.name}"

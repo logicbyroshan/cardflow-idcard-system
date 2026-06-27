@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var addStaffBtn = document.getElementById('addStaffBtn');
     var editStaffBtn = document.getElementById('editStaffBtn');
     var viewStaffBtn = document.getElementById('viewStaffBtn');
+    var assignStaffBtn = document.getElementById('assignStaffBtn');
     var deleteStaffBtn = document.getElementById('deleteStaffBtn');
     var activeStaffBtn = document.getElementById('activeStaffBtn');
     var closeStaffDrawer = document.getElementById('drawer-close-btn');
@@ -26,6 +27,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!NS.selectedStaffId) return;
             var staffData = await NS.fetchStaffDetails(NS.selectedStaffId);
             if (staffData) NS.openDrawer('edit', staffData);
+        });
+    }
+
+    if (assignStaffBtn) {
+        assignStaffBtn.addEventListener('click', async function() {
+            if (!NS.selectedStaffId) return;
+            var staffData = await NS.fetchStaffDetails(NS.selectedStaffId);
+            if (staffData) NS.openDrawer('assign', staffData);
         });
     }
 
@@ -95,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 is_active: document.getElementById('staff-status').value === 'true',
             };
 
-            var isCreateMode = !(NS.currentMode === 'edit' && NS.selectedStaffId);
+            var isCreateMode = (NS.currentMode === 'add');
 
             if (!formData.name) {
                 showToast('Name is required', 'error');
@@ -137,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var result;
 
             try {
-                if (NS.currentMode === 'edit' && NS.selectedStaffId) {
+                if ((NS.currentMode === 'edit' || NS.currentMode === 'assign') && NS.selectedStaffId) {
                     result = await NS.updateStaff(NS.selectedStaffId, formData);
                 } else {
                     result = await NS.createStaff(formData);

@@ -1,17 +1,7 @@
-{% comment %}
-Staff Table Container  -  HTMX swappable partial.
-Contains: Staff table + Pagination. Returned for HX-Request.
-
-Required context:
-  - staff_list (paginated queryset or page of staff)
-  - page_obj, page_range, per_page, per_page_options
-  - search_query, status_filter
-{% endcomment %}
-
 {% load static %}
 
-<!-- Staff Table -->
-{% include 'partials/staff/table.html' %}
+<!-- Photographer Table -->
+{% include 'partials/photographer/table.html' %}
 
 <!-- HTMX Pagination -->
 <div class="pagination-bar" id="paginationBar">

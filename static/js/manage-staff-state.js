@@ -217,10 +217,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     NS.enableActionButtons = function(enable) {
+        var assignStaffBtn = document.getElementById('assignStaffBtn');
         if (editStaffBtn) editStaffBtn.disabled = !enable;
         if (activeStaffBtn) activeStaffBtn.disabled = !enable;
         if (deleteStaffBtn) deleteStaffBtn.disabled = !enable;
         if (viewStaffBtn) viewStaffBtn.disabled = !enable;
+        if (assignStaffBtn) assignStaffBtn.disabled = !enable;
     };
 
     NS.updateActiveButtonState = function() {

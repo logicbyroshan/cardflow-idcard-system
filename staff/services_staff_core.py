@@ -72,7 +72,7 @@ class StaffService(BaseService):
             'name': user.get_full_name(),
             'email': cls._public_email(user.email),
             'phone': user.phone or '',
-            'address': staff.address or '',
+            'address': '',
             'department': staff.department or '',
             'designation': staff.designation or '',
             'staff_type': staff.staff_type,
@@ -224,7 +224,6 @@ class StaffService(BaseService):
                 staff_kwargs = {
                     'user': user,
                     'staff_type': staff_type,
-                    'address': data.get('address', ''),
                     'department': data.get('department', ''),
                     'designation': data.get('designation', ''),
                 }
@@ -415,7 +414,7 @@ class StaffService(BaseService):
             user.save()
             
             # Update staff fields
-            for field in ['address', 'department', 'designation']:
+            for field in ['department', 'designation']:
                 if field in data:
                     setattr(staff, field, data[field])
             
@@ -783,3 +782,299 @@ class StaffService(BaseService):
             )
         except Exception as e:
             return cls._unexpected_error_result('set_temp_password', e)
+
+
+class PhotographerService(BaseService):
+    """
+    Service for Photographer CRUD operations.
+    """
+
+    @classmethod
+    def serialize(cls, staff: Staff) -> Dict[str, Any]:
+        """Serialize Staff instance of type photographer to dict"""
+        user = staff.user
+        data = {
+            'id': staff.id,
+            'name': user.get_full_name(),
+            'email': StaffService._public_email(user.email),
+            'phone': user.phone or '',
+            'address': '',
+            'staff_type': staff.staff_type,
+            'status': 'active' if user.is_active else 'inactive',
+            'created_at': localtime(staff.created_at).strftime('%d-%m-%Y %H:%M'),
+            'updated_at': localtime(staff.updated_at).strftime('%d-%m-%Y %H:%M'),
+        }
+
+        # Include photographer assignments
+        assignments = []
+        for ass in staff.photographer_assignments.select_related('client').all():
+            assignments.append({
+                'client_id': ass.client_id,
+                'client_name': ass.client.name,
+                'expires_at': localtime(ass.expires_at).strftime('%Y-%m-%dT%H:%M') if ass.expires_at else '',
+                'expires_at_display': localtime(ass.expires_at).strftime('%d-%m-%Y %H:%M') if ass.expires_at else 'No Expiration',
+            })
+        data['assigned_clients'] = assignments
+        # Also simple list of ids for UI drawer compatibility
+        data['assigned_client_ids'] = [a['client_id'] for a in assignments]
+        return data
+
+    @classmethod
+    def get(cls, staff_id: int) -> ServiceResult:
+        """Fetch photographer details"""
+        try:
+            staff = Staff.objects.select_related('user').prefetch_related('photographer_assignments__client').get(id=staff_id)
+            if staff.staff_type != 'photographer':
+                return ServiceResult(success=False, message='Staff member is not a photographer')
+            return ServiceResult(success=True, data={'staff': cls.serialize(staff)})
+        except Staff.DoesNotExist:
+            return ServiceResult(success=False, message='Photographer not found')
+
+    @classmethod
+    def create(cls, data: Dict[str, Any], request=None) -> ServiceResult:
+        """Create a new photographer"""
+        try:
+            send_welcome = False
+            welcome_info = {}
+            welcome_user_id = None
+            welcome_email_log_id = None
+
+            name = str(data.get('name') or '').strip()
+            if not name:
+                return ServiceResult(success=False, message='Name is required')
+
+            raw_email = str(data.get('email') or '').strip().lower()
+            email_was_provided = bool(raw_email)
+
+            if raw_email:
+                if User.objects.filter(email__iexact=raw_email).exists():
+                    return ServiceResult(success=False, message='A user with this email already exists')
+                email = raw_email
+            else:
+                slug = StaffService.normalize_name(name)[:24] or 'photographer'
+                email = f'photographer.{slug}.{secrets.token_hex(4)}@noemail.local'
+                while User.objects.filter(email__iexact=email).exists():
+                    email = f'photographer.{slug}.{secrets.token_hex(4)}@noemail.local'
+            
+            # Generate unique username
+            username = email.split('@')[0].lower().replace('.', '_')
+            if not username:
+                username = f'photographer_{secrets.token_hex(4)}'
+            base_username = username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+
+            name_parts = name.split() if name else []
+            
+            phone = str(data.get('phone') or '').strip()
+            password = str(data.get('password') or '').strip()
+            used_phone_as_password = False
+            if not password:
+                if phone:
+                    password = normalize_password_input(phone)
+                    if not password:
+                        return ServiceResult(success=False, message='Phone number must contain digits to be used as a password')
+                    used_phone_as_password = True
+                else:
+                    return ServiceResult(success=False, message='Phone number is required when custom password is not provided')
+            
+            if not used_phone_as_password:
+                from django.contrib.auth.password_validation import validate_password
+                try:
+                    validate_password(password)
+                except Exception as pw_err:
+                    return ServiceResult(success=False, message=str(pw_err))
+            
+            role = 'photographer'
+            staff_type = 'photographer'
+            
+            with transaction.atomic():
+                is_active = StaffService.parse_bool(data.get('is_active', False))
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    first_name=name_parts[0] if name_parts else '',
+                    last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
+                    phone=data.get('phone', ''),
+                    role=role,
+                    is_active=is_active,
+                )
+                user.set_password(password)
+                user.save()
+                
+                # Permissions: photographer permissions are fixed:
+                # perm_mobile_app, perm_idcard_add, perm_idcard_info, perm_idcard_retrieve,
+                # perm_idcard_pending_list, perm_idcard_verified_list, perm_idcard_pool_list.
+                # Rest are False.
+                staff_kwargs = {
+                    'user': user,
+                    'staff_type': staff_type,
+                }
+                for perm in StaffService.PERMISSION_FIELDS:
+                    if perm in data:
+                        staff_kwargs[perm] = StaffService.parse_bool(data[perm])
+                    elif perm in (
+                        'perm_idcard_pending_list',
+                        'perm_idcard_verified_list',
+                        'perm_idcard_add',
+                        'perm_idcard_info',
+                        'perm_mobile_app',
+                        'perm_idcard_bulk_download',
+                    ):
+                        staff_kwargs[perm] = True
+                    else:
+                        staff_kwargs[perm] = False
+                
+                staff = Staff.objects.create(**staff_kwargs)
+                
+                # Assign clients with optional expirations
+                assigned_clients = data.get('assigned_clients', [])
+                if isinstance(assigned_clients, str):
+                    try:
+                        assigned_clients = json.loads(assigned_clients)
+                    except json.JSONDecodeError:
+                        assigned_clients = []
+                
+                from django.utils.dateparse import parse_datetime
+                from staff.models import PhotographerAssignment
+                for item in assigned_clients:
+                    try:
+                        client_id = int(item.get('client_id'))
+                        expires_at_str = item.get('expires_at')
+                        expires_at = parse_datetime(expires_at_str) if expires_at_str else None
+                        PhotographerAssignment.objects.create(
+                            photographer=staff,
+                            client_id=client_id,
+                            expires_at=expires_at
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+                if email_was_provided and StaffService._has_real_email(email):
+                    log = EmailLog.objects.create(
+                        recipient_name=name or user.get_full_name(),
+                        recipient_email=email,
+                        subject='Welcome to Adarsh Admin - Your Photographer Account is Ready!',
+                        email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                        status=EmailLog.STATUS_ON_HOLD,
+                    )
+                    welcome_email_log_id = log.pk
+
+                    if is_active:
+                        send_welcome = True
+                        welcome_user_id = user.pk
+                        welcome_info = {
+                            'name': name or user.get_full_name(),
+                            'email': email,
+                            'password': password,
+                            'phone': user.phone or '',
+                            'role': role,
+                        }
+
+            if send_welcome:
+                _user_pk = welcome_user_id
+                _log_id = welcome_email_log_id
+
+                email_sent, error_msg = send_welcome_email(
+                    name=welcome_info['name'],
+                    email=welcome_info['email'],
+                    password=welcome_info['password'],
+                    role='Photographer',
+                    phone=welcome_info['phone'],
+                    request=request,
+                    email_variant='welcome',
+                )
+                if email_sent:
+                    User.objects.filter(pk=_user_pk).update(welcome_email_sent=True)
+                    EmailLog.objects.filter(pk=_log_id).update(
+                        status=EmailLog.STATUS_SENT,
+                        sent_at=localtime(),
+                        error_message='',
+                    )
+                else:
+                    EmailLog.objects.filter(pk=_log_id).update(
+                        status=EmailLog.STATUS_FAILED,
+                        error_message=error_msg or 'Failed to send welcome email',
+                    )
+
+            return ServiceResult(success=True, message='Photographer created successfully', data={'staff': cls.serialize(staff)})
+        except Exception as e:
+            return StaffService._unexpected_error_result('create_photographer', e)
+
+    @classmethod
+    @transaction.atomic
+    def update(cls, staff_id: int, data: Dict[str, Any]) -> ServiceResult:
+        """Update photographer profile and client assignments"""
+        try:
+            staff = get_object_or_404(Staff, id=staff_id)
+            if staff.staff_type != 'photographer':
+                return ServiceResult(success=False, message='Staff member is not a photographer')
+            user = staff.user
+
+            name = str(data.get('name') or '').strip()
+            if not name:
+                return ServiceResult(success=False, message='Name is required')
+
+            email = str(data.get('email') or '').strip().lower()
+            if email:
+                if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+                    return ServiceResult(success=False, message='A user with this email already exists')
+                user.email = email
+            
+            name_parts = name.split() if name else []
+            user.first_name = name_parts[0] if name_parts else ''
+            user.last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+            user.phone = data.get('phone', '')
+            user.is_active = StaffService.parse_bool(data.get('is_active', user.is_active))
+            user.save()
+
+            # Update permissions
+            for perm in StaffService.PERMISSION_FIELDS:
+                if perm in data:
+                    setattr(staff, perm, StaffService.parse_bool(data[perm]))
+            staff.save()
+
+            # Update assignments
+            assigned_clients = data.get('assigned_clients', [])
+            if isinstance(assigned_clients, str):
+                try:
+                    assigned_clients = json.loads(assigned_clients)
+                except json.JSONDecodeError:
+                    assigned_clients = []
+
+            from django.utils.dateparse import parse_datetime
+            from staff.models import PhotographerAssignment
+            existing = {a.client_id: a for a in staff.photographer_assignments.all()}
+            keep_client_ids = set()
+
+            for item in assigned_clients:
+                try:
+                    client_id = int(item.get('client_id'))
+                    expires_at_str = item.get('expires_at')
+                    expires_at = parse_datetime(expires_at_str) if expires_at_str else None
+
+                    if client_id in existing:
+                        assignment = existing[client_id]
+                        assignment.expires_at = expires_at
+                        assignment.save()
+                    else:
+                        PhotographerAssignment.objects.create(
+                            photographer=staff,
+                            client_id=client_id,
+                            expires_at=expires_at
+                        )
+                    keep_client_ids.add(client_id)
+                except (ValueError, TypeError):
+                    pass
+
+            staff.photographer_assignments.exclude(client_id__in=keep_client_ids).delete()
+
+            # Invalidate permission cache
+            from core.services.session_revalidation import bump_user_revalidation
+            bump_user_revalidation(user.pk)
+
+            return ServiceResult(success=True, message='Photographer updated successfully', data={'staff': cls.serialize(staff)})
+        except Exception as e:
+            return StaffService._unexpected_error_result('update_photographer', e)

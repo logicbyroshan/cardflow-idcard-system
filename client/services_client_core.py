@@ -82,7 +82,6 @@ class ClientService(BaseService):
             'is_guest': bool(getattr(client, 'is_guest', False)),
             'email': cls._public_email(client.user.email),
             'phone': client.user.phone or '',
-            'address': client.address or '',
             'city': client.city or '',
             'state': client.state or '',
             'pincode': client.pincode or '',
@@ -232,7 +231,6 @@ class ClientService(BaseService):
                     'user': user,
                     'name': name,
                     'is_guest': role == 'guest_user',
-                    'address': data.get('address', ''),
                     'city': data.get('city', ''),
                     'state': data.get('state', ''),
                     'pincode': data.get('pincode', ''),
@@ -421,7 +419,7 @@ class ClientService(BaseService):
                 # Update client fields
                 if data.get('name'):
                     client.name = data['name']
-                for field in ['address', 'city', 'state', 'pincode', 'icon']:
+                for field in ['city', 'state', 'pincode', 'icon']:
                     if field in data:
                         setattr(client, field, data[field])
                 
@@ -829,7 +827,6 @@ class ClientService(BaseService):
                     'phone': staff.user.phone or '',
                     'department': staff.department or '',
                     'designation': staff.designation or '',
-                    'address': staff.address or '',
                     'is_active': is_active,
                     'status': 'active' if is_active else 'inactive',
                     'status_display': 'Active' if is_active else 'Inactive',

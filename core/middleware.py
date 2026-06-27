@@ -523,7 +523,25 @@ class PermissionValidationMiddleware:
             return self._validate_client_access(request, fresh_user)
         elif fresh_user.role == 'client_staff':
             return self._validate_client_staff_access(request, fresh_user)
-        if fresh_user.role in ['super_admin', 'pro_user', 'admin_staff']:
+        elif fresh_user.role == 'photographer':
+            allowed_prefixes = (
+                '/api/mobile/',
+                '/app/',
+                '/api/health/',
+                '/media/',
+                '/static/',
+                '/favicon.ico',
+            )
+            path = request.path
+            is_allowed = any(path.startswith(prefix) for prefix in allowed_prefixes)
+            if not is_allowed:
+                if 'auth/' in path or 'logout/' in path:
+                    is_allowed = True
+            
+            if not is_allowed:
+                logger.warning("PermissionValidationMiddleware: Photographer %s tried to access forbidden web path %s", fresh_user.username, path)
+                return self._force_logout(request, 'Photographers are only permitted to access the mobile application.')
+        if fresh_user.role in ['super_admin', 'pro_user', 'admin_staff', 'photographer']:
              logger.debug("PVM_DEBUG: Admin validation success for %s", fresh_user.username)
         return None
     
