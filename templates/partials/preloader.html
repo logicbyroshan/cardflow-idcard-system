@@ -113,85 +113,89 @@
 
 <script>
   (function() {
-    // If injected after initial page load (e.g. HTMX swap), hide immediately
-    if (document.readyState !== 'loading') {
-        const pl = document.getElementById('appPreloader');
-        if (pl) pl.style.display = 'none';
-        return;
-    }
+    // Determine navigation type BEFORE any DOM manipulation
+    var navType = 'navigate';
+    try {
+      if (performance.getEntriesByType) {
+        var navEntry = performance.getEntriesByType('navigation')[0];
+        if (navEntry) navType = navEntry.type;
+      } else if (performance.navigation) {
+        navType = performance.navigation.type === 1 ? 'reload' : 'navigate';
+      }
+    } catch(e) {}
 
-    // Check if reloaded or first session load
-    const isReload = (
-        performance.navigation && performance.navigation.type === 1
-    ) || (
-        performance.getEntriesByType && 
-        performance.getEntriesByType('navigation')[0] && 
-        performance.getEntriesByType('navigation')[0].type === 'reload'
-    );
-    const preloaderShown = sessionStorage.getItem('preloader_shown');
-    
-    if (preloaderShown && !isReload) {
-        // Bypass preloader completely
-        const style = document.createElement('style');
-        style.textContent = '#appPreloader { display: none !important; }';
-        document.head.appendChild(style);
-        const pl = document.getElementById('appPreloader');
-        if (pl) pl.style.display = 'none';
+    var isReload    = (navType === 'reload');
+    var isBackForward = (navType === 'back_forward');
+    var preloaderShown = sessionStorage.getItem('preloader_shown');
+
+    // Decide: should we skip the preloader?
+    // Skip only if same session AND not a reload AND not back/forward
+    var skip = preloaderShown && !isReload && !isBackForward;
+
+    if (skip) {
+      // Hide before first paint so there is zero flash
+      var style = document.createElement('style');
+      style.textContent = '#appPreloader{display:none!important}';
+      (document.head || document.documentElement).appendChild(style);
     } else {
-        // Mark as shown
-        sessionStorage.setItem('preloader_shown', 'true');
-        
-        // Add animation play logic on load
-        document.addEventListener('DOMContentLoaded', function() {
-            const logoWrap = document.getElementById('preloaderLogoWrap');
-            const titleEl = document.getElementById('preloaderTitle');
-            const welcomeEl = document.getElementById('preloaderWelcome');
-            const preloader = document.getElementById('appPreloader');
-            
-            if (!logoWrap || !titleEl || !welcomeEl || !preloader) return;
-            
-            // Step 1: Move logo up and start typing brand name
-            setTimeout(function() {
-                logoWrap.style.transform = 'translateY(-35px)';
-                
-                const text = "Adarsh ID Panel";
-                let charIdx = 0;
-                function typeText() {
-                    if (charIdx < text.length) {
-                        titleEl.textContent += text.charAt(charIdx);
-                        charIdx++;
-                        setTimeout(typeText, 70);
-                    } else {
-                        // Typing complete, transition to welcome state
-                        setTimeout(function() {
-                            // Fade out logo and title
-                            logoWrap.style.opacity = '0';
-                            logoWrap.style.transform = 'translateY(-55px) scale(0.85)';
-                            titleEl.style.opacity = '0';
-                            titleEl.style.transform = 'translateY(-15px)';
-                            
-                            // Show welcome
-                            setTimeout(function() {
-                                logoWrap.style.display = 'none';
-                                titleEl.style.display = 'none';
-                                
-                                welcomeEl.style.opacity = '1';
-                                welcomeEl.style.transform = 'scale(1)';
-                                
-                                // Fade out entire preloader
-                                setTimeout(function() {
-                                    preloader.style.opacity = '0';
-                                    setTimeout(function() {
-                                        preloader.style.display = 'none';
-                                    }, 600);
-                                }, 1500);
-                            }, 350);
-                        }, 500);
-                    }
-                }
-                typeText();
-            }, 400);
-        });
+      // Mark shown for this session
+      sessionStorage.setItem('preloader_shown', 'true');
+
+      // Run animation after DOM is ready
+      function runPreloader() {
+        var logoWrap  = document.getElementById('preloaderLogoWrap');
+        var titleEl   = document.getElementById('preloaderTitle');
+        var welcomeEl = document.getElementById('preloaderWelcome');
+        var preloader = document.getElementById('appPreloader');
+
+        if (!logoWrap || !titleEl || !welcomeEl || !preloader) return;
+
+        // Step 1: slide logo up & type brand name
+        setTimeout(function() {
+          logoWrap.style.transform = 'translateY(-35px)';
+
+          var text = 'Adarsh ID Panel';
+          var charIdx = 0;
+          function typeText() {
+            if (charIdx < text.length) {
+              titleEl.textContent += text.charAt(charIdx++);
+              setTimeout(typeText, 70);
+            } else {
+              // Step 2: fade logo + title out
+              setTimeout(function() {
+                logoWrap.style.opacity = '0';
+                logoWrap.style.transform = 'translateY(-55px) scale(0.85)';
+                titleEl.style.opacity = '0';
+                titleEl.style.transform = 'translateY(-15px)';
+
+                // Step 3: show welcome message
+                setTimeout(function() {
+                  logoWrap.style.display = 'none';
+                  titleEl.style.display  = 'none';
+                  welcomeEl.style.opacity   = '1';
+                  welcomeEl.style.transform = 'scale(1)';
+
+                  // Step 4: fade out whole preloader
+                  setTimeout(function() {
+                    preloader.style.opacity = '0';
+                    setTimeout(function() {
+                      preloader.style.display = 'none';
+                    }, 600);
+                  }, 1500);
+                }, 350);
+              }, 500);
+            }
+          }
+          typeText();
+        }, 400);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', runPreloader);
+      } else {
+        // DOM already parsed (script ran late) — still run the animation
+        runPreloader();
+      }
     }
   })();
 </script>
