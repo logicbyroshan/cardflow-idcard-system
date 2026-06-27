@@ -197,7 +197,7 @@
 
 <script>
   (function() {
-    // Check if reloaded or first session load
+    // Check if page was reloaded/refreshed
     const isReload = (
         performance.navigation && performance.navigation.type === 1
     ) || (
@@ -205,18 +205,21 @@
         performance.getEntriesByType('navigation')[0] && 
         performance.getEntriesByType('navigation')[0].type === 'reload'
     );
-    const preloaderSkip = sessionStorage.getItem('preloader_skip');
-    sessionStorage.removeItem('preloader_skip');
     
-    if (preloaderSkip === 'true' && !isReload) {
-        // Bypass preloader completely (stays display: none)
-    } else {
+    // Check if the preloader has already been shown in this tab session
+    const preloaderShown = sessionStorage.getItem('preloader_shown');
+    
+    // Only show preloader if it's a reload OR if it hasn't been shown yet in this session
+    if (isReload || !preloaderShown) {
+        // Set flag so we bypass on future internal page navigations
+        sessionStorage.setItem('preloader_shown', 'true');
+        
         const preloader = document.getElementById('appPreloader');
         if (preloader) {
             preloader.style.display = 'flex';
         }
         
-        // Add animation play logic on load
+        // Run preloader animations on DOM load
         document.addEventListener('DOMContentLoaded', function() {
             const logoWrap = document.getElementById('preloaderLogoWrap');
             const titleEl = document.getElementById('preloaderTitle');
@@ -225,7 +228,6 @@
             
             if (!logoWrap || !titleEl || !welcomeEl || !preloaderEl) return;
             
-            // Move logo up and start typing brand name
             setTimeout(function() {
                 logoWrap.style.transform = 'translateY(-12px)';
                 
@@ -237,7 +239,6 @@
                         charIdx++;
                         setTimeout(typeText, 50);
                     } else {
-                        // Typing complete, transition to welcome state
                         setTimeout(function() {
                             logoWrap.style.opacity = '0';
                             logoWrap.style.transform = 'translateY(-55px) scale(0.85)';
@@ -251,7 +252,6 @@
                                 welcomeEl.style.opacity = '1';
                                 welcomeEl.style.transform = 'scale(1)';
                                 
-                                // Fade out entire preloader
                                 setTimeout(function() {
                                     preloaderEl.style.opacity = '0';
                                     setTimeout(function() {
@@ -266,34 +266,5 @@
             }, 300);
         });
     }
-
-    // Register click and submit event listeners to skip preloader on page actions
-    document.addEventListener('click', function(e) {
-        const anchor = e.target.closest('a');
-        if (anchor) {
-            const href = anchor.getAttribute('href');
-            const target = anchor.getAttribute('target');
-            if (href && 
-                !href.startsWith('#') && 
-                !href.startsWith('javascript:') && 
-                !href.startsWith('mailto:') && 
-                !href.startsWith('tel:') && 
-                !anchor.hasAttribute('download') &&
-                target !== '_blank') {
-                sessionStorage.setItem('preloader_skip', 'true');
-                return;
-            }
-        }
-        
-        // Also capture clicks on buttons/inputs or clickable elements that trigger actions
-        const clickable = e.target.closest('button, input[type="submit"], input[type="button"], [onclick], [data-href], .clickable, .badge, .btn');
-        if (clickable) {
-            sessionStorage.setItem('preloader_skip', 'true');
-        }
-    }, { capture: true, passive: true });
-
-    document.addEventListener('submit', function() {
-        sessionStorage.setItem('preloader_skip', 'true');
-    }, { capture: true, passive: true });
   })();
 </script>
