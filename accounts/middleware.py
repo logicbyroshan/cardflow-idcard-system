@@ -21,12 +21,27 @@ class DeviceSessionMiddleware:
             # IMPROVED: Throttle updates to once every 60 seconds to reduce DB load
             if not last_update or (now.timestamp() - float(last_update)) > 60:
                 try:
+                    session_key = request.session.session_key
                     updated = UserDeviceSession.objects.filter(
-                        session_key=request.session.session_key
+                        session_key=session_key
                     ).update(last_active=now)
                     
-                    if updated:
-                        request.session['_last_device_session_update'] = now.timestamp()
+                    if not updated:
+                        # Re-create/heal the UserDeviceSession record if it doesn't exist
+                        from accounts.signals import get_device_type, get_client_ip
+                        device_type = get_device_type(request)
+                        UserDeviceSession.objects.update_or_create(
+                            session_key=session_key,
+                            defaults={
+                                'user': request.user,
+                                'device_type': device_type,
+                                'user_agent': request.META.get('HTTP_USER_AGENT', '')[:500],
+                                'ip_address': get_client_ip(request),
+                                'last_active': now
+                            }
+                        )
+                    
+                    request.session['_last_device_session_update'] = now.timestamp()
 
                     # Track mobile presence if it's a mobile client/assistant request
                     is_mobile = (

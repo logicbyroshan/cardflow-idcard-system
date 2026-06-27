@@ -609,6 +609,56 @@ class LoginViewTests(TestCase):
         self.assertIsNotNone(log_entry)
         self.assertEqual(log_entry.ip_address, '203.0.113.50')
 
+    def test_mobile_device_detection_custom_agent_and_path(self):
+        from accounts.signals import get_device_type
+        from django.test import RequestFactory
+
+        rf = RequestFactory()
+
+        # 1. Custom app user agent
+        req1 = rf.get('/some-path/', HTTP_USER_AGENT='AdarshMobileApp/1.1 (Premium Native; Expo)')
+        self.assertEqual(get_device_type(req1), 'mobile')
+
+        # 2. Custom app with okhttp agent
+        req2 = rf.get('/some-path/', HTTP_USER_AGENT='okhttp/4.9.2')
+        self.assertEqual(get_device_type(req2), 'mobile')
+
+        # 3. Mobile API path
+        req3 = rf.get('/api/mobile/some-endpoint/', HTTP_USER_AGENT='SomeUnknownBrowser')
+        self.assertEqual(get_device_type(req3), 'mobile')
+
+        # 4. Standard web request
+        req4 = rf.get('/panel/dashboard/', HTTP_USER_AGENT='Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0')
+        self.assertEqual(get_device_type(req4), 'web')
+
+    def test_device_session_middleware_self_healing(self):
+        from accounts.models import UserDeviceSession
+        from accounts.middleware import DeviceSessionMiddleware
+        from django.test import RequestFactory
+        from django.contrib.sessions.middleware import SessionMiddleware
+
+        rf = RequestFactory()
+        req = rf.get('/panel/dashboard/', HTTP_USER_AGENT='AdarshMobileApp/1.1 (Premium Native; Expo)')
+        req.user = self.user
+
+        # Setup session middleware so request has a session
+        sm = SessionMiddleware(lambda r: None)
+        sm.process_request(req)
+        req.session.save()
+
+        # Ensure no UserDeviceSession exists yet
+        UserDeviceSession.objects.filter(session_key=req.session.session_key).delete()
+
+        # Instantiate and run DeviceSessionMiddleware
+        middleware = DeviceSessionMiddleware(lambda r: r)
+        middleware(req)
+
+        # Check that UserDeviceSession was successfully created/healed as 'mobile'
+        self.assertTrue(UserDeviceSession.objects.filter(session_key=req.session.session_key).exists())
+        ds = UserDeviceSession.objects.get(session_key=req.session.session_key)
+        self.assertEqual(ds.device_type, 'mobile')
+        self.assertEqual(ds.user, self.user)
+
 
 class ProUserSessionAPITests(TestCase):
     def setUp(self):
