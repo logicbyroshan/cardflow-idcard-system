@@ -39,19 +39,24 @@
   .stats-grid-wrap {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     gap: 0;
+    padding: 0;
   }
 
   .stats-charts-area {
-    padding: 0;
+    flex: 1;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
     display: flex;
     flex-direction: column;
     gap: 0;
+    padding: 0;
   }
 
   /* Stat Summary Cards - Dashboard Style */
@@ -202,19 +207,51 @@
     gap: 16px;
   }
 
-  .stats-charts-area > .chart-card:last-child,
-  .stats-charts-area > .charts-split-grid:last-child .chart-card {
-    border-bottom: none;
+  /* Main activity chart: snap section, fills full viewport height */
+  .stats-charts-area > .chart-card {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    height: 100%;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--color-gray-200);
+    box-sizing: border-box;
+  }
+
+  .stats-charts-area > .chart-card .chart-container {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  /* Split grid: snap section, fills full viewport height */
+  .charts-split-grid {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    height: 100%;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-top: 1px solid var(--color-gray-200);
+    box-sizing: border-box;
   }
 
   .charts-split-grid .chart-card {
+    height: 100%;
     border-bottom: none;
     border-left: 1px solid var(--color-gray-200);
     border-radius: 0;
+    box-sizing: border-box;
   }
 
   .charts-split-grid .chart-card:first-child {
     border-left: none;
+  }
+
+  .charts-split-grid .chart-card .split-chart-container {
+    flex: 1;
+    min-height: 0;
+    height: auto;
   }
 
   .chart-header {
@@ -273,19 +310,25 @@
   .chart-container {
     position: relative;
     width: 100%;
-    min-height: 320px;
-    height: 360px;
+    min-height: 200px;
   }
 
-  /* Two column charts grid */
-  .charts-split-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    border-top: 1px solid var(--color-gray-200);
-  }
+  /* Two column charts grid - now handled above as snap section */
 
   @media (max-width: 1024px) {
+    .charts-split-grid {
+      grid-template-columns: 1fr;
+    }
+    .charts-split-grid .chart-card {
+      height: 50%;
+    }
+    .charts-split-grid .chart-card:nth-child(2) {
+      border-left: none;
+      border-top: 1px solid var(--color-gray-200);
+    }
+  }
+
+  @media (max-width: 640px) {
     .charts-split-grid {
       grid-template-columns: 1fr;
     }
@@ -294,7 +337,7 @@
   .split-chart-container {
     position: relative;
     width: 100%;
-    height: 260px;
+    min-height: 120px;
   }
 
   /* Skeleton Loading Overlay */
