@@ -89,6 +89,7 @@ h6 { font-size: var(--ui-heading-h6-size); }
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
+  justify-content: flex-start !important;
 }
 
 .sidebar .sidebar-logo {
@@ -99,13 +100,13 @@ h6 { font-size: var(--ui-heading-h6-size); }
 }
 
 .sidebar .sidebar-logo .profile {
-  width: 28px !important;
-  height: 28px !important;
+  width: 30px !important;
+  height: 30px !important;
 }
 
 .sidebar .sidebar-logo .profile img {
-  width: 20px !important;
-  height: 20px !important;
+  width: 22px !important;
+  height: 22px !important;
 }
 
 .sidebar .sidebar-logo h3,
@@ -117,8 +118,8 @@ h6 { font-size: var(--ui-heading-h6-size); }
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.15;
-  letter-spacing: 0.01em;
-  font-size: var(--ui-font-size-md) !important;
+  letter-spacing: -0.025em !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
 }
 

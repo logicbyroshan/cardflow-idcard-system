@@ -9,17 +9,17 @@
   <title>{% block title %}Client Portal - Adarsh ID Cards{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <!-- Tailwind CSS (primary) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   <!-- Core CSS bundle (fonts + common + global-search) -->
-  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
+  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   <!-- Page-specific: client portal partials -->
-  <link rel="stylesheet" href="{% static 'css/partials-common.css' %}">
-  <link rel="stylesheet" href="{% static 'css/client-message-drawer.css' %}">
-  <link rel="stylesheet" href="{% static 'css/client-notification-drawer.css' %}">
+  <link rel="stylesheet" href="{% static 'css/partials-common.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
+  <link rel="stylesheet" href="{% static 'css/client-message-drawer.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
+  <link rel="stylesheet" href="{% static 'css/client-notification-drawer.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   {% block extra_css %}{% endblock %}
-  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
-  <link rel="stylesheet" href="{% static 'css/ui-control-consistency.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
+  <link rel="stylesheet" href="{% static 'css/ui-control-consistency.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   <!-- Shared Alpine runtime loader -->
   {% include 'partials/common/alpine-loader.html' %}
 </head>

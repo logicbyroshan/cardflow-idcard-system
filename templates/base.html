@@ -12,13 +12,13 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'assets/icons/apple-touch-icon.png' %}">
   <!-- Tailwind CSS (compiled design system) -->
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   <!-- Core CSS bundle (fonts + common + global-search) -->
-  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
+  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   {% block extra_css %}{% endblock %}
-  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
-  <link rel="stylesheet" href="{% static 'css/ui-control-consistency.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
+  <link rel="stylesheet" href="{% static 'css/ui-control-consistency.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   {% block extra_head %}{% endblock %}
   
   <!-- Shared Alpine runtime loader -->
