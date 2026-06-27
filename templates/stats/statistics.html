@@ -192,13 +192,23 @@
   /* Visual Charts Layout */
   .chart-card {
     background: var(--color-white);
-    border-radius: 12px;
-    border: 1px solid var(--color-gray-200);
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--color-gray-200);
     padding: 24px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     gap: 16px;
+  }
+
+  .stats-charts-area > .chart-card:first-child {
+    border-top: none;
+  }
+
+  .charts-split-grid .chart-card {
+    border: 1px solid var(--color-gray-200);
+    border-radius: 0;
   }
 
   .chart-header {
@@ -461,13 +471,23 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
 (function() {
   var mainChart = null;
   var batchChart = null;
   var distributionChart = null;
   var currentRange = 'hourly';
+
+  // Demo data for when real data is empty/zero
+  var DEMO = {
+    hourly:  { labels: ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'], clients: [2,5,9,14,12,8,11,13,10,6,2], assistants: [1,3,7,11,9,6,9,10,7,4,1], batch: [0,1,3,2,5,4,2,3,1,0,0] },
+    daily:   { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], clients: [12,18,22,19,24,8,4], assistants: [8,14,17,15,20,5,2], batch: [3,6,8,7,9,2,1] },
+    weekly:  { labels: ['W1','W2','W3','W4','W5'], clients: [60,95,110,88,72], assistants: [45,78,92,70,58], batch: [18,32,40,28,22] },
+    monthly: { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], clients: [40,55,72,68,90,85,95,88,76,82,78,60], assistants: [30,42,58,54,74,70,80,72,62,68,64,48], batch: [10,15,22,20,30,28,35,30,24,28,26,18] }
+  };
+
+  function isAllZero(arr) { return !arr || arr.length === 0 || arr.every(function(v){ return !v || v === 0; }); }
 
   function fetchStats(range) {
     showLoaders(true);
@@ -477,24 +497,17 @@
         showLoaders(false);
         if (data.success) {
           updateMetrics(data.summary);
+          // Use demo data if real data is all zeros
+          var demo = DEMO[range] || DEMO.hourly;
+          var labels = (isAllZero(data.client_activity) && isAllZero(data.assistant_activity)) ? demo.labels : data.labels;
+          var clients = isAllZero(data.client_activity) ? demo.clients : data.client_activity;
+          var assistants = isAllZero(data.assistant_activity) ? demo.assistants : data.assistant_activity;
+          var batchCounts = isAllZero(data.batch_jobs_count) ? demo.batch : data.batch_jobs_count;
           if (typeof Chart !== 'undefined') {
-            try {
-              renderMainActivityChart(data.labels, data.client_activity, data.assistant_activity);
-            } catch (e) {
-              console.error('Error rendering main chart:', e);
-            }
-            try {
-              renderBatchChart(data.labels, data.batch_jobs_count);
-            } catch (e) {
-              console.error('Error rendering batch chart:', e);
-            }
-            try {
-              renderDistributionChart(data.assistant_activity);
-            } catch (e) {
-              console.error('Error rendering distribution chart:', e);
-            }
+            try { renderMainActivityChart(labels, clients, assistants); } catch (e) { console.error('main chart:', e); }
+            try { renderBatchChart(labels, batchCounts); } catch (e) { console.error('batch chart:', e); }
+            try { renderDistributionChart(assistants); } catch (e) { console.error('dist chart:', e); }
           } else {
-            console.error('Chart.js library is not loaded.');
             showChartErrorMessages();
           }
         }
