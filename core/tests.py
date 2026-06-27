@@ -163,28 +163,28 @@ class TutorialRoleScopeTests(TestCase):
         self._assert_role_tutorial(
             'tutorial-client@test.com',
             'client',
-            'Client Operations Tutorial',
+            'Check & Update Data',
         )
 
     def test_client_staff_sees_client_staff_tutorial(self):
         self._assert_role_tutorial(
             'tutorial-client-staff@test.com',
             'client_staff',
-            'Assistent Operations Tutorial',
+            'Assistent Permissions Overview',
         )
 
     def test_admin_staff_sees_admin_staff_tutorial(self):
         self._assert_role_tutorial(
             'tutorial-admin-staff@test.com',
             'admin_staff',
-            'Operator Support Tutorial',
+            'Verification and Data Rectification',
         )
 
     def test_admin_sees_admin_tutorial(self):
         self._assert_role_tutorial(
             'tutorial-admin@test.com',
             'admin',
-            'Admin Control Tutorial',
+            'Data Operations & Quality Policies',
         )
 
     def test_tutorial_shows_personal_guide_button(self):
@@ -209,12 +209,12 @@ class TutorialRoleScopeTests(TestCase):
         self.assertIn('attachment; filename="adarsh-personal-guide.txt"', response['Content-Disposition'])
         self.assertIn('Student Data Check, Corrections', response.content.decode('utf-8'))
 
-    def test_hinglish_mode_has_no_devanagari_script(self):
+    def test_hindi_mode_has_devanagari_script(self):
         self.assertTrue(self.client.login(username='tutorial-client@test.com', password='testpass123'))
         response = self.client.get(reverse('tutorial') + '?lang=hi')
         self.assertEqual(response.status_code, 200)
         html = response.content.decode('utf-8')
-        self.assertNotRegex(html, r'[\u0900-\u097F]')
+        self.assertRegex(html, r'[\u0900-\u097F]')
 
 
 # ── IDCard Model Tests ──

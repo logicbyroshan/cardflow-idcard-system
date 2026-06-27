@@ -46,6 +46,10 @@
         <i class="fa-brands fa-youtube"></i>
         <span>{% if tutorial_lang == 'hi' %}वीडियो ट्यूटोरियल देखें{% else %}Watch Tutorial{% endif %}</span>
       </a>
+      <a class="btn-guide" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--color-gray-300); background: var(--color-white); color: var(--color-gray-700); font-weight: 600; font-size: 13px; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='var(--color-gray-50)'" onmouseout="this.style.background='var(--color-white)'">
+        <i class="fa-solid fa-user-check"></i>
+        <span>Personal Guide</span>
+      </a>
       
       <div class="tutorial-tabs" role="tablist" aria-label="Tutorial tabs">
         <button type="button" class="tutorial-tab-btn is-active" data-tab="check-update" role="tab" aria-selected="true">
