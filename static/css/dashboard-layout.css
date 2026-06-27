@@ -414,12 +414,10 @@
 
 .dashboard-card-header.overview-header {
     gap: 12px;
-    padding: 8px 12px;
 }
 
 .dashboard-card-header.user-overview-header {
     gap: 8px;
-    padding: 8px 12px;
 }
 
 .user-overview-live-badges {

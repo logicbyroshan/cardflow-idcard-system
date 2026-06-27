@@ -18,22 +18,22 @@
     gap: 8px;
     padding: 8px 12px;
     background: var(--color-white);
-    border: 1px solid var(--color-gray-300);
+    border: none;
+    border-bottom: 1px solid var(--color-gray-200);
     border-radius: 0;
     cursor: pointer;
     transition: all 0.2s;
     text-decoration: none;
     color: inherit;
-    margin-top: -1px;
+    margin-top: 0;
 }
 
-.quick-action-btn:first-child {
-    margin-top: 0;
+.quick-action-btn:last-child {
+    border-bottom: none;
 }
 
 .quick-action-btn:hover {
     background: var(--color-gray-50);
-    border-color: var(--color-slate-400);
     transform: none;
 }
 

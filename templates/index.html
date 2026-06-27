@@ -8,11 +8,11 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>Dashboard - Adarsh ID Cards</title>
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
+  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   <!-- Page-specific: dashboard cards, stats, activity -->
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v={{ APP_VERSION|default:'1.0.66' }}">
   <!-- Shared Alpine runtime loader -->
   {% include 'partials/common/alpine-loader.html' %}
 </head>
