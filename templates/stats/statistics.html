@@ -48,10 +48,10 @@
   }
 
   .stats-charts-area {
-    padding: 24px;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 0;
   }
 
   /* Stat Summary Cards - Dashboard Style */
@@ -202,13 +202,19 @@
     gap: 16px;
   }
 
-  .stats-charts-area > .chart-card:first-child {
-    border-top: none;
+  .stats-charts-area > .chart-card:last-child,
+  .stats-charts-area > .charts-split-grid:last-child .chart-card {
+    border-bottom: none;
   }
 
   .charts-split-grid .chart-card {
-    border: 1px solid var(--color-gray-200);
+    border-bottom: none;
+    border-left: 1px solid var(--color-gray-200);
     border-radius: 0;
+  }
+
+  .charts-split-grid .chart-card:first-child {
+    border-left: none;
   }
 
   .chart-header {
@@ -275,7 +281,8 @@
   .charts-split-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    gap: 0;
+    border-top: 1px solid var(--color-gray-200);
   }
 
   @media (max-width: 1024px) {
