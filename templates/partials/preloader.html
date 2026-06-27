@@ -124,13 +124,14 @@
       }
     } catch(e) {}
 
-    var isReload    = (navType === 'reload');
-    var isBackForward = (navType === 'back_forward');
+    var isReload = (navType === 'reload');
     var preloaderShown = sessionStorage.getItem('preloader_shown');
 
     // Decide: should we skip the preloader?
-    // Skip only if same session AND not a reload AND not back/forward
-    var skip = preloaderShown && !isReload && !isBackForward;
+    // Show ONLY on: (1) very first visit — no session key at all
+    //               (2) explicit page reload (F5 / Ctrl+F5)
+    // Skip on: in-session navigation, back/forward, badge clicks, etc.
+    var skip = preloaderShown && !isReload;
 
     if (skip) {
       // Hide before first paint so there is zero flash
