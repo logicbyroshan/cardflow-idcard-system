@@ -157,6 +157,7 @@ INSTALLED_APPS = [
     # 'officework',  # Removed - app not found
     'mobile_api',
     'desktop_app',
+    'stats',
 ]
 
 # Debug toolbar is optional; only enable if DEBUG is on and package is installed.
