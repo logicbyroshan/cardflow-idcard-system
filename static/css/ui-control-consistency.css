@@ -523,7 +523,7 @@ body {
 
 /* Pagination bar alignment and padding-bottom crop prevention */
 .pagination-bar {
-    padding: 12px 16px 16px 16px !important;
+    padding: 8px 16px !important;
     background: #ffffff !important;
     border-top: 1px solid #e2e8f0 !important;
     margin-top: 0 !important;
