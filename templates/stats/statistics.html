@@ -610,14 +610,14 @@
   function renderMainActivityChart(labels, clients, assistants) {
     var ctx = document.getElementById('mainActivityChart').getContext('2d');
     
-    // Create soft gradients
-    var gradClient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradClient.addColorStop(0, 'rgba(79, 70, 229, 0.28)');
-    gradClient.addColorStop(1, 'rgba(79, 70, 229, 0)');
+    // Create solid gradients for stronger area fill
+    var gradClient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradClient.addColorStop(0, 'rgba(79, 70, 229, 0.45)');
+    gradClient.addColorStop(1, 'rgba(79, 70, 229, 0.05)');
 
-    var gradAssistant = ctx.createLinearGradient(0, 0, 0, 300);
-    gradAssistant.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
-    gradAssistant.addColorStop(1, 'rgba(16, 185, 129, 0)');
+    var gradAssistant = ctx.createLinearGradient(0, 0, 0, 400);
+    gradAssistant.addColorStop(0, 'rgba(16, 185, 129, 0.45)');
+    gradAssistant.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
 
     if (mainChart) {
       mainChart.destroy();
@@ -633,22 +633,26 @@
             data: clients,
             borderColor: '#4f46e5',
             backgroundColor: gradClient,
-            borderWidth: 3,
+            borderWidth: 2,
             fill: true,
-            tension: 0.35,
+            tension: 0,
+            pointStyle: 'rectRounded',
+            pointRadius: 5,
             pointBackgroundColor: '#4f46e5',
-            pointHoverRadius: 6
+            pointHoverRadius: 7
           },
           {
             label: 'Active Workflow Assistants',
             data: assistants,
             borderColor: '#10b981',
             backgroundColor: gradAssistant,
-            borderWidth: 3,
+            borderWidth: 2,
             fill: true,
-            tension: 0.35,
+            tension: 0,
+            pointStyle: 'rectRounded',
+            pointRadius: 5,
             pointBackgroundColor: '#10b981',
-            pointHoverRadius: 6
+            pointHoverRadius: 7
           }
         ]
       },
