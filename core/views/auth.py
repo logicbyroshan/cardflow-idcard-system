@@ -76,12 +76,12 @@ def api_check_maintenance(request):
             return JsonResponse({'active': client.status == 'active'})
         except Client.DoesNotExist:
             return JsonResponse({'active': False})
-    elif user.role == 'client_staff':
-        from staff.models import Staff
+    elif user.role == 'assistant':
+        from assistants.models import Assistant
         try:
-            staff = Staff.objects.select_related('client').get(user=user)
-            return JsonResponse({'active': staff.client and staff.client.status == 'active'})
-        except Staff.DoesNotExist:
+            assistant = Assistant.objects.select_related('client').get(user=user)
+            return JsonResponse({'active': assistant.client and assistant.client.status == 'active'})
+        except Assistant.DoesNotExist:
             return JsonResponse({'active': False})
     
     return JsonResponse({'active': True})

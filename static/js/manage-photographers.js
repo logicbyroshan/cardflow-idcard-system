@@ -78,6 +78,56 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ==================== CLIENT ROW INTERACTION ====================
+    // Cache so each client's tables are only fetched once per drawer session
+    var _clientTableCache = {};
+
+    function _fetchClientTables(clientId, callback) {
+        if (_clientTableCache[clientId] !== undefined) {
+            callback(_clientTableCache[clientId]);
+            return;
+        }
+        ApiClient.get('/panel/api/photographer/client/' + clientId + '/tables/')
+            .then(function(res) {
+                _clientTableCache[clientId] = res.success ? res.groups : [];
+                callback(_clientTableCache[clientId]);
+            })
+            .catch(function() {
+                _clientTableCache[clientId] = [];
+                callback([]);
+            });
+    }
+
+    function _renderTableSelector(clientRow, groups, savedTableIds) {
+        var listEl = clientRow.querySelector('.photographer-table-list');
+        listEl.innerHTML = '';
+
+        if (!groups || groups.length === 0) {
+            listEl.innerHTML = '<div style="font-size:12px;color:var(--color-slate-400);font-style:italic;">No groups/tables found for this client.</div>';
+            return;
+        }
+
+        // savedTableIds: null/empty = all selected; otherwise only those ids
+        var allSelected = !savedTableIds || savedTableIds.length === 0;
+
+        groups.forEach(function(group) {
+            if (!group.tables || group.tables.length === 0) return;
+
+            // Group label
+            var groupLabel = document.createElement('div');
+            groupLabel.style.cssText = 'font-size:11px;font-weight:700;color:var(--color-slate-500);text-transform:uppercase;letter-spacing:.05em;margin:6px 0 3px;';
+            groupLabel.textContent = group.group_name;
+            listEl.appendChild(groupLabel);
+
+            group.tables.forEach(function(table) {
+                var isChecked = allSelected || savedTableIds.indexOf(table.id) !== -1;
+                var row = document.createElement('label');
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;color:var(--color-slate-700);background:#fff;border:1px solid var(--color-slate-100);transition:background .15s;';
+                row.innerHTML = '<input type="checkbox" class="photographer-table-cb" data-table-id="' + table.id + '" ' + (isChecked ? 'checked' : '') + ' style="width:14px;height:14px;cursor:pointer;flex-shrink:0;"> <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + table.name + '</span>';
+                listEl.appendChild(row);
+            });
+        });
+    }
+
     function setupClientRowInteractions() {
         var container = document.querySelector('.photographer-client-assignment-container');
         if (!container) return;
@@ -85,19 +135,46 @@ document.addEventListener('DOMContentLoaded', function() {
         container.addEventListener('change', function(e) {
             if (e.target.classList.contains('photographer-client-cb')) {
                 var row = e.target.closest('.photographer-client-row');
+                var header = row.querySelector('.phcr-header');
                 var optContainer = row.querySelector('.expiry-options-container');
                 var expiryInput = row.querySelector('.photographer-client-expiry');
-                
+                var tableSelector = row.querySelector('.photographer-table-selector');
+                var clientId = parseInt(row.dataset.clientId);
+
                 if (e.target.checked) {
                     row.classList.add('selected');
+                    if (header) { header.style.borderColor = 'var(--color-indigo-300)'; header.style.background = '#eef2ff'; }
                     if (optContainer) optContainer.style.display = 'flex';
                     if (expiryInput) { expiryInput.disabled = false; expiryInput.focus(); }
+                    // Show table selector and load tables
+                    if (tableSelector) {
+                        tableSelector.style.display = '';
+                        _fetchClientTables(clientId, function(groups) {
+                            _renderTableSelector(row, groups, null); // null = all selected by default
+                        });
+                    }
                 } else {
                     row.classList.remove('selected');
+                    if (header) { header.style.borderColor = ''; header.style.background = ''; }
                     if (optContainer) optContainer.style.display = 'none';
                     if (expiryInput) { expiryInput.disabled = true; expiryInput.value = ''; }
+                    if (tableSelector) tableSelector.style.display = 'none';
                 }
                 renderAssignedClientChips();
+            }
+        });
+
+        // Select All / None table buttons (delegated)
+        container.addEventListener('click', function(e) {
+            var allBtn = e.target.closest('.table-select-all-btn');
+            var noneBtn = e.target.closest('.table-deselect-all-btn');
+            if (allBtn) {
+                var row = allBtn.closest('.photographer-client-row');
+                row.querySelectorAll('.photographer-table-cb').forEach(function(cb) { cb.checked = true; });
+            }
+            if (noneBtn) {
+                var row = noneBtn.closest('.photographer-client-row');
+                row.querySelectorAll('.photographer-table-cb').forEach(function(cb) { cb.checked = false; });
             }
         });
     }
@@ -182,15 +259,24 @@ document.addEventListener('DOMContentLoaded', function() {
         setStatusDropdownValue('false');
         setPasswordOptionValue('custom');
 
-        // Clear client assignments
+        // Clear client assignments and table cache
+        _clientTableCache = {};
         document.querySelectorAll('.photographer-client-cb').forEach(function(cb) {
             cb.checked = false;
             var row = cb.closest('.photographer-client-row');
             row.classList.remove('selected');
+            var header = row.querySelector('.phcr-header');
+            if (header) { header.style.borderColor = ''; header.style.background = ''; }
             var optContainer = row.querySelector('.expiry-options-container');
             if (optContainer) optContainer.style.display = 'none';
             var expiry = row.querySelector('.photographer-client-expiry');
             if (expiry) { expiry.disabled = true; expiry.value = ''; }
+            var tableSelector = row.querySelector('.photographer-table-selector');
+            if (tableSelector) {
+                tableSelector.style.display = 'none';
+                var listEl = tableSelector.querySelector('.photographer-table-list');
+                if (listEl) listEl.innerHTML = '<div class="table-loading-state" style="font-size:12px;color:var(--color-slate-400);padding:6px 0;font-style:italic;"><i class="fa-solid fa-spinner fa-spin" style="margin-right:4px;"></i> Loading tables...</div>';
+            }
         });
 
         // Reset search field
@@ -198,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (searchInput) {
             searchInput.value = '';
             document.querySelectorAll('.photographer-client-row').forEach(function(row) {
-                row.style.display = 'flex';
+                row.style.display = '';
             });
         }
 
@@ -273,39 +359,31 @@ document.addEventListener('DOMContentLoaded', function() {
                             cb.checked = true;
                             var row = cb.closest('.photographer-client-row');
                             row.classList.add('selected');
-                            
+                            var header = row.querySelector('.phcr-header');
+                            if (header) { header.style.borderColor = 'var(--color-indigo-300)'; header.style.background = '#eef2ff'; }
+
                             var optContainer = row.querySelector('.expiry-options-container');
                             if (optContainer) optContainer.style.display = 'flex';
-                            
+
+                            // Open table selector and load with saved state
+                            var tableSelector = row.querySelector('.photographer-table-selector');
+                            if (tableSelector) {
+                                tableSelector.style.display = '';
+                                var savedTableIds = ass.allowed_table_ids || [];
+                                _fetchClientTables(ass.client_id, function(groups) {
+                                    _renderTableSelector(row, groups, savedTableIds);
+                                });
+                            }
+
                             if (ass.expires_at) {
                                 var expiresAt = new Date(ass.expires_at);
                                 var hoursRemaining = Math.max(0, Math.ceil((expiresAt - new Date()) / 3600000));
-                                
-                                // Pick closest preset if within tolerance, else custom
-                                var optionInput = row.querySelector('.photographer-client-option');
                                 var expiryInput = row.querySelector('.photographer-client-expiry');
-                                var selectedPreset = 'custom';
-                                
-                                row.querySelectorAll('.expiry-preset-btn').forEach(function(btn) {
-                                    if (btn.dataset.value === selectedPreset) {
-                                        btn.classList.add('selected');
-                                        btn.style.background = 'var(--color-indigo-600)';
-                                        btn.style.color = '#fff';
-                                    } else {
-                                        btn.classList.remove('selected');
-                                        btn.style.background = 'transparent';
-                                        btn.style.color = 'var(--color-slate-600)';
-                                    }
-                                });
-                                
-                                if (optionInput) optionInput.value = 'custom';
                                 if (expiryInput) {
                                     expiryInput.disabled = false;
-                                    expiryInput.style.display = '';
                                     expiryInput.value = hoursRemaining > 0 ? String(hoursRemaining) : '';
                                 }
                             } else {
-                                // No existing expiry — leave hours blank
                                 var expiryInput = row.querySelector('.photographer-client-expiry');
                                 if (expiryInput) { expiryInput.disabled = false; expiryInput.value = ''; }
                             }
@@ -380,7 +458,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (res.success) return res.staff;
             showToast(res.message || 'Failed to fetch details', 'error');
         } catch (err) {
-            showToast('Network error', 'error');
+            var msg = (err && err.data && err.data.message) || (err && err.message) || 'Network error';
+            showToast(msg, 'error');
         }
         return null;
     }
@@ -397,7 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             var isCreate = (NS.currentMode === 'add');
 
-            // Gather client assignments
+            // Gather client assignments including selected table IDs
             var assignedClients = [];
             document.querySelectorAll('.photographer-client-cb:checked').forEach(function(cb) {
                 var row = cb.closest('.photographer-client-row');
@@ -408,9 +487,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     d.setTime(d.getTime() + hoursVal * 3600 * 1000);
                     expiresAt = d.toISOString();
                 }
+                // Collect selected table IDs (empty = all tables)
+                var checkedTableCbs = row.querySelectorAll('.photographer-table-cb:checked');
+                var allTableCbs = row.querySelectorAll('.photographer-table-cb');
+                var allowedTableIds = [];
+                if (checkedTableCbs.length > 0 && checkedTableCbs.length < allTableCbs.length) {
+                    // Only store IDs if it's a partial selection (not all)
+                    checkedTableCbs.forEach(function(tcb) {
+                        allowedTableIds.push(parseInt(tcb.dataset.tableId));
+                    });
+                }
+                // If all selected or none loaded yet → allowedTableIds stays [] = unrestricted
                 assignedClients.push({
                     client_id: parseInt(cb.value),
-                    expires_at: expiresAt
+                    expires_at: expiresAt,
+                    allowed_table_ids: allowedTableIds,
                 });
             });
 
@@ -462,7 +553,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast(res.message || 'Failed to save', 'error');
                 }
             } catch (err) {
-                showToast('Network error', 'error');
+                var msg = (err && err.data && err.data.message) || (err && err.message) || 'Network error';
+                showToast(msg, 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
@@ -579,7 +671,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast(res.message || 'Delete failed', 'error');
                 }
             } catch (err) {
-                showToast('Network error', 'error');
+                var msg = (err && err.data && err.data.message) || (err && err.message) || 'Network error';
+                showToast(msg, 'error');
             } finally {
                 confirmDeleteBtn.disabled = false;
             }
@@ -604,7 +697,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast(res.message || 'Status update failed', 'error');
                 }
             } catch (err) {
-                showToast('Network error', 'error');
+                var msg = (err && err.data && err.data.message) || (err && err.message) || 'Network error';
+                showToast(msg, 'error');
             } finally {
                 confirmStatusBtn.disabled = false;
             }
@@ -739,12 +833,8 @@ document.addEventListener('DOMContentLoaded', function() {
         clientSearchInput.addEventListener('input', function() {
             var val = this.value.toLowerCase().trim();
             document.querySelectorAll('.photographer-client-row').forEach(function(row) {
-                var name = row.dataset.clientName.toLowerCase();
-                if (name.indexOf(val) > -1) {
-                    row.style.display = 'flex';
-                } else {
-                    row.style.display = 'none';
-                }
+                var name = (row.dataset.clientName || '').toLowerCase();
+                row.style.display = (name.indexOf(val) > -1) ? '' : 'none';
             });
         });
     }

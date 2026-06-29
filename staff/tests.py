@@ -432,7 +432,7 @@ class StaffActivationPasswordFlowTests(TestCase):
                 on_success()
             return True, 'Welcome email queued for delivery.'
 
-        with mock.patch('staff.services_staff_core.send_welcome_email', side_effect=_fake_send_welcome_email) as send_welcome_mock:
+        with mock.patch('operators.services.send_welcome_email', side_effect=_fake_send_welcome_email) as send_welcome_mock:
             toggle_result = StaffService.toggle_status(staff_id)
 
         self.assertTrue(toggle_result.success, msg=toggle_result.message)
@@ -458,7 +458,7 @@ class StaffActivationPasswordFlowTests(TestCase):
                 on_success()
             return True, 'Welcome email queued for delivery.'
 
-        with mock.patch('staff.services_staff_core.send_welcome_email', side_effect=_fake_send_welcome_email) as send_welcome_mock:
+        with mock.patch('operators.services.send_welcome_email', side_effect=_fake_send_welcome_email) as send_welcome_mock:
             result = StaffService.create(
                 {
                     'name': 'Active Staff Email',
@@ -488,7 +488,7 @@ class StaffActivationPasswordFlowTests(TestCase):
         from core.services import StaffService
         from core.models import EmailLog
 
-        with mock.patch('staff.services_staff_core.send_welcome_email') as send_welcome_mock:
+        with mock.patch('operators.services.send_welcome_email') as send_welcome_mock:
             result = StaffService.create(
                 {
                     'name': 'Inactive Staff Email',
@@ -745,4 +745,90 @@ class ClientStaffAccessControlTests(TestCase):
         accessible_tables = ClientAccessService.get_accessible_table_ids(staff_user)
         self.assertEqual(accessible_tables, [table.id])
         self.assertTrue(ClientAccessService.can_access_table(staff_user, table))
+
+
+class AdminStaffClientStaffSeparationTests(TestCase):
+    """Verify that client staff profiles cannot be accessed or mutated via admin staff services or APIs."""
+
+    def setUp(self):
+        from client.models import Client
+        from staff.models import Staff
+
+        self.super_admin = User.objects.create_user(
+            username='super_sep@test.com', email='super_sep@test.com',
+            password='pass1234', role='super_admin',
+        )
+        self.client_user = User.objects.create_user(
+            username='client_sep@test.com', email='client_sep@test.com',
+            password='pass1234', role='client',
+        )
+        self.client_obj = Client.objects.create(user=self.client_user, name='Sep Client')
+
+        self.client_staff_user = User.objects.create_user(
+            username='cstaff_sep@test.com', email='cstaff_sep@test.com',
+            password='pass1234', role='client_staff',
+        )
+        self.client_staff = Staff.objects.create(
+            user=self.client_staff_user, staff_type='client_staff', client=self.client_obj
+        )
+
+        self.admin_staff_user = User.objects.create_user(
+            username='astaff_sep@test.com', email='astaff_sep@test.com',
+            password='pass1234', role='admin_staff',
+        )
+        self.admin_staff = Staff.objects.create(
+            user=self.admin_staff_user, staff_type='admin_staff'
+        )
+
+    def test_staff_service_get_rejects_client_staff(self):
+        from core.services import StaffService
+        result = StaffService.get(self.client_staff.id)
+        self.assertFalse(result.success)
+
+    def test_staff_service_update_rejects_client_staff(self):
+        from core.services import StaffService
+        result = StaffService.update(self.client_staff.id, {'name': 'Updated Client Staff'})
+        self.assertFalse(result.success)
+
+    def test_staff_service_delete_rejects_client_staff(self):
+        from core.services import StaffService
+        result = StaffService.delete(self.client_staff.id)
+        self.assertFalse(result.success)
+
+    def test_staff_service_toggle_status_rejects_client_staff(self):
+        from core.services import StaffService
+        result = StaffService.toggle_status(self.client_staff.id)
+        self.assertFalse(result.success)
+
+    def test_api_endpoints_return_404_for_client_staff(self):
+        self.client.force_login(self.super_admin)
+
+        # GET detail
+        response = self.client.get(f'/panel/staff/api/admin-staff/{self.client_staff.id}/')
+        self.assertEqual(response.status_code, 404)
+
+        # PUT/POST update
+        response = self.client.put(
+            f'/panel/staff/api/admin-staff/{self.client_staff.id}/',
+            data=json.dumps({'first_name': 'Updated'}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 404)
+
+        # DELETE
+        response = self.client.delete(f'/panel/staff/api/admin-staff/{self.client_staff.id}/')
+        self.assertEqual(response.status_code, 404)
+
+        # Toggle status
+        response = self.client.post(f'/panel/staff/api/admin-staff/{self.client_staff.id}/toggle-status/')
+        self.assertEqual(response.status_code, 404)
+
+        # Set temp password
+        response = self.client.post(
+            f'/panel/staff/api/admin-staff/{self.client_staff.id}/set-temp-password/',
+            data=json.dumps({'password': 'NewPassword123'}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 404)
+
 

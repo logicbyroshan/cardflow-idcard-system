@@ -86,6 +86,7 @@ urlpatterns = [
     # Backward-compatible deep-history list URL (redirects to User Options)
     path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
     path('pro-user/guest-users/', views.pro_user_guest_users_page, name='pro_user_guest_users'),
+    path('pro-user/batch-jobs/', views.pro_user_batch_jobs_page, name='pro_user_batch_jobs'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
     
     # Manage Panel
@@ -170,6 +171,7 @@ urlpatterns = [
     path('api/photographer/<int:staff_id>/delete/', views.api_photographer_delete, name='api_photographer_delete'),
     path('api/photographer/<int:staff_id>/toggle-status/', views.api_photographer_toggle_status, name='api_photographer_toggle_status'),
     path('api/photographer/<int:staff_id>/assign-clients/', views.api_photographer_assign_clients, name='api_photographer_assign_clients'),
+    path('api/photographer/client/<int:client_id>/tables/', views.api_photographer_client_tables, name='api_photographer_client_tables'),
     
     # ID Card Table APIs
     path('api/group/<int:group_id>/tables/', views.api_idcard_table_list, name='api_idcard_table_list'),

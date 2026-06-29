@@ -12,9 +12,8 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.db import OperationalError, ProgrammingError
 from client.models import Client
-from client.services_staff import ClientStaffService
-from staff.models import Staff
-from ..services import ClientService, StaffService
+from assistants.services import AssistantService
+from ..services import ClientService
 from ..services.activity_service import ActivityService
 from ..services.cache_version_service import CacheVersionService
 from ..services.notification_service import NotificationService
@@ -30,7 +29,7 @@ from mediafiles.utils import normalize_uploaded_image
 logger = logging.getLogger(__name__)
 
 
-CLIENT_STAFF_ALLOWED_PERMISSION_FIELDS = list(ClientStaffService.STAFF_PERMISSION_FIELDS)
+CLIENT_STAFF_ALLOWED_PERMISSION_FIELDS = list(AssistantService.ASSISTANT_PERMISSION_FIELDS)
 
 
 TEMP_MESSAGE_DURATIONS = {
@@ -166,8 +165,7 @@ def _resolve_client_message_recipients(client_obj, scope):
     if scope == 'client_and_staff':
         staff_users = list(
             User.objects.filter(
-                staff_profile__staff_type='client_staff',
-                staff_profile__client_id=client_obj.id,
+                assistant_profile__client_id=client_obj.id,
                 is_active=True,
             ).only('id')
         )
@@ -205,13 +203,13 @@ def api_client_create(request):
         data = json.loads(request.body)
         result = ClientService.create(data, request=request)
 
-        if result.success and PermissionService.is_admin_staff(request.user):
+        if result.success and PermissionService.is_operator(request.user):
             try:
                 created_client_id = ((result.data or {}).get('client') or {}).get('id')
                 if created_client_id:
                     from client.models import Client
                     created_client = Client.objects.filter(id=created_client_id).first()
-                    staff = getattr(request.user, 'staff_profile', None)
+                    staff = getattr(request.user, 'operator_profile', None)
                     if created_client and staff:
                         staff.assigned_clients.add(created_client)
             except Exception:
@@ -277,7 +275,7 @@ def api_client_delete(request, client_id):
     if not _has_manage_client_page_permission(request.user):
         return _manage_client_permission_denied_response()
     
-    if PermissionService.is_admin_staff(request.user):
+    if PermissionService.is_operator(request.user):
         return JsonResponse({'success': False, 'message': 'Only super admin can delete clients'}, status=403)
         
     if not _check_admin_staff_client_access(request.user, client_id):

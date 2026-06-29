@@ -7,11 +7,10 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils.timezone import localtime
 
-from core.models import User
-from staff.models import Staff
+from core.models import User, Photographer, PhotographerAssignment
 from client.models import Client
 from ..services.permission_service import require_super_admin, api_require_super_admin
-from staff.services_staff_core import StaffService, PhotographerService
+from core.services.photographer_service import PhotographerService
 from core.views.base_helpers import get_user_role, get_page_range
 from accounts.rate_limit import rate_limit
 
@@ -50,7 +49,7 @@ def manage_photographers(request):
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
 
-    staff_qs = Staff.objects.filter(staff_type='photographer').select_related('user').prefetch_related('photographer_assignments__client').order_by('-id')
+    staff_qs = Photographer.objects.select_related('user').prefetch_related('photographer_assignments__client').order_by('-id')
 
     if search_query:
         staff_qs = staff_qs.filter(
@@ -143,7 +142,7 @@ def api_photographer_update(request, staff_id):
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='photographer_delete')
 def api_photographer_delete(request, staff_id):
     """API endpoint to delete a photographer"""
-    result = StaffService.delete(staff_id)
+    result = PhotographerService.delete(staff_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
@@ -151,7 +150,7 @@ def api_photographer_delete(request, staff_id):
 @api_require_super_admin
 def api_photographer_toggle_status(request, staff_id):
     """API endpoint to toggle photographer active/inactive status"""
-    result = StaffService.toggle_status(staff_id)
+    result = PhotographerService.toggle_status(staff_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
@@ -165,12 +164,12 @@ def api_photographer_assign_clients(request, staff_id):
             return json_err
 
         from django.utils.dateparse import parse_datetime
-        from staff.models import PhotographerAssignment
+        from core.models import PhotographerAssignment
         from django.db import transaction
 
         try:
-            staff = Staff.objects.get(id=staff_id, staff_type='photographer')
-        except Staff.DoesNotExist:
+            staff = Photographer.objects.get(id=staff_id)
+        except Photographer.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Photographer not found'}, status=404)
 
         assigned_clients = data.get('assigned_clients', [])
@@ -194,12 +193,17 @@ def api_photographer_assign_clients(request, staff_id):
                     if client_id in existing:
                         assignment = existing[client_id]
                         assignment.expires_at = expires_at
+                        raw_table_ids = item.get('allowed_table_ids', [])
+                        assignment.allowed_table_ids = [int(t) for t in raw_table_ids if str(t).isdigit()] if raw_table_ids else []
                         assignment.save()
                     else:
+                        raw_table_ids = item.get('allowed_table_ids', [])
+                        allowed_table_ids = [int(t) for t in raw_table_ids if str(t).isdigit()] if raw_table_ids else []
                         PhotographerAssignment.objects.create(
                             photographer=staff,
                             client_id=client_id,
-                            expires_at=expires_at
+                            expires_at=expires_at,
+                            allowed_table_ids=allowed_table_ids,
                         )
                     keep_client_ids.add(client_id)
                 except (ValueError, TypeError):
@@ -210,4 +214,27 @@ def api_photographer_assign_clients(request, staff_id):
         return JsonResponse({'success': True, 'message': 'Client assignments saved successfully'})
     except Exception as e:
         logger.exception("Photographer assign clients error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
+
+
+@require_http_methods(["GET"])
+@api_require_super_admin
+def api_photographer_client_tables(request, client_id):
+    """Return all groups and their tables for a client — used by assignment drawer."""
+    try:
+        from idcards.models import IDCardGroup, IDCardTable
+        groups = IDCardGroup.objects.filter(client_id=client_id, is_active=True).order_by('name')
+        result = []
+        for group in groups:
+            tables = IDCardTable.objects.filter(
+                group=group, deleted_by_client=False
+            ).order_by('name').values('id', 'name', 'is_active')
+            result.append({
+                'group_id': group.id,
+                'group_name': group.name,
+                'tables': [{'id': t['id'], 'name': t['name'], 'is_active': t['is_active']} for t in tables],
+            })
+        return JsonResponse({'success': True, 'groups': result})
+    except Exception as e:
+        logger.exception("Photographer client tables error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)

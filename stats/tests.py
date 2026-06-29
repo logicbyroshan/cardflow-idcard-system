@@ -97,3 +97,26 @@ class StatisticsTests(TestCase):
             self.assertIn('peak_active_users', data['summary'])
             
         self.client.logout()
+
+    def test_batch_jobs_page_redirects_for_anonymous_user(self):
+        response = self.client.get(reverse('pro_user_batch_jobs'))
+        self.assertRedirects(response, f'/login/?next={reverse("pro_user_batch_jobs")}')
+
+    def test_batch_jobs_page_redirects_for_non_pro_user(self):
+        self.assertTrue(self.client.login(username='stats-client@test.com', password='testpass123'))
+        response = self.client.get(reverse('pro_user_batch_jobs'))
+        self.assertRedirects(response, reverse('dashboard'), fetch_redirect_response=False)
+        self.client.logout()
+
+    def test_batch_jobs_page_accessible_for_super_admin(self):
+        self.assertTrue(self.client.login(username='stats-admin@test.com', password='testpass123'))
+        response = self.client.get(reverse('pro_user_batch_jobs'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'pro_user/batch-jobs.html')
+        self.client.logout()
+
+    def test_batch_jobs_page_accessible_for_pro_user(self):
+        self.assertTrue(self.client.login(username='stats-pro@test.com', password='testpass123'))
+        response = self.client.get(reverse('pro_user_batch_jobs'))
+        self.assertEqual(response.status_code, 200)
+        self.client.logout()

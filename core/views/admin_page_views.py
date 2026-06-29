@@ -16,6 +16,7 @@ from django.utils import timezone
 from django.utils.timesince import timesince as django_timesince
 
 from client.models import Client
+from operators.models import Operator
 from staff.models import Staff
 from accounts.services import AuthService
 from idcards.models import IDCardGroup, IDCard, IDCardTable
@@ -262,7 +263,7 @@ def manage_staff(request):
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
     
-    staff_qs = Staff.objects.filter(staff_type='admin_staff').select_related('user').order_by('-id')
+    staff_qs = Operator.objects.select_related('user').order_by('-id')
     
     # Server-side search
     if search_query:

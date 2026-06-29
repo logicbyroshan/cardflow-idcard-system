@@ -30,32 +30,32 @@ User = get_user_model()
 ROLE_MAPPING = {
     'pro_user': 'pro_user',
     'super_admin': 'super_admin',
-    'admin_staff': 'admin_staff',
+    'operator': 'operator',
     'client': 'client',
     'guest_user': 'guest_user',
-    'client_staff': 'client_staff',
+    'assistant': 'assistant',
 }
 
 # Group names for Django Groups
 GROUP_NAMES = {
     'pro_user': 'PRO_USER',
     'super_admin': 'SUPER_ADMIN',
-    'admin_staff': 'ADMIN_STAFF',
+    'operator': 'OPERATOR',
     'client': 'CLIENT',
     'guest_user': 'GUEST_USER',
-    'client_staff': 'CLIENT_STAFF',
+    'assistant': 'ASSISTANT',
 }
 
 # Dashboard redirect URLs based on role
-# pro_user, super_admin & admin_staff → main dashboard at /panel/
-# client & client_staff → client dashboard at /panel/client/dashboard/
+# pro_user, super_admin & operator → main dashboard at /panel/
+# client & assistant → client dashboard at /panel/client/dashboard/
 DASHBOARD_URLS = {
     'pro_user': '/panel/',
     'super_admin': '/panel/',
-    'admin_staff': '/panel/',
+    'operator': '/panel/',
     'client': '/panel/client/dashboard/',
     'guest_user': '/panel/client/dashboard/',
-    'client_staff': '/panel/client/dashboard/',
+    'assistant': '/panel/client/dashboard/',
 }
 
 # OTP settings
@@ -76,11 +76,11 @@ DEV_LOG_OTP = os.getenv('DEV_LOG_OTP', 'false').strip().lower() in ('1', 'true',
 _ROLE_SURFACE_LIMITS = {
     # One desktop + one mobile for standard staff/client roles.
     'client': {'desktop': 1, 'mobile': 1},
-    'client_staff': {'desktop': 1, 'mobile': 1},
+    'assistant': {'desktop': 1, 'mobile': 1},
     # Guest users can use the same account on up to 20 devices per surface.
     'guest_user': {'desktop': 20, 'mobile': 20},
     # PRO and ADMIN have effectively no limit (9999).
-    'admin_staff': {'desktop': 9999, 'mobile': 9999},
+    'operator': {'desktop': 9999, 'mobile': 9999},
     'super_admin': {'desktop': 9999, 'mobile': 9999},
     'pro_user': {'desktop': 9999, 'mobile': 9999},
 }

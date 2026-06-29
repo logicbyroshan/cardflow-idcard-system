@@ -36,7 +36,172 @@ from django.db.models.functions import Cast, Coalesce
 from django.db.models.fields.json import KeyTextTransform
 from django.core.cache import cache
 from urllib.parse import urlencode
-from staff.models import Staff
+from operators.models import Operator
+from assistants.models import Assistant
+from core.models import Photographer
+
+class StaffCompatWrapper:
+    def __init__(self, delegate, staff_type):
+        self.delegate = delegate
+        self.staff_type = staff_type
+
+    @property
+    def id(self):
+        return self.delegate.id
+
+    @property
+    def pk(self):
+        return self.delegate.id
+
+    @property
+    def user(self):
+        return self.delegate.user
+
+    @property
+    def user_id(self):
+        return self.delegate.user_id
+
+    @property
+    def client(self):
+        if hasattr(self.delegate, 'client'):
+            return self.delegate.client
+        return None
+
+    @property
+    def client_id(self):
+        if hasattr(self.delegate, 'client_id'):
+            return self.delegate.client_id
+        return None
+
+    @property
+    def created_at(self):
+        return self.delegate.created_at
+
+    @property
+    def department(self):
+        return getattr(self.delegate, 'department', '')
+
+    @property
+    def designation(self):
+        return getattr(self.delegate, 'designation', '')
+
+    def get_staff_type_display(self):
+        if self.staff_type == 'admin_staff':
+            return 'Admin Staff'
+        elif self.staff_type == 'client_staff':
+            return 'Client Staff'
+        else:
+            return 'Photographer'
+
+    @property
+    def assigned_clients(self):
+        if hasattr(self.delegate, 'assigned_clients'):
+            return self.delegate.assigned_clients
+        if self.staff_type == 'photographer':
+            class AssignedClientsWrapper:
+                def __init__(self, photographer):
+                    self.photographer = photographer
+                def all(self):
+                    from client.models import Client
+                    client_ids = self.photographer.photographer_assignments.values_list('client_id', flat=True)
+                    return Client.objects.filter(id__in=client_ids)
+                def values_list(self, *args, **kwargs):
+                    from client.models import Client
+                    client_ids = self.photographer.photographer_assignments.values_list('client_id', flat=True)
+                    return Client.objects.filter(id__in=client_ids).values_list(*args, **kwargs)
+            return AssignedClientsWrapper(self.delegate)
+        from client.models import Client
+        return Client.objects.none()
+
+    def __getattr__(self, name):
+        return getattr(self.delegate, name)
+
+    def save(self, *args, **kwargs):
+        return self.delegate.save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        user = self.delegate.user
+        self.delegate.delete(*args, **kwargs)
+        if user:
+            user.delete()
+
+
+class StaffCompatQuerySet:
+    def __init__(self, items):
+        self.items = items
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __len__(self):
+        return len(self.items)
+
+    def count(self):
+        return len(self.items)
+
+    def filter(self, *args, **kwargs):
+        filtered = self.items
+        for key, val in kwargs.items():
+            if key == 'staff_type':
+                filtered = [item for item in filtered if item.staff_type == val]
+            elif key == 'id':
+                filtered = [item for item in filtered if item.id == val]
+            elif key == 'id__in':
+                filtered = [item for item in filtered if item.id in val]
+            else:
+                filtered = [item for item in filtered if getattr(item, key, None) == val]
+        return StaffCompatQuerySet(filtered)
+
+    def exclude(self, *args, **kwargs):
+        excluded = self.items
+        for key, val in kwargs.items():
+            excluded = [item for item in excluded if getattr(item, key, None) != val]
+        return StaffCompatQuerySet(excluded)
+
+    def select_related(self, *args, **kwargs):
+        return self
+
+    def prefetch_related(self, *args, **kwargs):
+        return self
+
+    def order_by(self, *args, **kwargs):
+        return self
+
+    def distinct(self):
+        return self
+
+    def __getitem__(self, k):
+        if isinstance(k, slice):
+            return StaffCompatQuerySet(self.items[k])
+        return self.items[k]
+
+
+class StaffCompatManager:
+    def all(self):
+        items = []
+        for o in Operator.objects.all():
+            items.append(StaffCompatWrapper(o, 'admin_staff'))
+        for a in Assistant.objects.all():
+            items.append(StaffCompatWrapper(a, 'client_staff'))
+        for p in Photographer.objects.all():
+            items.append(StaffCompatWrapper(p, 'photographer'))
+        return StaffCompatQuerySet(items)
+
+    def filter(self, *args, **kwargs):
+        return self.all().filter(*args, **kwargs)
+
+    def get(self, *args, **kwargs):
+        res = self.filter(*args, **kwargs)
+        if len(res) == 0:
+            from django.core.exceptions import ObjectDoesNotExist
+            raise ObjectDoesNotExist("Staff matching query does not exist")
+        return res[0]
+
+
+class Staff:
+    objects = StaffCompatManager()
+    DoesNotExist = Exception
+
 MAX_REPRINT_ACTION_IDS = 200
 
 from client.services import (
@@ -1536,7 +1701,7 @@ def home(request):
     # Admin-specific counts for dashboard management section.
     if _is_admin:
         from client.models import Client
-        from staff.models import Staff
+        # from staff.models import Staff (removed)
         scoped_clients = Client.objects.filter(status='active')
         scoped_tables = IDCardTable.objects.filter(is_active=True)
         scoped_cards = IDCard.objects.all()
@@ -4887,7 +5052,7 @@ def api_staff_list(request):
         role = request.GET.get('role', 'admin_staff')
         if role == 'client_staff':
             # List all client staff system-wide
-            from accounts.models import Staff
+            # from accounts.models import Staff (removed)
             queryset = Staff.objects.filter(staff_type='client_staff').select_related('user', 'client').order_by('-created_at')[:200]
             staff_data = []
             for s in queryset:

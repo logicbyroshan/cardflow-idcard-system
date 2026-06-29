@@ -30,6 +30,7 @@ from .base import (
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
     pro_user_guest_users_page,
+    pro_user_batch_jobs_page,
     dashboard,
     api_presence_track,
     api_live_client_presence,
@@ -208,5 +209,6 @@ from .photographer_api import (
     api_photographer_delete,
     api_photographer_toggle_status,
     api_photographer_assign_clients,
+    api_photographer_client_tables,
 )
 

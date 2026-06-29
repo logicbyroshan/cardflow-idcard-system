@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
         NS.currentMode = mode;
         staffForm.reset();
         NS.setStatusDropdown('false'); // Default Inactive for new staff
-        NS.setPasswordOption('phone'); // Reset password option
+        NS.setPasswordOption('custom'); // Reset password option to custom by default
 
         // Phase 1: Profile image upload removed - using avatar placeholder
 

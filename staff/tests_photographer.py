@@ -3,8 +3,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 
-from core.models import User
-from staff.models import Staff, PhotographerAssignment
+from core.models import User, PhotographerAssignment
+from staff.models import Staff
 from client.models import Client
 from core.services.permission_service import PermissionService
 from client.services_access import ClientAccessService

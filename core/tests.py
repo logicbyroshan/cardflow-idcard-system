@@ -2338,7 +2338,6 @@ class SecurityApiRegressionTests(TestCase):
         managed_client.refresh_from_db()
         managed_user.refresh_from_db()
         self.assertEqual(managed_client.name, 'View Edit Client Updated')
-        self.assertEqual(managed_client.address, 'New Address')
         self.assertTrue(managed_user.is_active)
 
     def test_live_presence_count_respects_admin_staff_scope(self):

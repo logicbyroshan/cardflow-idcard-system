@@ -1132,12 +1132,20 @@
   font-size: var(--ui-font-size-2xs, 10px);
   text-transform: uppercase;
   letter-spacing: .06em;
-  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+.notif-table th:last-child {
+  border-right: none;
 }
 .notif-table td {
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-slate-100);
+  border-right: 1px solid var(--color-slate-100);
   vertical-align: middle;
+}
+.notif-table td:last-child {
+  border-right: none;
 }
 .notif-table tr:last-child td { border-bottom: none; }
 .notif-table tr:hover td { background: rgba(var(--primary-rgb), 0.035); }

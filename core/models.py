@@ -38,10 +38,10 @@ class User(AbstractUser):
     ROLE_CHOICES = [
         ('pro_user', 'Pro User'),
         ('super_admin', 'Super Admin'),
-        ('admin_staff', 'Admin Staff'),
+        ('operator', 'Operator'),
         ('client', 'Client'),
         ('guest_user', 'Guest User'),
-        ('client_staff', 'Client Staff'),
+        ('assistant', 'Assistant'),
         ('photographer', 'Photographer'),
     ]
     
@@ -59,6 +59,26 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
+    
+    @property
+    def staff_profile(self):
+        from staff.models import StaffCompatWrapper
+        try:
+            if hasattr(self, 'operator_profile') and self.operator_profile:
+                return StaffCompatWrapper(self.operator_profile, 'admin_staff')
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'assistant_profile') and self.assistant_profile:
+                return StaffCompatWrapper(self.assistant_profile, 'client_staff')
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'photographer_profile') and self.photographer_profile:
+                return StaffCompatWrapper(self.photographer_profile, 'photographer')
+        except Exception:
+            pass
+        return None
     
     def save(self, *args, **kwargs):
         """
@@ -126,8 +146,8 @@ class User(AbstractUser):
         return self.is_superuser or self.role in ('super_admin', 'pro_user')
     
     @property
-    def is_admin_staff(self):
-        return self.role == 'admin_staff'
+    def is_operator(self):
+        return self.role == 'operator'
 
     @property
     def is_photographer(self):
@@ -142,8 +162,16 @@ class User(AbstractUser):
         return self.role == 'guest_user'
     
     @property
+    def is_assistant(self):
+        return self.role == 'assistant'
+
+    @property
+    def is_admin_staff(self):
+        return self.is_operator
+
+    @property
     def is_client_staff(self):
-        return self.role == 'client_staff'
+        return self.is_assistant
 
 
 
@@ -1192,4 +1220,53 @@ class ClientPresenceSession(models.Model):
     def __str__(self):
         state = 'closed' if self.closed_at else 'live'
         return f'Presence(user={self.user_id}, client={self.client_id}, tab={self.tab_id}, {state})'
+
+
+class Photographer(models.Model):
+    """
+    Photographer profile model
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='photographer_profile')
+    department = models.CharField(max_length=100, blank=True, null=True)
+    designation = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Photographer-specific permissions mapped directly
+    perm_idcard_pending_list = models.BooleanField(default=False)
+    perm_idcard_verified_list = models.BooleanField(default=False)
+    perm_idcard_add = models.BooleanField(default=False)
+    perm_idcard_info = models.BooleanField(default=False)
+    perm_mobile_app = models.BooleanField(default=False)
+    perm_idcard_bulk_download = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Photographer"
+        verbose_name_plural = "Photographers"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.username} - Photographer"
+
+
+class PhotographerAssignment(models.Model):
+    photographer = models.ForeignKey(Photographer, on_delete=models.CASCADE, related_name='photographer_assignments')
+    client = models.ForeignKey('core.Client', on_delete=models.CASCADE, related_name='photographer_assignments')
+    expires_at = models.DateTimeField(null=True, blank=True)
+    # Specific table IDs this photographer can see for this client.
+    # Empty list = all tables are accessible (default / unrestricted).
+    allowed_table_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Table IDs this photographer can see for this client. Empty = all tables.'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('photographer', 'client')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.photographer.user.get_full_name()} -> {self.client.name}"
 

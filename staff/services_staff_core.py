@@ -362,7 +362,7 @@ class StaffService(BaseService):
     def get(cls, staff_id: int, include_permissions: bool = True) -> ServiceResult:
         """Get a staff member by ID"""
         try:
-            staff = get_object_or_404(Staff, id=staff_id)
+            staff = get_object_or_404(Staff, id=staff_id, staff_type='admin_staff')
             return ServiceResult(
                 success=True,
                 data={'staff': cls.serialize(staff, include_permissions)}
@@ -374,7 +374,7 @@ class StaffService(BaseService):
     def update(cls, staff_id: int, data: Dict[str, Any], profile_image=None) -> ServiceResult:
         """Update a staff member"""
         try:
-            staff = get_object_or_404(Staff, id=staff_id)
+            staff = get_object_or_404(Staff, id=staff_id, staff_type='admin_staff')
             user = staff.user
             assignment_group_ids_to_set = None
             
@@ -555,7 +555,7 @@ class StaffService(BaseService):
     def delete(cls, staff_id: int) -> ServiceResult:
         """Delete a staff member and associated user"""
         try:
-            staff = get_object_or_404(Staff, id=staff_id)
+            staff = get_object_or_404(Staff, id=staff_id, staff_type__in=['admin_staff', 'photographer'])
             user = staff.user
             staff_name = user.get_full_name()
             
@@ -583,7 +583,7 @@ class StaffService(BaseService):
             welcome_user_id = None
 
             with transaction.atomic():
-                staff = Staff.objects.select_related('user').select_for_update().get(id=staff_id)
+                staff = Staff.objects.select_related('user').select_for_update().get(id=staff_id, staff_type__in=['admin_staff', 'photographer'])
                 user = staff.user
                 has_pending_welcome = EmailLog.objects.filter(
                     recipient_email=user.email,
@@ -738,7 +738,7 @@ class StaffService(BaseService):
         Sends a welcome email with the new credentials so the user knows their password.
         """
         try:
-            staff = Staff.objects.filter(id=staff_id).select_related('user').first()
+            staff = Staff.objects.filter(id=staff_id, staff_type__in=['admin_staff', 'client_staff', 'photographer']).select_related('user').first()
             if not staff:
                 return ServiceResult(success=False, message='Staff not found')
 
@@ -789,6 +789,16 @@ class PhotographerService(BaseService):
     Service for Photographer CRUD operations.
     """
 
+    # Photographer-specific permission fields exposed to the UI drawer
+    PHOTOGRAPHER_PERMISSION_FIELDS = [
+        'perm_idcard_pending_list',
+        'perm_idcard_verified_list',
+        'perm_idcard_add',
+        'perm_idcard_info',
+        'perm_mobile_app',
+        'perm_idcard_bulk_download',
+    ]
+
     @classmethod
     def serialize(cls, staff: Staff) -> Dict[str, Any]:
         """Serialize Staff instance of type photographer to dict"""
@@ -805,6 +815,10 @@ class PhotographerService(BaseService):
             'updated_at': localtime(staff.updated_at).strftime('%d-%m-%Y %H:%M'),
         }
 
+        # Include photographer permissions so the edit drawer shows correct toggle states
+        for perm in cls.PHOTOGRAPHER_PERMISSION_FIELDS:
+            data[perm] = bool(getattr(staff, perm, False))
+
         # Include photographer assignments
         assignments = []
         for ass in staff.photographer_assignments.select_related('client').all():
@@ -813,6 +827,7 @@ class PhotographerService(BaseService):
                 'client_name': ass.client.name,
                 'expires_at': localtime(ass.expires_at).strftime('%Y-%m-%dT%H:%M') if ass.expires_at else '',
                 'expires_at_display': localtime(ass.expires_at).strftime('%d-%m-%Y %H:%M') if ass.expires_at else 'No Expiration',
+                'allowed_table_ids': list(ass.allowed_table_ids or []),
             })
         data['assigned_clients'] = assignments
         # Also simple list of ids for UI drawer compatibility
@@ -944,10 +959,13 @@ class PhotographerService(BaseService):
                         client_id = int(item.get('client_id'))
                         expires_at_str = item.get('expires_at')
                         expires_at = parse_datetime(expires_at_str) if expires_at_str else None
+                        raw_table_ids = item.get('allowed_table_ids', [])
+                        allowed_table_ids = [int(t) for t in raw_table_ids if str(t).isdigit()] if raw_table_ids else []
                         PhotographerAssignment.objects.create(
                             photographer=staff,
                             client_id=client_id,
-                            expires_at=expires_at
+                            expires_at=expires_at,
+                            allowed_table_ids=allowed_table_ids,
                         )
                     except (ValueError, TypeError):
                         pass
@@ -977,15 +995,21 @@ class PhotographerService(BaseService):
                 _user_pk = welcome_user_id
                 _log_id = welcome_email_log_id
 
-                email_sent, error_msg = send_welcome_email(
-                    name=welcome_info['name'],
-                    email=welcome_info['email'],
-                    password=welcome_info['password'],
-                    role='Photographer',
-                    phone=welcome_info['phone'],
-                    request=request,
-                    email_variant='welcome',
-                )
+                try:
+                    email_sent, error_msg = send_welcome_email(
+                        name=welcome_info['name'],
+                        email=welcome_info['email'],
+                        password=welcome_info['password'],
+                        role='Photographer',
+                        phone=welcome_info['phone'],
+                        request=request,
+                        email_variant='welcome',
+                    )
+                except Exception as email_exc:
+                    email_sent = False
+                    error_msg = str(email_exc)
+                    logger.warning('Photographer welcome email failed for %s: %s', welcome_info.get('email', ''), email_exc)
+
                 if email_sent:
                     User.objects.filter(pk=_user_pk).update(welcome_email_sent=True)
                     EmailLog.objects.filter(pk=_log_id).update(
@@ -1054,16 +1078,20 @@ class PhotographerService(BaseService):
                     client_id = int(item.get('client_id'))
                     expires_at_str = item.get('expires_at')
                     expires_at = parse_datetime(expires_at_str) if expires_at_str else None
+                    raw_table_ids = item.get('allowed_table_ids', [])
+                    allowed_table_ids = [int(t) for t in raw_table_ids if str(t).isdigit()] if raw_table_ids else []
 
                     if client_id in existing:
                         assignment = existing[client_id]
                         assignment.expires_at = expires_at
+                        assignment.allowed_table_ids = allowed_table_ids
                         assignment.save()
                     else:
                         PhotographerAssignment.objects.create(
                             photographer=staff,
                             client_id=client_id,
-                            expires_at=expires_at
+                            expires_at=expires_at,
+                            allowed_table_ids=allowed_table_ids,
                         )
                     keep_client_ids.add(client_id)
                 except (ValueError, TypeError):

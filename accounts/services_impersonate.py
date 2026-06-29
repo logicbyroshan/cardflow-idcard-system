@@ -179,7 +179,7 @@ class ImpersonateService:
         users = (
             User.objects
             .filter(is_active=True)
-            .select_related('client_profile', 'staff_profile__client')
+            .select_related('client_profile', 'assistant_profile__client', 'operator_profile')
             .exclude(pk=request.user.pk)
             .exclude(role='pro_user')
             .order_by('role', 'first_name', 'username')
@@ -192,10 +192,10 @@ class ImpersonateService:
             if u.role == 'client':
                 client_profile = getattr(u, 'client_profile', None)
                 client_name = getattr(client_profile, 'name', '') or ''
-            elif u.role == 'client_staff':
-                staff_profile = getattr(u, 'staff_profile', None)
-                client_name = getattr(getattr(staff_profile, 'client', None), 'name', '') or ''
-            elif u.role == 'admin_staff':
+            elif u.role == 'assistant':
+                assistant_profile = getattr(u, 'assistant_profile', None)
+                client_name = getattr(getattr(assistant_profile, 'client', None), 'name', '') or ''
+            elif u.role == 'operator':
                 client_name = ''
 
             result.append({

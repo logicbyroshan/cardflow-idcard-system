@@ -132,6 +132,8 @@ def api_admin_staff_detail(request, staff_id):
     PUT: Update admin staff
     DELETE: Delete admin staff
     """
+    if not Staff.objects.filter(id=staff_id, staff_type='admin_staff').exists():
+        return JsonResponse({'success': False, 'error': 'Admin staff not found'}, status=404)
     if request.method == 'GET':
         result = AdminStaffCreationService.get_admin_staff_detail(request.user, staff_id)
         status = 200 if result.get('success') else 404
@@ -190,6 +192,8 @@ def api_admin_staff_detail(request, staff_id):
 def api_admin_staff_toggle_status(request, staff_id):
     """Toggle admin staff active/inactive status."""
     try:
+        if not Staff.objects.filter(id=staff_id, staff_type='admin_staff').exists():
+            return JsonResponse({'success': False, 'error': 'Admin staff not found'}, status=404)
         result = AdminStaffCreationService.toggle_status(request.user, staff_id)
         if result.get('success'):
             payload = result.get('data', {})
@@ -219,6 +223,8 @@ def api_admin_staff_toggle_status(request, staff_id):
 def api_admin_staff_reset_password(request, staff_id):
     """Reset admin staff password and send email."""
     try:
+        if not Staff.objects.filter(id=staff_id, staff_type='admin_staff').exists():
+            return JsonResponse({'success': False, 'error': 'Admin staff not found'}, status=404)
         result = AdminStaffCreationService.reset_password(request.user, staff_id)
         if result.get('success'):
             target_name = ''

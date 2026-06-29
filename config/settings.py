@@ -150,7 +150,8 @@ INSTALLED_APPS = [
     'client',
     'exports',
     'mediafiles',
-    'staff',
+    'operators',
+    'assistants',
     'idcards',
     'reprintcard',
     'panel',
@@ -543,14 +544,24 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # Whitenoise for serving static files in production
 # CompressedManifest version: content-hashes filenames (app.js → app.abc123.js)
 # enabling permanent caching with Cache-Control: immutable
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+if _running_tests():
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 # Safety: don't crash with 500 if a static file is missing from the manifest
 # (e.g. dynamically-referenced vendor files in lazy-load.js or xlsx-worker.js)

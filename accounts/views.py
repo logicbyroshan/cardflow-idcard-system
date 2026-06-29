@@ -717,9 +717,9 @@ class ProUserAuditUsersAPIView(LoginRequiredMixin, View):
 
         search = str(request.GET.get('search', '') or '').strip()
         role_filter = str(request.GET.get('role', '') or '').strip()
-        users_qs = User.objects.select_related('client_profile', 'staff_profile__client').all().order_by('role', 'first_name', 'username')
+        users_qs = User.objects.select_related('client_profile', 'assistant_profile__client').all().order_by('role', 'first_name', 'username')
 
-        if role_filter and role_filter in {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff'}:
+        if role_filter and role_filter in {'pro_user', 'super_admin', 'operator', 'client', 'assistant'}:
             users_qs = users_qs.filter(role=role_filter)
         if search:
             users_qs = users_qs.filter(
@@ -735,9 +735,9 @@ class ProUserAuditUsersAPIView(LoginRequiredMixin, View):
             if entry.role == 'client':
                 client_profile = getattr(entry, 'client_profile', None)
                 client_name = getattr(client_profile, 'name', '') or ''
-            elif entry.role == 'client_staff':
-                staff_profile = getattr(entry, 'staff_profile', None)
-                client_name = getattr(getattr(staff_profile, 'client', None), 'name', '') or ''
+            elif entry.role == 'assistant':
+                assistant_profile = getattr(entry, 'assistant_profile', None)
+                client_name = getattr(getattr(assistant_profile, 'client', None), 'name', '') or ''
 
             users.append({
                 'id': entry.pk,

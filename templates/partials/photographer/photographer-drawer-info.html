@@ -41,19 +41,19 @@
             <label class="form-label">Password Option</label>
             <div class="custom-dropdown form-dropdown" id="staffPasswordOptionDropdown">
                 <button type="button" class="dropdown-toggle" aria-expanded="false">
-                    <span>Use Phone Number</span>
+                    <span>Custom Password</span>
                     <i class="fa-solid fa-chevron-down"></i>
                 </button>
                 <div class="dropdown-options">
-                    <div class="dropdown-option selected" data-value="phone">Use Phone Number</div>
-                    <div class="dropdown-option" data-value="custom">Custom Password</div>
+                    <div class="dropdown-option" data-value="phone">Use Phone Number</div>
+                    <div class="dropdown-option selected" data-value="custom">Custom Password</div>
                 </div>
             </div>
-            <input type="hidden" id="staff-password-option" name="password_option" value="phone">
+            <input type="hidden" id="staff-password-option" name="password_option" value="custom">
         </div>
     </div>
 
-    <div class="form-group" id="staffCustomPasswordGroup" style="display: none;">
+    <div class="form-group" id="staffCustomPasswordGroup" style="display: block;">
         <label class="form-label" for="staff-password">Password <span class="required">*</span></label>
         <div style="position: relative;">
             <input type="password" id="staff-password" name="password" class="form-input" placeholder="Enter custom password" autocomplete="new-password" style="padding-right: 2.5rem;">

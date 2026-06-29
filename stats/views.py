@@ -11,10 +11,9 @@ from core.services.live_presence_service import LiveClientPresenceService
 from django.contrib.auth import get_user_model
 User = get_user_model()
 from client.models import Client
-from core.models import BackgroundTask
-from staff.models import Staff
 from accounts.models import UserDeviceSession
 from stats.models import StatsSnapshot
+from core.models import BackgroundTask
 
 def _get_user_role(user):
     return str(getattr(user, 'role', '') or '').strip().lower()

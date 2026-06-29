@@ -14,7 +14,7 @@ from django.db.models import CharField, Value, IntegerField, Case, When
 from core.services import IDCardService
 from core.models import User
 from client.models import Client
-from staff.models import Staff
+from assistants.models import Assistant
 from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
 from core.services.permission_service import PermissionService

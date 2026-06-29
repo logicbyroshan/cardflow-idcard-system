@@ -184,16 +184,26 @@
     letter-spacing: 0.06em;
     text-align: left;
     padding: 10px 14px;
-    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
     white-space: nowrap;
+  }
+
+  .imp-table th:last-child {
+    border-right: none;
   }
 
   .imp-table td {
     padding: 9px 14px;
     border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
+    border-right: 1px solid var(--color-gray-100, #f1f5f9);
     vertical-align: middle;
     color: var(--text-primary, #374151);
     font-size: var(--ui-font-size-sm, 12px);
+  }
+
+  .imp-table td:last-child {
+    border-right: none;
   }
 
   .imp-table tbody tr:hover td {
