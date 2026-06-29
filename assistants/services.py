@@ -1225,6 +1225,7 @@ class AssistantService(BaseService):
                         new_user = User.objects.create(
                             username=email,
                             email=email,
+                            role='assistant',
                             is_active=True
                         )
                         name_parts = name.split(' ', 1)
@@ -1269,6 +1270,7 @@ class AssistantService(BaseService):
                             new_user = User.objects.create(
                                 username=email,
                                 email=email,
+                                role='assistant',
                                 is_active=True
                             )
                             name_parts = name.split(' ', 1)
