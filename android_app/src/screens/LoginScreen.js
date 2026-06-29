@@ -135,7 +135,6 @@ export default function LoginScreen({ navigation }) {
               <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
             </View>
             <Text style={styles.brandTitle}>Adarsh ID Cards</Text>
-            <Text style={styles.brandSubtitle}>Management Portal</Text>
           </View>
 
           {/* Login Card */}

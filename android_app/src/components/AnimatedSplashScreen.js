@@ -77,11 +77,13 @@ export default function AnimatedSplashScreen() {
       </Animated.View>
 
       <Animated.View style={[styles.content, { transform: [{ scale: logoPulse }] }]}>
-        <Animated.Image 
-          source={require('../../assets/logo.png')} 
-          style={styles.logo} 
-          resizeMode="contain" 
-        />
+        <View style={styles.logoContainer}>
+          <Animated.Image 
+            source={require('../../assets/adaptive-icon.png')} 
+            style={styles.logo} 
+            resizeMode="cover" 
+          />
+        </View>
         <Text style={styles.title}>ADARSH</Text>
         <ActivityIndicator color="#fff" style={styles.loader} size="large" />
       </Animated.View>
@@ -101,10 +103,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 10,
   },
-  logo: {
-    width: 120,
-    height: 120,
+  logoContainer: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
+  },
+  logo: {
+    width: 220,
+    height: 220,
   },
   title: {
     fontSize: 28,
