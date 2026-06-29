@@ -124,15 +124,12 @@ export default function LoginScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
-          {/* Background decorative elements */}
-          <View style={[styles.bubble, styles.bubble1]} />
-          <View style={[styles.bubble, styles.bubble2]} />
-          <View style={[styles.bubble, styles.bubble3]} />
+          {/* Background decorative elements removed as requested */}
 
           {/* Top branding */}
           <View style={styles.brandSection}>
             <View style={styles.appIcon}>
-              <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+              <Image source={require('../../assets/adarsh-logo-small.png')} style={styles.logo} resizeMode="contain" />
             </View>
             <Text style={styles.brandTitle}>Adarsh ID Cards</Text>
           </View>
@@ -259,16 +256,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   appIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.sm,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    ...shadows.xl,
   },
   brandTitle: {
     color: colors.white,
@@ -348,5 +338,5 @@ const styles = StyleSheet.create({
     color: colors.brandDark,
     textDecorationLine: 'underline',
   },
-  logo: { width: '80%', height: '80%' },
+  logo: { width: 100, height: 100 },
 });
