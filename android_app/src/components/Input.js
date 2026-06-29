@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   field: {
-    minHeight: 44,
+    minHeight: 50,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.gray200,

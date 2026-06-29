@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   lg: {
-    minHeight: 48,
+    minHeight: 50,
     paddingHorizontal: 18,
   },
   text: {

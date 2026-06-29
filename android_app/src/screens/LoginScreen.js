@@ -195,6 +195,7 @@ export default function LoginScreen({ navigation }) {
 
             {/* Submit */}
             <Button
+              size="lg"
               onPress={step === 1 ? handleNext : handleLogin}
               loading={loading}
               fullWidth
@@ -331,7 +332,6 @@ const styles = StyleSheet.create({
   submitBtn: {
     marginTop: 12,
     borderRadius: radius.md,
-    height: 50,
   },
   helpText: {
     textAlign: 'center',
