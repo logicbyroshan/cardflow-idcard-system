@@ -138,6 +138,7 @@ export default function HomeScreen({ navigation }) {
   const isOperator = user?.role === 'admin_staff';
   const isClient = user?.role === 'client' || user?.role === 'guest_user';
   const isAssistant = user?.role === 'client_staff';
+  const isPhotographer = user?.role === 'photographer';
   const isAdminOrOperator = isSuperAdmin || isOperator;
 
   const loadDashboard = useCallback(async () => {
@@ -305,6 +306,12 @@ export default function HomeScreen({ navigation }) {
   }, [counts.recent_clients]);
 
   const statusConfig = useMemo(() => {
+    if (user?.role === 'photographer') {
+      return [
+        { key: 'uncaptured', label: 'Uncaptured', Svg: IconPending,  bg: '#f59e0b', bg2: '#d97706' },
+        { key: 'captured',   label: 'Captured',   Svg: IconVerified, bg: '#10b981', bg2: '#059669' },
+      ];
+    }
     const list = [
       { key: 'pending',  label: 'Pending',   Svg: IconPending,   bg: '#f59e0b', bg2: '#d97706' },
       { key: 'verified', label: 'Verified',  Svg: IconVerified,  bg: '#10b981', bg2: '#059669' },
@@ -365,7 +372,15 @@ export default function HomeScreen({ navigation }) {
   }, [user, isSuperAdmin, isOperator, isClient, isAssistant, counts.tables]);
 
   const handleBadgePress = useCallback((client, statusKey) => {
-    const statusValue = { PENDING: 'pending', VERIFIED: 'verified', APPROVED: 'approved', DOWNLOAD: 'download', POOL: 'pool' };
+    const statusValue = { 
+      PENDING: 'pending', 
+      VERIFIED: 'verified', 
+      APPROVED: 'approved', 
+      DOWNLOAD: 'download', 
+      POOL: 'pool',
+      UNCAPTURED: 'uncaptured',
+      CAPTURED: 'captured'
+    };
     const tables = client.tables || [];
     
     if (tables.length === 0) {
@@ -460,15 +475,15 @@ export default function HomeScreen({ navigation }) {
         <View style={s.statusGrid}>
           {statusConfig.map(st => {
             const val = st.key === 'total' ? totalCards : (counts[st.key] || 0);
-            const isAssistant = user?.role === 'client_staff';
-            const cardWidth = isAssistant ? (width - 34) / 2 : (width - 44) / 3;
+            const isAssistantOrPhotographer = user?.role === 'client_staff' || user?.role === 'photographer';
+            const cardWidth = isAssistantOrPhotographer ? (width - 34) / 2 : (width - 44) / 3;
             return (
               <TouchableOpacity 
                 key={st.key} 
                 style={[
                   s.statusCardOuter, 
                   { width: cardWidth },
-                  isAssistant ? { aspectRatio: undefined, height: 110 } : {}
+                  isAssistantOrPhotographer ? { aspectRatio: undefined, height: 110 } : {}
                 ]}
                 activeOpacity={0.8}
                 onPress={() => handleStatCardPress(st.key)}
@@ -585,8 +600,17 @@ export default function HomeScreen({ navigation }) {
         )}
 
         <View style={s.mainContent}>
-          {isSuperAdmin || isOperator ? (
-            activeTab === 'clients' ? (
+          {isSuperAdmin || isOperator || isPhotographer ? (
+            isPhotographer ? (
+              <RecentClientsSection
+                recentClients={counts.recent_clients}
+                expandedClient={expandedClient}
+                setExpandedClient={setExpandedClient}
+                handleBadgePress={handleBadgePress}
+                navigation={navigation}
+                theme={theme}
+              />
+            ) : activeTab === 'clients' ? (
               <RecentClientsSection
                 recentClients={counts.recent_clients}
                 expandedClient={expandedClient}
@@ -1085,15 +1109,24 @@ const RecentClientItem = React.memo(({ client, isExpanded, theme, handleToggleEx
             <DynamicIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
           </TouchableOpacity>
           <View style={s.clientStatsRow}>
-            <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={onBadgePending} />
-            <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={onBadgeVerified} />
-            {!isAssistant && (
+            {user?.role === 'photographer' ? (
               <>
-                <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={onBadgeApproved} />
-                <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={onBadgeDownload} />
+                <ClientMiniStat label="UNCAPTURED" count={client.uncaptured} color={colors.pending.text} bg={colors.pending.bg} onPress={() => handleBadgePress(client, 'UNCAPTURED')} />
+                <ClientMiniStat label="CAPTURED" count={client.captured} color={colors.verified.text} bg={colors.verified.bg} onPress={() => handleBadgePress(client, 'CAPTURED')} />
+              </>
+            ) : (
+              <>
+                <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={onBadgePending} />
+                <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={onBadgeVerified} />
+                {!isAssistant && (
+                  <>
+                    <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={onBadgeApproved} />
+                    <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={onBadgeDownload} />
+                  </>
+                )}
+                <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
               </>
             )}
-            <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
           </View>
 
           {isExpanded && (
@@ -1122,6 +1155,12 @@ const RecentClientTableItem = React.memo(({ table, navigation }) => {
   const isAssistant = user?.role === 'client_staff';
 
   const statusBtnsList = useMemo(() => {
+    if (user?.role === 'photographer') {
+      return [
+        { key: 'uncaptured', label: 'Uncaptured', count: table.uncaptured || 0, color: colors.pending.text, bg: colors.pending.bg },
+        { key: 'captured', label: 'Captured', count: table.captured || 0, color: colors.verified.text, bg: colors.verified.bg },
+      ];
+    }
     const list = [
       { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
       { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
@@ -1134,7 +1173,7 @@ const RecentClientTableItem = React.memo(({ table, navigation }) => {
     }
     list.push({ key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg });
     return list;
-  }, [table, isAssistant]);
+  }, [table, isAssistant, user]);
 
   return (
     <View style={s.expandedItem}>

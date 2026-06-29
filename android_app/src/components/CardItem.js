@@ -255,7 +255,9 @@ const CardItem = React.memo(function CardItem({
               style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
               onPress={() => onEdit(item)}
             >
-              <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>EDIT</Text>
+              <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>
+                {permissions?.role === 'photographer' ? 'CAPTURE' : 'EDIT'}
+              </Text>
             </TouchableOpacity>
           )}
 

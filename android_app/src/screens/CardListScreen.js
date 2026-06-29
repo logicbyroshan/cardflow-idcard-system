@@ -41,6 +41,12 @@ export default function CardListScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
   const allowedStatuses = useMemo(() => {
+    if (perms.role === 'photographer') {
+      return [
+        { key: 'uncaptured', label: 'Uncaptured', bg: '#fffbeb', c: '#f59e0b', icon: 'clock' },
+        { key: 'captured',   label: 'Captured',   bg: '#ecfdf5', c: '#10b981', icon: 'verified' },
+      ];
+    }
     const isAssistant = perms.role === 'client_staff';
     return STATUS_OPTIONS.filter(opt => {
       if (isAssistant && (opt.key === 'approved' || opt.key === 'download')) {
@@ -374,6 +380,31 @@ export default function CardListScreen({ navigation, route }) {
     setShowForm(true);
   }, []);
 
+  const handleStartCapture = useCallback(() => {
+    if (cards && cards.length > 0) {
+      setEditingCardId(cards[0].id);
+      setShowForm(true);
+    } else {
+      showToast('No cards in the list', 'info');
+    }
+  }, [cards, showToast]);
+
+  const handleSaveAndNext = useCallback((savedCardId) => {
+    const currentIndex = cards.findIndex(c => c.id === savedCardId);
+    if (currentIndex === -1) {
+      setShowForm(false);
+      return;
+    }
+    const nextCard = cards[currentIndex + 1];
+    if (nextCard) {
+      setEditingCardId(nextCard.id);
+    } else {
+      showToast('All cards captured!', 'success');
+      setShowForm(false);
+      onRefresh();
+    }
+  }, [cards, showToast, onRefresh]);
+
   // ── Single card actions ───────────────────────────────────────────────────
   const handleSingleStatus = useCallback(async (id, newStatus) => {
     try {
@@ -501,6 +532,7 @@ export default function CardListScreen({ navigation, route }) {
   const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list;
 
   const canSelect = useMemo(() => {
+    if (perms.role === 'photographer') return false;
     if (!isClientRole) return true;
     if (currentStatus === 'pending') {
       return !!(perms.perm_idcard_verify || perms.perm_idcard_approve || perms.perm_idcard_delete);
@@ -521,11 +553,10 @@ export default function CardListScreen({ navigation, route }) {
 
   const renderItem = useCallback(({ item }) => {
     const isClient = perms.role === 'client' || perms.role === 'client_staff' || perms.role === 'guest_user';
-    const canEdit = perms.perm_idcard_edit && (!isClient || ['pending', 'verified'].includes(currentStatus));
-    const canDelete = currentStatus === 'pending' && perms.perm_idcard_delete;
-    const statusChangeHandler = isClient && (
-      currentStatus === 'download'
-    ) ? undefined : handleStatusChange;
+    const isPhotographer = perms.role === 'photographer';
+    const canEdit = perms.perm_idcard_edit && (isPhotographer || !isClient || ['pending', 'verified'].includes(currentStatus));
+    const canDelete = !isPhotographer && currentStatus === 'pending' && perms.perm_idcard_delete;
+    const statusChangeHandler = (isClient || isPhotographer) ? undefined : handleStatusChange;
 
     return (
       <CardItem
@@ -537,7 +568,7 @@ export default function CardListScreen({ navigation, route }) {
         currentStatus={currentStatus}
         onStatusChange={statusChangeHandler}
         onDelete={canDelete ? handleSingleDelete : undefined}
-        onReprint={currentStatus !== 'download' && (perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
+        onReprint={!isPhotographer && currentStatus !== 'download' && (perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
         permissions={perms}
       />
     );
@@ -553,8 +584,15 @@ export default function CardListScreen({ navigation, route }) {
         style: { backgroundColor: '#f97316' },
       });
     }
+    if (perms.role === 'photographer' && !selectMode) {
+      list.push({
+        label: 'START CAPTURE',
+        onPress: handleStartCapture,
+        style: { backgroundColor: '#10b981' },
+      });
+    }
     return list.length > 0 ? list : undefined;
-  }, [selectMode, currentStatus, perms, tableId, navigation]);
+  }, [selectMode, currentStatus, perms, tableId, navigation, handleStartCapture]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -721,6 +759,7 @@ export default function CardListScreen({ navigation, route }) {
         tableId={tableId}
         cardId={editingCardId}
         requireClassChangeWarning={!!(autoRetrieveId && editingCardId === autoRetrieveId)}
+        onSaveAndNext={handleSaveAndNext}
         onSuccess={(updatedCard) => {
           if (editingCardId && updatedCard) {
             setCards(prev => prev.map(c => c.id === editingCardId ? { ...c, ...updatedCard } : c));
