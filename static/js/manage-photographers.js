@@ -120,9 +120,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
             group.tables.forEach(function(table) {
                 var isChecked = allSelected || savedTableIds.indexOf(table.id) !== -1;
+                var captured = table.captured_count || 0;
+                var uncaptured = table.uncaptured_count || 0;
+                
                 var row = document.createElement('label');
-                row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;color:var(--color-slate-700);background:#fff;border:1px solid var(--color-slate-100);transition:background .15s;';
-                row.innerHTML = '<input type="checkbox" class="photographer-table-cb" data-table-id="' + table.id + '" ' + (isChecked ? 'checked' : '') + ' style="width:14px;height:14px;cursor:pointer;flex-shrink:0;"> <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + table.name + '</span>';
+                row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;color:var(--color-slate-800);background:#f1f5f9;border:1px solid var(--color-slate-300);transition:all .15s;margin-bottom:2px;';
+                
+                var leftPart = document.createElement('div');
+                leftPart.style.cssText = 'display:flex;align-items:center;gap:8px;overflow:hidden;';
+                leftPart.innerHTML = '<input type="checkbox" class="photographer-table-cb" data-table-id="' + table.id + '" ' + (isChecked ? 'checked' : '') + ' style="width:14px;height:14px;cursor:pointer;flex-shrink:0;"> <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + table.name + '</span>';
+                
+                var rightPart = document.createElement('div');
+                rightPart.style.cssText = 'display:flex;align-items:center;gap:4px;flex-shrink:0;';
+                rightPart.innerHTML = '<span style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;" title="Captured Images"><i class="fa-solid fa-camera" style="margin-right:3px;"></i>' + captured + '</span>' + 
+                                      '<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;" title="Pending Images"><i class="fa-solid fa-clock" style="margin-right:3px;"></i>' + uncaptured + '</span>';
+                
+                row.appendChild(leftPart);
+                row.appendChild(rightPart);
                 listEl.appendChild(row);
             });
         });
@@ -870,7 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             var chip = document.createElement('div');
             chip.className = 'assignment-chip';
-            chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600;';
+            chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;';
             
             var textSpan = document.createElement('span');
             textSpan.textContent = clientName + ' — ' + timeText;

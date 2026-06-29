@@ -7,8 +7,20 @@ from client.models import Client
 from assistants.models import Assistant
 from idcards.models import IDCardGroup, IDCardTable
 from core.services.activity_service import ActivityService
-from core.services.permission_service import require_super_admin, api_require_super_admin
-from assistants.services import AssistantService
+from core.services.permission_service import require_super_admin, api_require_super_admin, PermissionService
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from functools import wraps
+
+def api_require_assistant_manager(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+        if not (PermissionService.is_super_admin(request.user) or PermissionService.has(request.user, 'perm_manage_client_staff')):
+            return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 logger = logging.getLogger(__name__)
 
@@ -106,21 +118,35 @@ def _result_error_status(message: str, fallback: int = 400) -> int:
     return fallback
 
 
-@require_super_admin
+@login_required
 @require_http_methods(["GET"])
 def manage_assistants(request):
     """
     Render the admin-side assistant management page.
     """
-    clients = Client.objects.all().order_by('name')
-    staff_list = Assistant.objects.all().select_related('user').order_by('-created_at')
+    user = request.user
+    can_manage = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_manage_client_staff')
+    if not can_manage:
+        return HttpResponseForbidden("Access Denied")
+
+    if PermissionService.is_super_admin(user):
+        clients = Client.objects.all().order_by('name')
+        staff_list = Assistant.objects.all().select_related('user').order_by('-created_at')
+    else:
+        operator = getattr(user, 'operator_profile', None)
+        if operator:
+            clients = operator.assigned_clients.all().order_by('name')
+            staff_list = Assistant.objects.filter(client__in=clients).select_related('user').order_by('-created_at')
+        else:
+            clients = Client.objects.none()
+            staff_list = Assistant.objects.none()
     
     context = {
         'active_page': 'manage_assistants',
         'breadcrumb_label': 'Manage Assistant',
         'clients': clients,
         'staff_list': staff_list,
-        'is_super_admin': True,
+        'is_super_admin': PermissionService.is_super_admin(user),
         'perm_idcard_client_list': True,
         'perm_manage_client_staff': True,
         'perm_idcard_pending_list': True,
@@ -143,7 +169,7 @@ def manage_assistants(request):
 
 
 
-@api_require_super_admin
+@api_require_assistant_manager
 @require_http_methods(["GET", "POST"])
 def api_staff_list_create(request):
     """
@@ -252,7 +278,7 @@ def api_staff_list_create(request):
     }, status=status_code)
 
 
-@api_require_super_admin
+@api_require_assistant_manager
 @require_http_methods(["GET", "PUT", "DELETE"])
 def api_staff_detail(request, staff_id):
     """
@@ -385,7 +411,7 @@ def api_staff_detail(request, staff_id):
     }, status=status_code)
 
 
-@api_require_super_admin
+@api_require_assistant_manager
 @require_http_methods(["POST"])
 def api_staff_toggle_status(request, staff_id):
     """
@@ -427,7 +453,7 @@ def api_staff_toggle_status(request, staff_id):
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
-@api_require_super_admin
+@api_require_assistant_manager
 @require_http_methods(["POST"])
 def api_staff_set_temp_password(request, staff_id):
     """API: Set temporary password for an assistant on the admin side."""
@@ -483,7 +509,7 @@ def api_staff_set_temp_password(request, staff_id):
     return JsonResponse(result.to_response_dict(), status=status_code)
 
 
-@api_require_super_admin
+@api_require_assistant_manager
 @require_http_methods(["GET"])
 def api_client_groups_list(request):
     """
@@ -532,7 +558,7 @@ def api_client_groups_list(request):
     })
 
 
-@api_require_super_admin
+@api_require_assistant_manager
 @require_http_methods(["GET"])
 def api_class_section_options(request):
     """
@@ -719,3 +745,86 @@ def api_class_section_options(request):
         },
     }
     return JsonResponse(payload)
+
+
+@api_require_assistant_manager
+@require_http_methods(["POST"])
+def api_staff_bulk_upload_xlsx(request):
+    """
+    API: Bulk upload assistants from an XLSX file for a specific client.
+    """
+    client_id = request.POST.get('client_id')
+    if not client_id:
+        return JsonResponse({'success': False, 'message': 'client_id is required'}, status=400)
+
+    target_client = Client.objects.filter(id=client_id).first()
+    if not target_client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    file_obj = request.FILES.get('file')
+    if not file_obj:
+        return JsonResponse({'success': False, 'message': 'No file uploaded'}, status=400)
+
+    if not file_obj.name.endswith(('.xlsx', '.xls')):
+        return JsonResponse({'success': False, 'message': 'Please upload a valid Excel file (.xlsx or .xls)'}, status=400)
+
+    result = AssistantService.bulk_create_from_excel(request.user, target_client, file_obj)
+
+    if result.success:
+        try:
+            # Optionally log this activity
+            ActivityService.log(
+                'staff_bulk_upload',
+                f'Bulk uploaded assistants for client "{target_client.name}"',
+                request=request,
+                target_model='Client',
+                target_id=target_client.id,
+                target_name=target_client.name,
+            )
+        except Exception:
+            logger.exception('Failed to log staff bulk upload activity')
+            
+        return JsonResponse(result.to_response_dict())
+
+    return JsonResponse(result.to_response_dict(), status=400)
+
+
+@api_require_assistant_manager
+@require_http_methods(["POST"])
+def api_staff_auto_create(request):
+    """
+    API: Auto create assistants based on classes or sections.
+    """
+    client_id = request.POST.get('client_id')
+    acronym = request.POST.get('acronym')
+    mode = request.POST.get('mode')  # 'class' or 'section'
+    auto_assign = request.POST.get('assign') == 'true'
+
+    if not client_id or not acronym or not mode:
+        return JsonResponse({'success': False, 'message': 'client_id, acronym, and mode are required'}, status=400)
+
+    target_client = Client.objects.filter(id=client_id).first()
+    if not target_client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    result = AssistantService.auto_create_assistants(request.user, target_client, acronym, mode, auto_assign)
+
+    if result.success:
+        try:
+            ActivityService.log(
+                'staff_auto_create',
+                f'Auto created {result.data["count"]} assistants for client "{target_client.name}" (mode: {mode})',
+                request=request,
+                target_model='Client',
+                target_id=target_client.id,
+                target_name=target_client.name,
+            )
+        except Exception:
+            logger.exception('Failed to log staff auto create activity')
+            
+        buffer = result.data['buffer'].getvalue()
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="assistants_{acronym.strip().lower()}.xlsx"'
+        return response
+
+    return JsonResponse(result.to_response_dict(), status=400)

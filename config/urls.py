@@ -173,7 +173,6 @@ urlpatterns += [
     path('panel/work/', include('idcards.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
     path('panel/stats/', include('stats.urls')),
-    path('panel/staff/', include('staff.urls')),
 
     # Backward-compatible root mounts for deployments that still hit the app
     # without the /panel prefix.
@@ -188,7 +187,6 @@ urlpatterns += [
     path('work/', include(('idcards.urls', 'idcards'), namespace='idcards_root')),
     path('reprint/', include(('reprintcard.urls', 'reprintcard'), namespace='reprintcard_root')),
     path('stats/', include(('stats.urls', 'stats'), namespace='stats_root')),
-    path('staff/', include(('staff.urls', 'staff'), namespace='staff_root')),
 
     # ==================== MOBILE APP DOWNLOAD LANDING (/app/*) ====================
     path('app/', core_views.mobile_download_page, name='mobile_download_page'),

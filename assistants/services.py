@@ -1030,3 +1030,276 @@ class AssistantService(BaseService):
 
         except Exception as e:
             return cls._unexpected_error_result('set_temp_password', e)
+
+    @classmethod
+    def bulk_create_from_excel(cls, user, target_client, file_obj) -> ServiceResult:
+        """Create multiple assistants from an uploaded Excel file."""
+        import pandas as pd
+        from django.contrib.auth.models import User
+        from django.db import transaction
+
+        try:
+            # Read the Excel file
+            df = pd.read_excel(file_obj)
+            # Normalize column names for matching
+            df.columns = [str(c).strip().lower() for c in df.columns]
+
+            # Find matching column names
+            name_col = next((c for c in df.columns if c in ('name', 'full name', 'fullname')), None)
+            email_col = next((c for c in df.columns if c in ('email', 'email address')), None)
+            password_col = next((c for c in df.columns if c in ('password',)), None)
+            phone_col = next((c for c in df.columns if c in ('phone', 'phone number', 'mobile')), None)
+
+            if not name_col or not email_col or not password_col:
+                return ServiceResult(
+                    success=False, 
+                    message="Excel file must contain 'Name', 'Email', and 'Password' columns."
+                )
+
+            created_count = 0
+            skipped_count = 0
+            skipped_reasons = []
+
+            # Pre-fetch existing emails and usernames to avoid IntegrityError
+            existing_emails = set(User.objects.values_list('email', flat=True))
+            existing_usernames = set(User.objects.values_list('username', flat=True))
+
+            for index, row in df.iterrows():
+                name = str(row.get(name_col, '')).strip()
+                email = str(row.get(email_col, '')).strip().lower()
+                password = str(row.get(password_col, '')).strip()
+                phone = str(row.get(phone_col, '')).strip() if phone_col else ''
+                if phone.lower() == 'nan':
+                    phone = ''
+
+                # Skip invalid or empty rows
+                if not name or not email or not password or name.lower() == 'nan' or email.lower() == 'nan' or password.lower() == 'nan':
+                    skipped_count += 1
+                    skipped_reasons.append(f"Row {index + 2}: Missing required fields.")
+                    continue
+
+                if email in existing_emails or email in existing_usernames:
+                    skipped_count += 1
+                    skipped_reasons.append(f"Row {index + 2}: Email '{email}' already exists.")
+                    continue
+
+                try:
+                    with transaction.atomic():
+                        new_user = User.objects.create(
+                            username=email,
+                            email=email,
+                            is_active=False  # Inactive by default per requirements
+                        )
+                        name_parts = name.split(' ', 1)
+                        new_user.first_name = name_parts[0]
+                        if len(name_parts) > 1:
+                            new_user.last_name = name_parts[1]
+                        new_user.set_password(password)
+                        new_user.save()
+
+                        Assistant.objects.create(
+                            user=new_user,
+                            client=target_client,
+                            phone=phone
+                        )
+                        created_count += 1
+                        existing_emails.add(email)
+                        existing_usernames.add(email)
+                except Exception as e:
+                    skipped_count += 1
+                    skipped_reasons.append(f"Row {index + 2}: Error - {str(e)}")
+
+            if created_count == 0 and skipped_count > 0:
+                return ServiceResult(
+                    success=False, 
+                    message=f"No assistants were created. Skipped {skipped_count} rows.", 
+                    data={'reasons': skipped_reasons}
+                )
+
+            message = f"Successfully created {created_count} assistant{'s' if created_count != 1 else ''}."
+            if skipped_count > 0:
+                message += f" Skipped {skipped_count} row{'s' if skipped_count != 1 else ''}."
+
+            return ServiceResult(
+                success=True, 
+                message=message, 
+                data={'created': created_count, 'skipped': skipped_count, 'reasons': skipped_reasons}
+            )
+
+        except Exception as e:
+            return cls._unexpected_error_result('bulk_create_from_excel', e)
+
+    @classmethod
+    def get_client_class_sections(cls, client):
+        """Returns a dict of class names to a list of their section names for a client."""
+        from idcards.models import IDCardTable, IDCard
+        tables = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
+        table_field_map = {}
+        for table in tables:
+            class_field, section_field = None, None
+            for field in (table.fields or []):
+                ft = field.get('type', '').lower()
+                fn = field.get('name', '')
+                fn_lower = fn.lower()
+                if ft == 'class' or fn_lower == 'class':
+                    class_field = fn
+                elif ft == 'section' or fn_lower == 'section':
+                    section_field = fn
+            if class_field or section_field:
+                table_field_map[table.id] = {'class_field': class_field, 'section_field': section_field}
+
+        class_sections = {}
+        if not table_field_map:
+            return class_sections
+
+        qs = IDCard.objects.filter(table_id__in=table_field_map.keys(), deleted_at__isnull=True)
+        cards = qs.values('table_id', 'field_data')
+
+        for card in cards:
+            t_id = card['table_id']
+            data = card.get('field_data') or {}
+            c_f = table_field_map[t_id].get('class_field')
+            s_f = table_field_map[t_id].get('section_field')
+
+            c_val = str(data.get(c_f, '')).strip() if c_f else ''
+            s_val = str(data.get(s_f, '')).strip() if s_f else ''
+
+            if c_val:
+                if c_val not in class_sections:
+                    class_sections[c_val] = set()
+                if s_val:
+                    class_sections[c_val].add(s_val)
+
+        # Convert sets to sorted lists
+        return {k: sorted(list(v)) for k, v in class_sections.items()}
+
+    @classmethod
+    def auto_create_assistants(cls, user, target_client, acronym, mode, auto_assign=True) -> ServiceResult:
+        """Auto create assistants based on client classes/sections and return an Excel file buffer."""
+        import pandas as pd
+        import io
+        import re
+        import random
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        from django.db import transaction
+
+        acronym = str(acronym).strip()
+        if not acronym:
+            return ServiceResult(success=False, message="Acronym is required")
+        
+        mode = str(mode).strip().lower()
+        if mode not in ('class', 'section'):
+            return ServiceResult(success=False, message="Mode must be 'class' or 'section'")
+
+        class_sections = cls.get_client_class_sections(target_client)
+        if not class_sections:
+            return ServiceResult(success=False, message="No classes found for this client")
+
+        def clean_for_email(text):
+            # Remove all non-alphanumeric characters and lowercase
+            return re.sub(r'[^a-zA-Z0-9]', '', str(text)).lower()
+
+        existing_emails = set(User.objects.values_list('email', flat=True))
+        existing_usernames = set(User.objects.values_list('username', flat=True))
+
+        created_assistants = []
+
+        try:
+            with transaction.atomic():
+                for cls_name, sections in class_sections.items():
+                    if mode == 'class':
+                        # Create one per class
+                        name = f"{acronym} {cls_name}"
+                        email_prefix = clean_for_email(cls_name)
+                        email = f"{email_prefix}@assistant.{clean_for_email(acronym)}"
+                        
+                        # Handle duplicate emails
+                        counter = 2
+                        while email in existing_emails or email in existing_usernames:
+                            email = f"{email_prefix}{counter}@assistant.{clean_for_email(acronym)}"
+                            counter += 1
+                            
+                        password = f"{acronym}@{random.randint(1000, 9999)}"
+
+                        new_user = User.objects.create(
+                            username=email,
+                            email=email,
+                            is_active=True
+                        )
+                        name_parts = name.split(' ', 1)
+                        new_user.first_name = name_parts[0]
+                        if len(name_parts) > 1:
+                            new_user.last_name = name_parts[1]
+                        new_user.set_password(password)
+                        new_user.save()
+
+                        allowed_classes = [cls_name] if auto_assign else []
+                        Assistant.objects.create(
+                            user=new_user,
+                            client=target_client,
+                            allowed_classes=allowed_classes
+                        )
+                        existing_emails.add(email)
+                        existing_usernames.add(email)
+                        created_assistants.append({'Name': name, 'Email': email, 'Password': password})
+
+                    elif mode == 'section':
+                        # Create one per section (or just class if it has no sections)
+                        if not sections:
+                            sections = [''] # Force at least one iteration if class has no sections
+
+                        for sec_name in sections:
+                            if sec_name:
+                                name = f"{acronym} {cls_name}-{sec_name}"
+                                email_prefix = clean_for_email(cls_name) + clean_for_email(sec_name)
+                            else:
+                                name = f"{acronym} {cls_name}"
+                                email_prefix = clean_for_email(cls_name)
+
+                            email = f"{email_prefix}@assistant.{clean_for_email(acronym)}"
+                            
+                            counter = 2
+                            while email in existing_emails or email in existing_usernames:
+                                email = f"{email_prefix}{counter}@assistant.{clean_for_email(acronym)}"
+                                counter += 1
+
+                            password = f"{acronym}@{random.randint(1000, 9999)}"
+
+                            new_user = User.objects.create(
+                                username=email,
+                                email=email,
+                                is_active=True
+                            )
+                            name_parts = name.split(' ', 1)
+                            new_user.first_name = name_parts[0]
+                            if len(name_parts) > 1:
+                                new_user.last_name = name_parts[1]
+                            new_user.set_password(password)
+                            new_user.save()
+
+                            allowed_classes = [cls_name] if auto_assign else []
+                            allowed_sections = [sec_name] if (auto_assign and sec_name) else []
+                            Assistant.objects.create(
+                                user=new_user,
+                                client=target_client,
+                                allowed_classes=allowed_classes,
+                                allowed_sections=allowed_sections
+                            )
+                            existing_emails.add(email)
+                            existing_usernames.add(email)
+                            created_assistants.append({'Name': name, 'Email': email, 'Password': password})
+
+            if not created_assistants:
+                return ServiceResult(success=False, message="No assistants were generated.")
+
+            # Generate Excel
+            df = pd.DataFrame(created_assistants)
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False)
+            buffer.seek(0)
+
+            return ServiceResult(success=True, data={'buffer': buffer, 'count': len(created_assistants)})
+        except Exception as e:
+            return cls._unexpected_error_result('auto_create_assistants', e)

@@ -60,8 +60,8 @@
                 <td class="text-gray-500 text-center">{{ staff.updated_at|date:"d-m-Y H:i" }}</td>
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="7">
+            <tr class="empty-row">
+                <td colspan="7" class="empty-cell">
                     {% include 'components/empty-state.html' with id='staff-table-empty-inline' icon='fa-camera-retro' title='No Photographer Found' message='No photographers match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>

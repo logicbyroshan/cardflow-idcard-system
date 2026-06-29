@@ -285,6 +285,67 @@
     gap: 8px;
 }
 
+/* Badge Checkbox Groups */
+.badge-checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.badge-checkbox-label {
+    cursor: pointer;
+    user-select: none;
+    margin: 0;
+    /* Reset from previous label styles */
+    font-weight: 500 !important;
+    display: inline-flex !important;
+}
+
+.badge-checkbox-label .hidden-checkbox {
+    display: none;
+}
+
+.badge-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: #f9fafb; /* Lighter gray for better contrast */
+    color: #374151; /* Darker text */
+    border: 1px solid #d1d5db; /* Clear border */
+    border-radius: 6px; /* Less rounded box */
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.badge-checkbox-label .hidden-checkbox:checked + .badge-item {
+    background-color: var(--color-primary-light, #e0e7ff);
+    color: var(--color-primary, #4f46e5);
+    border-color: var(--color-primary, #4f46e5);
+    font-weight: 600;
+}
+
+/* Condition Badges Colors */
+.condition-complete .hidden-checkbox:checked + .badge-item {
+    background-color: #dcfce7; /* Green light */
+    color: #16a34a; /* Green */
+    border-color: #16a34a;
+}
+
+.condition-pending .hidden-checkbox:checked + .badge-item {
+    background-color: #fef9c3; /* Yellow light */
+    color: #ca8a04; /* Yellow/Orange */
+    border-color: #ca8a04;
+}
+
+.condition-incomplete .hidden-checkbox:checked + .badge-item {
+    background-color: #fee2e2; /* Red light */
+    color: #dc2626; /* Red */
+    border-color: #dc2626;
+}
+
+
 .image-sort-form label i {
     color: var(--color-gray-500);
     font-size: var(--ui-font-size-md, 13px);

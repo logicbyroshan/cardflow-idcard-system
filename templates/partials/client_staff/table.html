@@ -82,8 +82,8 @@
                 {% endif %}
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="{% if can_view_login_history %}9{% else %}8{% endif %}">
+            <tr class="empty-row">
+                <td colspan="{% if can_view_login_history %}9{% else %}8{% endif %}" class="empty-cell">
                     {% include 'components/empty-state.html' with id='client-staff-table-empty-inline' icon='fa-user-slash' title='No Assistent Found' message='No assistent members match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>

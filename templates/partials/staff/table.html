@@ -88,8 +88,8 @@ Uses Tailwind CSS component classes.
                 {% endif %}
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="7">
+            <tr class="empty-row">
+                <td colspan="7" class="empty-cell">
                     {% if active_page == 'manage_staff' and not is_client_admin %}
                     {% include 'components/empty-state.html' with id='staff-table-empty-inline' icon='fa-user-slash' title='No Operator Found' message='No operators match your current filters. Try adjusting your search.' hidden=False %}
                     {% else %}

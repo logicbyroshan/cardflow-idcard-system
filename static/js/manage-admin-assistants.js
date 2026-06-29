@@ -2290,17 +2290,44 @@ document.addEventListener('DOMContentLoaded', function () {
         }, true); // useCapture to run before other handlers
     }
 
-    // Function to update Add button style/state
     function updateAddButtonState() {
         var addBtn = document.getElementById('addStaffBtn');
-        if (!addBtn) return;
+        var bulkBtn = document.getElementById('bulkUploadAssistantsBtn');
+        var autoBtn = document.getElementById('autoCreateAssistantsBtn');
         var clientId = getActiveAssignmentClientId();
-        if (!clientId) {
-            addBtn.style.opacity = '0.5';
-            addBtn.style.cursor = 'not-allowed';
-        } else {
-            addBtn.style.opacity = '1';
-            addBtn.style.cursor = 'pointer';
+
+        if (addBtn) {
+            if (!clientId) {
+                addBtn.style.opacity = '0.5';
+                addBtn.style.cursor = 'not-allowed';
+            } else {
+                addBtn.style.opacity = '1';
+                addBtn.style.cursor = 'pointer';
+            }
+        }
+        
+        if (bulkBtn) {
+            if (!clientId) {
+                bulkBtn.style.opacity = '0.5';
+                bulkBtn.style.cursor = 'not-allowed';
+                bulkBtn.disabled = true;
+            } else {
+                bulkBtn.style.opacity = '1';
+                bulkBtn.style.cursor = 'pointer';
+                bulkBtn.disabled = false;
+            }
+        }
+        
+        if (autoBtn) {
+            if (!clientId) {
+                autoBtn.style.opacity = '0.5';
+                autoBtn.style.cursor = 'not-allowed';
+                autoBtn.disabled = true;
+            } else {
+                autoBtn.style.opacity = '1';
+                autoBtn.style.cursor = 'pointer';
+                autoBtn.disabled = false;
+            }
         }
     }
 
@@ -2383,6 +2410,264 @@ document.addEventListener('DOMContentLoaded', function () {
             setSelectedClientId(val);
             updateAddButtonState();
             reloadAssistantsTable();
+        });
+    }
+
+    // Bulk Upload Handlers
+    var bulkBtn = document.getElementById('bulkUploadAssistantsBtn');
+    var bulkUploadModal = document.getElementById('bulkUploadAssistantsModal');
+    var bulkUploadInput = document.getElementById('bulkUploadAssistantsInput');
+    var bulkUploadDropzone = document.getElementById('bulkUploadDropzone');
+    var bulkUploadFileName = document.getElementById('bulkUploadFileName');
+    var bulkUploadFileNameText = document.getElementById('bulkUploadFileNameText');
+    var bulkUploadSubmitBtn = document.getElementById('bulkUploadSubmitBtn');
+    
+    function closeBulkUploadModal() {
+        if (window.alpineCloseModal) window.alpineCloseModal();
+        if (bulkUploadInput) bulkUploadInput.value = '';
+        if (bulkUploadFileNameText) bulkUploadFileNameText.textContent = '';
+        if (bulkUploadFileName) bulkUploadFileName.classList.add('hidden');
+        if (bulkUploadSubmitBtn) bulkUploadSubmitBtn.disabled = true;
+    }
+
+    if (bulkBtn && bulkUploadModal) {
+        bulkBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var clientId = getActiveAssignmentClientId();
+            if (!clientId) {
+                if (typeof showToast === 'function') showToast('Please select a client first.', 'warning');
+                return;
+            }
+            if (window.alpineOpenModal) window.alpineOpenModal('bulkUpload');
+            else bulkUploadModal.style.display = 'flex';
+        });
+
+        // Drag and drop logic
+        if (bulkUploadDropzone && bulkUploadInput) {
+            bulkUploadDropzone.addEventListener('click', () => bulkUploadInput.click());
+            
+            bulkUploadDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                bulkUploadDropzone.classList.add('bg-blue-50', 'border-primary');
+            });
+            
+            bulkUploadDropzone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                bulkUploadDropzone.classList.remove('bg-blue-50', 'border-primary');
+            });
+            
+            bulkUploadDropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                bulkUploadDropzone.classList.remove('bg-blue-50', 'border-primary');
+                if (e.dataTransfer.files.length) {
+                    bulkUploadInput.files = e.dataTransfer.files;
+                    handleBulkUploadFileSelect();
+                }
+            });
+
+            bulkUploadInput.addEventListener('change', handleBulkUploadFileSelect);
+        }
+
+        function handleBulkUploadFileSelect() {
+            if (bulkUploadInput.files && bulkUploadInput.files[0]) {
+                var file = bulkUploadInput.files[0];
+                bulkUploadFileNameText.textContent = file.name;
+                bulkUploadFileName.classList.remove('hidden');
+                bulkUploadSubmitBtn.disabled = false;
+            } else {
+                bulkUploadFileNameText.textContent = '';
+                bulkUploadFileName.classList.add('hidden');
+                bulkUploadSubmitBtn.disabled = true;
+            }
+        }
+
+        if (bulkUploadSubmitBtn) {
+            bulkUploadSubmitBtn.addEventListener('click', async function() {
+                var clientId = getActiveAssignmentClientId();
+                if (!clientId) {
+                    if (typeof showToast === 'function') showToast('Please select a client first.', 'warning');
+                    return;
+                }
+
+                var file = bulkUploadInput.files[0];
+                if (!file) {
+                    if (typeof showToast === 'function') showToast('Please select a file.', 'warning');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('client_id', clientId);
+                formData.append('file', file);
+
+                var originalBtnHtml = bulkUploadSubmitBtn.innerHTML;
+                bulkUploadSubmitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+                bulkUploadSubmitBtn.disabled = true;
+
+                try {
+                    var url = '/panel/assistants/api/staff/bulk-upload/';
+                    var csrfCookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+                    var csrfToken = csrfCookie ? csrfCookie.split('=')[1] : '';
+
+                    var response = await fetch(url, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+
+                    if (response.ok) {
+                        var data = await response.json();
+                        if (data.success) {
+                            if (typeof showToast === 'function') showToast(data.message || 'Assistants uploaded successfully.', 'success');
+                            closeBulkUploadModal();
+                            reloadAssistantsTable();
+                        } else {
+                            if (typeof showToast === 'function') showToast(data.message || 'Bulk upload failed.', 'error');
+                        }
+                    } else {
+                        var errorData = await response.json();
+                        throw new Error(errorData.error || errorData.message || 'Failed to upload assistants.');
+                    }
+                } catch (error) {
+                    console.error("Error uploading assistants:", error);
+                    var errMsg = error.message && error.message !== 'Failed to fetch' ? error.message : 'Network error during bulk upload.';
+                    if (typeof showToast === 'function') showToast(errMsg, 'error');
+                } finally {
+                    bulkUploadSubmitBtn.innerHTML = originalBtnHtml;
+                    bulkUploadSubmitBtn.disabled = false;
+                }
+            });
+        }
+    }
+
+    // Auto Create Handlers
+    var autoCreateBtn = document.getElementById('autoCreateAssistantsBtn');
+    var autoCreateModal = document.getElementById('autoCreateAssistantsModal');
+    var autoCreateForm = document.getElementById('autoCreateAssistantsForm');
+
+    function closeAutoCreateModal() {
+        if (window.alpineCloseModal) window.alpineCloseModal();
+    }
+
+    if (autoCreateBtn && autoCreateModal && autoCreateForm) {
+        // Open modal
+        autoCreateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var clientId = getActiveAssignmentClientId();
+            if (!clientId) {
+                if (typeof showToast === 'function') showToast('Please select a client first.', 'warning');
+                return;
+            }
+            if (window.alpineOpenModal) window.alpineOpenModal('autoCreate');
+            else autoCreateModal.style.display = 'flex';
+        });
+
+        autoCreateForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var clientId = getActiveAssignmentClientId();
+            if (!clientId) {
+                if (typeof showToast === 'function') showToast('Please select a client first.', 'warning');
+                return;
+            }
+
+            var acronym = document.getElementById('autoCreateAcronym').value;
+            var mode = document.querySelector('input[name="autoCreateMode"]:checked').value;
+            var assign = document.getElementById('autoCreateAssign').checked ? 'true' : 'false';
+            
+            var submitBtn = document.getElementById('autoCreateSubmitBtn');
+            var originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+            submitBtn.disabled = true;
+
+            var formData = new FormData();
+            formData.append('client_id', clientId);
+            formData.append('acronym', acronym);
+            formData.append('mode', mode);
+            formData.append('assign', assign);
+
+            var progressContainer = document.getElementById('autoCreateProgressContainer');
+            var progressBar = document.getElementById('autoCreateProgressBar');
+            var progressText = document.getElementById('autoCreateProgressText');
+            var progressInterval = null;
+
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+                var progress = 0;
+                progressInterval = setInterval(function() {
+                    // Simulate progress up to 95%
+                    var remaining = 95 - progress;
+                    progress += Math.max(1, remaining * 0.1); // Slows down as it approaches 95
+                    if (progress > 95) progress = 95;
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = Math.round(progress) + '%';
+                }, 400);
+            }
+
+            try {
+                var url = '/panel/assistants/api/staff/auto-create/';
+                var csrfCookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+                var csrfToken = csrfCookie ? csrfCookie.split('=')[1] : '';
+
+                var response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    var blob = await response.blob();
+                    
+                    var disposition = response.headers.get('Content-Disposition');
+                    var filename = `assistants_${acronym}.xlsx`;
+                    if (disposition && disposition.indexOf('filename="') !== -1) {
+                        var matches = /filename="([^"]+)"/.exec(disposition);
+                        if (matches != null && matches[1]) filename = matches[1];
+                    }
+
+                    if (progressInterval) clearInterval(progressInterval);
+                    if (progressContainer) {
+                        progressBar.style.width = '100%';
+                        progressText.textContent = '100%';
+                    }
+
+                    // Create a link to download the blob
+                    var downloadUrl = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = downloadUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+
+                    if (typeof showToast === 'function') showToast('Assistants generated successfully!', 'success');
+                    
+                    // Delay modal close slightly to let user see 100%
+                    setTimeout(function() {
+                        closeAutoCreateModal();
+                        autoCreateForm.reset();
+                        reloadAssistantsTable();
+                    }, 600);
+                } else {
+                    var json = await response.json();
+                    if (typeof showToast === 'function') showToast(json.message || 'Failed to auto create assistants', 'error');
+                }
+            } catch (err) {
+                console.error('Auto create error:', err);
+                if (typeof showToast === 'function') showToast('Network error during auto creation', 'error');
+            } finally {
+                if (progressInterval) clearInterval(progressInterval);
+                if (progressContainer) {
+                    setTimeout(function() { progressContainer.style.display = 'none'; }, 500);
+                }
+                submitBtn.innerHTML = originalBtnHtml;
+                submitBtn.disabled = false;
+            }
         });
     }
 

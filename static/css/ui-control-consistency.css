@@ -462,3 +462,72 @@ label,
 }
 
 
+/* ============================================================
+   CRITICAL LAYOUT FIX: Body margin reset (outside @layer)
+   Tailwind v4 puts its reset inside @layer base, but browser UA
+   stylesheet rules (body { margin: 8px }) are UNLAYERED and win
+   over @layer base rules. This rule is outside any @layer so it
+   correctly overrides the browser default, removing the grey strip
+   at the top of the page.
+   ============================================================ */
+html,
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Empty State Styling - Clean, simple text-only look to match default design, and remove table td text capitalization */
+.empty-row,
+.empty-row td,
+.empty-row td.empty-cell {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    padding: 32px 0 !important;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.empty-state i {
+    font-size: 40px;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.empty-state h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 6px;
+    text-transform: none !important; /* override table cell capitalization */
+}
+
+.empty-state p {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 0;
+    text-transform: none !important; /* override table cell capitalization */
+}
+
+/* Pagination bar alignment and padding-bottom crop prevention */
+.pagination-bar {
+    padding: 12px 16px 16px 16px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+}

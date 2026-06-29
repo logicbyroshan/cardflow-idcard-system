@@ -726,15 +726,17 @@ function updateImageSortBtnText(columnName, conditionText) {
     }
 }
 
-/** Clear image sort filter  resets rows, button text, and state */
+/** Clear image sort filter - resets rows, button text, and state */
 function clearImageSortFilter() {
-    var imageSortColumn = document.getElementById('imageSortColumn');
-    var imageSortCondition = document.getElementById('imageSortCondition');
-    if (imageSortColumn) imageSortColumn.value = '';
-    if (imageSortCondition) imageSortCondition.value = '';
     IDCardApp._activeImageSort = null;
-    updateImageSortBtnText(null, null);
+    var columnCheckboxes = document.querySelectorAll('input[name="imageSortColumn"]');
+    var conditionCheckboxes = document.querySelectorAll('input[name="imageSortCondition"]');
+    if (columnCheckboxes) columnCheckboxes.forEach(cb => cb.checked = false);
+    if (conditionCheckboxes) conditionCheckboxes.forEach(cb => cb.checked = false);
+    
+    updateImageSortBtnText('', '');
     updateClearFiltersVisibility();
+    applyClassSectionFilters();
 }
 
 // ==========================================
@@ -747,8 +749,6 @@ function initImageSortModal() {
     const closeImageSortModalBtn = document.getElementById('closeImageSortModal');
     const clearImageSort = document.getElementById('clearImageSort');
     const applyImageSort = document.getElementById('applyImageSort');
-    const imageSortColumn = document.getElementById('imageSortColumn');
-    const imageSortCondition = document.getElementById('imageSortCondition');
     
     function openImageSortModal() {
         if (imageSortModalOverlay) {
@@ -778,38 +778,35 @@ function initImageSortModal() {
         });
     }
     
-    // Click outside to close  disabled to prevent accidental closure
-    if (imageSortModalOverlay) {
-        // Disabled
-    }
-    
     if (clearImageSort) {
         clearImageSort.addEventListener('click', function() {
             clearImageSortFilter();
             closeImageSortModalFn();
-            // Re-apply filters pipeline to restore correct row visibility
-            applyClassSectionFilters();
             if (typeof showToast === 'function') showToast('Image filter cleared');
         });
     }
     
     if (applyImageSort) {
         applyImageSort.addEventListener('click', function() {
-            const columnName = imageSortColumn?.value;
-            const condition = imageSortCondition?.value;
+            var columnCheckboxes = document.querySelectorAll('input[name="imageSortColumn"]:checked');
+            var conditionCheckboxes = document.querySelectorAll('input[name="imageSortCondition"]:checked');
             
-            if (!columnName) {
-                if (typeof showToast === 'function') showToast('Please select an image column', 'error');
-                return;
-            }
+            var columns = Array.from(columnCheckboxes).map(cb => cb.value);
+            var conditions = Array.from(conditionCheckboxes).map(cb => cb.value);
+            
+            var columnName = columns.length > 0 ? columns.join(',') : 'all';
+            var condition = conditions.join(',');
             
             if (!condition) {
-                if (typeof showToast === 'function') showToast('Please select a condition', 'error');
+                if (typeof showToast === 'function') showToast('Please select at least one condition', 'error');
                 return;
             }
             
-            const conditionText = condition === 'complete' ? 'Complete' : 
-                                  condition === 'pending' ? 'Pending' : 'Incomplete';
+            // Format condition text for the button
+            var conditionText = conditions.map(c => 
+                c === 'complete' ? 'Complete' : 
+                c === 'pending' ? 'Pending' : 'Incomplete'
+            ).join(' / ');
 
             // Track active image sort state and update button text
             IDCardApp._activeImageSort = { column: columnName, condition: condition };

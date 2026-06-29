@@ -392,6 +392,12 @@
 <!-- Delete Confirmation Modal -->
 {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="assistant" %}
 
+<!-- Auto Create Assistants Modal -->
+{% include 'assistants/auto-create-modal.html' %}
+
+<!-- Bulk Upload Assistants Modal -->
+{% include 'assistants/bulk-upload-assistants-modal.html' %}
+
 <!-- Toast Notifications -->
 {% include 'partials/common/toast.html' %}
 {% endblock %}
@@ -401,6 +407,6 @@
 <script defer src="{% static 'js/manage-staff-common-api.js' %}"></script>
 <script defer src="{% static 'js/manage-staff-common-drawer.js' %}?v=1.0.1"></script>
 <script defer src="{% static 'js/manage-staff-common-list.js' %}"></script>
-<script defer src="{% static 'js/manage-admin-assistants.js' %}?v=1.0.1"></script>
+<script defer src="{% static 'js/manage-admin-assistants.js' %}?v=1.0.9"></script>
 <script defer src="{% static 'js/manage-staff-login-history.js' %}"></script>
 {% endblock %}

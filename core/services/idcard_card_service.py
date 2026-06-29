@@ -524,17 +524,36 @@ class IDCardCardService(BaseService):
 
             # --- Image sort filter ---
             # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.
-            if image_column and image_condition in ('complete', 'pending', 'incomplete'):
-                cards_query = cards_query.annotate(
-                    _img=Cast(KeyTextTransform(image_column, 'field_data'), CharField())
-                )
-                if image_condition == 'complete':
-                    cards_query = cards_query.exclude(_img__isnull=True).exclude(_img='').exclude(_img='NOT_FOUND')
-                    cards_query = cards_query.exclude(_img__startswith='PENDING:')
-                elif image_condition == 'pending':
-                    cards_query = cards_query.filter(_img__startswith='PENDING:')
-                elif image_condition == 'incomplete':
-                    cards_query = cards_query.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
+            if image_condition:
+                if not image_column or image_column == 'all':
+                    img_cols = [f['name'] for f in table.fields if f.get('type') == 'image']
+                else:
+                    img_cols = [c.strip() for c in image_column.split(',') if c.strip()]
+                    
+                img_conds = [c.strip() for c in image_condition.split(',') if c.strip()]
+                
+                valid_conds = [c for c in img_conds if c in ('complete', 'pending', 'incomplete')]
+                
+                if img_cols and valid_conds:
+                    main_q = Q()
+                    for idx, col in enumerate(img_cols):
+                        alias = f'_img_{idx}'
+                        cards_query = cards_query.annotate(
+                            **{alias: Cast(KeyTextTransform(col, 'field_data'), CharField())}
+                        )
+                        
+                        col_q = Q()
+                        for cond in valid_conds:
+                            if cond == 'complete':
+                                col_q |= Q(**{f'{alias}__isnull': False}) & ~Q(**{f'{alias}': ''}) & ~Q(**{f'{alias}': 'NOT_FOUND'}) & ~Q(**{f'{alias}__startswith': 'PENDING:'})
+                            elif cond == 'pending':
+                                col_q |= Q(**{f'{alias}__startswith': 'PENDING:'})
+                            elif cond == 'incomplete':
+                                col_q |= Q(**{f'{alias}__isnull': True}) | Q(**{f'{alias}': ''}) | Q(**{f'{alias}': 'NOT_FOUND'})
+                                
+                        main_q |= col_q
+                        
+                    cards_query = cards_query.filter(main_q)
 
             # --- DateTime range filter (download list) ---
             if status_filter == 'download' and (from_date or to_date):

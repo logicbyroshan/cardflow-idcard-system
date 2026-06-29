@@ -48,6 +48,7 @@ class PermissionService:
 
     ADMIN_USER_MANAGEMENT_PERMISSIONS = [
         'perm_manage_client_staff',
+        'perm_manage_photographer_staff',
     ]
 
     IDCARD_SETTING_PERMISSIONS = [
@@ -165,6 +166,7 @@ class PermissionService:
     # Sensitive permissions that assistant can never hold
     CLIENT_ASSISTANT_BLOCKED_PERMS: set = {
         'perm_manage_client_staff',       # Assistants cannot manage other staff
+        'perm_manage_photographer_staff', # Assistants cannot manage photographers
         'perm_idcard_setting_add',        # Assistants cannot create new tables
         'perm_idcard_setting_delete',     # Assistants cannot delete tables
         'perm_idcard_setting_edit',       # Assistants cannot edit table structure
