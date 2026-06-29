@@ -8,21 +8,21 @@ const { width, height } = Dimensions.get('window');
 const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient);
 
 export default function AnimatedSplashScreen() {
-  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const progress = useRef(new Animated.Value(0)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     // Background movement animation
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pan, {
-          toValue: { x: -width * 0.5, y: -height * 0.5 },
-          duration: 10000,
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 4000,
           useNativeDriver: true,
         }),
-        Animated.timing(pan, {
-          toValue: { x: 0, y: 0 },
-          duration: 10000,
+        Animated.timing(progress, {
+          toValue: 0,
+          duration: 4000,
           useNativeDriver: true,
         }),
       ])
@@ -45,16 +45,26 @@ export default function AnimatedSplashScreen() {
     ).start();
   }, []);
 
+  const translateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -width * 0.5]
+  });
+
+  const translateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -height * 0.5]
+  });
+
   return (
     <View style={styles.container}>
       <Animated.View style={[
-          StyleSheet.absoluteFillObject,
           {
-            width: width * 2,
-            height: height * 2,
+            position: 'absolute',
+            width: width * 1.5,
+            height: height * 1.5,
             transform: [
-              { translateX: pan.x },
-              { translateY: pan.y }
+              { translateX },
+              { translateY }
             ]
           }
       ]}>
