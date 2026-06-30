@@ -22,6 +22,8 @@ const Button = React.memo(function Button({
   const isDisabled = disabled || loading;
   const isGradient = variant === 'primary' || variant === 'gradient';
   
+  const radiusStyle = style && StyleSheet.flatten(style).borderRadius ? { borderRadius: StyleSheet.flatten(style).borderRadius } : { borderRadius: radius.md };
+
   // Only apply size styles (which include padding) to the wrapper if it's NOT a gradient button.
   // For gradient buttons, the inner LinearGradient handles the padding, otherwise the gradient shrinks.
   const containerStyle = [
