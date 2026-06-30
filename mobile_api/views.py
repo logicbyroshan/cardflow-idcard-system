@@ -39,6 +39,9 @@ from urllib.parse import urlencode
 from operators.models import Operator
 from assistants.models import Assistant
 from core.models import Photographer
+from mediafiles.utils import get_card_photo_url
+from idcards.models import IDCard, IDCardTable
+from client.models import Client
 
 class StaffCompatWrapper:
     def __init__(self, delegate, staff_type):
@@ -7621,7 +7624,6 @@ def api_photographer_sync(request):
     
     # Organize data hierarchically
     import collections
-    from .serializers import serialize_card
     
     cards_by_table = collections.defaultdict(list)
     for card in cards_qs.iterator(chunk_size=1000):
