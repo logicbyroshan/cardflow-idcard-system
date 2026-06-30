@@ -383,6 +383,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             enableFormInputs(true);
             // Hide password option in assign mode
             if (pwRow) pwRow.style.display = 'none';
+            // Hide custom password input group and remove required validation in assign mode
+            if (pwGroup) pwGroup.style.display = 'none';
+            if (pwInput) pwInput.required = false;
             // Hide temp password button in assign mode
             var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
             if (tempPwBtn) tempPwBtn.style.display = 'none';

@@ -281,6 +281,12 @@ document.addEventListener('DOMContentLoaded', function() {
             var pwRow = document.getElementById('staffPasswordOptionRow');
             if (pwRow) pwRow.style.display = 'none';
 
+            // Hide custom password input group and remove required validation in non-add modes
+            var customPwGroup = document.getElementById('staffCustomPasswordGroup');
+            if (customPwGroup) customPwGroup.style.display = 'none';
+            var pwInput = document.getElementById('staff-password');
+            if (pwInput) pwInput.required = false;
+
             // Show temp password button only in edit mode
             var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
             if (tempPwBtn) tempPwBtn.style.display = (mode === 'edit') ? '' : 'none';
