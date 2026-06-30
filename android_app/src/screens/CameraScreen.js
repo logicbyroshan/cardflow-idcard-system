@@ -451,9 +451,9 @@ export default function CameraScreen({ navigation, route }) {
         </View>
       </View>
 
-      <View style={[s.topStatus, { top: insets.top + 10 }]}>
+      <View style={s.topStatus}>
         {currentStudent ? (
-          <View style={[s.levelIndicator, s.bgSuccess, { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, alignItems: 'center', flexDirection: 'column' }]}>
+          <View style={[s.bgSuccess, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', ...shadows.md }]}>
             {(() => {
               const info = resolveStudentInfo(currentStudent);
               return (
@@ -465,29 +465,29 @@ export default function CameraScreen({ navigation, route }) {
             })()}
           </View>
         ) : (
-          <View style={[s.levelIndicator, isReady ? s.bgSuccess : s.bgError]}>
+          <View style={[isReady ? s.bgSuccess : s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
             <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
-            <Text style={s.levelText}>
+            <Text style={[s.levelText, { marginLeft: 0, fontSize: 13, fontFamily: fontFamily.bold }]}>
               {!isLevel ? "Align Face & Hold Upright" : "Biometric Face Aligned"}
             </Text>
           </View>
         )}
       </View>
 
-      <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15, flexDirection: 'column' }]}>
+      <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15, flexDirection: 'column', paddingHorizontal: 0, paddingTop: 0 }]}>
         {nextStudent && (
-          <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, marginBottom: 20, alignSelf: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+          <View style={{ backgroundColor: '#f97316', width: '100%', paddingVertical: 10, paddingHorizontal: 20, marginBottom: 20, alignItems: 'center', justifyContent: 'center' }}>
             {(() => {
               const info = resolveStudentInfo(nextStudent);
               return (
-                <Text style={{ color: '#34d399', fontSize: 12, fontFamily: fontFamily.bold, textAlign: 'center' }}>
-                  UPCOMING: <Text style={{ color: '#fff', fontFamily: fontFamily.medium }}>{info.name.toUpperCase()} (CL: {info.classVal.toUpperCase()} - SEC: {info.sectionVal.toUpperCase()})</Text>
+                <Text style={{ color: '#fff', fontSize: 13, fontFamily: fontFamily.bold, textAlign: 'center' }}>
+                  UPCOMING: <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontFamily: fontFamily.medium }}>{info.name.toUpperCase()}  |  CLASS: {info.classVal.toUpperCase()} - {info.sectionVal.toUpperCase()}</Text>
                 </Text>
               );
             })()}
           </View>
         )}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%', paddingHorizontal: 20, marginTop: nextStudent ? 0 : 20 }}>
         <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
           <View style={s.controlIconSquare}>
             <DynamicIcon name="redo" size={18} color="#fff" />
@@ -527,8 +527,8 @@ const s = StyleSheet.create({
   },
   camera: { flex: 1 },
   
-  topStatus: { position: 'absolute', width: '100%', alignItems: 'center', zIndex: 10 },
-  levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm, ...shadows.md },
+  topStatus: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, alignItems: 'stretch' },
+  levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, ...shadows.md },
   bgSuccess: { backgroundColor: '#22c55e' },
   bgError: { backgroundColor: '#ef4444' },
   levelText: { color: '#fff', fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', marginLeft: 8 },
