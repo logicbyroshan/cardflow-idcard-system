@@ -180,10 +180,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Select All / None table buttons (delegated)
+        // Select All / None / Done buttons (delegated)
         container.addEventListener('click', function(e) {
             var allBtn = e.target.closest('.table-select-all-btn');
             var noneBtn = e.target.closest('.table-deselect-all-btn');
+            var doneBtn = e.target.closest('.client-card-done-btn');
             if (allBtn) {
                 var row = allBtn.closest('.photographer-client-row');
                 row.querySelectorAll('.photographer-table-cb').forEach(function(cb) { cb.checked = true; });
@@ -191,6 +192,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (noneBtn) {
                 var row = noneBtn.closest('.photographer-client-row');
                 row.querySelectorAll('.photographer-table-cb').forEach(function(cb) { cb.checked = false; });
+            }
+            if (doneBtn) {
+                var row = doneBtn.closest('.photographer-client-row');
+                row.dataset.isEditing = 'false';
+                updateClientRowVisibilities();
             }
         });
     }
