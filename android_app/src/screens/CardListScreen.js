@@ -132,6 +132,18 @@ export default function CardListScreen({ navigation, route }) {
     setSelectedIds(new Set());
   }, []);
 
+  const getFieldValueCaseInsensitive = useCallback((obj, key) => {
+    if (!obj) return '';
+    if (obj[key] !== undefined) return obj[key];
+    const upperKey = key.toUpperCase();
+    for (const k in obj) {
+      if (k.toUpperCase() === upperKey) {
+        return obj[k];
+      }
+    }
+    return '';
+  }, []);
+
   const loadCards = useCallback(async (pageNum = 1, append = false) => {
     if (pageNum === 1) setLoading(true);
     else setLoadingMore(true);
@@ -150,6 +162,24 @@ export default function CardListScreen({ navigation, route }) {
             }
           });
         });
+
+        // Resolve offline captured image URIs from device storage
+        for (const card of allOfflineCards) {
+          const localUri = await AsyncStorage.getItem(`offline_photo_${card.id}`);
+          if (localUri) {
+            card.has_photo = true;
+            card.photo_url = localUri;
+            if (card.field_data) {
+              const keys = Object.keys(card.field_data);
+              let photoKey = keys.find(k => k.toLowerCase() === 'photo' || k.toLowerCase() === 'student photo' || k.toLowerCase() === 'image');
+              if (!photoKey) {
+                photoKey = 'PHOTO';
+              }
+              card.field_data[photoKey] = localUri;
+            }
+          }
+        }
+
         setRawOfflineCards(allOfflineCards);
         
         let filtered = allOfflineCards.filter(c => currentStatus === 'uncaptured' ? !c.has_photo : c.has_photo);
@@ -160,19 +190,25 @@ export default function CardListScreen({ navigation, route }) {
         
         // Photographer Class/Section filter
         if (photoClass) {
-           filtered = filtered.filter(c => c.field_data?.class?.toLowerCase() === photoClass.toLowerCase());
+           filtered = filtered.filter(c => {
+             const cls = getFieldValueCaseInsensitive(c.field_data, 'class') || getFieldValueCaseInsensitive(c.field_data, 'standard') || getFieldValueCaseInsensitive(c.field_data, 'std') || '';
+             return cls.toLowerCase() === photoClass.toLowerCase();
+           });
         }
         if (photoSection) {
-           filtered = filtered.filter(c => c.field_data?.section?.toLowerCase() === photoSection.toLowerCase());
+           filtered = filtered.filter(c => {
+             const sec = getFieldValueCaseInsensitive(c.field_data, 'section') || getFieldValueCaseInsensitive(c.field_data, 'sec') || '';
+             return sec.toLowerCase() === photoSection.toLowerCase();
+           });
         }
 
-        // Sorting by Class (Nursery, KG1... 12th) and Section
+        // Sorting by Class (Nursery, KG1... 12th), Section, and Student Name
         const classOrder = ['nursery', 'kg1', 'kg2', '1', '1st', '2', '2nd', '3', '3rd', '4', '4th', '5', '5th', '6', '6th', '7', '7th', '8', '8th', '9', '9th', '10', '10th', '11', '11th', '12', '12th'];
         filtered.sort((a, b) => {
-          const aClass = (a.field_data?.class || '').toLowerCase();
-          const bClass = (b.field_data?.class || '').toLowerCase();
-          const aSec = (a.field_data?.section || '').toLowerCase();
-          const bSec = (b.field_data?.section || '').toLowerCase();
+          const aClass = String(getFieldValueCaseInsensitive(a.field_data, 'class') || getFieldValueCaseInsensitive(a.field_data, 'standard') || getFieldValueCaseInsensitive(a.field_data, 'std') || '').toLowerCase();
+          const bClass = String(getFieldValueCaseInsensitive(b.field_data, 'class') || getFieldValueCaseInsensitive(b.field_data, 'standard') || getFieldValueCaseInsensitive(b.field_data, 'std') || '').toLowerCase();
+          const aSec = String(getFieldValueCaseInsensitive(a.field_data, 'section') || getFieldValueCaseInsensitive(a.field_data, 'sec') || '').toLowerCase();
+          const bSec = String(getFieldValueCaseInsensitive(b.field_data, 'section') || getFieldValueCaseInsensitive(b.field_data, 'sec') || '').toLowerCase();
           
           let aIdx = classOrder.indexOf(aClass);
           let bIdx = classOrder.indexOf(bClass);
@@ -181,7 +217,11 @@ export default function CardListScreen({ navigation, route }) {
           
           if (aIdx !== bIdx) return aIdx - bIdx;
           if (aClass !== bClass) return aClass.localeCompare(bClass);
-          return aSec.localeCompare(bSec);
+          if (aSec !== bSec) return aSec.localeCompare(bSec);
+
+          const aName = String(getFieldValueCaseInsensitive(a.field_data, 'student name') || getFieldValueCaseInsensitive(a.field_data, 'name') || getFieldValueCaseInsensitive(a.field_data, 'employee name') || getFieldValueCaseInsensitive(a.field_data, 'staff name') || getFieldValueCaseInsensitive(a.field_data, 'candidate name') || a.name || '').toLowerCase();
+          const bName = String(getFieldValueCaseInsensitive(b.field_data, 'student name') || getFieldValueCaseInsensitive(b.field_data, 'name') || getFieldValueCaseInsensitive(b.field_data, 'employee name') || getFieldValueCaseInsensitive(b.field_data, 'staff name') || getFieldValueCaseInsensitive(b.field_data, 'candidate name') || b.name || '').toLowerCase();
+          return aName.localeCompare(bName);
         });
 
         const perPage = 50;
@@ -450,10 +490,49 @@ export default function CardListScreen({ navigation, route }) {
 
   const handleEditCard = useCallback((card) => {
     if (perms.role === 'photographer') {
-      const idx = cards.findIndex(c => c.id === card.id);
+      let filtered = rawOfflineCards.filter(c => currentStatus === 'uncaptured' ? !c.has_photo : c.has_photo);
+      if (searchQuery) {
+        filtered = filtered.filter(c => JSON.stringify(c.field_data).toLowerCase().includes(searchQuery.toLowerCase()));
+      }
+      if (photoClass) {
+        filtered = filtered.filter(c => {
+          const cls = getFieldValueCaseInsensitive(c.field_data, 'class') || getFieldValueCaseInsensitive(c.field_data, 'standard') || getFieldValueCaseInsensitive(c.field_data, 'std') || '';
+          return cls.toLowerCase() === photoClass.toLowerCase();
+        });
+      }
+      if (photoSection) {
+        filtered = filtered.filter(c => {
+          const sec = getFieldValueCaseInsensitive(c.field_data, 'section') || getFieldValueCaseInsensitive(c.field_data, 'sec') || '';
+          return sec.toLowerCase() === photoSection.toLowerCase();
+        });
+      }
+
+      // Sort
+      const classOrder = ['nursery', 'kg1', 'kg2', '1', '1st', '2', '2nd', '3', '3rd', '4', '4th', '5', '5th', '6', '6th', '7', '7th', '8', '8th', '9', '9th', '10', '10th', '11', '11th', '12', '12th'];
+      filtered.sort((a, b) => {
+        const aClass = String(getFieldValueCaseInsensitive(a.field_data, 'class') || getFieldValueCaseInsensitive(a.field_data, 'standard') || getFieldValueCaseInsensitive(a.field_data, 'std') || '').toLowerCase();
+        const bClass = String(getFieldValueCaseInsensitive(b.field_data, 'class') || getFieldValueCaseInsensitive(b.field_data, 'standard') || getFieldValueCaseInsensitive(b.field_data, 'std') || '').toLowerCase();
+        const aSec = String(getFieldValueCaseInsensitive(a.field_data, 'section') || getFieldValueCaseInsensitive(a.field_data, 'sec') || '').toLowerCase();
+        const bSec = String(getFieldValueCaseInsensitive(b.field_data, 'section') || getFieldValueCaseInsensitive(b.field_data, 'sec') || '').toLowerCase();
+        
+        let aIdx = classOrder.indexOf(aClass);
+        let bIdx = classOrder.indexOf(bClass);
+        if (aIdx === -1) aIdx = 999;
+        if (bIdx === -1) bIdx = 999;
+        
+        if (aIdx !== bIdx) return aIdx - bIdx;
+        if (aClass !== bClass) return aClass.localeCompare(bClass);
+        if (aSec !== bSec) return aSec.localeCompare(bSec);
+
+        const aName = String(getFieldValueCaseInsensitive(a.field_data, 'student name') || getFieldValueCaseInsensitive(a.field_data, 'name') || getFieldValueCaseInsensitive(a.field_data, 'employee name') || getFieldValueCaseInsensitive(a.field_data, 'staff name') || getFieldValueCaseInsensitive(a.field_data, 'candidate name') || a.name || '').toLowerCase();
+        const bName = String(getFieldValueCaseInsensitive(b.field_data, 'student name') || getFieldValueCaseInsensitive(b.field_data, 'name') || getFieldValueCaseInsensitive(b.field_data, 'employee name') || getFieldValueCaseInsensitive(b.field_data, 'staff name') || getFieldValueCaseInsensitive(b.field_data, 'candidate name') || b.name || '').toLowerCase();
+        return aName.localeCompare(bName);
+      });
+
+      const idx = filtered.findIndex(c => c.id === card.id);
       if (idx !== -1) {
         navigation.navigate('Camera', {
-          fastCaptureCards: cards,
+          fastCaptureCards: filtered,
           initialIndex: idx,
           tableId,
         });
@@ -462,19 +541,70 @@ export default function CardListScreen({ navigation, route }) {
       setEditingCardId(card.id);
       setShowForm(true);
     }
-  }, [perms.role, cards, navigation, tableId]);
+  }, [perms.role, rawOfflineCards, currentStatus, searchQuery, photoClass, photoSection, navigation, tableId, getFieldValueCaseInsensitive]);
 
   const handleStartCapture = useCallback(() => {
-    if (cards && cards.length > 0) {
-      navigation.navigate('Camera', {
-        fastCaptureCards: cards,
-        initialIndex: 0,
-        tableId,
+    if (perms.role === 'photographer') {
+      let filtered = rawOfflineCards.filter(c => currentStatus === 'uncaptured' ? !c.has_photo : c.has_photo);
+      if (searchQuery) {
+        filtered = filtered.filter(c => JSON.stringify(c.field_data).toLowerCase().includes(searchQuery.toLowerCase()));
+      }
+      if (photoClass) {
+        filtered = filtered.filter(c => {
+          const cls = getFieldValueCaseInsensitive(c.field_data, 'class') || getFieldValueCaseInsensitive(c.field_data, 'standard') || getFieldValueCaseInsensitive(c.field_data, 'std') || '';
+          return cls.toLowerCase() === photoClass.toLowerCase();
+        });
+      }
+      if (photoSection) {
+        filtered = filtered.filter(c => {
+          const sec = getFieldValueCaseInsensitive(c.field_data, 'section') || getFieldValueCaseInsensitive(c.field_data, 'sec') || '';
+          return sec.toLowerCase() === photoSection.toLowerCase();
+        });
+      }
+
+      // Sort
+      const classOrder = ['nursery', 'kg1', 'kg2', '1', '1st', '2', '2nd', '3', '3rd', '4', '4th', '5', '5th', '6', '6th', '7', '7th', '8', '8th', '9', '9th', '10', '10th', '11', '11th', '12', '12th'];
+      filtered.sort((a, b) => {
+        const aClass = String(getFieldValueCaseInsensitive(a.field_data, 'class') || getFieldValueCaseInsensitive(a.field_data, 'standard') || getFieldValueCaseInsensitive(a.field_data, 'std') || '').toLowerCase();
+        const bClass = String(getFieldValueCaseInsensitive(b.field_data, 'class') || getFieldValueCaseInsensitive(b.field_data, 'standard') || getFieldValueCaseInsensitive(b.field_data, 'std') || '').toLowerCase();
+        const aSec = String(getFieldValueCaseInsensitive(a.field_data, 'section') || getFieldValueCaseInsensitive(a.field_data, 'sec') || '').toLowerCase();
+        const bSec = String(getFieldValueCaseInsensitive(b.field_data, 'section') || getFieldValueCaseInsensitive(b.field_data, 'sec') || '').toLowerCase();
+        
+        let aIdx = classOrder.indexOf(aClass);
+        let bIdx = classOrder.indexOf(bClass);
+        if (aIdx === -1) aIdx = 999;
+        if (bIdx === -1) bIdx = 999;
+        
+        if (aIdx !== bIdx) return aIdx - bIdx;
+        if (aClass !== bClass) return aClass.localeCompare(bClass);
+        if (aSec !== bSec) return aSec.localeCompare(bSec);
+
+        const aName = String(getFieldValueCaseInsensitive(a.field_data, 'student name') || getFieldValueCaseInsensitive(a.field_data, 'name') || getFieldValueCaseInsensitive(a.field_data, 'employee name') || getFieldValueCaseInsensitive(a.field_data, 'staff name') || getFieldValueCaseInsensitive(a.field_data, 'candidate name') || a.name || '').toLowerCase();
+        const bName = String(getFieldValueCaseInsensitive(b.field_data, 'student name') || getFieldValueCaseInsensitive(b.field_data, 'name') || getFieldValueCaseInsensitive(b.field_data, 'employee name') || getFieldValueCaseInsensitive(b.field_data, 'staff name') || getFieldValueCaseInsensitive(b.field_data, 'candidate name') || b.name || '').toLowerCase();
+        return aName.localeCompare(bName);
       });
+
+      if (filtered.length > 0) {
+        navigation.navigate('Camera', {
+          fastCaptureCards: filtered,
+          initialIndex: 0,
+          tableId,
+        });
+      } else {
+        showToast('No cards in the list', 'info');
+      }
     } else {
-      showToast('No cards in the list', 'info');
+      if (cards && cards.length > 0) {
+        navigation.navigate('Camera', {
+          fastCaptureCards: cards,
+          initialIndex: 0,
+          tableId,
+        });
+      } else {
+        showToast('No cards in the list', 'info');
+      }
     }
-  }, [cards, navigation, tableId, showToast]);
+  }, [cards, rawOfflineCards, currentStatus, searchQuery, photoClass, photoSection, navigation, tableId, showToast, perms.role, getFieldValueCaseInsensitive]);
 
   const handleSaveAndNext = useCallback((savedCardId) => {
     const currentIndex = cards.findIndex(c => c.id === savedCardId);

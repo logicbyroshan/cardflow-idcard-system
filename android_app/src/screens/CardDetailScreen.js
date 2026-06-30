@@ -14,6 +14,7 @@ import CardModalForm from '../components/CardModalForm';
 import { apiGet, apiPost, BASE_URL, getSessionCookies, resolveAdarshImageUrl } from '../api/client';
 import { colors, radius, shadows, roleThemes, fontFamily } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import useRefreshableResource from '../hooks/useRefreshableResource';
 
 export default function CardDetailScreen({ navigation, route }) {
@@ -31,6 +32,36 @@ export default function CardDetailScreen({ navigation, route }) {
 
   const loadCard = useCallback(async () => {
     try {
+      if (user?.role === 'photographer') {
+        const offlineStr = await AsyncStorage.getItem('photographer_offline_data');
+        if (offlineStr) {
+          const clients = JSON.parse(offlineStr);
+          let foundCard = null;
+          for (const c of clients) {
+            for (const t of (c.tables || [])) {
+              foundCard = (t.cards || []).find(card => String(card.id) === String(cardId));
+              if (foundCard) break;
+            }
+            if (foundCard) break;
+          }
+          if (foundCard) {
+            // Check offline photo
+            const localUri = await AsyncStorage.getItem(`offline_photo_${foundCard.id}`);
+            if (localUri) {
+              foundCard.has_photo = true;
+              foundCard.photo_url = localUri;
+              if (foundCard.field_data) {
+                const keys = Object.keys(foundCard.field_data);
+                let photoKey = keys.find(k => k.toLowerCase() === 'photo' || k.toLowerCase() === 'student photo' || k.toLowerCase() === 'image');
+                if (!photoKey) photoKey = 'PHOTO';
+                foundCard.field_data[photoKey] = localUri;
+              }
+            }
+            return foundCard;
+          }
+        }
+      }
+
       const { ok, data } = await apiGet(`/api/mobile/card/${cardId}/detail/`);
       if (ok && data?.success) {
         return data.data;
@@ -40,7 +71,7 @@ export default function CardDetailScreen({ navigation, route }) {
     } catch (e) {
       throw new Error('Network error - check your connection');
     }
-  }, [cardId]);
+  }, [cardId, user]);
 
   const { data: card, loading, refreshing, error, refresh } = useRefreshableResource(loadCard);
 
