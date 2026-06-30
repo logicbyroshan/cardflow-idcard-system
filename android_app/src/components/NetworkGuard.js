@@ -11,10 +11,14 @@ import { colors, gradients, fontFamily, typography, radius, shadows } from '../t
  * Shows a full-screen offline overlay when connectivity is lost.
  * Usage:  <NetworkGuard>{children}</NetworkGuard>
  */
+import { useAuth } from '../context/AuthContext';
+
 export default function NetworkGuard({ children }) {
   const [isOnline, setIsOnline] = useState(true);
   const [wasOffline, setWasOffline] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const auth = useAuth();
+  const isPhotographer = auth?.user?.role === 'photographer';
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
@@ -39,8 +43,8 @@ export default function NetworkGuard({ children }) {
   return (
     <View style={{ flex: 1 }}>
       {children}
-      {!isOnline && <OfflineOverlay />}
-      {isOnline && wasOffline && (
+      {!isOnline && !isPhotographer && <OfflineOverlay />}
+      {isOnline && wasOffline && !isPhotographer && (
         <Animated.View style={[styles.reconnected, { opacity: fadeAnim }]}>
           <DynamicIcon name="wifi" size={11} color="#fff" />
           <Text style={styles.reconnectedText}>Back online</Text>
