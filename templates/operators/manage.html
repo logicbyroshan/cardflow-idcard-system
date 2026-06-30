@@ -160,68 +160,74 @@
 {% endblock %}
 
 {% block page_js %}
-  <script defer src="{% static 'dist/js/manage-staff.min.js' %}?v=1.2"></script>
+  <script defer src="{% static 'js/manage-staff-state.js' %}"></script>
+  <script defer src="{% static 'js/manage-staff-drawer.js' %}"></script>
+  <script defer src="{% static 'js/manage-staff-api.js' %}"></script>
+  <script defer src="{% static 'js/manage-staff-handlers.js' %}"></script>
+  <script defer src="{% static 'js/manage-staff-search.js' %}"></script>
   <script defer src="{% static 'js/manage-staff-login-history.js' %}"></script>
   {# Override the staff API URLs to use operator-specific endpoints #}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      var NS = window.ManageStaffPage;
-      if (!NS) return;
+      setTimeout(function() {
+        var NS = window.ManageStaffPage;
+        if (!NS) return;
 
-      // Operator API base path
-      var BASE = '/panel/operators/api/operator';
+        // Operator API base path
+        var BASE = '/panel/operators/api/operator';
 
-      NS.fetchStaffDetails = async function(operatorId) {
-        try {
-          var data = await ApiClient.get(BASE + '/' + operatorId + '/');
-          if (data.success) return data.operator;
-          showToast(data.message || data.error || 'Failed to fetch operator details', 'error');
-          return null;
-        } catch (err) {
-          showToast((err && err.message) ? err.message : 'Network error', 'error');
-          return null;
-        }
-      };
+        NS.fetchStaffDetails = async function(operatorId) {
+          try {
+            var data = await ApiClient.get(BASE + '/' + operatorId + '/');
+            if (data.success) return data.operator;
+            showToast(data.message || data.error || 'Failed to fetch operator details', 'error');
+            return null;
+          } catch (err) {
+            showToast((err && err.message) ? err.message : 'Network error', 'error');
+            return null;
+          }
+        };
 
-      NS.createStaff = async function(formData) {
-        try {
-          var data = await ApiClient.post(BASE + '/', formData);
-          return data;
-        } catch (err) {
-          if (err && err.data && typeof err.data === 'object') return err.data;
-          return { success: false, message: (err && err.message) ? err.message : 'Network error' };
-        }
-      };
+        NS.createStaff = async function(formData) {
+          try {
+            var data = await ApiClient.post(BASE + '/', formData);
+            return data;
+          } catch (err) {
+            if (err && err.data && typeof err.data === 'object') return err.data;
+            return { success: false, message: (err && err.message) ? err.message : 'Network error' };
+          }
+        };
 
-      NS.updateStaff = async function(operatorId, formData) {
-        try {
-          var data = await ApiClient.post(BASE + '/' + operatorId + '/', formData);
-          return data;
-        } catch (err) {
-          if (err && err.data && typeof err.data === 'object') return err.data;
-          return { success: false, message: (err && err.message) ? err.message : 'Network error' };
-        }
-      };
+        NS.updateStaff = async function(operatorId, formData) {
+          try {
+            var data = await ApiClient.post(BASE + '/' + operatorId + '/', formData);
+            return data;
+          } catch (err) {
+            if (err && err.data && typeof err.data === 'object') return err.data;
+            return { success: false, message: (err && err.message) ? err.message : 'Network error' };
+          }
+        };
 
-      NS.deleteStaffApi = async function(operatorId) {
-        try {
-          var data = await ApiClient.post(BASE + '/' + operatorId + '/delete/');
-          return data;
-        } catch (err) {
-          if (err && err.data && typeof err.data === 'object') return err.data;
-          return { success: false, message: (err && err.message) ? err.message : 'Network error' };
-        }
-      };
+        NS.deleteStaffApi = async function(operatorId) {
+          try {
+            var data = await ApiClient.post(BASE + '/' + operatorId + '/delete/');
+            return data;
+          } catch (err) {
+            if (err && err.data && typeof err.data === 'object') return err.data;
+            return { success: false, message: (err && err.message) ? err.message : 'Network error' };
+          }
+        };
 
-      NS.toggleStaffStatus = async function(operatorId) {
-        try {
-          var data = await ApiClient.post(BASE + '/' + operatorId + '/toggle-status/');
-          return data;
-        } catch (err) {
-          if (err && err.data && typeof err.data === 'object') return err.data;
-          return { success: false, message: (err && err.message) ? err.message : 'Network error' };
-        }
-      };
+        NS.toggleStaffStatus = async function(operatorId) {
+          try {
+            var data = await ApiClient.post(BASE + '/' + operatorId + '/toggle-status/');
+            return data;
+          } catch (err) {
+            if (err && err.data && typeof err.data === 'object') return err.data;
+            return { success: false, message: (err && err.message) ? err.message : 'Network error' };
+          }
+        };
+      }, 0);
     });
   </script>
   {% if request.GET.embed == 'drawer' %}
