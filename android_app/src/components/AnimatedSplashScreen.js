@@ -79,7 +79,7 @@ export default function AnimatedSplashScreen() {
       <Animated.View style={[styles.content, { transform: [{ scale: logoPulse }] }]}>
         <View style={styles.logoContainer}>
           <Animated.Image 
-            source={require('../../assets/adarsh-logo-small.png')} 
+            source={require('../../assets/logo.png')} 
             style={styles.logo} 
             resizeMode="contain" 
           />

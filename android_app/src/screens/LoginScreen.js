@@ -129,7 +129,7 @@ export default function LoginScreen({ navigation }) {
           {/* Top branding */}
           <View style={styles.brandSection}>
             <View style={styles.appIcon}>
-              <Image source={require('../../assets/adarsh-logo-small.png')} style={styles.logo} resizeMode="contain" />
+              <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
             </View>
             <Text style={styles.brandTitle}>Adarsh ID Cards</Text>
           </View>
@@ -318,10 +318,10 @@ const styles = StyleSheet.create({
     fontSize: typography.lg,
   },
 
-  // Submit button
   submitBtn: {
     marginTop: 12,
     borderRadius: radius.md,
+    width: '100%',
   },
   helpText: {
     textAlign: 'center',

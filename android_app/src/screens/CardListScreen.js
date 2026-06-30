@@ -5,6 +5,7 @@ import {
   ActivityIndicator, RefreshControl, TextInput, ScrollView,
   Dimensions, Linking, Alert
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DynamicIcon, IconSearch, IconCheck } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -99,6 +100,10 @@ export default function CardListScreen({ navigation, route }) {
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [totalCount, setTotalCount]       = useState(0);
 
+  // Photographer explicit filters
+  const [photoClass, setPhotoClass] = useState('');
+  const [photoSection, setPhotoSection] = useState('');
+
   const [showForm, setShowForm]           = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
   const [autoRetrieveId, setAutoRetrieveId] = useState(null);
@@ -125,27 +130,86 @@ export default function CardListScreen({ navigation, route }) {
     setSelectedIds(new Set());
   }, []);
 
-  // ── Data loading ─────────────────────────────────────────────────────────
   const loadCards = useCallback(async (pageNum = 1, append = false) => {
     if (pageNum === 1) setLoading(true);
     else setLoadingMore(true);
 
     try {
-      const params = { page: pageNum, status: currentStatus, search: searchQuery, ...activeFilters };
-      const { ok, data } = await apiGet(`/api/mobile/table/${tableId}/cards/`, params);
+      if (perms.role === 'photographer') {
+        const offlineStr = await AsyncStorage.getItem('photographer_offline_data');
+        const clients = offlineStr ? JSON.parse(offlineStr) : [];
+        let allOfflineCards = [];
+        let offlineTableName = '';
+        clients.forEach(c => {
+          c.tables.forEach(t => {
+            if (t.id === tableId) {
+              offlineTableName = t.name;
+              allOfflineCards = t.cards || [];
+            }
+          });
+        });
+        
+        let filtered = allOfflineCards.filter(c => currentStatus === 'uncaptured' ? !c.has_photo : c.has_photo);
+        
+        if (searchQuery) {
+          filtered = filtered.filter(c => JSON.stringify(c.field_data).toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        
+        // Photographer Class/Section filter
+        if (photoClass) {
+           filtered = filtered.filter(c => c.field_data?.class?.toLowerCase() === photoClass.toLowerCase());
+        }
+        if (photoSection) {
+           filtered = filtered.filter(c => c.field_data?.section?.toLowerCase() === photoSection.toLowerCase());
+        }
 
-      if (ok && data?.success) {
-        const fetchedCards  = data.data?.cards || [];
-        const tableFields   = (data.data?.table?.fields || []).filter(f => f && f.name);
-        const mappedCards   = fetchedCards.map(c => ({ ...c, ordered_fields: tableFields }));
+        // Sorting by Class (Nursery, KG1... 12th) and Section
+        const classOrder = ['nursery', 'kg1', 'kg2', '1', '1st', '2', '2nd', '3', '3rd', '4', '4th', '5', '5th', '6', '6th', '7', '7th', '8', '8th', '9', '9th', '10', '10th', '11', '11th', '12', '12th'];
+        filtered.sort((a, b) => {
+          const aClass = (a.field_data?.class || '').toLowerCase();
+          const bClass = (b.field_data?.class || '').toLowerCase();
+          const aSec = (a.field_data?.section || '').toLowerCase();
+          const bSec = (b.field_data?.section || '').toLowerCase();
+          
+          let aIdx = classOrder.indexOf(aClass);
+          let bIdx = classOrder.indexOf(bClass);
+          if (aIdx === -1) aIdx = 999;
+          if (bIdx === -1) bIdx = 999;
+          
+          if (aIdx !== bIdx) return aIdx - bIdx;
+          if (aClass !== bClass) return aClass.localeCompare(bClass);
+          return aSec.localeCompare(bSec);
+        });
 
-        setCards(prev => append ? [...prev, ...mappedCards] : mappedCards);
-        setHasMore(data.data?.has_more || false);
-        setTableName(data.data?.table?.name || '');
-        setTotalCount(data.data?.total || 0);
-        setTableCounts(data.data?.counts || {});
+        const perPage = 50;
+        const start = (pageNum - 1) * perPage;
+        const pageCards = filtered.slice(start, start + perPage);
+
+        setCards(prev => append ? [...prev, ...pageCards] : pageCards);
+        setHasMore(start + perPage < filtered.length);
+        setTableName(offlineTableName);
+        setTotalCount(filtered.length);
+        setTableCounts({
+            'uncaptured': allOfflineCards.filter(c => !c.has_photo).length,
+            'captured': allOfflineCards.filter(c => c.has_photo).length,
+        });
       } else {
-        setError(data?.message || 'Failed to load cards');
+        const params = { page: pageNum, status: currentStatus, search: searchQuery, ...activeFilters };
+        const { ok, data } = await apiGet(`/api/mobile/table/${tableId}/cards/`, params);
+
+        if (ok && data?.success) {
+          const fetchedCards  = data.data?.cards || [];
+          const tableFields   = (data.data?.table?.fields || []).filter(f => f && f.name);
+          const mappedCards   = fetchedCards.map(c => ({ ...c, ordered_fields: tableFields }));
+
+          setCards(prev => append ? [...prev, ...mappedCards] : mappedCards);
+          setHasMore(data.data?.has_more || false);
+          setTableName(data.data?.table?.name || '');
+          setTotalCount(data.data?.total || 0);
+          setTableCounts(data.data?.counts || {});
+        } else {
+          setError(data?.message || 'Failed to load cards');
+        }
       }
     } catch (e) {
       setError('Network error');
@@ -154,7 +218,7 @@ export default function CardListScreen({ navigation, route }) {
       setLoadingMore(false);
       setRefreshing(false);
     }
-  }, [tableId, currentStatus, searchQuery, activeFilters]);
+  }, [tableId, currentStatus, searchQuery, activeFilters, perms.role, photoClass, photoSection]);
 
   // Keep ref in sync with the latest loadCards
   useEffect(() => { loadCardsRef.current = loadCards; }, [loadCards]);
@@ -382,12 +446,15 @@ export default function CardListScreen({ navigation, route }) {
 
   const handleStartCapture = useCallback(() => {
     if (cards && cards.length > 0) {
-      setEditingCardId(cards[0].id);
-      setShowForm(true);
+      navigation.navigate('Camera', {
+        fastCaptureCards: cards,
+        initialIndex: 0,
+        tableId,
+      });
     } else {
       showToast('No cards in the list', 'info');
     }
-  }, [cards, showToast]);
+  }, [cards, navigation, tableId, showToast]);
 
   const handleSaveAndNext = useCallback((savedCardId) => {
     const currentIndex = cards.findIndex(c => c.id === savedCardId);
@@ -573,6 +640,8 @@ export default function CardListScreen({ navigation, route }) {
       />
     );
   }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect]);
+
+
 
   const leftOfHomeBtns = useMemo(() => {
     const list = [];

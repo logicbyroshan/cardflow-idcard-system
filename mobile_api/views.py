@@ -7590,3 +7590,110 @@ def api_register_device_token(request):
         import logging
         logging.getLogger(__name__).exception("Failed to register device token")
         return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
+
+@require_mobile_client
+@require_http_methods(['GET'])
+def api_photographer_sync(request):
+    """
+    Returns all assigned clients, tables, and pending/verified cards for the photographer.
+    This data is cached locally by the mobile app for offline capture.
+    """
+    user = request.user
+    if not PermissionService.is_photographer(user):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    
+    accessible_ids = PermissionService.get_accessible_client_ids(user) or []
+    if not accessible_ids:
+        return JsonResponse({'success': True, 'clients': []})
+        
+    clients = Client.objects.filter(id__in=accessible_ids)
+    
+    tables_qs = (
+        IDCardTable.objects
+        .filter(group__client_id__in=accessible_ids, deleted_by_client=False, is_active=True)
+        .select_related('group')
+    )
+    
+    cards_qs = IDCard.objects.filter(
+        table__in=tables_qs,
+        status__in=['pending', 'verified']
+    ).select_related('table')
+    
+    # Organize data hierarchically
+    import collections
+    from .serializers import serialize_card
+    
+    cards_by_table = collections.defaultdict(list)
+    for card in cards_qs.iterator(chunk_size=1000):
+        # We need a slim serialization for offline mode
+        has_photo = bool(get_card_photo_url(card))
+        cards_by_table[card.table_id].append({
+            'id': card.id,
+            'table_id': card.table_id,
+            'field_data': card.field_data or {},
+            'status': card.status,
+            'has_photo': has_photo,
+        })
+        
+    tables_by_client = collections.defaultdict(list)
+    for t in tables_qs:
+        client_id = getattr(t.group, 'client_id', None)
+        if client_id:
+            tables_by_client[client_id].append({
+                'id': t.id,
+                'name': t.name,
+                'group': t.group.name if t.group else '',
+                'cards': cards_by_table.get(t.id, [])
+            })
+            
+    clients_data = []
+    for c in clients:
+        clients_data.append({
+            'id': c.id,
+            'name': getattr(c, 'business_name', c.name),
+            'tables': tables_by_client.get(c.id, [])
+        })
+        
+    return JsonResponse({'success': True, 'clients': clients_data})
+
+@require_mobile_client
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_photographer_upload_offline(request):
+    """
+    Accepts bulk offline uploaded photos.
+    Expects FormData where each file is keyed by the card_id.
+    """
+    user = request.user
+    if not PermissionService.is_photographer(user):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+        
+    uploaded = 0
+    failed = 0
+    
+    from core.services.id_card_service import IDCardService
+    
+    for key, file in request.FILES.items():
+        try:
+            # key should be the card_id
+            card_id = int(key)
+            card = IDCard.objects.get(id=card_id)
+            
+            # Verify permission
+            if card.table.group.client_id not in (PermissionService.get_accessible_client_ids(user) or []):
+                failed += 1
+                continue
+                
+            IDCardService.upload_photo(card, file, user)
+            uploaded += 1
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).exception(f"Failed offline upload for card {key}")
+            failed += 1
+            
+    return JsonResponse({
+        'success': True, 
+        'message': f'Uploaded {uploaded} photos. Failed: {failed}.',
+        'uploaded': uploaded,
+        'failed': failed
+    })

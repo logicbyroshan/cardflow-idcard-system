@@ -156,11 +156,22 @@ export default function HomeScreen({ navigation }) {
   const onRefresh = useCallback(async () => {
     try {
       await refresh();
+      if (isPhotographer) {
+        const { ok, data } = await apiGet('/api/mobile/photographer/sync/');
+        if (ok && data.success) {
+          await AsyncStorage.setItem('photographer_offline_data', JSON.stringify(data.clients || []));
+        }
+      }
     } catch (e) {
       console.log('Dashboard refresh failed', e);
     }
-  }, [refresh]);
+  }, [refresh, isPhotographer]);
   
+  useEffect(() => {
+    if (isPhotographer) {
+      onRefresh(); // Auto-sync on mount
+    }
+  }, [isPhotographer]);
   // Creation States
   const [showClientForm, setShowClientForm] = useState(false);
   const [showStaffForm, setShowStaffForm] = useState(false);
@@ -367,9 +378,30 @@ export default function HomeScreen({ navigation }) {
       if (isClient || (isAssistant && perms.perm_manage_client_staff)) {
         actions.push({ label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', screen: 'StaffManage' });
       }
+    } else if (isPhotographer) {
+      actions.push({ 
+        label: 'SYNC DATA', 
+        icon: 'sync-alt', 
+        color: '#10b981', 
+        bg: '#ecfdf5', 
+        onPress: async () => {
+          try {
+            showToast('Syncing data...', 'info');
+            const { ok, data } = await apiGet('/api/mobile/photographer/sync/');
+            if (ok && data.success) {
+              await AsyncStorage.setItem('photographer_offline_data', JSON.stringify(data.clients || []));
+              showToast('Offline data synced successfully!', 'success');
+            } else {
+              showToast('Sync failed: ' + (data?.message || 'Unknown error'), 'error');
+            }
+          } catch (e) {
+            showToast('Network error during sync.', 'error');
+          }
+        }
+      });
     }
     return actions;
-  }, [user, isSuperAdmin, isOperator, isClient, isAssistant, counts.tables]);
+  }, [user, isSuperAdmin, isOperator, isClient, isAssistant, isPhotographer, counts.tables]);
 
   const handleBadgePress = useCallback((client, statusKey) => {
     const statusValue = { 
