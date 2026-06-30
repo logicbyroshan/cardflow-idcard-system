@@ -7671,7 +7671,7 @@ def api_photographer_upload_offline(request):
     uploaded = 0
     failed = 0
     
-    from core.services.id_card_service import IDCardService
+    from core.services.idcard_service import IDCardService
     
     for key, file in request.FILES.items():
         try:
@@ -7684,8 +7684,11 @@ def api_photographer_upload_offline(request):
                 failed += 1
                 continue
                 
-            IDCardService.upload_photo(card, file, user)
-            uploaded += 1
+            res = IDCardService.upload_photo(card, file, user)
+            if res.success:
+                uploaded += 1
+            else:
+                failed += 1
         except Exception as e:
             import logging
             logging.getLogger(__name__).exception(f"Failed offline upload for card {key}")
@@ -7697,3 +7700,4 @@ def api_photographer_upload_offline(request):
         'uploaded': uploaded,
         'failed': failed
     })
+

@@ -196,8 +196,8 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         const isLocalUri = typeof val === 'string' && (
           val.startsWith('file://') || 
           val.startsWith('content://') || 
-          val.startsWith('/') // Some Android paths
-        );
+          (val.startsWith('/') && !val.startsWith('/media/') && !val.startsWith('/static/'))
+        ) && !val.startsWith('http://') && !val.startsWith('https://');
 
         if (isLocalUri) {
           // It's a picked local image
@@ -213,7 +213,8 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
           
           // Use image_ prefix for dynamic fields to match backend expectation
           // PHOTO is a special field name in some tables, while others use lowercase photo
-          const isMainPhoto = key.toUpperCase() === 'PHOTO' || key.toLowerCase() === 'photo';
+          const keyLower = key.toLowerCase();
+          const isMainPhoto = keyLower === 'photo' || keyLower === 'student_photo' || keyLower === 'student photo' || keyLower === 'image';
           const fileKey = isMainPhoto ? 'photo' : `image_${key}`;
           
           formData.append(fileKey, { uri: val, name: filename, type });

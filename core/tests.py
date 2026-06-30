@@ -720,7 +720,7 @@ class GuestUserManagementApiTests(TestCase):
 
 class LegacyStaffApiJsonShapeTests(TestCase):
     def setUp(self):
-        from staff.models import Staff
+        from operators.models import Operator
 
         self.super_admin = _create_super_admin('legacy-staff-admin@test.com', 'adminpass1')
         self.staff_user = User.objects.create_user(
@@ -729,7 +729,7 @@ class LegacyStaffApiJsonShapeTests(TestCase):
             password='pass1234',
             role='admin_staff',
         )
-        self.staff_profile = Staff.objects.create(user=self.staff_user, staff_type='admin_staff')
+        self.staff_profile = Operator.objects.create(user=self.staff_user)
         self.client.login(username='legacy-staff-admin@test.com', password='adminpass1')
 
     def test_staff_create_rejects_non_object_json_payload(self):

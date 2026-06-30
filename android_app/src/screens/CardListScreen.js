@@ -83,6 +83,7 @@ export default function CardListScreen({ navigation, route }) {
 
   const [selectMode, setSelectMode]       = useState(false);
   const [selectedIds, setSelectedIds]     = useState(new Set());
+  const [processingIds, setProcessingIds] = useState(new Set());
   const [bulkLoading, setBulkLoading]     = useState(false);
   const [selectAllLoading, setSelectAllLoading] = useState(false);
 
@@ -103,6 +104,7 @@ export default function CardListScreen({ navigation, route }) {
   // Photographer explicit filters
   const [photoClass, setPhotoClass] = useState('');
   const [photoSection, setPhotoSection] = useState('');
+  const [rawOfflineCards, setRawOfflineCards] = useState([]);
 
   const [showForm, setShowForm]           = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
@@ -148,6 +150,7 @@ export default function CardListScreen({ navigation, route }) {
             }
           });
         });
+        setRawOfflineCards(allOfflineCards);
         
         let filtered = allOfflineCards.filter(c => currentStatus === 'uncaptured' ? !c.has_photo : c.has_photo);
         
@@ -224,6 +227,12 @@ export default function CardListScreen({ navigation, route }) {
   useEffect(() => { loadCardsRef.current = loadCards; }, [loadCards]);
 
   useFocusEffect(useCallback(() => { loadCards(1); }, [loadCards]));
+
+  useEffect(() => {
+    if (perms.role === 'photographer') {
+      loadCards(1);
+    }
+  }, [photoClass, photoSection, perms.role, loadCards]);
 
   // Debounced search – fires 400ms after user stops typing; skips initial mount
   useEffect(() => {
@@ -472,8 +481,25 @@ export default function CardListScreen({ navigation, route }) {
     }
   }, [cards, showToast, onRefresh]);
 
+  const addProcessingId = useCallback((id) => {
+    setProcessingIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
+
+  const removeProcessingId = useCallback((id) => {
+    setProcessingIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
   // ── Single card actions ───────────────────────────────────────────────────
   const handleSingleStatus = useCallback(async (id, newStatus) => {
+    addProcessingId(id);
     try {
       const { data } = await apiPost(`/api/mobile/card/${id}/status/`, { status: newStatus });
       if (data?.success) { 
@@ -487,7 +513,10 @@ export default function CardListScreen({ navigation, route }) {
         showToast(data?.message || 'Failed', 'error');
       }
     } catch (_e) { showToast('Network error', 'error'); }
-  }, [showToast, currentStatus, updateCardStateLocally, handleEditCard]);
+    finally {
+      removeProcessingId(id);
+    }
+  }, [showToast, currentStatus, updateCardStateLocally, handleEditCard, addProcessingId, removeProcessingId]);
 
   const handleSingleDelete = useCallback((cardOrId) => {
     const id = (cardOrId && typeof cardOrId === 'object') ? cardOrId.id : cardOrId;
@@ -499,6 +528,7 @@ export default function CardListScreen({ navigation, route }) {
       note: 'This will move the record to the Pool list.',
       onConfirm: async () => {
         setConfirmModal(p => ({ ...p, visible: false }));
+        addProcessingId(id);
         try {
           const { data } = await apiPost(`/api/mobile/card/${id}/delete/`, {});
           if (data?.success) { 
@@ -507,9 +537,12 @@ export default function CardListScreen({ navigation, route }) {
           }
           else showToast(data?.message || 'Failed', 'error');
         } catch (_e) { showToast('Network error', 'error'); }
+        finally {
+          removeProcessingId(id);
+        }
       },
     });
-  }, [currentStatus, showToast, updateCardStateLocally]);
+  }, [currentStatus, showToast, updateCardStateLocally, addProcessingId, removeProcessingId]);
 
   const handleSingleReprint = useCallback((card) => {
     const fd = card.field_data || {};
@@ -526,6 +559,7 @@ export default function CardListScreen({ navigation, route }) {
       note: 'This will move the card to the Reprint Request list.',
       onConfirm: async () => {
         setConfirmModal(p => ({ ...p, visible: false }));
+        addProcessingId(card.id);
         try {
           const { data } = await apiPost(`/reprint/api/table/${tableId}/request/`, {
             card_ids: [card.id],
@@ -544,10 +578,12 @@ export default function CardListScreen({ navigation, route }) {
           }
         } catch (_e) {
           showToast('Network error', 'error');
+        } finally {
+          removeProcessingId(card.id);
         }
       },
     });
-  }, [tableId, currentStatus, showToast]);
+  }, [tableId, currentStatus, showToast, addProcessingId, removeProcessingId]);
 
   const handleStatusChange = useCallback((id, newStatus) => {
     const statusStr = typeof newStatus === 'string' ? newStatus : (newStatus?.status || 'pending');
@@ -590,6 +626,41 @@ export default function CardListScreen({ navigation, route }) {
   }, [currentStatus, handleSingleStatus]);
 
   // ── Derived state ─────────────────────────────────────────────────────────
+  const { availableClasses, availableSections } = useMemo(() => {
+    if (perms.role !== 'photographer' || !rawOfflineCards.length) {
+      return { availableClasses: [], availableSections: [] };
+    }
+    const classesSet = new Set();
+    const sectionsSet = new Set();
+    rawOfflineCards.forEach(c => {
+      const fd = c.field_data || {};
+      const classKey = Object.keys(fd).find(k => k.toLowerCase() === 'class');
+      const sectionKey = Object.keys(fd).find(k => k.toLowerCase() === 'section');
+      if (classKey && fd[classKey]) {
+        classesSet.add(fd[classKey].trim());
+      }
+      if (sectionKey && fd[sectionKey]) {
+        sectionsSet.add(fd[sectionKey].trim());
+      }
+    });
+
+    const classOrder = ['nursery', 'kg1', 'kg2', '1', '1st', '2', '2nd', '3', '3rd', '4', '4th', '5', '5th', '6', '6th', '7', '7th', '8', '8th', '9', '9th', '10', '10th', '11', '11th', '12', '12th'];
+    const sortedClasses = Array.from(classesSet).sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      let aIdx = classOrder.indexOf(aLower);
+      let bIdx = classOrder.indexOf(bLower);
+      if (aIdx === -1) aIdx = 999;
+      if (bIdx === -1) bIdx = 999;
+      if (aIdx !== bIdx) return aIdx - bIdx;
+      return aLower.localeCompare(bLower);
+    });
+
+    const sortedSections = Array.from(sectionsSet).sort((a, b) => a.localeCompare(b));
+
+    return { availableClasses: sortedClasses, availableSections: sortedSections };
+  }, [perms.role, rawOfflineCards]);
+
   const allSelected = useMemo(
     () => cards.length > 0 && cards.every(c => selectedIds.has(c.id)),
     [cards, selectedIds],
@@ -637,9 +708,10 @@ export default function CardListScreen({ navigation, route }) {
         onDelete={canDelete ? handleSingleDelete : undefined}
         onReprint={!isPhotographer && currentStatus !== 'download' && (perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
         permissions={perms}
+        isProcessing={processingIds.has(item.id)}
       />
     );
-  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect]);
+  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect, processingIds]);
 
 
 
@@ -729,6 +801,61 @@ export default function CardListScreen({ navigation, route }) {
         )}
       </View>
 
+      {perms.role === 'photographer' && (
+        <View style={s.photoFilters}>
+          {availableClasses.length > 0 && (
+            <View style={s.filterScrollContainer}>
+              <Text style={s.filterRowLabel}>CLASS:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
+                <TouchableOpacity 
+                  onPress={() => { setPhotoClass(''); setPage(1); }} 
+                  style={[s.filterChip, !photoClass && s.filterChipActive]}
+                >
+                  <Text style={[s.filterChipText, !photoClass && s.filterChipTextActive]}>ALL</Text>
+                </TouchableOpacity>
+                {availableClasses.map(cls => {
+                  const isActive = photoClass.toLowerCase() === cls.toLowerCase();
+                  return (
+                    <TouchableOpacity 
+                      key={cls} 
+                      onPress={() => { setPhotoClass(cls); setPage(1); }} 
+                      style={[s.filterChip, isActive && s.filterChipActive]}
+                    >
+                      <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{cls.toUpperCase()}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+          {availableSections.length > 0 && (
+            <View style={[s.filterScrollContainer, { marginTop: 6 }]}>
+              <Text style={s.filterRowLabel}>SECTION:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
+                <TouchableOpacity 
+                  onPress={() => { setPhotoSection(''); setPage(1); }} 
+                  style={[s.filterChip, !photoSection && s.filterChipActive]}
+                >
+                  <Text style={[s.filterChipText, !photoSection && s.filterChipTextActive]}>ALL</Text>
+                </TouchableOpacity>
+                {availableSections.map(sec => {
+                  const isActive = photoSection.toLowerCase() === sec.toLowerCase();
+                  return (
+                    <TouchableOpacity 
+                      key={sec} 
+                      onPress={() => { setPhotoSection(sec); setPage(1); }} 
+                      style={[s.filterChip, isActive && s.filterChipActive]}
+                    >
+                      <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{sec.toUpperCase()}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Select-all bar */}
       {canSelect && (
         <View style={s.summaryRow}>
@@ -764,7 +891,11 @@ export default function CardListScreen({ navigation, route }) {
               data={cards}
               renderItem={renderItem}
               keyExtractor={item => item.id.toString()}
-              extraData={selectedIds}
+              extraData={{ selectedIds, processingIds }}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
               contentContainerStyle={s.list}
               keyboardShouldPersistTaps="handled"
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandPrimary} />}
@@ -905,4 +1036,12 @@ const s = StyleSheet.create({
   fActions:            { flexDirection: 'row', gap: 10 },
   fBtn:                { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.xs, gap: 6 },
   fBtnText:            { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
+  photoFilters:        { paddingHorizontal: 12, paddingBottom: 10, backgroundColor: colors.surfaceBg },
+  filterScrollContainer: { flexDirection: 'row', alignItems: 'center' },
+  filterRowLabel:      { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500, width: 60 },
+  filterScroll:        { paddingRight: 20 },
+  filterChip:          { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#fff', marginRight: 6 },
+  filterChipActive:    { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+  filterChipText:      { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray600 },
+  filterChipTextActive: { color: '#fff', fontFamily: 'SairaSemiCondensed-Bold' },
 });

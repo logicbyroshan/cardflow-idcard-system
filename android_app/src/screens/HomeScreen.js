@@ -17,7 +17,7 @@ import {
 import { colors, gradients, shadows, radius, fontFamily, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
-import { apiGet, apiPost } from '../api/client';
+import { apiGet, apiPost, apiPostForm } from '../api/client';
 import Toast from '../components/Toast';
 import UpdatePromptModal from '../components/UpdatePromptModal';
 import { DashboardSkeleton } from '../components/Skeleton';
@@ -144,12 +144,64 @@ export default function HomeScreen({ navigation }) {
   const loadDashboard = useCallback(async () => {
     try {
       const { ok, data } = await apiGet('/api/mobile/dashboard/');
-      if (!ok || !data?.success) throw new Error(data?.message || 'Sync failed');
-      return data.data;
+      if (ok && data?.success) {
+        return data.data;
+      }
     } catch (e) {
-      throw e;
+      console.log('Dashboard fetch failed, trying offline fallback', e);
     }
-  }, []);
+
+    if (user?.role === 'photographer') {
+      try {
+        const offlineStr = await AsyncStorage.getItem('photographer_offline_data');
+        if (offlineStr) {
+          const clients = JSON.parse(offlineStr);
+          let globalCaptured = 0;
+          let globalUncaptured = 0;
+          const recentClients = clients.map(client => {
+            let clientCaptured = 0;
+            let clientUncaptured = 0;
+            const tables = (client.tables || []).map(t => {
+              const cap = (t.cards || []).filter(c => c.has_photo).length;
+              const uncap = (t.cards || []).filter(c => !c.has_photo).length;
+              clientCaptured += cap;
+              clientUncaptured += uncap;
+              return {
+                id: t.id,
+                name: t.name,
+                group: t.group,
+                captured: cap,
+                uncaptured: uncap
+              };
+            });
+            globalCaptured += clientCaptured;
+            globalUncaptured += clientUncaptured;
+            return {
+              id: client.id,
+              name: client.name,
+              captured: clientCaptured,
+              uncaptured: clientUncaptured,
+              tables
+            };
+          });
+
+          return {
+            captured: globalCaptured,
+            uncaptured: globalUncaptured,
+            client_count: clients.length,
+            recent_clients: recentClients,
+            recent_activity: [],
+            recent_reprints: [],
+            is_photographer: true,
+            is_admin: false
+          };
+        }
+      } catch (err) {
+        console.log('Failed to parse offline data', err);
+      }
+    }
+    throw new Error('Dashboard loading failed');
+  }, [user]);
 
   const { data: counts = {}, loading, refreshing, error, refresh } = useRefreshableResource(loadDashboard, { initialData: {} });
 
@@ -387,10 +439,46 @@ export default function HomeScreen({ navigation }) {
         onPress: async () => {
           try {
             showToast('Syncing data...', 'info');
+            
+            // Gather offline-captured photos
+            const allKeys = await AsyncStorage.getAllKeys();
+            const photoKeys = allKeys.filter(k => k.startsWith('offline_photo_'));
+            
+            if (photoKeys.length > 0) {
+              showToast(`Uploading ${photoKeys.length} offline photo(s)...`, 'info');
+              const formData = new FormData();
+              
+              for (const key of photoKeys) {
+                const cardId = key.substring('offline_photo_'.length);
+                const uri = await AsyncStorage.getItem(key);
+                if (uri) {
+                  let filename = uri.split('/').pop() || `photo_${cardId}.jpg`;
+                  const match = /\.(\w+)$/.exec(filename);
+                  let ext = match ? match[1].toLowerCase() : 'jpg';
+                  const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif' };
+                  let type = mimeMap[ext] || 'image/jpeg';
+                  if (!match) { filename += '.jpg'; ext = 'jpg'; }
+                  if (!filename.includes('.')) { filename = filename + '.' + ext; }
+                  
+                  formData.append(cardId, { uri, name: filename, type });
+                }
+              }
+              
+              const { ok: upOk, data: upData } = await apiPostForm('/api/mobile/photographer/upload-offline/', formData);
+              if (upOk && upData?.success) {
+                await AsyncStorage.multiRemove(photoKeys);
+                showToast(`Uploaded ${upData.uploaded || photoKeys.length} offline photos.`, 'success');
+              } else {
+                showToast('Failed to upload offline photos: ' + (upData?.message || 'Unknown error'), 'error');
+                return;
+              }
+            }
+            
             const { ok, data } = await apiGet('/api/mobile/photographer/sync/');
             if (ok && data.success) {
               await AsyncStorage.setItem('photographer_offline_data', JSON.stringify(data.clients || []));
               showToast('Offline data synced successfully!', 'success');
+              refresh();
             } else {
               showToast('Sync failed: ' + (data?.message || 'Unknown error'), 'error');
             }

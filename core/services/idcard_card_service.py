@@ -134,6 +134,8 @@ class IDCardCardService(BaseService):
         branch_tokens = {'branch', 'stream', 'dept', 'department'}
 
         for field in (table.fields or []):
+            if not isinstance(field, dict):
+                continue
             fname = str(field.get('name', '') or '').strip()
             ftype = str(field.get('type', '') or '').strip().lower()
             tokens = {
@@ -1387,3 +1389,82 @@ class IDCardCardService(BaseService):
             )
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
+
+    @classmethod
+    def upload_photo(cls, card, file, user) -> ServiceResult:
+        """
+        Uploads a photo file for a card. Resolves the primary/preferred image field
+        of the card's table, processes the uploaded file via ImageService,
+        saves the path to the card's field_data, sets the legacy card.photo field,
+        and bumps cache versions.
+        """
+        from mediafiles.services import ImageService, ThumbnailService
+        from django.db import transaction
+
+        try:
+            with transaction.atomic():
+                card = IDCard.objects.select_for_update().get(id=card.id)
+                table = card.table
+                client = table.group.client
+                
+                # Identify image fields
+                image_field_names = cls.get_image_field_names(table.fields or [])
+                
+                # Determine primary/preferred field name
+                preferred_field_name = None
+                for field_name in image_field_names:
+                    field_name_lower = str(field_name or '').lower()
+                    if field_name_lower in ('photo', 'student_photo', 'student photo', 'image'):
+                        preferred_field_name = field_name
+                        break
+                
+                if not preferred_field_name:
+                    for field_name in image_field_names:
+                        field_name_lower = str(field_name or '').lower()
+                        if 'photo' in field_name_lower or 'image' in field_name_lower:
+                            preferred_field_name = field_name
+                            break
+                            
+                if not preferred_field_name and image_field_names:
+                    preferred_field_name = image_field_names[0]
+                    
+                if not preferred_field_name:
+                    preferred_field_name = 'PHOTO'
+                
+                # Get existing value
+                field_data = card.field_data or {}
+                existing_value = field_data.get(preferred_field_name, '')
+                
+                # Process the image field
+                media_result = ImageService.process_image_field(
+                    field_name=preferred_field_name,
+                    new_value=None,
+                    existing_value=existing_value,
+                    client=client,
+                    card=card,
+                    uploaded_file=file,
+                    batch_counter=1,
+                    uploaded_by=user,
+                )
+                
+                if not media_result.success:
+                    return ServiceResult(success=False, message=media_result.message or 'Photo processing failed')
+                
+                final_value = (media_result.data or {}).get('final_value', existing_value)
+                field_data[preferred_field_name] = final_value
+                card.field_data = field_data
+                card.modified_by = getattr(user, 'username', '') or card.modified_by
+                
+                if final_value:
+                    card.photo = final_value
+                    ThumbnailService.ensure_thumbnail_exists(final_value)
+                    
+                card.save(update_fields=['field_data', 'modified_by', 'photo'])
+                
+                # Bump cache versions
+                cls._bump_table_cache_versions(table)
+                
+            return ServiceResult(success=True, message='Photo uploaded successfully', data={'photo_url': final_value})
+        except Exception as e:
+            return ServiceResult(success=False, message=str(e))
+

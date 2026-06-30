@@ -658,10 +658,12 @@ class PermissionService:
             'is_pro_user': cls.is_pro_user(user),
             'is_super_admin': is_sa,
             'is_operator': is_op,
+            'is_admin_staff': is_op,
             'is_photographer': is_photo,
             'is_client': is_cl,
             'is_guest_user': is_guest,
             'is_assistant': is_as,
+            'is_client_staff': is_as,
             'user_role': user.role if user.is_authenticated else None,
         }
 
