@@ -57,6 +57,13 @@ def operators_management_page(request):
     Operator management page for Super Admin.
     Handles both full page load and HTMX partial refresh.
     """
+    # Heal missing operator profiles
+    from core.models import User as CoreUser
+    users_without_profile = CoreUser.objects.filter(role='operator', operator_profile__isnull=True)
+    if users_without_profile.exists():
+        for u in users_without_profile:
+            Operator.objects.get_or_create(user=u)
+
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
 
@@ -159,6 +166,17 @@ def api_operator_detail(request, operator_id):
     POST/PUT: Update operator
     DELETE: Delete operator
     """
+    # Heal missing profile if queried directly
+    try:
+        from core.models import User as CoreUser
+        op = Operator.objects.filter(id=operator_id).first()
+        if not op:
+            usr = CoreUser.objects.filter(id=operator_id, role='operator').first()
+            if usr:
+                Operator.objects.get_or_create(user=usr)
+    except Exception:
+        pass
+
     if not Operator.objects.filter(id=operator_id).exists():
         return JsonResponse({'success': False, 'error': 'Operator not found'}, status=404)
     if request.method == 'GET':

@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from client.models import Client
 from assistants.models import Assistant
+from assistants.services import AssistantService
 from idcards.models import IDCardGroup, IDCardTable
 from core.services.activity_service import ActivityService
 from core.services.permission_service import require_super_admin, api_require_super_admin, PermissionService
@@ -128,6 +129,14 @@ def manage_assistants(request):
     can_manage = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_manage_client_staff')
     if not can_manage:
         return HttpResponseForbidden("Access Denied")
+
+    # Heal missing assistant profiles
+    from core.models import User as CoreUser
+    users_without_profile = CoreUser.objects.filter(role__in=['assistant', 'client_staff'], assistant_profile__isnull=True)
+    if users_without_profile.exists():
+        default_client = Client.objects.first()
+        for u in users_without_profile:
+            Assistant.objects.get_or_create(user=u, defaults={'client': default_client})
 
     if PermissionService.is_super_admin(user):
         clients = Client.objects.all().order_by('name')
@@ -284,6 +293,18 @@ def api_staff_detail(request, staff_id):
     """
     API: Get, Update, or Delete a specific assistant on the admin side.
     """
+    # Heal missing profile if queried directly
+    try:
+        from core.models import User as CoreUser
+        ast = Assistant.objects.filter(id=staff_id).first()
+        if not ast:
+            usr = CoreUser.objects.filter(id=staff_id, role__in=['assistant', 'client_staff']).first()
+            if usr:
+                default_client = Client.objects.first()
+                Assistant.objects.get_or_create(user=usr, defaults={'client': default_client})
+    except Exception:
+        pass
+
     if request.method == 'GET':
         result = AssistantService.get_assistant_detail(request.user, staff_id)
         if result.success:
