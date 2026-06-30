@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } else {
                     row.classList.remove('selected');
+                    row.dataset.isEditing = 'false';
                     if (header) { header.style.borderColor = ''; header.style.background = ''; }
                     if (optContainer) optContainer.style.display = 'none';
                     if (expiryInput) { expiryInput.disabled = true; expiryInput.value = ''; }
@@ -279,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.photographer-client-cb').forEach(function(cb) {
             cb.checked = false;
             var row = cb.closest('.photographer-client-row');
+            row.dataset.isEditing = 'false';
             row.classList.remove('selected');
             var header = row.querySelector('.phcr-header');
             if (header) { header.style.borderColor = ''; header.style.background = ''; }
@@ -865,7 +867,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.photographer-client-row').forEach(function(row) {
             var cb = row.querySelector('.photographer-client-cb');
             var isChecked = cb ? cb.checked : false;
-            if (isChecked) {
+            var isEditing = row.dataset.isEditing === 'true';
+            if (isChecked && !isEditing) {
                 row.style.display = 'none';
             } else {
                 var name = (row.dataset.clientName || '').toLowerCase();
@@ -912,10 +915,33 @@ document.addEventListener('DOMContentLoaded', function() {
             chip.appendChild(textSpan);
             
             if (canEdit) {
+                var editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                editBtn.style.cssText = 'border: none; background: transparent; color: #6366f1; cursor: pointer; padding: 2px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-left: 6px;';
+                editBtn.title = 'Edit assignment details';
+                editBtn.addEventListener('click', function() {
+                    // Reset isEditing for all other rows
+                    document.querySelectorAll('.photographer-client-row').forEach(function(r) {
+                        r.dataset.isEditing = 'false';
+                    });
+                    row.dataset.isEditing = 'true';
+                    updateClientRowVisibilities();
+                    
+                    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    
+                    var expiryInput = row.querySelector('.photographer-client-expiry');
+                    if (expiryInput) {
+                        expiryInput.focus();
+                    }
+                });
+                chip.appendChild(editBtn);
+
                 var removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
                 removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-                removeBtn.style.cssText = 'border: none; background: transparent; color: #818cf8; cursor: pointer; padding: 2px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-left: 2px;';
+                removeBtn.style.cssText = 'border: none; background: transparent; color: #818cf8; cursor: pointer; padding: 2px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-left: 4px;';
+                removeBtn.title = 'Remove client assignment';
                 removeBtn.addEventListener('click', function() {
                     cb.checked = false;
                     cb.dispatchEvent(new Event('change', { bubbles: true }));
