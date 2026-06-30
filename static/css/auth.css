@@ -216,11 +216,11 @@ body.auth-page {
 
 /* Premium Auth Button Styles */
 .auth-btn-primary {
-    background: linear-gradient(135deg, #ff671f 0%, #e63900 100%) !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: #ffffff !important;
     border: none !important;
     border-radius: 6px !important;
-    box-shadow: 0 4px 14px rgba(230, 57, 0, 0.35) !important;
+    box-shadow: 0 4px 14px rgba(118, 75, 162, 0.35) !important;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative;
     overflow: hidden;
@@ -242,14 +242,14 @@ body.auth-page {
 }
 
 .auth-btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #e63900 0%, #cc3300 100%) !important;
-    box-shadow: 0 6px 20px rgba(230, 57, 0, 0.45) !important;
+    background: linear-gradient(135deg, #5a6fd6 0%, #683fa3 100%) !important;
+    box-shadow: 0 6px 20px rgba(118, 75, 162, 0.45) !important;
     transform: translateY(-1.5px) !important;
 }
 
 .auth-btn-primary:active:not(:disabled) {
     transform: translateY(0.5px) !important;
-    box-shadow: 0 2px 10px rgba(230, 57, 0, 0.3) !important;
+    box-shadow: 0 2px 10px rgba(118, 75, 162, 0.3) !important;
 }
 
 .auth-btn-primary:disabled {

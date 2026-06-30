@@ -381,6 +381,7 @@ window.initStaffPage = function (cfg) {
         setDeleteStaffName:  function (n) { if (deleteStaffNameEl) deleteStaffNameEl.textContent = n; },
         refreshTableState:   refreshTableState,
         selectRowById:       selectRowById,
+        clearSelection:      clearStaffSelection,
     };
 };
 

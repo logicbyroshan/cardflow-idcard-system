@@ -16,7 +16,6 @@ from django.core.paginator import Paginator
 from django.db.models import Count, F, Max, Q
 from django.utils import timezone
 from client.models import Client
-from staff.models import Staff
 from idcards.models import IDCardGroup, IDCard, IDCardTable
 from ..models import User, SystemSettings, Notification, ActivityLog
 from ..services import IDCardService

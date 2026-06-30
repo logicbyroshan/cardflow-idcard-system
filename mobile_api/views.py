@@ -36,7 +36,172 @@ from django.db.models.functions import Cast, Coalesce
 from django.db.models.fields.json import KeyTextTransform
 from django.core.cache import cache
 from urllib.parse import urlencode
-from staff.models import Staff
+from operators.models import Operator
+from assistants.models import Assistant
+from core.models import Photographer
+
+class StaffCompatWrapper:
+    def __init__(self, delegate, staff_type):
+        self.delegate = delegate
+        self.staff_type = staff_type
+
+    @property
+    def id(self):
+        return self.delegate.id
+
+    @property
+    def pk(self):
+        return self.delegate.id
+
+    @property
+    def user(self):
+        return self.delegate.user
+
+    @property
+    def user_id(self):
+        return self.delegate.user_id
+
+    @property
+    def client(self):
+        if hasattr(self.delegate, 'client'):
+            return self.delegate.client
+        return None
+
+    @property
+    def client_id(self):
+        if hasattr(self.delegate, 'client_id'):
+            return self.delegate.client_id
+        return None
+
+    @property
+    def created_at(self):
+        return self.delegate.created_at
+
+    @property
+    def department(self):
+        return getattr(self.delegate, 'department', '')
+
+    @property
+    def designation(self):
+        return getattr(self.delegate, 'designation', '')
+
+    def get_staff_type_display(self):
+        if self.staff_type == 'admin_staff':
+            return 'Admin Staff'
+        elif self.staff_type == 'client_staff':
+            return 'Client Staff'
+        else:
+            return 'Photographer'
+
+    @property
+    def assigned_clients(self):
+        if hasattr(self.delegate, 'assigned_clients'):
+            return self.delegate.assigned_clients
+        if self.staff_type == 'photographer':
+            class AssignedClientsWrapper:
+                def __init__(self, photographer):
+                    self.photographer = photographer
+                def all(self):
+                    from client.models import Client
+                    client_ids = self.photographer.photographer_assignments.values_list('client_id', flat=True)
+                    return Client.objects.filter(id__in=client_ids)
+                def values_list(self, *args, **kwargs):
+                    from client.models import Client
+                    client_ids = self.photographer.photographer_assignments.values_list('client_id', flat=True)
+                    return Client.objects.filter(id__in=client_ids).values_list(*args, **kwargs)
+            return AssignedClientsWrapper(self.delegate)
+        from client.models import Client
+        return Client.objects.none()
+
+    def __getattr__(self, name):
+        return getattr(self.delegate, name)
+
+    def save(self, *args, **kwargs):
+        return self.delegate.save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        user = self.delegate.user
+        self.delegate.delete(*args, **kwargs)
+        if user:
+            user.delete()
+
+
+class StaffCompatQuerySet:
+    def __init__(self, items):
+        self.items = items
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __len__(self):
+        return len(self.items)
+
+    def count(self):
+        return len(self.items)
+
+    def filter(self, *args, **kwargs):
+        filtered = self.items
+        for key, val in kwargs.items():
+            if key == 'staff_type':
+                filtered = [item for item in filtered if item.staff_type == val]
+            elif key == 'id':
+                filtered = [item for item in filtered if item.id == val]
+            elif key == 'id__in':
+                filtered = [item for item in filtered if item.id in val]
+            else:
+                filtered = [item for item in filtered if getattr(item, key, None) == val]
+        return StaffCompatQuerySet(filtered)
+
+    def exclude(self, *args, **kwargs):
+        excluded = self.items
+        for key, val in kwargs.items():
+            excluded = [item for item in excluded if getattr(item, key, None) != val]
+        return StaffCompatQuerySet(excluded)
+
+    def select_related(self, *args, **kwargs):
+        return self
+
+    def prefetch_related(self, *args, **kwargs):
+        return self
+
+    def order_by(self, *args, **kwargs):
+        return self
+
+    def distinct(self):
+        return self
+
+    def __getitem__(self, k):
+        if isinstance(k, slice):
+            return StaffCompatQuerySet(self.items[k])
+        return self.items[k]
+
+
+class StaffCompatManager:
+    def all(self):
+        items = []
+        for o in Operator.objects.all():
+            items.append(StaffCompatWrapper(o, 'admin_staff'))
+        for a in Assistant.objects.all():
+            items.append(StaffCompatWrapper(a, 'client_staff'))
+        for p in Photographer.objects.all():
+            items.append(StaffCompatWrapper(p, 'photographer'))
+        return StaffCompatQuerySet(items)
+
+    def filter(self, *args, **kwargs):
+        return self.all().filter(*args, **kwargs)
+
+    def get(self, *args, **kwargs):
+        res = self.filter(*args, **kwargs)
+        if len(res) == 0:
+            from django.core.exceptions import ObjectDoesNotExist
+            raise ObjectDoesNotExist("Staff matching query does not exist")
+        return res[0]
+
+
+class Staff:
+    objects = StaffCompatManager()
+    DoesNotExist = Exception
+
 MAX_REPRINT_ACTION_IDS = 200
 
 from client.services import (
@@ -1536,7 +1701,7 @@ def home(request):
     # Admin-specific counts for dashboard management section.
     if _is_admin:
         from client.models import Client
-        from staff.models import Staff
+        # from staff.models import Staff (removed)
         scoped_clients = Client.objects.filter(status='active')
         scoped_tables = IDCardTable.objects.filter(is_active=True)
         scoped_cards = IDCard.objects.all()
@@ -3428,7 +3593,7 @@ def api_cards(request, table_id):
     if not status_filter:
         return JsonResponse({'success': False, 'message': 'status is required'}, status=400)
 
-    valid_statuses = {'pending', 'verified', 'approved', 'download', 'pool', 'reprint'}
+    valid_statuses = {'pending', 'verified', 'approved', 'download', 'pool', 'reprint', 'captured', 'uncaptured'}
     if status_filter not in valid_statuses:
         return JsonResponse({'success': False, 'message': 'Invalid status'}, status=400)
 
@@ -3483,7 +3648,7 @@ def api_all_card_ids(request, table_id):
     if not status_filter:
         return JsonResponse({'success': False, 'message': 'status is required'}, status=400)
 
-    valid_statuses = {'pending', 'verified', 'approved', 'download', 'pool', 'reprint'}
+    valid_statuses = {'pending', 'verified', 'approved', 'download', 'pool', 'reprint', 'captured', 'uncaptured'}
     if status_filter not in valid_statuses:
         return JsonResponse({'success': False, 'message': 'Invalid status'}, status=400)
 
@@ -3496,6 +3661,8 @@ def api_all_card_ids(request, table_id):
         'verified': 'perm_idcard_verified_list',
         'pool': 'perm_idcard_pool_list',
         'reprint': 'perm_idcard_reprint_list',
+        'captured': 'perm_idcard_pending_list',
+        'uncaptured': 'perm_idcard_pending_list',
     }
     needed_perm = perm_map.get(status_filter)
     if needed_perm and not PermissionService.has(request.user, needed_perm):
@@ -3513,7 +3680,11 @@ def api_all_card_ids(request, table_id):
         photo_filter = ''
     image_column = str(request.GET.get('image_column', '') or '').strip()
     
-    if status_filter == 'download':
+    if status_filter in ('captured', 'uncaptured'):
+        cards_qs = IDCard.objects.filter(table=table, status__in=['pending', 'verified']).order_by('-created_at', '-id')
+        if not photo_filter:
+            photo_filter = 'complete' if status_filter == 'captured' else 'incomplete'
+    elif status_filter == 'download':
         cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
         cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-deleted_at', '-id')
@@ -3671,7 +3842,7 @@ def api_filter_options(request, table_id):
     if not status_filter:
         return JsonResponse({'success': False, 'message': 'status is required'}, status=400)
 
-    valid_statuses = {'pending', 'verified', 'approved', 'download', 'pool', 'reprint'}
+    valid_statuses = {'pending', 'verified', 'approved', 'download', 'pool', 'reprint', 'captured', 'uncaptured'}
     if status_filter not in valid_statuses:
         return JsonResponse({'success': False, 'message': 'Invalid status'}, status=400)
 
@@ -3684,12 +3855,43 @@ def api_filter_options(request, table_id):
         'verified': 'perm_idcard_verified_list',
         'pool': 'perm_idcard_pool_list',
         'reprint': 'perm_idcard_reprint_list',
+        'captured': 'perm_idcard_pending_list',
+        'uncaptured': 'perm_idcard_pending_list',
     }
     needed_perm = perm_map.get(status_filter)
     if needed_perm and not PermissionService.has(request.user, needed_perm):
         return JsonResponse({'success': False, 'message': 'No permission to view this list'}, status=403)
 
     cards_qs = IDCard.objects.filter(table=table)
+    if status_filter in ('captured', 'uncaptured'):
+        cards_qs = cards_qs.filter(status__in=['pending', 'verified'])
+        
+        # Apply photo presence filter
+        matching_photo_ids = []
+        target_col = 'photo'
+        for _card in cards_qs.only('id', 'photo', 'field_data').iterator(chunk_size=500):
+            fd = _card.field_data or {}
+            val = fd.get(target_col)
+            if val is None:
+                for k, v in fd.items():
+                    if str(k).strip().upper() == target_col.upper():
+                        val = v
+                        break
+            has_photo = bool(val and isinstance(val, str) and not val.startswith('PENDING:') and val not in ('NOT_FOUND', ''))
+            
+            matched = False
+            if status_filter == 'captured':
+                matched = has_photo
+            else:
+                matched = not has_photo
+                
+            if matched:
+                matching_photo_ids.append(_card.id)
+                
+        cards_qs = cards_qs.filter(id__in=matching_photo_ids)
+    elif status_filter:
+        cards_qs = cards_qs.filter(status=status_filter)
+
     if status_filter != 'pool' and PermissionService.is_client_staff(request.user):
         cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs, status_filter=status_filter, ignore_pool_bypass=True)
     else:
@@ -4175,6 +4377,29 @@ def api_client_groups_detail(request, client_id):
         )
         .order_by('name')
     )
+
+    is_photographer = PermissionService.is_photographer(request.user)
+    uncaptured_counts = {}
+    captured_counts = {}
+    if is_photographer:
+        for t in tables_qs:
+            uncaptured_counts[t.id] = 0
+            captured_counts[t.id] = 0
+
+        assigned_cards_qs = IDCard.objects.filter(
+            table__group__client_id=client_id,
+            status__in=['pending', 'verified']
+        ).only('id', 'table_id', 'photo', 'field_data')
+
+        for card in assigned_cards_qs.iterator(chunk_size=500):
+            has_photo = bool(get_card_photo_url(card))
+            t_id = card.table_id
+            if t_id in uncaptured_counts:
+                if has_photo:
+                    captured_counts[t_id] += 1
+                else:
+                    uncaptured_counts[t_id] += 1
+
     tables_by_group = {}
     for t in tables_qs:
         gid = t.group_id
@@ -4191,6 +4416,8 @@ def api_client_groups_detail(request, client_id):
             'approved_count': t.approved_count,
             'download_count': t.download_count,
             'pool_count': t.pool_count,
+            'uncaptured_count': uncaptured_counts.get(t.id, 0) if is_photographer else 0,
+            'captured_count': captured_counts.get(t.id, 0) if is_photographer else 0,
             'total_count': t.total_count,
         })
     groups_data = []
@@ -4887,7 +5114,7 @@ def api_staff_list(request):
         role = request.GET.get('role', 'admin_staff')
         if role == 'client_staff':
             # List all client staff system-wide
-            from accounts.models import Staff
+            # from accounts.models import Staff (removed)
             queryset = Staff.objects.filter(staff_type='client_staff').select_related('user', 'client').order_by('-created_at')[:200]
             staff_data = []
             for s in queryset:
@@ -5887,6 +6114,7 @@ def api_dashboard_data(request):
         from core.models import User
         
         is_admin = PermissionService.is_super_admin(user) or PermissionService.is_admin_staff(user)
+        is_photographer = PermissionService.is_photographer(user)
         is_staff = PermissionService.is_client_staff(user)
         
         # Recent Activity (Always included for all roles)
@@ -5905,10 +6133,13 @@ def api_dashboard_data(request):
                 if str(a.get('target_model', '')).lower() == 'idcard' and a.get('target_id'):
                     a['table_id'] = idcard_table_map.get(a['target_id'])
         
-        if is_admin:
-            # ADMIN/OPERATOR: Return clients with nested tables
+        if is_admin or is_photographer:
+            # ADMIN/OPERATOR/PHOTOGRAPHER: Return clients with nested tables
             cache_version = CacheVersionService.get('admin_dash_counts', 'global')
-            cache_key = f"mob_dash_admin_{user.id}_v{cache_version}"
+            if is_photographer:
+                cache_key = f"mob_dash_photo_{user.id}_v{cache_version}"
+            else:
+                cache_key = f"mob_dash_admin_{user.id}_v{cache_version}"
             cached_data = cache.get(cache_key)
             if cached_data:
                 cached_data['recent_activity'] = recent_activity
@@ -5918,9 +6149,118 @@ def api_dashboard_data(request):
             if PermissionService.is_super_admin(user):
                 # Super admins see EVERYTHING (active or not) to match system-wide data visibility
                 clients_qs = Client.objects.all()
-            else:  # admin_staff
+            else:  # admin_staff or photographer
                 accessible_ids = PermissionService.get_accessible_client_ids(user) or []
                 clients_qs = Client.objects.filter(id__in=accessible_ids)
+
+            if is_photographer:
+                from django.db.models import Max, F
+                
+                # Fetch active tables for assigned clients
+                tables_qs = (
+                    IDCardTable.objects
+                    .filter(group__client_id__in=accessible_ids, deleted_by_client=False, is_active=True)
+                    .select_related('group')
+                )
+                
+                table_to_client_map = {}
+                for t in tables_qs:
+                    client_id = getattr(t.group, 'client_id', None)
+                    if client_id is not None:
+                        table_to_client_map[t.id] = client_id
+                
+                # Initialize count dictionaries
+                table_counts = {t.id: {'captured': 0, 'uncaptured': 0} for t in tables_qs}
+                client_counts = {cid: {'captured': 0, 'uncaptured': 0} for cid in accessible_ids}
+                
+                global_captured = 0
+                global_uncaptured = 0
+                
+                # Fetch pending & verified cards for these clients
+                assigned_cards_qs = IDCard.objects.filter(
+                    table__group__client_id__in=accessible_ids,
+                    status__in=['pending', 'verified']
+                ).only('id', 'table_id', 'photo', 'field_data')
+                
+                for card in assigned_cards_qs.iterator(chunk_size=500):
+                    has_photo = bool(get_card_photo_url(card))
+                    t_id = card.table_id
+                    cid = table_to_client_map.get(t_id)
+                    
+                    if has_photo:
+                        global_captured += 1
+                        if t_id in table_counts:
+                            table_counts[t_id]['captured'] += 1
+                        if cid in client_counts:
+                            client_counts[cid]['captured'] += 1
+                    else:
+                        global_uncaptured += 1
+                        if t_id in table_counts:
+                            table_counts[t_id]['uncaptured'] += 1
+                        if cid in client_counts:
+                            client_counts[cid]['uncaptured'] += 1
+                
+                global_counts = {
+                    'captured': global_captured,
+                    'uncaptured': global_uncaptured,
+                    'client_count': len(accessible_ids),
+                    'operator_count': User.objects.filter(role='admin_staff', is_active=True).count(),
+                    'assistant_count': User.objects.filter(role='client_staff', is_active=True).count(),
+                }
+                
+                ordered_clients = list(clients_qs.annotate(
+                    latest_approved=Max(
+                        'id_card_groups__tables__id_cards__updated_at',
+                        filter=Q(id_card_groups__tables__id_cards__status='approved')
+                    )
+                ).order_by(
+                    F('latest_approved').desc(nulls_last=True),
+                    F('created_at').desc(nulls_last=True),
+                    F('id').desc(),
+                )[:100])
+                
+                from collections import defaultdict
+                tables_by_client = defaultdict(list)
+                for t in tables_qs:
+                    client_id = getattr(t.group, 'client_id', None)
+                    if client_id is not None:
+                        tables_by_client[client_id].append(t)
+                
+                clients_data = []
+                for client in ordered_clients:
+                    c_counts = client_counts.get(client.id, {'captured': 0, 'uncaptured': 0})
+                    
+                    tables_data = []
+                    tables_for_client = tables_by_client.get(client.id, [])
+                    for t in tables_for_client[:20]:
+                        t_counts = table_counts.get(t.id, {'captured': 0, 'uncaptured': 0})
+                        tables_data.append({
+                            'id': t.id,
+                            'name': t.name,
+                            'group': t.group.name if t.group else '',
+                            'captured': t_counts['captured'],
+                            'uncaptured': t_counts['uncaptured'],
+                        })
+                    
+                    clients_data.append({
+                        'id': client.id,
+                        'name': getattr(client, 'business_name', client.name),
+                        'captured': c_counts['captured'],
+                        'uncaptured': c_counts['uncaptured'],
+                        'tables': tables_data,
+                    })
+                
+                counts = {
+                    **global_counts,
+                    'recent_clients': clients_data,
+                    'recent_activity': recent_activity,
+                    'recent_reprints': [],
+                    'is_photographer': True,
+                    'is_admin': False
+                }
+                
+                cache.set(cache_key, counts, timeout=600)
+                return JsonResponse({'success': True, 'data': counts})
             
             # --- Efficient Global Counts ---
             card_qs = IDCard.objects.all()
@@ -6634,7 +6974,7 @@ def api_clients_list(request):
     # Fetch all clients based on permissions
     if PermissionService.is_super_admin(request.user):
         clients_qs = Client.objects.select_related('user').all().order_by('name')
-    else:  # admin_staff (operators)
+    else:  # admin_staff (operators) or photographer
         accessible_ids = PermissionService.get_accessible_client_ids(request.user) or []
         clients_qs = Client.objects.filter(id__in=accessible_ids).select_related('user').order_by('name')
     
@@ -6643,22 +6983,48 @@ def api_clients_list(request):
     from idcards.models import IDCard
     from django.db.models import Count
 
+    is_photographer = PermissionService.is_photographer(request.user)
+
     # Bulk fetch counts
     counts_map = {}
-    stats = (
-        IDCard.objects.filter(table__group__client_id__in=client_ids)
-        .values('table__group__client_id', 'status')
-        .annotate(count=Count('id'))
-    )
-    for s in stats:
-        cid = s['table__group__client_id']
-        status = s['status']
-        count = s['count']
-        if cid not in counts_map:
-            counts_map[cid] = {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
-        counts_map[cid]['total'] += count
-        if status in counts_map[cid]:
-            counts_map[cid][status] = count
+    if is_photographer:
+        # Initialize captured/uncaptured counts map
+        for cid in client_ids:
+            counts_map[cid] = {'captured': 0, 'uncaptured': 0}
+        
+        # Fetch active tables for client_ids to build mapping
+        from idcards.models import IDCardTable
+        tables_qs = IDCardTable.objects.filter(group__client_id__in=client_ids).values('id', 'group__client_id')
+        table_to_client_map = {t['id']: t['group__client_id'] for t in tables_qs}
+
+        assigned_cards_qs = IDCard.objects.filter(
+            table__group__client_id__in=client_ids,
+            status__in=['pending', 'verified']
+        ).only('id', 'table_id', 'photo', 'field_data')
+
+        for card in assigned_cards_qs.iterator(chunk_size=500):
+            has_photo = bool(get_card_photo_url(card))
+            cid = table_to_client_map.get(card.table_id)
+            if cid in counts_map:
+                if has_photo:
+                    counts_map[cid]['captured'] += 1
+                else:
+                    counts_map[cid]['uncaptured'] += 1
+    else:
+        stats = (
+            IDCard.objects.filter(table__group__client_id__in=client_ids)
+            .values('table__group__client_id', 'status')
+            .annotate(count=Count('id'))
+        )
+        for s in stats:
+            cid = s['table__group__client_id']
+            status = s['status']
+            count = s['count']
+            if cid not in counts_map:
+                counts_map[cid] = {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0}
+            counts_map[cid]['total'] += count
+            if status in counts_map[cid]:
+                counts_map[cid][status] = count
 
     users_list = []
     for c in clients_qs:
@@ -6678,7 +7044,7 @@ def api_clients_list(request):
             'phone': getattr(u, 'phone', '') or '',
             'is_active': u.is_active,
             'logo_url': logo_url,
-            'counts': counts_map.get(c.id, {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
+            'counts': counts_map.get(c.id, {'captured': 0, 'uncaptured': 0} if is_photographer else {'total': 0, 'pending': 0, 'verified': 0, 'approved': 0, 'download': 0, 'pool': 0})
         })
 
     return JsonResponse({'success': True, 'users': users_list})
@@ -7224,3 +7590,114 @@ def api_register_device_token(request):
         import logging
         logging.getLogger(__name__).exception("Failed to register device token")
         return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
+
+@require_mobile_client
+@require_http_methods(['GET'])
+def api_photographer_sync(request):
+    """
+    Returns all assigned clients, tables, and pending/verified cards for the photographer.
+    This data is cached locally by the mobile app for offline capture.
+    """
+    user = request.user
+    if not PermissionService.is_photographer(user):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    
+    accessible_ids = PermissionService.get_accessible_client_ids(user) or []
+    if not accessible_ids:
+        return JsonResponse({'success': True, 'clients': []})
+        
+    clients = Client.objects.filter(id__in=accessible_ids)
+    
+    tables_qs = (
+        IDCardTable.objects
+        .filter(group__client_id__in=accessible_ids, deleted_by_client=False, is_active=True)
+        .select_related('group')
+    )
+    
+    cards_qs = IDCard.objects.filter(
+        table__in=tables_qs,
+        status__in=['pending', 'verified']
+    ).select_related('table')
+    
+    # Organize data hierarchically
+    import collections
+    from .serializers import serialize_card
+    
+    cards_by_table = collections.defaultdict(list)
+    for card in cards_qs.iterator(chunk_size=1000):
+        # We need a slim serialization for offline mode
+        has_photo = bool(get_card_photo_url(card))
+        cards_by_table[card.table_id].append({
+            'id': card.id,
+            'table_id': card.table_id,
+            'field_data': card.field_data or {},
+            'status': card.status,
+            'has_photo': has_photo,
+        })
+        
+    tables_by_client = collections.defaultdict(list)
+    for t in tables_qs:
+        client_id = getattr(t.group, 'client_id', None)
+        if client_id:
+            tables_by_client[client_id].append({
+                'id': t.id,
+                'name': t.name,
+                'group': t.group.name if t.group else '',
+                'cards': cards_by_table.get(t.id, [])
+            })
+            
+    clients_data = []
+    for c in clients:
+        clients_data.append({
+            'id': c.id,
+            'name': getattr(c, 'business_name', c.name),
+            'tables': tables_by_client.get(c.id, [])
+        })
+        
+    return JsonResponse({'success': True, 'clients': clients_data})
+
+@require_mobile_client
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_photographer_upload_offline(request):
+    """
+    Accepts bulk offline uploaded photos.
+    Expects FormData where each file is keyed by the card_id.
+    """
+    user = request.user
+    if not PermissionService.is_photographer(user):
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+        
+    uploaded = 0
+    failed = 0
+    
+    from core.services.idcard_service import IDCardService
+    
+    for key, file in request.FILES.items():
+        try:
+            # key should be the card_id
+            card_id = int(key)
+            card = IDCard.objects.get(id=card_id)
+            
+            # Verify permission
+            if card.table.group.client_id not in (PermissionService.get_accessible_client_ids(user) or []):
+                failed += 1
+                continue
+                
+            res = IDCardService.upload_photo(card, file, user)
+            if res.success:
+                uploaded += 1
+            else:
+                failed += 1
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).exception(f"Failed offline upload for card {key}")
+            failed += 1
+            
+    return JsonResponse({
+        'success': True, 
+        'message': f'Uploaded {uploaded} photos. Failed: {failed}.',
+        'uploaded': uploaded,
+        'failed': failed
+    })
+

@@ -14,7 +14,7 @@ from django.db.models import CharField, Value, IntegerField, Case, When
 from core.services import IDCardService
 from core.models import User
 from client.models import Client
-from staff.models import Staff
+from assistants.models import Assistant
 from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
 from core.services.permission_service import PermissionService
@@ -29,7 +29,7 @@ class ClientCardService(BaseService):
     Clients can view and manage cards within their tables.
     """
     
-    VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']
+    VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint', 'captured', 'uncaptured']
 
     @staticmethod
     def _normalize_positive_int_ids(raw_ids) -> List[int]:
@@ -566,6 +566,8 @@ class ClientCardService(BaseService):
                 'approved': 'perm_idcard_approved_list',
                 'download': 'perm_idcard_download_list',
                 'reprint': 'perm_idcard_reprint_list',
+                'captured': 'perm_idcard_pending_list',
+                'uncaptured': 'perm_idcard_pending_list',
             }
 
             if status_filter and status_filter not in cls.VALID_STATUSES:
@@ -598,7 +600,13 @@ class ClientCardService(BaseService):
                     _status_sort_at=Coalesce('status_changed_at', 'created_at')
                 ).order_by('-_status_sort_at', '-id')
             
-            if status_filter:
+            if status_filter in ('captured', 'uncaptured'):
+                cards_query = cards_query.filter(status__in=['pending', 'verified'])
+                if status_filter == 'captured':
+                    photo_filter = 'complete'
+                else:
+                    photo_filter = 'incomplete'
+            elif status_filter:
                 cards_query = cards_query.filter(status=status_filter)
             else:
                 cards_query = cards_query.filter(status__in=allowed_statuses)
@@ -777,6 +785,29 @@ class ClientCardService(BaseService):
                         cards_query = cards_query.order_by('_name_sort', 'id')
                     else:
                         cards_query = cards_query.order_by('-_name_sort', '-id')
+            else:
+                # Default (sr-asc) -> Sort by Class first if class field exists, then by name/id
+                class_field_name, _, _, _ = IDCardService._get_class_section_course_branch_field_names(table)
+                if class_field_name:
+                    cards_query = cards_query.annotate(
+                        _class_sort=Lower(Coalesce(
+                            Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()),
+                            Value(''),
+                            output_field=CharField(),
+                        ))
+                    )
+                    name_field = cls._get_name_field(table)
+                    if name_field:
+                        cards_query = cards_query.annotate(
+                            _name_sort=Lower(Coalesce(
+                                Cast(KeyTextTransform(name_field, 'field_data'), CharField()),
+                                Value(''),
+                                output_field=CharField(),
+                            )),
+                        )
+                        cards_query = cards_query.order_by('_class_sort', '_name_sort', 'id')
+                    else:
+                        cards_query = cards_query.order_by('_class_sort', 'id')
             
             total_count = cards_query.count()
 

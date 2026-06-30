@@ -60,6 +60,12 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         if (staffInfoSection) staffInfoSection.style.display = assignmentOnly ? 'none' : '';
         if (staffPermissionsSection) staffPermissionsSection.style.display = assignmentOnly ? 'none' : '';
 
+        // Hide group assignment chips / "No group assignments added yet" when in add mode
+        var chipSection = document.getElementById('group-assignment-chip-section');
+        if (chipSection) {
+            chipSection.style.display = (mode === 'add') ? 'none' : '';
+        }
+
         var nameInput = document.getElementById('staff-name');
         var emailInput = document.getElementById('staff-email');
         var passwordInput = document.getElementById('staff-password');

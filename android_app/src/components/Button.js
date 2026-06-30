@@ -20,8 +20,20 @@ const Button = React.memo(function Button({
   ...props
 }) {
   const isDisabled = disabled || loading;
+  const isGradient = variant === 'primary' || variant === 'gradient';
+  
   const radiusStyle = style && StyleSheet.flatten(style).borderRadius ? { borderRadius: StyleSheet.flatten(style).borderRadius } : { borderRadius: radius.md };
-  const containerStyle = [styles.base, styles[size], fullWidth && styles.fullWidth, isDisabled && styles.disabled, radiusStyle, style];
+
+  // Only apply size styles (which include padding) to the wrapper if it's NOT a gradient button.
+  // For gradient buttons, the inner LinearGradient handles the padding, otherwise the gradient shrinks.
+  const containerStyle = [
+    styles.base, 
+    !isGradient && styles[size], 
+    fullWidth && styles.fullWidth, 
+    isDisabled && styles.disabled, 
+    radiusStyle, 
+    style
+  ];
 
   const content = (
     <View style={[styles.content, contentStyle]}>
@@ -46,7 +58,7 @@ const Button = React.memo(function Button({
     </View>
   );
 
-  if (variant === 'primary' || variant === 'gradient') {
+  if (isGradient) {
     return (
       <TouchableOpacity onPress={onPress} disabled={isDisabled} activeOpacity={0.85} style={containerStyle} {...props}>
         <LinearGradient colors={gradients.brand} style={[styles.fill, styles[size], radiusStyle]}>
@@ -93,7 +105,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   lg: {
-    minHeight: 48,
+    minHeight: 50,
     paddingHorizontal: 18,
   },
   text: {

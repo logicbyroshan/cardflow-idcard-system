@@ -197,21 +197,13 @@
 
 <script>
   (function() {
-    // Check if page was reloaded/refreshed
-    const isReload = (
-        performance.navigation && performance.navigation.type === 1
-    ) || (
-        performance.getEntriesByType && 
-        performance.getEntriesByType('navigation')[0] && 
-        performance.getEntriesByType('navigation')[0].type === 'reload'
-    );
-    
-    // Check if the preloader has already been shown in this tab session
+    // Check if the preloader has already been shown in this browser session
     const preloaderShown = sessionStorage.getItem('preloader_shown');
     
-    // Only show preloader if it's a reload OR if it hasn't been shown yet in this session
-    if (isReload || !preloaderShown) {
-        // Set flag so we bypass on future internal page navigations
+    // Only show preloader on very first visit (when flag is not set yet)
+    // On refresh, back/forward, or navigating within the app — skip it
+    if (!preloaderShown) {
+        // Set flag immediately so refresh or next navigation won't show it again
         sessionStorage.setItem('preloader_shown', 'true');
         
         const preloader = document.getElementById('appPreloader');

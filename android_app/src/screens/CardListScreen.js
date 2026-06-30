@@ -5,6 +5,7 @@ import {
   ActivityIndicator, RefreshControl, TextInput, ScrollView,
   Dimensions, Linking, Alert
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DynamicIcon, IconSearch, IconCheck } from '../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +42,12 @@ export default function CardListScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
   const allowedStatuses = useMemo(() => {
+    if (perms.role === 'photographer') {
+      return [
+        { key: 'uncaptured', label: 'Uncaptured', bg: '#fffbeb', c: '#f59e0b', icon: 'clock' },
+        { key: 'captured',   label: 'Captured',   bg: '#ecfdf5', c: '#10b981', icon: 'verified' },
+      ];
+    }
     const isAssistant = perms.role === 'client_staff';
     return STATUS_OPTIONS.filter(opt => {
       if (isAssistant && (opt.key === 'approved' || opt.key === 'download')) {
@@ -76,6 +83,7 @@ export default function CardListScreen({ navigation, route }) {
 
   const [selectMode, setSelectMode]       = useState(false);
   const [selectedIds, setSelectedIds]     = useState(new Set());
+  const [processingIds, setProcessingIds] = useState(new Set());
   const [bulkLoading, setBulkLoading]     = useState(false);
   const [selectAllLoading, setSelectAllLoading] = useState(false);
 
@@ -92,6 +100,11 @@ export default function CardListScreen({ navigation, route }) {
   }, [activeFilters]);
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [totalCount, setTotalCount]       = useState(0);
+
+  // Photographer explicit filters
+  const [photoClass, setPhotoClass] = useState('');
+  const [photoSection, setPhotoSection] = useState('');
+  const [rawOfflineCards, setRawOfflineCards] = useState([]);
 
   const [showForm, setShowForm]           = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
@@ -119,27 +132,87 @@ export default function CardListScreen({ navigation, route }) {
     setSelectedIds(new Set());
   }, []);
 
-  // ── Data loading ─────────────────────────────────────────────────────────
   const loadCards = useCallback(async (pageNum = 1, append = false) => {
     if (pageNum === 1) setLoading(true);
     else setLoadingMore(true);
 
     try {
-      const params = { page: pageNum, status: currentStatus, search: searchQuery, ...activeFilters };
-      const { ok, data } = await apiGet(`/api/mobile/table/${tableId}/cards/`, params);
+      if (perms.role === 'photographer') {
+        const offlineStr = await AsyncStorage.getItem('photographer_offline_data');
+        const clients = offlineStr ? JSON.parse(offlineStr) : [];
+        let allOfflineCards = [];
+        let offlineTableName = '';
+        clients.forEach(c => {
+          c.tables.forEach(t => {
+            if (t.id === tableId) {
+              offlineTableName = t.name;
+              allOfflineCards = t.cards || [];
+            }
+          });
+        });
+        setRawOfflineCards(allOfflineCards);
+        
+        let filtered = allOfflineCards.filter(c => currentStatus === 'uncaptured' ? !c.has_photo : c.has_photo);
+        
+        if (searchQuery) {
+          filtered = filtered.filter(c => JSON.stringify(c.field_data).toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        
+        // Photographer Class/Section filter
+        if (photoClass) {
+           filtered = filtered.filter(c => c.field_data?.class?.toLowerCase() === photoClass.toLowerCase());
+        }
+        if (photoSection) {
+           filtered = filtered.filter(c => c.field_data?.section?.toLowerCase() === photoSection.toLowerCase());
+        }
 
-      if (ok && data?.success) {
-        const fetchedCards  = data.data?.cards || [];
-        const tableFields   = (data.data?.table?.fields || []).filter(f => f && f.name);
-        const mappedCards   = fetchedCards.map(c => ({ ...c, ordered_fields: tableFields }));
+        // Sorting by Class (Nursery, KG1... 12th) and Section
+        const classOrder = ['nursery', 'kg1', 'kg2', '1', '1st', '2', '2nd', '3', '3rd', '4', '4th', '5', '5th', '6', '6th', '7', '7th', '8', '8th', '9', '9th', '10', '10th', '11', '11th', '12', '12th'];
+        filtered.sort((a, b) => {
+          const aClass = (a.field_data?.class || '').toLowerCase();
+          const bClass = (b.field_data?.class || '').toLowerCase();
+          const aSec = (a.field_data?.section || '').toLowerCase();
+          const bSec = (b.field_data?.section || '').toLowerCase();
+          
+          let aIdx = classOrder.indexOf(aClass);
+          let bIdx = classOrder.indexOf(bClass);
+          if (aIdx === -1) aIdx = 999;
+          if (bIdx === -1) bIdx = 999;
+          
+          if (aIdx !== bIdx) return aIdx - bIdx;
+          if (aClass !== bClass) return aClass.localeCompare(bClass);
+          return aSec.localeCompare(bSec);
+        });
 
-        setCards(prev => append ? [...prev, ...mappedCards] : mappedCards);
-        setHasMore(data.data?.has_more || false);
-        setTableName(data.data?.table?.name || '');
-        setTotalCount(data.data?.total || 0);
-        setTableCounts(data.data?.counts || {});
+        const perPage = 50;
+        const start = (pageNum - 1) * perPage;
+        const pageCards = filtered.slice(start, start + perPage);
+
+        setCards(prev => append ? [...prev, ...pageCards] : pageCards);
+        setHasMore(start + perPage < filtered.length);
+        setTableName(offlineTableName);
+        setTotalCount(filtered.length);
+        setTableCounts({
+            'uncaptured': allOfflineCards.filter(c => !c.has_photo).length,
+            'captured': allOfflineCards.filter(c => c.has_photo).length,
+        });
       } else {
-        setError(data?.message || 'Failed to load cards');
+        const params = { page: pageNum, status: currentStatus, search: searchQuery, ...activeFilters };
+        const { ok, data } = await apiGet(`/api/mobile/table/${tableId}/cards/`, params);
+
+        if (ok && data?.success) {
+          const fetchedCards  = data.data?.cards || [];
+          const tableFields   = (data.data?.table?.fields || []).filter(f => f && f.name);
+          const mappedCards   = fetchedCards.map(c => ({ ...c, ordered_fields: tableFields }));
+
+          setCards(prev => append ? [...prev, ...mappedCards] : mappedCards);
+          setHasMore(data.data?.has_more || false);
+          setTableName(data.data?.table?.name || '');
+          setTotalCount(data.data?.total || 0);
+          setTableCounts(data.data?.counts || {});
+        } else {
+          setError(data?.message || 'Failed to load cards');
+        }
       }
     } catch (e) {
       setError('Network error');
@@ -148,12 +221,18 @@ export default function CardListScreen({ navigation, route }) {
       setLoadingMore(false);
       setRefreshing(false);
     }
-  }, [tableId, currentStatus, searchQuery, activeFilters]);
+  }, [tableId, currentStatus, searchQuery, activeFilters, perms.role, photoClass, photoSection]);
 
   // Keep ref in sync with the latest loadCards
   useEffect(() => { loadCardsRef.current = loadCards; }, [loadCards]);
 
   useFocusEffect(useCallback(() => { loadCards(1); }, [loadCards]));
+
+  useEffect(() => {
+    if (perms.role === 'photographer') {
+      loadCards(1);
+    }
+  }, [photoClass, photoSection, perms.role, loadCards]);
 
   // Debounced search – fires 400ms after user stops typing; skips initial mount
   useEffect(() => {
@@ -374,8 +453,53 @@ export default function CardListScreen({ navigation, route }) {
     setShowForm(true);
   }, []);
 
+  const handleStartCapture = useCallback(() => {
+    if (cards && cards.length > 0) {
+      navigation.navigate('Camera', {
+        fastCaptureCards: cards,
+        initialIndex: 0,
+        tableId,
+      });
+    } else {
+      showToast('No cards in the list', 'info');
+    }
+  }, [cards, navigation, tableId, showToast]);
+
+  const handleSaveAndNext = useCallback((savedCardId) => {
+    const currentIndex = cards.findIndex(c => c.id === savedCardId);
+    if (currentIndex === -1) {
+      setShowForm(false);
+      return;
+    }
+    const nextCard = cards[currentIndex + 1];
+    if (nextCard) {
+      setEditingCardId(nextCard.id);
+    } else {
+      showToast('All cards captured!', 'success');
+      setShowForm(false);
+      onRefresh();
+    }
+  }, [cards, showToast, onRefresh]);
+
+  const addProcessingId = useCallback((id) => {
+    setProcessingIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
+
+  const removeProcessingId = useCallback((id) => {
+    setProcessingIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
   // ── Single card actions ───────────────────────────────────────────────────
   const handleSingleStatus = useCallback(async (id, newStatus) => {
+    addProcessingId(id);
     try {
       const { data } = await apiPost(`/api/mobile/card/${id}/status/`, { status: newStatus });
       if (data?.success) { 
@@ -389,7 +513,10 @@ export default function CardListScreen({ navigation, route }) {
         showToast(data?.message || 'Failed', 'error');
       }
     } catch (_e) { showToast('Network error', 'error'); }
-  }, [showToast, currentStatus, updateCardStateLocally, handleEditCard]);
+    finally {
+      removeProcessingId(id);
+    }
+  }, [showToast, currentStatus, updateCardStateLocally, handleEditCard, addProcessingId, removeProcessingId]);
 
   const handleSingleDelete = useCallback((cardOrId) => {
     const id = (cardOrId && typeof cardOrId === 'object') ? cardOrId.id : cardOrId;
@@ -401,6 +528,7 @@ export default function CardListScreen({ navigation, route }) {
       note: 'This will move the record to the Pool list.',
       onConfirm: async () => {
         setConfirmModal(p => ({ ...p, visible: false }));
+        addProcessingId(id);
         try {
           const { data } = await apiPost(`/api/mobile/card/${id}/delete/`, {});
           if (data?.success) { 
@@ -409,9 +537,12 @@ export default function CardListScreen({ navigation, route }) {
           }
           else showToast(data?.message || 'Failed', 'error');
         } catch (_e) { showToast('Network error', 'error'); }
+        finally {
+          removeProcessingId(id);
+        }
       },
     });
-  }, [currentStatus, showToast, updateCardStateLocally]);
+  }, [currentStatus, showToast, updateCardStateLocally, addProcessingId, removeProcessingId]);
 
   const handleSingleReprint = useCallback((card) => {
     const fd = card.field_data || {};
@@ -428,6 +559,7 @@ export default function CardListScreen({ navigation, route }) {
       note: 'This will move the card to the Reprint Request list.',
       onConfirm: async () => {
         setConfirmModal(p => ({ ...p, visible: false }));
+        addProcessingId(card.id);
         try {
           const { data } = await apiPost(`/reprint/api/table/${tableId}/request/`, {
             card_ids: [card.id],
@@ -446,10 +578,12 @@ export default function CardListScreen({ navigation, route }) {
           }
         } catch (_e) {
           showToast('Network error', 'error');
+        } finally {
+          removeProcessingId(card.id);
         }
       },
     });
-  }, [tableId, currentStatus, showToast]);
+  }, [tableId, currentStatus, showToast, addProcessingId, removeProcessingId]);
 
   const handleStatusChange = useCallback((id, newStatus) => {
     const statusStr = typeof newStatus === 'string' ? newStatus : (newStatus?.status || 'pending');
@@ -492,6 +626,41 @@ export default function CardListScreen({ navigation, route }) {
   }, [currentStatus, handleSingleStatus]);
 
   // ── Derived state ─────────────────────────────────────────────────────────
+  const { availableClasses, availableSections } = useMemo(() => {
+    if (perms.role !== 'photographer' || !rawOfflineCards.length) {
+      return { availableClasses: [], availableSections: [] };
+    }
+    const classesSet = new Set();
+    const sectionsSet = new Set();
+    rawOfflineCards.forEach(c => {
+      const fd = c.field_data || {};
+      const classKey = Object.keys(fd).find(k => k.toLowerCase() === 'class');
+      const sectionKey = Object.keys(fd).find(k => k.toLowerCase() === 'section');
+      if (classKey && fd[classKey]) {
+        classesSet.add(fd[classKey].trim());
+      }
+      if (sectionKey && fd[sectionKey]) {
+        sectionsSet.add(fd[sectionKey].trim());
+      }
+    });
+
+    const classOrder = ['nursery', 'kg1', 'kg2', '1', '1st', '2', '2nd', '3', '3rd', '4', '4th', '5', '5th', '6', '6th', '7', '7th', '8', '8th', '9', '9th', '10', '10th', '11', '11th', '12', '12th'];
+    const sortedClasses = Array.from(classesSet).sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      let aIdx = classOrder.indexOf(aLower);
+      let bIdx = classOrder.indexOf(bLower);
+      if (aIdx === -1) aIdx = 999;
+      if (bIdx === -1) bIdx = 999;
+      if (aIdx !== bIdx) return aIdx - bIdx;
+      return aLower.localeCompare(bLower);
+    });
+
+    const sortedSections = Array.from(sectionsSet).sort((a, b) => a.localeCompare(b));
+
+    return { availableClasses: sortedClasses, availableSections: sortedSections };
+  }, [perms.role, rawOfflineCards]);
+
   const allSelected = useMemo(
     () => cards.length > 0 && cards.every(c => selectedIds.has(c.id)),
     [cards, selectedIds],
@@ -501,6 +670,7 @@ export default function CardListScreen({ navigation, route }) {
   const hasReprintPerm = perms.perm_idcard_reprint_list || perms.perm_reprint_request_list || perms.perm_confirmed_list;
 
   const canSelect = useMemo(() => {
+    if (perms.role === 'photographer') return false;
     if (!isClientRole) return true;
     if (currentStatus === 'pending') {
       return !!(perms.perm_idcard_verify || perms.perm_idcard_approve || perms.perm_idcard_delete);
@@ -521,11 +691,10 @@ export default function CardListScreen({ navigation, route }) {
 
   const renderItem = useCallback(({ item }) => {
     const isClient = perms.role === 'client' || perms.role === 'client_staff' || perms.role === 'guest_user';
-    const canEdit = perms.perm_idcard_edit && (!isClient || ['pending', 'verified'].includes(currentStatus));
-    const canDelete = currentStatus === 'pending' && perms.perm_idcard_delete;
-    const statusChangeHandler = isClient && (
-      currentStatus === 'download'
-    ) ? undefined : handleStatusChange;
+    const isPhotographer = perms.role === 'photographer';
+    const canEdit = perms.perm_idcard_edit && (isPhotographer || !isClient || ['pending', 'verified'].includes(currentStatus));
+    const canDelete = !isPhotographer && currentStatus === 'pending' && perms.perm_idcard_delete;
+    const statusChangeHandler = (isClient || isPhotographer) ? undefined : handleStatusChange;
 
     return (
       <CardItem
@@ -537,11 +706,14 @@ export default function CardListScreen({ navigation, route }) {
         currentStatus={currentStatus}
         onStatusChange={statusChangeHandler}
         onDelete={canDelete ? handleSingleDelete : undefined}
-        onReprint={currentStatus !== 'download' && (perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
+        onReprint={!isPhotographer && currentStatus !== 'download' && (perms.perm_idcard_reprint_list || perms.perm_reprint_request_list) ? handleSingleReprint : undefined}
         permissions={perms}
+        isProcessing={processingIds.has(item.id)}
       />
     );
-  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect]);
+  }, [selectedIds, perms, currentStatus, toggleSelect, handleStatusChange, handleSingleDelete, handleSingleReprint, handleEditCard, canSelect, processingIds]);
+
+
 
   const leftOfHomeBtns = useMemo(() => {
     const list = [];
@@ -553,8 +725,15 @@ export default function CardListScreen({ navigation, route }) {
         style: { backgroundColor: '#f97316' },
       });
     }
+    if (perms.role === 'photographer' && !selectMode) {
+      list.push({
+        label: 'START CAPTURE',
+        onPress: handleStartCapture,
+        style: { backgroundColor: '#10b981' },
+      });
+    }
     return list.length > 0 ? list : undefined;
-  }, [selectMode, currentStatus, perms, tableId, navigation]);
+  }, [selectMode, currentStatus, perms, tableId, navigation, handleStartCapture]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -622,6 +801,61 @@ export default function CardListScreen({ navigation, route }) {
         )}
       </View>
 
+      {perms.role === 'photographer' && (
+        <View style={s.photoFilters}>
+          {availableClasses.length > 0 && (
+            <View style={s.filterScrollContainer}>
+              <Text style={s.filterRowLabel}>CLASS:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
+                <TouchableOpacity 
+                  onPress={() => { setPhotoClass(''); setPage(1); }} 
+                  style={[s.filterChip, !photoClass && s.filterChipActive]}
+                >
+                  <Text style={[s.filterChipText, !photoClass && s.filterChipTextActive]}>ALL</Text>
+                </TouchableOpacity>
+                {availableClasses.map(cls => {
+                  const isActive = photoClass.toLowerCase() === cls.toLowerCase();
+                  return (
+                    <TouchableOpacity 
+                      key={cls} 
+                      onPress={() => { setPhotoClass(cls); setPage(1); }} 
+                      style={[s.filterChip, isActive && s.filterChipActive]}
+                    >
+                      <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{cls.toUpperCase()}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+          {availableSections.length > 0 && (
+            <View style={[s.filterScrollContainer, { marginTop: 6 }]}>
+              <Text style={s.filterRowLabel}>SECTION:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
+                <TouchableOpacity 
+                  onPress={() => { setPhotoSection(''); setPage(1); }} 
+                  style={[s.filterChip, !photoSection && s.filterChipActive]}
+                >
+                  <Text style={[s.filterChipText, !photoSection && s.filterChipTextActive]}>ALL</Text>
+                </TouchableOpacity>
+                {availableSections.map(sec => {
+                  const isActive = photoSection.toLowerCase() === sec.toLowerCase();
+                  return (
+                    <TouchableOpacity 
+                      key={sec} 
+                      onPress={() => { setPhotoSection(sec); setPage(1); }} 
+                      style={[s.filterChip, isActive && s.filterChipActive]}
+                    >
+                      <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{sec.toUpperCase()}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Select-all bar */}
       {canSelect && (
         <View style={s.summaryRow}>
@@ -657,7 +891,11 @@ export default function CardListScreen({ navigation, route }) {
               data={cards}
               renderItem={renderItem}
               keyExtractor={item => item.id.toString()}
-              extraData={selectedIds}
+              extraData={{ selectedIds, processingIds }}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
               contentContainerStyle={s.list}
               keyboardShouldPersistTaps="handled"
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandPrimary} />}
@@ -721,6 +959,7 @@ export default function CardListScreen({ navigation, route }) {
         tableId={tableId}
         cardId={editingCardId}
         requireClassChangeWarning={!!(autoRetrieveId && editingCardId === autoRetrieveId)}
+        onSaveAndNext={handleSaveAndNext}
         onSuccess={(updatedCard) => {
           if (editingCardId && updatedCard) {
             setCards(prev => prev.map(c => c.id === editingCardId ? { ...c, ...updatedCard } : c));
@@ -797,4 +1036,12 @@ const s = StyleSheet.create({
   fActions:            { flexDirection: 'row', gap: 10 },
   fBtn:                { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.xs, gap: 6 },
   fBtnText:            { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold' },
+  photoFilters:        { paddingHorizontal: 12, paddingBottom: 10, backgroundColor: colors.surfaceBg },
+  filterScrollContainer: { flexDirection: 'row', alignItems: 'center' },
+  filterRowLabel:      { fontSize: 10, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray500, width: 60 },
+  filterScroll:        { paddingRight: 20 },
+  filterChip:          { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.xs, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#fff', marginRight: 6 },
+  filterChipActive:    { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+  filterChipText:      { fontSize: 10, fontFamily: 'SairaSemiCondensed-Medium', color: colors.gray600 },
+  filterChipTextActive: { color: '#fff', fontFamily: 'SairaSemiCondensed-Bold' },
 });

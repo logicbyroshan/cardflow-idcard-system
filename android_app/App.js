@@ -13,6 +13,7 @@ import NetworkGuard from './src/components/NetworkGuard';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { colors } from './src/theme';
 import UpdatePromptModal from './src/components/UpdatePromptModal';
+import AnimatedSplashScreen from './src/components/AnimatedSplashScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -236,13 +237,7 @@ export default function App() {
       <View style={{ flex: 1, backgroundColor: colors.brandPrimary }} onLayout={onLayoutRootView}>
         <ErrorBoundary>
           {!appReady ? (
-            <View style={splash.container}>
-              <View style={splash.content}>
-                <Image source={require('./assets/logo.png')} style={{ width: 100, height: 100 }} resizeMode="contain" />
-                <Text style={splash.title}>ADARSH</Text>
-                <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
-              </View>
-            </View>
+            <AnimatedSplashScreen />
           ) : (
             <AuthProvider>
               <StatusBar style="light" />

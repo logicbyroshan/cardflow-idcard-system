@@ -1,1 +1,0 @@
-# Placeholder release pipeline contract

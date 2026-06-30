@@ -9,25 +9,35 @@
     <div class="upload-modal-body">
       <div class="image-sort-form">
         <div class="form-group">
-          <label for="imageSortColumn"><i class="fa-solid fa-table-columns"></i> Select Image Column</label>
-          <select id="imageSortColumn" class="form-select">
-            <option value="">-- Select Column --</option>
+          <label><i class="fa-solid fa-table-columns"></i> Select Image Column(s)</label>
+          <div class="badge-checkbox-group" id="imageSortColumnGroup">
             {% for field in table.fields %}
               {% check_image_field field.type field.name as is_img %}
               {% if is_img %}
-              <option value="{{ field.name }}">{{ field.name|upper }}</option>
+              <label class="badge-checkbox-label">
+                <input type="checkbox" name="imageSortColumn" value="{{ field.name }}" class="hidden-checkbox">
+                <span class="badge-item">{{ field.name|upper }}</span>
+              </label>
               {% endif %}
             {% endfor %}
-          </select>
+          </div>
         </div>
         <div class="form-group">
-          <label for="imageSortCondition"><i class="fa-solid fa-filter"></i> Select Condition</label>
-          <select id="imageSortCondition" class="form-select">
-            <option value="">-- Select Condition --</option>
-            <option value="complete">Complete (Image Uploaded)</option>
-            <option value="pending">Pending (Placeholder Created)</option>
-            <option value="incomplete">Incomplete (No Placeholder)</option>
-          </select>
+          <label><i class="fa-solid fa-filter"></i> Select Condition(s)</label>
+          <div class="badge-checkbox-group" id="imageSortConditionGroup">
+            <label class="badge-checkbox-label condition-complete">
+              <input type="checkbox" name="imageSortCondition" value="complete" class="hidden-checkbox">
+              <span class="badge-item"><i class="fa-solid fa-image"></i> Complete</span>
+            </label>
+            <label class="badge-checkbox-label condition-pending">
+              <input type="checkbox" name="imageSortCondition" value="pending" class="hidden-checkbox">
+              <span class="badge-item"><i class="fa-regular fa-clock"></i> Pending</span>
+            </label>
+            <label class="badge-checkbox-label condition-incomplete">
+              <input type="checkbox" name="imageSortCondition" value="incomplete" class="hidden-checkbox">
+              <span class="badge-item"><i class="fa-solid fa-image-portrait" style="opacity: 0.5;"></i> Incomplete</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>

@@ -25,7 +25,7 @@ Parameters:
   - hidden      : Initially hidden via display:none (default: True)
 {% endcomment %}
 
-<div class="empty-state" id="{{ id|default:'empty-state' }}" {% if hidden|default:True %}style="display: none;"{% endif %}>
+<div class="empty-state" id="{{ id|default:'empty-state' }}" {% if hidden != False %}style="display: none;"{% endif %}>
   <i class="fa-solid {{ icon|default:'fa-inbox' }}"></i>
   <h3>{{ title|default:"No Data Found" }}</h3>
   <p>{{ message|default:"Try adjusting your search or filter criteria" }}</p>

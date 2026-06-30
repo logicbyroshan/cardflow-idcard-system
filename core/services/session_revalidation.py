@@ -79,20 +79,20 @@ def register_revalidation_signals() -> None:
         bump_user_revalidation(instance.pk)
 
         role = str(getattr(instance, 'role', '') or '').strip().lower()
-        if role in ('admin_staff', 'client_staff'):
+        if role in ('operator', 'assistant'):
             _bump_admin_dashboard_versions()
-        if role == 'client_staff':
+        if role == 'assistant':
             try:
-                from staff.models import Staff
+                from assistants.models import Assistant
 
                 client_id = (
-                    Staff.objects.filter(user_id=instance.pk, staff_type='client_staff')
+                    Assistant.objects.filter(user_id=instance.pk)
                     .values_list('client_id', flat=True)
                     .first()
                 )
                 _bump_dashboard_versions_for_client(client_id)
             except Exception as exc:
-                logger.debug('Client staff cache bump from user save failed for user=%s: %s', instance.pk, exc)
+                logger.debug('Assistant cache bump from user save failed for user=%s: %s', instance.pk, exc)
 
     def _on_user_m2m_changed(sender, instance, action, **kwargs):
         if action in ('post_add', 'post_remove', 'post_clear'):
@@ -102,14 +102,15 @@ def register_revalidation_signals() -> None:
         if raw:
             return
         try:
-            from staff.models import Staff
+            from assistants.models import Assistant
+            from operators.models import Operator
 
             affected = [instance.user_id]
             affected.extend(
-                Staff.objects.filter(client_id=instance.pk).values_list('user_id', flat=True)
+                Assistant.objects.filter(client_id=instance.pk).values_list('user_id', flat=True)
             )
             affected.extend(
-                Staff.objects.filter(staff_type='admin_staff', assigned_clients=instance)
+                Operator.objects.filter(assigned_clients=instance)
                 .values_list('user_id', flat=True)
             )
             bump_users_revalidation(affected)
@@ -118,18 +119,20 @@ def register_revalidation_signals() -> None:
         except Exception as exc:
             logger.debug('Client revalidation bump failed for client=%s: %s', getattr(instance, 'pk', None), exc)
 
-    def _on_staff_saved(sender, instance, raw=False, **kwargs):
+    def _on_profile_saved(sender, instance, raw=False, **kwargs):
         if raw:
             return
         bump_user_revalidation(getattr(instance, 'user_id', None))
         _bump_admin_dashboard_versions()
-        _bump_dashboard_versions_for_client(getattr(instance, 'client_id', None))
+        client_id = getattr(instance, 'client_id', None)
+        _bump_dashboard_versions_for_client(client_id)
 
-    def _on_staff_m2m_changed(sender, instance, action, **kwargs):
+    def _on_profile_m2m_changed(sender, instance, action, **kwargs):
         if action in ('post_add', 'post_remove', 'post_clear'):
             bump_user_revalidation(getattr(instance, 'user_id', None))
             _bump_admin_dashboard_versions()
-            _bump_dashboard_versions_for_client(getattr(instance, 'client_id', None))
+            client_id = getattr(instance, 'client_id', None)
+            _bump_dashboard_versions_for_client(client_id)
 
     post_save.connect(
         _on_user_saved,
@@ -152,7 +155,8 @@ def register_revalidation_signals() -> None:
 
     # Imported lazily here so app loading is fully initialized first.
     from client.models import Client
-    from staff.models import Staff
+    from operators.models import Operator
+    from assistants.models import Assistant
 
     post_save.connect(
         _on_client_saved,
@@ -161,21 +165,27 @@ def register_revalidation_signals() -> None:
         weak=False,
     )
     post_save.connect(
-        _on_staff_saved,
-        sender=Staff,
-        dispatch_uid='pvm_reval_staff_post_save',
+        _on_profile_saved,
+        sender=Operator,
+        dispatch_uid='pvm_reval_operator_post_save',
+        weak=False,
+    )
+    post_save.connect(
+        _on_profile_saved,
+        sender=Assistant,
+        dispatch_uid='pvm_reval_assistant_post_save',
         weak=False,
     )
     m2m_changed.connect(
-        _on_staff_m2m_changed,
-        sender=Staff.assigned_clients.through,
-        dispatch_uid='pvm_reval_staff_assigned_clients_m2m',
+        _on_profile_m2m_changed,
+        sender=Operator.assigned_clients.through,
+        dispatch_uid='pvm_reval_operator_assigned_clients_m2m',
         weak=False,
     )
     m2m_changed.connect(
-        _on_staff_m2m_changed,
-        sender=Staff.assigned_groups.through,
-        dispatch_uid='pvm_reval_staff_assigned_groups_m2m',
+        _on_profile_m2m_changed,
+        sender=Assistant.assigned_groups.through,
+        dispatch_uid='pvm_reval_assistant_assigned_groups_m2m',
         weak=False,
     )
 

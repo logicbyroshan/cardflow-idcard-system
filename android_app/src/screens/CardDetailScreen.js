@@ -20,6 +20,7 @@ export default function CardDetailScreen({ navigation, route }) {
   const cardId = route?.params?.cardId;
   const { user } = useAuth();
   const theme = roleThemes[user?.role] || roleThemes.default;
+  const isPhotographer = user?.role === 'photographer';
 
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
@@ -284,23 +285,25 @@ export default function CardDetailScreen({ navigation, route }) {
             </View>
           )}
 
-          <View style={s.statusGrid}>
-            {allowedStatuses.map(opt => {
-              const canTransition = card.status === opt.key || canTransitionTo(opt.key);
-              return (
-                <TouchableOpacity 
-                  key={opt.key} 
-                  onPress={() => updateStatus(opt.key)} 
-                  disabled={updating || isLocked || !canTransition} 
-                  style={[s.statusOption, !canTransition && { opacity: 0.3 }]}
-                >
-                  <StatusBadge status={opt.key} variant={card.status === opt.key ? 'solid' : 'glass'} />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {!isPhotographer && (
+            <View style={s.statusGrid}>
+              {allowedStatuses.map(opt => {
+                const canTransition = card.status === opt.key || canTransitionTo(opt.key);
+                return (
+                  <TouchableOpacity 
+                    key={opt.key} 
+                    onPress={() => updateStatus(opt.key)} 
+                    disabled={updating || isLocked || !canTransition} 
+                    style={[s.statusOption, !canTransition && { opacity: 0.3 }]}
+                  >
+                    <StatusBadge status={opt.key} variant={card.status === opt.key ? 'solid' : 'glass'} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
-          {card.status === 'pending' && user?.permissions?.perm_idcard_delete && (
+          {!isPhotographer && card.status === 'pending' && user?.permissions?.perm_idcard_delete && (
             <TouchableOpacity 
               onPress={deleteCard} 
               activeOpacity={0.8}
@@ -311,34 +314,36 @@ export default function CardDetailScreen({ navigation, route }) {
           )}
         </View>
 
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <IconFilter size={12} color={colors.gray400} />
-              <Text style={s.sectionTitle}>CHANGE STATUS</Text>
+          {!isPhotographer && (
+            <View style={s.section}>
+              <View style={s.sectionHeader}>
+                <IconFilter size={12} color={colors.gray400} />
+                <Text style={s.sectionTitle}>CHANGE STATUS</Text>
+              </View>
+              <View style={s.statusButtonsWrap}>
+                {allowedStatuses.map((opt, idx) => {
+                  const canTransition = card.status === opt.key || canTransitionTo(opt.key);
+                  return (
+                    <TouchableOpacity 
+                      key={opt.key} 
+                      onPress={() => updateStatus(opt.key)} 
+                      disabled={updating || isLocked || !canTransition} 
+                      activeOpacity={0.75}
+                      style={[
+                        s.statusBtn,
+                        card.status === opt.key && s.statusBtnActive,
+                        { backgroundColor: card.status === opt.key ? colors.brandPrimary : '#f8fafc', borderColor: card.status === opt.key ? colors.brandPrimary : colors.gray100 },
+                        !canTransition && { opacity: 0.3 }
+                      ]}
+                    >
+                      <DetailStatusIcon status={opt.key} size={11} color={card.status === opt.key ? '#fff' : colors.gray600} />
+                      <Text style={[s.statusBtnText, card.status === opt.key && s.statusBtnTextActive, !canTransition && { color: colors.gray300 }]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-            <View style={s.statusButtonsWrap}>
-              {allowedStatuses.map((opt, idx) => {
-                const canTransition = card.status === opt.key || canTransitionTo(opt.key);
-                return (
-                  <TouchableOpacity 
-                    key={opt.key} 
-                    onPress={() => updateStatus(opt.key)} 
-                    disabled={updating || isLocked || !canTransition} 
-                    activeOpacity={0.75}
-                    style={[
-                      s.statusBtn,
-                      card.status === opt.key && s.statusBtnActive,
-                      { backgroundColor: card.status === opt.key ? colors.brandPrimary : '#f8fafc', borderColor: card.status === opt.key ? colors.brandPrimary : colors.gray100 },
-                      !canTransition && { opacity: 0.3 }
-                    ]}
-                  >
-                    <DetailStatusIcon status={opt.key} size={11} color={card.status === opt.key ? '#fff' : colors.gray600} />
-                    <Text style={[s.statusBtnText, card.status === opt.key && s.statusBtnTextActive, !canTransition && { color: colors.gray300 }]}>{opt.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+          )}
 
           <View style={s.actionButtonsRow}>
             {!isLocked && user?.permissions?.perm_idcard_edit && (
@@ -347,11 +352,13 @@ export default function CardDetailScreen({ navigation, route }) {
                 activeOpacity={0.8} 
                 style={[s.actionBtnFull, { borderColor: colors.brandPrimary, marginTop: 0 }]}
               >
-                <Text style={[s.actionBtnText, { color: colors.brandPrimary }]}>EDIT INFORMATION</Text>
+                <Text style={[s.actionBtnText, { color: colors.brandPrimary }]}>
+                  {isPhotographer ? 'CAPTURE / UPLOAD PHOTO' : 'EDIT INFORMATION'}
+                </Text>
               </TouchableOpacity>
             )}
 
-            {card.status === 'pending' && user?.permissions?.perm_idcard_delete && (
+            {!isPhotographer && card.status === 'pending' && user?.permissions?.perm_idcard_delete && (
               <TouchableOpacity 
                 onPress={deleteCard} 
                 activeOpacity={0.8} 

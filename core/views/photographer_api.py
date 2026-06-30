@@ -7,13 +7,25 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils.timezone import localtime
 
-from core.models import User
-from staff.models import Staff
+from core.models import User, Photographer, PhotographerAssignment
 from client.models import Client
-from ..services.permission_service import require_super_admin, api_require_super_admin
-from staff.services_staff_core import StaffService, PhotographerService
+from ..services.permission_service import require_super_admin, api_require_super_admin, PermissionService
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from core.services.photographer_service import PhotographerService
 from core.views.base_helpers import get_user_role, get_page_range
 from accounts.rate_limit import rate_limit
+from functools import wraps
+
+def api_require_photographer_manager(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+        if not (PermissionService.is_super_admin(request.user) or PermissionService.has(request.user, 'perm_manage_photographer_staff')):
+            return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +46,7 @@ def _parse_json_object(request):
     return data, None
 
 
-@require_super_admin
+@login_required
 def manage_photographers(request):
     """View to manage photographers — supports HTMX partial responses."""
     DEFAULT_PER_PAGE = 25
@@ -50,7 +62,24 @@ def manage_photographers(request):
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
 
-    staff_qs = Staff.objects.filter(staff_type='photographer').select_related('user').prefetch_related('photographer_assignments__client').order_by('-id')
+    user = request.user
+    can_manage = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_manage_photographer_staff')
+    if not can_manage:
+        return HttpResponseForbidden("Access Denied")
+
+    staff_qs = Photographer.objects.select_related('user').prefetch_related('photographer_assignments__client').order_by('-id')
+
+    # active_clients used for assignment dropdown
+    active_clients = Client.objects.filter(status='active', is_guest=False)
+    
+    if not PermissionService.is_super_admin(user):
+        operator = getattr(user, 'operator_profile', None)
+        if operator:
+            active_clients = operator.assigned_clients.filter(status='active', is_guest=False)
+        else:
+            active_clients = Client.objects.none()
+            
+    active_clients = active_clients.order_by('name').values('id', 'name')
 
     if search_query:
         staff_qs = staff_qs.filter(
@@ -69,8 +98,6 @@ def manage_photographers(request):
     paginator = Paginator(staff_qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
-    # Fetch active clients for assignment dropdown
-    active_clients = Client.objects.filter(status='active', is_guest=False).order_by('name').values('id', 'name')
 
     # Detect if request is HTMX
     is_htmx = request.headers.get('HX-Request') == 'true'
@@ -97,7 +124,7 @@ def manage_photographers(request):
 
 
 @require_http_methods(["POST"])
-@api_require_super_admin
+@api_require_photographer_manager
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='photographer_create')
 def api_photographer_create(request):
     """API endpoint to create a new photographer"""
@@ -114,7 +141,7 @@ def api_photographer_create(request):
 
 
 @require_http_methods(["GET"])
-@api_require_super_admin
+@api_require_photographer_manager
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='photographer_get')
 def api_photographer_get(request, staff_id):
     """API endpoint to get photographer details"""
@@ -123,7 +150,7 @@ def api_photographer_get(request, staff_id):
 
 
 @require_http_methods(["PUT", "POST"])
-@api_require_super_admin
+@api_require_photographer_manager
 def api_photographer_update(request, staff_id):
     """API endpoint to update photographer details"""
     try:
@@ -139,24 +166,24 @@ def api_photographer_update(request, staff_id):
 
 
 @require_http_methods(["DELETE", "POST"])
-@api_require_super_admin
+@api_require_photographer_manager
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='photographer_delete')
 def api_photographer_delete(request, staff_id):
     """API endpoint to delete a photographer"""
-    result = StaffService.delete(staff_id)
+    result = PhotographerService.delete(staff_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @require_http_methods(["POST"])
-@api_require_super_admin
+@api_require_photographer_manager
 def api_photographer_toggle_status(request, staff_id):
     """API endpoint to toggle photographer active/inactive status"""
-    result = StaffService.toggle_status(staff_id)
+    result = PhotographerService.toggle_status(staff_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @require_http_methods(["POST"])
-@api_require_super_admin
+@api_require_photographer_manager
 def api_photographer_assign_clients(request, staff_id):
     """API endpoint to update ONLY the client assignments for a photographer (no profile fields needed)"""
     try:
@@ -165,12 +192,12 @@ def api_photographer_assign_clients(request, staff_id):
             return json_err
 
         from django.utils.dateparse import parse_datetime
-        from staff.models import PhotographerAssignment
+        from core.models import PhotographerAssignment
         from django.db import transaction
 
         try:
-            staff = Staff.objects.get(id=staff_id, staff_type='photographer')
-        except Staff.DoesNotExist:
+            staff = Photographer.objects.get(id=staff_id)
+        except Photographer.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Photographer not found'}, status=404)
 
         assigned_clients = data.get('assigned_clients', [])
@@ -181,6 +208,15 @@ def api_photographer_assign_clients(request, staff_id):
             except Exception:
                 assigned_clients = []
 
+        if not PermissionService.is_super_admin(request.user):
+            operator = getattr(request.user, 'operator_profile', None)
+            if operator:
+                allowed_client_ids = set(operator.assigned_clients.values_list('id', flat=True))
+            else:
+                return JsonResponse({'success': False, 'message': 'Not authorized to manage assignments'}, status=403)
+        else:
+            allowed_client_ids = None
+
         with transaction.atomic():
             existing = {a.client_id: a for a in staff.photographer_assignments.all()}
             keep_client_ids = set()
@@ -188,26 +224,94 @@ def api_photographer_assign_clients(request, staff_id):
             for item in assigned_clients:
                 try:
                     client_id = int(item.get('client_id'))
+                    if allowed_client_ids is not None and client_id not in allowed_client_ids:
+                        continue # Operator can only assign their own clients
+                        
                     expires_at_str = item.get('expires_at')
                     expires_at = parse_datetime(expires_at_str) if expires_at_str else None
 
                     if client_id in existing:
                         assignment = existing[client_id]
                         assignment.expires_at = expires_at
+                        raw_table_ids = item.get('allowed_table_ids', [])
+                        assignment.allowed_table_ids = [int(t) for t in raw_table_ids if str(t).isdigit()] if raw_table_ids else []
                         assignment.save()
                     else:
+                        raw_table_ids = item.get('allowed_table_ids', [])
+                        allowed_table_ids = [int(t) for t in raw_table_ids if str(t).isdigit()] if raw_table_ids else []
                         PhotographerAssignment.objects.create(
                             photographer=staff,
                             client_id=client_id,
-                            expires_at=expires_at
+                            expires_at=expires_at,
+                            allowed_table_ids=allowed_table_ids,
                         )
                     keep_client_ids.add(client_id)
                 except (ValueError, TypeError):
                     pass
 
-            staff.photographer_assignments.exclude(client_id__in=keep_client_ids).delete()
+            if allowed_client_ids is not None:
+                # Operator: only delete assignments they have access to
+                staff.photographer_assignments.filter(client_id__in=allowed_client_ids).exclude(client_id__in=keep_client_ids).delete()
+            else:
+                # Super Admin: delete all missing
+                staff.photographer_assignments.exclude(client_id__in=keep_client_ids).delete()
 
         return JsonResponse({'success': True, 'message': 'Client assignments saved successfully'})
     except Exception as e:
         logger.exception("Photographer assign clients error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
+
+
+@require_http_methods(["GET"])
+@api_require_photographer_manager
+def api_photographer_client_tables(request, client_id):
+    """Return all groups and their tables for a client — used by assignment drawer."""
+    try:
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from mediafiles.utils import get_card_photo_url
+
+        groups = IDCardGroup.objects.filter(client_id=client_id, is_active=True).order_by('name')
+        
+        # Calculate captured/uncaptured counts per table for this client
+        assigned_cards_qs = IDCard.objects.filter(
+            table__group__client_id=client_id,
+            status__in=['pending', 'verified']
+        ).only('id', 'table_id', 'photo', 'field_data')
+
+        uncaptured_counts = {}
+        captured_counts = {}
+
+        for card in assigned_cards_qs.iterator(chunk_size=500):
+            has_photo = bool(get_card_photo_url(card))
+            t_id = card.table_id
+            if has_photo:
+                captured_counts[t_id] = captured_counts.get(t_id, 0) + 1
+            else:
+                uncaptured_counts[t_id] = uncaptured_counts.get(t_id, 0) + 1
+
+        result = []
+        for group in groups:
+            tables = IDCardTable.objects.filter(
+                group=group, deleted_by_client=False
+            ).order_by('name').values('id', 'name', 'is_active')
+            
+            tables_data = []
+            for t in tables:
+                t_id = t['id']
+                tables_data.append({
+                    'id': t_id,
+                    'name': t['name'],
+                    'is_active': t['is_active'],
+                    'captured_count': captured_counts.get(t_id, 0),
+                    'uncaptured_count': uncaptured_counts.get(t_id, 0)
+                })
+
+            result.append({
+                'group_id': group.id,
+                'group_name': group.name,
+                'tables': tables_data,
+            })
+        return JsonResponse({'success': True, 'groups': result})
+    except Exception as e:
+        logger.exception("Photographer client tables error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)

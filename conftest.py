@@ -35,7 +35,7 @@ import django
 django.setup()
 
 import builtins
-from staff.models import Staff
+from mobile_api.views import Staff
 
 builtins.Staff = Staff
 

@@ -1,19 +1,8 @@
 """
-Staff Views Module
+Operators Views Module
 
-Views for Admin Staff management by Super Admin.
+Views for Operator management by Super Admin.
 All views enforce Super Admin access at the view level.
-
-API Endpoints:
-- GET/POST /staff/api/admin-staff/           - List/Create admin staff
-- GET/PUT/DELETE /staff/api/admin-staff/<id>/ - Detail/Update/Delete
-- POST /staff/api/admin-staff/<id>/toggle-status/ - Toggle active status
-- POST /staff/api/admin-staff/<id>/reset-password/ - Reset password
-- GET /staff/api/permissions/available/      - List assignable permissions
-- GET /staff/api/clients/available/          - List clients for assignment
-
-Page Views:
-- GET /staff/manage/                         - Staff management page
 """
 import json
 import logging
@@ -24,17 +13,16 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
 from client.models import Client
-from .models import Staff
+from operators.models import Operator
 from core.services.activity_service import ActivityService
 
 from .services import (
-    AdminStaffCreationService,
-    AdminStaffPermissionService,
-    ClientScopingService,
+    OperatorCreationService,
+    OperatorPermissionService,
+    OperatorClientScopingService,
     check_client_access,
     check_permission,
-
-    ADMIN_STAFF_PERMISSIONS,
+    OPERATOR_PERMISSIONS,
 )
 from core.services.permission_service import (
     require_super_admin,
@@ -64,44 +52,84 @@ def _parse_json_object(request):
 
 @login_required
 @require_super_admin
-def staff_management_page(request):
+def operators_management_page(request):
     """
-    Admin Staff management page for Super Admin.
+    Operator management page for Super Admin.
+    Handles both full page load and HTMX partial refresh.
     """
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+
+    qs = Operator.objects.select_related('user').order_by('-created_at')
+
+    if search_query:
+        from django.db.models import Q as _Q
+        qs = qs.filter(
+            _Q(user__first_name__icontains=search_query) |
+            _Q(user__last_name__icontains=search_query) |
+            _Q(user__email__icontains=search_query) |
+            _Q(user__phone__icontains=search_query)
+        )
+
+    if status_filter == 'active':
+        qs = qs.filter(user__is_active=True)
+    elif status_filter == 'inactive':
+        qs = qs.filter(user__is_active=False)
+
+    staff_list = list(qs)
+
     context = {
-        'page_title': 'Manage Admin Staff',
+        'page_title': 'Manage Operators',
+        'active_page': 'manage_staff',
+        'staff_list': staff_list,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'page_obj': None,
+        'per_page': len(staff_list),
     }
-    return render(request, 'staff/manage.html', context)
+
+    if request.headers.get('HX-Request'):
+        return render(request, 'partials/staff/table-container.html', context)
+
+    return render(request, 'operators/manage.html', context)
 
 
 # =============================================================================
-# ADMIN STAFF CRUD API
+# OPERATOR CRUD API
 # =============================================================================
 
 @login_required
 @require_super_admin
 @require_http_methods(['GET', 'POST'])
-def api_admin_staff_list_create(request):
+def api_operator_list_create(request):
     """
-    GET: List all admin staff members
-    POST: Create new admin staff member
+    GET: List all operators
+    POST: Create new operator
     """
     if request.method == 'GET':
-        result = AdminStaffCreationService.list_admin_staff(request.user)
+        result = OperatorCreationService.list_operators(request.user)
         return JsonResponse(result)
     
-    # POST - Create new staff
+    # POST - Create new operator
     data, json_err = _parse_json_object(request)
     if json_err:
         return json_err
     
-    result = AdminStaffCreationService.create_admin_staff(
+    first_name = data.get('first_name', '')
+    last_name = data.get('last_name', '')
+    if not first_name and data.get('name'):
+        name_val = data.get('name', '').strip()
+        parts = name_val.split()
+        first_name = parts[0] if parts else ''
+        last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+
+    result = OperatorCreationService.create_operator(
         created_by=request.user,
-        first_name=data.get('first_name', ''),
-        last_name=data.get('last_name', ''),
+        first_name=first_name,
+        last_name=last_name,
         email=data.get('email', ''),
         phone=data.get('phone', ''),
-        designation=data.get('designation', 'Staff'),
+        designation=data.get('designation', 'Operator'),
         department=data.get('department', ''),
         assigned_client_ids=data.get('assigned_clients', []),
         permission_codenames=data.get('permissions', []),
@@ -109,13 +137,12 @@ def api_admin_staff_list_create(request):
     )
     
     if result.get('success'):
-        staff_obj = result.get('data', {}).get('staff') or result.get('staff')
-        name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip() or 'staff member'
+        name = f"{first_name} {last_name}".strip() or 'operator'
         ActivityService.log(
-            'staff_create',
-            f'New admin staff "{name}" added',
+            'staff_create',  # Keep internal log keys consistent
+            f'New operator "{name}" added',
             request=request,
-            target_model='Staff',
+            target_model='Operator',
             target_name=name,
         )
     
@@ -125,28 +152,38 @@ def api_admin_staff_list_create(request):
 
 @login_required
 @require_super_admin
-@require_http_methods(['GET', 'PUT', 'DELETE'])
-def api_admin_staff_detail(request, staff_id):
+@require_http_methods(['GET', 'PUT', 'POST', 'DELETE'])
+def api_operator_detail(request, operator_id):
     """
-    GET: Get admin staff detail
-    PUT: Update admin staff
-    DELETE: Delete admin staff
+    GET: Get operator detail
+    POST/PUT: Update operator
+    DELETE: Delete operator
     """
+    if not Operator.objects.filter(id=operator_id).exists():
+        return JsonResponse({'success': False, 'error': 'Operator not found'}, status=404)
     if request.method == 'GET':
-        result = AdminStaffCreationService.get_admin_staff_detail(request.user, staff_id)
+        result = OperatorCreationService.get_operator_detail(request.user, operator_id)
         status = 200 if result.get('success') else 404
         return JsonResponse(result, status=status)
     
-    if request.method == 'PUT':
+    if request.method in ('PUT', 'POST'):
         data, json_err = _parse_json_object(request)
         if json_err:
             return json_err
         
-        result = AdminStaffCreationService.update_admin_staff(
+        first_name = data.get('first_name')
+        last_name = data.get('last_name')
+        if not first_name and data.get('name'):
+            name_val = data.get('name', '').strip()
+            parts = name_val.split()
+            first_name = parts[0] if parts else ''
+            last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+
+        result = OperatorCreationService.update_operator(
             updated_by=request.user,
-            staff_id=staff_id,
-            first_name=data.get('first_name'),
-            last_name=data.get('last_name'),
+            operator_id=operator_id,
+            first_name=first_name,
+            last_name=last_name,
             phone=data.get('phone'),
             designation=data.get('designation'),
             department=data.get('department'),
@@ -155,13 +192,13 @@ def api_admin_staff_detail(request, staff_id):
         )
         
         if result.get('success'):
-            name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip() or 'staff member'
+            name = f"{first_name} {last_name}".strip() or 'operator'
             ActivityService.log(
                 'staff_update',
-                f'Admin staff "{name}" details updated',
+                f'Operator "{name}" details updated',
                 request=request,
-                target_model='Staff',
-                target_id=staff_id,
+                target_model='Operator',
+                target_id=operator_id,
                 target_name=name,
             )
         
@@ -169,15 +206,15 @@ def api_admin_staff_detail(request, staff_id):
         return JsonResponse(result, status=status)
     
     if request.method == 'DELETE':
-        result = AdminStaffCreationService.delete_admin_staff(request.user, staff_id)
+        result = OperatorCreationService.delete_operator(request.user, operator_id)
         if result.get('success'):
-            name = result.get('data', {}).get('name', 'staff member')
+            name = result.get('data', {}).get('name', 'operator')
             ActivityService.log(
                 'staff_delete',
-                f'Admin staff "{name}" removed',
+                f'Operator "{name}" removed',
                 request=request,
-                target_model='Staff',
-                target_id=staff_id,
+                target_model='Operator',
+                target_id=operator_id,
                 target_name=name,
             )
         status = 200 if result.get('success') else 400
@@ -187,60 +224,90 @@ def api_admin_staff_detail(request, staff_id):
 @login_required
 @require_super_admin
 @require_http_methods(['POST'])
-def api_admin_staff_toggle_status(request, staff_id):
-    """Toggle admin staff active/inactive status."""
+def api_operator_toggle_status(request, operator_id):
+    """Toggle operator active/inactive status."""
     try:
-        result = AdminStaffCreationService.toggle_status(request.user, staff_id)
+        if not Operator.objects.filter(id=operator_id).exists():
+            return JsonResponse({'success': False, 'error': 'Operator not found'}, status=404)
+        result = OperatorCreationService.toggle_status(request.user, operator_id)
         if result.get('success'):
             payload = result.get('data', {})
             new_status = payload.get('is_active')
             if new_status is None:
                 new_status = result.get('is_active')
-            name = payload.get('name', 'staff member')
+            name = payload.get('name', 'operator')
             label = 'active' if new_status else 'inactive'
             ActivityService.log(
                 'staff_status',
-                f'Admin staff "{name}" marked as {label}',
+                f'Operator "{name}" marked as {label}',
                 request=request,
-                target_model='Staff',
-                target_id=staff_id,
+                target_model='Operator',
+                target_id=operator_id,
                 target_name=name,
             )
         status = 200 if result.get('success') else 400
         return JsonResponse(result, status=status)
     except Exception as e:
-        logger.exception("Staff toggle status error: %s", e)
+        logger.exception("Operator toggle status error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
 @login_required
 @require_super_admin
 @require_http_methods(['POST'])
-def api_admin_staff_reset_password(request, staff_id):
-    """Reset admin staff password and send email."""
+def api_operator_delete(request, operator_id):
+    """Delete an operator via POST (used by the JS frontend)."""
     try:
-        result = AdminStaffCreationService.reset_password(request.user, staff_id)
+        if not Operator.objects.filter(id=operator_id).exists():
+            return JsonResponse({'success': False, 'error': 'Operator not found'}, status=404)
+        result = OperatorCreationService.delete_operator(request.user, operator_id)
+        if result.get('success'):
+            name = result.get('data', {}).get('name', 'operator')
+            ActivityService.log(
+                'staff_delete',
+                f'Operator "{name}" removed',
+                request=request,
+                target_model='Operator',
+                target_id=operator_id,
+                target_name=name,
+            )
+        status = 200 if result.get('success') else 400
+        return JsonResponse(result, status=status)
+    except Exception as e:
+        logger.exception("Operator delete error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+
+
+@login_required
+@require_super_admin
+@require_http_methods(['POST'])
+def api_operator_reset_password(request, operator_id):
+    """Reset operator password and send email."""
+    try:
+        if not Operator.objects.filter(id=operator_id).exists():
+            return JsonResponse({'success': False, 'error': 'Operator not found'}, status=404)
+        result = OperatorCreationService.reset_password(request.user, operator_id)
         if result.get('success'):
             target_name = ''
             try:
-                staff_obj = Staff.objects.select_related('user').filter(id=staff_id).first()
-                if staff_obj and staff_obj.user:
-                    target_name = (staff_obj.user.get_full_name() or staff_obj.user.username or '').strip()
+                op_obj = Operator.objects.select_related('user').filter(id=operator_id).first()
+                if op_obj and op_obj.user:
+                    target_name = (op_obj.user.get_full_name() or op_obj.user.username or '').strip()
             except Exception:
                 target_name = ''
 
             ActivityService.log(
                 'staff_password_reset',
-                f'Admin staff password reset for "{target_name or staff_id}"',
+                f'Operator password reset for "{target_name or operator_id}"',
                 request=request,
-                target_model='Staff',
-                target_id=staff_id,
+                target_model='Operator',
+                target_id=operator_id,
                 target_name=target_name,
             )
         status = 200 if result.get('success') else 400
         return JsonResponse(result, status=status)
     except Exception as e:
-        logger.exception("Staff reset password error: %s", e)
+        logger.exception("Operator reset password error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
@@ -252,8 +319,8 @@ def api_admin_staff_reset_password(request, staff_id):
 @require_super_admin
 @require_http_methods(['GET'])
 def api_available_permissions(request):
-    """Get list of permissions that can be assigned to admin staff."""
-    permissions = AdminStaffPermissionService.get_assignable_permissions()
+    """Get list of permissions that can be assigned to operators."""
+    permissions = OperatorPermissionService.get_assignable_permissions()
     return JsonResponse({
         'success': True,
         'permissions': permissions,
@@ -264,7 +331,7 @@ def api_available_permissions(request):
 @require_super_admin
 @require_http_methods(['GET'])
 def api_available_clients(request):
-    """Get list of all clients for assignment to admin staff (includes inactive)."""
+    """Get list of all clients for assignment to operators (includes inactive)."""
     clients = Client.objects.all().values('id', 'name', 'status')
     return JsonResponse({
         'success': True,
@@ -273,16 +340,16 @@ def api_available_clients(request):
 
 
 # =============================================================================
-# ADMIN STAFF SELF-SERVICE API
+# OPERATOR SELF-SERVICE API
 # =============================================================================
 
 @login_required
 @require_any_admin
 @require_http_methods(['GET'])
 def api_my_permissions(request):
-    """Get current user's permissions (for admin staff dashboard)."""
-    permissions = AdminStaffPermissionService.get_user_permissions(request.user)
-    scope = ClientScopingService.get_scope_context(request.user)
+    """Get current user's permissions (for operator dashboard)."""
+    permissions = OperatorPermissionService.get_user_permissions(request.user)
+    scope = OperatorClientScopingService.get_scope_context(request.user)
     
     return JsonResponse({
         'success': True,
@@ -301,8 +368,8 @@ def api_my_permissions(request):
 @require_any_admin
 @require_http_methods(['GET'])
 def api_my_clients(request):
-    """Get clients accessible to the current admin staff user."""
-    clients = ClientScopingService.get_accessible_clients(request.user)
+    """Get clients accessible to the current operator user."""
+    clients = OperatorClientScopingService.get_accessible_clients(request.user)
     
     return JsonResponse({
         'success': True,
@@ -321,11 +388,10 @@ def api_my_clients(request):
 def api_scoped_clients(request):
     """
     Example: Get clients with automatic scoping.
-    Admin staff only see their assigned clients.
+    Operators only see their assigned clients.
     """
-    clients = ClientScopingService.get_accessible_clients(request.user)
+    clients = OperatorClientScopingService.get_accessible_clients(request.user)
     
-    # Apply additional filters if provided
     status = request.GET.get('status')
     if status:
         clients = clients.filter(status=status)
@@ -366,24 +432,24 @@ def api_client_idcard_groups(request, client_id):
 
 @login_required
 @require_any_admin
-def staff_dashboard(request):
+def operator_dashboard(request):
     """
-    Admin Staff dashboard with scoped data.
+    Operator dashboard with scoped data.
     """
     from django.db.models import Count, Q
     from idcards.models import IDCard
     from core.services.permission_service import PermissionService
 
-    scope = ClientScopingService.get_scope_context(request.user)
-    permissions = AdminStaffPermissionService.get_user_permissions(request.user)
+    scope = OperatorClientScopingService.get_scope_context(request.user)
+    permissions = OperatorPermissionService.get_user_permissions(request.user)
 
-    # Card stats scoped by admin_staff's assigned clients
     user = request.user
-    is_scoped = PermissionService.is_admin_staff(user)
+    is_scoped = PermissionService.is_operator(user)
     card_qs = IDCard.objects.all()
     if is_scoped:
         accessible_ids = PermissionService.get_accessible_client_ids(user)
         card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
+    
     card_stats = card_qs.aggregate(
         total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
         pending=Count('id', filter=Q(status='pending')),
@@ -392,11 +458,10 @@ def staff_dashboard(request):
         downloaded=Count('id', filter=Q(status='download')),
     )
 
-    # Recent activity scoped to this staff user
     recent_activities = ActivityService.get_recent(limit=15, user=user)
 
     context = {
-        'page_title': 'Admin Staff Dashboard',
+        'page_title': 'Operator Dashboard',
         'active_page': 'dashboard',
         'scope': scope,
         'permissions': permissions,
@@ -408,4 +473,4 @@ def staff_dashboard(request):
         'recent_activities': recent_activities,
     }
 
-    return render(request, 'dashboard/staff.html', context)
+    return render(request, 'dashboard/operator.html', context)

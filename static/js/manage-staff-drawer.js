@@ -135,7 +135,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!container) return;
         container.innerHTML = '';
 
-        var selected = NS.allClients.filter(function(c) { return NS.selectedClientIds.has(c.id); });
+        var clientMap = {};
+        NS.allClients.forEach(function(c) { clientMap[c.id] = c; });
+        
+        // Sets maintain insertion order. Get array and reverse for 'latest first'
+        var selectedIds = Array.from(NS.selectedClientIds).reverse();
+        var selected = selectedIds.map(function(id) { return clientMap[id]; }).filter(Boolean);
 
         if (selected.length === 0) {
             container.innerHTML = '<div style="font-size: 12px; color: var(--color-slate-400); font-style: italic;">No clients assigned yet.</div>';
@@ -147,9 +152,10 @@ document.addEventListener('DOMContentLoaded', function() {
         selected.forEach(function(client) {
             var chip = document.createElement('div');
             chip.className = 'operator-client-chip';
-            chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 9999px; font-size: 12px; color: var(--color-indigo-700); font-weight: 500;';
+            chip.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 12px; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; font-size: 12px; color: #3730a3; font-weight: 600; width: 100%;';
             
             var textSpan = document.createElement('span');
+            textSpan.style.cssText = 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;';
             textSpan.textContent = client.name;
             chip.appendChild(textSpan);
 
@@ -215,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         NS.currentMode = mode;
         staffForm.reset();
         NS.setStatusDropdown('false'); // Default Inactive for new staff
-        NS.setPasswordOption('phone'); // Reset password option
+        NS.setPasswordOption('custom'); // Reset password option to custom by default
 
         // Phase 1: Profile image upload removed - using avatar placeholder
 

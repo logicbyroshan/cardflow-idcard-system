@@ -35,6 +35,8 @@ const STATUS_COLORS = {
   approved: { bg: '#eff6ff', text: '#3b82f6', border: '#dbeafe', icon: 'thumbs-up' },
   download: { bg: '#f5f3ff', text: '#8b5cf6', border: '#ede9fe', icon: 'download' },
   pool:     { bg: '#fef2f2', text: '#ef4444', border: '#fee2e2', icon: 'layer-group' },
+  uncaptured: { bg: '#fffbeb', text: '#f59e0b', border: '#fef3c7', icon: 'clock' },
+  captured:   { bg: '#ecfdf5', text: '#10b981', border: '#d1fae5', icon: 'check-circle' },
 };
 
 export default function ClientGroupsScreen({ navigation, route }) {
@@ -114,7 +116,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
 
   // Aggregated status counts across all client tables to display in the tabs
   const statusCounts = useMemo(() => {
-    const counts = { all: 0, pending: 0, verified: 0, approved: 0, download: 0, pool: 0, reprint: 0 };
+    const counts = { all: 0, pending: 0, verified: 0, approved: 0, download: 0, pool: 0, reprint: 0, uncaptured: 0, captured: 0 };
     allTables.forEach(t => {
       counts.pending += (t.pending_count || 0);
       counts.verified += (t.verified_count || 0);
@@ -122,15 +124,32 @@ export default function ClientGroupsScreen({ navigation, route }) {
       counts.download += (t.download_count || 0);
       counts.pool += (t.pool_count || 0);
       counts.reprint += (t.reprint_count || 0);
+      counts.uncaptured += (t.uncaptured_count || 0);
+      counts.captured += (t.captured_count || 0);
     });
-    counts.all = counts.pending + counts.verified + counts.approved + counts.download + counts.pool + counts.reprint;
+    if (user?.role === 'photographer') {
+      counts.all = counts.uncaptured + counts.captured;
+    } else {
+      counts.all = counts.pending + counts.verified + counts.approved + counts.download + counts.pool + counts.reprint;
+    }
     return counts;
-  }, [allTables]);
+  }, [allTables, user]);
 
   const filteredTables = useMemo(() => {
     if (currentStatus === 'all') return allTables;
     return allTables.filter(t => (t[`${currentStatus}_count`] || 0) > 0);
   }, [allTables, currentStatus]);
+
+  const statusOptions = useMemo(() => {
+    if (user?.role === 'photographer') {
+      return [
+        { key: 'all',        label: 'ALL',          color: colors.brandPrimary, icon: 'list' },
+        { key: 'uncaptured', label: 'UNCAPTURED',   color: '#f59e0b',           icon: 'clock' },
+        { key: 'captured',   label: 'CAPTURED',     color: '#10b981',           icon: 'check-circle' },
+      ];
+    }
+    return STATUS_OPTIONS;
+  }, [user]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const handleOpenActions = (table) => {
@@ -405,7 +424,7 @@ export default function ClientGroupsScreen({ navigation, route }) {
       {/* Status tabs */}
       <View style={s.tabContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabScroll}>
-          {STATUS_OPTIONS.map(opt => {
+          {statusOptions.map(opt => {
             const isActive = currentStatus === opt.key;
             return (
               <TouchableOpacity
@@ -669,14 +688,18 @@ const TableBadgeButton = React.memo(({ opt, table, navigation }) => {
 
 const TableCardRow = React.memo(({ table, navigation, onOpenActions, currentStatus }) => {
   const { user } = useAuth();
-  const totalCount = (table.pending_count || 0) + (table.verified_count || 0) +
-                     (table.approved_count || 0) + (table.download_count || 0) +
-                     (table.pool_count || 0);
+  const totalCount = user?.role === 'photographer'
+    ? (table.uncaptured_count || 0) + (table.captured_count || 0)
+    : (table.pending_count || 0) + (table.verified_count || 0) +
+      (table.approved_count || 0) + (table.download_count || 0) +
+      (table.pool_count || 0);
 
   const handlePressInfo = useCallback(() => {
-    const navStatus = currentStatus === 'all' ? 'pending' : currentStatus;
+    const navStatus = currentStatus === 'all'
+      ? (user?.role === 'photographer' ? 'uncaptured' : 'pending')
+      : currentStatus;
     navigation.navigate('CardList', { tableId: table.id, status: navStatus });
-  }, [navigation, table.id, currentStatus]);
+  }, [navigation, table.id, currentStatus, user]);
 
   const handlePressCog = useCallback(() => onOpenActions(table), [table, onOpenActions]);
 
@@ -707,19 +730,33 @@ const TableCardRow = React.memo(({ table, navigation, onOpenActions, currentStat
 
       {/* Clickable Status Badges matching web style */}
       <View style={s.tableBadgesRow}>
-        {STATUS_OPTIONS.slice(1).filter(opt => {
-          if (user?.role === 'client_staff') {
-            return ['pending', 'verified', 'pool'].includes(opt.key);
-          }
-          return true;
-        }).map(opt => (
-          <TableBadgeButton
-            key={opt.key}
-            opt={opt}
-            table={table}
-            navigation={navigation}
-          />
-        ))}
+        {user?.role === 'photographer' ? (
+          [
+            { key: 'uncaptured', label: 'UNCAPTURED' },
+            { key: 'captured', label: 'CAPTURED' }
+          ].map(opt => (
+            <TableBadgeButton
+              key={opt.key}
+              opt={opt}
+              table={table}
+              navigation={navigation}
+            />
+          ))
+        ) : (
+          STATUS_OPTIONS.slice(1).filter(opt => {
+            if (user?.role === 'client_staff') {
+              return ['pending', 'verified', 'pool'].includes(opt.key);
+            }
+            return true;
+          }).map(opt => (
+            <TableBadgeButton
+              key={opt.key}
+              opt={opt}
+              table={table}
+              navigation={navigation}
+            />
+          ))
+        )}
       </View>
     </View>
   );

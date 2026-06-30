@@ -7,11 +7,7 @@ import Constants from 'expo-constants';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 // Allow overriding BASE_URL via Expo constants (`expo publish` extra) or global for tests
-export const BASE_URL = (
-  process.env.EXPO_PUBLIC_API_URL ||
-  (Constants?.expoConfig?.extra && Constants.expoConfig.extra.API_BASE_URL) ||
-  'https://www.adarshbhopal.in'
-);
+export const BASE_URL = 'https://panel.adarshbhopal.in';
 
 const STORAGE_KEYS = {
   csrfToken: 'adarsh_csrf_token',

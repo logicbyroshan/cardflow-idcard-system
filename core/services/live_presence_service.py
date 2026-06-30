@@ -6,7 +6,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from client.models import Client
-from staff.models import Staff
 
 from ..models import ClientPresenceSession
 from .realtime_service import publish_topic_event
@@ -90,11 +89,11 @@ class LiveClientPresenceService:
                 .first()
             )
 
-        if role == 'client_staff':
+        if role in ('assistant', 'client_staff'):
+            from assistants.models import Assistant
             return (
-                Staff.objects.filter(
+                Assistant.objects.filter(
                     user_id=user.id,
-                    staff_type='client_staff',
                     user__is_active=True,
                     client_id__isnull=False,
                     client__status='active',
@@ -115,7 +114,7 @@ class LiveClientPresenceService:
     def is_assistant_live(cls, user_id, now=None):
         if not user_id:
             return False
-        return cls._active_queryset(now=now).filter(user_id=user_id, user_role='client_staff').exists()
+        return cls._active_queryset(now=now).filter(user_id=user_id, user_role__in=['assistant', 'client_staff']).exists()
 
     @classmethod
     def record_event(cls, *, user, session_key, tab_id, action):
@@ -137,7 +136,7 @@ class LiveClientPresenceService:
 
         role = str(getattr(user, 'role', '') or '').lower()
         before_live = cls.is_client_live(client_id, now=now)
-        before_assistant_live = cls.is_assistant_live(user.id, now=now) if role == 'client_staff' else False
+        before_assistant_live = cls.is_assistant_live(user.id, now=now) if role in ('assistant', 'client_staff') else False
 
         with transaction.atomic():
             presence, created = ClientPresenceSession.objects.select_for_update().get_or_create(
@@ -161,7 +160,7 @@ class LiveClientPresenceService:
                 presence.save(update_fields=['user', 'client', 'user_role', 'last_seen_at', 'closed_at'])
 
         after_live = cls.is_client_live(client_id, now=now)
-        after_assistant_live = cls.is_assistant_live(user.id, now=now) if role == 'client_staff' else False
+        after_assistant_live = cls.is_assistant_live(user.id, now=now) if role in ('assistant', 'client_staff') else False
         changed = (before_live != after_live) or (before_assistant_live != after_assistant_live)
         if changed:
             cls._publish_dashboard_presence_changed(trigger='record_event', action=action)
@@ -179,7 +178,7 @@ class LiveClientPresenceService:
         cls.retire_stale_sessions(now=now)
 
         live_ids = set(cls._active_queryset(now=now).values_list('client_id', flat=True).distinct())
-        if PermissionService.is_admin_staff(user):
+        if PermissionService.is_operator(user):
             allowed_ids = set(PermissionService.get_accessible_client_ids(user))
             live_ids &= allowed_ids
 
@@ -190,8 +189,8 @@ class LiveClientPresenceService:
         now = timezone.now()
         cls.retire_stale_sessions(now=now)
 
-        qs = cls._active_queryset(now=now).filter(user_role='client_staff')
-        if PermissionService.is_admin_staff(user):
+        qs = cls._active_queryset(now=now).filter(user_role__in=['assistant', 'client_staff'])
+        if PermissionService.is_operator(user):
             allowed_ids = set(PermissionService.get_accessible_client_ids(user))
             qs = qs.filter(client_id__in=allowed_ids)
 
@@ -203,10 +202,10 @@ class LiveClientPresenceService:
         cls.retire_stale_sessions(now=now)
 
         qs = cls._active_queryset(now=now).filter(
-            user_role='client_staff',
+            user_role__in=['assistant', 'client_staff'],
             client_id__isnull=False,
         )
-        if PermissionService.is_admin_staff(user):
+        if PermissionService.is_operator(user):
             allowed_ids = set(PermissionService.get_accessible_client_ids(user))
             qs = qs.filter(client_id__in=allowed_ids)
 
@@ -225,7 +224,7 @@ class LiveClientPresenceService:
         cls.retire_stale_sessions(now=now)
 
         # Determine permission scope once
-        is_scoped = PermissionService.is_admin_staff(user)
+        is_scoped = PermissionService.is_operator(user)
         allowed_ids = set(PermissionService.get_accessible_client_ids(user)) if is_scoped else None
 
         # Single query: fetch all active sessions
@@ -243,7 +242,7 @@ class LiveClientPresenceService:
                 continue
             if client_id is not None:
                 all_client_ids.add(client_id)
-            if user_role == 'client_staff':
+            if user_role in ('assistant', 'client_staff'):
                 assistant_user_ids.add(user_id)
                 if client_id is not None:
                     assistant_client_ids.add(client_id)

@@ -102,18 +102,18 @@
         {% endif %}
         <div class="filter-group">
             {% if is_super_admin or is_admin_staff %}
-            <a href="{% url 'idcard_group' client_id=client.id %}" class="btn btn-settings" title="Back to ID Card Group">
+            <a href="{% url 'idcard_group' client_id=client.id %}" class="btn btn-settings btn-sky-blue" title="Back to ID Card Group">
                 <i class="fa-solid fa-layer-group"></i> ID Card Group
             </a>
-            <a href="{% url 'group_settings' client_id=client.id %}" class="btn btn-settings" title="Group Settings">
+            <a href="{% url 'group_settings' client_id=client.id %}" class="btn btn-settings btn-sky-blue" title="Group Settings">
                 <i class="fa-solid fa-gear"></i> Group Setting
             </a>
             {% elif is_client %}
-            <a href="{% url 'client:idcard_group' %}" class="btn btn-settings" title="Back to ID Card Group">
+            <a href="{% url 'client:idcard_group' %}" class="btn btn-settings btn-sky-blue" title="Back to ID Card Group">
                 <i class="fa-solid fa-layer-group"></i> ID Card Group
             </a>
             {% if perm_idcard_setting_list %}
-            <a href="{% url 'client:group_settings' %}" class="btn btn-settings" title="Group Settings">
+            <a href="{% url 'client:group_settings' %}" class="btn btn-settings btn-sky-blue" title="Group Settings">
                 <i class="fa-solid fa-gear"></i> Group Setting
             </a>
             {% endif %}

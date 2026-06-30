@@ -60,8 +60,8 @@ Required context:
                 </td>
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="8">
+            <tr class="empty-row">
+                <td colspan="8" class="empty-cell">
                     {% include 'components/empty-state.html' with id='client-table-empty-inline' icon='fa-building-slash' title='No Clients Found' message='No clients match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>

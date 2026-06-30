@@ -4,6 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useIsFocused } from '@react-navigation/native';
 import { Accelerometer } from 'expo-sensors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DynamicIcon } from '../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, Mask, Rect, Ellipse } from 'react-native-svg';
@@ -40,6 +41,12 @@ export default function CameraScreen({ navigation, route }) {
       });
     }
   }, [route?.params?.imageUri, route?.params?.imageWidth, route?.params?.imageHeight]);
+
+  const fastCaptureCards = route.params?.fastCaptureCards;
+  const [currentIndex, setCurrentIndex] = useState(route.params?.initialIndex || 0);
+  const currentStudent = fastCaptureCards?.[currentIndex];
+  const nextStudent = fastCaptureCards?.[currentIndex + 1];
+
   const [isLevel, setIsLevel] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
   const [hasSensor, setHasSensor] = useState(true);
@@ -180,7 +187,33 @@ export default function CameraScreen({ navigation, route }) {
       if (route.params?.onCapture) {
         route.params.onCapture(manipulated.uri);
       }
-      navigation.goBack();
+      
+      if (fastCaptureCards && currentStudent) {
+        // Save to offline storage
+        await AsyncStorage.setItem(`offline_photo_${currentStudent.id}`, manipulated.uri);
+        
+        // Update the offline data state to mark as captured
+        const offlineStr = await AsyncStorage.getItem('photographer_offline_data');
+        if (offlineStr) {
+           const clients = JSON.parse(offlineStr);
+           clients.forEach(c => c.tables?.forEach(t => t.cards?.forEach(card => {
+               if (card.id === currentStudent.id) {
+                   card.has_photo = true;
+               }
+           })));
+           await AsyncStorage.setItem('photographer_offline_data', JSON.stringify(clients));
+        }
+
+        if (nextStudent) {
+            setPhoto(null);
+            setCurrentIndex(currentIndex + 1);
+        } else {
+            alert('All students in this list have been captured!');
+            navigation.goBack();
+        }
+      } else {
+        navigation.goBack();
+      }
     } catch (err) {
       alert('Error processing image: ' + err.message);
     } finally {
@@ -202,8 +235,17 @@ export default function CameraScreen({ navigation, route }) {
 
           {/* Top label */}
           <View style={s.previewTopBar}>
-            <Text style={s.previewTopLabel}>📷  PHOTO PREVIEW</Text>
-            <Text style={s.previewTopSub}>Confirm or retake the photo</Text>
+            {currentStudent ? (
+              <>
+                <Text style={s.previewTopLabel}>{currentStudent.field_data?.name || 'Unknown Student'}</Text>
+                <Text style={s.previewTopSub}>Class: {currentStudent.field_data?.class || '-'} | Section: {currentStudent.field_data?.section || '-'}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={s.previewTopLabel}>📷  PHOTO PREVIEW</Text>
+                <Text style={s.previewTopSub}>Confirm or retake the photo</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -233,7 +275,7 @@ export default function CameraScreen({ navigation, route }) {
             ) : (
               <>
                 <DynamicIcon name="check" size={18} color='#fff' />
-                <Text style={s.btnText}>Use Photo</Text>
+                <Text style={s.btnText}>{fastCaptureCards ? 'Save & Next' : 'Use Photo'}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -378,15 +420,28 @@ export default function CameraScreen({ navigation, route }) {
       </View>
 
       <View style={[s.topStatus, { top: insets.top + 10 }]}>
-        <View style={[s.levelIndicator, isReady ? s.bgSuccess : s.bgError]}>
-          <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
-          <Text style={s.levelText}>
-            {!isLevel ? "Align Face & Hold Upright" : "Biometric Face Aligned"}
-          </Text>
-        </View>
+        {currentStudent ? (
+          <View style={[s.levelIndicator, s.bgSuccess, { paddingHorizontal: 15, paddingVertical: 8 }]}>
+            <Text style={[s.levelText, { fontSize: 14, fontFamily: fontFamily.bold }]}>{currentStudent.field_data?.name || 'Unknown'}</Text>
+            <Text style={[s.levelText, { fontSize: 12 }]}>{currentStudent.field_data?.class || '-'} | {currentStudent.field_data?.section || '-'}</Text>
+          </View>
+        ) : (
+          <View style={[s.levelIndicator, isReady ? s.bgSuccess : s.bgError]}>
+            <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
+            <Text style={s.levelText}>
+              {!isLevel ? "Align Face & Hold Upright" : "Biometric Face Aligned"}
+            </Text>
+          </View>
+        )}
       </View>
 
-      <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15 }]}>
+      <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15, flexDirection: 'column' }]}>
+        {nextStudent && (
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, marginBottom: 20, alignSelf: 'center' }}>
+            <Text style={{ color: '#fff', fontSize: 12, fontFamily: fontFamily.medium }}>UPCOMING: {nextStudent.field_data?.name || 'Next'} ({nextStudent.field_data?.class || '-'} {nextStudent.field_data?.section || '-'})</Text>
+          </View>
+        )}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%' }}>
         <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
           <View style={s.controlIconSquare}>
             <DynamicIcon name="redo" size={18} color="#fff" />
@@ -411,6 +466,7 @@ export default function CameraScreen({ navigation, route }) {
           </View>
           <Text style={s.controlLabel}>Cancel</Text>
         </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

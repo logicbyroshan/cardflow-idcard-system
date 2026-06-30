@@ -12,7 +12,7 @@ from core.services.activity_service import ActivityService
 from core.services.cache_version_service import CacheVersionService
 from core.services.session_revalidation import get_user_revalidation_marker
 from client.models import Client
-from staff.models import Staff
+from assistants.models import Assistant
 from idcards.models import IDCardGroup, IDCardTable, IDCard
 from reprintcard.models import ReprintRequest
 from core.services.base import BaseService, ServiceResult
@@ -403,15 +403,14 @@ class ClientDashboardService(BaseService):
             total_cards = counts['pending'] + counts['verified'] + counts['approved'] + counts['download']
 
             # Get staff count (client_staff under this client)
-            staff_count = Staff.objects.filter(
-                client=client,
-                staff_type='client_staff'
+            staff_count = Assistant.objects.filter(
+                client=client
             ).count()
 
             # Get recent assistants (for dashboard Recent Assistants panel)
             try:
                 recent_staff_qs = (
-                    Staff.objects.filter(client=client, staff_type='client_staff')
+                    Assistant.objects.filter(client=client)
                     .select_related('user')
                     .order_by('-id')
                 )
@@ -419,7 +418,7 @@ class ClientDashboardService(BaseService):
                 recent_staff = []
                 
                 for s in recent_staff_qs:
-                    s.user.staff_profile = s
+                    s.user.assistant_profile = s
                     pending_cnt = 0
                     verified_cnt = 0
                     pool_cnt = 0
@@ -462,7 +461,7 @@ class ClientDashboardService(BaseService):
                                 break
                     has_legacy_assign = bool(s.allowed_classes) or bool(s.allowed_sections)
                     has_assignments = has_group_assign or has_table_assign or has_scope_assign or has_legacy_assign
-
+ 
                     has_list_perms = any([
                         s.perm_idcard_client_list,
                         s.perm_idcard_pending_list,
@@ -474,7 +473,7 @@ class ClientDashboardService(BaseService):
                         s.perm_reprint_request_list,
                         s.perm_confirmed_list,
                     ])
-
+ 
                     recent_staff.append({
                         'id': s.id,
                         'name': s.user.get_full_name() or s.user.username,

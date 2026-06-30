@@ -62,14 +62,20 @@ class ImpersonateService:
         if current_user.pk == target_user_id:
             return {'success': False, 'message': 'Cannot impersonate yourself.'}
 
-        # Cannot chain impersonations
-        if cls.is_impersonating(request):
-            return {'success': False, 'message': 'Already impersonating. Stop first.'}
-
+        # Cannot impersonate operators or photographers
         try:
             target_user = User.objects.get(pk=target_user_id)
         except User.DoesNotExist:
             return {'success': False, 'message': 'User not found.'}
+
+        if target_user.role in ('operator', 'admin_staff', 'photographer'):
+            return {'success': False, 'message': 'Cannot impersonate operators or photographers.'}
+
+        # Cannot chain impersonations
+        if cls.is_impersonating(request):
+            return {'success': False, 'message': 'Already impersonating. Stop first.'}
+
+
 
         if not target_user.is_active:
             return {'success': False, 'message': 'Cannot impersonate an inactive user.'}
@@ -179,9 +185,9 @@ class ImpersonateService:
         users = (
             User.objects
             .filter(is_active=True)
-            .select_related('client_profile', 'staff_profile__client')
+            .select_related('client_profile', 'assistant_profile__client', 'operator_profile')
             .exclude(pk=request.user.pk)
-            .exclude(role='pro_user')
+            .exclude(role__in=['pro_user', 'operator', 'admin_staff', 'photographer'])
             .order_by('role', 'first_name', 'username')
         )
 
@@ -192,10 +198,10 @@ class ImpersonateService:
             if u.role == 'client':
                 client_profile = getattr(u, 'client_profile', None)
                 client_name = getattr(client_profile, 'name', '') or ''
-            elif u.role == 'client_staff':
-                staff_profile = getattr(u, 'staff_profile', None)
-                client_name = getattr(getattr(staff_profile, 'client', None), 'name', '') or ''
-            elif u.role == 'admin_staff':
+            elif u.role == 'assistant':
+                assistant_profile = getattr(u, 'assistant_profile', None)
+                client_name = getattr(getattr(assistant_profile, 'client', None), 'name', '') or ''
+            elif u.role == 'operator':
                 client_name = ''
 
             result.append({

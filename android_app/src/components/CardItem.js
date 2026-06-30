@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { DynamicIcon, IconClock, IconWarning, IconCheck, IconEdit, IconTrash } from './Icons';
 import { colors, shadows, radius, spacing, typography, fontFamily, gradients } from '../theme';
 import { HStack, Wrap } from './Stack';
@@ -29,7 +29,8 @@ const CardItem = React.memo(function CardItem({
   onStatusChange, 
   onDelete, 
   onReprint,
-  permissions = {} 
+  permissions = {},
+  isProcessing = false
 }) {
   const [imageErrors, setImageErrors] = React.useState({});
   const isClient = permissions?.role === 'client' || permissions?.role === 'client_staff' || permissions?.role === 'guest_user';
@@ -180,93 +181,101 @@ const CardItem = React.memo(function CardItem({
         </View>
 
         <Wrap spacing={6} style={s.rightActions}>
-          {/* Pending List Action Button */}
-          {currentStatus === 'pending' && onStatusChange && hasPerm('perm_idcard_verify') && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.green }]} 
-              onPress={() => onStatusChange(item.id, 'verified')}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.green }]}>VERIFY</Text>
-            </TouchableOpacity>
-          )}
+          {isProcessing ? (
+            <ActivityIndicator size="small" color={colors.brandPrimary} style={{ marginHorizontal: 12, marginVertical: 4 }} />
+          ) : (
+            <>
+              {/* Pending List Action Button */}
+              {currentStatus === 'pending' && onStatusChange && hasPerm('perm_idcard_verify') && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.green }]} 
+                  onPress={() => onStatusChange(item.id, 'verified')}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.green }]}>VERIFY</Text>
+                </TouchableOpacity>
+              )}
 
-          {/* Verified List Action Buttons */}
-          {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_approve') && permissions?.role !== 'client_staff' && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.green }]} 
-              onPress={() => onStatusChange(item.id, 'approved')}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.green }]}>APPROVE</Text>
-            </TouchableOpacity>
-          )}
-          {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_verify') && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.red }]} 
-              onPress={() => onStatusChange(item.id, 'pending')}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.red }]}>UNVERIFY</Text>
-            </TouchableOpacity>
-          )}
+              {/* Verified List Action Buttons */}
+              {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_approve') && permissions?.role !== 'client_staff' && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.green }]} 
+                  onPress={() => onStatusChange(item.id, 'approved')}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.green }]}>APPROVE</Text>
+                </TouchableOpacity>
+              )}
+              {currentStatus === 'verified' && onStatusChange && hasPerm('perm_idcard_verify') && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.red }]} 
+                  onPress={() => onStatusChange(item.id, 'pending')}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.red }]}>UNVERIFY</Text>
+                </TouchableOpacity>
+              )}
 
-          {/* Approved List Action Button */}
-          {currentStatus === 'approved' && onStatusChange && hasPerm('perm_idcard_approve') && !isClient && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.red }]} 
-              onPress={() => onStatusChange(item.id, 'verified')}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.red }]}>DISAPPROVE</Text>
-            </TouchableOpacity>
-          )}
+              {/* Approved List Action Button */}
+              {currentStatus === 'approved' && onStatusChange && hasPerm('perm_idcard_approve') && !isClient && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.red }]} 
+                  onPress={() => onStatusChange(item.id, 'verified')}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.red }]}>DISAPPROVE</Text>
+                </TouchableOpacity>
+              )}
 
-          {/* Download List Action Buttons */}
-          {currentStatus === 'download' && onStatusChange && hasPerm('perm_idcard_retrieve') && !isClient && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
-              onPress={() => onStatusChange(item.id, 'pending')}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
-            </TouchableOpacity>
-          )}
+              {/* Download List Action Buttons */}
+              {currentStatus === 'download' && onStatusChange && hasPerm('perm_idcard_retrieve') && !isClient && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
+                  onPress={() => onStatusChange(item.id, 'pending')}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
+                </TouchableOpacity>
+              )}
 
 
-          {/* Pool List Action Button */}
-          {currentStatus === 'pool' && onStatusChange && (hasPerm('perm_idcard_retrieve') || isClient) && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
-              onPress={() => onStatusChange(item.id, 'pending')}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
-            </TouchableOpacity>
-          )}
+              {/* Pool List Action Button */}
+              {currentStatus === 'pool' && onStatusChange && (hasPerm('perm_idcard_retrieve') || isClient) && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
+                  onPress={() => onStatusChange(item.id, 'pending')}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>RETRIEVE</Text>
+                </TouchableOpacity>
+              )}
 
-          {/* Reprint Request Button */}
-          {onReprint && (currentStatus === 'download') && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.warning }]} 
-              onPress={() => onReprint(item)}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.warning }]}>REPRINT</Text>
-            </TouchableOpacity>
-          )}
+              {/* Reprint Request Button */}
+              {onReprint && (currentStatus === 'download') && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.warning }]} 
+                  onPress={() => onReprint(item)}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.warning }]}>REPRINT</Text>
+                </TouchableOpacity>
+              )}
 
-          {/* Edit Button */}
-          {onEdit && hasPerm('perm_idcard_edit') && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
-              onPress={() => onEdit(item)}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>EDIT</Text>
-            </TouchableOpacity>
-          )}
+              {/* Edit Button */}
+              {onEdit && hasPerm('perm_idcard_edit') && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
+                  onPress={() => onEdit(item)}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.brandPrimary }]}>
+                    {permissions?.role === 'photographer' ? 'CAPTURE' : 'EDIT'}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
-          {/* Delete/Pool Button */}
-          {onDelete && (
-            <TouchableOpacity 
-              style={[s.outlineBtn, { borderColor: colors.red }]} 
-              onPress={() => onDelete(item)}
-            >
-              <Text style={[s.outlineBtnText, { color: colors.red }]}>DELETE</Text>
-            </TouchableOpacity>
+              {/* Delete/Pool Button */}
+              {onDelete && (
+                <TouchableOpacity 
+                  style={[s.outlineBtn, { borderColor: colors.red }]} 
+                  onPress={() => onDelete(item)}
+                >
+                  <Text style={[s.outlineBtnText, { color: colors.red }]}>DELETE</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </Wrap>
       </View>

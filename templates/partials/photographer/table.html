@@ -9,7 +9,7 @@
                 <th scope="col" class="min-w-[130px] text-left">Email</th>
                 <th scope="col" class="min-w-[120px] text-center">Phone</th>
                 <th scope="col" class="w-24 text-center">Status</th>
-                <th scope="col" class="text-left" style="width: 380px; max-width: 420px;">Assigned Clients &amp; Expirations</th>
+                <th scope="col" class="text-left" style="width: 380px; max-width: 420px;">Assigned Clients</th>
                 <th scope="col" class="text-center">Created At</th>
                 <th scope="col" class="text-center">Updated At</th>
             </tr>
@@ -26,7 +26,7 @@
                     </span>
                 </td>
                 <td class="text-left" style="width: 380px; max-width: 420px;">
-                    {% with assignments=staff.photographer_assignments.all %}
+                    {% with assignments=staff.active_assignments %}
                     {% if assignments %}
                         <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
                             {% for assignment in assignments %}
@@ -60,8 +60,8 @@
                 <td class="text-gray-500 text-center">{{ staff.updated_at|date:"d-m-Y H:i" }}</td>
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="7">
+            <tr class="empty-row">
+                <td colspan="7" class="empty-cell">
                     {% include 'components/empty-state.html' with id='staff-table-empty-inline' icon='fa-camera-retro' title='No Photographer Found' message='No photographers match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>

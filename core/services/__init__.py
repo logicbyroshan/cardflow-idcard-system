@@ -25,21 +25,21 @@
 
 from .base import ServiceResult, BaseService
 from .client_service import ClientService
-from .staff_service import StaffService
 from .idcard_service import IDCardService
 from .permission_service import PermissionService
 from .activity_service import ActivityService
 from .notification_service import NotificationService
+from .staff_service import StaffService
 
 __all__ = [
     'ServiceResult',
     'BaseService',
     'ClientService',
-    'StaffService',
     'IDCardService',
     'PermissionService',
     'ActivityService',
     'NotificationService',
+    'StaffService',
 ]
 
 

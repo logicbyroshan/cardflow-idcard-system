@@ -19,7 +19,6 @@ from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
 from client.models import Client
-from staff.models import Staff
 from idcards.models import IDCard, IDCardTable
 from ..models import User
 from ..services import IDCardService
@@ -69,14 +68,14 @@ def _dashboard_live_surface_counts(*, user, is_scoped=False, accessible_ids=None
         client_user_ids = set(
             Client.objects.filter(id__in=scoped_client_ids).values_list('user_id', flat=True)
         )
+        from assistants.models import Assistant
         assistant_user_ids = set(
-            Staff.objects.filter(
-                staff_type='client_staff',
+            Assistant.objects.filter(
                 client_id__in=scoped_client_ids,
             ).values_list('user_id', flat=True)
         )
         admin_user_ids = set(
-            User.objects.filter(role__in=['super_admin', 'admin_staff', 'pro_user']).values_list('id', flat=True)
+            User.objects.filter(role__in=['super_admin', 'operator', 'pro_user']).values_list('id', flat=True)
         )
         allowed_user_ids = client_user_ids | assistant_user_ids | admin_user_ids
     else:
@@ -286,10 +285,12 @@ def _enrich_recent_activities_for_dashboard(user, activities):
 
     staff_type_map = {}
     if staff_ids:
-        staff_type_map = {
-            row['id']: row['staff_type']
-            for row in Staff.objects.filter(id__in=staff_ids).values('id', 'staff_type')
-        }
+        from operators.models import Operator
+        from assistants.models import Assistant
+        for row in Operator.objects.filter(id__in=staff_ids).values('id'):
+            staff_type_map[row['id']] = 'admin_staff'
+        for row in Assistant.objects.filter(id__in=staff_ids).values('id'):
+            staff_type_map[row['id']] = 'client_staff'
 
     card_meta_map = {}
     if card_ids:
@@ -400,6 +401,20 @@ def pro_user_guest_users_page(request):
 
 
 @login_required
+def pro_user_batch_jobs_page(request):
+    """Dedicated page for Pro User batch jobs tracking."""
+    if not PermissionService.can_manage_pro_features(request.user):
+        return redirect('dashboard')
+
+    context = {
+        'active_page': 'pro_user_batch_jobs',
+        'pro_tab': 'batch_jobs',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'pro_user/batch-jobs.html', context)
+
+
+@login_required
 def pro_user_activity_logs_detail_page(request, user_id):
     """Dedicated detail page for a selected user's deep history (Pro User only)."""
     if not PermissionService.can_use_pro_user_options(request.user):
@@ -432,7 +447,7 @@ def dashboard(request):
 
     # Scope cache keys per user for admin_staff (they only see assigned clients)
     user = request.user
-    is_scoped = PermissionService.is_admin_staff(user)
+    is_scoped = PermissionService.is_operator(user)
     cache_suffix = f':{user.pk}' if is_scoped else ''
 
     # Pre-fetch accessible client IDs ONCE for admin_staff users.
@@ -460,7 +475,8 @@ def dashboard(request):
     overview_stats = cache.get(overview_cache_key)
     if overview_stats is None:
         clients_qs = Client.objects.all()
-        assistents_qs = Staff.objects.filter(staff_type='client_staff')
+        from assistants.models import Assistant
+        assistents_qs = Assistant.objects.all()
         if is_scoped:
             clients_qs = clients_qs.filter(id__in=accessible_ids)
             assistents_qs = assistents_qs.filter(client_id__in=accessible_ids)
@@ -524,7 +540,7 @@ def api_dashboard_card_stats(request):
     """
     try:
         user = request.user
-        is_scoped = PermissionService.is_admin_staff(user)
+        is_scoped = PermissionService.is_operator(user)
         cache_suffix = f':{user.pk}' if is_scoped else ''
         cache_key = f'api_dashboard_card_stats{cache_suffix}'
 
@@ -577,7 +593,7 @@ def api_recent_client_updates(request):
         user = request.user
 
         # Cache the heavy client-results portion (raw SQL aggregation)
-        is_scoped = PermissionService.is_admin_staff(user)
+        is_scoped = PermissionService.is_operator(user)
         cache_suffix = f':{user.pk}' if is_scoped else ''
         cache_key = f'api_recent_client_updates{cache_suffix}:{"all" if limit is None else limit}'
 

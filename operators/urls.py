@@ -1,26 +1,25 @@
 """
-Staff app URL configuration
-
-Routes for Admin Staff management by Super Admin.
+Operators App URL Configuration
 """
 from django.urls import path
 
 from .views import (
     # Page views
-    staff_management_page,
-    staff_dashboard,
+    operators_management_page,
+    operator_dashboard,
     
-    # Admin Staff CRUD API
-    api_admin_staff_list_create,
-    api_admin_staff_detail,
-    api_admin_staff_toggle_status,
-    api_admin_staff_reset_password,
+    # Operator CRUD API
+    api_operator_list_create,
+    api_operator_detail,
+    api_operator_toggle_status,
+    api_operator_reset_password,
+    api_operator_delete,
     
     # Permission & Client listing API
     api_available_permissions,
     api_available_clients,
     
-    # Self-service API (for admin staff)
+    # Self-service API (for operators)
     api_my_permissions,
     api_my_clients,
     
@@ -29,22 +28,23 @@ from .views import (
     api_client_idcard_groups,
 )
 
-app_name = 'staff'
+app_name = 'operators'
 
 urlpatterns = [
     # ==========================================================================
     # PAGE VIEWS
     # ==========================================================================
-    path('manage/', staff_management_page, name='manage'),
-    path('dashboard/', staff_dashboard, name='dashboard'),
+    path('manage/', operators_management_page, name='manage'),
+    path('dashboard/', operator_dashboard, name='dashboard'),
     
     # ==========================================================================
-    # ADMIN STAFF CRUD API (Super Admin only)
+    # OPERATOR CRUD API (Super Admin only)
     # ==========================================================================
-    path('api/admin-staff/', api_admin_staff_list_create, name='api_admin_staff_list_create'),
-    path('api/admin-staff/<int:staff_id>/', api_admin_staff_detail, name='api_admin_staff_detail'),
-    path('api/admin-staff/<int:staff_id>/toggle-status/', api_admin_staff_toggle_status, name='api_admin_staff_toggle_status'),
-    path('api/admin-staff/<int:staff_id>/reset-password/', api_admin_staff_reset_password, name='api_admin_staff_reset_password'),
+    path('api/operator/', api_operator_list_create, name='api_operator_list_create'),
+    path('api/operator/<int:operator_id>/', api_operator_detail, name='api_operator_detail'),
+    path('api/operator/<int:operator_id>/toggle-status/', api_operator_toggle_status, name='api_operator_toggle_status'),
+    path('api/operator/<int:operator_id>/reset-password/', api_operator_reset_password, name='api_operator_reset_password'),
+    path('api/operator/<int:operator_id>/delete/', api_operator_delete, name='api_operator_delete'),
     
     # ==========================================================================
     # PERMISSION & CLIENT LISTING API (Super Admin only)
@@ -53,7 +53,7 @@ urlpatterns = [
     path('api/clients/available/', api_available_clients, name='api_available_clients'),
     
     # ==========================================================================
-    # SELF-SERVICE API (Admin Staff)
+    # SELF-SERVICE API (Operators)
     # ==========================================================================
     path('api/my/permissions/', api_my_permissions, name='api_my_permissions'),
     path('api/my/clients/', api_my_clients, name='api_my_clients'),

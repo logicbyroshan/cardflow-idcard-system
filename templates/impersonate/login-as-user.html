@@ -184,16 +184,26 @@
     letter-spacing: 0.06em;
     text-align: left;
     padding: 10px 14px;
-    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
     white-space: nowrap;
+  }
+
+  .imp-table th:last-child {
+    border-right: none;
   }
 
   .imp-table td {
     padding: 9px 14px;
     border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
+    border-right: 1px solid var(--color-gray-100, #f1f5f9);
     vertical-align: middle;
     color: var(--text-primary, #374151);
     font-size: var(--ui-font-size-sm, 12px);
+  }
+
+  .imp-table td:last-child {
+    border-right: none;
   }
 
   .imp-table tbody tr:hover td {
@@ -370,9 +380,8 @@
         </div>
         <div class="imp-pills" id="impPills">
           <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All <span class="imp-pill-count">0</span></button>
-          <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client <span class="imp-pill-count">0</span></button>
-          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistant <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="assistant" onclick="__impSetRole('assistant',this)">Assistant <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="guest_user" onclick="__impSetRole('guest_user',this)">Guest User <span class="imp-pill-count">0</span></button>
         </div>
       </div>
@@ -429,8 +438,8 @@
   var _page = 1;
   var _perPage = 25;
   var _pagerBound = false;
-  var COLORS = { admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce', guest_user:'#64748b' };
-  var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant', guest_user:'Guest User' };
+  var COLORS = { client:'#38a169', assistant:'#3182ce', guest_user:'#64748b' };
+  var ROLE_LABELS = { assistant:'Assistant', guest_user:'Guest User' };
 
   function _displayRole(role, fallback) {
     return ROLE_LABELS[role] || fallback || String(role || '').replace('_', ' ');

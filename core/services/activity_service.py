@@ -643,7 +643,13 @@ class ActivityService:
             merge_card_activity = True if hours is not None else False
 
         # Base queryset (no time filter when hours is None)
-        qs = ActivityLog.objects.select_related('user', 'user__client_profile', 'user__staff_profile__client').order_by('-created_at', '-id')
+        qs = ActivityLog.objects.select_related(
+            'user',
+            'user__client_profile',
+            'user__assistant_profile__client',
+            'user__operator_profile',
+            'user__photographer_profile',
+        ).order_by('-created_at', '-id')
         if hours is not None:
             cutoff = now - timezone.timedelta(hours=hours)
             qs = qs.filter(created_at__gte=cutoff)
@@ -984,10 +990,10 @@ class ActivityService:
             return ''
 
         try:
-            from staff.models import Staff
+            from assistants.models import Assistant
 
             staff_obj = (
-                Staff.objects
+                Assistant.objects
                 .select_related('client')
                 .only('id', 'client__name')
                 .filter(id=target_id)
@@ -1026,12 +1032,44 @@ class ActivityService:
                     pass
             return ''
 
-        if target_model == 'staff' and target_id:
+        if target_model in ('staff', 'assistant') and target_id:
             try:
-                from staff.models import Staff
+                from assistants.models import Assistant
 
                 staff_obj = (
-                    Staff.objects
+                    Assistant.objects
+                    .select_related('user')
+                    .filter(id=target_id)
+                    .first()
+                )
+                if staff_obj and staff_obj.user:
+                    return (staff_obj.user.get_full_name() or staff_obj.user.username or '').strip()
+            except Exception:
+                pass
+            return ''
+
+        if target_model == 'operator' and target_id:
+            try:
+                from operators.models import Operator
+
+                staff_obj = (
+                    Operator.objects
+                    .select_related('user')
+                    .filter(id=target_id)
+                    .first()
+                )
+                if staff_obj and staff_obj.user:
+                    return (staff_obj.user.get_full_name() or staff_obj.user.username or '').strip()
+            except Exception:
+                pass
+            return ''
+
+        if target_model == 'photographer' and target_id:
+            try:
+                from core.models import Photographer
+
+                staff_obj = (
+                    Photographer.objects
                     .select_related('user')
                     .filter(id=target_id)
                     .first()
@@ -1371,7 +1409,7 @@ class ActivityService:
             return queryset
         
         # Admin staff: filter by assigned clients + own activities
-        if user.role == 'admin_staff':
+        if PermissionService.is_admin_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 client_ids = list(staff.assigned_clients.values_list('id', flat=True))
@@ -1388,19 +1426,19 @@ class ActivityService:
         # organisation (role in client, client_staff + belonging to
         # the same client).  Admin/admin_staff activities are EXCLUDED.
         
-        if user.role == 'client':
+        if PermissionService.is_client(user):
             client = getattr(user, 'client_profile', None)
             if client:
                 # Keep this as a single SQL query by filtering through joins,
                 # instead of first fetching staff user IDs in a separate query.
                 return queryset.filter(
                     Q(user_id=user.pk) |
-                    Q(user__role='client_staff', user__staff_profile__client_id=client.id)
+                    Q(user__role__in=('client_staff', 'assistant'), user__assistant_profile__client_id=client.id)
                 )
             return queryset.none()
         
         # Client staff: see ONLY their own activities
-        if user.role == 'client_staff':
+        if PermissionService.is_client_staff(user):
             return queryset.filter(user=user)
         
         return queryset.none()
