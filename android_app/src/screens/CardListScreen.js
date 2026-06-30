@@ -144,7 +144,7 @@ export default function CardListScreen({ navigation, route }) {
         let offlineTableName = '';
         clients.forEach(c => {
           c.tables.forEach(t => {
-            if (t.id === tableId) {
+            if (String(t.id) === String(tableId)) {
               offlineTableName = t.name;
               allOfflineCards = t.cards || [];
             }
