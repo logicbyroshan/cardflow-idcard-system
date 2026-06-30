@@ -505,7 +505,7 @@
         <div class="chart-header">
           <div class="chart-title-area">
             <h3>Busiest Time Distribution</h3>
-            <p>Average concurrent active users by hours of the day (9:00 - 18:00)</p>
+            <p>Active users across all roles over the selected range</p>
           </div>
         </div>
         <div class="split-chart-container">
@@ -553,10 +553,15 @@
           var clients = isAllZero(data.client_activity) ? demo.clients : data.client_activity;
           var assistants = isAllZero(data.assistant_activity) ? demo.assistants : data.assistant_activity;
           var batchCounts = isAllZero(data.batch_jobs_count) ? demo.batch : data.batch_jobs_count;
+          
+          var allUserActivity = isAllZero(data.all_user_activity) ? demo.clients.map(function(c, idx) {
+             return c + demo.assistants[idx] + 3;
+          }) : data.all_user_activity;
+
           if (typeof Chart !== 'undefined') {
             try { renderMainActivityChart(labels, clients, assistants); } catch (e) { console.error('main chart:', e); }
             try { renderBatchChart(labels, batchCounts); } catch (e) { console.error('batch chart:', e); }
-            try { renderDistributionChart(assistants); } catch (e) { console.error('dist chart:', e); }
+            try { renderDistributionChart(labels, allUserActivity); } catch (e) { console.error('dist chart:', e); }
           } else {
             showChartErrorMessages();
           }
@@ -675,6 +680,7 @@
         scales: {
           y: {
             beginAtZero: true,
+            max: 100,
             grid: { color: 'rgba(0, 0, 0, 0.05)' },
             ticks: { font: { weight: '600' } }
           },
@@ -729,22 +735,10 @@
     });
   }
 
-  function renderDistributionChart(assistantData) {
+  function renderDistributionChart(labels, allUserActivity) {
     var ctx = document.getElementById('distributionChart').getContext('2d');
     if (distributionChart) {
       distributionChart.destroy();
-    }
-
-    // Distribute peak hours based on active statistics
-    var hours = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
-    var mockDistribution = [15, 28, 42, 45, 20, 38, 44, 30, 12, 4];
-    
-    // Adjust slightly with actual live parameters
-    if (assistantData && assistantData.length > 0) {
-      var currentMax = Math.max.apply(null, assistantData);
-      mockDistribution = mockDistribution.map(function(val) {
-        return Math.max(1, Math.round(val * (currentMax / 40.0)));
-      });
     }
 
     var grad = ctx.createLinearGradient(0, 0, 0, 200);
@@ -754,10 +748,10 @@
     distributionChart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: hours,
+        labels: labels,
         datasets: [{
-          label: 'Average Active Users',
-          data: mockDistribution,
+          label: 'Active Users',
+          data: allUserActivity,
           borderColor: '#f59e0b',
           backgroundColor: 'rgba(245, 158, 11, 0.06)',
           borderWidth: 2,
