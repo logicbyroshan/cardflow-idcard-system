@@ -175,6 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (tableSelector) tableSelector.style.display = 'none';
                 }
                 renderAssignedClientChips();
+                updateClientRowVisibilities();
             }
         });
 
@@ -370,6 +371,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     data.assigned_clients.forEach(function(ass) {
                         var cb = document.querySelector('.photographer-client-cb[value="' + ass.client_id + '"]');
                         if (cb) {
+                            // Check if expired
+                            if (ass.expires_at) {
+                                var expiresAt = new Date(ass.expires_at);
+                                if (expiresAt <= new Date()) {
+                                    // Expired! Leave unchecked so it shows in the unassigned list
+                                    return;
+                                }
+                            }
+
                             cb.checked = true;
                             var row = cb.closest('.photographer-client-row');
                             row.classList.add('selected');
@@ -425,6 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        updateClientRowVisibilities();
         staffDrawer.classList.add('open');
         if (staffDrawerOverlay) staffDrawerOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
@@ -845,11 +856,21 @@ document.addEventListener('DOMContentLoaded', function() {
     var clientSearchInput = document.getElementById('client-search-input');
     if (clientSearchInput) {
         clientSearchInput.addEventListener('input', function() {
-            var val = this.value.toLowerCase().trim();
-            document.querySelectorAll('.photographer-client-row').forEach(function(row) {
+            updateClientRowVisibilities();
+        });
+    }
+
+    function updateClientRowVisibilities() {
+        var searchVal = (document.getElementById('client-search-input')?.value || '').toLowerCase().trim();
+        document.querySelectorAll('.photographer-client-row').forEach(function(row) {
+            var cb = row.querySelector('.photographer-client-cb');
+            var isChecked = cb ? cb.checked : false;
+            if (isChecked) {
+                row.style.display = 'none';
+            } else {
                 var name = (row.dataset.clientName || '').toLowerCase();
-                row.style.display = (name.indexOf(val) > -1) ? '' : 'none';
-            });
+                row.style.display = (name.indexOf(searchVal) > -1) ? '' : 'none';
+            }
         });
     }
 
