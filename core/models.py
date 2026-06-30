@@ -1249,6 +1249,14 @@ class Photographer(models.Model):
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} - Photographer"
 
+    @property
+    def active_assignments(self):
+        from django.utils import timezone
+        from django.db.models import Q
+        return self.photographer_assignments.filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now())
+        )
+
 
 class PhotographerAssignment(models.Model):
     photographer = models.ForeignKey(Photographer, on_delete=models.CASCADE, related_name='photographer_assignments')
@@ -1269,4 +1277,11 @@ class PhotographerAssignment(models.Model):
 
     def __str__(self):
         return f"{self.photographer.user.get_full_name()} -> {self.client.name}"
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        if self.expires_at:
+            return self.expires_at <= timezone.now()
+        return False
 
