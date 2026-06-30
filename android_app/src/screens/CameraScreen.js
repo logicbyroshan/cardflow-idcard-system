@@ -17,6 +17,33 @@ const { width, height } = Dimensions.get('window');
 // We guide the user perfectly using an SVG cutout guide and tilt sensor alignment.
 const hasNativeFace = false;
 
+const getFieldValueCaseInsensitive = (obj, key) => {
+  if (!obj) return '';
+  if (obj[key] !== undefined) return obj[key];
+  const upperKey = key.toUpperCase();
+  for (const k in obj) {
+    if (k.toUpperCase() === upperKey) {
+      return obj[k];
+    }
+  }
+  return '';
+};
+
+const resolveStudentInfo = (student) => {
+  if (!student) return { name: 'Unknown Student', classVal: '-', sectionVal: '-' };
+  const fd = student.field_data || {};
+  const name = getFieldValueCaseInsensitive(fd, 'STUDENT NAME') || 
+               getFieldValueCaseInsensitive(fd, 'NAME') || 
+               getFieldValueCaseInsensitive(fd, 'EMPLOYEE NAME') || 
+               getFieldValueCaseInsensitive(fd, 'STAFF NAME') || 
+               getFieldValueCaseInsensitive(fd, 'CANDIDATE NAME') || 
+               student.name || 
+               'Unknown Student';
+  const classVal = getFieldValueCaseInsensitive(fd, 'CLASS') || getFieldValueCaseInsensitive(fd, 'STANDARD') || getFieldValueCaseInsensitive(fd, 'STD') || '-';
+  const sectionVal = getFieldValueCaseInsensitive(fd, 'SECTION') || getFieldValueCaseInsensitive(fd, 'SEC') || '-';
+  return { name, classVal, sectionVal };
+};
+
 export default function CameraScreen({ navigation, route }) {
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
@@ -236,10 +263,15 @@ export default function CameraScreen({ navigation, route }) {
           {/* Top label */}
           <View style={s.previewTopBar}>
             {currentStudent ? (
-              <>
-                <Text style={s.previewTopLabel}>{currentStudent.field_data?.name || 'Unknown Student'}</Text>
-                <Text style={s.previewTopSub}>Class: {currentStudent.field_data?.class || '-'} | Section: {currentStudent.field_data?.section || '-'}</Text>
-              </>
+              (() => {
+                const info = resolveStudentInfo(currentStudent);
+                return (
+                  <>
+                    <Text style={s.previewTopLabel}>{info.name}</Text>
+                    <Text style={s.previewTopSub}>Class: {info.classVal} | Section: {info.sectionVal}</Text>
+                  </>
+                );
+              })()
             ) : (
               <>
                 <Text style={s.previewTopLabel}>📷  PHOTO PREVIEW</Text>
@@ -421,9 +453,16 @@ export default function CameraScreen({ navigation, route }) {
 
       <View style={[s.topStatus, { top: insets.top + 10 }]}>
         {currentStudent ? (
-          <View style={[s.levelIndicator, s.bgSuccess, { paddingHorizontal: 15, paddingVertical: 8 }]}>
-            <Text style={[s.levelText, { fontSize: 14, fontFamily: fontFamily.bold }]}>{currentStudent.field_data?.name || 'Unknown'}</Text>
-            <Text style={[s.levelText, { fontSize: 12 }]}>{currentStudent.field_data?.class || '-'} | {currentStudent.field_data?.section || '-'}</Text>
+          <View style={[s.levelIndicator, s.bgSuccess, { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, alignItems: 'center', flexDirection: 'column' }]}>
+            {(() => {
+              const info = resolveStudentInfo(currentStudent);
+              return (
+                <>
+                  <Text style={[s.levelText, { fontSize: 16, fontFamily: fontFamily.bold, color: '#fff', textAlign: 'center', marginLeft: 0 }]}>{info.name.toUpperCase()}</Text>
+                  <Text style={[s.levelText, { fontSize: 12, color: 'rgba(255, 255, 255, 0.9)', marginTop: 2, textAlign: 'center', marginLeft: 0, fontFamily: fontFamily.medium }]}>CLASS: {info.classVal.toUpperCase()}  |  SECTION: {info.sectionVal.toUpperCase()}</Text>
+                </>
+              );
+            })()}
           </View>
         ) : (
           <View style={[s.levelIndicator, isReady ? s.bgSuccess : s.bgError]}>
@@ -437,8 +476,15 @@ export default function CameraScreen({ navigation, route }) {
 
       <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15, flexDirection: 'column' }]}>
         {nextStudent && (
-          <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, marginBottom: 20, alignSelf: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 12, fontFamily: fontFamily.medium }}>UPCOMING: {nextStudent.field_data?.name || 'Next'} ({nextStudent.field_data?.class || '-'} {nextStudent.field_data?.section || '-'})</Text>
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, marginBottom: 20, alignSelf: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+            {(() => {
+              const info = resolveStudentInfo(nextStudent);
+              return (
+                <Text style={{ color: '#34d399', fontSize: 12, fontFamily: fontFamily.bold, textAlign: 'center' }}>
+                  UPCOMING: <Text style={{ color: '#fff', fontFamily: fontFamily.medium }}>{info.name.toUpperCase()} (CL: {info.classVal.toUpperCase()} - SEC: {info.sectionVal.toUpperCase()})</Text>
+                </Text>
+              );
+            })()}
           </View>
         )}
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%' }}>

@@ -346,14 +346,24 @@ export default function CardDetailScreen({ navigation, route }) {
           )}
 
           <View style={s.actionButtonsRow}>
-            {!isLocked && user?.permissions?.perm_idcard_edit && (
+            {!isLocked && (user?.permissions?.perm_idcard_edit || isPhotographer) && (
               <TouchableOpacity 
-                onPress={() => setShowForm(true)} 
+                onPress={() => {
+                  if (isPhotographer) {
+                    navigation.navigate('Camera', {
+                      fastCaptureCards: [card],
+                      initialIndex: 0,
+                      tableId: card.table_id,
+                    });
+                  } else {
+                    setShowForm(true);
+                  }
+                }} 
                 activeOpacity={0.8} 
                 style={[s.actionBtnFull, { borderColor: colors.brandPrimary, marginTop: 0 }]}
               >
                 <Text style={[s.actionBtnText, { color: colors.brandPrimary }]}>
-                  {isPhotographer ? 'CAPTURE / UPLOAD PHOTO' : 'EDIT INFORMATION'}
+                  {isPhotographer ? 'CAPTURE PHOTO' : 'EDIT INFORMATION'}
                 </Text>
               </TouchableOpacity>
             )}

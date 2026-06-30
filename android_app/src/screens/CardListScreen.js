@@ -449,9 +449,20 @@ export default function CardListScreen({ navigation, route }) {
   }, [selectedIds, currentStatus, tableId, showToast, exitSelectMode, updateCardStateLocally]);
 
   const handleEditCard = useCallback((card) => {
-    setEditingCardId(card.id);
-    setShowForm(true);
-  }, []);
+    if (perms.role === 'photographer') {
+      const idx = cards.findIndex(c => c.id === card.id);
+      if (idx !== -1) {
+        navigation.navigate('Camera', {
+          fastCaptureCards: cards,
+          initialIndex: idx,
+          tableId,
+        });
+      }
+    } else {
+      setEditingCardId(card.id);
+      setShowForm(true);
+    }
+  }, [perms.role, cards, navigation, tableId]);
 
   const handleStartCapture = useCallback(() => {
     if (cards && cards.length > 0) {

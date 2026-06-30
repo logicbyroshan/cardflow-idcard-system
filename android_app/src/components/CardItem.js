@@ -255,7 +255,7 @@ const CardItem = React.memo(function CardItem({
               )}
 
               {/* Edit Button */}
-              {onEdit && hasPerm('perm_idcard_edit') && (
+              {onEdit && (hasPerm('perm_idcard_edit') || permissions?.role === 'photographer') && (
                 <TouchableOpacity 
                   style={[s.outlineBtn, { borderColor: colors.brandPrimary }]} 
                   onPress={() => onEdit(item)}
