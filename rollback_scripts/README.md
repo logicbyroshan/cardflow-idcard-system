@@ -1,4 +1,4 @@
-﻿# Rollback Scripts
+# Rollback Scripts
 
 This directory contains scripts for safely rolling back from the new operator/assistant/photographer schema
 back to the old core_staff-based schema.
