@@ -737,8 +737,8 @@ REDIS_CHANNEL_EXPIRY = _env_int('REDIS_CHANNEL_EXPIRY', 30, minimum=5, maximum=3
 
 # Optional Celery scaffold for offloading background tasks to a real worker.
 # When unset, the app keeps using the existing in-process ThreadPool fallback.
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', '').strip() or REDIS_LOCATION
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', '').strip() or REDIS_LOCATION
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', '').strip()
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', '').strip()
 CELERY_TASK_ALWAYS_EAGER = _env_bool('CELERY_TASK_ALWAYS_EAGER', False)
 CELERY_TASK_EAGER_PROPAGATES = True
 
