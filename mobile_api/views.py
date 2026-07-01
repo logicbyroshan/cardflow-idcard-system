@@ -407,7 +407,7 @@ def require_mobile_client(view_func=None, allow_public=False):
 
             # 4. Enforce valid roles
             user = request.user
-            valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff', 'photographer')
+            valid_roles = ('pro_user', 'super_admin', 'operator', 'admin_staff', 'client', 'guest_user', 'assistant', 'client_staff', 'photographer')
             if not hasattr(user, 'role') or user.role not in valid_roles:
                 if is_api_request:
                     return JsonResponse({'success': False, 'message': 'Invalid account role.'}, status=403)
@@ -1095,7 +1095,7 @@ def mobile_login(request):
     """
     if request.user.is_authenticated:
         user = request.user
-        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff', 'photographer')
+        valid_roles = ('pro_user', 'super_admin', 'operator', 'admin_staff', 'client', 'guest_user', 'assistant', 'client_staff', 'photographer')
         if not hasattr(user, 'role') or user.role not in valid_roles:
             return redirect('/panel/auth/logout/?next=/app/login/')
         # Separate mobile auth flow: do not auto-enter app unless mobile auth checkpoint passed.
@@ -1159,7 +1159,7 @@ def api_mobile_login(request):
             return JsonResponse({'success': False, 'message': result.get('message', 'Invalid credentials.')}, status=400)
 
         user = result.get('user')
-        valid_roles = ('pro_user', 'super_admin', 'admin_staff', 'client', 'guest_user', 'client_staff', 'photographer')
+        valid_roles = ('pro_user', 'super_admin', 'operator', 'admin_staff', 'client', 'guest_user', 'assistant', 'client_staff', 'photographer')
         if not user or getattr(user, 'role', '') not in valid_roles:
             return JsonResponse({'success': False, 'message': 'This account cannot access the mobile app.'}, status=403)
 
@@ -6207,8 +6207,8 @@ def api_dashboard_data(request):
                     'captured': global_captured,
                     'uncaptured': global_uncaptured,
                     'client_count': len(accessible_ids),
-                    'operator_count': User.objects.filter(role='admin_staff', is_active=True).count(),
-                    'assistant_count': User.objects.filter(role='client_staff', is_active=True).count(),
+                    'operator_count': User.objects.filter(role__in=('operator', 'admin_staff'), is_active=True).count(),
+                    'assistant_count': User.objects.filter(role__in=('assistant', 'client_staff'), is_active=True).count(),
                 }
                 
                 ordered_clients = list(clients_qs.annotate(
@@ -6286,8 +6286,8 @@ def api_dashboard_data(request):
                 'pool': global_counts_agg.get('pool', 0),
                 'total': global_counts_agg.get('total', 0),
                 'client_count': clients_qs.count(),
-                'operator_count': User.objects.filter(role='admin_staff', is_active=True).count(),
-                'assistant_count': User.objects.filter(role='client_staff', is_active=True).count(),
+                'operator_count': User.objects.filter(role__in=('operator', 'admin_staff'), is_active=True).count(),
+                'assistant_count': User.objects.filter(role__in=('assistant', 'client_staff'), is_active=True).count(),
             }
             
             clients_data = []
@@ -7079,7 +7079,7 @@ def api_impersonate_start(request):
     if not target:
         return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
 
-    valid_mobile_roles = {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff', 'photographer'}
+    valid_mobile_roles = {'pro_user', 'super_admin', 'operator', 'admin_staff', 'client', 'assistant', 'client_staff', 'photographer'}
     if getattr(target, 'role', '') not in valid_mobile_roles:
         return JsonResponse({'success': False, 'message': 'Target user cannot access the mobile app.'}, status=400)
 
