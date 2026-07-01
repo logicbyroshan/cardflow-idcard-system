@@ -400,20 +400,31 @@ def _map_headers_to_fields(headers, table_fields, image_fields, all_table_fields
     if isinstance(frontend_mapping, dict) and frontend_mapping:
         header_index = {}
         for idx, header in enumerate(headers):
-            key = str(header or '').strip()
+            key = str(header or '').strip().replace('\r', '')
             if key and key not in header_index:
                 header_index[key] = idx
 
+        normalized_available = {
+            str(f).strip().replace('\r', ''): f
+            for f in available_fields
+        }
+
         for table_field_name, upload_header in frontend_mapping.items():
-            field_name = str(table_field_name or '').strip()
-            header_name = str(upload_header or '').strip()
-            if not field_name or field_name not in available_fields:
+            orig_field_name = str(table_field_name or '').strip()
+            norm_field_name = orig_field_name.replace('\r', '')
+            header_name = str(upload_header or '').strip().replace('\r', '')
+
+            if not orig_field_name or norm_field_name not in normalized_available:
                 continue
+
             col_idx = header_index.get(header_name)
             if col_idx is None:
                 continue
-            header_to_field[col_idx] = field_name
-            available_fields.remove(field_name)
+
+            original_field_name = normalized_available[norm_field_name]
+            header_to_field[col_idx] = original_field_name
+            available_fields.remove(original_field_name)
+            del normalized_available[norm_field_name]
 
         for idx, header in enumerate(headers):
             if idx in header_to_field:
