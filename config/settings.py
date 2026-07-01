@@ -150,15 +150,13 @@ INSTALLED_APPS = [
     'client',
     'exports',
     'mediafiles',
-    'operators',
-    'assistants',
+    'staff',
     'idcards',
     'reprintcard',
     'panel',
     # 'officework',  # Removed - app not found
     'mobile_api',
     'desktop_app',
-    'stats',
 ]
 
 # Debug toolbar is optional; only enable if DEBUG is on and package is installed.
@@ -544,24 +542,14 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # Whitenoise for serving static files in production
 # CompressedManifest version: content-hashes filenames (app.js → app.abc123.js)
 # enabling permanent caching with Cache-Control: immutable
-if _running_tests():
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-        },
-    }
-else:
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-    }
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Safety: don't crash with 500 if a static file is missing from the manifest
 # (e.g. dynamically-referenced vendor files in lazy-load.js or xlsx-worker.js)
@@ -749,8 +737,8 @@ REDIS_CHANNEL_EXPIRY = _env_int('REDIS_CHANNEL_EXPIRY', 30, minimum=5, maximum=3
 
 # Optional Celery scaffold for offloading background tasks to a real worker.
 # When unset, the app keeps using the existing in-process ThreadPool fallback.
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', '').strip() or REDIS_LOCATION
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', '').strip() or REDIS_LOCATION
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', '').strip()
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', '').strip()
 CELERY_TASK_ALWAYS_EAGER = _env_bool('CELERY_TASK_ALWAYS_EAGER', False)
 CELERY_TASK_EAGER_PROPAGATES = True
 
