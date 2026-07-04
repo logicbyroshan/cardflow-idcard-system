@@ -27,14 +27,24 @@
             <form id="autoCreateAssistantsForm">
                 <div class="bg-white p-4 rounded-md border border-slate-200 shadow-sm mb-4">
                     <div class="form-group w-full mb-2">
-                        <label for="autoCreateAcronym" class="form-label font-semibold text-slate-800">1. School Prefix <span class="text-danger">*</span></label>
+                        <label for="autoCreateGroup" class="form-label font-semibold text-slate-800">1. Select Group/List <span class="text-danger">*</span></label>
+                        <p class="text-xs text-slate-500 mb-2">Choose the Group/List from which to extract classes and sections.</p>
+                        <select class="form-select w-full" id="autoCreateGroup" required style="padding: 8px; border-radius: 8px; border: 1px solid var(--color-slate-200);">
+                            <option value="">Select Group/List</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-md border border-slate-200 shadow-sm mb-4">
+                    <div class="form-group w-full mb-2">
+                        <label for="autoCreateAcronym" class="form-label font-semibold text-slate-800">2. School Prefix <span class="text-danger">*</span></label>
                         <p class="text-xs text-slate-500 mb-2">Used to generate standardized names (e.g. "PREFIX Class-A") and emails.</p>
                         <input type="text" class="form-input w-full" id="autoCreateAcronym" placeholder="e.g. STGS" required>
                     </div>
                 </div>
 
                 <div class="bg-white p-4 rounded-md border border-slate-200 shadow-sm mb-4">
-                    <label class="form-label font-semibold text-slate-800 d-block mb-2">2. Generation Mode <span class="text-danger">*</span></label>
+                    <label class="form-label font-semibold text-slate-800 d-block mb-2">3. Generation Mode <span class="text-danger">*</span></label>
                     <div class="flex flex-col gap-3 mt-2">
                         <label class="flex items-start gap-3 p-3 border border-slate-200 rounded-md cursor-pointer hover:bg-slate-50 transition-colors">
                             <input type="radio" name="autoCreateMode" id="autoCreateModeSection" value="section" checked class="accent-primary mt-1">
@@ -54,7 +64,7 @@
                 </div>
 
                 <div class="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
-                    <label class="form-label font-semibold text-slate-800 d-block mb-2">3. Auto-Assignment</label>
+                    <label class="form-label font-semibold text-slate-800 d-block mb-2">4. Auto-Assignment</label>
                     <label class="flex items-center gap-3 cursor-pointer">
                         <input type="checkbox" id="autoCreateAssign" name="autoCreateAssign" value="true" checked class="accent-primary w-4 h-4">
                         <span class="text-sm font-medium text-slate-700">Automatically grant them access to their generated classes/sections</span>

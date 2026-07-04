@@ -2559,6 +2559,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (typeof showToast === 'function') showToast('Please select a client first.', 'warning');
                 return;
             }
+            
+            // Populate group select dropdown
+            var groupSelect = document.getElementById('autoCreateGroup');
+            if (groupSelect) {
+                groupSelect.innerHTML = '<option value="">Loading Groups/Lists...</option>';
+                groupSelect.disabled = true;
+                
+                fetch(`/panel/assistants/api/groups/active/?client_id=${clientId}`)
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success && res.groups && res.groups.length > 0) {
+                            var html = '<option value="">Select Group/List</option>';
+                            res.groups.forEach(function(g) {
+                                html += `<option value="${g.group_id}">${g.name}</option>`;
+                            });
+                            groupSelect.innerHTML = html;
+                            groupSelect.disabled = false;
+                        } else {
+                            groupSelect.innerHTML = '<option value="">No Groups/Lists found</option>';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Failed to load groups:', err);
+                        groupSelect.innerHTML = '<option value="">Error loading Groups/Lists</option>';
+                    });
+            }
+
             if (window.alpineOpenModal) window.alpineOpenModal('autoCreate');
             else autoCreateModal.style.display = 'flex';
         });
@@ -2568,6 +2595,12 @@ document.addEventListener('DOMContentLoaded', function () {
             var clientId = getActiveAssignmentClientId();
             if (!clientId) {
                 if (typeof showToast === 'function') showToast('Please select a client first.', 'warning');
+                return;
+            }
+
+            var groupId = document.getElementById('autoCreateGroup').value;
+            if (!groupId) {
+                if (typeof showToast === 'function') showToast('Please select a Group/List first.', 'warning');
                 return;
             }
 
@@ -2582,6 +2615,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var formData = new FormData();
             formData.append('client_id', clientId);
+            formData.append('group_id', groupId);
             formData.append('acronym', acronym);
             formData.append('mode', mode);
             formData.append('assign', assign);

@@ -1,7 +1,7 @@
 import json
 import logging
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from client.models import Client
 from assistants.models import Assistant
@@ -817,18 +817,23 @@ def api_staff_auto_create(request):
     API: Auto create assistants based on classes or sections.
     """
     client_id = request.POST.get('client_id')
+    group_id = request.POST.get('group_id')
     acronym = request.POST.get('acronym')
     mode = request.POST.get('mode')  # 'class' or 'section'
     auto_assign = request.POST.get('assign') == 'true'
 
-    if not client_id or not acronym or not mode:
-        return JsonResponse({'success': False, 'message': 'client_id, acronym, and mode are required'}, status=400)
+    if not client_id or not group_id or not acronym or not mode:
+        return JsonResponse({'success': False, 'message': 'client_id, group_id, acronym, and mode are required'}, status=400)
 
     target_client = Client.objects.filter(id=client_id).first()
     if not target_client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
 
-    result = AssistantService.auto_create_assistants(request.user, target_client, acronym, mode, auto_assign)
+    target_group = IDCardGroup.objects.filter(id=group_id, client=target_client).first()
+    if not target_group:
+        return JsonResponse({'success': False, 'message': 'Group/List not found'}, status=404)
+
+    result = AssistantService.auto_create_assistants(request.user, target_client, acronym, mode, auto_assign, group=target_group)
 
     if result.success:
         try:

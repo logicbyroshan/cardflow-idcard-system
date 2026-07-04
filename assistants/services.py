@@ -1130,10 +1130,12 @@ class AssistantService(BaseService):
             return cls._unexpected_error_result('bulk_create_from_excel', e)
 
     @classmethod
-    def get_client_class_sections(cls, client):
+    def get_client_class_sections(cls, client, group=None):
         """Returns a dict of class names to a list of their section names for a client."""
         from idcards.models import IDCardTable, IDCard
         tables = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
+        if group:
+            tables = tables.filter(group=group)
         table_field_map = {}
         for table in tables:
             class_field, section_field = None, None
@@ -1174,7 +1176,7 @@ class AssistantService(BaseService):
         return {k: sorted(list(v)) for k, v in class_sections.items()}
 
     @classmethod
-    def auto_create_assistants(cls, user, target_client, acronym, mode, auto_assign=True) -> ServiceResult:
+    def auto_create_assistants(cls, user, target_client, acronym, mode, auto_assign=True, group=None) -> ServiceResult:
         """Auto create assistants based on client classes/sections and return an Excel file buffer."""
         import openpyxl
         import io
@@ -1192,9 +1194,9 @@ class AssistantService(BaseService):
         if mode not in ('class', 'section'):
             return ServiceResult(success=False, message="Mode must be 'class' or 'section'")
 
-        class_sections = cls.get_client_class_sections(target_client)
+        class_sections = cls.get_client_class_sections(target_client, group=group)
         if not class_sections:
-            return ServiceResult(success=False, message="No classes found for this client")
+            return ServiceResult(success=False, message="No classes found for this client/group")
 
         def clean_for_email(text):
             # Remove all non-alphanumeric characters and lowercase

@@ -6167,8 +6167,6 @@ def api_dashboard_data(request):
                 clients_qs = Client.objects.filter(id__in=accessible_ids)
 
             if is_photographer:
-                from django.db.models import Max, F
-                
                 # Fetch active tables for assigned clients
                 tables_qs = (
                     IDCardTable.objects
