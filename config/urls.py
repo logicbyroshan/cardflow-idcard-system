@@ -172,6 +172,7 @@ urlpatterns += [
     path('panel/operators/', include('operators.urls')),
     path('panel/work/', include('idcards.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
+    path('panel/staff/', include('staff.urls')),
     path('panel/stats/', include('stats.urls')),
 
     # Backward-compatible root mounts for deployments that still hit the app
@@ -184,6 +185,7 @@ urlpatterns += [
     path('exports/', include(('exports.urls', 'exports'), namespace='exports_root')),
     path('images/', include(('mediafiles.urls', 'mediafiles'), namespace='mediafiles_root')),
     path('operators/', include(('operators.urls', 'operators'), namespace='operators_root')),
+    path('staff/', include(('staff.urls', 'staff'), namespace='staff_root')),
     path('work/', include(('idcards.urls', 'idcards'), namespace='idcards_root')),
     path('reprint/', include(('reprintcard.urls', 'reprintcard'), namespace='reprintcard_root')),
     path('stats/', include(('stats.urls', 'stats'), namespace='stats_root')),

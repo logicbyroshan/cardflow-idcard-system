@@ -227,6 +227,7 @@ class DesktopAppService:
             'city': client.city,
             'state': client.state,
             'pincode': client.pincode,
+            'address': '',
             'created_at': client.created_at.isoformat() if client.created_at else None,
             'updated_at': client.updated_at.isoformat() if client.updated_at else None,
         }

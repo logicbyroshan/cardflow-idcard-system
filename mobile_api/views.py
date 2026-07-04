@@ -575,6 +575,12 @@ def _get_system_notifications(user, limit=20, mark_visible_as_read=False):
     return items, unread_count
 
 
+def _map_role_compat(role_str):
+    """Translate operator/assistant to admin_staff/client_staff for mobile app compatibility."""
+    from core.services.compat_service import CompatibilityService
+    return CompatibilityService.map_role_to_legacy(role_str)
+
+
 def _client_ctx(user):
     """Return (client, permissions_dict) for the current user.
     For admin roles (super_admin/admin_staff) that have no client profile,
@@ -1243,7 +1249,7 @@ def api_mobile_login(request):
                 'id': user.id,
                 'email': user.email,
                 'full_name': user.get_full_name(),
-                'role': user.role,
+                'role': _map_role_compat(user.role),
                 'client_id': getattr(client, 'id', None) if client else None,
                 'client_name': getattr(client, 'name', None) if client else None,
             },
@@ -5115,6 +5121,8 @@ def api_staff_list(request):
     
     elif PermissionService.is_super_admin(user):
         role = request.GET.get('role', 'admin_staff')
+        from core.services.compat_service import CompatibilityService
+        role = CompatibilityService.map_role_to_legacy(role)
         if role == 'client_staff':
             # List all client staff system-wide
             # from accounts.models import Staff (removed)
@@ -5154,6 +5162,8 @@ def api_staff_create(request):
     if PermissionService.is_super_admin(user):
         payload = dict(data)
         role_requested = str(payload.get('role', '') or '').strip().lower()
+        from core.services.compat_service import CompatibilityService
+        role_requested = CompatibilityService.map_role_to_legacy(role_requested)
 
         if role_requested == 'client_staff':
             # Super Admin creating an Assistant (client_staff) for a specific client
@@ -5713,7 +5723,7 @@ def api_profile_data(request):
                 'name': user.get_full_name() or user.username,
                 'email': user.email or '',
                 'phone': getattr(user, 'phone', '') or '',
-                'role': getattr(user, 'role', ''),
+                'role': _map_role_compat(getattr(user, 'role', '')),
                 'client_id': getattr(client, 'id', None) if client else None,
                 'client_name': getattr(client, 'name', '') if client else '',
                 'is_super_admin': PermissionService.is_super_admin(user),

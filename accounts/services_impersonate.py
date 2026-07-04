@@ -204,7 +204,8 @@ class ImpersonateService:
             elif u.role == 'operator':
                 client_name = ''
 
-            result.append({
+            from core.services.compat_service import CompatibilityService
+            result.append(CompatibilityService.translate_dict({
                 'id': u.id,
                 'name': name,
                 'email': u.email,
@@ -212,6 +213,6 @@ class ImpersonateService:
                 'role_display': dict(User.ROLE_CHOICES).get(u.role, u.role),
                 'is_active': u.is_active,
                 'client_name': client_name,
-            })
+            }))
 
         return result

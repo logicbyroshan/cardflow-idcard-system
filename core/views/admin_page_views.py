@@ -584,9 +584,11 @@ def api_client_staff_assignment_timeline(request, staff_id):
         limit = 80
     limit = min(max(limit, 10), 200)
 
+    from core.services.compat_service import CompatibilityService
+    _, real_target_id = CompatibilityService.decode_id(staff.id)
     logs_qs = (
         ActivityLog.objects
-        .filter(target_model='Staff', target_id=staff.id)
+        .filter(target_model='Staff', target_id__in=(staff.id, real_target_id))
         .filter(Q(action='staff_assignment') | Q(action='staff_update', description__icontains='assignment'))
         .select_related('user')
         .order_by('-created_at')[:limit]
@@ -670,9 +672,11 @@ def api_staff_assignment_timeline(request, staff_id):
         limit = 80
     limit = min(max(limit, 10), 200)
 
+    from core.services.compat_service import CompatibilityService
+    _, real_target_id = CompatibilityService.decode_id(staff.id)
     logs_qs = (
         ActivityLog.objects
-        .filter(target_model='Staff', target_id=staff.id)
+        .filter(target_model='Staff', target_id__in=(staff.id, real_target_id))
         .filter(Q(action='staff_assignment') | Q(action='staff_update', description__icontains='assignment'))
         .select_related('user')
         .order_by('-created_at')[:limit]

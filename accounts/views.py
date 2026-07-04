@@ -389,7 +389,7 @@ class LoginAPIView(View):
                 )
                 
                 # Log activity
-                if user.role in ('client', 'client_staff') and has_different_browser_session:
+                if user.role in ('client', 'client_staff', 'assistant') and has_different_browser_session:
                     display_name = user.get_full_name() or user.username
                     ActivityService.log(
                         'login',

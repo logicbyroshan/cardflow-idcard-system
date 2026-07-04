@@ -212,6 +212,15 @@ class StaffCompatQuerySet:
             if len(parts) > 0 and parts[-1] == 'pk':
                 parts[-1] = 'id'
 
+            if parts == ['id'] and lookup_type == 'exact':
+                from core.services.compat_service import CompatibilityService
+                staff_type, real_id = CompatibilityService.decode_id(val)
+                if staff_type != 'unknown':
+                    filtered = [item for item in filtered if item.delegate.id == real_id and item.staff_type == staff_type]
+                else:
+                    filtered = [item for item in filtered if item.delegate.id == val]
+                continue
+
             def get_nested_val(obj, path_parts):
                 current = obj
                 for p in path_parts:

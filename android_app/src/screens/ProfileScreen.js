@@ -13,8 +13,10 @@ import Input from '../components/Input';
 import { useAuth } from '../context/AuthContext';
 import { apiGet, apiPost } from '../api/client';
 import { colors, radius, shadows, roleThemes, gradients, fontFamily } from '../theme';
+import Constants from 'expo-constants';
 
 export default function ProfileScreen({ navigation }) {
+  const currentVersion = Constants?.expoConfig?.version || '1.1.6';
   const { user, refreshProfile, logout, isImpersonating, stopImpersonation, lockTimeout, setLockTimeout } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -28,7 +30,7 @@ export default function ProfileScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [updateStatus, setUpdateStatus] = useState({ 
     loading: false, 
-    currentBuild: 'React Native', 
+    currentBuild: `v${currentVersion}`, 
     latestVersion: '-', 
     statusText: 'Checking...', 
     statusType: 'info' 
@@ -43,8 +45,8 @@ export default function ProfileScreen({ navigation }) {
   const loadData = useCallback(async () => {
     setRefreshing(true);
     await refreshProfile();
-    await checkUpdates();
     await loadSystemSettings();
+    await checkUpdates();
     setRefreshing(false);
   }, [refreshProfile]);
 
@@ -58,15 +60,29 @@ export default function ProfileScreen({ navigation }) {
   const checkUpdates = async () => {
     setUpdateStatus(p => ({ ...p, loading: true }));
     try {
-      const { data } = await apiGet('/api/mobile/mobile-shell/config/');
-      const d = data?.success ? data.data : null;
-      setUpdateStatus({
-        loading: false,
-        currentBuild: 'React Native',
-        latestVersion: d?.latest_version || '-',
-        statusText: d?.update_required ? 'Update Required' : d?.update_recommended ? 'Update Available' : 'Up to Date',
-        statusType: d?.update_required || d?.update_recommended ? 'warn' : 'ok'
-      });
+      const { ok, data } = await apiGet('/api/mobile/app-version/');
+      if (ok && data?.success) {
+        const remoteVersion = data.latest_version;
+        const parse = v => String(v).replace(/[^0-9.]/g, '').split('.').map(Number);
+        const curParts = parse(currentVersion);
+        const latParts = parse(remoteVersion);
+        let needsUpdate = false;
+        for (let i = 0; i < Math.max(curParts.length, latParts.length); i++) {
+          const c = curParts[i] || 0;
+          const l = latParts[i] || 0;
+          if (c < l) { needsUpdate = true; break; }
+          if (c > l) { break; }
+        }
+        setUpdateStatus({
+          loading: false,
+          currentBuild: `v${currentVersion}`,
+          latestVersion: remoteVersion || '-',
+          statusText: needsUpdate ? 'Update Available' : 'Up to Date',
+          statusType: needsUpdate ? 'warn' : 'ok'
+        });
+      } else {
+        setUpdateStatus(p => ({ ...p, loading: false, statusText: 'Error checking' }));
+      }
     } catch (e) {
       setUpdateStatus(p => ({ ...p, loading: false, statusText: 'Offline' }));
     }

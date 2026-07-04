@@ -69,7 +69,7 @@ def ensure_stats_snapshots(user):
 
             assistants_count = ActivityLog.objects.filter(
                 created_at__range=(day_start, day_end),
-                user__role='client_staff'
+                user__role__in=('client_staff', 'assistant')
             ).values('user').distinct().count()
             if assistants_count == 0:
                 assistants_count = random.randint(10, 25) if day_date.weekday() not in (5, 6) else random.randint(0, 3)

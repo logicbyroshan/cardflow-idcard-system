@@ -157,9 +157,10 @@ def _map_perm_fields_to_codenames(data):
 
 
 def serialize_operator_compat(operator: Operator, include_permissions: bool = True) -> dict:
+    from core.services.compat_service import CompatibilityService
     user = operator.user
     data = {
-        'id': operator.id,
+        'id': CompatibilityService.encode_id(operator.id, 'operator'),
         'name': user.get_full_name(),
         'email': user.email if not user.email.endswith('@noemail.local') else '',
         'phone': user.phone or '',
@@ -289,7 +290,9 @@ def api_staff_create(request):
 def api_staff_get(request, staff_id):
     """API endpoint to get a staff's details"""
     try:
-        operator = Operator.objects.filter(id=staff_id).first()
+        from core.services.compat_service import CompatibilityService
+        _, real_id = CompatibilityService.decode_id(staff_id)
+        operator = Operator.objects.filter(id=real_id).first()
         if not operator:
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
         
@@ -309,9 +312,11 @@ def api_staff_get(request, staff_id):
 def api_staff_update(request, staff_id):
     """API endpoint to update a staff"""
     try:
+        from core.services.compat_service import CompatibilityService
+        _, real_id = CompatibilityService.decode_id(staff_id)
         before_staff = (
             Operator.objects
-            .filter(id=staff_id)
+            .filter(id=real_id)
             .select_related('user')
             .prefetch_related('assigned_clients')
             .first()
@@ -375,7 +380,7 @@ def api_staff_update(request, staff_id):
 
         raw_result = OperatorCreationService.update_operator(
             updated_by=request.user,
-            operator_id=staff_id,
+            operator_id=real_id,
             first_name=first_name,
             last_name=last_name,
             phone=data.get('phone'),
@@ -391,7 +396,7 @@ def api_staff_update(request, staff_id):
             try:
                 refreshed = (
                     Operator.objects
-                    .filter(id=staff_id)
+                    .filter(id=real_id)
                     .select_related('user')
                     .prefetch_related('assigned_clients')
                     .first()
@@ -422,16 +427,18 @@ def api_staff_update(request, staff_id):
 def api_staff_delete(request, staff_id):
     """API endpoint to delete a staff"""
     try:
-        operator = Operator.objects.filter(id=staff_id).first()
+        from core.services.compat_service import CompatibilityService
+        _, real_id = CompatibilityService.decode_id(staff_id)
+        operator = Operator.objects.filter(id=real_id).first()
         if not operator:
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
         
         name = operator.user.get_full_name() or operator.user.username
-        raw_result = OperatorCreationService.delete_operator(deleted_by=request.user, operator_id=staff_id)
+        raw_result = OperatorCreationService.delete_operator(deleted_by=request.user, operator_id=real_id)
         result = DictServiceResult(raw_result)
         
         if result.success:
-            ActivityService.log_staff_delete(request, name, staff_id)
+            ActivityService.log_staff_delete(request, name, real_id)
             
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except Exception as e:
@@ -444,11 +451,13 @@ def api_staff_delete(request, staff_id):
 def api_staff_toggle_status(request, staff_id):
     """API endpoint to toggle staff active/inactive status"""
     try:
-        operator = Operator.objects.filter(id=staff_id).first()
+        from core.services.compat_service import CompatibilityService
+        _, real_id = CompatibilityService.decode_id(staff_id)
+        operator = Operator.objects.filter(id=real_id).first()
         if not operator:
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
             
-        raw_result = OperatorCreationService.toggle_status(toggled_by=request.user, operator_id=staff_id)
+        raw_result = OperatorCreationService.toggle_status(toggled_by=request.user, operator_id=real_id)
         result = DictServiceResult(raw_result)
         
         if result.success:
@@ -491,7 +500,9 @@ def api_all_clients_for_assignment(request):
 def api_staff_set_temp_password(request, staff_id):
     """API endpoint to set a temporary password for a staff member (Super Admin only)"""
     try:
-        operator = Operator.objects.filter(id=staff_id).first()
+        from core.services.compat_service import CompatibilityService
+        _, real_id = CompatibilityService.decode_id(staff_id)
+        operator = Operator.objects.filter(id=real_id).first()
         if not operator:
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
 
@@ -511,7 +522,7 @@ def api_staff_set_temp_password(request, staff_id):
         except Exception as validation_error:
             return JsonResponse({'success': False, 'message': '; '.join(validation_error.messages)}, status=400)
 
-        raw_result = OperatorCreationService.set_temp_password(profile_id=staff_id, new_password=new_password, is_assistant=False, request=request)
+        raw_result = OperatorCreationService.set_temp_password(profile_id=real_id, new_password=new_password, is_assistant=False, request=request)
         result = DictServiceResult(raw_result)
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:

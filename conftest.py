@@ -1,5 +1,7 @@
 import os
 import sys
+import django.core.validators
+
 
 # CRITICAL: Set RUNNING_TESTS BEFORE DJANGO IMPORTS
 os.environ['RUNNING_TESTS'] = '1'

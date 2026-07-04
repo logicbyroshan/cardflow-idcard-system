@@ -54,7 +54,7 @@ def _check_reprint_table_scope(user, table_id):
         if staff_profile and staff_profile.staff_type == 'admin_staff':
             if not staff_profile.assigned_clients.filter(id=table.group.client_id).exists():
                 return None, _reprint_access_denied()
-        elif user.role in ('client', 'client_staff'):
+        elif PermissionService.is_client_role(user):
             from client.services import ClientAccessService
             if not ClientAccessService.can_access_table(user, table):
                 return None, _reprint_access_denied()

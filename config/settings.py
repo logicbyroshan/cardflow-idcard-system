@@ -151,6 +151,9 @@ INSTALLED_APPS = [
     'exports',
     'mediafiles',
     'staff',
+    'operators',
+    'assistants',
+    'stats',
     'idcards',
     'reprintcard',
     'panel',
@@ -1037,3 +1040,7 @@ LOGGING = {
         },
     },
 }
+
+# Mobile App Version Tracking
+# Can be set dynamically via .env (e.g. LATEST_MOBILE_VERSION=1.1.7)
+LATEST_MOBILE_VERSION = os.getenv('LATEST_MOBILE_VERSION', '').strip() or None
