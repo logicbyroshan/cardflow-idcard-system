@@ -1176,7 +1176,7 @@ class AssistantService(BaseService):
     @classmethod
     def auto_create_assistants(cls, user, target_client, acronym, mode, auto_assign=True) -> ServiceResult:
         """Auto create assistants based on client classes/sections and return an Excel file buffer."""
-        import pandas as pd
+        import openpyxl
         import io
         import re
         import random
@@ -1295,11 +1295,15 @@ class AssistantService(BaseService):
             if not created_assistants:
                 return ServiceResult(success=False, message="No assistants were generated.")
 
-            # Generate Excel
-            df = pd.DataFrame(created_assistants)
+            # Generate Excel using openpyxl directly
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Assistants"
+            ws.append(["Name", "Email", "Password"])
+            for assistant in created_assistants:
+                ws.append([assistant["Name"], assistant["Email"], assistant["Password"]])
             buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False)
+            wb.save(buffer)
             buffer.seek(0)
 
             return ServiceResult(success=True, data={'buffer': buffer, 'count': len(created_assistants)})
