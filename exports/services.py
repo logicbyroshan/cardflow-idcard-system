@@ -264,6 +264,8 @@ class ExportService:
         status: str = '',
         template_id: Optional[int] = None,
         allow_large: Optional[bool] = None,
+        break_enabled: bool = False,
+        break_pages: int = 0,
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -291,7 +293,8 @@ class ExportService:
 
         return self._word_exporter.export_cards(
             context.table, context.cards, doc_format=doc_format, status=status,
-            template_id=template_id, allow_large=allow_large, user=self.user
+            template_id=template_id, allow_large=allow_large, user=self.user,
+            break_enabled=break_enabled, break_pages=break_pages
         )
     
     # =========================================================================

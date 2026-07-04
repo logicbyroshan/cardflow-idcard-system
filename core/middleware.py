@@ -521,9 +521,27 @@ class PermissionValidationMiddleware:
             return self._force_logout(request, 'Your account has been deactivated.')
         if fresh_user.role == 'client':
             return self._validate_client_access(request, fresh_user)
-        elif fresh_user.role == 'client_staff':
-            return self._validate_client_staff_access(request, fresh_user)
-        if fresh_user.role in ['super_admin', 'pro_user', 'admin_staff']:
+        elif fresh_user.role in ('assistant', 'client_staff'):
+            return self._validate_assistant_access(request, fresh_user)
+        elif fresh_user.role == 'photographer':
+            allowed_prefixes = (
+                '/api/mobile/',
+                '/app/',
+                '/api/health/',
+                '/media/',
+                '/static/',
+                '/favicon.ico',
+            )
+            path = request.path
+            is_allowed = any(path.startswith(prefix) for prefix in allowed_prefixes)
+            if not is_allowed:
+                if 'auth/' in path or 'logout/' in path:
+                    is_allowed = True
+            
+            if not is_allowed:
+                logger.warning("PermissionValidationMiddleware: Photographer %s tried to access forbidden web path %s", fresh_user.username, path)
+                return self._force_logout(request, 'Photographers are only permitted to access the mobile application.')
+        if fresh_user.role in ['super_admin', 'pro_user', 'operator', 'admin_staff', 'photographer']:
              logger.debug("PVM_DEBUG: Admin validation success for %s", fresh_user.username)
         return None
     
@@ -551,30 +569,30 @@ class PermissionValidationMiddleware:
             return self._force_logout(request, 'Your account configuration has changed. Please log in again.')
         return None
     
-    def _validate_client_staff_access(self, request, user):
-        """Validate client staff user access"""
-        from staff.models import Staff
+    def _validate_assistant_access(self, request, user):
+        """Validate assistant user access"""
+        from assistants.models import Assistant
         try:
-            staff_row = Staff.objects.filter(user_id=user.pk).values('id', 'client_id', 'client__name', 'client__status').first()
-            if not staff_row:
-                raise Staff.DoesNotExist()
-        except Staff.DoesNotExist:
-            logger.warning("PermissionValidationMiddleware: Staff profile not found for user %s", user.username)
-            return self._force_logout(request, 'Your staff profile is not configured.')
+            assistant_row = Assistant.objects.filter(user_id=user.pk).values('id', 'client_id', 'client__name', 'client__status').first()
+            if not assistant_row:
+                raise Assistant.DoesNotExist()
+        except Assistant.DoesNotExist:
+            logger.warning("PermissionValidationMiddleware: Assistant profile not found for user %s", user.username)
+            return self._force_logout(request, 'Your assistant profile is not configured.')
         except Exception as exc:
-            logger.error("PermissionValidationMiddleware: DB error fetching staff: %s", exc)
+            logger.error("PermissionValidationMiddleware: DB error fetching assistant: %s", exc)
             return self._validation_unavailable_response(request)
-        if not staff_row['client_id']:
-            logger.warning("PermissionValidationMiddleware: Staff %s has no client assigned", user.username)
+        if not assistant_row['client_id']:
+            logger.warning("PermissionValidationMiddleware: Assistant %s has no client assigned", user.username)
             return self._force_logout(request, 'You are not assigned to any client.')
-        if staff_row['client__status'] != 'active':
-            logger.warning("PermissionValidationMiddleware: Staff client is now %s", staff_row['client__status'])
+        if assistant_row['client__status'] != 'active':
+            logger.warning("PermissionValidationMiddleware: Assistant client is now %s", assistant_row['client__status'])
             return self._redirect_to_maintenance(request, 'Your organization account has been suspended.')
         session_client_id = request.session.get('_staff_client_id')
         if session_client_id is None:
-            request.session['_staff_client_id'] = staff_row['client_id']
-        elif session_client_id != staff_row['client_id']:
-            logger.warning("PermissionValidationMiddleware: Client staff reassigned")
+            request.session['_staff_client_id'] = assistant_row['client_id']
+        elif session_client_id != assistant_row['client_id']:
+            logger.warning("PermissionValidationMiddleware: Assistant reassigned")
             return self._force_logout(request, 'You have been reassigned to a different organization. Please log in again.')
         return None
     
@@ -585,18 +603,18 @@ class PermissionValidationMiddleware:
         try:
             request.user_scope = {
                 'is_super_admin': PermissionService.is_super_admin(user),
-                'is_admin_staff': PermissionService.is_admin_staff(user),
+                'is_admin_staff': PermissionService.is_operator(user),
                 'is_client': PermissionService.is_client(user),
-                'is_client_staff': PermissionService.is_client_staff(user),
+                'is_client_staff': PermissionService.is_assistant(user),
                 'client_id': None,
                 'accessible_client_ids': PermissionService.get_accessible_client_ids(user),
             }
             if PermissionService.is_client(user):
                 from client.models import Client
                 request.user_scope['client_id'] = Client.objects.filter(user_id=user.id).values_list('id', flat=True).first()
-            elif PermissionService.is_client_staff(user):
-                from staff.models import Staff
-                request.user_scope['client_id'] = Staff.objects.filter(user_id=user.id).values_list('client_id', flat=True).first()
+            elif PermissionService.is_assistant(user):
+                from assistants.models import Assistant
+                request.user_scope['client_id'] = Assistant.objects.filter(user_id=user.id).values_list('client_id', flat=True).first()
         except Exception as exc:
             logger.warning("PermissionValidationMiddleware: _annotate_request_scope failed: %s", exc)
             if not hasattr(request, 'user_scope'):
@@ -1095,7 +1113,8 @@ def populate_sandbox_database(client_id, db_alias):
     """Copy client-scoped records from the default database to the guest sandbox database."""
     from client.models import Client
     from core.models import User
-    from staff.models import Staff
+    from assistants.models import Assistant
+    from operators.models import Operator
     from idcards.models import IDCardGroup, IDCardTable, IDCard
     from reprintcard.models import ReprintRequest
     from mediafiles.models import CardMedia
@@ -1103,7 +1122,8 @@ def populate_sandbox_database(client_id, db_alias):
     # 1. Clear any seeded data in the destination database first to avoid unique constraints
     User.objects.using(db_alias).all().delete()
     Client.objects.using(db_alias).all().delete()
-    Staff.objects.using(db_alias).all().delete()
+    Assistant.objects.using(db_alias).all().delete()
+    Operator.objects.using(db_alias).all().delete()
     IDCardGroup.objects.using(db_alias).all().delete()
     IDCardTable.objects.using(db_alias).all().delete()
     IDCard.objects.using(db_alias).all().delete()
@@ -1119,24 +1139,32 @@ def populate_sandbox_database(client_id, db_alias):
         
     client_user = User.objects.using('default').get(id=client.user_id)
     
-    staff_members = list(Staff.objects.using('default').filter(client_id=client_id))
-    staff_user_ids = [s.user_id for s in staff_members]
-    staff_users = list(User.objects.using('default').filter(id__in=staff_user_ids))
+    assistants = list(Assistant.objects.using('default').filter(client_id=client_id))
+    assistant_user_ids = [a.user_id for a in assistants]
+    
+    operators = list(Operator.objects.using('default').filter(assigned_clients__id=client_id))
+    operator_user_ids = [op.user_id for op in operators]
+    
+    user_ids = list(set(assistant_user_ids + operator_user_ids))
+    users = list(User.objects.using('default').filter(id__in=user_ids))
     
     # 3. Save Users (client user and staff users)
     client_user.save(using=db_alias)
-    for u in staff_users:
+    for u in users:
         u.save(using=db_alias)
         
     # 4. Save Client
     client.save(using=db_alias)
     
-    # 5. Save Staff members and their Many-to-Many fields
-    for s in staff_members:
-        s.save(using=db_alias)
-        # Sync ManyToMany fields to the sandbox connection
-        s.assigned_clients.set(list(s.assigned_clients.using('default').all()), clear=True)
-        s.assigned_groups.set(list(s.assigned_groups.using('default').all()), clear=True)
+    # 5. Save assistants and their Many-to-Many fields
+    for a in assistants:
+        a.save(using=db_alias)
+        a.assigned_groups.set(list(a.assigned_groups.using('default').all()), clear=True)
+        
+    # Save operators and their Many-to-Many fields
+    for op in operators:
+        op.save(using=db_alias)
+        op.assigned_clients.set(list(op.assigned_clients.using('default').all()), clear=True)
         
     # 6. Save IDCardGroup, IDCardTable, IDCard, ReprintRequest, CardMedia
     groups = list(IDCardGroup.objects.using('default').filter(client_id=client_id))

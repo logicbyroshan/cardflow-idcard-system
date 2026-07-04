@@ -41,8 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const recentClientUpdatesSearchInput = document.getElementById('recentClientUpdatesSearch');
-    const recentClientUpdatesActiveBadge = document.getElementById('recentClientUpdatesActiveBadge');
-    const recentClientUpdatesAssistantBadge = document.getElementById('recentClientUpdatesAssistantBadge');
+    const recentClientUpdatesUserBadge = document.getElementById('recentClientUpdatesUserBadge');
     const recentClientUpdatesSortHeaders = Array.from(document.querySelectorAll('th[data-recent-sort-key]'));
     const reprintOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="reprint"][data-overview-sort-key]'));
     let recentClientUpdatesLiveFilterMode = '';
@@ -57,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashboardTabCountRecentClients = document.getElementById('dashboardTabCountRecentClients');
     const dashboardTabCountRecentUpdates = document.getElementById('dashboardTabCountRecentUpdates');
     const dashboardTabCountReprint = document.getElementById('dashboardTabCountReprint');
-    const isAdminRecentUpdatesContext = !!recentClientUpdatesActiveBadge || !!recentClientUpdatesAssistantBadge;
+    const isAdminRecentUpdatesContext = !!recentClientUpdatesUserBadge;
     const isAdminDashboardContext = isAdminRecentUpdatesContext
         || !!document.getElementById('reprintOverviewBody');
 
@@ -67,24 +66,15 @@ document.addEventListener('DOMContentLoaded', function() {
         element.textContent = Number.isFinite(count) ? count.toLocaleString() : '0';
     }
 
-    function setRecentClientUpdatesActiveBadge(count) {
-        if (!recentClientUpdatesActiveBadge) return;
+    function setRecentClientUpdatesUserBadge(count) {
+        if (!recentClientUpdatesUserBadge) return;
         const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-        recentClientUpdatesActiveBadge.textContent = `Live Working Clients: ${safeCount.toLocaleString()}`;
-    }
-
-    function setRecentClientUpdatesAssistantBadge(count) {
-        if (!recentClientUpdatesAssistantBadge) return;
-        const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-        recentClientUpdatesAssistantBadge.textContent = `Live Working Assistants: ${safeCount.toLocaleString()}`;
+        recentClientUpdatesUserBadge.textContent = `Live Working Users: ${safeCount.toLocaleString()}`;
     }
 
     function setRecentClientUpdatesLiveFilterUI() {
-        if (recentClientUpdatesActiveBadge) {
-            recentClientUpdatesActiveBadge.classList.toggle('is-filter-active', recentClientUpdatesLiveFilterMode === 'client');
-        }
-        if (recentClientUpdatesAssistantBadge) {
-            recentClientUpdatesAssistantBadge.classList.toggle('is-filter-active', recentClientUpdatesLiveFilterMode === 'assistant');
+        if (recentClientUpdatesUserBadge) {
+            recentClientUpdatesUserBadge.classList.toggle('is-filter-active', recentClientUpdatesLiveFilterMode === 'live');
         }
     }
 
@@ -140,11 +130,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 recentClientUpdatesLiveClientIds = new Set(normalizeIdList(data.active_client_ids));
                 recentClientUpdatesLiveAssistantClientIds = new Set(normalizeIdList(data.active_assistant_client_ids));
-
-                const liveActiveClients = Number(data.active_clients_now);
-                const liveActiveAssistants = Number(data.active_assistants_now);
-                setRecentClientUpdatesActiveBadge(Number.isFinite(liveActiveClients) ? liveActiveClients : 0);
-                setRecentClientUpdatesAssistantBadge(Number.isFinite(liveActiveAssistants) ? liveActiveAssistants : 0);
+                const liveActiveUsers = Number(data.active_users_now);
+                setRecentClientUpdatesUserBadge(Number.isFinite(liveActiveUsers) ? liveActiveUsers : 0);
 
                 applyRecentClientLiveStatesToRows();
                 applyRecentClientUpdatesSearch();
@@ -319,9 +306,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .join(' ');
             const searchable = `${clientName} ${tableNames}`.trim();
             const isSearchMatch = !query || searchable.includes(query);
-            const isLiveClientMatch = recentClientUpdatesLiveFilterMode !== 'client' || row.getAttribute('data-live-active') === '1';
-            const isLiveAssistantMatch = recentClientUpdatesLiveFilterMode !== 'assistant' || row.getAttribute('data-live-assistant-active') === '1';
-            const isLiveMatch = isLiveClientMatch && isLiveAssistantMatch;
+            const isLiveMatch = recentClientUpdatesLiveFilterMode !== 'live' ||
+                row.getAttribute('data-live-active') === '1' ||
+                row.getAttribute('data-live-assistant-active') === '1';
             const isMatch = isSearchMatch && isLiveMatch;
 
             if (!isMatch) {
@@ -342,16 +329,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if ((!query && !recentClientUpdatesLiveFilterMode) || visibleClients > 0) return;
 
         let noResultMessage = 'No clients matched your filters';
-        if (query && recentClientUpdatesLiveFilterMode === 'client') {
-            noResultMessage = `No live working clients matched "${query.replace(/"/g, '&quot;')}"`;
-        } else if (query && recentClientUpdatesLiveFilterMode === 'assistant') {
-            noResultMessage = `No clients with live working assistants matched "${query.replace(/"/g, '&quot;')}"`;
+        if (query && recentClientUpdatesLiveFilterMode === 'live') {
+            noResultMessage = `No live working users matched "${query.replace(/"/g, '&quot;')}"`;
         } else if (query) {
             noResultMessage = `No clients matched "${query.replace(/"/g, '&quot;')}"`;
-        } else if (recentClientUpdatesLiveFilterMode === 'client') {
-            noResultMessage = 'No live working clients found right now';
-        } else if (recentClientUpdatesLiveFilterMode === 'assistant') {
-            noResultMessage = 'No clients with live working assistants found right now';
+        } else if (recentClientUpdatesLiveFilterMode === 'live') {
+            noResultMessage = 'No live working users found right now';
         }
 
         tbody.insertAdjacentHTML(
@@ -371,17 +354,9 @@ document.addEventListener('DOMContentLoaded', function() {
         recentClientUpdatesSearchInput.addEventListener('input', applyRecentClientUpdatesSearch);
     }
 
-    if (isAdminRecentUpdatesContext && recentClientUpdatesActiveBadge) {
-        recentClientUpdatesActiveBadge.addEventListener('click', function() {
-            recentClientUpdatesLiveFilterMode = recentClientUpdatesLiveFilterMode === 'client' ? '' : 'client';
-            setRecentClientUpdatesLiveFilterUI();
-            applyRecentClientUpdatesSearch();
-        });
-    }
-
-    if (isAdminRecentUpdatesContext && recentClientUpdatesAssistantBadge) {
-        recentClientUpdatesAssistantBadge.addEventListener('click', function() {
-            recentClientUpdatesLiveFilterMode = recentClientUpdatesLiveFilterMode === 'assistant' ? '' : 'assistant';
+    if (isAdminRecentUpdatesContext && recentClientUpdatesUserBadge) {
+        recentClientUpdatesUserBadge.addEventListener('click', function() {
+            recentClientUpdatesLiveFilterMode = recentClientUpdatesLiveFilterMode === 'live' ? '' : 'live';
             setRecentClientUpdatesLiveFilterUI();
             applyRecentClientUpdatesSearch();
         });
@@ -500,17 +475,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ====================
     // Load Recent Client Updates
-    // ====================
-    function loadRecentClientUpdates() {
+    // ====================    function loadRecentClientUpdates() {
         if (!isAdminRecentUpdatesContext) return;
-
+ 
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
         const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
         const showPool = headerColumns >= 6;
         setDashboardTabCount(dashboardTabCountRecentClients, 0);
-        setRecentClientUpdatesActiveBadge(0);
-        setRecentClientUpdatesAssistantBadge(0);
+        setRecentClientUpdatesUserBadge(0);
         setDashboardTableSkeleton(tbody, headerColumns, 3);
         const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -523,11 +496,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         const liveAssistantClientIds = normalizeIdList(data.active_assistant_client_ids);
                         recentClientUpdatesLiveClientIds = new Set(liveClientIds);
                         recentClientUpdatesLiveAssistantClientIds = new Set(liveAssistantClientIds);
-                        const liveActiveClients = Number(data.active_clients_now);
-                        const liveActiveAssistants = Number(data.active_assistants_now);
-                        setRecentClientUpdatesActiveBadge(Number.isFinite(liveActiveClients) ? liveActiveClients : 0);
-                        setRecentClientUpdatesAssistantBadge(Number.isFinite(liveActiveAssistants) ? liveActiveAssistants : 0);
-                        setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);
+                        const liveActiveUsers = Number(data.active_users_now);
+                        setRecentClientUpdatesUserBadge(Number.isFinite(liveActiveUsers) ? liveActiveUsers : 0);
+                        setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);;
                         tbody.innerHTML = data.clients.map((client, i) => {
                             const tables = client.tables || [];
                             const statusBadge = renderDashboardClientStatusBadge(client.status, esc);
@@ -609,8 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         recentClientUpdatesLiveClientIds = new Set();
                         recentClientUpdatesLiveAssistantClientIds = new Set();
-                        setRecentClientUpdatesActiveBadge(0);
-                        setRecentClientUpdatesAssistantBadge(0);
+                        setRecentClientUpdatesUserBadge(0);
                         setDashboardTabCount(dashboardTabCountRecentClients, 0);
                         tbody.innerHTML = `
                             <tr>
@@ -629,8 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 waitForMinDelay(skeletonStart).then(() => {
                     recentClientUpdatesLiveClientIds = new Set();
                     recentClientUpdatesLiveAssistantClientIds = new Set();
-                    setRecentClientUpdatesActiveBadge(0);
-                    setRecentClientUpdatesAssistantBadge(0);
+                    setRecentClientUpdatesUserBadge(0);
                     setDashboardTabCount(dashboardTabCountRecentClients, 0);
                     tbody.innerHTML = `
                         <tr>

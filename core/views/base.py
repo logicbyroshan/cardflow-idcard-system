@@ -34,6 +34,7 @@ from .dashboard_views import (                       # noqa: F401
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
     pro_user_guest_users_page,
+    pro_user_batch_jobs_page,
     dashboard,
     api_presence_track,
     api_live_client_presence,

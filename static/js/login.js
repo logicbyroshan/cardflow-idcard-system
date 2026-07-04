@@ -206,6 +206,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.success) {
                 showMessage('Login successful! Redirecting...', 'success');
+                // Ensure preloader plays on dashboard by clearing session state
+                sessionStorage.removeItem('preloader_shown');
+                
                 // Respect ?next= param (e.g. from PWA  login redirect)
                 const nextUrl = new URLSearchParams(window.location.search).get('next');
                 const safeNext = nextUrl && nextUrl.startsWith('/') && !nextUrl.startsWith('//') ? nextUrl : null;

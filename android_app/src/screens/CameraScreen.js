@@ -4,6 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useIsFocused } from '@react-navigation/native';
 import { Accelerometer } from 'expo-sensors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DynamicIcon } from '../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, Mask, Rect, Ellipse } from 'react-native-svg';
@@ -15,6 +16,33 @@ const { width, height } = Dimensions.get('window');
 // Face tracking is fully bypassed/unblocked on native side as Expo 52's CameraView does not support it natively.
 // We guide the user perfectly using an SVG cutout guide and tilt sensor alignment.
 const hasNativeFace = false;
+
+const getFieldValueCaseInsensitive = (obj, key) => {
+  if (!obj) return '';
+  if (obj[key] !== undefined) return obj[key];
+  const upperKey = key.toUpperCase();
+  for (const k in obj) {
+    if (k.toUpperCase() === upperKey) {
+      return obj[k];
+    }
+  }
+  return '';
+};
+
+const resolveStudentInfo = (student) => {
+  if (!student) return { name: 'Unknown Student', classVal: '-', sectionVal: '-' };
+  const fd = student.field_data || {};
+  const name = getFieldValueCaseInsensitive(fd, 'STUDENT NAME') || 
+               getFieldValueCaseInsensitive(fd, 'NAME') || 
+               getFieldValueCaseInsensitive(fd, 'EMPLOYEE NAME') || 
+               getFieldValueCaseInsensitive(fd, 'STAFF NAME') || 
+               getFieldValueCaseInsensitive(fd, 'CANDIDATE NAME') || 
+               student.name || 
+               'Unknown Student';
+  const classVal = getFieldValueCaseInsensitive(fd, 'CLASS') || getFieldValueCaseInsensitive(fd, 'STANDARD') || getFieldValueCaseInsensitive(fd, 'STD') || '-';
+  const sectionVal = getFieldValueCaseInsensitive(fd, 'SECTION') || getFieldValueCaseInsensitive(fd, 'SEC') || '-';
+  return { name, classVal, sectionVal };
+};
 
 export default function CameraScreen({ navigation, route }) {
   const isFocused = useIsFocused();
@@ -40,6 +68,12 @@ export default function CameraScreen({ navigation, route }) {
       });
     }
   }, [route?.params?.imageUri, route?.params?.imageWidth, route?.params?.imageHeight]);
+
+  const fastCaptureCards = route.params?.fastCaptureCards;
+  const [currentIndex, setCurrentIndex] = useState(route.params?.initialIndex || 0);
+  const currentStudent = fastCaptureCards?.[currentIndex];
+  const nextStudent = fastCaptureCards?.[currentIndex + 1];
+
   const [isLevel, setIsLevel] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
   const [hasSensor, setHasSensor] = useState(true);
@@ -180,7 +214,33 @@ export default function CameraScreen({ navigation, route }) {
       if (route.params?.onCapture) {
         route.params.onCapture(manipulated.uri);
       }
-      navigation.goBack();
+      
+      if (fastCaptureCards && currentStudent) {
+        // Save to offline storage
+        await AsyncStorage.setItem(`offline_photo_${currentStudent.id}`, manipulated.uri);
+        
+        // Update the offline data state to mark as captured
+        const offlineStr = await AsyncStorage.getItem('photographer_offline_data');
+        if (offlineStr) {
+           const clients = JSON.parse(offlineStr);
+           clients.forEach(c => c.tables?.forEach(t => t.cards?.forEach(card => {
+               if (card.id === currentStudent.id) {
+                   card.has_photo = true;
+               }
+           })));
+           await AsyncStorage.setItem('photographer_offline_data', JSON.stringify(clients));
+        }
+
+        if (nextStudent) {
+            setPhoto(null);
+            setCurrentIndex(currentIndex + 1);
+        } else {
+            alert('All students in this list have been captured!');
+            navigation.goBack();
+        }
+      } else {
+        navigation.goBack();
+      }
     } catch (err) {
       alert('Error processing image: ' + err.message);
     } finally {
@@ -202,8 +262,22 @@ export default function CameraScreen({ navigation, route }) {
 
           {/* Top label */}
           <View style={s.previewTopBar}>
-            <Text style={s.previewTopLabel}>📷  PHOTO PREVIEW</Text>
-            <Text style={s.previewTopSub}>Confirm or retake the photo</Text>
+            {currentStudent ? (
+              (() => {
+                const info = resolveStudentInfo(currentStudent);
+                return (
+                  <>
+                    <Text style={s.previewTopLabel}>{info.name}</Text>
+                    <Text style={s.previewTopSub}>Class: {info.classVal} | Section: {info.sectionVal}</Text>
+                  </>
+                );
+              })()
+            ) : (
+              <>
+                <Text style={s.previewTopLabel}>📷  PHOTO PREVIEW</Text>
+                <Text style={s.previewTopSub}>Confirm or retake the photo</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -233,7 +307,7 @@ export default function CameraScreen({ navigation, route }) {
             ) : (
               <>
                 <DynamicIcon name="check" size={18} color='#fff' />
-                <Text style={s.btnText}>Use Photo</Text>
+                <Text style={s.btnText}>{fastCaptureCards ? 'Save & Next' : 'Use Photo'}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -377,16 +451,43 @@ export default function CameraScreen({ navigation, route }) {
         </View>
       </View>
 
-      <View style={[s.topStatus, { top: insets.top + 10 }]}>
-        <View style={[s.levelIndicator, isReady ? s.bgSuccess : s.bgError]}>
-          <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
-          <Text style={s.levelText}>
-            {!isLevel ? "Align Face & Hold Upright" : "Biometric Face Aligned"}
-          </Text>
-        </View>
+      <View style={s.topStatus}>
+        {currentStudent ? (
+          <View style={[s.bgSuccess, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', ...shadows.md }]}>
+            {(() => {
+              const info = resolveStudentInfo(currentStudent);
+              return (
+                <>
+                  <Text style={[s.levelText, { fontSize: 16, fontFamily: fontFamily.bold, color: '#fff', textAlign: 'center', marginLeft: 0 }]}>{info.name.toUpperCase()}</Text>
+                  <Text style={[s.levelText, { fontSize: 12, color: 'rgba(255, 255, 255, 0.9)', marginTop: 2, textAlign: 'center', marginLeft: 0, fontFamily: fontFamily.medium }]}>CLASS: {info.classVal.toUpperCase()}  |  SECTION: {info.sectionVal.toUpperCase()}</Text>
+                </>
+              );
+            })()}
+          </View>
+        ) : (
+          <View style={[isReady ? s.bgSuccess : s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
+            <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
+            <Text style={[s.levelText, { marginLeft: 0, fontSize: 13, fontFamily: fontFamily.bold }]}>
+              {!isLevel ? "Align Face & Hold Upright" : "Biometric Face Aligned"}
+            </Text>
+          </View>
+        )}
       </View>
 
-      <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15 }]}>
+      <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15, flexDirection: 'column', paddingHorizontal: 0, paddingTop: 0 }]}>
+        {nextStudent && (
+          <View style={{ backgroundColor: '#f97316', width: '100%', paddingVertical: 10, paddingHorizontal: 20, marginBottom: 20, alignItems: 'center', justifyContent: 'center' }}>
+            {(() => {
+              const info = resolveStudentInfo(nextStudent);
+              return (
+                <Text style={{ color: '#fff', fontSize: 13, fontFamily: fontFamily.bold, textAlign: 'center' }}>
+                  UPCOMING: <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontFamily: fontFamily.medium }}>{info.name.toUpperCase()}  |  CLASS: {info.classVal.toUpperCase()} - {info.sectionVal.toUpperCase()}</Text>
+                </Text>
+              );
+            })()}
+          </View>
+        )}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%', paddingHorizontal: 20, marginTop: nextStudent ? 0 : 20 }}>
         <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
           <View style={s.controlIconSquare}>
             <DynamicIcon name="redo" size={18} color="#fff" />
@@ -411,6 +512,7 @@ export default function CameraScreen({ navigation, route }) {
           </View>
           <Text style={s.controlLabel}>Cancel</Text>
         </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -425,8 +527,8 @@ const s = StyleSheet.create({
   },
   camera: { flex: 1 },
   
-  topStatus: { position: 'absolute', width: '100%', alignItems: 'center', zIndex: 10 },
-  levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm, ...shadows.md },
+  topStatus: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, alignItems: 'stretch' },
+  levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, ...shadows.md },
   bgSuccess: { backgroundColor: '#22c55e' },
   bgError: { backgroundColor: '#ef4444' },
   levelText: { color: '#fff', fontSize: 13, fontFamily: 'SairaSemiCondensed-Bold', marginLeft: 8 },

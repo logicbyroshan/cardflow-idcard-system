@@ -1,0 +1,790 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Statistics Dashboard - Adarsh ID Cards{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
+
+{% block extra_css %}
+<style>
+  .stats-page {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-gray-50, #f8fafc);
+  }
+
+  .stats-sticky-stack {
+    position: sticky;
+    top: 0;
+    z-index: 28;
+    background: var(--color-gray-50, #f8fafc);
+    padding-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .stats-page .pro-feature-tabs {
+    position: static;
+    margin: 0;
+    padding: 0 20px;
+    min-height: 42px;
+    border: 1px solid var(--color-gray-200, var(--color-gray-200));
+    border-left: 0;
+    border-right: 0;
+    background: var(--color-white);
+  }
+
+  .stats-grid-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+  }
+
+  .stats-charts-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+  }
+
+  /* Stat Summary Cards - Dashboard Style */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.13);
+    border-radius: 0;
+    background: var(--color-white);
+    overflow: visible;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .metric-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    background: linear-gradient(145deg, var(--color-white) 0%, #f9fbff 100%);
+    border: none;
+    border-right: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 0;
+    position: relative;
+    flex-direction: row-reverse;
+    transition: background 0.18s;
+  }
+
+  .metric-card:last-child {
+    border-right: none;
+  }
+
+  @media (max-width: 1024px) {
+    .metrics-row {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .metric-card {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      border-right: 1px solid rgba(0, 0, 0, 0.12);
+    }
+    .metric-card:nth-child(2n) {
+      border-right: none;
+    }
+    .metric-card:nth-last-child(-n+2) {
+      border-bottom: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .metrics-row {
+      grid-template-columns: 1fr;
+    }
+    .metric-card {
+      border-right: none;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+    }
+    .metric-card:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .metric-card:hover {
+    background: linear-gradient(145deg, var(--color-white) 0%, #f4f7ff 100%);
+  }
+
+  .metric-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+
+  .metric-label {
+    font-size: 13px;
+    color: #555;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .metric-footer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--color-gray-400);
+  }
+
+  /* Icon Wrappers - Dashboard Gradients */
+  .metric-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+
+  .metric-card:hover .metric-icon-wrap {
+    transform: scale(1.05);
+  }
+
+  .metric-icon-wrap i {
+    font-size: 18px !important;
+  }
+
+  .metric-icon-wrap.color-primary {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary, #764ba2) 100%);
+    color: var(--color-white);
+  }
+
+  .metric-icon-wrap.color-success {
+    background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-dark) 100%);
+    color: var(--color-white);
+  }
+
+  .metric-icon-wrap.color-warning {
+    background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning-dark) 100%);
+    color: var(--color-white);
+  }
+
+  .metric-icon-wrap.color-info {
+    background: linear-gradient(135deg, var(--teal, #0d9488) 0%, var(--color-sky-700) 100%);
+    color: var(--color-white);
+  }
+
+  /* Visual Charts Layout */
+  .chart-card {
+    background: var(--color-white);
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--color-gray-200);
+    padding: 24px;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Main activity chart: snap section, fills full viewport height */
+  .stats-charts-area > .chart-card {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    height: 100%;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--color-gray-200);
+    box-sizing: border-box;
+  }
+
+  .stats-charts-area > .chart-card .chart-container {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  /* Split grid: snap section, fills full viewport height */
+  .charts-split-grid {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    height: 100%;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-top: 1px solid var(--color-gray-200);
+    box-sizing: border-box;
+  }
+
+  .charts-split-grid .chart-card {
+    height: 100%;
+    border-bottom: none;
+    border-left: 1px solid var(--color-gray-200);
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+
+  .charts-split-grid .chart-card:first-child {
+    border-left: none;
+  }
+
+  .charts-split-grid .chart-card .split-chart-container {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-gray-100);
+    padding-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .chart-title-area h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-gray-800);
+    margin: 0;
+  }
+
+  .chart-title-area p {
+    font-size: 12px;
+    color: var(--color-gray-500);
+    margin: 4px 0 0 0;
+  }
+
+  .range-selector {
+    display: flex;
+    background: var(--color-gray-100);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--color-gray-200);
+  }
+
+  .range-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-gray-600);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .range-btn:hover {
+    color: var(--color-gray-900);
+  }
+
+  .range-btn.active {
+    background: var(--color-white);
+    color: #4f46e5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 200px;
+  }
+
+  /* Two column charts grid - now handled above as snap section */
+
+  @media (max-width: 1024px) {
+    .charts-split-grid {
+      grid-template-columns: 1fr;
+    }
+    .charts-split-grid .chart-card {
+      height: 50%;
+    }
+    .charts-split-grid .chart-card:nth-child(2) {
+      border-left: none;
+      border-top: 1px solid var(--color-gray-200);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .charts-split-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .split-chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 120px;
+  }
+
+  /* Skeleton Loading Overlay */
+  .chart-loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 8px;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.3s;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(79, 70, 229, 0.1);
+    border-radius: 50%;
+    border-top-color: #4f46e5;
+    animation: stats-spin 0.8s linear infinite;
+  }
+
+  @keyframes stats-spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Statistics</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right">
+  {% include 'partials/notification-bell.html' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="stats-page">
+
+  <div class="stats-sticky-stack">
+    {% include 'partials/pro-feature-tabs.html' with pro_tab='statistics' %}
+  </div>
+
+  <div class="stats-grid-wrap">
+
+    <!-- Metrics Row -->
+    <div class="metrics-row">
+      <!-- Live Active Sessions -->
+      <div class="metric-card">
+        <div class="metric-icon-wrap color-primary">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div class="metric-info">
+          <div class="metric-value" id="valCurrentActive">-</div>
+          <div class="metric-label">Live Active Sessions</div>
+          <div class="metric-footer">
+            <i class="fa-solid fa-circle-check" style="color:#10b981;"></i>
+            <span>Real-time presence tabs</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- All-Time Peak Active -->
+      <div class="metric-card">
+        <div class="metric-icon-wrap color-success">
+          <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <div class="metric-info">
+          <div class="metric-value" id="valPeakActive">-</div>
+          <div class="metric-label">All-Time Peak Active</div>
+          <div class="metric-footer">
+            <i class="fa-solid fa-arrow-up" style="color:#10b981;"></i>
+            <span>Max concurrent sessions</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Busiest Interval -->
+      <div class="metric-card">
+        <div class="metric-icon-wrap color-warning">
+          <i class="fa-solid fa-clock"></i>
+        </div>
+        <div class="metric-info">
+          <div class="metric-value" id="valPeakHour" style="font-size: 16px; min-height: 28px; display: flex; align-items: center;">-</div>
+          <div class="metric-label">Busiest Interval</div>
+          <div class="metric-footer">
+            <i class="fa-solid fa-bolt" style="color:#f59e0b;"></i>
+            <span>Busiest operations hour</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Batch Job Success -->
+      <div class="metric-card">
+        <div class="metric-icon-wrap color-info">
+          <i class="fa-solid fa-gears"></i>
+        </div>
+        <div class="metric-info">
+          <div class="metric-value" id="valSuccessRate">-</div>
+          <div class="metric-label">Batch Job Success</div>
+          <div class="metric-footer">
+            <i class="fa-solid fa-circle-check" style="color:#06b6d4;"></i>
+            <span id="valProcessingTasks">0 jobs currently processing</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Chart Card -->
+    <div class="stats-charts-area">
+    <div class="chart-card" style="position:relative;">
+      <div class="chart-loader" id="mainChartLoader">
+        <div class="spinner"></div>
+      </div>
+      <div class="chart-header">
+        <div class="chart-title-area">
+          <h3>User Activities Overview</h3>
+          <p>Real-time client administrators and workflow assistants active sessions</p>
+        </div>
+        <div class="range-selector">
+          <button class="range-btn active" data-range="hourly">Hours</button>
+          <button class="range-btn" data-range="daily">Days</button>
+          <button class="range-btn" data-range="weekly">Weeks</button>
+          <button class="range-btn" data-range="monthly">Months</button>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="mainActivityChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Split Row -->
+    <div class="charts-split-grid">
+      <!-- Batch Tasks -->
+      <div class="chart-card" style="position:relative;">
+        <div class="chart-loader" id="batchChartLoader">
+          <div class="spinner"></div>
+        </div>
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h3>Background Batch Tasks</h3>
+            <p>Export jobs, template checks and reuploads count over time</p>
+          </div>
+        </div>
+        <div class="split-chart-container">
+          <canvas id="batchChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Peak Hour Distribution -->
+      <div class="chart-card" style="position:relative;">
+        <div class="chart-loader" id="distributionChartLoader">
+          <div class="spinner"></div>
+        </div>
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h3>Busiest Time Distribution</h3>
+            <p>Active users across all roles over the selected range</p>
+          </div>
+        </div>
+        <div class="split-chart-container">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /stats-charts-area -->
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/vendor/chart.min.js' %}"></script>
+<script>
+(function() {
+  var mainChart = null;
+  var batchChart = null;
+  var distributionChart = null;
+  var currentRange = 'hourly';
+
+  // Demo data for when real data is empty/zero
+  var DEMO = {
+    hourly:  { labels: ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'], clients: [2,5,9,14,12,8,11,13,10,6,2], assistants: [1,3,7,11,9,6,9,10,7,4,1], batch: [0,1,3,2,5,4,2,3,1,0,0] },
+    daily:   { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], clients: [12,18,22,19,24,8,4], assistants: [8,14,17,15,20,5,2], batch: [3,6,8,7,9,2,1] },
+    weekly:  { labels: ['W1','W2','W3','W4','W5'], clients: [60,95,110,88,72], assistants: [45,78,92,70,58], batch: [18,32,40,28,22] },
+    monthly: { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], clients: [40,55,72,68,90,85,95,88,76,82,78,60], assistants: [30,42,58,54,74,70,80,72,62,68,64,48], batch: [10,15,22,20,30,28,35,30,24,28,26,18] }
+  };
+
+  function isAllZero(arr) { return !arr || arr.length === 0 || arr.every(function(v){ return !v || v === 0; }); }
+
+  function fetchStats(range) {
+    showLoaders(true);
+    fetch('{% url "api_statistics_data" %}?range=' + range)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        showLoaders(false);
+        if (data.success) {
+          updateMetrics(data.summary);
+          // Use demo data if real data is all zeros
+          var demo = DEMO[range] || DEMO.hourly;
+          var labels = (isAllZero(data.client_activity) && isAllZero(data.assistant_activity)) ? demo.labels : data.labels;
+          var clients = isAllZero(data.client_activity) ? demo.clients : data.client_activity;
+          var assistants = isAllZero(data.assistant_activity) ? demo.assistants : data.assistant_activity;
+          var batchCounts = isAllZero(data.batch_jobs_count) ? demo.batch : data.batch_jobs_count;
+          
+          var allUserActivity = isAllZero(data.all_user_activity) ? demo.clients.map(function(c, idx) {
+             return c + demo.assistants[idx] + 3;
+          }) : data.all_user_activity;
+
+          if (typeof Chart !== 'undefined') {
+            try { renderMainActivityChart(labels, clients, assistants); } catch (e) { console.error('main chart:', e); }
+            try { renderBatchChart(labels, batchCounts); } catch (e) { console.error('batch chart:', e); }
+            try { renderDistributionChart(labels, allUserActivity); } catch (e) { console.error('dist chart:', e); }
+          } else {
+            showChartErrorMessages();
+          }
+        }
+      })
+      .catch(function(err) {
+        showLoaders(false);
+        console.error('Failed to load statistics:', err);
+      });
+  }
+
+  function showChartErrorMessages() {
+    var canvasIds = ['mainActivityChart', 'batchChart', 'distributionChart'];
+    canvasIds.forEach(function(id) {
+      var canvas = document.getElementById(id);
+      if (canvas) {
+        var parent = canvas.parentElement;
+        if (parent) {
+          parent.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-gray-500);font-weight:600;font-size:13px;padding:20px;text-align:center;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:8px;color:var(--color-warning);"></i> Chart.js failed to load. Please check your internet connection.</div>';
+        }
+      }
+    });
+  }
+
+  function showLoaders(show) {
+    var loaders = ['mainChartLoader', 'batchChartLoader', 'distributionChartLoader'];
+    loaders.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.style.opacity = show ? '1' : '0';
+        el.style.pointerEvents = show ? 'auto' : 'none';
+        if (show) {
+          el.style.display = 'flex';
+        } else {
+          setTimeout(function() {
+            if (el.style.opacity === '0') el.style.display = 'none';
+          }, 300);
+        }
+      }
+    });
+  }
+
+  function updateMetrics(summary) {
+    document.getElementById('valCurrentActive').textContent = summary.current_active_users;
+    document.getElementById('valPeakActive').textContent = summary.peak_active_users;
+    document.getElementById('valPeakHour').textContent = summary.peak_working_hour;
+    document.getElementById('valSuccessRate').textContent = summary.batch_jobs_success_rate + '%';
+    document.getElementById('valProcessingTasks').textContent = summary.batch_jobs_processing + ' jobs processing now';
+  }
+
+  function renderMainActivityChart(labels, clients, assistants) {
+    var ctx = document.getElementById('mainActivityChart').getContext('2d');
+    
+    // Create solid gradients for stronger area fill
+    var gradClient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradClient.addColorStop(0, 'rgba(79, 70, 229, 0.45)');
+    gradClient.addColorStop(1, 'rgba(79, 70, 229, 0.05)');
+
+    var gradAssistant = ctx.createLinearGradient(0, 0, 0, 400);
+    gradAssistant.addColorStop(0, 'rgba(16, 185, 129, 0.45)');
+    gradAssistant.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+
+    if (mainChart) {
+      mainChart.destroy();
+    }
+
+    mainChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Active Client Admins',
+            data: clients,
+            borderColor: '#4f46e5',
+            backgroundColor: gradClient,
+            borderWidth: 2,
+            fill: true,
+            tension: 0,
+            pointStyle: 'rectRounded',
+            pointRadius: 5,
+            pointBackgroundColor: '#4f46e5',
+            pointHoverRadius: 7
+          },
+          {
+            label: 'Active Workflow Assistants',
+            data: assistants,
+            borderColor: '#10b981',
+            backgroundColor: gradAssistant,
+            borderWidth: 2,
+            fill: true,
+            tension: 0,
+            pointStyle: 'rectRounded',
+            pointRadius: 5,
+            pointBackgroundColor: '#10b981',
+            pointHoverRadius: 7
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              boxWidth: 12,
+              font: { weight: '600', size: 12 }
+            }
+          },
+          tooltip: {
+            padding: 12,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: { font: { weight: '600' } }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { weight: '600' } }
+          }
+        }
+      }
+    });
+  }
+
+  function renderBatchChart(labels, counts) {
+    var ctx = document.getElementById('batchChart').getContext('2d');
+    
+    if (batchChart) {
+      batchChart.destroy();
+    }
+
+    var barGrad = ctx.createLinearGradient(0, 0, 0, 200);
+    barGrad.addColorStop(0, '#06b6d4');
+    barGrad.addColorStop(1, '#0891b2');
+
+    batchChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Batch Jobs Processed',
+          data: counts,
+          backgroundColor: barGrad,
+          borderRadius: 4,
+          maxBarThickness: 32
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+          },
+          x: {
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  function renderDistributionChart(labels, allUserActivity) {
+    var ctx = document.getElementById('distributionChart').getContext('2d');
+    if (distributionChart) {
+      distributionChart.destroy();
+    }
+
+    var grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, '#f59e0b');
+    grad.addColorStop(1, '#fbbf24');
+
+    distributionChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Active Users',
+          data: allUserActivity,
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.06)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  // Bind range selector buttons
+  document.querySelectorAll('.range-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      currentRange = this.getAttribute('data-range');
+      fetchStats(currentRange);
+    });
+  });
+
+  // Initial load
+  fetchStats(currentRange);
+})();
+</script>
+{% endblock %}

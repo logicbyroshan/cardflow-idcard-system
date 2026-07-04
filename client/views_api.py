@@ -13,7 +13,9 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from accounts.rate_limit import rate_limit
-from staff.models import Staff
+from assistants.models import Assistant
+from assistants.services import AssistantService
+from .services_staff import ClientStaffService
 
 from core.models import ClientMessage, NotificationRead
 from core.services.permission_service import PermissionService
@@ -25,7 +27,6 @@ from .views_decorators import require_client_user, require_client_admin, require
 from .services import (
     ClientAccessService,
     ClientDashboardService,
-    ClientStaffService,
     ClientCardService,
     ClientImageService,
 )
@@ -361,12 +362,13 @@ def api_staff_list_create(request):
     if result.success:
         staff_id = (result.data or {}).get('staff_id')
         if staff_id:
+            raw_id = staff_id - 200000 if staff_id >= 200000 else staff_id
             try:
                 staff = (
-                    Staff.objects
+                    Assistant.objects
                     .select_related('user')
                     .prefetch_related('assigned_groups')
-                    .filter(id=staff_id)
+                    .filter(id=raw_id)
                     .first()
                 )
                 if staff:
@@ -380,10 +382,11 @@ def api_staff_list_create(request):
                     )
             except Exception:
                 logger.exception('Failed to log staff create activity for staff_id=%s', staff_id)
+        
         return JsonResponse({
             'success': True,
             'message': result.message,
-            'data': {'staff_id': result.data.get('staff_id')}
+            'data': {'staff_id': staff_id}
         })
 
     status_code = _result_error_status(result.message, fallback=400)
@@ -400,6 +403,7 @@ def api_staff_detail(request, staff_id):
     """
     API: Get, Update, or Delete a specific staff member.
     """
+    raw_id = staff_id - 200000 if staff_id >= 200000 else staff_id
     if request.method == 'GET':
         result = ClientStaffService.get_staff_detail(request.user, staff_id)
         
@@ -416,12 +420,17 @@ def api_staff_detail(request, staff_id):
     
     if request.method == 'PUT':
         before_staff = (
-            Staff.objects
+            Assistant.objects
             .select_related('user')
             .prefetch_related('assigned_groups')
-            .filter(id=staff_id)
+            .filter(id=raw_id)
             .first()
         )
+        if not before_staff:
+            return JsonResponse({
+                'success': False,
+                'error': 'Assistant not found'
+            }, status=404)
         before_assignment_snapshot = _client_staff_assignment_snapshot(before_staff)
 
         content_type = request.content_type or ''
@@ -464,9 +473,9 @@ def api_staff_detail(request, staff_id):
                 }, status=400)
         # Debug: log incoming assignment_scopes payload before normalization
         try:
-            logger.info('Incoming staff update payload for staff_id=%s: %s', staff_id, json.dumps({k: v for k, v in data.items() if k in ('assignment_scopes', 'assigned_groups')}, ensure_ascii=False))
+            logger.info('Incoming staff update payload for staff_id=%s: %s', raw_id, json.dumps({k: v for k, v in data.items() if k in ('assignment_scopes', 'assigned_groups')}, ensure_ascii=False))
         except Exception:
-            logger.exception('Failed to log incoming staff update payload for staff_id=%s', staff_id)
+            logger.exception('Failed to log incoming staff update payload for staff_id=%s', raw_id)
         data = _normalize_staff_assignment_payload(data)
         
         result = ClientStaffService.update_staff(request.user, staff_id, data)
@@ -474,10 +483,10 @@ def api_staff_detail(request, staff_id):
         if result.success:
             try:
                 staff = (
-                    Staff.objects
+                    Assistant.objects
                     .select_related('user')
                     .prefetch_related('assigned_groups')
-                    .filter(id=staff_id)
+                    .filter(id=raw_id)
                     .first()
                 )
                 if staff:
@@ -490,7 +499,7 @@ def api_staff_detail(request, staff_id):
                         reason='updated',
                     )
             except Exception:
-                logger.exception('Failed to log staff update activity for staff_id=%s', staff_id)
+                logger.exception('Failed to log staff update activity for staff_id=%s', raw_id)
             return JsonResponse({
                 'success': True,
                 'message': result.message
@@ -503,21 +512,21 @@ def api_staff_detail(request, staff_id):
         }, status=status_code)
     
     # DELETE
-    staff_name = f'Staff #{staff_id}'
+    staff_name = f'Staff #{raw_id}'
     try:
-        existing_staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+        existing_staff = Assistant.objects.select_related('user').filter(id=raw_id).first()
         if existing_staff:
             staff_name = existing_staff.user.get_full_name() or existing_staff.user.username
     except Exception:
-        logger.exception('Failed to resolve staff name before delete for staff_id=%s', staff_id)
+        logger.exception('Failed to resolve staff name before delete for staff_id=%s', raw_id)
 
     result = ClientStaffService.delete_staff(request.user, staff_id)
     
     if result.success:
         try:
-            ActivityService.log_staff_delete(request, staff_name, staff_id)
+            ActivityService.log_staff_delete(request, staff_name, raw_id)
         except Exception:
-            logger.exception('Failed to log staff delete activity for staff_id=%s', staff_id)
+            logger.exception('Failed to log staff delete activity for staff_id=%s', raw_id)
         return JsonResponse({
             'success': True,
             'message': result.message
@@ -536,26 +545,27 @@ def api_staff_toggle_status(request, staff_id):
     """
     API: Toggle staff member active/inactive status.
     """
+    raw_id = staff_id - 200000 if staff_id >= 200000 else staff_id
     try:
         result = ClientStaffService.toggle_staff_status(request.user, staff_id)
         
         if result.success:
             is_active = result.data.get('is_active', False)
             try:
-                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                staff = Assistant.objects.select_related('user').filter(id=raw_id).first()
                 if staff:
                     ActivityService.log_staff_status(request, staff, is_active)
                 else:
                     ActivityService.log(
                         'staff_status',
-                        f'Staff "#{staff_id}" marked as {"active" if is_active else "inactive"}',
+                        f'Staff "#{raw_id}" marked as {"active" if is_active else "inactive"}',
                         request=request,
                         target_model='Staff',
-                        target_id=staff_id,
-                        target_name=f'Staff #{staff_id}',
+                        target_id=raw_id,
+                        target_name=f'Staff #{raw_id}',
                     )
             except Exception:
-                logger.exception('Failed to log staff status activity for staff_id=%s', staff_id)
+                logger.exception('Failed to log staff status activity for staff_id=%s', raw_id)
             return JsonResponse({
                 'success': True,
                 'message': result.message,
@@ -578,6 +588,7 @@ def api_staff_toggle_status(request, staff_id):
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='client_staff_temp_pw')
 def api_staff_set_temp_password(request, staff_id):
     """API: Set temporary password for a client-owned staff member."""
+    raw_id = staff_id - 200000 if staff_id >= 200000 else staff_id
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -604,8 +615,8 @@ def api_staff_set_temp_password(request, staff_id):
 
     if result.success:
         try:
-            staff = Staff.objects.select_related('user').filter(id=staff_id).first()
-            staff_name = f'Staff #{staff_id}'
+            staff = Assistant.objects.select_related('user').filter(id=raw_id).first()
+            staff_name = f'Staff #{raw_id}'
             if staff:
                 staff_name = staff.user.get_full_name() or staff.user.username
             ActivityService.log(
@@ -613,11 +624,11 @@ def api_staff_set_temp_password(request, staff_id):
                 f'Temporary password reset for client staff "{staff_name}"',
                 request=request,
                 target_model='Staff',
-                target_id=staff_id,
+                target_id=raw_id,
                 target_name=staff_name,
             )
         except Exception:
-            logger.exception('Failed to log staff temp-password activity for staff_id=%s', staff_id)
+            logger.exception('Failed to log staff temp-password activity for staff_id=%s', raw_id)
         return JsonResponse(result.to_response_dict(), status=200)
 
     msg = (result.message or '').lower()

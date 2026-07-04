@@ -269,6 +269,8 @@
     padding: 12px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+    min-height: 50px;
+    box-sizing: border-box;
 }
 
 .dashboard-card-header h3 {
@@ -414,12 +416,10 @@
 
 .dashboard-card-header.overview-header {
     gap: 12px;
-    padding: 8px 12px;
 }
 
 .dashboard-card-header.user-overview-header {
     gap: 8px;
-    padding: 8px 12px;
 }
 
 .user-overview-live-badges {
@@ -455,9 +455,15 @@
 }
 
 .user-overview-live-badge-mobile {
-    background: #ecfdf5;
-    border-color: #86efac;
-    color: #166534;
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #c2410c;
+}
+
+.user-overview-live-badge-never-active {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #374151;
 }
 
 .overview-search-inline {
@@ -866,7 +872,7 @@
     text-align: center;
     margin: 0;
     border-radius: 0;
-    border: 1px solid var(--color-gray-300);
+    border: 1px solid var(--color-gray-300, #d1d5db) !important;
     margin-left: -1px;
     margin-top: -1px;
     padding: 10px 12px;
@@ -1098,4 +1104,28 @@
 /* Single column layout for assistant without reprint permission */
 .dashboard-grid.single-col {
     grid-template-columns: 1fr;
+}
+
+/* Sidebar items height & padding alignment consistency */
+.dashboard-side-sticky .card-overview-item,
+.dashboard-side-sticky .quick-action-btn {
+    min-height: 48px !important;
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* Ensure the last children also have bottom borders to match the quick actions */
+.dashboard-side-sticky .card-overview-item:last-child {
+    border-bottom: 1px solid var(--color-blue-200, #bbd4ff) !important;
+}
+.dashboard-section-tabs .dashboard-tab-item:last-child {
+    border-bottom: 1px solid var(--color-gray-200, #e5e7eb) !important;
+}
+
+@media (min-width: 1000px) and (max-height: 860px) {
+    .dashboard-side-sticky .card-overview-item,
+    .dashboard-side-sticky .quick-action-btn {
+        min-height: 42px !important;
+        padding: 6px 10px !important;
+    }
 }

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Client
         'perm-idcard-client-list',
         'perm-manage-client-staff',
+        'perm-manage-photographer-staff',
         // Settings
         'perm-idcard-setting-list', 'perm-idcard-setting-add', 'perm-idcard-setting-edit',
         'perm-idcard-setting-delete', 'perm-idcard-setting-status',
@@ -217,10 +218,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     NS.enableActionButtons = function(enable) {
+        var assignStaffBtn = document.getElementById('assignStaffBtn');
         if (editStaffBtn) editStaffBtn.disabled = !enable;
         if (activeStaffBtn) activeStaffBtn.disabled = !enable;
         if (deleteStaffBtn) deleteStaffBtn.disabled = !enable;
         if (viewStaffBtn) viewStaffBtn.disabled = !enable;
+        if (assignStaffBtn) assignStaffBtn.disabled = !enable;
     };
 
     NS.updateActiveButtonState = function() {

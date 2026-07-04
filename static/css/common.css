@@ -168,6 +168,26 @@ body[style*="overflow:hidden"] {
   cursor: not-allowed;
 }
 
+.btn-dark-grey {
+  background-color: #64748b !important;
+  color: #ffffff !important;
+  border-color: #64748b !important;
+}
+.btn-dark-grey:hover:not(:disabled) {
+  background-color: #475569 !important;
+  border-color: #475569 !important;
+}
+
+.btn-sky-blue {
+  background-color: #0ea5e9 !important;
+  color: #ffffff !important;
+  border-color: #0ea5e9 !important;
+}
+.btn-sky-blue:hover:not(:disabled) {
+  background-color: #0284c7 !important;
+  border-color: #0284c7 !important;
+}
+
 .btn-settings i {
   font-size: var(--ui-font-size-base, 14px);
 }
@@ -2572,4 +2592,28 @@ table.table td, table.table th, td, th, select, select option, .client-card, .op
   white-space: nowrap !important;
   border-width: 0 !important;
 }
+
+/* Status Badge styling for tables (Active/Inactive, etc.) */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: var(--ui-font-size-xs, 11px);
+  font-weight: 700;
+  text-transform: uppercase !important;
+}
+
+.status-badge.active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.status-badge.inactive {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
 

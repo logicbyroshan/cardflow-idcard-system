@@ -62,14 +62,20 @@ class ImpersonateService:
         if current_user.pk == target_user_id:
             return {'success': False, 'message': 'Cannot impersonate yourself.'}
 
-        # Cannot chain impersonations
-        if cls.is_impersonating(request):
-            return {'success': False, 'message': 'Already impersonating. Stop first.'}
-
+        # Cannot impersonate operators or photographers
         try:
             target_user = User.objects.get(pk=target_user_id)
         except User.DoesNotExist:
             return {'success': False, 'message': 'User not found.'}
+
+        if target_user.role in ('operator', 'admin_staff', 'photographer'):
+            return {'success': False, 'message': 'Cannot impersonate operators or photographers.'}
+
+        # Cannot chain impersonations
+        if cls.is_impersonating(request):
+            return {'success': False, 'message': 'Already impersonating. Stop first.'}
+
+
 
         if not target_user.is_active:
             return {'success': False, 'message': 'Cannot impersonate an inactive user.'}
@@ -132,9 +138,15 @@ class ImpersonateService:
 
         impersonated_name = request.user.get_full_name() or request.user.username
 
+        # Remove impersonation markers so they don't persist after login()
+        if cls.SESSION_KEY in request.session:
+            del request.session[cls.SESSION_KEY]
+        if cls.SESSION_NAME_KEY in request.session:
+            del request.session[cls.SESSION_NAME_KEY]
+
         # Returning from impersonation should also avoid side-effect session revocations.
         request._skip_device_session_enforcement = True
-        # Switch back — login() flushes the session (clears impersonation markers)
+        # Switch back — login() flushes the session but preserves dict, so we manually deleted markers above
         login(request, original_user, backend='django.contrib.auth.backends.ModelBackend')
 
         try:
@@ -173,9 +185,9 @@ class ImpersonateService:
         users = (
             User.objects
             .filter(is_active=True)
-            .select_related('client_profile', 'staff_profile__client')
+            .select_related('client_profile', 'assistant_profile__client', 'operator_profile')
             .exclude(pk=request.user.pk)
-            .exclude(role='pro_user')
+            .exclude(role__in=['pro_user', 'operator', 'admin_staff', 'photographer'])
             .order_by('role', 'first_name', 'username')
         )
 
@@ -186,13 +198,14 @@ class ImpersonateService:
             if u.role == 'client':
                 client_profile = getattr(u, 'client_profile', None)
                 client_name = getattr(client_profile, 'name', '') or ''
-            elif u.role == 'client_staff':
-                staff_profile = getattr(u, 'staff_profile', None)
-                client_name = getattr(getattr(staff_profile, 'client', None), 'name', '') or ''
-            elif u.role == 'admin_staff':
+            elif u.role == 'assistant':
+                assistant_profile = getattr(u, 'assistant_profile', None)
+                client_name = getattr(getattr(assistant_profile, 'client', None), 'name', '') or ''
+            elif u.role == 'operator':
                 client_name = ''
 
-            result.append({
+            from core.services.compat_service import CompatibilityService
+            result.append(CompatibilityService.translate_dict({
                 'id': u.id,
                 'name': name,
                 'email': u.email,
@@ -200,6 +213,6 @@ class ImpersonateService:
                 'role_display': dict(User.ROLE_CHOICES).get(u.role, u.role),
                 'is_active': u.is_active,
                 'client_name': client_name,
-            })
+            }))
 
         return result

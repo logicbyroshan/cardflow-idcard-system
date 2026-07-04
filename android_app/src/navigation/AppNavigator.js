@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
+import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
 
 // Eagerly load auth screens (they're needed immediately)
 import WelcomeScreen from '../screens/WelcomeScreen';
@@ -42,7 +43,7 @@ export default function AppNavigator() {
   const { isAuthenticated, isLoading, isAppUnlocked, isSessionKicked } = useAuth();
 
   if (isLoading) {
-    return null;
+    return <AnimatedSplashScreen />;
   }
 
   if (isSessionKicked) {

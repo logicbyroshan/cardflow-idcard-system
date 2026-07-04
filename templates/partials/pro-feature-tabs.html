@@ -14,4 +14,18 @@
     <i class="fa-solid fa-user-secret"></i> Manage Guest Users
   </a>
   {% endif %}
+
+  {# Statistics — visible to pro_user and super_admin #}
+  {% if is_pro_user or is_super_admin %}
+  <a href="{% url 'pro_user_statistics' %}" class="pro-feature-tab{% if pro_tab == 'statistics' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'statistics' %}true{% else %}false{% endif %}">
+    <i class="fa-solid fa-chart-line"></i> Statistics
+  </a>
+  {% endif %}
+
+  {# Batch Jobs — visible to pro_user and super_admin #}
+  {% if is_pro_user or is_super_admin %}
+  <a href="{% url 'pro_user_batch_jobs' %}" class="pro-feature-tab{% if pro_tab == 'batch_jobs' %} active{% endif %}" role="tab" aria-selected="{% if pro_tab == 'batch_jobs' %}true{% else %}false{% endif %}">
+    <i class="fa-solid fa-bars-progress"></i> Batch Jobs
+  </a>
+  {% endif %}
 </div>

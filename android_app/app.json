@@ -2,13 +2,13 @@
   "expo": {
     "name": "Adarsh ID",
     "slug": "adarsh-final-deploye",
-    "version": "1.1.2",
+    "version": "1.1.6",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/adarsh-logo-small.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/adarsh-logo-small.png",
       "resizeMode": "contain",
       "backgroundColor": "#0f172a"
     },
@@ -19,11 +19,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adarsh-logo-small.png",
         "backgroundColor": "#0f172a"
       },
       "package": "com.adarshid.app",
-      "versionCode": 101,
+      "versionCode": 106,
       "permissions": [
         "CAMERA"
       ]

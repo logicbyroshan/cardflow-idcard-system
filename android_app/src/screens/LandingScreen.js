@@ -666,4 +666,6 @@ const s = StyleSheet.create({
   benefitIcon: { marginBottom: 12 },
   benefitTitle: { fontSize: 14, fontFamily: 'SairaSemiCondensed-Bold', color: colors.gray800, marginBottom: 4 },
   benefitSub: { fontSize: 11, color: colors.gray500, textAlign: 'center', fontFamily: 'SairaSemiCondensed-Regular' },
+  loading: { flex: 1, backgroundColor: colors.surfaceBg, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { marginTop: 16, fontSize: 14, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.brandPrimary },
 });

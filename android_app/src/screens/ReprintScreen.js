@@ -57,14 +57,21 @@ export default function ReprintScreen({ navigation, route }) {
           name: table.client_name || 'Global Client',
           requested: 0,
           confirmed: 0,
+          latest_request: 0,
           tables: []
         };
       }
       clientsMap[cid].requested += table.requested || 0;
       clientsMap[cid].confirmed += table.confirmed || 0;
+      if (table.latest_request) {
+        const t = new Date(table.latest_request).getTime();
+        if (t > clientsMap[cid].latest_request) {
+          clientsMap[cid].latest_request = t;
+        }
+      }
       clientsMap[cid].tables.push(table);
     });
-    return Object.values(clientsMap).sort((a, b) => (b.requested + b.confirmed) - (a.requested + a.confirmed));
+    return Object.values(clientsMap).sort((a, b) => b.latest_request - a.latest_request);
   }, [tables]);
 
   const handleClientPress = (client) => {

@@ -283,36 +283,27 @@ a.count-badge.pool:hover {
     padding: 8px 12px;
     background: var(--color-blue-50);
     border-radius: 0;
-    border: 1px solid var(--color-blue-200);
-    margin-top: -1px;
-    margin-left: -1px;
+    border: none;
+    border-bottom: 1px solid var(--color-blue-200);
+    margin: 0;
     text-decoration: none;
     color: inherit;
     cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-button.card-overview-item {
-    width: 100%;
-    appearance: none;
-    -webkit-appearance: none;
-    font: inherit;
-}
-
-.card-overview-item:hover {
-    background: #edf5ff;
-    border-color: var(--blue-light);
+.card-overview-item:last-child {
+    border-bottom: none;
 }
 
 .card-overview-item-static {
     cursor: default;
     background: var(--color-white);
-    border-color: var(--color-gray-300);
+    border-bottom: 1px solid var(--color-gray-200);
 }
 
 .card-overview-item-static:hover {
     background: var(--color-white);
-    border-color: var(--color-gray-300);
 }
 
 .card-overview-item:first-child {
@@ -402,7 +393,8 @@ button.card-overview-item {
 
 .dashboard-tab-item {
     width: 100%;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: none;
+    border-bottom: 1px solid var(--color-gray-200);
     text-align: left;
     appearance: none;
     -webkit-appearance: none;
@@ -411,13 +403,15 @@ button.card-overview-item {
 
 .dashboard-section-tabs .dashboard-tab-item {
     background: var(--color-white);
-    border-color: var(--color-gray-300);
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease;
+}
+
+.dashboard-section-tabs .dashboard-tab-item:last-child {
+    border-bottom: none;
 }
 
 .dashboard-section-tabs .dashboard-tab-item:hover {
     background: var(--color-gray-50);
-    border-color: var(--color-slate-400);
 }
 
 .dashboard-section-tabs .dashboard-tab-item .card-overview-label,
@@ -437,7 +431,7 @@ button.card-overview-item {
 
 .dashboard-tab-item.is-active {
     background: var(--color-indigo-50);
-    border-color: var(--color-blue-700);
+    border-bottom: 1px solid var(--color-blue-700);
 }
 
 .dashboard-tab-item.is-active .card-overview-label,
@@ -447,7 +441,7 @@ button.card-overview-item {
 
 .dashboard-team-scope-item.is-active {
     background: #e7f1ff;
-    border-color: var(--color-blue-700);
+    border-bottom: 1px solid var(--color-blue-700);
 }
 
 .dashboard-team-scope-item.is-active .card-overview-label,

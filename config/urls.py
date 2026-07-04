@@ -166,11 +166,14 @@ urlpatterns += [
     path('panel/', include('core.urls')),
     path('panel/auth/', include('accounts.urls')),
     path('panel/client/', include('client.urls')),
+    path('panel/assistants/', include('assistants.urls')),
     path('panel/exports/', include('exports.urls')),
     path('panel/images/', include('mediafiles.urls')),
-    path('panel/staff/', include('staff.urls')),
+    path('panel/operators/', include('operators.urls')),
     path('panel/work/', include('idcards.urls')),
     path('panel/reprint/', include('reprintcard.urls')),
+    path('panel/staff/', include('staff.urls')),
+    path('panel/stats/', include('stats.urls')),
 
     # Backward-compatible root mounts for deployments that still hit the app
     # without the /panel prefix.
@@ -178,11 +181,14 @@ urlpatterns += [
     path('', include(('accounts.urls', 'accounts'), namespace='accounts_root')),
     path('auth/', include(('accounts.urls', 'accounts'), namespace='accounts_auth_root')),
     path('client/', include(('client.urls', 'client'), namespace='client_root')),
+    path('assistants/', include(('assistants.urls', 'assistants'), namespace='assistants_root')),
     path('exports/', include(('exports.urls', 'exports'), namespace='exports_root')),
     path('images/', include(('mediafiles.urls', 'mediafiles'), namespace='mediafiles_root')),
+    path('operators/', include(('operators.urls', 'operators'), namespace='operators_root')),
     path('staff/', include(('staff.urls', 'staff'), namespace='staff_root')),
     path('work/', include(('idcards.urls', 'idcards'), namespace='idcards_root')),
     path('reprint/', include(('reprintcard.urls', 'reprintcard'), namespace='reprintcard_root')),
+    path('stats/', include(('stats.urls', 'stats'), namespace='stats_root')),
 
     # ==================== MOBILE APP DOWNLOAD LANDING (/app/*) ====================
     path('app/', core_views.mobile_download_page, name='mobile_download_page'),

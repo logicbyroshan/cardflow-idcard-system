@@ -48,6 +48,7 @@ class PermissionService:
 
     ADMIN_USER_MANAGEMENT_PERMISSIONS = [
         'perm_manage_client_staff',
+        'perm_manage_photographer_staff',
     ]
 
     IDCARD_SETTING_PERMISSIONS = [
@@ -100,10 +101,10 @@ class PermissionService:
         'perm_pro_data_deletion_guard', # Data Deletion Guard
     ]
 
-    # Permissions that admin staff should always have regardless of their
-    # per-staff-profile toggles. Keep this limited to legacy operational
+    # Permissions that operators should always have regardless of their
+    # per-profile toggles. Keep this limited to legacy operational
     # access only; pro features are reserved for pro_user and super_admin.
-    ADMIN_STAFF_AUTO_PERMS: set = {
+    OPERATOR_AUTO_PERMS: set = {
         'perm_reupload_idcard_image',
     }
 
@@ -121,31 +122,26 @@ class PermissionService:
         + PRO_FEATURE_PERMISSIONS
     )
 
-    # Perms intentionally absent from the Staff model
-    # (removed by migrations to enforce super_admin-only access).
-    # has() returns False silently for admin_staff checking these — no warning.
-    STAFF_BLOCKED_PERMS: set = {
-        'perm_delete_all_idcard',  # removed from Staff in migration 0036; super_admin only
+    # Perms intentionally absent from Operator/Assistant profiles
+    OPERATOR_BLOCKED_PERMS: set = {
+        'perm_delete_all_idcard',  # super_admin only
     }
 
-    # Perms that are NEVER available to client / client_staff roles.
-    # This superset replaces inline dicts in has() and get_permission_context()
-    # so warnings are not emitted for perm keys that are simply not on the
-    # Client model by design (admin/staff-only features).
+    # Perms that are NEVER available to client / assistant roles.
     CLIENT_BLOCKED_PERMS: set = {
         # perm_idcard_bulk_upload  — now allowed for clients (gated by toggle)
-        'perm_idcard_bulk_reupload',  # admin/staff-only (not available to client roles)
+        'perm_idcard_bulk_reupload',  # admin/operator-only (not available to client roles)
         'perm_delete_all_idcard',    # super_admin-only
         'perm_reupload_idcard_image',
-        # Panel management (admin_staff-only)
+        # Panel management (operator-only)
         'perm_manage_panel_backup',
         'perm_manage_panel_email',
         # 'perm_manage_client_staff' removed to allow client role access
         'perm_idcard_clear_pending_path',
     }
 
-    # Map UI boolean perm keys to Django permissions for admin_staff
-    ADMIN_STAFF_DJANGO_PERM_MAP = {
+    # Map UI boolean perm keys to Django permissions for operators
+    OPERATOR_DJANGO_PERM_MAP = {
         'perm_idcard_pending_list': 'can_view_idcard_data',
         'perm_idcard_verified_list': 'can_view_idcard_data',
         'perm_idcard_approved_list': 'can_view_approved_list',
@@ -167,9 +163,10 @@ class PermissionService:
         'perm_idcard_setting_list': 'can_view_idcard_settings',
     }
 
-    # Sensitive permissions that client_staff can never hold, even if present on Staff model.
-    CLIENT_STAFF_BLOCKED_PERMS: set = {
+    # Sensitive permissions that assistant can never hold
+    CLIENT_ASSISTANT_BLOCKED_PERMS: set = {
         'perm_manage_client_staff',       # Assistants cannot manage other staff
+        'perm_manage_photographer_staff', # Assistants cannot manage photographers
         'perm_idcard_setting_add',        # Assistants cannot create new tables
         'perm_idcard_setting_delete',     # Assistants cannot delete tables
         'perm_idcard_setting_edit',       # Assistants cannot edit table structure
@@ -221,40 +218,69 @@ class PermissionService:
     @staticmethod
     def is_super_admin(user) -> bool:
         """Check if user is super admin (or pro_user which has all super_admin powers)."""
-        return user.is_authenticated and (user.is_superuser or user.role in ('super_admin', 'pro_user'))
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        return getattr(user, 'is_superuser', False) or getattr(user, 'role', None) in ('super_admin', 'pro_user')
+
+    @staticmethod
+    def is_operator(user) -> bool:
+        """Check if user is operator."""
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        return getattr(user, 'role', None) in ('operator', 'admin_staff')
 
     @staticmethod
     def is_admin_staff(user) -> bool:
-        """Check if user is admin staff."""
-        return user.is_authenticated and user.role == 'admin_staff'
+        """Check if user is admin staff (operator)."""
+        return PermissionService.is_operator(user)
+
+    @staticmethod
+    def is_photographer(user) -> bool:
+        """Check if user is photographer."""
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        return getattr(user, 'role', None) == 'photographer'
 
     @staticmethod
     def is_client(user) -> bool:
         """Check if user is a client."""
-        return user.is_authenticated and user.role in ('client', 'guest_user')
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        return getattr(user, 'role', None) in ('client', 'guest_user')
 
     @staticmethod
     def is_guest_user(user) -> bool:
         """Check if user is a guest/sandbox account."""
-        return user.is_authenticated and user.role == 'guest_user'
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        return getattr(user, 'role', None) == 'guest_user'
+
+    @staticmethod
+    def is_assistant(user) -> bool:
+        """Check if user is assistant."""
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        return getattr(user, 'role', None) in ('assistant', 'client_staff')
 
     @staticmethod
     def is_client_staff(user) -> bool:
-        """Check if user is client staff."""
-        return user.is_authenticated and user.role == 'client_staff'
+        """Check if user is client staff (assistant)."""
+        return PermissionService.is_assistant(user)
 
     @staticmethod
     def is_any_admin(user) -> bool:
-        """Check if user is super_admin/pro_user or admin_staff."""
-        if not user.is_authenticated:
+        """Check if user is super_admin/pro_user, operator, or photographer."""
+        if not user or not getattr(user, 'is_authenticated', False):
             return False
         # Keep this aligned with is_super_admin() so pro_user is never excluded.
-        return PermissionService.is_super_admin(user) or user.role == 'admin_staff'
+        return PermissionService.is_super_admin(user) or getattr(user, 'role', None) in ('operator', 'admin_staff', 'photographer')
 
     @staticmethod
     def is_client_role(user) -> bool:
-        """Check if user is client or client_staff."""
-        return user.is_authenticated and user.role in ('client', 'guest_user', 'client_staff')
+        """Check if user is client or assistant."""
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        return getattr(user, 'role', None) in ('client', 'guest_user', 'assistant', 'client_staff')
 
     # ==================== Profile Lookup ====================
 
@@ -285,17 +311,17 @@ class PermissionService:
     def get_profile(cls, user):
         """
         Get the permission-bearing profile for a user.
-        Returns Staff or Client object that has permission fields.
-        For client_staff returns the Staff object (permission chaining in has()).
         """
         if cls.is_super_admin(user):
             return None
-        if cls.is_admin_staff(user):
-            return getattr(user, 'staff_profile', None)
+        if cls.is_operator(user):
+            return getattr(user, 'operator_profile', None)
+        if cls.is_photographer(user):
+            return getattr(user, 'photographer_profile', None)
         if cls.is_client(user):
             return getattr(user, 'client_profile', None)
-        if cls.is_client_staff(user):
-            return getattr(user, 'staff_profile', None)
+        if cls.is_assistant(user):
+            return getattr(user, 'assistant_profile', None)
         return None
 
     # ==================== PRIMARY API ====================
@@ -342,47 +368,64 @@ class PermissionService:
         if not user.is_active:
             return False
 
-        # --- Permissions blocked for client / client_staff roles ---
-        # Uses class-level CLIENT_BLOCKED_PERMS (admin/staff-only features).
+        # --- Permissions blocked for client / assistant roles ---
         if perm_key in cls.CLIENT_BLOCKED_PERMS:
-            if cls.is_client(user) or cls.is_client_staff(user):
+            if cls.is_client(user) or cls.is_assistant(user):
                 return False
 
-        # --- Permissions auto-granted to admin_staff (no profile toggle needed) ---
-        if cls.is_admin_staff(user) and perm_key in cls.ADMIN_STAFF_AUTO_PERMS:
+        # --- Permissions auto-granted to operator/photographer (no profile toggle needed) ---
+        if cls.is_operator(user) and perm_key in cls.OPERATOR_AUTO_PERMS:
+            return True
+        if cls.is_photographer(user) and perm_key in cls.OPERATOR_AUTO_PERMS:
             return True
 
         # --- 1. Super admin always passes ---
         if cls.is_super_admin(user):
             return True
 
-        # --- 2. admin_staff ---
-        if cls.is_admin_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if not staff:
-                logger.warning("PermissionService.has: admin_staff user %s has no staff_profile", user.pk)
+        # --- 2. operator / photographer ---
+        if cls.is_operator(user) or cls.is_photographer(user):
+            profile = getattr(user, 'operator_profile', None) if cls.is_operator(user) else getattr(user, 'photographer_profile', None)
+            if not profile:
+                logger.warning("PermissionService.has: user %s has no profile", user.pk)
                 return False
             if not user.is_active:
                 return False
             if perm_key in cls.PRO_FEATURE_PERMISSIONS:
                 return False
-            # Perms intentionally removed from Staff model (super_admin-only) — silent False
-            if perm_key in cls.STAFF_BLOCKED_PERMS:
+            if perm_key in cls.OPERATOR_BLOCKED_PERMS:
                 return False
+
+            # Additional block: Photographer can ONLY have specific permissions (view/add, app)
+            if cls.is_photographer(user):
+                ALLOWED_PHOTOGRAPHER_PERMS = {
+                    'perm_mobile_app',
+                    'perm_idcard_add',
+                    'perm_idcard_info',
+                    'perm_idcard_retrieve',
+                    'perm_idcard_pending_list',
+                    'perm_idcard_verified_list',
+                    'perm_idcard_pool_list',
+                }
+                if client_obj is not None:
+                    if client_obj.id not in cls.get_accessible_client_ids(user):
+                        return False
+                return perm_key in ALLOWED_PHOTOGRAPHER_PERMS
+
             # Check Django permission mapping first
             has_mapped_perm = False
-            if perm_key in cls.ADMIN_STAFF_DJANGO_PERM_MAP:
-                django_perm = cls.ADMIN_STAFF_DJANGO_PERM_MAP[perm_key]
+            if perm_key in cls.OPERATOR_DJANGO_PERM_MAP:
+                django_perm = cls.OPERATOR_DJANGO_PERM_MAP[perm_key]
                 has_mapped_perm = user.has_perm(f'core.{django_perm}') or user.has_perm(django_perm)
             
             # If no mapped perm (or failed), fallback to boolean fields
             if not has_mapped_perm:
-                if not hasattr(staff, perm_key):
-                    logger.warning("PermissionService.has: unknown perm_key '%s' for admin_staff user %s", perm_key, user.pk)
+                if not hasattr(profile, perm_key):
+                    logger.warning("PermissionService.has: unknown perm_key '%s' for user %s", perm_key, user.pk)
                     return False
-                if not getattr(staff, perm_key, False):
+                if not getattr(profile, perm_key, False):
                     return False
-            # Scope check: if a client is supplied, staff must be assigned to it
+            # Scope check: if a client is supplied, operator/photographer must be assigned to it
             if client_obj is not None:
                 if client_obj.id not in cls.get_accessible_client_ids(user):
                     return False
@@ -424,49 +467,49 @@ class PermissionService:
 
             return bool(getattr(client_profile, perm_key, False))
 
-        # --- 4. client_staff (double-gated) ---
-        if cls.is_client_staff(user):
-            if perm_key in cls.CLIENT_STAFF_BLOCKED_PERMS:
+        # --- 4. assistant (double-gated) ---
+        if cls.is_assistant(user):
+            if perm_key in cls.CLIENT_ASSISTANT_BLOCKED_PERMS:
                 return False
-            staff = getattr(user, 'staff_profile', None)
-            if not staff:
-                logger.warning("PermissionService.has: client_staff user %s has no staff_profile", user.pk)
+            assistant = getattr(user, 'assistant_profile', None)
+            if not assistant:
+                logger.warning("PermissionService.has: assistant user %s has no assistant_profile", user.pk)
                 return False
-            # Security: if client_obj was provided, it MUST match the staff's client
-            if client_obj and staff.client_id != client_obj.id:
-                return False
-
-            if not staff.client:
-                logger.warning("PermissionService.has: client_staff user %s has no assigned client", user.pk)
+            # Security: if client_obj was provided, it MUST match the assistant's client
+            if client_obj and assistant.client_id != client_obj.id:
                 return False
 
-            if staff.client.status != 'active':
+            if not assistant.client:
+                logger.warning("PermissionService.has: assistant user %s has no assigned client", user.pk)
                 return False
-            # ID card lists are auto-granted to active client staff (respecting staff-level toggle)
+
+            if assistant.client.status != 'active':
+                return False
+            # ID card lists are auto-granted to active assistants (respecting assistant-level toggle)
             if perm_key in cls.IDCARD_LIST_PERMISSIONS:
-                # Staff perm check
-                if hasattr(staff, perm_key):
-                    return bool(getattr(staff, perm_key, False))
-                return True  # fallback: grant if not explicitly blocked on staff
+                # Assistant perm check
+                if hasattr(assistant, perm_key):
+                    return bool(getattr(assistant, perm_key, False))
+                return True  # fallback: grant if not explicitly blocked on assistant
 
-            # Staff perm
-            if hasattr(staff, perm_key):
-                staff_value = getattr(staff, perm_key, False)
+            # Assistant perm
+            if hasattr(assistant, perm_key):
+                assistant_value = getattr(assistant, perm_key, False)
             else:
-                # Perm not on Staff model — log and fail closed
+                # Perm not on Assistant model — log and fail closed
                 logger.warning(
-                    "PermissionService.has: perm_key '%s' not on Staff model for client_staff user %s",
+                    "PermissionService.has: perm_key '%s' not on Assistant model for assistant user %s",
                     perm_key, user.pk
                 )
-                staff_value = False  # fail closed: deny if not explicitly defined
+                assistant_value = False  # fail closed: deny if not explicitly defined
 
             # Client perm
-            if hasattr(staff.client, perm_key):
-                client_value = getattr(staff.client, perm_key, False)
+            if hasattr(assistant.client, perm_key):
+                client_value = getattr(assistant.client, perm_key, False)
             else:
-                logger.warning("PermissionService.has: unknown perm_key '%s' for client_staff user %s (client %s)", perm_key, user.pk, staff.client_id)
+                logger.warning("PermissionService.has: unknown perm_key '%s' for assistant user %s (client %s)", perm_key, user.pk, assistant.client_id)
                 return False
-            return bool(staff_value and client_value)
+            return bool(assistant_value and client_value)
 
         # Unknown role
         logger.warning("PermissionService.has: user %s has unrecognised role '%s'", user.pk, getattr(user, 'role', '?'))
@@ -481,7 +524,7 @@ class PermissionService:
     def get_accessible_clients(cls, user, base_qs=None):
         """
         Return Client queryset scoped to user's access level.
-        super_admin → all clients; admin_staff → assigned clients only; others → none.
+        super_admin → all clients; operator/photographer → assigned clients only; others → none.
         If base_qs is provided, results are intersected with it.
         """
         from client.models import Client
@@ -490,7 +533,7 @@ class PermissionService:
             return qs.none()
         if cls.is_super_admin(user):
             return qs
-        if cls.is_admin_staff(user):
+        if cls.is_operator(user) or cls.is_photographer(user):
             assigned_ids = cls.get_accessible_client_ids(user)
             return qs.filter(id__in=assigned_ids)
         return qs.none()
@@ -505,14 +548,14 @@ class PermissionService:
             return False
         if cls.is_super_admin(user):
             return True
-        if cls.is_admin_staff(user):
+        if cls.is_operator(user) or cls.is_photographer(user):
             return int(client_id) in cls.get_accessible_client_ids(user)
         if cls.is_client(user):
             client_profile = getattr(user, 'client_profile', None)
             return client_profile is not None and client_profile.id == client_id
-        if cls.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            return staff is not None and staff.client_id == client_id
+        if cls.is_assistant(user):
+            assistant = getattr(user, 'assistant_profile', None)
+            return assistant is not None and assistant.client_id == client_id
         return False
 
     @classmethod
@@ -527,7 +570,7 @@ class PermissionService:
         if cls.is_super_admin(user):
             user._cached_accessible_client_ids = []
             return []  # Empty means "all" for super_admin — caller should handle
-        if cls.is_admin_staff(user):
+        if cls.is_operator(user) or cls.is_photographer(user):
             cache_key = cls._accessible_client_ids_cache_key(user)
             cached = _cache.get(cache_key)
             if cached is not None:
@@ -535,11 +578,25 @@ class PermissionService:
                 user._cached_accessible_client_ids = ids
                 return ids
 
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                ids = list(staff.assigned_clients.values_list('id', flat=True))
+            if cls.is_photographer(user):
+                photo = getattr(user, 'photographer_profile', None)
+                if photo:
+                    from django.utils import timezone
+                    from django.db.models import Q
+                    now = timezone.now()
+                    ids = list(
+                        photo.photographer_assignments.filter(
+                            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+                        ).values_list('client_id', flat=True)
+                    )
+                else:
+                    ids = []
             else:
-                ids = []
+                op = getattr(user, 'operator_profile', None)
+                if op:
+                    ids = list(op.assigned_clients.values_list('id', flat=True))
+                else:
+                    ids = []
 
             _cache.set(cache_key, ids, cls.ACCESSIBLE_CLIENT_IDS_CACHE_TTL)
             user._cached_accessible_client_ids = ids
@@ -549,9 +606,9 @@ class PermissionService:
             ids = [cp.id] if cp else []
             user._cached_accessible_client_ids = ids
             return ids
-        if cls.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            ids = [staff.client_id] if staff and staff.client_id else []
+        if cls.is_assistant(user):
+            assistant = getattr(user, 'assistant_profile', None)
+            ids = [assistant.client_id] if assistant and assistant.client_id else []
             user._cached_accessible_client_ids = ids
             return ids
 
@@ -565,18 +622,16 @@ class PermissionService:
         """
         Build dict of all permission flags + role booleans for template injection.
         Called by context_processors.permissions().
-
-        Performance: fetches the permission-bearing profile ONCE and reads all
-        boolean fields directly instead of calling has() N times.
         """
         if not user.is_authenticated:
             context = {
                 'is_pro_user': False,
                 'is_super_admin': False,
-                'is_admin_staff': False,
+                'is_operator': False,
+                'is_photographer': False,
                 'is_client': False,
                 'is_guest_user': False,
-                'is_client_staff': False,
+                'is_assistant': False,
                 'user_role': None,
             }
             for perm in cls.ALL_PERMISSION_KEYS:
@@ -593,54 +648,63 @@ class PermissionService:
             return ctx
 
         is_sa = cls.is_super_admin(user)
-        is_as = cls.is_admin_staff(user)
+        is_op = cls.is_operator(user)
+        is_photo = cls.is_photographer(user)
         is_cl = cls.is_client(user)
         is_guest = cls.is_guest_user(user)
-        is_cs = cls.is_client_staff(user)
+        is_as = cls.is_assistant(user)
 
         context: Dict[str, bool] = {
             'is_pro_user': cls.is_pro_user(user),
             'is_super_admin': is_sa,
-            'is_admin_staff': is_as,
+            'is_operator': is_op,
+            'is_admin_staff': is_op,
+            'is_photographer': is_photo,
             'is_client': is_cl,
             'is_guest_user': is_guest,
-            'is_client_staff': is_cs,
+            'is_assistant': is_as,
+            'is_client_staff': is_as,
             'user_role': user.role if user.is_authenticated else None,
         }
 
-        # Super admin gets all permissions True — no profile lookup needed
+        # Super admin gets all permissions True
         if is_sa:
             for perm in cls.ALL_PERMISSION_KEYS:
                 context[perm] = True
-            # But explicit exception: actual "super_admin" (or django superuser)
-            # who is NOT a `pro_user` should NOT receive the Log Deletion Guard
-            # permission by default. Pro users retain their pro-feature flags.
             if not cls.is_pro_user(user):
                 context['perm_pro_log_deletion_guard'] = False
-        elif is_as:
-            # Admin staff: read booleans from staff_profile in one shot
-            staff = getattr(user, 'staff_profile', None)
-            # Permissions auto-granted to admin_staff regardless of profile value
+        elif is_op:
+            op = getattr(user, 'operator_profile', None)
             for perm in cls.ALL_PERMISSION_KEYS:
                 if perm in cls.PRO_FEATURE_PERMISSIONS:
                     context[perm] = False
-                elif perm in cls.ADMIN_STAFF_AUTO_PERMS:
+                elif perm in cls.OPERATOR_AUTO_PERMS:
                     context[perm] = True
-                elif perm in cls.STAFF_BLOCKED_PERMS:
-                    # Intentionally absent from Staff model — super_admin-only
+                elif perm in cls.OPERATOR_BLOCKED_PERMS:
                     context[perm] = False
-                elif perm in cls.ADMIN_STAFF_DJANGO_PERM_MAP:
-                    django_perm = cls.ADMIN_STAFF_DJANGO_PERM_MAP[perm]
+                elif perm in cls.OPERATOR_DJANGO_PERM_MAP:
+                    django_perm = cls.OPERATOR_DJANGO_PERM_MAP[perm]
                     if user.has_perm(f'core.{django_perm}') or user.has_perm(django_perm):
                         context[perm] = True
                     else:
-                        context[perm] = bool(getattr(staff, perm, False)) if staff and hasattr(staff, perm) else False
-                elif staff and hasattr(staff, perm):
-                    context[perm] = bool(getattr(staff, perm, False))
+                        context[perm] = bool(getattr(op, perm, False)) if op and hasattr(op, perm) else False
+                elif op and hasattr(op, perm):
+                    context[perm] = bool(getattr(op, perm, False))
                 else:
                     context[perm] = False
+        elif is_photo:
+            ALLOWED_PHOTOGRAPHER_PERMS = {
+                'perm_mobile_app',
+                'perm_idcard_add',
+                'perm_idcard_info',
+                'perm_idcard_retrieve',
+                'perm_idcard_pending_list',
+                'perm_idcard_verified_list',
+                'perm_idcard_pool_list',
+            }
+            for perm in cls.ALL_PERMISSION_KEYS:
+                context[perm] = perm in ALLOWED_PHOTOGRAPHER_PERMS
         elif is_cl:
-            # Client: read from client_profile
             profile = getattr(user, 'client_profile', None)
             active = profile.status == 'active' if profile else False
             for perm in cls.ALL_PERMISSION_KEYS:
@@ -654,24 +718,23 @@ class PermissionService:
                     context[perm] = bool(getattr(profile, 'perm_idcard_client_list', False))
                 else:
                     context[perm] = False
-        elif is_cs:
-            # Client staff: staff perm AND client perm (double-gated)
-            staff = getattr(user, 'staff_profile', None)
-            client_obj = staff.client if staff else None
+        elif is_as:
+            assistant = getattr(user, 'assistant_profile', None)
+            client_obj = assistant.client if assistant else None
             active = client_obj and client_obj.status == 'active'
             for perm in cls.ALL_PERMISSION_KEYS:
                 if perm in cls.CLIENT_BLOCKED_PERMS:
                     context[perm] = False
                     continue
-                if perm in cls.CLIENT_STAFF_BLOCKED_PERMS:
+                if perm in cls.CLIENT_ASSISTANT_BLOCKED_PERMS:
                     context[perm] = False
                     continue
                 if not active:
                     context[perm] = False
                     continue
-                staff_val = bool(getattr(staff, perm, False)) if hasattr(staff, perm) else False
+                assistant_val = bool(getattr(assistant, perm, False)) if hasattr(assistant, perm) else False
                 client_val = bool(getattr(client_obj, perm, False)) if hasattr(client_obj, perm) else False
-                context[perm] = staff_val and client_val
+                context[perm] = assistant_val and client_val
         else:
             for perm in cls.ALL_PERMISSION_KEYS:
                 context[perm] = False

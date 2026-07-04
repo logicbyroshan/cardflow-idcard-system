@@ -478,12 +478,33 @@ const StatPill = React.memo(function StatPill({ label, count, color, onPress }) 
 });
 
 const ClientCard = React.memo(({ item, perms, impersonatingId, onImpersonate, onEdit, onDelete, onToggle, onCardPress, navigation }) => {
+  const { user } = useAuth();
   const handlePress = useCallback(() => onCardPress(item), [item, onCardPress]);
   const handleToggle = useCallback(() => onToggle(item), [item, onToggle]);
   
-  const handlePendingPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'pending' }), [item.id, item.name, navigation]);
-  const handleVerifiedPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'verified' }), [item.id, item.name, navigation]);
-      const handlePoolPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name, initialStatus: 'pool' }), [item.id, item.name, navigation]);
+  const handlePendingPress = useCallback(() => {
+    navigation.navigate('ClientGroups', { 
+      clientId: item.id, 
+      clientName: item.name, 
+      initialStatus: user?.role === 'photographer' ? 'uncaptured' : 'pending' 
+    });
+  }, [item.id, item.name, navigation, user]);
+
+  const handleVerifiedPress = useCallback(() => {
+    navigation.navigate('ClientGroups', { 
+      clientId: item.id, 
+      clientName: item.name, 
+      initialStatus: user?.role === 'photographer' ? 'captured' : 'verified' 
+    });
+  }, [item.id, item.name, navigation, user]);
+
+  const handlePoolPress = useCallback(() => {
+    navigation.navigate('ClientGroups', { 
+      clientId: item.id, 
+      clientName: item.name, 
+      initialStatus: 'pool' 
+    });
+  }, [item.id, item.name, navigation]);
 
   const handleGroupsPress = useCallback(() => navigation.navigate('ClientGroups', { clientId: item.id, clientName: item.name }), [item.id, item.name, navigation]);
   const handleSettingsPress = useCallback(() => navigation.navigate('GroupSettings', { clientId: item.id, clientName: item.name }), [item.id, item.name, navigation]);
@@ -533,9 +554,18 @@ const ClientCard = React.memo(({ item, perms, impersonatingId, onImpersonate, on
       </TouchableOpacity>
       
       <View style={s.cardStats}>
-        <StatPill label="PENDING" count={item.counts?.pending} color="#f59e0b" onPress={handlePendingPress} />
-        <StatPill label="VERIFIED" count={item.counts?.verified} color="#10b981" onPress={handleVerifiedPress} />
-                        <StatPill label="POOL" count={item.counts?.pool} color="#ec4899" onPress={handlePoolPress} />
+        {user?.role === 'photographer' ? (
+          <>
+            <StatPill label="UNCAPTURED" count={item.counts?.uncaptured} color="#f59e0b" onPress={handlePendingPress} />
+            <StatPill label="CAPTURED" count={item.counts?.captured} color="#10b981" onPress={handleVerifiedPress} />
+          </>
+        ) : (
+          <>
+            <StatPill label="PENDING" count={item.counts?.pending} color="#f59e0b" onPress={handlePendingPress} />
+            <StatPill label="VERIFIED" count={item.counts?.verified} color="#10b981" onPress={handleVerifiedPress} />
+            <StatPill label="POOL" count={item.counts?.pool} color="#ec4899" onPress={handlePoolPress} />
+          </>
+        )}
       </View>
 
       <View style={s.cardActions}>

@@ -56,6 +56,7 @@ urlpatterns = [
     
     # Staff Management
     path('manage-staff/', views.manage_staff, name='manage_staff'),
+    path('manage-photographers/', views.manage_photographers, name='manage_photographers'),
     # Keep a named route for legacy references; the view redirects to `manage_staff`.
     path('manage-client-staff/', views.manage_client_staff, name='manage_client_staff'),
 
@@ -85,6 +86,7 @@ urlpatterns = [
     # Backward-compatible deep-history list URL (redirects to User Options)
     path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
     path('pro-user/guest-users/', views.pro_user_guest_users_page, name='pro_user_guest_users'),
+    path('pro-user/batch-jobs/', views.pro_user_batch_jobs_page, name='pro_user_batch_jobs'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
     
     # Manage Panel
@@ -161,6 +163,15 @@ urlpatterns = [
     path('api/clients/active/', views.api_active_clients_list, name='api_active_clients_list'),
     path('api/clients/for-staff-assignment/', views.api_all_clients_for_assignment, name='api_all_clients_for_assignment'),
     path('api/staff/<int:staff_id>/set-temp-password/', views.api_staff_set_temp_password, name='api_staff_set_temp_password'),
+
+    # Photographer APIs
+    path('api/photographer/create/', views.api_photographer_create, name='api_photographer_create'),
+    path('api/photographer/<int:staff_id>/', views.api_photographer_get, name='api_photographer_get'),
+    path('api/photographer/<int:staff_id>/update/', views.api_photographer_update, name='api_photographer_update'),
+    path('api/photographer/<int:staff_id>/delete/', views.api_photographer_delete, name='api_photographer_delete'),
+    path('api/photographer/<int:staff_id>/toggle-status/', views.api_photographer_toggle_status, name='api_photographer_toggle_status'),
+    path('api/photographer/<int:staff_id>/assign-clients/', views.api_photographer_assign_clients, name='api_photographer_assign_clients'),
+    path('api/photographer/client/<int:client_id>/tables/', views.api_photographer_client_tables, name='api_photographer_client_tables'),
     
     # ID Card Table APIs
     path('api/group/<int:group_id>/tables/', views.api_idcard_table_list, name='api_idcard_table_list'),

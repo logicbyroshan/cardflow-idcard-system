@@ -19,7 +19,6 @@ from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
 from client.models import Client
-from staff.models import Staff
 from idcards.models import IDCard, IDCardTable
 from ..models import User
 from ..services import IDCardService
@@ -56,7 +55,7 @@ _ACTIVITY_CLIENT_SUFFIX_RE = re.compile(r'\bfor\s+"?([^"\n]+?)"?\s*$', re.IGNORE
 
 
 def _dashboard_live_surface_counts(*, user, is_scoped=False, accessible_ids=None):
-    """Return unique logged-in user counts split by desktop/mobile surface."""
+    """Return unique logged-in user counts split by desktop/mobile surface and never-active status."""
     now = timezone.now()
     cache_key = f'dashboard_live_surface_counts:{user.pk if is_scoped else "all"}'
     cached = cache.get(cache_key)
@@ -69,47 +68,53 @@ def _dashboard_live_surface_counts(*, user, is_scoped=False, accessible_ids=None
         client_user_ids = set(
             Client.objects.filter(id__in=scoped_client_ids).values_list('user_id', flat=True)
         )
+        from assistants.models import Assistant
         assistant_user_ids = set(
-            Staff.objects.filter(
-                staff_type='client_staff',
+            Assistant.objects.filter(
                 client_id__in=scoped_client_ids,
             ).values_list('user_id', flat=True)
         )
         admin_user_ids = set(
-            User.objects.filter(role__in=['super_admin', 'admin_staff', 'pro_user']).values_list('id', flat=True)
+            User.objects.filter(role__in=['super_admin', 'operator', 'pro_user']).values_list('id', flat=True)
         )
         allowed_user_ids = client_user_ids | assistant_user_ids | admin_user_ids
+    else:
+        allowed_user_ids = set(User.objects.filter(is_active=True).values_list('id', flat=True))
 
-    per_user_surfaces = defaultdict(set)
-    for session in Session.objects.filter(expire_date__gt=now).iterator(chunk_size=200):
-        try:
-            data = session.get_decoded()
-        except Exception:
-            continue
+    from accounts.models import UserDeviceSession
 
-        raw_uid = data.get('_auth_user_id')
-        if not raw_uid:
-            continue
-        uid = str(raw_uid).strip()
-        if not uid.isdigit():
-            continue
-        user_id = int(uid)
+    # Get unexpired active session keys
+    active_session_keys = set(Session.objects.filter(expire_date__gt=now).values_list('session_key', flat=True))
 
-        if allowed_user_ids is not None and user_id not in allowed_user_ids:
-            continue
+    # Fetch device sessions matching the active sessions, ordered by last_active descending (most recent first)
+    device_sessions = UserDeviceSession.objects.filter(
+        session_key__in=active_session_keys,
+        user_id__in=allowed_user_ids
+    ).order_by('-last_active')
 
-        surface = str(data.get('_auth_login_surface') or '').strip().lower()
-        if surface not in {'desktop', 'mobile'}:
-            surface = 'mobile' if bool(data.get('mobile_auth_ok')) else 'desktop'
+    # Get the latest device surface type for each active user
+    user_latest_surface = {}
+    for ds in device_sessions:
+        if ds.user_id not in user_latest_surface:
+            user_latest_surface[ds.user_id] = ds.device_type
 
-        per_user_surfaces[user_id].add(surface)
+    desktop_count = 0
+    mobile_count = 0
+    never_active_count = 0
 
-    desktop_users = sum(1 for surfaces in per_user_surfaces.values() if 'desktop' in surfaces)
-    mobile_users = sum(1 for surfaces in per_user_surfaces.values() if 'mobile' in surfaces)
+    for uid in allowed_user_ids:
+        device_type = user_latest_surface.get(uid)
+        if device_type == 'web':
+            desktop_count += 1
+        elif device_type == 'mobile':
+            mobile_count += 1
+        else:
+            never_active_count += 1
 
     result = {
-        'desktop': desktop_users,
-        'mobile': mobile_users,
+        'desktop': desktop_count,
+        'mobile': mobile_count,
+        'never_active': never_active_count,
     }
     cache.set(cache_key, result, 15)
     return result
@@ -280,10 +285,12 @@ def _enrich_recent_activities_for_dashboard(user, activities):
 
     staff_type_map = {}
     if staff_ids:
-        staff_type_map = {
-            row['id']: row['staff_type']
-            for row in Staff.objects.filter(id__in=staff_ids).values('id', 'staff_type')
-        }
+        from operators.models import Operator
+        from assistants.models import Assistant
+        for row in Operator.objects.filter(id__in=staff_ids).values('id'):
+            staff_type_map[row['id']] = 'admin_staff'
+        for row in Assistant.objects.filter(id__in=staff_ids).values('id'):
+            staff_type_map[row['id']] = 'client_staff'
 
     card_meta_map = {}
     if card_ids:
@@ -394,6 +401,20 @@ def pro_user_guest_users_page(request):
 
 
 @login_required
+def pro_user_batch_jobs_page(request):
+    """Dedicated page for Pro User batch jobs tracking."""
+    if not PermissionService.can_manage_pro_features(request.user):
+        return redirect('dashboard')
+
+    context = {
+        'active_page': 'pro_user_batch_jobs',
+        'pro_tab': 'batch_jobs',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'pro_user/batch-jobs.html', context)
+
+
+@login_required
 def pro_user_activity_logs_detail_page(request, user_id):
     """Dedicated detail page for a selected user's deep history (Pro User only)."""
     if not PermissionService.can_use_pro_user_options(request.user):
@@ -426,7 +447,7 @@ def dashboard(request):
 
     # Scope cache keys per user for admin_staff (they only see assigned clients)
     user = request.user
-    is_scoped = PermissionService.is_admin_staff(user)
+    is_scoped = PermissionService.is_operator(user)
     cache_suffix = f':{user.pk}' if is_scoped else ''
 
     # Pre-fetch accessible client IDs ONCE for admin_staff users.
@@ -454,7 +475,8 @@ def dashboard(request):
     overview_stats = cache.get(overview_cache_key)
     if overview_stats is None:
         clients_qs = Client.objects.all()
-        assistents_qs = Staff.objects.filter(staff_type='client_staff')
+        from assistants.models import Assistant
+        assistents_qs = Assistant.objects.all()
         if is_scoped:
             clients_qs = clients_qs.filter(id__in=accessible_ids)
             assistents_qs = assistents_qs.filter(client_id__in=accessible_ids)
@@ -486,6 +508,7 @@ def dashboard(request):
         'overview_assistents_count': overview_stats.get('assistents', 0),
         'overview_live_desktop_count': live_surface_counts.get('desktop', 0),
         'overview_live_mobile_count': live_surface_counts.get('mobile', 0),
+        'overview_live_never_active_count': live_surface_counts.get('never_active', 0),
     }
 
     recent_cache_key = _dashboard_recent_activity_cache_key(
@@ -517,7 +540,7 @@ def api_dashboard_card_stats(request):
     """
     try:
         user = request.user
-        is_scoped = PermissionService.is_admin_staff(user)
+        is_scoped = PermissionService.is_operator(user)
         cache_suffix = f':{user.pk}' if is_scoped else ''
         cache_key = f'api_dashboard_card_stats{cache_suffix}'
 
@@ -570,7 +593,7 @@ def api_recent_client_updates(request):
         user = request.user
 
         # Cache the heavy client-results portion (raw SQL aggregation)
-        is_scoped = PermissionService.is_admin_staff(user)
+        is_scoped = PermissionService.is_operator(user)
         cache_suffix = f':{user.pk}' if is_scoped else ''
         cache_key = f'api_recent_client_updates{cache_suffix}:{"all" if limit is None else limit}'
 
@@ -767,12 +790,12 @@ def api_reprint_overview(request):
 
         # Order reprint clients by latest request-list activity, then newest client.
         reprint_clients_qs = accessible_clients.annotate(
-            latest_request_update=Max(
-                'id_card_groups__tables__reprint_requests__updated_at',
+            latest_request_time=Max(
+                'id_card_groups__tables__reprint_requests__created_at',
                 filter=Q(id_card_groups__tables__reprint_requests__status='requested')
             )
         ).order_by(
-            F('latest_request_update').desc(nulls_last=True),
+            F('latest_request_time').desc(nulls_last=True),
             F('created_at').desc(nulls_last=True),
             F('id').desc(),
         )[:limit]

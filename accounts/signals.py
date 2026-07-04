@@ -20,11 +20,11 @@ def get_device_type(request):
 
     ua = request.META.get('HTTP_USER_AGENT', '').lower()
     # Check if this is the mobile app surface or explicitly marked as mobile app
-    if request.path.startswith('/app/') or request.headers.get('X-Mobile-App') == 'true':
+    if request.path.startswith('/app/') or request.path.startswith('/api/mobile/') or request.headers.get('X-Mobile-App') == 'true':
         return 'mobile'
     
-    # Common mobile indicators in User-Agent
-    mobile_indicators = ['android', 'iphone', 'ipad', 'webos', 'iemobile', 'opera mini']
+    # Common mobile indicators in User-Agent (including custom app identifier and okhttp client)
+    mobile_indicators = ['android', 'iphone', 'ipad', 'webos', 'iemobile', 'opera mini', 'adarsh', 'okhttp']
     if any(ind in ua for ind in mobile_indicators):
         return 'mobile'
     

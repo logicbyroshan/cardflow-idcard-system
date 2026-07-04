@@ -12,7 +12,7 @@ from django.utils.timezone import localtime
 
 from core.models import User, EmailLog
 from client.models import Client
-from staff.models import Staff
+from assistants.models import Assistant
 from core.utils import send_welcome_email
 from core.services.base import BaseService, ServiceResult
 from core.services.cache_version_service import CacheVersionService
@@ -82,7 +82,6 @@ class ClientService(BaseService):
             'is_guest': bool(getattr(client, 'is_guest', False)),
             'email': cls._public_email(client.user.email),
             'phone': client.user.phone or '',
-            'address': client.address or '',
             'city': client.city or '',
             'state': client.state or '',
             'pincode': client.pincode or '',
@@ -232,7 +231,6 @@ class ClientService(BaseService):
                     'user': user,
                     'name': name,
                     'is_guest': role == 'guest_user',
-                    'address': data.get('address', ''),
                     'city': data.get('city', ''),
                     'state': data.get('state', ''),
                     'pincode': data.get('pincode', ''),
@@ -421,7 +419,7 @@ class ClientService(BaseService):
                 # Update client fields
                 if data.get('name'):
                     client.name = data['name']
-                for field in ['address', 'city', 'state', 'pincode', 'icon']:
+                for field in ['city', 'state', 'pincode', 'icon']:
                     if field in data:
                         setattr(client, field, data[field])
                 
@@ -475,30 +473,29 @@ class ClientService(BaseService):
     @classmethod
     def _cascade_revoked_permissions(cls, client: Client, revoked_permissions: List[str]) -> None:
         """
-        Cascade revoked permissions to all client staff.
-        Enforces: Client Staff Permission ⊆ Client Permission
+        Cascade revoked permissions to all assistants.
+        Enforces: Assistant Permission ⊆ Client Permission
         
-        When a client permission is revoked, all staff members must also
+        When a client permission is revoked, all assistants must also
         have that permission revoked.
         """
         import logging
         logger = logging.getLogger(__name__)
         
-        # Get all client staff for this client
-        client_staff = Staff.objects.filter(
-            client=client,
-            staff_type='client_staff'
+        # Get all assistants for this client
+        client_staff = Assistant.objects.filter(
+            client=client
         )
         
         if not client_staff.exists():
             return
         
-        # Update each staff member
+        # Update each assistant
         updated_count = 0
         for staff in client_staff:
             staff_changed = False
             for perm in revoked_permissions:
-                # Only update if staff actually has the permission
+                # Only update if assistant actually has the permission
                 if hasattr(staff, perm) and getattr(staff, perm, False):
                     setattr(staff, perm, False)
                     staff_changed = True
@@ -509,13 +506,13 @@ class ClientService(BaseService):
         
         if updated_count > 0:
             logger.info(
-                "Permission cascade: Revoked permissions %s from %d staff members of client '%s' (ID: %d)",
+                "Permission cascade: Revoked permissions %s from %d assistants of client '%s' (ID: %d)",
                 revoked_permissions, updated_count, client.name, client.id
             )
     
     @classmethod
     def delete(cls, client_id: int) -> ServiceResult:
-        """Delete a client and associated user (including client_staff users)"""
+        """Delete a client and associated user (including assistants users)"""
         try:
             client = get_object_or_404(Client, id=client_id)
             user = client.user
@@ -523,11 +520,11 @@ class ClientService(BaseService):
             
             # Phase 1: Photo and profile_image fields removed - using avatar placeholder
             
-            # Collect client_staff User IDs before cascade deletes their Staff records
-            from staff.models import Staff as StaffModel
+            # Collect assistant User IDs before cascade deletes their Assistant records
+            from assistants.models import Assistant as AssistantModel
             staff_user_ids = list(
-                StaffModel.objects.filter(
-                    client=client, staff_type='client_staff'
+                AssistantModel.objects.filter(
+                    client=client
                 ).values_list('user_id', flat=True)
             )
 
@@ -548,12 +545,12 @@ class ClientService(BaseService):
                 archived_user_ids.append(user_obj.pk)
             
             with transaction.atomic():
-                client.delete()   # Cascades Staff records
+                client.delete()   # Cascades Assistant records
                 try:
                     user.delete()     # Delete client's own User
                 except ProtectedError:
                     _retire_user_account(user)
-                # Clean up orphaned client_staff User records
+                # Clean up orphaned assistant User records
                 if staff_user_ids:
                     from django.contrib.auth import get_user_model
                     staff_users = get_user_model().objects.filter(id__in=staff_user_ids)
@@ -760,13 +757,12 @@ class ClientService(BaseService):
     @classmethod
     def _cascade_deactivate_staff(cls, client: Client) -> int:
         """
-        Deactivate all client staff when client is deactivated.
-        Returns the count of staff members deactivated.
+        Deactivate all assistants when client is deactivated.
+        Returns the count of assistants deactivated.
         """
-        # Get all active client staff for this client
-        active_staff = Staff.objects.filter(
+        # Get all active assistants for this client
+        active_staff = Assistant.objects.filter(
             client=client,
-            staff_type='client_staff',
             user__is_active=True
         ).select_related('user')
         
@@ -796,12 +792,11 @@ class ClientService(BaseService):
     
     @classmethod
     def get_staff(cls, client_id: int) -> ServiceResult:
-        """Get all staff members for a client"""
+        """Get all assistants for a client"""
         try:
             client = get_object_or_404(Client, id=client_id)
-            staff_members = Staff.objects.filter(
-                client=client, 
-                staff_type='client_staff'
+            staff_members = Assistant.objects.filter(
+                client=client
             ).select_related('user')
             
             staff_list = []
@@ -815,7 +810,7 @@ class ClientService(BaseService):
                 else:
                     inactive_count += 1
 
-                # Include all permission booleans so UI can render current staff grants.
+                # Include all permission booleans so UI can render current assistant grants.
                 staff_permissions = {
                     field.name: bool(getattr(staff, field.name, False))
                     for field in staff._meta.fields
@@ -829,7 +824,6 @@ class ClientService(BaseService):
                     'phone': staff.user.phone or '',
                     'department': staff.department or '',
                     'designation': staff.designation or '',
-                    'address': staff.address or '',
                     'is_active': is_active,
                     'status': 'active' if is_active else 'inactive',
                     'status_display': 'Active' if is_active else 'Inactive',
@@ -852,20 +846,19 @@ class ClientService(BaseService):
 
     @classmethod
     def toggle_client_staff_status(cls, client_id: int, staff_id: int) -> ServiceResult:
-        """Toggle a client staff member's active/inactive status (atomic, Super Admin only)"""
+        """Toggle an assistant member's active/inactive status (atomic, Super Admin only)"""
         try:
             client = get_object_or_404(Client, id=client_id)
             with transaction.atomic():
-                staff = Staff.objects.select_for_update().select_related('user').filter(
+                staff = Assistant.objects.select_for_update().select_related('user').filter(
                     id=staff_id,
-                    client=client,
-                    staff_type='client_staff'
+                    client=client
                 ).first()
                 
                 if not staff:
                     return ServiceResult(
                         success=False,
-                        message='Staff member not found or does not belong to this client'
+                        message='Assistant member not found or does not belong to this client'
                     )
                 
                 user = staff.user
@@ -875,7 +868,7 @@ class ClientService(BaseService):
             is_active = user.is_active
             return ServiceResult(
                 success=True,
-                message=f'Staff {"activated" if is_active else "deactivated"} successfully',
+                message=f'Assistant {"activated" if is_active else "deactivated"} successfully',
                 data={
                     'staff_id': staff_id,
                     'is_active': is_active,
@@ -889,21 +882,20 @@ class ClientService(BaseService):
     @classmethod
     def update_client_staff_permissions(cls, client_id: int, staff_id: int, permissions: dict) -> ServiceResult:
         """
-        Update a client staff member's permissions (Super Admin only).
-        Enforces that staff permissions cannot exceed client permissions.
+        Update an assistant's permissions (Super Admin only).
+        Enforces that assistant permissions cannot exceed client permissions.
         """
         try:
             client = get_object_or_404(Client, id=client_id)
-            staff = Staff.objects.filter(
+            staff = Assistant.objects.filter(
                 id=staff_id,
-                client=client,
-                staff_type='client_staff'
+                client=client
             ).first()
             
             if not staff:
                 return ServiceResult(
                     success=False,
-                    message='Staff member not found or does not belong to this client'
+                    message='Assistant member not found or does not belong to this client'
                 )
             
             # Permission mapping: staff perm -> client perm
@@ -921,7 +913,7 @@ class ClientService(BaseService):
             
             with transaction.atomic():
                 # Re-fetch with row lock to prevent concurrent permission updates
-                staff = Staff.objects.select_for_update().get(pk=staff.pk)
+                staff = Assistant.objects.select_for_update().get(pk=staff.pk)
                 
                 for perm_name, value in permissions.items():
                     if perm_name not in STAFF_TO_CLIENT_PERMS:
@@ -936,7 +928,7 @@ class ClientService(BaseService):
                             rejected_perms.append(perm_name)
                             continue  # Skip - client doesn't have this permission
                     
-                    # Update staff permission
+                    # Update assistant permission
                     setattr(staff, perm_name, bool(value))
                     updated_perms.append(perm_name)
                 

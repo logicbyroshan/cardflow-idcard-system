@@ -382,7 +382,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('clientName').value = clientData.name || '';
             document.getElementById('clientEmail').value = clientData.email || '';
             document.getElementById('clientPhone').value = clientData.phone || '';
-            document.getElementById('clientAddress').value = clientData.address || '';
+            var clientAddressInput = document.getElementById('clientAddress');
+            if (clientAddressInput) clientAddressInput.value = clientData.address || '';
             NS.setClientStatusDropdown(clientData.status === 'active' ? 'true' : 'false');
             renderClientDrawerAvatar(clientData.name || '', resolveClientLogoUrl(clientData));
             var iconVal = clientData.icon || 'fa-solid fa-building';
@@ -419,7 +420,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('viewClientName').textContent = clientData.name || '-';
         document.getElementById('viewClientEmail').value = clientData.email || '-';
         document.getElementById('viewClientPhone').value = clientData.phone || '-';
-        document.getElementById('viewClientAddress').value = clientData.address || '-';
+        var viewClientAddressInput = document.getElementById('viewClientAddress');
+        if (viewClientAddressInput) viewClientAddressInput.value = clientData.address || '-';
         document.getElementById('viewClientStatusText').value = clientData.status === 'active' ? 'Active' : 'Inactive';
         document.getElementById('viewClientCreated').value = clientData.created_at || '-';
         document.getElementById('viewClientUpdated').value = clientData.updated_at || '-';

@@ -322,27 +322,75 @@
     // GLOBAL ESCAPE KEY  single listener
     // ==========================================
     document.addEventListener('keydown', function (e) {
-        if (e.key !== 'Escape') return;
+        if (e.key === 'Escape') {
+            var closedRegistered = false;
 
-        // Close modals (most-recent first)
-        var entries = Array.from(modalRegistry.entries()).reverse();
-        for (var i = 0; i < entries.length; i++) {
-            var m = entries[i][1];
-            if (m.isOpen() && m.options.closeOnEscape) {
-                m.close();
+            // Close modals (most-recent first)
+            var entries = Array.from(modalRegistry.entries()).reverse();
+            for (var i = 0; i < entries.length; i++) {
+                var m = entries[i][1];
+                if (m.isOpen() && m.options.closeOnEscape) {
+                    m.close();
+                    closedRegistered = true;
+                }
+            }
+
+            // Then drawers
+            var dEntries = Array.from(drawerRegistry.entries()).reverse();
+            for (var j = 0; j < dEntries.length; j++) {
+                var d = dEntries[j][1];
+                if (d.isOpen() && d.options.closeOnEscape) {
+                    d.close();
+                    closedRegistered = true;
+                }
+            }
+
+            if (closedRegistered) {
                 e.preventDefault();
                 return;
             }
-        }
 
-        // Then drawers
-        var dEntries = Array.from(drawerRegistry.entries()).reverse();
-        for (var j = 0; j < dEntries.length; j++) {
-            var d = dEntries[j][1];
-            if (d.isOpen() && d.options.closeOnEscape) {
-                d.close();
-                e.preventDefault();
-                return;
+            // Fallback for unregistered / custom overlay modals
+            var overlays = document.querySelectorAll('.modal-backdrop, .center-modal-overlay, .backup-modal-overlay, .alpine-modal-overlay, .drawer, .side-drawer');
+            overlays.forEach(function (overlay) {
+                var isOpen = overlay.classList.contains('active') || 
+                             overlay.classList.contains('open') || 
+                             overlay.classList.contains('show') || 
+                             overlay.style.display === 'flex' || 
+                             overlay.style.display === 'block';
+                if (isOpen) {
+                    var closeBtn = overlay.querySelector('.modal-close, .drawer-close, [data-modal-close], [data-drawer-close], .close-btn, .cancel-btn, [data-modal-cancel], [data-drawer-cancel]');
+                    if (closeBtn) {
+                        closeBtn.click();
+                    } else {
+                        overlay.classList.remove('active', 'open', 'show');
+                        overlay.style.display = 'none';
+                    }
+                    e.preventDefault();
+                }
+            });
+        } else if (e.key === 'Enter') {
+            var active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT')) {
+                // Find closest open modal/drawer container
+                var modalContainer = active.closest('.modal-backdrop, .center-modal-overlay, .backup-modal-overlay, .alpine-modal-overlay, .drawer, .side-drawer');
+                if (modalContainer) {
+                    var isOpen = modalContainer.classList.contains('active') || 
+                                 modalContainer.classList.contains('open') || 
+                                 modalContainer.classList.contains('show') || 
+                                 modalContainer.style.display === 'flex' || 
+                                 modalContainer.style.display === 'block';
+                    if (isOpen) {
+                        var submitBtn = modalContainer.querySelector('button[type="submit"], input[type="submit"], .drawer-submit, .modal-submit, [data-modal-submit], [data-drawer-submit]');
+                        if (!submitBtn) {
+                            submitBtn = modalContainer.querySelector('.modal-footer .btn-primary, .modal-footer .btn-warning, .drawer-footer .btn-primary, .drawer-footer .btn-warning, .modal-footer .imp-action-btn, button.btn-primary, button.btn-warning');
+                        }
+                        if (submitBtn && !submitBtn.disabled) {
+                            e.preventDefault();
+                            submitBtn.click();
+                        }
+                    }
+                }
             }
         }
     });

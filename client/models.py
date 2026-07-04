@@ -83,7 +83,6 @@ class Client(models.Model):
     icon = models.CharField(max_length=100, default='fa-solid fa-building')
     
     # Address
-    address = models.TextField(blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     pincode = models.CharField(max_length=10, blank=True, null=True)

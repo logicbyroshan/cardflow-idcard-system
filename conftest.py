@@ -1,5 +1,7 @@
 import os
 import sys
+import django.core.validators
+
 
 # CRITICAL: Set RUNNING_TESTS BEFORE DJANGO IMPORTS
 os.environ['RUNNING_TESTS'] = '1'
@@ -35,7 +37,7 @@ import django
 django.setup()
 
 import builtins
-from staff.models import Staff
+from mobile_api.views import Staff
 
 builtins.Staff = Staff
 

@@ -14,12 +14,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var statusDropdown = document.getElementById('staffStatusDropdown');
 
     // ==================== CLIENT ASSIGNMENT MULTI-SELECT ====================
+    // ==================== CLIENT ASSIGNMENT MULTI-SELECT ====================
     var clientAssignmentSection = document.getElementById('client-assignment-section');
-    var clientMultiselectToggle = document.getElementById('client-multiselect-toggle');
-    var clientMultiselectDropdown = document.getElementById('client-multiselect-dropdown');
-    var clientMultiselectList = document.getElementById('client-multiselect-list');
-    var clientMultiselectText = document.getElementById('client-multiselect-text');
     var clientSearchInput = document.getElementById('client-search-input');
+    var clientAssignmentList = document.getElementById('client-assignment-list');
     var clientMultiselectEmpty = document.getElementById('client-multiselect-empty');
 
     // Fetch all clients (active + inactive) for staff assignment
@@ -37,8 +35,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Render checkbox items, selected first, then alphabetical
     function renderClientList(filter) {
         if (filter === undefined) filter = '';
-        if (!clientMultiselectList) return;
-        clientMultiselectList.innerHTML = '';
+        if (!clientAssignmentList) return;
+        clientAssignmentList.innerHTML = '';
 
         var term = filter.toLowerCase().trim();
         var filtered = NS.allClients.filter(function(c) {
@@ -61,80 +59,123 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (clientMultiselectEmpty) clientMultiselectEmpty.style.display = 'none';
 
+        var canEdit = (NS.currentMode !== 'view');
+
         filtered.forEach(function(client) {
             var _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
-            var item = document.createElement('div');
             var isInactive = client.status === 'inactive';
-            item.className = 'client-multiselect-item' + (NS.selectedClientIds.has(client.id) ? ' selected' : '') + (isInactive ? ' client-inactive' : '');
-            var statusBadge = isInactive ? '<span class="client-status-badge inactive">Inactive</span>' : '';
-            item.innerHTML = '<input type="checkbox" ' + (NS.selectedClientIds.has(client.id) ? 'checked' : '') + ' data-client-id="' + client.id + '">' +
-                '<span class="client-name">' + _esc(client.name) + statusBadge + '</span>';
-            item.addEventListener('click', function(e) {
-                e.stopPropagation();
-                var cb = item.querySelector('input[type="checkbox"]');
-                if (e.target !== cb) cb.checked = !cb.checked;
+            
+            var row = document.createElement('div');
+            row.className = 'photographer-client-row';
+            row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--color-slate-100); border-radius: 6px; background: var(--color-slate-50); transition: all 0.2s ease;';
+            if (NS.selectedClientIds.has(client.id)) {
+                row.classList.add('selected');
+                row.style.borderColor = 'var(--color-indigo-200)';
+                row.style.background = '#f0f2ff';
+            }
+
+            var leftDiv = document.createElement('div');
+            leftDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;';
+
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'operator-client-cb';
+            cb.id = 'client-checkbox-' + client.id;
+            cb.value = client.id;
+            cb.checked = NS.selectedClientIds.has(client.id);
+            cb.disabled = !canEdit;
+            cb.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+
+            var label = document.createElement('label');
+            label.htmlFor = cb.id;
+            label.style.cssText = 'font-weight: 500; font-size: 13px; color: var(--color-slate-800); cursor: pointer; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px;';
+            label.textContent = client.name;
+            if (isInactive) {
+                var badge = document.createElement('span');
+                badge.className = 'client-status-badge inactive';
+                badge.style.cssText = 'font-size: 9px; padding: 1px 4px; border-radius: 3px; background: var(--color-slate-200); color: var(--color-slate-600);';
+                badge.textContent = 'Inactive';
+                label.appendChild(badge);
+            }
+
+            leftDiv.appendChild(cb);
+            leftDiv.appendChild(label);
+            row.appendChild(leftDiv);
+
+            cb.addEventListener('change', function() {
                 if (cb.checked) {
                     NS.selectedClientIds.add(client.id);
-                    item.classList.add('selected');
+                    row.classList.add('selected');
+                    row.style.borderColor = 'var(--color-indigo-200)';
+                    row.style.background = '#f0f2ff';
                 } else {
                     NS.selectedClientIds.delete(client.id);
-                    item.classList.remove('selected');
+                    row.classList.remove('selected');
+                    row.style.borderColor = 'var(--color-slate-100)';
+                    row.style.background = 'var(--color-slate-50)';
                 }
-                updateClientSelectionText();
+                renderSelectedClientChips();
             });
-            clientMultiselectList.appendChild(item);
+
+            // Clicking row toggles check
+            row.addEventListener('click', function(e) {
+                if (e.target !== cb && e.target !== label && !leftDiv.contains(e.target)) {
+                    if (!canEdit) return;
+                    cb.checked = !cb.checked;
+                    cb.dispatchEvent(new Event('change'));
+                }
+            });
+
+            clientAssignmentList.appendChild(row);
         });
     }
 
-    // Update header text to show selection count
-    function updateClientSelectionText() {
-        if (!clientMultiselectText) return;
-        var count = NS.selectedClientIds.size;
-        if (count === 0) {
-            clientMultiselectText.textContent = 'Select clients...';
-            clientMultiselectText.classList.remove('has-selection');
-        } else {
-            // Show names for 1-2, count for 3+
-            if (count <= 2) {
-                var names = NS.allClients
-                    .filter(function(c) { return NS.selectedClientIds.has(c.id); })
-                    .map(function(c) { return c.name; });
-                clientMultiselectText.textContent = names.join(', ');
-            } else {
-                clientMultiselectText.textContent = count + ' clients selected';
-            }
-            clientMultiselectText.classList.add('has-selection');
-        }
-    }
+    function renderSelectedClientChips() {
+        var container = document.getElementById('client-selected-chips-container');
+        if (!container) return;
+        container.innerHTML = '';
 
-    // Toggle dropdown
-    if (clientMultiselectToggle) {
-        clientMultiselectToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var isOpen = clientMultiselectDropdown.style.display !== 'none';
-            if (isOpen) {
-                closeClientDropdown();
-            } else {
-                openClientDropdown();
+        var clientMap = {};
+        NS.allClients.forEach(function(c) { clientMap[c.id] = c; });
+        
+        // Sets maintain insertion order. Get array and reverse for 'latest first'
+        var selectedIds = Array.from(NS.selectedClientIds).reverse();
+        var selected = selectedIds.map(function(id) { return clientMap[id]; }).filter(Boolean);
+
+        if (selected.length === 0) {
+            container.innerHTML = '<div style="font-size: 12px; color: var(--color-slate-400); font-style: italic;">No clients assigned yet.</div>';
+            return;
+        }
+
+        var canEdit = (NS.currentMode !== 'view');
+
+        selected.forEach(function(client) {
+            var chip = document.createElement('div');
+            chip.className = 'operator-client-chip';
+            chip.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 12px; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; font-size: 12px; color: #3730a3; font-weight: 600; width: 100%;';
+            
+            var textSpan = document.createElement('span');
+            textSpan.style.cssText = 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;';
+            textSpan.textContent = client.name;
+            chip.appendChild(textSpan);
+
+            if (canEdit) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.style.cssText = 'border:none; background:transparent; padding:0; cursor:pointer; color:var(--color-indigo-400); display:inline-flex; align-items:center; justify-content:center; font-size:12px; margin-left: 2px;';
+                btn.title = 'Remove assignment';
+                btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    NS.selectedClientIds.delete(client.id);
+                    renderSelectedClientChips();
+                    renderClientList(); // Refresh checkboxes
+                });
+                chip.appendChild(btn);
             }
+
+            container.appendChild(chip);
         });
-    }
-
-    function openClientDropdown() {
-        if (!clientMultiselectDropdown) return;
-        clientMultiselectDropdown.style.display = '';
-        clientMultiselectToggle.classList.add('open');
-        if (clientSearchInput) {
-            clientSearchInput.value = '';
-            clientSearchInput.focus();
-        }
-        renderClientList();
-    }
-
-    function closeClientDropdown() {
-        if (!clientMultiselectDropdown) return;
-        clientMultiselectDropdown.style.display = 'none';
-        clientMultiselectToggle.classList.remove('open');
     }
 
     // Search filter
@@ -142,27 +183,15 @@ document.addEventListener('DOMContentLoaded', function() {
         clientSearchInput.addEventListener('input', function() {
             renderClientList(clientSearchInput.value);
         });
-        // Prevent dropdown from closing when clicking in search
-        clientSearchInput.addEventListener('click', function(e) { e.stopPropagation(); });
     }
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        if (clientMultiselectDropdown && clientMultiselectDropdown.style.display !== 'none') {
-            var container = document.getElementById('client-multiselect');
-            if (container && !container.contains(e.target)) {
-                closeClientDropdown();
-            }
-        }
-    });
 
     // Initialize client assignment for drawer open
     NS.initClientAssignment = async function(preselectedIds) {
         if (preselectedIds === undefined) preselectedIds = [];
         if (!clientAssignmentSection) return;
 
-        // Show the section (always visible for operator management)
-        clientAssignmentSection.style.display = '';
+        // Show the section only in assign mode
+        clientAssignmentSection.style.display = (NS.currentMode === 'assign') ? '' : 'none';
 
         // Fetch clients if not loaded
         if (NS.allClients.length === 0) {
@@ -171,17 +200,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Set preselected
         NS.selectedClientIds = new Set(preselectedIds.map(function(id) { return parseInt(id); }));
-        updateClientSelectionText();
-        closeClientDropdown();
+        
+        // Reset search field
+        if (clientSearchInput) clientSearchInput.value = '';
+        
+        renderClientList();
+        renderSelectedClientChips();
     };
 
     function resetClientAssignment() {
         NS.selectedClientIds = new Set();
-        if (clientMultiselectText) {
-            clientMultiselectText.textContent = 'Select clients...';
-            clientMultiselectText.classList.remove('has-selection');
-        }
-        closeClientDropdown();
+        if (clientSearchInput) clientSearchInput.value = '';
+        renderSelectedClientChips();
     }
 
     // ==================== DRAWER FUNCTIONS ====================
@@ -191,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         NS.currentMode = mode;
         staffForm.reset();
         NS.setStatusDropdown('false'); // Default Inactive for new staff
-        NS.setPasswordOption('phone'); // Reset password option
+        NS.setPasswordOption('custom'); // Reset password option to custom by default
 
         // Phase 1: Profile image upload removed - using avatar placeholder
 
@@ -211,6 +241,24 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = '<span id="submit-btn-text">Add Operator</span>';
         var submitBtnText = document.getElementById('submit-btn-text');
 
+        // Toggle sections based on mode
+        var clientAssignmentSection = document.getElementById('client-assignment-section');
+        var staffInfoSection = document.getElementById('staff-info-section');
+        var staffPermissionsSection = document.getElementById('staff-permissions-section');
+        var profileSection = document.querySelector('.profile-upload-section');
+        var isAssign = (mode === 'assign');
+
+        if (clientAssignmentSection) clientAssignmentSection.style.display = isAssign ? '' : 'none';
+        if (staffInfoSection) staffInfoSection.style.display = isAssign ? 'none' : '';
+        if (staffPermissionsSection) staffPermissionsSection.style.display = isAssign ? 'none' : '';
+        if (profileSection) profileSection.style.display = isAssign ? 'none' : '';
+
+        // Toggles required attribute so validation works correctly
+        var nameInput = document.getElementById('staff-name');
+        var emailInput = document.getElementById('staff-email');
+        if (nameInput) nameInput.required = !isAssign;
+        if (emailInput) emailInput.required = !isAssign;
+
         if (mode === 'add') {
             drawerTitle.textContent = 'Add New Operator';
             drawerIcon.className = 'fa-solid fa-user-plus';
@@ -228,29 +276,29 @@ document.addEventListener('DOMContentLoaded', function() {
             if (tempPwBtn) tempPwBtn.style.display = 'none';
 
             // Permissions stay OFF by default for new staff (already reset above)
-        } else if (mode === 'edit') {
-            drawerTitle.textContent = 'Edit Operator';
-            drawerIcon.className = 'fa-solid fa-pen-to-square';
-            if (submitBtnText) submitBtnText.textContent = 'Save Changes';
-            submitBtn.style.display = 'inline-flex';
-            NS.enableFormInputs(true);
-
-            // Hide password option when editing
+        } else {
+            // Hide password option when editing/assigning/viewing
             var pwRow = document.getElementById('staffPasswordOptionRow');
             if (pwRow) pwRow.style.display = 'none';
 
-            // Show temp password button in edit mode
+            // Hide custom password input group and remove required validation in non-add modes
+            var customPwGroup = document.getElementById('staffCustomPasswordGroup');
+            if (customPwGroup) customPwGroup.style.display = 'none';
+            var pwInput = document.getElementById('staff-password');
+            if (pwInput) pwInput.required = false;
+
+            // Show temp password button only in edit mode
             var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
-            if (tempPwBtn) tempPwBtn.style.display = '';
+            if (tempPwBtn) tempPwBtn.style.display = (mode === 'edit') ? '' : 'none';
 
             if (staffData) {
+                document.getElementById('staff-id').value = staffData.id || '';
                 document.getElementById('staff-name').value = staffData.name || '';
                 document.getElementById('staff-email').value = staffData.email || '';
                 document.getElementById('staff-phone').value = staffData.phone || '';
-                document.getElementById('staff-address').value = staffData.address || '';
+                var staffAddressInput = document.getElementById('staff-address');
+                if (staffAddressInput) staffAddressInput.value = staffData.address || '';
                 NS.setStatusDropdown(staffData.status === 'active' ? 'true' : 'false');
-
-                // Phase 1: Profile image loading removed - using avatar placeholder
 
                 // Set permissions from staff data
                 NS.permissionFields.forEach(function(field) {
@@ -262,38 +310,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Pre-select assigned clients
                 NS.initClientAssignment(staffData.assigned_client_ids || []);
             }
-        } else if (mode === 'view') {
-            drawerTitle.textContent = 'View Operator Details';
-            drawerIcon.className = 'fa-solid fa-eye';
-            submitBtn.style.display = 'none';
-            NS.enableFormInputs(false);
 
-            // Hide password option in view mode
-            var pwRow = document.getElementById('staffPasswordOptionRow');
-            if (pwRow) pwRow.style.display = 'none';
-
-            // Hide temp password button in view mode
-            var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
-            if (tempPwBtn) tempPwBtn.style.display = 'none';
-
-            if (staffData) {
-                document.getElementById('staff-name').value = staffData.name || '';
-                document.getElementById('staff-email').value = staffData.email || '';
-                document.getElementById('staff-phone').value = staffData.phone || '';
-                document.getElementById('staff-address').value = staffData.address || '';
-                NS.setStatusDropdown(staffData.status === 'active' ? 'true' : 'false');
-
-                // Phase 1: Profile image loading removed - using avatar placeholder
-
-                // Set permissions from staff data
-                NS.permissionFields.forEach(function(field) {
-                    var el = document.getElementById(field);
-                    var apiField = field.replace(/-/g, '_');
-                    if (el) el.checked = staffData[apiField] === true;
-                });
-
-                // Show assigned clients (read-only view)
-                NS.initClientAssignment(staffData.assigned_client_ids || []);
+            if (mode === 'edit') {
+                drawerTitle.textContent = 'Edit Operator';
+                drawerIcon.className = 'fa-solid fa-pen-to-square';
+                if (submitBtnText) submitBtnText.textContent = 'Save Changes';
+                submitBtn.style.display = 'inline-flex';
+                NS.enableFormInputs(true);
+            } else if (mode === 'assign') {
+                drawerTitle.textContent = 'Assign Clients - ' + (staffData ? staffData.name : '');
+                drawerIcon.className = 'fa-solid fa-link';
+                if (submitBtnText) submitBtnText.textContent = 'Save Assignments';
+                submitBtn.style.display = 'inline-flex';
+                NS.enableFormInputs(true);
+            } else if (mode === 'view') {
+                drawerTitle.textContent = 'View Operator Details';
+                drawerIcon.className = 'fa-solid fa-eye';
+                submitBtn.style.display = 'none';
+                NS.enableFormInputs(false);
             }
         }
 
@@ -341,16 +375,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Enable/disable custom client multiselect
-        if (clientMultiselectToggle) {
-            if (!enable) {
-                clientMultiselectToggle.style.pointerEvents = 'none';
-                clientMultiselectToggle.style.opacity = '0.6';
-                closeClientDropdown();
-            } else {
-                clientMultiselectToggle.style.pointerEvents = '';
-                clientMultiselectToggle.style.opacity = '';
-            }
+        // Enable/disable custom client checkboxes and search inputs
+        document.querySelectorAll('.operator-client-cb').forEach(function(cb) {
+            cb.disabled = !enable;
+        });
+        if (clientSearchInput) {
+            clientSearchInput.disabled = !enable;
         }
     };
 });

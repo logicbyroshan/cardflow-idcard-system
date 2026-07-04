@@ -17,6 +17,8 @@
     {% include 'partials/common/alpine-loader.html' %}
 </head>
 <body x-data="layoutState" x-init="init">
+  <!-- Premium preloader -->
+  {% include 'partials/preloader.html' %}
   {% include 'partials/impersonate-bar.html' %}
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
   {% include 'partials/sidebar.html' %}
@@ -45,9 +47,6 @@
           <i class="fa-solid fa-wave-square"></i> Logs &amp; Updates
         </button>
         {% endif %}
-        <button class="panel-tab" data-tab="batch-jobs">
-          <i class="fa-solid fa-bars-progress"></i> Batch Jobs
-        </button>
         {% if is_super_admin or perm_manage_panel_backup %}
         <button class="panel-tab" data-tab="backups">
           <i class="fa-solid fa-database"></i> Backups
@@ -125,7 +124,6 @@
       {% if is_super_admin %}{% include 'partials/panel/tab-notifications.html' %}{% endif %}
       {% if is_super_admin or perm_manage_panel_email %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-log-history.html' %}{% endif %}
-      {% include 'partials/panel/tab-batch-jobs.html' %}
       {% if is_super_admin or perm_manage_panel_backup %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-download-templates.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-server-info.html' %}{% endif %}

@@ -7,9 +7,6 @@ Required context:
   - page_obj, page_range, per_page, per_page_options
   - search_query, status_filter
 {% endcomment %}
-{% comment %}Cache staff table per-user and query params briefly to reduce DB hits{% endcomment %}
-{% load cache %}
-{% cache 20 staff_table request.user.id request.GET.page request.GET.per_page request.GET.search request.GET.status %}
 
 {% load static %}
 
@@ -89,5 +86,3 @@ Required context:
         {% include 'components/filter-dropdown.html' with dropdown_id='rowsDropdown' dropdown_class='rows-dropdown' toggle_id='rowsToggle' options_id='rowsOptions' selected_text_id='rowsSelectedText' default_label=per_page options_template='partials/staff/table-rows-options.html' %}
     </div>
 </div>
-
-{% endcache %}

@@ -274,11 +274,10 @@ def manage_staff(request):
             or PermissionService.has_permission(user, 'perm_manage_client_staff')):
         return redirect(reverse('client:dashboard'))
     
-    # Get Staff QuerySet directly for server-side table rendering
-    from staff.models import Staff  # local import: not needed at module level
-    staff_list = Staff.objects.filter(
-        client=client,
-        staff_type='client_staff'
+    # Get Assistant QuerySet directly for server-side table rendering
+    from assistants.models import Assistant
+    staff_list = Assistant.objects.filter(
+        client=client
     ).select_related('user').order_by('-created_at')
     
     permissions = PermissionService.get_permission_context(user)

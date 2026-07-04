@@ -17,7 +17,7 @@ import {
 import { colors, gradients, shadows, radius, fontFamily, roleThemes } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import useRefreshableResource from '../hooks/useRefreshableResource';
-import { apiGet, apiPost } from '../api/client';
+import { apiGet, apiPost, apiPostForm } from '../api/client';
 import Toast from '../components/Toast';
 import UpdatePromptModal from '../components/UpdatePromptModal';
 import { DashboardSkeleton } from '../components/Skeleton';
@@ -138,28 +138,92 @@ export default function HomeScreen({ navigation }) {
   const isOperator = user?.role === 'admin_staff';
   const isClient = user?.role === 'client' || user?.role === 'guest_user';
   const isAssistant = user?.role === 'client_staff';
+  const isPhotographer = user?.role === 'photographer';
   const isAdminOrOperator = isSuperAdmin || isOperator;
 
   const loadDashboard = useCallback(async () => {
     try {
       const { ok, data } = await apiGet('/api/mobile/dashboard/');
-      if (!ok || !data?.success) throw new Error(data?.message || 'Sync failed');
-      return data.data;
+      if (ok && data?.success) {
+        return data.data;
+      }
     } catch (e) {
-      throw e;
+      console.log('Dashboard fetch failed, trying offline fallback', e);
     }
-  }, []);
+
+    if (user?.role === 'photographer') {
+      try {
+        const offlineStr = await AsyncStorage.getItem('photographer_offline_data');
+        if (offlineStr) {
+          const clients = JSON.parse(offlineStr);
+          let globalCaptured = 0;
+          let globalUncaptured = 0;
+          const recentClients = clients.map(client => {
+            let clientCaptured = 0;
+            let clientUncaptured = 0;
+            const tables = (client.tables || []).map(t => {
+              const cap = (t.cards || []).filter(c => c.has_photo).length;
+              const uncap = (t.cards || []).filter(c => !c.has_photo).length;
+              clientCaptured += cap;
+              clientUncaptured += uncap;
+              return {
+                id: t.id,
+                name: t.name,
+                group: t.group,
+                captured: cap,
+                uncaptured: uncap
+              };
+            });
+            globalCaptured += clientCaptured;
+            globalUncaptured += clientUncaptured;
+            return {
+              id: client.id,
+              name: client.name,
+              captured: clientCaptured,
+              uncaptured: clientUncaptured,
+              tables
+            };
+          });
+
+          return {
+            captured: globalCaptured,
+            uncaptured: globalUncaptured,
+            client_count: clients.length,
+            recent_clients: recentClients,
+            recent_activity: [],
+            recent_reprints: [],
+            is_photographer: true,
+            is_admin: false
+          };
+        }
+      } catch (err) {
+        console.log('Failed to parse offline data', err);
+      }
+    }
+    throw new Error('Dashboard loading failed');
+  }, [user]);
 
   const { data: counts = {}, loading, refreshing, error, refresh } = useRefreshableResource(loadDashboard, { initialData: {} });
 
   const onRefresh = useCallback(async () => {
     try {
       await refresh();
+      if (isPhotographer) {
+        const { ok, data } = await apiGet('/api/mobile/photographer/sync/');
+        if (ok && data.success) {
+          await AsyncStorage.setItem('photographer_offline_data', JSON.stringify(data.clients || []));
+        }
+      }
     } catch (e) {
       console.log('Dashboard refresh failed', e);
     }
-  }, [refresh]);
+  }, [refresh, isPhotographer]);
   
+  useEffect(() => {
+    if (isPhotographer) {
+      onRefresh(); // Auto-sync on mount
+    }
+  }, [isPhotographer]);
   // Creation States
   const [showClientForm, setShowClientForm] = useState(false);
   const [showStaffForm, setShowStaffForm] = useState(false);
@@ -305,6 +369,12 @@ export default function HomeScreen({ navigation }) {
   }, [counts.recent_clients]);
 
   const statusConfig = useMemo(() => {
+    if (user?.role === 'photographer') {
+      return [
+        { key: 'uncaptured', label: 'Uncaptured', Svg: IconPending,  bg: '#f59e0b', bg2: '#d97706' },
+        { key: 'captured',   label: 'Captured',   Svg: IconVerified, bg: '#10b981', bg2: '#059669' },
+      ];
+    }
     const list = [
       { key: 'pending',  label: 'Pending',   Svg: IconPending,   bg: '#f59e0b', bg2: '#d97706' },
       { key: 'verified', label: 'Verified',  Svg: IconVerified,  bg: '#10b981', bg2: '#059669' },
@@ -360,12 +430,77 @@ export default function HomeScreen({ navigation }) {
       if (isClient || (isAssistant && perms.perm_manage_client_staff)) {
         actions.push({ label: 'ASSISTANT', icon: 'users', color: '#8b5cf6', bg: '#f5f3ff', screen: 'StaffManage' });
       }
+    } else if (isPhotographer) {
+      actions.push({ 
+        label: 'SYNC DATA', 
+        icon: 'sync-alt', 
+        color: '#10b981', 
+        bg: '#ecfdf5', 
+        onPress: async () => {
+          try {
+            showToast('Syncing data...', 'info');
+            
+            // Gather offline-captured photos
+            const allKeys = await AsyncStorage.getAllKeys();
+            const photoKeys = allKeys.filter(k => k.startsWith('offline_photo_'));
+            
+            if (photoKeys.length > 0) {
+              showToast(`Uploading ${photoKeys.length} offline photo(s)...`, 'info');
+              const formData = new FormData();
+              
+              for (const key of photoKeys) {
+                const cardId = key.substring('offline_photo_'.length);
+                const uri = await AsyncStorage.getItem(key);
+                if (uri) {
+                  let filename = uri.split('/').pop() || `photo_${cardId}.jpg`;
+                  const match = /\.(\w+)$/.exec(filename);
+                  let ext = match ? match[1].toLowerCase() : 'jpg';
+                  const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif' };
+                  let type = mimeMap[ext] || 'image/jpeg';
+                  if (!match) { filename += '.jpg'; ext = 'jpg'; }
+                  if (!filename.includes('.')) { filename = filename + '.' + ext; }
+                  
+                  formData.append(cardId, { uri, name: filename, type });
+                }
+              }
+              
+              const { ok: upOk, data: upData } = await apiPostForm('/api/mobile/photographer/upload-offline/', formData);
+              if (upOk && upData?.success) {
+                await AsyncStorage.multiRemove(photoKeys);
+                showToast(`Uploaded ${upData.uploaded || photoKeys.length} offline photos.`, 'success');
+              } else {
+                showToast('Failed to upload offline photos: ' + (upData?.message || 'Unknown error'), 'error');
+                return;
+              }
+            }
+            
+            const { ok, data } = await apiGet('/api/mobile/photographer/sync/');
+            if (ok && data.success) {
+              await AsyncStorage.setItem('photographer_offline_data', JSON.stringify(data.clients || []));
+              showToast('Offline data synced successfully!', 'success');
+              refresh();
+            } else {
+              showToast('Sync failed: ' + (data?.message || 'Unknown error'), 'error');
+            }
+          } catch (e) {
+            showToast('Network error during sync.', 'error');
+          }
+        }
+      });
     }
     return actions;
-  }, [user, isSuperAdmin, isOperator, isClient, isAssistant, counts.tables]);
+  }, [user, isSuperAdmin, isOperator, isClient, isAssistant, isPhotographer, counts.tables]);
 
   const handleBadgePress = useCallback((client, statusKey) => {
-    const statusValue = { PENDING: 'pending', VERIFIED: 'verified', APPROVED: 'approved', DOWNLOAD: 'download', POOL: 'pool' };
+    const statusValue = { 
+      PENDING: 'pending', 
+      VERIFIED: 'verified', 
+      APPROVED: 'approved', 
+      DOWNLOAD: 'download', 
+      POOL: 'pool',
+      UNCAPTURED: 'uncaptured',
+      CAPTURED: 'captured'
+    };
     const tables = client.tables || [];
     
     if (tables.length === 0) {
@@ -460,15 +595,15 @@ export default function HomeScreen({ navigation }) {
         <View style={s.statusGrid}>
           {statusConfig.map(st => {
             const val = st.key === 'total' ? totalCards : (counts[st.key] || 0);
-            const isAssistant = user?.role === 'client_staff';
-            const cardWidth = isAssistant ? (width - 34) / 2 : (width - 44) / 3;
+            const isAssistantOrPhotographer = user?.role === 'client_staff' || user?.role === 'photographer';
+            const cardWidth = isAssistantOrPhotographer ? (width - 34) / 2 : (width - 44) / 3;
             return (
               <TouchableOpacity 
                 key={st.key} 
                 style={[
                   s.statusCardOuter, 
                   { width: cardWidth },
-                  isAssistant ? { aspectRatio: undefined, height: 110 } : {}
+                  isAssistantOrPhotographer ? { aspectRatio: undefined, height: 110 } : {}
                 ]}
                 activeOpacity={0.8}
                 onPress={() => handleStatCardPress(st.key)}
@@ -585,8 +720,17 @@ export default function HomeScreen({ navigation }) {
         )}
 
         <View style={s.mainContent}>
-          {isSuperAdmin || isOperator ? (
-            activeTab === 'clients' ? (
+          {isSuperAdmin || isOperator || isPhotographer ? (
+            isPhotographer ? (
+              <RecentClientsSection
+                recentClients={counts.recent_clients}
+                expandedClient={expandedClient}
+                setExpandedClient={setExpandedClient}
+                handleBadgePress={handleBadgePress}
+                navigation={navigation}
+                theme={theme}
+              />
+            ) : activeTab === 'clients' ? (
               <RecentClientsSection
                 recentClients={counts.recent_clients}
                 expandedClient={expandedClient}
@@ -805,7 +949,7 @@ const s = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingBottom: 20, borderBottomLeftRadius: radius.sm, borderBottomRightRadius: radius.sm, ...shadows.md },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logo: { width: 24, height: 24 },
-  logoSquare: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  logoSquare: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   brandName: { color: '#fff', fontSize: 18, fontFamily: 'SairaSemiCondensed-Bold' },
   profileBtn: { },
   profileSquare: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
@@ -1085,15 +1229,24 @@ const RecentClientItem = React.memo(({ client, isExpanded, theme, handleToggleEx
             <DynamicIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={10} color={colors.gray400} />
           </TouchableOpacity>
           <View style={s.clientStatsRow}>
-            <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={onBadgePending} />
-            <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={onBadgeVerified} />
-            {!isAssistant && (
+            {user?.role === 'photographer' ? (
               <>
-                <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={onBadgeApproved} />
-                <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={onBadgeDownload} />
+                <ClientMiniStat label="UNCAPTURED" count={client.uncaptured} color={colors.pending.text} bg={colors.pending.bg} onPress={() => handleBadgePress(client, 'UNCAPTURED')} />
+                <ClientMiniStat label="CAPTURED" count={client.captured} color={colors.verified.text} bg={colors.verified.bg} onPress={() => handleBadgePress(client, 'CAPTURED')} />
+              </>
+            ) : (
+              <>
+                <ClientMiniStat label="PENDING" count={client.pending} color={colors.pending.text} bg={colors.pending.bg} onPress={onBadgePending} />
+                <ClientMiniStat label="VERIFIED" count={client.verified} color={colors.verified.text} bg={colors.verified.bg} onPress={onBadgeVerified} />
+                {!isAssistant && (
+                  <>
+                    <ClientMiniStat label="APPROVED" count={client.approved} color={colors.approved.text} bg={colors.approved.bg} onPress={onBadgeApproved} />
+                    <ClientMiniStat label="DOWNLOAD" count={client.download} color={colors.download.text} bg={colors.download.bg} onPress={onBadgeDownload} />
+                  </>
+                )}
+                <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
               </>
             )}
-            <ClientMiniStat label="POOL" count={client.pool} color={colors.pool.text} bg={colors.pool.bg} onPress={onBadgePool} />
           </View>
 
           {isExpanded && (
@@ -1122,6 +1275,12 @@ const RecentClientTableItem = React.memo(({ table, navigation }) => {
   const isAssistant = user?.role === 'client_staff';
 
   const statusBtnsList = useMemo(() => {
+    if (user?.role === 'photographer') {
+      return [
+        { key: 'uncaptured', label: 'Uncaptured', count: table.uncaptured || 0, color: colors.pending.text, bg: colors.pending.bg },
+        { key: 'captured', label: 'Captured', count: table.captured || 0, color: colors.verified.text, bg: colors.verified.bg },
+      ];
+    }
     const list = [
       { key: 'pending', label: 'Pending', count: table.p || 0, color: colors.pending.text, bg: colors.pending.bg },
       { key: 'verified', label: 'Verified', count: table.v || 0, color: colors.verified.text, bg: colors.verified.bg },
@@ -1134,7 +1293,7 @@ const RecentClientTableItem = React.memo(({ table, navigation }) => {
     }
     list.push({ key: 'pool', label: 'Pool', count: table.po || 0, color: colors.pool.text, bg: colors.pool.bg });
     return list;
-  }, [table, isAssistant]);
+  }, [table, isAssistant, user]);
 
   return (
     <View style={s.expandedItem}>
@@ -1244,6 +1403,7 @@ const ReprintRequestsSection = React.memo(({ recentReprints, recentClients, expa
         name: client.name || 'Unknown Client',
         requested: 0,
         confirmed: 0,
+        latest_request: 0,
         tables: {},
       };
       if (client.tables && Array.isArray(client.tables)) {
@@ -1268,6 +1428,7 @@ const ReprintRequestsSection = React.memo(({ recentReprints, recentClients, expa
           name: rep.client_name || 'Unknown Client',
           requested: 0,
           confirmed: 0,
+          latest_request: 0,
           tables: {},
         };
       }
@@ -1286,9 +1447,16 @@ const ReprintRequestsSection = React.memo(({ recentReprints, recentClients, expa
       }
       if (rep.status === 'requested') clientReprintMap[cid].tables[tid].requested += 1;
       else if (rep.status === 'confirmed') clientReprintMap[cid].tables[tid].confirmed += 1;
+      
+      if (rep.created_at) {
+        const t = new Date(rep.created_at).getTime();
+        if (t > clientReprintMap[cid].latest_request) {
+          clientReprintMap[cid].latest_request = t;
+        }
+      }
     });
 
-    return Object.values(clientReprintMap).sort((a, b) => (b.requested + b.confirmed) - (a.requested + a.confirmed));
+    return Object.values(clientReprintMap).sort((a, b) => b.latest_request - a.latest_request);
   }, [recentReprints, recentClients]);
 
   const handleReprintBadgePress = useCallback((client) => {

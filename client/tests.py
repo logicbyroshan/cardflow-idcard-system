@@ -444,7 +444,7 @@ class ClientStaffTransactionTests(TestCase):
 
         original_phone = staff_user.phone
 
-        with mock.patch('staff.models.Staff.save', side_effect=Exception('forced-fail')):
+        with mock.patch('assistants.models.Assistant.save', side_effect=Exception('forced-fail')):
             result = ClientStaffService.update_staff(owner, staff.id, {'phone': '9999999999'})
 
         self.assertFalse(result.success)

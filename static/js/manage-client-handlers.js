@@ -404,7 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
           name: document.getElementById('clientName').value.trim(),
           email: document.getElementById('clientEmail').value.trim(),
           phone: document.getElementById('clientPhone').value.trim(),
-          address: document.getElementById('clientAddress').value,
+          address: document.getElementById('clientAddress') ? document.getElementById('clientAddress').value : '',
           icon: document.getElementById('clientIcon').value.trim() || 'fa-solid fa-building',
           is_active: document.getElementById('clientStatus').value === 'true',
         };

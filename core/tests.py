@@ -163,28 +163,28 @@ class TutorialRoleScopeTests(TestCase):
         self._assert_role_tutorial(
             'tutorial-client@test.com',
             'client',
-            'Client Operations Tutorial',
+            'Check & Update Data',
         )
 
     def test_client_staff_sees_client_staff_tutorial(self):
         self._assert_role_tutorial(
             'tutorial-client-staff@test.com',
             'client_staff',
-            'Assistent Operations Tutorial',
+            'Assistent Permissions Overview',
         )
 
     def test_admin_staff_sees_admin_staff_tutorial(self):
         self._assert_role_tutorial(
             'tutorial-admin-staff@test.com',
             'admin_staff',
-            'Operator Support Tutorial',
+            'Verification and Data Rectification',
         )
 
     def test_admin_sees_admin_tutorial(self):
         self._assert_role_tutorial(
             'tutorial-admin@test.com',
             'admin',
-            'Admin Control Tutorial',
+            'Data Operations & Quality Policies',
         )
 
     def test_tutorial_shows_personal_guide_button(self):
@@ -209,12 +209,12 @@ class TutorialRoleScopeTests(TestCase):
         self.assertIn('attachment; filename="adarsh-personal-guide.txt"', response['Content-Disposition'])
         self.assertIn('Student Data Check, Corrections', response.content.decode('utf-8'))
 
-    def test_hinglish_mode_has_no_devanagari_script(self):
+    def test_hindi_mode_has_devanagari_script(self):
         self.assertTrue(self.client.login(username='tutorial-client@test.com', password='testpass123'))
         response = self.client.get(reverse('tutorial') + '?lang=hi')
         self.assertEqual(response.status_code, 200)
         html = response.content.decode('utf-8')
-        self.assertNotRegex(html, r'[\u0900-\u097F]')
+        self.assertRegex(html, r'[\u0900-\u097F]')
 
 
 # ── IDCard Model Tests ──
@@ -720,7 +720,7 @@ class GuestUserManagementApiTests(TestCase):
 
 class LegacyStaffApiJsonShapeTests(TestCase):
     def setUp(self):
-        from staff.models import Staff
+        from operators.models import Operator
 
         self.super_admin = _create_super_admin('legacy-staff-admin@test.com', 'adminpass1')
         self.staff_user = User.objects.create_user(
@@ -729,7 +729,7 @@ class LegacyStaffApiJsonShapeTests(TestCase):
             password='pass1234',
             role='admin_staff',
         )
-        self.staff_profile = Staff.objects.create(user=self.staff_user, staff_type='admin_staff')
+        self.staff_profile = Operator.objects.create(user=self.staff_user)
         self.client.login(username='legacy-staff-admin@test.com', password='adminpass1')
 
     def test_staff_create_rejects_non_object_json_payload(self):
@@ -2311,7 +2311,6 @@ class SecurityApiRegressionTests(TestCase):
             user=managed_user,
             name='View Edit Client',
             status='inactive',
-            address='Old Address',
         )
 
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')
@@ -2327,7 +2326,6 @@ class SecurityApiRegressionTests(TestCase):
             data=json.dumps({
                 'name': 'View Edit Client Updated',
                 'phone': '9998887777',
-                'address': 'New Address',
                 'is_active': True,
             }),
             content_type='application/json',
@@ -2340,7 +2338,6 @@ class SecurityApiRegressionTests(TestCase):
         managed_client.refresh_from_db()
         managed_user.refresh_from_db()
         self.assertEqual(managed_client.name, 'View Edit Client Updated')
-        self.assertEqual(managed_client.address, 'New Address')
         self.assertTrue(managed_user.is_active)
 
     def test_live_presence_count_respects_admin_staff_scope(self):

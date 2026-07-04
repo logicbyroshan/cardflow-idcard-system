@@ -886,16 +886,14 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
 
     is_super_admin = PermissionService.is_super_admin(request.user)
 
-    card_ids = _get_card_ids_from_request(request, table_id=table_id)
-    if not card_ids:
-        return JsonResponse({
-            'success': False,
-            'message': 'No cards selected for export'
-        }, status=400)
-    
-    # Get format preference and template_id
+    # Get format preference, template_id, class filter and custom break options
     doc_format = 'docx'
     template_id = None
+    class_filter_enabled = False
+    selected_classes = []
+    break_enabled = False
+    break_pages = 0
+
     if _is_json_request(request):
         data = _get_json_body(request) or {}
         tpl_val = data.get('template_id', '')
@@ -904,6 +902,49 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
                 template_id = int(tpl_val)
             except (ValueError, TypeError):
                 pass
+        class_filter_enabled = bool(data.get('class_filter_enabled'))
+        selected_classes = data.get('selected_classes') or []
+        break_enabled = bool(data.get('break_enabled'))
+        try:
+            break_pages = int(data.get('break_pages') or 0)
+        except (ValueError, TypeError):
+            break_pages = 0
+
+    card_ids = _get_card_ids_from_request(request, table_id=table_id)
+    if not card_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'No cards selected for export'
+        }, status=400)
+
+    # Apply class filter if enabled
+    if class_filter_enabled and selected_classes:
+        from core.views.idcard_helpers import _get_class_section_course_branch_field_names
+        from idcards.models import IDCardTable, IDCard
+        from core.utils.field_utils import normalize_class_value
+
+        try:
+            table = IDCardTable.objects.get(id=table_id)
+            class_field, _, _, _ = _get_class_section_course_branch_field_names(table)
+            if class_field:
+                cards_qs = IDCard.objects.filter(id__in=card_ids)
+                filtered_card_ids = []
+                selected_classes_set = set(selected_classes)
+                for card in cards_qs:
+                    val = card.field_data.get(class_field)
+                    if val:
+                        norm = normalize_class_value(str(val).strip())
+                        if norm in selected_classes_set:
+                            filtered_card_ids.append(card.id)
+                card_ids = filtered_card_ids
+        except IDCardTable.DoesNotExist:
+            pass
+
+    if not card_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'No cards selected for export after applying class filter'
+        }, status=400)
     
     # Route large exports to async background worker
     if len(card_ids) > _ASYNC_EXPORT_THRESHOLD:
@@ -915,6 +956,8 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
             status=_get_status_from_request(request),
             doc_format=doc_format,
             template_id=template_id,
+            break_enabled=break_enabled,
+            break_pages=break_pages,
         )
         try:
             from core.services.activity_service import ActivityService
@@ -949,6 +992,8 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
             status=_get_status_from_request(request),
             template_id=template_id,
             allow_large=allow_large_exports,
+            break_enabled=break_enabled,
+            break_pages=break_pages,
         )
         
         if not result.success:

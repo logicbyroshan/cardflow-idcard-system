@@ -342,6 +342,10 @@ export function AuthProvider({ children }) {
             const { email, password } = JSON.parse(credsStr);
             const res = await login(email, password);
             if (!res.success) {
+              if (res.data?.message === 'Network connection error') {
+                console.log('[Auth] Network connection error during silent auth, keeping app unlocked for offline use.');
+                return;
+              }
               setIsSilentAuthFailed(true);
               setIsAppUnlocked(false); // Relock if password invalid
             }

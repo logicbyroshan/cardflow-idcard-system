@@ -60,6 +60,12 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         if (staffInfoSection) staffInfoSection.style.display = assignmentOnly ? 'none' : '';
         if (staffPermissionsSection) staffPermissionsSection.style.display = assignmentOnly ? 'none' : '';
 
+        // Hide group assignment chips / "No group assignments added yet" when in add mode
+        var chipSection = document.getElementById('group-assignment-chip-section');
+        if (chipSection) {
+            chipSection.style.display = (mode === 'add') ? 'none' : '';
+        }
+
         var nameInput = document.getElementById('staff-name');
         var emailInput = document.getElementById('staff-email');
         var passwordInput = document.getElementById('staff-password');
@@ -377,6 +383,9 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             enableFormInputs(true);
             // Hide password option in assign mode
             if (pwRow) pwRow.style.display = 'none';
+            // Hide custom password input group and remove required validation in assign mode
+            if (pwGroup) pwGroup.style.display = 'none';
+            if (pwInput) pwInput.required = false;
             // Hide temp password button in assign mode
             var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
             if (tempPwBtn) tempPwBtn.style.display = 'none';
@@ -413,7 +422,8 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         document.getElementById('staff-name').value    = d.name    || '';
         document.getElementById('staff-email').value   = d.email   || '';
         document.getElementById('staff-phone').value   = d.phone   || '';
-        document.getElementById('staff-address').value = d.address || '';
+        var staffAddressInput = document.getElementById('staff-address');
+        if (staffAddressInput) staffAddressInput.value = d.address || '';
 
         // Status  page-specific hook sets the dropdown or hidden input
         if (cfg.onSetStatus) cfg.onSetStatus(d.status === 'active' ? 'true' : 'false');

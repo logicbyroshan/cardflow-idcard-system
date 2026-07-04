@@ -2703,6 +2703,52 @@ function openDownloadDocxModal(cardIds, format) {
     if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
     if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
     _setDocxFormatSelection(pendingDocxFormat);
+    
+    // Reset options and checkboxes
+    const classFilterEnabledEl = document.getElementById('downloadDocxClassFilterEnabled');
+    if (classFilterEnabledEl) classFilterEnabledEl.checked = false;
+    const classListEl = document.getElementById('downloadDocxClassList');
+    if (classListEl) {
+        classListEl.innerHTML = '';
+        classListEl.style.display = 'none';
+    }
+
+    const breakEnabledEl = document.getElementById('downloadDocxCustomBreakEnabled');
+    if (breakEnabledEl) breakEnabledEl.checked = false;
+    const breakInputArea = document.getElementById('downloadDocxCustomBreakInputArea');
+    if (breakInputArea) breakInputArea.style.display = 'none';
+    const breakPagesEl = document.getElementById('downloadDocxCustomBreakPages');
+    if (breakPagesEl) breakPagesEl.value = '10';
+
+    // Populate classes checklist
+    const classOptions = (window.IDCardApp && typeof window.IDCardApp.getAllClassOptions === 'function') ? window.IDCardApp.getAllClassOptions() : [];
+    const classFilterCard = document.getElementById('downloadDocxClassFilterCard');
+    if (classOptions && classOptions.length > 0 && classFilterCard && classListEl) {
+        classFilterCard.style.display = 'block';
+        classOptions.forEach(opt => {
+            const val = window.IDCardApp.getClassOptionValue(opt);
+            const label = window.IDCardApp.getClassOptionLabel(opt);
+            
+            const labelEl = document.createElement('label');
+            labelEl.className = 'download-docx-class-item';
+            
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.className = 'download-docx-class-checkbox';
+            chk.value = val;
+            chk.checked = true;
+            
+            const textSpan = document.createElement('span');
+            textSpan.textContent = label;
+            
+            labelEl.appendChild(chk);
+            labelEl.appendChild(textSpan);
+            classListEl.appendChild(labelEl);
+        });
+    } else if (classFilterCard) {
+        classFilterCard.style.display = 'none';
+    }
+
     // Load templates dynamically (from init sub-module)
     if (window.IDCardApp._loadExportTemplates) window.IDCardApp._loadExportTemplates(false);
     modal.style.display = 'flex';
@@ -2744,6 +2790,17 @@ function initDownloadDocxHandlers() {
     // Docx template modal handlers
     document.getElementById('downloadDocxCancel')?.addEventListener('click', closeDownloadDocxModal);
     document.getElementById('downloadDocxClose')?.addEventListener('click', closeDownloadDocxModal);
+    
+    document.getElementById('downloadDocxClassFilterEnabled')?.addEventListener('change', function() {
+        const classList = document.getElementById('downloadDocxClassList');
+        if (classList) classList.style.display = this.checked ? 'flex' : 'none';
+    });
+
+    document.getElementById('downloadDocxCustomBreakEnabled')?.addEventListener('change', function() {
+        const inputArea = document.getElementById('downloadDocxCustomBreakInputArea');
+        if (inputArea) inputArea.style.display = this.checked ? 'block' : 'none';
+    });
+
     document.getElementById('downloadDocxConfirm')?.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();

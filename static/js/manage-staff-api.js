@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             var data = await ApiClient.get('/api/staff/' + staffId + '/');
             if (data.success) {
-                return data.staff;
+                return data.staff || data.data;
             } else {
                 showToast(data.message || 'Failed to fetch staff details', 'error');
                 return null;

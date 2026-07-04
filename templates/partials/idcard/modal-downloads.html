@@ -178,6 +178,31 @@
       <option value="">Default (No Footer Text)</option>
     </select>
     <p class="center-modal-note">Template determines the footer text printed on every Word page.</p>
+
+    <!-- Download By Custom Class Option Card -->
+    <div class="download-xlsx-option-card" id="downloadDocxClassFilterCard" style="display:none;">
+      <label class="download-xlsx-option-label" for="downloadDocxClassFilterEnabled">
+        <input type="checkbox" id="downloadDocxClassFilterEnabled" class="download-xlsx-option-checkbox">
+        <span>Download By Custom Class</span>
+      </label>
+      <p class="download-xlsx-option-note">Select specific classes to download. Cards from other classes will be excluded.</p>
+      <div id="downloadDocxClassList" class="download-docx-class-list">
+        <!-- Dynamic checkboxes will go here -->
+      </div>
+    </div>
+
+    <!-- Custom Break Option Card -->
+    <div class="download-xlsx-option-card">
+      <label class="download-xlsx-option-label" for="downloadDocxCustomBreakEnabled">
+        <input type="checkbox" id="downloadDocxCustomBreakEnabled" class="download-xlsx-option-checkbox">
+        <span>Custom Break</span>
+      </label>
+      <p class="download-xlsx-option-note">Break the big Word document into smaller files of a specific page size.</p>
+      <div id="downloadDocxCustomBreakInputArea" class="download-docx-break-input-area">
+        <label for="downloadDocxCustomBreakPages" class="download-docx-break-label">How many pages after break?</label>
+        <input type="number" id="downloadDocxCustomBreakPages" class="download-img-kb-input" min="1" step="1" value="10">
+      </div>
+    </div>
     </div>
     <div id="downloadDocxProgressStep" class="download-modal-progress-step" style="display:none;">
       <p class="download-modal-step-title">Step 2: Downloading</p>
@@ -1336,6 +1361,48 @@
     #reprintPickerConfirmModal.edit-mode .reprint-preview-meta {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
+  .download-docx-class-list {
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid #ddd6fe;
+    border-radius: 8px;
+    background: var(--color-white);
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  .download-docx-class-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--ui-font-size-sm, 12px);
+    color: #4c1d95;
+    cursor: pointer;
+    user-select: none;
+    background: #faf5ff;
+    border: 1px solid #e9d5ff;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .download-docx-class-checkbox {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--color-purple-dark);
+    cursor: pointer;
+  }
+  .download-docx-break-input-area {
+    display: none;
+    margin-top: 8px;
+  }
+  .download-docx-break-label {
+    display: block;
+    font-size: var(--ui-font-size-xs, 11px);
+    color: #6b21a8;
+    font-weight: 600;
+    margin-bottom: 4px;
   }
 </style>
 

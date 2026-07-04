@@ -14,10 +14,7 @@
         <input type="hidden" id="staff-id" name="staff_id">
 
         <div class="drawer-body">
-            <div class="profile-upload-section flex-row items-center gap-4" id="staff-avatar-section">
-                {% include 'partials/components/user-avatar.html' with role='client_staff' size='large' %}
-                <span class="text-xs text-gray-500">Assistent avatar</span>
-            </div>
+
             {# client assignment removed: assistant owner is the creating client #}
             {% include 'partials/staff/staff-drawer-info.html' %}
             {% include 'partials/client_staff/staff-drawer-permissions.html' %}

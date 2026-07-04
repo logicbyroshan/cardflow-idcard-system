@@ -31,7 +31,7 @@ import { cleanFieldData, cleanFieldValue } from '../utils/data';
 /**
  * Bottom-to-top dynamic form drawer for adding/editing cards.
  */
-export default function CardModalForm({ visible, onClose, tableId, cardId, onSuccess, requireClassChangeWarning }) {
+export default function CardModalForm({ visible, onClose, tableId, cardId, onSuccess, requireClassChangeWarning, onSaveAndNext }) {
   const navigation = typeof useNavigation === 'function' ? useNavigation() : { navigate: () => {}, goBack: () => {}, reset: () => {} };
   const isFocused = typeof useIsFocused === 'function' ? useIsFocused() : true;
   const insets = typeof useSafeAreaInsets === 'function' ? useSafeAreaInsets() : { top: 0, bottom: 0, left: 0, right: 0 };
@@ -196,8 +196,8 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         const isLocalUri = typeof val === 'string' && (
           val.startsWith('file://') || 
           val.startsWith('content://') || 
-          val.startsWith('/') // Some Android paths
-        );
+          (val.startsWith('/') && !val.startsWith('/media/') && !val.startsWith('/static/'))
+        ) && !val.startsWith('http://') && !val.startsWith('https://');
 
         if (isLocalUri) {
           // It's a picked local image
@@ -213,7 +213,8 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
           
           // Use image_ prefix for dynamic fields to match backend expectation
           // PHOTO is a special field name in some tables, while others use lowercase photo
-          const isMainPhoto = key.toUpperCase() === 'PHOTO' || key.toLowerCase() === 'photo';
+          const keyLower = key.toLowerCase();
+          const isMainPhoto = keyLower === 'photo' || keyLower === 'student_photo' || keyLower === 'student photo' || keyLower === 'image';
           const fileKey = isMainPhoto ? 'photo' : `image_${key}`;
           
           formData.append(fileKey, { uri: val, name: filename, type });
@@ -234,7 +235,11 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         showToast(data.message || (isEdit ? 'Updated!' : 'Saved!'), 'success');
         setTimeout(() => {
           onSuccess && onSuccess(data.card);
-          onClose();
+          if (user?.role === 'photographer' && onSaveAndNext) {
+            onSaveAndNext(cardId);
+          } else {
+            onClose();
+          }
         }, 800);
       } else {
         showToast(data?.message || 'Failed to save', 'error');
@@ -452,7 +457,8 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                               {field.mandatory && <View style={s.mandatoryDot} />}
                             </HStack>
                             <TextInput
-                              style={s.fieldInput}
+                              style={[s.fieldInput, user?.role === 'photographer' && { backgroundColor: '#f1f5f9', color: colors.gray500 }]}
+                              editable={user?.role !== 'photographer'}
                               value={values[field.name] || ''}
                               onChangeText={t => setValues(prev => ({ ...prev, [field.name]: t.toUpperCase() }))}
                               placeholder={`Enter ${field.name.toLowerCase()}`}
@@ -476,7 +482,9 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                           {saving ? (
                             <ActivityIndicator size="small" color="#fff" />
                           ) : (
-                            <Text style={s.saveBtnText}>{isEdit ? 'Update' : 'Save Entry'}</Text>
+                            <Text style={s.saveBtnText}>
+                              {user?.role === 'photographer' ? 'Save & Next' : (isEdit ? 'Update' : 'Save Entry')}
+                            </Text>
                           )}
                         </LinearGradient>
                       </TouchableOpacity>

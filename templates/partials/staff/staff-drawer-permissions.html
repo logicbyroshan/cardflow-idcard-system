@@ -4,7 +4,7 @@ Partial for all staff permission toggles (group settings, card lists, card actio
 {% endcomment %}
 
 <!-- Permissions Section -->
-<div class="form-section">
+<div class="form-section" id="staff-permissions-section">
     <div class="permission-header">
         <i class="fa-solid fa-shield-halved"></i> User Permission
     </div>
@@ -284,6 +284,13 @@ Partial for all staff permission toggles (group settings, card lists, card actio
                     <span class="toggle-slider"></span>
                 </label>
                 <span class="permission-label">Manage Assistant</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_manage_photographer_staff" id="perm-manage-photographer-staff">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Manage Photographer</span>
             </div>
         </div>
     </div>

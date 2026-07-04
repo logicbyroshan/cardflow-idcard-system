@@ -357,7 +357,8 @@ function _syncBatchJobsAutoRefresh(shouldRun) {
 
   _batchJobsAutoRefreshTimer = setInterval(function () {
     const activeTab = document.querySelector('.panel-tab.active')?.dataset?.tab;
-    if (activeTab === 'batch-jobs' && !document.hidden) {
+    const isBatchJobsActive = (activeTab === 'batch-jobs') || (!document.querySelector('.panel-tab') && document.getElementById('tab-batch-jobs'));
+    if (isBatchJobsActive && !document.hidden) {
       window.loadManagePanelBatchJobProgressCenter(false);
     }
   }, MANAGE_PANEL_BATCH_REFRESH_MS);

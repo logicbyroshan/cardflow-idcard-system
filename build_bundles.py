@@ -158,6 +158,7 @@ CSS_BUNDLES = [
             "css/fonts.css",
             "css/common.css",
             "css/global-search.css",
+            "css/ui-control-consistency.css",
         ],
     ),
     # ── IDCard Actions CSS (all sub-files expanded, no @import) ──

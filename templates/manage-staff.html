@@ -160,7 +160,7 @@
 {% endblock %}
 
 {% block page_js %}
-  <script defer src="{% static 'dist/js/manage-staff.min.js' %}"></script>
+  <script defer src="{% static 'dist/js/manage-staff.min.js' %}?v=1.2"></script>
   <script defer src="{% static 'js/manage-staff-login-history.js' %}"></script>
   {% if request.GET.embed == 'drawer' %}
   <script>
