@@ -187,6 +187,7 @@ def _match_filter(item_val, lookup_type, target_val):
 class StaffCompatQuerySet:
     def __init__(self, items):
         self.items = items
+        self.model = Staff
 
     def __iter__(self):
         return iter(self.items)

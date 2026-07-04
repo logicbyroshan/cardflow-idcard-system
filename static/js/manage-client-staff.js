@@ -2263,7 +2263,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.closeTempPasswordModal();
                 if (typeof showToast === 'function') showToast(result.message || 'Temporary password set successfully!', 'success');
             } else if (typeof showToast === 'function') {
-                showToast((result && (result.message || result.error)) || 'Failed to set password', 'error');
+                 showToast((result && (result.message || result.error)) || 'Failed to set password', 'error');
             }
         } catch (err) {
             if (typeof showToast === 'function') {
@@ -2274,6 +2274,171 @@ document.addEventListener('DOMContentLoaded', function () {
             saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Password';
         }
     };
+
+    // Auto Create Handlers (Client Portal version)
+    var autoCreateBtn = document.getElementById('autoCreateAssistantsBtn');
+    var autoCreateModal = document.getElementById('autoCreateAssistantsModal');
+    var autoCreateForm = document.getElementById('autoCreateAssistantsForm');
+
+    function closeAutoCreateModal() {
+        if (window.alpineCloseModal) {
+            window.alpineCloseModal();
+        } else if (autoCreateModal) {
+            autoCreateModal.style.display = 'none';
+        }
+    }
+
+    if (autoCreateBtn && autoCreateModal && autoCreateForm) {
+        // Open modal
+        autoCreateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var clientId = getActiveAssignmentClientId();
+            if (!clientId) {
+                if (typeof showToast === 'function') showToast('Please select a client first.', 'warning');
+                return;
+            }
+            
+            // Populate group select dropdown
+            var groupSelect = document.getElementById('autoCreateGroup');
+            if (groupSelect) {
+                groupSelect.innerHTML = '<option value="">Loading Groups/Lists...</option>';
+                groupSelect.disabled = true;
+                
+                fetch(`/panel/client/api/groups/active/?for_auto_create=true`)
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success && res.groups && res.groups.length > 0) {
+                            var html = '<option value="">Select Group/List</option>';
+                            res.groups.forEach(function(g) {
+                                html += `<option value="${g.group_id}">${g.name}</option>`;
+                            });
+                            groupSelect.innerHTML = html;
+                            groupSelect.disabled = false;
+                        } else {
+                            groupSelect.innerHTML = '<option value="">No Groups/Lists found</option>';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Failed to load groups:', err);
+                        groupSelect.innerHTML = '<option value="">Error loading Groups/Lists</option>';
+                    });
+            }
+
+            if (window.alpineOpenModal) window.alpineOpenModal('autoCreate');
+            else autoCreateModal.style.display = 'flex';
+        });
+
+        autoCreateForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var clientId = getActiveAssignmentClientId();
+            if (!clientId) {
+                if (typeof showToast === 'function') showToast('Please select a client first.', 'warning');
+                return;
+            }
+
+            var groupId = document.getElementById('autoCreateGroup').value;
+            if (!groupId) {
+                if (typeof showToast === 'function') showToast('Please select a Group/List first.', 'warning');
+                return;
+            }
+
+            var acronym = document.getElementById('autoCreateAcronym').value;
+            var mode = document.querySelector('input[name="autoCreateMode"]:checked').value;
+            var assign = document.getElementById('autoCreateAssign').checked ? 'true' : 'false';
+            
+            var submitBtn = document.getElementById('autoCreateSubmitBtn');
+            var originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+            submitBtn.disabled = true;
+
+            var formData = new FormData();
+            formData.append('client_id', clientId);
+            formData.append('group_id', groupId);
+            formData.append('acronym', acronym);
+            formData.append('mode', mode);
+            formData.append('assign', assign);
+
+            var progressContainer = document.getElementById('autoCreateProgressContainer');
+            var progressBar = document.getElementById('autoCreateProgressBar');
+            var progressText = document.getElementById('autoCreateProgressText');
+            var progressInterval = null;
+
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+                var progress = 0;
+                progressInterval = setInterval(function() {
+                    var remaining = 95 - progress;
+                    progress += Math.max(1, remaining * 0.1);
+                    if (progress > 95) progress = 95;
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = Math.round(progress) + '%';
+                }, 400);
+            }
+
+            try {
+                var url = '/panel/assistants/api/staff/auto-create/';
+                var csrfCookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+                var csrfToken = csrfCookie ? csrfCookie.split('=')[1] : '';
+
+                var response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    var blob = await response.blob();
+                    
+                    var disposition = response.headers.get('Content-Disposition');
+                    var filename = `assistants_${acronym}.xlsx`;
+                    if (disposition && disposition.indexOf('filename="') !== -1) {
+                        var matches = /filename="([^"]+)"/.exec(disposition);
+                        if (matches != null && matches[1]) filename = matches[1];
+                    }
+
+                    if (progressInterval) clearInterval(progressInterval);
+                    if (progressContainer) {
+                        progressBar.style.width = '100%';
+                        progressText.textContent = '100%';
+                    }
+
+                    var downloadUrl = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = downloadUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+
+                    if (typeof showToast === 'function') showToast('Assistants generated successfully!', 'success');
+                    
+                    setTimeout(function() {
+                        closeAutoCreateModal();
+                        autoCreateForm.reset();
+                        location.reload();
+                    }, 600);
+                } else {
+                    var json = await response.json();
+                    if (typeof showToast === 'function') showToast(json.message || 'Failed to auto create assistants', 'error');
+                }
+            } catch (err) {
+                console.error('Auto create error:', err);
+                if (typeof showToast === 'function') showToast('Network error during auto creation', 'error');
+            } finally {
+                if (progressInterval) clearInterval(progressInterval);
+                if (progressContainer) {
+                    setTimeout(function() { progressContainer.style.display = 'none'; }, 500);
+                }
+                submitBtn.innerHTML = originalBtnHtml;
+                submitBtn.disabled = false;
+            }
+        });
+    }
 
     // Expose manager for temp password modal access
     window._staffPageMgr = mgr;

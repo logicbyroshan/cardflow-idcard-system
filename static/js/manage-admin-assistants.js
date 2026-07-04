@@ -2566,7 +2566,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 groupSelect.innerHTML = '<option value="">Loading Groups/Lists...</option>';
                 groupSelect.disabled = true;
                 
-                fetch(`/panel/assistants/api/groups/active/?client_id=${clientId}`)
+                fetch(`/panel/assistants/api/groups/active/?client_id=${clientId}&for_auto_create=true`)
                     .then(r => r.json())
                     .then(res => {
                         if (res.success && res.groups && res.groups.length > 0) {

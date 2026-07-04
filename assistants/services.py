@@ -290,12 +290,22 @@ class AssistantService(BaseService):
         return classes, sections, branches
     
     @classmethod
+    def _has_staff_management_access(cls, user) -> bool:
+        """Check if user has staff management permissions (either client list perm or manage client staff)."""
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        if PermissionService.has(user, 'perm_idcard_client_list'):
+            return True
+        if PermissionService.is_client(user) and PermissionService.has(user, 'perm_manage_client_staff'):
+            return True
+        return False
+
+    @classmethod
     def can_manage_assistants(cls, user) -> bool:
         """Check if user can manage assistants."""
-        if not PermissionService.is_client(user):
-            return False
-        return (PermissionService.has(user, 'perm_idcard_client_list')
-                or PermissionService.has(user, 'perm_manage_client_staff'))
+        return cls._has_staff_management_access(user)
     
     @classmethod
     def list_assistants(cls, user, target_client=None) -> ServiceResult:
@@ -310,7 +320,7 @@ class AssistantService(BaseService):
                 if not client:
                     return ServiceResult(success=False, message='Client profile not found')
             
-            if not user.is_superuser and not PermissionService.has(user, 'perm_idcard_client_list'):
+            if not cls._has_staff_management_access(user):
                 return ServiceResult(success=False, message='Permission denied')
 
             assistant_only_fields = [
@@ -403,7 +413,7 @@ class AssistantService(BaseService):
                 client = ClientAccessService.get_client_for_user(user)
                 if not client or assistant.client_id != client.id:
                     return ServiceResult(success=False, message='Access denied')
-                if not PermissionService.has(user, 'perm_idcard_client_list'):
+                if not cls._has_staff_management_access(user):
                     return ServiceResult(success=False, message='Permission denied')
             
             client = assistant.client
@@ -449,20 +459,18 @@ class AssistantService(BaseService):
                     if str(v).strip().isdigit() and int(v) > 0
                 ]
 
-                if legacy_classes and legacy_sections:
+                if legacy_classes:
                     scope_type = 'group'
-                    scope_id = group_ids[0] if len(group_ids) == 1 else None
-                    if scope_id is None and len(table_ids) == 1:
+                    scope_id = group_ids[0] if len(group_ids) >= 1 else None
+                    if scope_id is None and len(table_ids) >= 1:
                         scope_type = 'table'
                         scope_id = table_ids[0]
 
                     if scope_id is not None:
-                        if len(legacy_classes) == 1:
-                            class_sections = {legacy_classes[0]: legacy_sections}
-                        elif len(legacy_sections) == 1:
-                            class_sections = {cls_name: legacy_sections for cls_name in legacy_classes}
-                        else:
-                            class_sections = {}
+                        # Build class_sections map for the classes
+                        class_sections = {}
+                        for cls_name in legacy_classes:
+                            class_sections[cls_name] = legacy_sections
 
                         detail['assignment_scopes'] = [{
                             'scope_type': scope_type,
@@ -506,7 +514,7 @@ class AssistantService(BaseService):
                 client = ClientAccessService.get_client_for_user(user)
                 if not client:
                     return ServiceResult(success=False, message='Client profile not found')
-                if not PermissionService.has(user, 'perm_idcard_client_list'):
+                if not cls._has_staff_management_access(user):
                     return ServiceResult(success=False, message='Permission denied')
 
             first_name = str(data.get('first_name') or '').strip()
@@ -772,7 +780,7 @@ class AssistantService(BaseService):
                 client = target_client or ClientAccessService.get_client_for_user(user)
                 if not client:
                     return ServiceResult(success=False, message='Client profile not found')
-                if not PermissionService.has(user, 'perm_idcard_client_list'):
+                if not cls._has_staff_management_access(user):
                     return ServiceResult(success=False, message='Permission denied')
 
             with transaction.atomic():
@@ -939,7 +947,7 @@ class AssistantService(BaseService):
                 client = ClientAccessService.get_client_for_user(user)
                 if not client or assistant.client_id != client.id:
                     return ServiceResult(success=False, message='Access denied')
-                if not PermissionService.has(user, 'perm_idcard_client_list'):
+                if not cls._has_staff_management_access(user):
                     return ServiceResult(success=False, message='Permission denied')
             
             client = assistant.client
@@ -976,7 +984,7 @@ class AssistantService(BaseService):
                 client = ClientAccessService.get_client_for_user(user)
                 if not client or assistant.client_id != client.id:
                     return ServiceResult(success=False, message='Access denied')
-                if not PermissionService.has(user, 'perm_idcard_client_list'):
+                if not cls._has_staff_management_access(user):
                     return ServiceResult(success=False, message='Permission denied')
             
             client = assistant.client
@@ -1238,11 +1246,27 @@ class AssistantService(BaseService):
                         new_user.save()
 
                         allowed_classes = [cls_name] if auto_assign else []
-                        Assistant.objects.create(
+                        assistant = Assistant.objects.create(
                             user=new_user,
                             client=target_client,
                             allowed_classes=allowed_classes
                         )
+                        if group:
+                            assistant.assigned_groups.add(group)
+                            if auto_assign:
+                                class_sections = {}
+                                if allowed_classes:
+                                    class_sections[cls_name] = []
+                                assistant.assignment_scopes = [{
+                                    'scope_type': 'group',
+                                    'scope_id': group.id,
+                                    'group_id': group.id,
+                                    'classes': allowed_classes,
+                                    'sections': [],
+                                    'branches': [],
+                                    'class_sections': class_sections
+                                }]
+                                assistant.save(update_fields=['assignment_scopes'])
                         existing_emails.add(email)
                         existing_usernames.add(email)
                         created_assistants.append({'Name': name, 'Email': email, 'Password': password})
@@ -1284,12 +1308,28 @@ class AssistantService(BaseService):
 
                             allowed_classes = [cls_name] if auto_assign else []
                             allowed_sections = [sec_name] if (auto_assign and sec_name) else []
-                            Assistant.objects.create(
+                            assistant = Assistant.objects.create(
                                 user=new_user,
                                 client=target_client,
                                 allowed_classes=allowed_classes,
                                 allowed_sections=allowed_sections
                             )
+                            if group:
+                                assistant.assigned_groups.add(group)
+                                if auto_assign:
+                                    class_sections = {}
+                                    if allowed_classes:
+                                        class_sections[cls_name] = allowed_sections
+                                    assistant.assignment_scopes = [{
+                                        'scope_type': 'group',
+                                        'scope_id': group.id,
+                                        'group_id': group.id,
+                                        'classes': allowed_classes,
+                                        'sections': allowed_sections,
+                                        'branches': [],
+                                        'class_sections': class_sections
+                                    }]
+                                    assistant.save(update_fields=['assignment_scopes'])
                             existing_emails.add(email)
                             existing_usernames.add(email)
                             created_assistants.append({'Name': name, 'Email': email, 'Password': password})

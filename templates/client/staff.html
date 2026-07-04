@@ -366,6 +366,9 @@
 <!-- Delete Confirmation Modal -->
 {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="assistent" %}
 
+<!-- Auto Create Assistants Modal -->
+{% include 'assistants/auto-create-modal.html' %}
+
 <!-- Toast Notifications -->
 {% include 'partials/common/toast.html' %}
 {% endblock %}
@@ -376,6 +379,10 @@ Load modular client-side staff scripts instead of the admin-oriented dist bundle
 This ensures the client page initializes with client API endpoints (e.g. /client/api/staff/)
 instead of the admin `/panel/api/client-staff/*` endpoints embedded in the minified admin bundle.
 {% endcomment %}
+<script>
+    window.CLIENT_ID = {{ client.id|default:"null" }};
+    window.PANEL_CLIENT_ID = {{ client.id|default:"null" }};
+</script>
 <script defer src="{% static 'js/manage-staff-common-api.js' %}"></script>
 <script defer src="{% static 'js/manage-staff-common-drawer.js' %}"></script>
 <script defer src="{% static 'js/manage-staff-common-list.js' %}"></script>

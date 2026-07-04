@@ -662,8 +662,9 @@ def api_client_groups_list(request):
     
     groups_qs = IDCardGroup.objects.filter(client=client).order_by('name')
     group_count = groups_qs.count()
+    for_auto_create = request.GET.get('for_auto_create') == 'true'
 
-    if group_count <= 1:
+    if group_count <= 1 and not for_auto_create:
         tables_qs = IDCardTable.objects.filter(
             group__client=client,
             deleted_by_client=False,

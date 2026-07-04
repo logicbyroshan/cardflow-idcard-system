@@ -132,6 +132,7 @@ class StaffCompatWrapper:
 class StaffCompatQuerySet:
     def __init__(self, items):
         self.items = items
+        self.model = Staff
 
     def __iter__(self):
         return iter(self.items)
@@ -201,9 +202,12 @@ class StaffCompatManager:
         return res[0]
 
 
+from django.core.exceptions import ObjectDoesNotExist
+
 class Staff:
     objects = StaffCompatManager()
-    DoesNotExist = Exception
+    _default_manager = objects
+    DoesNotExist = ObjectDoesNotExist
 
 MAX_REPRINT_ACTION_IDS = 200
 
@@ -6125,6 +6129,8 @@ def api_dashboard_data(request):
         from core.services.activity_service import ActivityService
         from client.models import Client
         from core.models import User
+        from django.db.models import Max
+
         
         is_admin = PermissionService.is_super_admin(user) or PermissionService.is_admin_staff(user)
         is_photographer = PermissionService.is_photographer(user)

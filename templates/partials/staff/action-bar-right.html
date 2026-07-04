@@ -4,10 +4,12 @@
         <button class="btn btn-md btn-primary" id="addStaffBtn" title="Add New {% if active_page == 'manage_staff' and not is_client_admin %}Operator{% else %}Assistant{% endif %}"><i class="fa-solid fa-plus"></i> Add
         </button>
         {% endif %}
-        {% if active_page == 'manage_assistants' and is_super_admin %}
+        {% if active_page == 'manage_assistants' and is_super_admin or active_page == 'staff' and is_client_admin %}
+        {% if active_page == 'manage_assistants' %}
         <button class="btn btn-md btn-success" id="bulkUploadAssistantsBtn" title="Bulk Add Assistants via XLSX" disabled><i class="fa-solid fa-file-excel"></i> Bulk Add
         </button>
-        <button class="btn btn-md btn-warning" id="autoCreateAssistantsBtn" title="Auto Create Assistants" disabled><i class="fa-solid fa-wand-magic-sparkles"></i> Auto Create
+        {% endif %}
+        <button class="btn btn-md btn-warning" id="autoCreateAssistantsBtn" title="Auto Create Assistants" {% if active_page == 'manage_assistants' %}disabled{% endif %}><i class="fa-solid fa-wand-magic-sparkles"></i> Auto Create
         </button>
         {% endif %}
         {% if is_super_admin or perm_idcard_client_list or perm_manage_client_staff %}
