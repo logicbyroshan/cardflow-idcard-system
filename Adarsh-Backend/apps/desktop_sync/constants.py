@@ -1,0 +1,21 @@
+"""Desktop Integration API — constants."""
+
+
+class DesktopAuditEvent:
+    DESKTOP_LOGIN = 'DESKTOP_LOGIN'
+    DESKTOP_DATA_ACCESS = 'DESKTOP_DATA_ACCESS'
+    DESKTOP_IMAGE_DOWNLOAD = 'DESKTOP_IMAGE_DOWNLOAD'
+    DESKTOP_IMAGE_REPLACE = 'DESKTOP_IMAGE_REPLACE'
+    DESKTOP_PRINT_REQUEST = 'DESKTOP_PRINT_REQUEST'
+    DESKTOP_SYNC_START = 'DESKTOP_SYNC_START'
+    DESKTOP_SYNC_COMPLETE = 'DESKTOP_SYNC_COMPLETE'
+
+
+# Card statuses visible to the desktop API
+DESKTOP_ALLOWED_STATUSES = ['APPROVED', 'DOWNLOADED']
+
+# Desktop API key prefix (for fast identification)
+KEY_PREFIX = 'dsk_'
+
+# Default rate limit: requests per minute
+DESKTOP_RATE_LIMIT = 300

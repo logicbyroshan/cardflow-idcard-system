@@ -1,0 +1,28 @@
+<div class="drawer-overlay" id="staff-drawer-overlay"></div>
+<aside class="side-drawer" id="staff-drawer">
+    <div class="drawer-header">
+        <h2 class="drawer-title" id="drawer-title">
+            <i class="fa-solid fa-user-plus" id="drawer-icon"></i>
+            <span id="drawer-title-text">Add New Assistent</span>
+        </h2>
+        <button type="button" class="drawer-close" id="drawer-close-btn" title="Close" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <form id="staff-form">
+        <input type="hidden" id="staff-id" name="staff_id">
+
+        <div class="drawer-body">
+            <div class="profile-upload-section flex-row items-center gap-4" id="staff-avatar-section">
+                {% include 'partials/components/user-avatar.html' with role='client_staff' size='large' %}
+                <span class="text-xs text-gray-500">Assistent avatar</span>
+            </div>
+            {# client assignment removed: assistant owner is the creating client #}
+            {% include 'partials/staff/staff-drawer-info.html' %}
+            {% include 'partials/client_staff/staff-drawer-permissions.html' %}
+        </div>
+
+        {% include 'partials/staff/staff-drawer-footer.html' %}
+    </form>
+</aside>

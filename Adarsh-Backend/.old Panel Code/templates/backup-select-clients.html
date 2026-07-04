@@ -1,0 +1,311 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index, follow">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Backup  -  Select Clients</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/backup.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+    {% include 'partials/common/alpine-loader.html' %}
+</head>
+<body class="backup-select-page" x-data="layoutState" x-init="init">
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
+  {% include 'partials/sidebar.html' %}
+  {% include 'partials/impersonate-bar.html' %}
+
+  <main class="main backup-main" id="main-content">
+    {% include 'partials/panel/topbar.html' with breadcrumb_label="Backup" %}
+
+    <div class="backup-page">
+      {% if error %}
+      <div class="backup-error-box">
+        <i class="fa-solid fa-triangle-exclamation"></i> {{ error }}
+        <a href="{% url 'dashboard' %}">Go to Dashboard</a>
+      </div>
+      {% else %}
+
+      <!-- Page header -->
+      <div class="backup-page-header">
+        <div class="backup-page-header-left">
+          <h1><i class="fa-solid fa-database"></i> Select Clients for Backup</h1>
+          <p>Choose the schools whose data you want to backup. All selected schools will be packaged into a single <strong>Adarsh Backup ZIP</strong> with one folder per school.</p>
+        </div>
+        <div class="backup-page-header-right">
+          <a href="{% url 'dashboard' %}" class="backup-btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+          </a>
+        </div>
+      </div>
+
+      <!-- Sort bar -->
+      <div class="backup-sort-bar">
+        <span class="backup-sort-label">Sort by:</span>
+        <a href="?task={{ task.pk }}&sort=most_data"
+           class="backup-sort-btn {% if current_sort == 'most_data' %}active{% endif %}">
+          <i class="fa-solid fa-database"></i> Most Data
+        </a>
+        <a href="?task={{ task.pk }}&sort=latest"
+           class="backup-sort-btn {% if current_sort == 'latest' %}active{% endif %}">
+          <i class="fa-solid fa-clock"></i> Latest
+        </a>
+        <a href="?task={{ task.pk }}&sort=oldest"
+           class="backup-sort-btn {% if current_sort == 'oldest' %}active{% endif %}">
+          <i class="fa-solid fa-hourglass-start"></i> Oldest
+        </a>
+        <a href="?task={{ task.pk }}&sort=name"
+           class="backup-sort-btn {% if current_sort == 'name' %}active{% endif %}">
+          <i class="fa-solid fa-font"></i> Name
+        </a>
+
+        <div class="backup-sort-spacer"></div>
+
+        <button type="button" class="backup-btn-select-all" onclick="toggleSelectAll()">
+          <i class="fa-solid fa-check-double"></i> <span id="selectAllText">Select All</span>
+        </button>
+      </div>
+
+      <!-- Client cards grid container (scrollable) -->
+      <div class="backup-clients-scroll-area">
+        <div class="backup-clients-grid" id="clientsGrid">
+          {% for c in clients %}
+          <div class="backup-client-card" data-client-id="{{ c.pk }}" onclick="toggleClientSelection(this)">
+            <input type="checkbox" class="backup-client-check" value="{{ c.pk }}" @click.stop>
+            <div class="backup-client-info">
+              <div class="backup-client-name">{{ c.name }}</div>
+              <div class="backup-client-meta">
+                <span><i class="fa-solid fa-table"></i> {{ c.total_tables }} table{{ c.total_tables|pluralize }}</span>
+                <span><i class="fa-solid fa-id-card"></i> {{ c.total_cards }} card{{ c.total_cards|pluralize }}</span>
+              </div>
+              <div class="backup-client-date">
+                Created {{ c.created_at|date:"d M Y" }}
+              </div>
+            </div>
+              <span class="backup-client-logo" aria-hidden="true">
+                <i class="fa-solid fa-building"></i>
+              </span>
+            <div class="backup-client-check-icon"><i class="fa-solid fa-circle-check"></i></div>
+          </div>
+          {% empty %}
+          <div class="backup-empty">
+            <i class="fa-solid fa-inbox"></i>
+            <p>No active clients found.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Selected count + confirm -->
+      <div class="backup-bottom-bar" id="backupBottomBar" style="display:none;">
+        <div class="backup-bottom-info">
+          <span id="selectedCountText">0 client(s) selected</span>
+        </div>
+        <button type="button" class="backup-btn-confirm" onclick="confirmBackupStart()">
+          <i class="fa-solid fa-play"></i> Start Backup
+        </button>
+      </div>
+
+      <!-- Confirm warning modal -->
+      <div id="backupStartModal" class="backup-modal-overlay" style="display:none;">
+        <div class="backup-modal backup-modal-sm">
+          <div class="backup-modal-header">
+            <h2><i class="fa-solid fa-triangle-exclamation" style="color:var(--color-warning);"></i> Confirm Backup</h2>
+            <button type="button" class="backup-modal-close" onclick="closeStartModal()">&times;</button>
+          </div>
+          <div class="backup-modal-body">
+            <p>You are about to start a <strong>background backup</strong> for <strong><span id="confirmClientCount">0</span> school(s)</strong>.</p>
+            <ul class="backup-confirm-list">
+              <li>A single <strong>"Adarsh Backup {date}.zip"</strong> will be created with one folder per school.</li>
+              <li>Backup will run in the background  -  you can close this page.</li>
+              <li>Track progress in <strong>Manage Panel -> Backups</strong> tab.</li>
+              <li>Files will be <strong>auto-deleted after 24 hours</strong>.</li>
+            </ul>
+          </div>
+          <div class="backup-modal-footer">
+            <button type="button" class="btn btn-md btn-neutral" onclick="closeStartModal()">Cancel</button>
+            <button type="button" class="btn btn-md btn-primary" id="startBackupBtn" onclick="startBackup()">
+              <i class="fa-solid fa-rocket"></i> Start Backup Now
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {% endif %}
+    </div><!-- /.backup-page -->
+  </main>
+
+  {% include 'components/toast.html' %}
+  <script defer src="{% static 'dist/js/core.min.js' %}"></script>
+  <script defer src="{% static 'js/core/unified-select-dropdown.js' %}"></script>
+  <script>
+  (function(){
+    const TASK_ID = {{ task.pk|default:"0" }};
+    let backupStartInFlight = false;
+
+    function getCheckboxes() {
+      return [...document.querySelectorAll('.backup-client-check')];
+    }
+
+    function getSelectedIds() {
+      return getCheckboxes()
+        .filter(cb => cb.checked)
+        .map(cb => parseInt(cb.value, 10))
+        .filter(Number.isFinite);
+    }
+
+    function updateSelectAllLabel() {
+      const boxes = getCheckboxes();
+      const checkedCount = boxes.filter(b => b.checked).length;
+      const allChecked = boxes.length > 0 && checkedCount === boxes.length;
+      const labelEl = document.getElementById('selectAllText');
+      if (labelEl) {
+        labelEl.textContent = allChecked ? 'Deselect All' : 'Select All';
+      }
+    }
+
+    function updateBottomBar() {
+      const ids = getSelectedIds();
+      const bar = document.getElementById('backupBottomBar');
+      const text = document.getElementById('selectedCountText');
+      updateSelectAllLabel();
+
+      if (!bar || !text) return;
+
+      if (ids.length > 0) {
+        bar.style.display = 'flex';
+        text.textContent = ids.length + ' client(s) selected';
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+
+    window.toggleClientSelection = function(card) {
+      const cb = card.querySelector('.backup-client-check');
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      if (cb.checked) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+      updateBottomBar();
+    };
+
+    // Checkbox direct change (in case keyboard used)
+    document.addEventListener('change', function(e) {
+      if (e.target.classList.contains('backup-client-check')) {
+        const card = e.target.closest('.backup-client-card');
+        if (!card) return;
+        if (e.target.checked) {
+          card.classList.add('selected');
+        } else {
+          card.classList.remove('selected');
+        }
+        updateBottomBar();
+      }
+    });
+
+    window.toggleSelectAll = function() {
+      const boxes = getCheckboxes();
+      const allChecked = [...boxes].every(b => b.checked);
+      boxes.forEach(b => {
+        b.checked = !allChecked;
+        const card = b.closest('.backup-client-card');
+        if (!card) return;
+        if (b.checked) {
+          card.classList.add('selected');
+        } else {
+          card.classList.remove('selected');
+        }
+      });
+      updateBottomBar();
+    };
+
+    window.confirmBackupStart = function() {
+      const ids = getSelectedIds();
+      if (!ids.length) return;
+      document.getElementById('confirmClientCount').textContent = ids.length;
+      document.getElementById('backupStartModal').style.display = 'flex';
+    };
+
+    window.closeStartModal = function() {
+      document.getElementById('backupStartModal').style.display = 'none';
+    };
+
+    window.startBackup = function() {
+      if (backupStartInFlight) return;
+
+      const ids = getSelectedIds();
+      if (!ids.length) {
+        if (window.showToast) showToast('Select at least one client.', 'error');
+        return;
+      }
+
+      if (!TASK_ID) {
+        if (window.showToast) showToast('Backup task is missing. Please reopen this page.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('startBackupBtn');
+      if (!btn) return;
+
+      backupStartInFlight = true;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Starting...';
+
+      fetch('/panel/api/backup/start/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({ task_id: TASK_ID, client_ids: ids }),
+      })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        return { ok: r.ok, data: data };
+      })
+      .then(data => {
+        if (data.ok && data.data && data.data.success) {
+          if (window.showToast) showToast(data.data.message || 'Backup started successfully.', 'success');
+          setTimeout(() => { window.location.href = '/panel/manage-panel/?tab=backups'; }, 1500);
+        } else {
+          if (window.showToast) showToast((data.data && data.data.message) || 'Failed to start backup.', 'error');
+          backupStartInFlight = false;
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Start Backup Now';
+        }
+      })
+      .catch(() => {
+        if (window.showToast) showToast('Network error.', 'error');
+        backupStartInFlight = false;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Start Backup Now';
+      });
+    };
+
+    // Initial state sync for pre-checked items (if any).
+    updateBottomBar();
+
+    // Close confirmation modal on backdrop click.
+    document.getElementById('backupStartModal')?.addEventListener('click', function(e) {
+      if (e.target && e.target.id === 'backupStartModal') {
+        closeStartModal();
+      }
+    });
+
+    // ESC key closes modal.
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeStartModal();
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

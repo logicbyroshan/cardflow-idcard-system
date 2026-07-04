@@ -1,0 +1,65 @@
+{% comment %}
+User Avatar Component
+====================
+Displays a role-based avatar placeholder with consistent styling.
+No backend image storage - pure frontend placeholders.
+
+Usage:
+  {% include 'partials/components/user-avatar.html' with role='super_admin' size='medium' %}
+
+Parameters:
+  - role: 'pro_user' | 'super_admin' | 'admin_staff' | 'client' | 'guest_user' | 'client_staff'
+  - size: 'small' | 'medium' | 'large' (default: 'medium')
+  - show_label: true | false (default: false) - show role label below
+
+Styles:
+  Pro User     - Gold/amber with user tie icon
+  Super Admin  - Purple/indigo with crown icon
+  Operator     - Blue with user shield icon
+  Client       - Green with user icon
+  Assistent    - Teal with user gear icon
+{% endcomment %}
+
+{% with avatar_role=role|default:"client" avatar_size=size|default:"medium" %}
+{% if avatar_role == 'client' or avatar_role == 'client_staff' or avatar_role == 'guest_user' %}
+  {% if logo_url %}
+  <img src="{{ logo_url }}" alt="Client logo" class="w-full h-full object-contain rounded-lg bg-white" loading="lazy">
+  {% elif current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
+  <img src="{{ current_client_logo_url }}" alt="Client logo" class="w-full h-full object-contain rounded-lg bg-white" loading="lazy">
+  {% else %}
+  <div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
+    {% if avatar_role == 'client' %}
+    <i class="fa-solid fa-user"></i>
+    {% elif avatar_role == 'guest_user' %}
+    <i class="fa-solid fa-user-secret"></i>
+    {% else %}
+    <i class="fa-solid fa-user-gear"></i>
+    {% endif %}
+  </div>
+  {% endif %}
+{% else %}
+<div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
+  {% if avatar_role == 'pro_user' %}
+  <i class="fa-solid fa-user-tie"></i>
+  {% elif avatar_role == 'super_admin' %}
+  <i class="fa-solid fa-crown"></i>
+  {% elif avatar_role == 'admin_staff' %}
+  <i class="fa-solid fa-user-shield"></i>
+  {% else %}
+  <i class="fa-solid fa-user"></i>
+  {% endif %}
+</div>
+{% endif %}
+{% if show_label %}
+<span class="user-avatar-label user-avatar-label--{{ avatar_role }}">
+    {% if avatar_role == 'pro_user' %}Pro User
+    {% elif avatar_role == 'super_admin' %}Super Admin
+    {% elif avatar_role == 'admin_staff' %}Operator
+    {% elif avatar_role == 'client' %}Client
+    {% elif avatar_role == 'guest_user' %}Guest User
+    {% elif avatar_role == 'client_staff' %}Assistent
+    {% else %}User
+    {% endif %}
+</span>
+{% endif %}
+{% endwith %}

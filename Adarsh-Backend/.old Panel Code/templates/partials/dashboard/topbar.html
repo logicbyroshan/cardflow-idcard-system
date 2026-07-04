@@ -1,0 +1,19 @@
+<!-- Top Navbar -->
+<header class="topbar">
+  <div class="nav-left">
+    <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+      <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
+    </button>
+    <div class="breadcrumb">
+      <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <button class="global-search-btn" id="globalSearchBtn">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <span>Search ID cards...</span>
+      <kbd>Ctrl+K</kbd>
+    </button>
+    {% include 'partials/notification-bell.html' %}
+  </div>
+</header>

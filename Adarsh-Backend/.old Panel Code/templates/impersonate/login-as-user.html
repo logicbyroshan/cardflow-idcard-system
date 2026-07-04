@@ -1,0 +1,805 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Impersonate User  -  Adarsh ID Cards{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
+
+{% block extra_css %}
+<style>
+  @keyframes imp-skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .imp-page {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .main.main-scrollable-page {
+    grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
+  }
+
+  .main.main-scrollable-page > .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--color-white, var(--color-white)) !important;
+    border-bottom: 1px solid var(--color-gray-200, var(--color-gray-200));
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  }
+
+  .main.main-scrollable-page > .imp-page {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden !important;
+    overflow-x: hidden;
+    background: var(--color-gray-50, #f8fafc);
+  }
+
+  .imp-sticky-stack {
+    position: sticky;
+    top: 0;
+    z-index: 28;
+    background: var(--color-gray-50, #f8fafc);
+    padding-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .imp-page .pro-feature-tabs {
+    position: static;
+    top: auto;
+    margin: 0;
+    padding: 0 20px;
+    min-height: 42px;
+    border: 1px solid var(--color-gray-200, var(--color-gray-200));
+    border-left: 0;
+    border-right: 0;
+    background: var(--color-white);
+  }
+
+  .imp-page .action-bar {
+    position: static;
+    top: auto !important;
+    z-index: 22;
+    margin: 0;
+    background: var(--color-white, var(--color-white));
+    border: 1px solid var(--color-gray-200, var(--color-gray-200));
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 8px 20px;
+  }
+
+  .imp-page .action-bar .action-left,
+  .imp-page .action-bar .action-right {
+    align-items: center;
+  }
+
+  .imp-grid-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0;
+  }
+
+  @media (max-width: 768px) {
+    .imp-page .pro-feature-tabs {
+      padding: 0 12px;
+    }
+
+    .imp-page .action-bar {
+      padding: 8px 12px;
+    }
+
+    .imp-grid-wrap {
+      padding: 0;
+    }
+  }
+
+  /* Role filter pills */
+  .imp-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .imp-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-size: var(--ui-font-size-sm, 12px);
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color, #e0e0e0);
+    background: transparent;
+    color: var(--text-secondary, #666);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .imp-pill:hover, .imp-pill.active {
+    color: var(--color-white);
+    border-color: var(--primary, var(--color-primary));
+    background: var(--primary, var(--color-primary));
+  }
+  .imp-pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #e0e0e0);
+    background: rgba(15, 23, 42, 0.06);
+    color: inherit;
+    font-size: var(--ui-font-size-2xs, 10px);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .imp-pill:hover .imp-pill-count,
+  .imp-pill.active .imp-pill-count {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--color-white);
+  }
+
+  /* Users table + global pagination */
+  .imp-table-shell {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-left: 0;
+    border-right: 0;
+    background: var(--color-white);
+  }
+
+  .imp-table-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .imp-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    font-size: var(--ui-font-size-sm, 12px);
+  }
+
+  .imp-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+  }
+
+  .imp-table th {
+    color: var(--color-white);
+    font-size: var(--ui-font-size-2xs, 10px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    padding: 10px 12px;
+    border: 0;
+  }
+
+  .imp-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #edf2f7;
+    vertical-align: middle;
+  }
+
+  .imp-table tbody tr:hover td {
+    background: rgba(var(--primary-rgb), 0.04);
+  }
+
+  .imp-table tbody tr.is-clickable {
+    cursor: pointer;
+  }
+
+  .imp-col-index {
+    width: 56px;
+    text-align: center;
+    color: var(--color-slate-400);
+    font-weight: 600;
+  }
+
+  .imp-user-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .imp-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-white);
+    font-size: var(--ui-font-size-sm, 12px);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .imp-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .imp-name {
+    color: var(--text-primary, #2c3e50);
+    font-size: var(--ui-font-size-sm, 12px);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .imp-email {
+    color: var(--text-secondary, #666);
+    font-size: var(--ui-font-size-xs, 11px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  .imp-client-meta {
+    color: var(--color-slate-500);
+    font-size: var(--ui-font-size-2xs, 10px);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .imp-role-tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--ui-font-size-2xs, 10px);
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .imp-role-tag.r-super_admin  { background: var(--color-violet-100); color: #6d28d9; }
+  .imp-role-tag.r-pro_user     { background: var(--color-rose-100); color: #be123c; }
+  .imp-role-tag.r-admin_staff  { background: var(--color-amber-100); color: var(--color-warning-dark); }
+  .imp-role-tag.r-client       { background: var(--color-emerald-100); color: var(--color-emerald-800); }
+  .imp-role-tag.r-client_staff { background: var(--color-blue-100); color: #1e40af; }
+
+  .imp-action-stack {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .imp-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: var(--ui-font-size-2xs, 10px);
+    font-weight: 700;
+    border: 1px solid transparent;
+  }
+
+  .imp-status-pill.active {
+    color: var(--color-green-800);
+    background: var(--color-green-100);
+    border-color: var(--color-green-300);
+  }
+
+  .imp-status-pill.inactive {
+    color: var(--color-red-800);
+    background: var(--color-red-100);
+    border-color: var(--color-red-300);
+  }
+
+  .imp-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--color-indigo-600);
+    background: linear-gradient(135deg, var(--color-primary), var(--secondary));
+    color: var(--color-white);
+    font-size: var(--ui-font-size-xs, 11px);
+    font-weight: 600;
+    border-radius: 4px;
+    height: 28px;
+    padding: 0 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .imp-action-btn:hover:not(:disabled) {
+    filter: brightness(0.96);
+  }
+
+  .imp-action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    filter: grayscale(0.15);
+  }
+
+  .imp-history-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--color-slate-300);
+    background: var(--color-white);
+    color: var(--color-slate-700);
+    font-size: var(--ui-font-size-xs, 11px);
+    font-weight: 600;
+    border-radius: 4px;
+    height: 28px;
+    padding: 0 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .imp-history-btn:hover {
+    background: var(--color-slate-50);
+    border-color: var(--color-slate-400);
+  }
+
+  .imp-empty {
+    text-align: center;
+    padding: 56px 20px;
+    color: var(--text-muted, #888);
+  }
+
+  .imp-empty i {
+    font-size: var(--ui-font-size-6xl, 30px);
+    display: block;
+    margin-bottom: 10px;
+    color: var(--text-light, #aaa);
+  }
+
+  .imp-skeleton-block {
+    display: inline-block;
+    width: 100%;
+    height: 10px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--color-slate-200) 25%, #f8fafc 37%, var(--color-slate-200) 63%);
+    background-size: 200% 100%;
+    animation: imp-skeleton-shimmer 1.35s linear infinite;
+  }
+
+  .imp-skeleton-row td {
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+
+  .imp-table-shell .pagination-bar {
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    padding: 6px 10px;
+  }
+
+  .imp-table-shell .pagination-right {
+    gap: 8px;
+  }
+
+  .imp-table-shell .pagination-right label {
+    font-size: var(--ui-font-size-sm, 12px);
+    color: var(--text-secondary, #666);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    .imp-table-wrap {
+      overflow-x: auto;
+    }
+
+    .imp-table-shell .pagination-bar {
+      padding: 6px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Impersonate User</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right">
+  {% include 'partials/notification-bell.html' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="imp-page pro-feature-page">
+
+  <div class="imp-sticky-stack">
+    {% include 'partials/pro-feature-tabs.html' with pro_tab='user_options' %}
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
+        <div class="search-box" style="max-width:320px;">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="impSearch" class="search-input" placeholder="Search by name, email, username, or role..." oninput="__impFilter()" autocomplete="off">
+          <button class="search-clear-btn" id="impSearchClear" type="button" title="Clear search" aria-label="Clear search" onclick="document.getElementById('impSearch').value='';__impFilter()" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="imp-pills" id="impPills">
+          <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistant <span class="imp-pill-count">0</span></button>
+        </div>
+      </div>
+      <div class="action-right">
+        <span style="font-size: var(--ui-font-size-sm, 12px);color:var(--text-muted,#888);" id="impCount"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="imp-grid-wrap">
+    <div class="imp-table-shell">
+      <div class="imp-table-wrap">
+        <table class="imp-table" aria-label="Impersonation table">
+          <thead>
+            <tr>
+              <th style="width:6%;text-align:center;">Sr no.</th>
+              <th style="width:44%;">User</th>
+              <th style="width:18%;">Role</th>
+              <th style="width:14%;">Status</th>
+              <th style="width:18%;">Options</th>
+            </tr>
+          </thead>
+          <tbody id="impTableBody">
+            {% for _ in "12345" %}
+            <tr class="imp-skeleton-row" aria-hidden="true">
+              <td><span class="imp-skeleton-block" style="width:20px;margin:0 auto;"></span></td>
+              <td><span class="imp-skeleton-block" style="width:74%;"></span></td>
+              <td><span class="imp-skeleton-block" style="width:60%;"></span></td>
+              <td><span class="imp-skeleton-block" style="width:56%;"></span></td>
+              <td><span class="imp-skeleton-block" style="width:64%;"></span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div id="impPagerWrap" style="display:none;">
+        {% include 'components/pagination.html' with info_id='impPagerInfo' first_id='impPagerFirst' prev_id='impPagerPrev' next_id='impPagerNext' last_id='impPagerLast' page_numbers_id='impPagerNumbers' rows_dropdown_id='impRowsDropdown' rows_toggle_id='impRowsToggle' rows_text_id='impRowsSelectedText' rows_options_id='impRowsOptions' default_rows='25' %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var _users = [], _role = 'all', _text = '';
+  var _filteredUsers = [];
+  var _page = 1;
+  var _perPage = 25;
+  var _pagerBound = false;
+  var COLORS = { admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
+  var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant' };
+
+  function _displayRole(role, fallback) {
+    return ROLE_LABELS[role] || fallback || String(role || '').replace('_', ' ');
+  }
+
+  function _esc(s) {
+    var d = document.createElement('div');
+    d.textContent = String(s || '');
+    return d.innerHTML;
+  }
+
+  function _updateRolePillCounts() {
+    var counts = { all: 0, admin_staff: 0, client: 0, client_staff: 0 };
+    _users.forEach(function(u) {
+      counts.all += 1;
+      if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
+        counts[u.role] += 1;
+      }
+    });
+    document.querySelectorAll('.imp-pill[data-role]').forEach(function(btn) {
+      var role = btn.dataset.role || 'all';
+      var countEl = btn.querySelector('.imp-pill-count');
+      if (countEl) countEl.textContent = String(counts[role] || 0);
+    });
+  }
+
+  function _setRowsDropdownValue(value) {
+    var rowsText = document.getElementById('impRowsSelectedText');
+    var rowsOptions = document.getElementById('impRowsOptions');
+    if (rowsText) rowsText.textContent = String(value);
+    if (!rowsOptions) return;
+    rowsOptions.querySelectorAll('.dropdown-option').forEach(function(option) {
+      option.classList.toggle('selected', Number(option.dataset.value) === Number(value));
+    });
+  }
+
+  function _togglePager(show) {
+    var pager = document.getElementById('impPagerWrap');
+    if (pager) pager.style.display = show ? '' : 'none';
+  }
+
+  function _renderPager(total) {
+    if (total <= 0) {
+      _togglePager(false);
+      return;
+    }
+
+    _togglePager(true);
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+
+    var start = ((_page - 1) * _perPage) + 1;
+    var end = Math.min(total, _page * _perPage);
+
+    var info = document.getElementById('impPagerInfo');
+    if (info) info.innerHTML = 'Showing <strong>' + start + '-' + end + '</strong> of <strong>' + total + '</strong> results';
+
+    var pageNums = document.getElementById('impPagerNumbers');
+    if (pageNums) {
+      pageNums.innerHTML = '';
+      var maxVisible = 5;
+      var startPage = Math.max(1, _page - Math.floor(maxVisible / 2));
+      var endPage = Math.min(totalPages, startPage + maxVisible - 1);
+      if ((endPage - startPage + 1) < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+      }
+      for (var p = startPage; p <= endPage; p += 1) {
+        pageNums.insertAdjacentHTML('beforeend', '<button class="page-num' + (p === _page ? ' active' : '') + '" data-page="' + p + '">' + p + '</button>');
+      }
+    }
+
+    var firstBtn = document.getElementById('impPagerFirst');
+    var prevBtn = document.getElementById('impPagerPrev');
+    var nextBtn = document.getElementById('impPagerNext');
+    var lastBtn = document.getElementById('impPagerLast');
+
+    if (firstBtn) firstBtn.disabled = _page <= 1;
+    if (prevBtn) prevBtn.disabled = _page <= 1;
+    if (nextBtn) nextBtn.disabled = _page >= totalPages;
+    if (lastBtn) lastBtn.disabled = _page >= totalPages;
+  }
+
+  function _bindPagerControls() {
+    if (_pagerBound) return;
+    _pagerBound = true;
+
+    var firstBtn = document.getElementById('impPagerFirst');
+    var prevBtn = document.getElementById('impPagerPrev');
+    var nextBtn = document.getElementById('impPagerNext');
+    var lastBtn = document.getElementById('impPagerLast');
+    var pageNums = document.getElementById('impPagerNumbers');
+    var rowsDropdown = document.getElementById('impRowsDropdown');
+    var rowsToggle = document.getElementById('impRowsToggle');
+    var rowsOptions = document.getElementById('impRowsOptions');
+
+    if (firstBtn) firstBtn.addEventListener('click', function() { window.__impGoPage('first'); });
+    if (prevBtn) prevBtn.addEventListener('click', function() { window.__impGoPage('prev'); });
+    if (nextBtn) nextBtn.addEventListener('click', function() { window.__impGoPage('next'); });
+    if (lastBtn) lastBtn.addEventListener('click', function() { window.__impGoPage('last'); });
+
+    if (pageNums) {
+      pageNums.addEventListener('click', function(event) {
+        var btn = event.target.closest('.page-num');
+        if (!btn) return;
+        var p = parseInt(btn.dataset.page || '', 10);
+        if (!Number.isFinite(p)) return;
+        window.__impGoPage(p);
+      });
+    }
+
+    if (rowsDropdown && rowsToggle && rowsOptions) {
+      rowsToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        rowsDropdown.classList.toggle('open');
+      });
+      rowsOptions.querySelectorAll('.dropdown-option').forEach(function(option) {
+        option.addEventListener('click', function() {
+          var value = parseInt(this.dataset.value || '', 10);
+          if (!Number.isFinite(value) || value <= 0) return;
+          _perPage = value;
+          _page = 1;
+          _setRowsDropdownValue(_perPage);
+          rowsDropdown.classList.remove('open');
+          _render();
+        });
+      });
+      document.addEventListener('click', function(event) {
+        if (!rowsDropdown.contains(event.target)) {
+          rowsDropdown.classList.remove('open');
+        }
+      });
+    }
+
+    _setRowsDropdownValue(_perPage);
+  }
+
+  function _renderEmpty(iconClass, title, subtitle) {
+    var tbody = document.getElementById('impTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5"><div class="imp-empty"><i class="fa-solid ' + _esc(iconClass || 'fa-users-slash') + '"></i><div>' + _esc(title || 'No users found') + '</div>' + (subtitle ? '<small>' + _esc(subtitle) + '</small>' : '') + '</div></td></tr>';
+    _togglePager(false);
+  }
+
+  // Load users on page load
+  _bindPagerControls();
+
+  function _load() {
+    var csrf = document.querySelector('meta[name="csrf-token"]')?.content
+            || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    fetch('/panel/api/auth/impersonate/users/', { headers: { 'X-CSRFToken': csrf } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          _users = d.users || [];
+          _updateRolePillCounts();
+          _render();
+        } else {
+          _renderEmpty('fa-circle-exclamation', d.message || 'Failed to load users');
+        }
+      })
+      .catch(function() {
+        _renderEmpty('fa-circle-exclamation', 'Network error while loading users');
+      });
+  }
+
+  function _render() {
+    _filteredUsers = _users.filter(function(u) {
+      if (_role !== 'all' && u.role !== _role) return false;
+      if (_text) {
+        var q = _text.toLowerCase();
+        var nameText = String(u.name || '').toLowerCase();
+        var emailText = String(u.email || '').toLowerCase();
+        var usernameText = String(u.username || '').toLowerCase();
+        var roleText = _displayRole(u.role, u.role_display).toLowerCase();
+        return nameText.indexOf(q) !== -1 || emailText.indexOf(q) !== -1 || usernameText.indexOf(q) !== -1 || roleText.indexOf(q) !== -1;
+      }
+      return true;
+    });
+
+    var total = _filteredUsers.length;
+    document.getElementById('impCount').textContent = total + ' user' + (total !== 1 ? 's' : '');
+    if (!total) {
+      _renderEmpty('fa-users-slash', 'No users found');
+      return;
+    }
+
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+    var startIndex = (_page - 1) * _perPage;
+    var pageUsers = _filteredUsers.slice(startIndex, startIndex + _perPage);
+
+    var h = '';
+    pageUsers.forEach(function(u, i) {
+      var nameText = String(u.name || 'User');
+      var init = (nameText[0] || '?').toUpperCase();
+      var canImpersonate = u.is_active !== false;
+      var statusClass = canImpersonate ? 'active' : 'inactive';
+      var statusText = canImpersonate ? 'Active' : 'Inactive';
+      var roleDisplay = _displayRole(u.role, u.role_display);
+      var showClientMeta = u.role === 'client_staff';
+      var clientMeta = (showClientMeta && u.client_name) ? '<div class="imp-client-meta">Client: ' + _esc(u.client_name) + '</div>' : '';
+      var rowIndex = startIndex + i + 1;
+      h += '<tr class="is-clickable" ondblclick="__impOpenHistory(' + u.id + ')" title="Double-click to open history">'
+        + '<td class="imp-col-index">' + rowIndex + '</td>'
+        + '<td>'
+          + '<div class="imp-user-cell">'
+            + '<div class="imp-avatar" style="background:' + (COLORS[u.role] || 'var(--color-primary)') + (canImpersonate ? '' : ';opacity:0.6') + '">' + init + '</div>'
+            + '<div class="imp-info">'
+              + '<div class="imp-name">' + _esc(nameText) + '</div>'
+              + '<div class="imp-email">' + _esc(u.email || '-') + '</div>'
+              + clientMeta
+            + '</div>'
+          + '</div>'
+        + '</td>'
+        + '<td><span class="imp-role-tag r-' + _esc(u.role) + '">' + _esc(roleDisplay) + '</span></td>'
+        + '<td><span class="imp-status-pill ' + statusClass + '">' + statusText + '</span></td>'
+        + '<td>'
+          + '<div class="imp-action-stack">'
+            + '<button type="button" class="imp-action-btn"' + (canImpersonate ? ' onclick="event.stopPropagation();__impStart(' + u.id + ')"' : ' disabled') + '>'
+              + '<i class="fa-solid fa-right-to-bracket"></i> Login As'
+            + '</button>'
+            + '<button type="button" class="imp-history-btn" onclick="event.stopPropagation();__impOpenHistory(' + u.id + ')">'
+              + '<i class="fa-solid fa-clock-rotate-left"></i> Open History'
+            + '</button>'
+          + '</div>'
+        + '</td>'
+      + '</tr>';
+    });
+    document.getElementById('impTableBody').innerHTML = h;
+    _renderPager(total);
+  }
+
+  window.__impFilter = function() {
+    _text = document.getElementById('impSearch').value || '';
+    _page = 1;
+    var clearBtn = document.getElementById('impSearchClear');
+    if (clearBtn) clearBtn.style.display = _text ? '' : 'none';
+    _render();
+  };
+
+  window.__impSetRole = function(r, btn) {
+    _role = r;
+    _page = 1;
+    document.querySelectorAll('.imp-pill').forEach(function(p) { p.classList.remove('active'); });
+    if (!btn) btn = document.querySelector('.imp-pill[data-role="' + r + '"]');
+    if (btn) btn.classList.add('active');
+    _render();
+  };
+
+  window.__impSetPerPage = function(v) {
+    var next = parseInt(v, 10);
+    if (!Number.isFinite(next) || next <= 0) return;
+    _perPage = next;
+    _page = 1;
+    _setRowsDropdownValue(_perPage);
+    _render();
+  };
+
+  window.__impGoPage = function(direction) {
+    var total = _filteredUsers.length;
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (typeof direction === 'number') _page = direction;
+    else if (direction === 'first') _page = 1;
+    else if (direction === 'prev') _page = Math.max(1, _page - 1);
+    else if (direction === 'next') _page = Math.min(totalPages, _page + 1);
+    else if (direction === 'last') _page = totalPages;
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+    _render();
+  };
+
+  window.__impOpenHistory = function(uid) {
+    window.location.href = '/panel/pro-user/activity-logs/' + encodeURIComponent(String(uid)) + '/';
+  };
+
+  window.__impStart = function(uid) {
+    var csrf = document.querySelector('meta[name="csrf-token"]')?.content
+            || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    fetch('/panel/api/auth/impersonate/start/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify({ user_id: uid })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) window.location.href = d.redirect_url || '/panel/';
+      else alert(d.message || 'Failed');
+    })
+    .catch(function() { alert('Network error'); });
+  };
+
+  _load();
+})();
+</script>
+{% endblock %}
