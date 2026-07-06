@@ -179,6 +179,8 @@ def repair():
                 
                 # Get all tables for this client
                 tables = IDCardTable.objects.filter(group__client=target_client, deleted_by_client=False)
+                if username == '12b':
+                    print(f"    [Debug] Active tables for client: {list(tables.values_list('id', 'name'))}")
                 table_field_map = {}
                 for table in tables:
                     class_field, section_field = None, None
@@ -196,6 +198,8 @@ def repair():
                             'class_field': class_field,
                             'section_field': section_field
                         }
+                if username == '12b':
+                    print(f"    [Debug] Table field map built: { {t_id: {'name': info['table'].name, 'class_field': info['class_field'], 'section_field': info['section_field']} for t_id, info in table_field_map.items()} }")
                 
                 # Check for cards matching the class/section
                 matched_table_ids = set()
@@ -208,6 +212,10 @@ def repair():
                     
                     # Look for cards in this table
                     cards_qs = IDCard.objects.filter(table_id=t_id, deleted_at__isnull=True)
+                    if username == '12b':
+                        print(f"    [Debug] Table ID {t_id} total cards count: {cards_qs.count()}")
+                        if cards_qs.exists():
+                            print(f"    [Debug] Sample card field data: {cards_qs.first().field_data}")
                     if c_f:
                         cards_qs = cards_qs.filter(**{f"field_data__{c_f}__iexact": parsed_class})
                     if s_f and parsed_section:
