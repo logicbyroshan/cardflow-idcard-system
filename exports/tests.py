@@ -1804,6 +1804,41 @@ class WordLayoutTuningTests(SimpleTestCase):
         args = mocked_empty_box.call_args.args
         self.assertAlmostEqual(args[8], exporter.ROW_HEIGHT_CM, places=2)
 
+    def test_missing_relation_image_placeholder_keeps_defined_height(self):
+        from exports.word import WordExporter
+        from docx import Document
+        from docx.shared import Cm, Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml import parse_xml
+        from docx.oxml.ns import nsdecls
+        from PIL import Image, ImageOps
+
+        exporter = WordExporter()
+        doc = Document()
+        table = doc.add_table(rows=1, cols=1)
+        cell = table.rows[0].cells[0]
+
+        with mock.patch.object(exporter, '_add_empty_image_box') as mocked_empty_box:
+            exporter._add_image_to_cell(
+                cell=cell,
+                img_path='',
+                Cm=Cm,
+                Pt=Pt,
+                RGBColor=RGBColor,
+                WD_ALIGN_PARAGRAPH=WD_ALIGN_PARAGRAPH,
+                parse_xml=parse_xml,
+                nsdecls=nsdecls,
+                Image=Image,
+                ImageOps=ImageOps,
+                fixed_width_cm=1.52,
+                fixed_height_cm=1.2,
+                image_subtype='rel_photo',
+            )
+
+        self.assertTrue(mocked_empty_box.called)
+        args = mocked_empty_box.call_args.args
+        self.assertAlmostEqual(args[8], 1.2, places=2)
+
     def test_word_photo_border_decision_for_parent_photo_columns(self):
         from exports.word import WordExporter
 

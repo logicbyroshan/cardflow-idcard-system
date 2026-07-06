@@ -189,9 +189,14 @@ class WordImagesMixin:
 
         # Missing/pending image → draw an empty bordered rectangle
         # (no placeholder image, no text — just empty space with a border).
-        # Keep placeholder at least ROW_HEIGHT_CM so image rows remain visually
-        # consistent even when the source image is missing.
-        placeholder_h = max(fixed_height_cm or 0, getattr(self, 'ROW_HEIGHT_CM', 2.5))
+        # Keep placeholder at least ROW_HEIGHT_CM so student photo image rows remain visually
+        # consistent even when the source image is missing. For relation photos, keep them at
+        # their defined smaller height.
+        is_rel_photo = (image_subtype == 'rel_photo') or (field_name and any(k in field_name.lower() for k in ('rel', 'mother', 'father', 'parent', 'guardian')))
+        if is_rel_photo:
+            placeholder_h = fixed_height_cm or 2.0
+        else:
+            placeholder_h = max(fixed_height_cm or 0, getattr(self, 'ROW_HEIGHT_CM', 2.5))
         self._add_empty_image_box(cell, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
                                    parse_xml, nsdecls, fixed_width_cm, placeholder_h)
 
