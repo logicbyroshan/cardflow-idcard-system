@@ -58,9 +58,9 @@ def _take_hourly_snapshot(user):
     """Write a real snapshot right now if the last one is older than 1 hour."""
     from idcards.models import IDCard
 
-    now = timezone.now()
+    now = timezone.localtime(timezone.now())
     latest = StatsSnapshot.objects.order_by('-timestamp').first()
-    if latest and (now - latest.timestamp) < timedelta(hours=1):
+    if latest and (now - timezone.localtime(latest.timestamp)) < timedelta(hours=1):
         return  # not time yet
 
     desktop_users_count, mobile_users_count = _get_active_device_counts()
@@ -101,7 +101,7 @@ def api_statistics_data(request):
     if range_type not in ('hourly', 'daily', 'weekly', 'monthly'):
         range_type = 'hourly'
 
-    now = timezone.now()
+    now = timezone.localtime(timezone.now())
     labels           = []
     desktop_activity = []
     mobile_activity  = []
@@ -119,7 +119,7 @@ def api_statistics_data(request):
             slot_end   = slot_start + timedelta(hours=1)
             labels.append(slot_end.strftime('%H:00'))
 
-            bucket = [s for s in snapshots if slot_start <= s.timestamp < slot_end]
+            bucket = [s for s in snapshots if slot_start <= timezone.localtime(s.timestamp) < slot_end]
 
             if bucket:
                 da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
@@ -149,7 +149,7 @@ def api_statistics_data(request):
             day_start = timezone.make_aware(datetime.combine(day, datetime.min.time()))
             day_end   = timezone.make_aware(datetime.combine(day, datetime.max.time()))
 
-            bucket = [s for s in snapshots if s.timestamp.date() == day]
+            bucket = [s for s in snapshots if timezone.localtime(s.timestamp).date() == day]
             if bucket:
                 da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
                 ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
@@ -187,7 +187,7 @@ def api_statistics_data(request):
             iso_wk   = wk_start.isocalendar()[1]
             labels.append(f'Wk {iso_wk}')
 
-            bucket = [s for s in snapshots if wk_start <= s.timestamp < wk_end]
+            bucket = [s for s in snapshots if wk_start <= timezone.localtime(s.timestamp) < wk_end]
             if bucket:
                 da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
                 ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
