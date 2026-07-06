@@ -45,8 +45,14 @@ def repair():
     skipped_count = 0
     
     for ast in assistants:
-        # Only repair assistants created on July 4, 2026
-        if not (ast.created_at.year == 2026 and ast.created_at.month == 7 and ast.created_at.day == 4):
+        # Timezone-safe check for assistants created on migration day (July 3, 4, or 5 in UTC)
+        # and ensure we only target the IPS clients we are repairing (email/username contains 'ips')
+        email_lower = (ast.user.email or "").lower()
+        username_lower = ast.user.username.lower()
+        is_ips = 'ips' in email_lower or 'ips' in username_lower
+        is_target_date = ast.created_at and ast.created_at.year == 2026 and ast.created_at.month == 7 and ast.created_at.day in (3, 4, 5)
+        
+        if not (is_ips and is_target_date):
             skipped_count += 1
             continue
 
