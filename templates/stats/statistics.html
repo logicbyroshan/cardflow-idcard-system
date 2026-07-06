@@ -553,14 +553,15 @@
   }
 
   function updateMetrics(summary) {
+    if (!summary) return;
     var setEl = function(id, text) {
       var el = document.getElementById(id);
-      if (el) el.textContent = text;
+      if (el) el.textContent = text !== undefined && text !== null ? text : '0';
     };
     setEl('valCurrentActive',  summary.current_active_users);
     setEl('valPeakActive',     summary.peak_active_users);
     setEl('valPeakHour',       summary.peak_working_hour || '—');
-    setEl('valMobileActive',   summary.live_mobile_users !== undefined ? summary.live_mobile_users : '0');
+    setEl('valMobileActive',   summary.live_mobile_users);
   }
 
   function renderMainActivityChart(labels, desktopData, mobileData) {
@@ -709,7 +710,7 @@
 
   function fetchStats(range) {
     showLoaders(true);
-    fetch('{% url "api_statistics_data" %}?range=' + range)
+    fetch('{% url "api_statistics_data" %}?range=' + range + '&_ts=' + Date.now())
       .then(function(res) { return res.json(); })
       .then(function(data) {
         showLoaders(false);
@@ -760,7 +761,7 @@
   }
 
   function checkServerLoad() {
-    fetch('{% url "api_check_server_load" %}')
+    fetch('{% url "api_check_server_load" %}?_ts=' + Date.now())
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.success) {
