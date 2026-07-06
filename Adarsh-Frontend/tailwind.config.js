@@ -79,6 +79,14 @@ export default {
           DEFAULT: 'hsl(var(--info))',
           foreground: 'hsl(var(--info-foreground))',
         },
+        notice: {
+          DEFAULT: 'hsl(var(--notice))',
+          foreground: 'hsl(var(--notice-foreground))',
+        },
+        highlight: {
+          DEFAULT: 'hsl(var(--highlight))',
+          foreground: 'hsl(var(--highlight-foreground))',
+        },
       },
       borderRadius: {
         lg: '6px',     // Cards, Dialogs (aligned to 6px)
