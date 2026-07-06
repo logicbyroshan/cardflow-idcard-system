@@ -188,8 +188,15 @@ def repair():
             if parsed_class:
                 print(f"  Parsed class: '{parsed_class}' | Parsed section: '{parsed_section}'")
                 
-                # Get all tables for this client
-                tables = IDCardTable.objects.filter(group__client=target_client, deleted_by_client=False)
+                # Get groups that are student-related (must contain 'student' or 'STUDENT')
+                student_groups = IDCardGroup.objects.filter(client=target_client, name__icontains='student')
+                if not student_groups.exists():
+                    # Fallback to all groups if no group contains 'student'
+                    student_groups = IDCardGroup.objects.filter(client=target_client)
+                
+                # Get all active tables under student groups
+                tables = IDCardTable.objects.filter(group__in=student_groups, deleted_by_client=False)
+                
                 table_field_map = {}
                 for table in tables:
                     class_field, section_field = None, None
@@ -327,9 +334,23 @@ def repair():
                     print(f"  [Success] Restored scope assignments and linked to {len(groups)} group(s).")
                     repaired_count += 1
                 else:
-                    print("  [Warning] No matching card or table records found in DB for this class/section. Skipping assignment.")
+                    print("  [Warning] No matching card or table records found in DB for this class/section. Clearing any legacy assignments.")
+                    ast.allowed_classes = []
+                    ast.allowed_sections = []
+                    ast.assignment_scopes = []
+                    ast.assigned_groups.clear()
+                    ast.assigned_table_ids = []
+                    ast.save(update_fields=['allowed_classes', 'allowed_sections', 'assignment_scopes', 'assigned_table_ids'])
+                    repaired_count += 1
             else:
-                print("  [Error] Could not parse class name from assistant name.")
+                print("  [Error] Could not parse class name from assistant name. Clearing legacy assignments.")
+                ast.allowed_classes = []
+                ast.allowed_sections = []
+                ast.assignment_scopes = []
+                ast.assigned_groups.clear()
+                ast.assigned_table_ids = []
+                ast.save(update_fields=['allowed_classes', 'allowed_sections', 'assignment_scopes', 'assigned_table_ids'])
+                repaired_count += 1
                 
         print("-" * 80)
         
