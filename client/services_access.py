@@ -39,6 +39,40 @@ class ClientAccessService:
         return out
 
     @staticmethod
+    def _get_staff_profile(user):
+        """Resolve the staff/assistant profile for an authenticated user.
+
+        Assistants created via the auto-create flow are stored in the
+        ``Assistant`` model (related_name='assistant_profile').  Legacy
+        client-staff users use ``staff_profile``.  This helper tries both
+        so that access checks work regardless of which model backs the user.
+        """
+        # Prefer the Assistant model (role='assistant') — most common for
+        # auto-created assistants.
+        profile = getattr(user, 'assistant_profile', None)
+        if profile is not None:
+            return profile
+        # Fall back to legacy staff_profile (role='client_staff').
+        profile = getattr(user, 'staff_profile', None)
+        if profile is not None:
+            return profile
+        # Last resort: DB lookup in the Assistant table.
+        try:
+            from assistants.models import Assistant as _Assistant
+            profile = _Assistant.objects.filter(user=user).first()
+            if profile is not None:
+                return profile
+        except Exception:
+            pass
+        # Final fallback: legacy Staff model.
+        try:
+            from staff.models import Staff as _Staff
+            profile = _Staff.objects.filter(user=user).first()
+        except Exception:
+            profile = None
+        return profile
+
+    @staticmethod
     def _assigned_group_ids_for_access(staff):
         """Return group IDs that explicitly grant group-level access.
 
@@ -168,16 +202,7 @@ class ClientAccessService:
             return client_profile
 
         if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff is None:
-                # Force fresh DB query if cache is stale
-                from django.contrib.auth import get_user_model
-                User = get_user_model()
-                try:
-                    fresh_user = User.objects.select_related('staff_profile__client').get(pk=user.pk)
-                    staff = getattr(fresh_user, 'staff_profile', None)
-                except Exception:
-                    pass
+            staff = ClientAccessService._get_staff_profile(user)
             if staff:
                 return staff.client
 
@@ -218,13 +243,7 @@ class ClientAccessService:
 
         # For client_staff with assigned groups: restrict to assigned only
         if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff is None:
-                from staff.models import Staff
-                try:
-                    staff = Staff.objects.filter(user=user).first()
-                except Exception:
-                    pass
+            staff = ClientAccessService._get_staff_profile(user)
             if staff:
                 assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
@@ -271,13 +290,7 @@ class ClientAccessService:
 
         # For client_staff with assigned groups: restrict to assigned groups only
         if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff is None:
-                from staff.models import Staff
-                try:
-                    staff = Staff.objects.filter(user=user).first()
-                except Exception:
-                    pass
+            staff = ClientAccessService._get_staff_profile(user)
             if staff:
                 assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
@@ -314,7 +327,7 @@ class ClientAccessService:
         if not PermissionService.is_client_staff(user):
             return base_qs
         
-        staff = getattr(user, 'staff_profile', None)
+        staff = ClientAccessService._get_staff_profile(user)
         if not staff:
             return base_qs.none()
         
@@ -364,13 +377,7 @@ class ClientAccessService:
 
         # For client_staff with assigned groups
         if PermissionService.is_client_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff is None:
-                from staff.models import Staff
-                try:
-                    staff = Staff.objects.filter(user=user).first()
-                except Exception:
-                    pass
+            staff = ClientAccessService._get_staff_profile(user)
             if staff:
                 assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
