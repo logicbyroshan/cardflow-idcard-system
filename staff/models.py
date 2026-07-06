@@ -357,7 +357,12 @@ class StaffCompatManager:
         raise ValueError(f"Unknown staff type {staff_type}")
 
 
+class StaffMeta:
+    object_name = 'Staff'
+
+
 class Staff:
     objects = StaffCompatManager()
     _default_manager = objects
     DoesNotExist = ObjectDoesNotExist
+    _meta = StaffMeta()

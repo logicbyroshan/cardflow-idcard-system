@@ -256,6 +256,9 @@ def repair():
                     c_f = t_info['class_field']
                     s_f = t_info['section_field']
                     
+                    if not c_f:
+                        continue
+                        
                     cards_qs = IDCard.objects.filter(table_id=t_id, deleted_at__isnull=True)
                     if c_f:
                         cards_qs = cards_qs.filter(**{f"field_data__{c_f}__in": class_vals})
@@ -282,6 +285,9 @@ def repair():
                 # 2b. Table Name Matching Fallback (if no cards matched)
                 if not matched_table_ids:
                     for t_id, t_info in table_field_map.items():
+                        c_f = t_info['class_field']
+                        if not c_f:
+                            continue
                         table = t_info['table']
                         t_name_clean = re.sub(r'[^a-zA-Z0-9]', ' ', table.name).lower()
                         t_words = t_name_clean.split()

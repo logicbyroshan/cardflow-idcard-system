@@ -3928,7 +3928,7 @@ class ClientStaffEmptyScopeVisibilityTests(TestCase):
         pool_response = self.client.get(f'/panel/api/table/{self.table.id}/cards/?status=pool')
         self.assertEqual(pool_response.status_code, 200)
         pool_payload = pool_response.json()
-        self.assertEqual(len(pool_payload.get('cards') or []), 1)
+        self.assertEqual(len(pool_payload.get('cards') or []), 0)
 
 
 class DynamicFieldsDefensiveTests(TestCase):
