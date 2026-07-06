@@ -17,6 +17,21 @@ from idcards.models import IDCardGroup, IDCardTable, IDCard
 
 User = get_user_model()
 
+ROMAN_MAPPING = {
+    '12': ['12', 'XII'],
+    '11': ['11', 'XI'],
+    '10': ['10', 'X'],
+    '9': ['9', 'IX'],
+    '8': ['8', 'VIII'],
+    '7': ['7', 'VII'],
+    '6': ['6', 'VI'],
+    '5': ['5', 'V'],
+    '4': ['4', 'IV'],
+    '3': ['3', 'III'],
+    '2': ['2', 'II'],
+    '1': ['1', 'I'],
+}
+
 def repair():
     print("Starting database repair and inspection for Assistants...")
     print("=" * 80)
@@ -179,8 +194,6 @@ def repair():
                 
                 # Get all tables for this client
                 tables = IDCardTable.objects.filter(group__client=target_client, deleted_by_client=False)
-                if username == '12b':
-                    print(f"    [Debug] Active tables for client: {list(tables.values_list('id', 'name'))}")
                 table_field_map = {}
                 for table in tables:
                     class_field, section_field = None, None
@@ -198,13 +211,23 @@ def repair():
                             'class_field': class_field,
                             'section_field': section_field
                         }
-                if username == '12b':
-                    print(f"    [Debug] Table field map built: { {t_id: {'name': info['table'].name, 'class_field': info['class_field'], 'section_field': info['section_field']} for t_id, info in table_field_map.items()} }")
                 
                 # Check for cards matching the class/section
                 matched_table_ids = set()
                 matched_classes = set()
                 matched_sections = set()
+                
+                # Prepare case-insensitive target sets (including roman numerals)
+                class_vals = [parsed_class.lower(), parsed_class.upper()]
+                if parsed_class in ROMAN_MAPPING:
+                    for val in ROMAN_MAPPING[parsed_class]:
+                        class_vals.append(val.lower())
+                        class_vals.append(val.upper())
+                class_vals = list(set(class_vals))
+                
+                section_vals = []
+                if parsed_section:
+                    section_vals = list(set([parsed_section.lower(), parsed_section.upper()]))
                 
                 for t_id, t_info in table_field_map.items():
                     c_f = t_info['class_field']
@@ -212,19 +235,27 @@ def repair():
                     
                     # Look for cards in this table
                     cards_qs = IDCard.objects.filter(table_id=t_id, deleted_at__isnull=True)
-                    if username == '12b':
-                        print(f"    [Debug] Table ID {t_id} total cards count: {cards_qs.count()}")
-                        if cards_qs.exists():
-                            print(f"    [Debug] Sample card field data: {cards_qs.first().field_data}")
                     if c_f:
-                        cards_qs = cards_qs.filter(**{f"field_data__{c_f}__iexact": parsed_class})
-                    if s_f and parsed_section:
-                        cards_qs = cards_qs.filter(**{f"field_data__{s_f}__iexact": parsed_section})
+                        cards_qs = cards_qs.filter(**{f"field_data__{c_f}__in": class_vals})
+                    if s_f and section_vals:
+                        cards_qs = cards_qs.filter(**{f"field_data__{s_f}__in": section_vals})
                         
                     if cards_qs.exists():
                         matched_table_ids.add(t_id)
-                        matched_classes.add(parsed_class)
-                        if parsed_section:
+                        
+                        # Find the actual case/representation used in this table's cards
+                        sample_card = cards_qs.first()
+                        actual_class = sample_card.field_data.get(c_f) if c_f else None
+                        actual_section = sample_card.field_data.get(s_f) if s_f else None
+                        
+                        if actual_class:
+                            matched_classes.add(str(actual_class).strip())
+                        else:
+                            matched_classes.add(parsed_class)
+                            
+                        if actual_section:
+                            matched_sections.add(str(actual_section).strip())
+                        elif parsed_section:
                             matched_sections.add(parsed_section)
                 
                 if matched_classes:
@@ -258,12 +289,7 @@ def repair():
                     print(f"  [Success] Restored scope assignments and linked to {len(groups)} group(s).")
                     repaired_count += 1
                 else:
-                    print("  [Warning] No matching card records found in DB for this class/section. Using parsed values as fallback.")
-                    ast.allowed_classes = [parsed_class]
-                    if parsed_section:
-                        ast.allowed_sections = [parsed_section]
-                    ast.save(update_fields=['allowed_classes', 'allowed_sections'])
-                    repaired_count += 1
+                    print("  [Warning] No matching card records found in DB for this class/section. Skipping assignment.")
             else:
                 print("  [Error] Could not parse class name from assistant name.")
                 
