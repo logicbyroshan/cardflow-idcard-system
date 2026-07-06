@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 function App() {
   return (
@@ -65,13 +67,13 @@ function App() {
             </div>
             
             <div className="space-y-6">
-              <div className="flex items-center space-x-2">
-                <Switch id="airplane-mode" />
+              <div className="flex items-center space-x-4">
+                <div><Switch id="airplane-mode" /></div>
                 <Label htmlFor="airplane-mode">Airplane Mode</Label>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <Checkbox id="terms" />
+              <div className="flex items-center space-x-4">
+                <div><Checkbox id="terms" /></div>
                 <Label htmlFor="terms">Accept terms and conditions</Label>
               </div>
             </div>
@@ -92,6 +94,68 @@ function App() {
               <p className="text-sm">Change your password here.</p>
             </TabsContent>
           </Tabs>
+        </section>
+
+        <section className="space-y-6">
+          <h2 className="text-2xl font-semibold border-b border-border pb-2 text-subheading">Complete Form Preview</h2>
+          <div className="max-w-2xl ring-1 ring-input rounded-sm p-6 bg-card space-y-6 shadow-sm">
+            <div>
+              <h3 className="text-lg font-semibold text-heading uppercase">Create New Account</h3>
+              <p className="text-sm text-muted-foreground uppercase">Fill in the details below to register.</p>
+            </div>
+            
+            <div className="flex space-x-8">
+              <div className="w-1/2 space-y-2">
+                <Label htmlFor="first-name">First Name</Label>
+                <Input id="first-name" placeholder="John" />
+              </div>
+              <div className="w-1/2 space-y-2">
+                <Label htmlFor="last-name">Last Name</Label>
+                <Input id="last-name" placeholder="Doe" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email-full">Email Address</Label>
+              <Input id="email-full" type="email" placeholder="john.doe@example.com" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Account Role</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="editor">Editor</SelectItem>
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio</Label>
+              <Textarea id="bio" placeholder="Tell us a little bit about yourself..." />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border pt-6">
+              <div className="flex items-center space-x-4">
+                <div><Switch id="marketing" /></div>
+                <Label htmlFor="marketing">Receive marketing emails</Label>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div><Checkbox id="terms-full" /></div>
+              <Label htmlFor="terms-full">I agree to the Terms of Service and Privacy Policy.</Label>
+            </div>
+
+            <div className="flex justify-end gap-4 pt-6 border-t border-border">
+              <Button variant="outline">Cancel</Button>
+              <Button>Create Account</Button>
+            </div>
+          </div>
         </section>
 
       </div>
