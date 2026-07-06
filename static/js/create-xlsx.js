@@ -49,7 +49,7 @@ function initCreateWithXlsx(opts) {
     if (document && document.body) {
       role = String(document.body.getAttribute('data-user-role') || '').toLowerCase();
     }
-    return role === 'pro_user';
+    return role === 'pro_user' || role === 'super_admin';
   }
 
   var ALL_TYPES = [

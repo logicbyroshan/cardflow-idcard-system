@@ -1261,7 +1261,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashReuploadProgress = document.getElementById('dashReuploadProgress');
     const dashReuploadBar = document.getElementById('dashReuploadBar');
     const dashReuploadStatus = document.getElementById('dashReuploadStatus');
-    const dashAllowFolderUpload = (document.body && String(document.body.getAttribute('data-user-role') || '').toLowerCase() === 'pro_user');
+    const dashAllowFolderUpload = (document.body && ['pro_user', 'super_admin'].indexOf(String(document.body.getAttribute('data-user-role') || '').toLowerCase()) !== -1);
 
     function dashOpenReuploadModal(tableId) {
         dashReuploadTableId = tableId;

@@ -9,7 +9,7 @@ function initIdcardGroup(config) {
   var clientId = config.clientId;
   var isClientRole = config.isClientRole;
   var panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
-  var allowFolderUpload = (document.body && String(document.body.getAttribute('data-user-role') || '').toLowerCase() === 'pro_user');
+  var allowFolderUpload = (document.body && ['pro_user', 'super_admin'].indexOf(String(document.body.getAttribute('data-user-role') || '').toLowerCase()) !== -1);
 
   function panelUrl(path) {
     if (!path) return path;
