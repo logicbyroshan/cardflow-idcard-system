@@ -1,6 +1,7 @@
 """
 Statistics Dashboard Views
 Real data only — no random/mock fallbacks.
+Now tracks active desktop (web) and mobile (app) users.
 """
 from datetime import datetime, timedelta
 
@@ -41,6 +42,18 @@ def statistics_page(request):
     return render(request, 'stats/statistics.html', context)
 
 
+def _get_active_device_counts():
+    """Retrieve current distinct active users by device type (web vs mobile)."""
+    from django.contrib.sessions.models import Session
+    now = timezone.now()
+    active_keys = set(Session.objects.filter(expire_date__gt=now).values_list('session_key', flat=True))
+
+    desktop_count = UserDeviceSession.objects.filter(session_key__in=active_keys, device_type='web').values('user_id').distinct().count()
+    mobile_count = UserDeviceSession.objects.filter(session_key__in=active_keys, device_type='mobile').values('user_id').distinct().count()
+
+    return desktop_count, mobile_count
+
+
 def _take_hourly_snapshot(user):
     """Write a real snapshot right now if the last one is older than 1 hour."""
     from idcards.models import IDCard
@@ -50,21 +63,19 @@ def _take_hourly_snapshot(user):
     if latest and (now - latest.timestamp) < timedelta(hours=1):
         return  # not time yet
 
-    live_clients = LiveClientPresenceService.get_live_client_ids_for_user(user) or []
-    live_clients_count = len(live_clients)
-    live_assistants_count = LiveClientPresenceService.get_live_assistant_count_for_user(user) or 0
+    desktop_users_count, mobile_users_count = _get_active_device_counts()
     live_users_count = UserDeviceSession.objects.values('user_id').distinct().count()
 
     hour_ago = now - timedelta(hours=1)
     cards_created = IDCard.objects.filter(created_at__gte=hour_ago).count()
     processing_jobs = BackgroundTask.objects.filter(status__in=['pending', 'processing']).count()
 
-    peak = max(live_clients_count + live_assistants_count, live_users_count)
+    peak = max(desktop_users_count + mobile_users_count, live_users_count)
 
     StatsSnapshot.objects.create(
         timestamp=now,
-        active_clients=live_clients_count,
-        active_assistants=live_assistants_count,
+        active_desktop_users=desktop_users_count,
+        active_mobile_users=mobile_users_count,
         peak_active_users=peak,
         total_cards_created=cards_created,
         batch_jobs_count=processing_jobs,
@@ -77,9 +88,6 @@ def api_statistics_data(request):
     JSON API — real activity metrics over time.
     Supports range: 'hourly' (last 24 h), 'daily' (last 30 d),
                     'weekly' (last 12 wk), 'monthly' (last 12 mo).
-
-    Graph always returns points sorted oldest → newest so the chart
-    renders left = past, right = latest.
     """
     from core.models import ActivityLog
     from idcards.models import IDCard
@@ -95,50 +103,40 @@ def api_statistics_data(request):
 
     now = timezone.now()
     labels           = []
-    client_activity  = []
-    assistant_activity = []
-    batch_jobs       = []
+    desktop_activity = []
+    mobile_activity  = []
     cards_created    = []
     all_user_activity = []
 
     snapshots_qs = StatsSnapshot.objects.order_by('timestamp')
 
     if range_type == 'hourly':
-        # Last 24 hours, one bucket per hour.  We build exactly 24 slots:
-        # slot[0] = 25 h ago → slot[23] = current hour (most recent on right).
         start_time = now - timedelta(hours=24)
         snapshots = list(snapshots_qs.filter(timestamp__gte=start_time))
 
         for i in range(24):
             slot_start = start_time + timedelta(hours=i)
             slot_end   = slot_start + timedelta(hours=1)
-            # Label = the hour the slot ends (e.g. "09:00" means 08–09)
             labels.append(slot_end.strftime('%H:00'))
 
-            # Aggregate all snapshots that fall into this hour bucket
-            bucket = [s for s in snapshots
-                      if slot_start <= s.timestamp < slot_end]
+            bucket = [s for s in snapshots if slot_start <= s.timestamp < slot_end]
 
             if bucket:
-                ca = int(sum(s.active_clients   for s in bucket) / len(bucket))
-                aa = int(sum(s.active_assistants for s in bucket) / len(bucket))
-                bj = int(sum(s.batch_jobs_count  for s in bucket) / len(bucket))
-                cc = sum(s.total_cards_created   for s in bucket)
+                da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
+                ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
+                cc = sum(s.total_cards_created for s in bucket)
             else:
-                ca = aa = bj = cc = 0
+                da = ma = cc = 0
 
-            client_activity.append(ca)
-            assistant_activity.append(aa)
-            batch_jobs.append(bj)
+            desktop_activity.append(da)
+            mobile_activity.append(ma)
             cards_created.append(cc)
 
-            # Real distinct active users from ActivityLog for this hour
             au = ActivityLog.objects.filter(
                 created_at__gte=slot_start,
                 created_at__lt=slot_end,
             ).values('user_id').distinct().count()
-            # Supplement with presence-based count if ActivityLog is sparse
-            all_user_activity.append(max(au, ca + aa))
+            all_user_activity.append(max(au, da + ma))
 
     elif range_type == 'daily':
         start_time = now - timedelta(days=30)
@@ -153,36 +151,31 @@ def api_statistics_data(request):
 
             bucket = [s for s in snapshots if s.timestamp.date() == day]
             if bucket:
-                ca = int(sum(s.active_clients   for s in bucket) / len(bucket))
-                aa = int(sum(s.active_assistants for s in bucket) / len(bucket))
-                bj = sum(s.batch_jobs_count  for s in bucket)
+                da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
+                ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
                 cc = sum(s.total_cards_created for s in bucket)
             else:
-                # Fall back to real DB counts for days before snapshots started
-                ca = ActivityLog.objects.filter(
+                da = ActivityLog.objects.filter(
                     created_at__range=(day_start, day_end),
                     user__role='client',
                 ).values('user').distinct().count()
-                aa = ActivityLog.objects.filter(
+                da += ActivityLog.objects.filter(
                     created_at__range=(day_start, day_end),
                     user__role__in=('assistant', 'client_staff'),
                 ).values('user').distinct().count()
-                bj = BackgroundTask.objects.filter(
-                    created_at__range=(day_start, day_end),
-                ).count()
+                ma = 0
                 cc = IDCard.objects.filter(
                     created_at__range=(day_start, day_end),
                 ).count()
 
-            client_activity.append(ca)
-            assistant_activity.append(aa)
-            batch_jobs.append(bj)
+            desktop_activity.append(da)
+            mobile_activity.append(ma)
             cards_created.append(cc)
 
             au = ActivityLog.objects.filter(
                 created_at__range=(day_start, day_end),
             ).values('user_id').distinct().count()
-            all_user_activity.append(max(au, ca + aa))
+            all_user_activity.append(max(au, da + ma))
 
     elif range_type == 'weekly':
         start_time = now - timedelta(weeks=12)
@@ -194,45 +187,37 @@ def api_statistics_data(request):
             iso_wk   = wk_start.isocalendar()[1]
             labels.append(f'Wk {iso_wk}')
 
-            bucket = [s for s in snapshots
-                      if wk_start <= s.timestamp < wk_end]
+            bucket = [s for s in snapshots if wk_start <= s.timestamp < wk_end]
             if bucket:
-                ca = int(sum(s.active_clients   for s in bucket) / len(bucket))
-                aa = int(sum(s.active_assistants for s in bucket) / len(bucket))
-                bj = sum(s.batch_jobs_count  for s in bucket)
+                da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
+                ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
                 cc = sum(s.total_cards_created for s in bucket)
             else:
-                ca = ActivityLog.objects.filter(
+                da = ActivityLog.objects.filter(
                     created_at__gte=wk_start, created_at__lt=wk_end,
                     user__role='client',
                 ).values('user').distinct().count()
-                aa = ActivityLog.objects.filter(
+                da += ActivityLog.objects.filter(
                     created_at__gte=wk_start, created_at__lt=wk_end,
                     user__role__in=('assistant', 'client_staff'),
                 ).values('user').distinct().count()
-                bj = BackgroundTask.objects.filter(
-                    created_at__gte=wk_start, created_at__lt=wk_end,
-                ).count()
+                ma = 0
                 cc = IDCard.objects.filter(
                     created_at__gte=wk_start, created_at__lt=wk_end,
                 ).count()
 
-            client_activity.append(ca)
-            assistant_activity.append(aa)
-            batch_jobs.append(bj)
+            desktop_activity.append(da)
+            mobile_activity.append(ma)
             cards_created.append(cc)
 
             au = ActivityLog.objects.filter(
                 created_at__gte=wk_start, created_at__lt=wk_end,
             ).values('user_id').distinct().count()
-            all_user_activity.append(max(au, ca + aa))
+            all_user_activity.append(max(au, da + ma))
 
     else:  # monthly
         for i in range(12):
-            # Work backward from current month
-            # month_offset: 11 = 11 months ago, 0 = current month
             offset = 11 - i
-            # Compute year/month
             target_month = now.month - offset
             target_year  = now.year
             while target_month < 1:
@@ -249,57 +234,46 @@ def api_statistics_data(request):
                 timestamp__gte=mo_start, timestamp__lte=mo_end
             )]
             if bucket:
-                ca = int(sum(s.active_clients   for s in bucket) / len(bucket))
-                aa = int(sum(s.active_assistants for s in bucket) / len(bucket))
-                bj = sum(s.batch_jobs_count  for s in bucket)
+                da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
+                ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
                 cc = sum(s.total_cards_created for s in bucket)
             else:
                 from core.models import ActivityLog as AL
-                ca = AL.objects.filter(
+                da = AL.objects.filter(
                     created_at__range=(mo_start, mo_end),
                     user__role='client',
                 ).values('user').distinct().count()
-                aa = AL.objects.filter(
+                da += AL.objects.filter(
                     created_at__range=(mo_start, mo_end),
                     user__role__in=('assistant', 'client_staff'),
                 ).values('user').distinct().count()
-                bj = BackgroundTask.objects.filter(
-                    created_at__range=(mo_start, mo_end),
-                ).count()
+                ma = 0
                 cc = IDCard.objects.filter(
                     created_at__range=(mo_start, mo_end),
                 ).count()
 
-            client_activity.append(ca)
-            assistant_activity.append(aa)
-            batch_jobs.append(bj)
+            desktop_activity.append(da)
+            mobile_activity.append(ma)
             cards_created.append(cc)
 
             from core.models import ActivityLog as AL2
             au = AL2.objects.filter(
                 created_at__range=(mo_start, mo_end),
             ).values('user_id').distinct().count()
-            all_user_activity.append(max(au, ca + aa))
+            all_user_activity.append(max(au, da + ma))
 
     # ── Live summary metrics ────────────────────────────────────────────
-    current_live_clients    = len(LiveClientPresenceService.get_live_client_ids_for_user(request.user))
-    current_live_assistants = LiveClientPresenceService.get_live_assistant_count_for_user(request.user)
+    current_desktop, current_mobile = _get_active_device_counts()
     current_live_sessions   = UserDeviceSession.objects.values('user_id').distinct().count()
-    current_active_users    = max(current_live_sessions,
-                                  current_live_clients + current_live_assistants)
+    current_active_users    = max(current_live_sessions, current_desktop + current_mobile)
 
     # Overwrite the last data point with actual live numbers (most-recent on right)
-    if client_activity:
-        client_activity[-1]   = max(client_activity[-1],   current_live_clients)
-    if assistant_activity:
-        assistant_activity[-1] = max(assistant_activity[-1], current_live_assistants)
+    if desktop_activity:
+        desktop_activity[-1]   = max(desktop_activity[-1],   current_desktop)
+    if mobile_activity:
+        mobile_activity[-1] = max(mobile_activity[-1], current_mobile)
     if all_user_activity:
         all_user_activity[-1] = max(all_user_activity[-1],  current_active_users)
-
-    total_batch_jobs  = BackgroundTask.objects.count()
-    completed_jobs    = BackgroundTask.objects.filter(status='completed').count()
-    processing_jobs   = BackgroundTask.objects.filter(status__in=['pending', 'processing']).count()
-    success_rate      = int(completed_jobs / total_batch_jobs * 100) if total_batch_jobs > 0 else 100
 
     # Historical peak
     peak_snap         = StatsSnapshot.objects.order_by('-peak_active_users').first()
@@ -324,27 +298,25 @@ def api_statistics_data(request):
             except Exception:
                 pass
 
-    # Total unique IDs from IDCards ever created
     from idcards.models import IDCard as IDCard2
     total_cards_ever = IDCard2.objects.count()
 
     return JsonResponse({
         'success': True,
         'labels':             labels,
-        'client_activity':    client_activity,
-        'assistant_activity': assistant_activity,
+        'desktop_activity':   desktop_activity,
+        'mobile_activity':    mobile_activity,
+        'client_activity':    desktop_activity,
+        'assistant_activity': mobile_activity,
         'all_user_activity':  all_user_activity,
-        'batch_jobs_count':   batch_jobs,
         'cards_created':      cards_created,
+        'batch_jobs_count':   cards_created,
         'summary': {
             'current_active_users':    current_active_users,
-            'live_clients':            current_live_clients,
-            'live_assistants':         current_live_assistants,
+            'live_desktop_users':      current_desktop,
+            'live_mobile_users':       current_mobile,
             'peak_active_users':       peak_active_users,
             'peak_working_hour':       busiest_hour_str,
-            'total_batch_jobs':        total_batch_jobs,
-            'batch_jobs_success_rate': success_rate,
-            'batch_jobs_processing':   processing_jobs,
             'total_cards_ever':        total_cards_ever,
         },
     })
@@ -353,7 +325,6 @@ def api_statistics_data(request):
 # ── Server load alert helpers ──────────────────────────────────────────────────
 
 LOAD_THRESHOLDS = [
-    # (min_users, level, subject_prefix, body_intro)
     (100, ServerLoadAlert.LEVEL_DANGER,
      '🚨 CRITICAL: Server Will Crash',
      '100 or more concurrent users are active right now. The server is at serious risk of crashing. Please scale immediately.'),
@@ -365,7 +336,6 @@ LOAD_THRESHOLDS = [
      '50 or more concurrent users are active right now. Response times may be degrading. Monitor the situation.'),
 ]
 
-# Minimum minutes between consecutive alerts of the same level
 ALERT_COOLDOWN_MINUTES = 30
 
 
@@ -379,10 +349,7 @@ def _get_admin_emails():
 
 
 def check_and_send_load_alerts(concurrent_users: int):
-    """
-    Called from the api_statistics_data view (and optionally a cron/management
-    command).  Sends a single email per alert level per cooldown window.
-    """
+    """Sends a single email per alert level per cooldown window."""
     from django.conf import settings
     from core.utils.threaded_email import send_html_email_async
 
@@ -395,7 +362,7 @@ def check_and_send_load_alerts(concurrent_users: int):
 
     for (threshold, level, subject, intro) in LOAD_THRESHOLDS:
         if concurrent_users < threshold:
-            continue  # below this threshold, skip
+            continue
 
         alert, _ = ServerLoadAlert.objects.get_or_create(level=level)
         cooldown_ok = (
@@ -403,7 +370,7 @@ def check_and_send_load_alerts(concurrent_users: int):
             (now - alert.last_sent) >= timedelta(minutes=ALERT_COOLDOWN_MINUTES)
         )
         if not cooldown_ok:
-            break  # already alerted recently for this (or higher) level
+            break
 
         subject_full = f'[Adarsh Panel] {subject} — {concurrent_users} users online'
         panel_url = getattr(settings, 'PANEL_URL', '') or 'https://panel.adarshbhopal.in'
@@ -451,7 +418,7 @@ def check_and_send_load_alerts(concurrent_users: int):
                 subject=subject_full,
                 plain_content=plain,
                 html_content=html,
-                from_email=None,  # uses DEFAULT_FROM_EMAIL
+                from_email=None,
                 recipient_list=admin_emails,
                 skip_logging=True,
                 email_type='alert',
@@ -464,25 +431,18 @@ def check_and_send_load_alerts(concurrent_users: int):
         except Exception:
             logger.exception('Failed to send server load alert [%s]', level)
 
-        break  # only send the highest applicable alert
+        break
 
 
 @login_required
 def api_check_server_load(request):
-    """
-    Lightweight endpoint polled every ~2 minutes by the statistics page JS.
-    Returns the current concurrent-user count and any active alert level,
-    and triggers email alerts when thresholds are crossed.
-    """
+    """Lightweight endpoint polled by the statistics page JS."""
     if not PermissionService.can_use_pro_user_options(request.user):
         return JsonResponse({'success': False}, status=403)
 
-    live_clients    = len(LiveClientPresenceService.get_live_client_ids_for_user(request.user))
-    live_assistants = LiveClientPresenceService.get_live_assistant_count_for_user(request.user)
-    live_sessions   = UserDeviceSession.objects.values('user_id').distinct().count()
-    concurrent      = max(live_sessions, live_clients + live_assistants)
+    desktop, mobile = _get_active_device_counts()
+    concurrent = max(desktop + mobile, UserDeviceSession.objects.values('user_id').distinct().count())
 
-    # Determine alert level for the UI
     alert_level = None
     if concurrent >= 100:
         alert_level = 'danger'
@@ -491,7 +451,6 @@ def api_check_server_load(request):
     elif concurrent >= 50:
         alert_level = 'warning'
 
-    # Fire emails asynchronously (won't block the response)
     if alert_level:
         try:
             check_and_send_load_alerts(concurrent)

@@ -10,6 +10,8 @@ class StatsSnapshot(models.Model):
     timestamp = models.DateTimeField(default=timezone.now, db_index=True)
     active_clients = models.IntegerField(default=0)
     active_assistants = models.IntegerField(default=0)
+    active_desktop_users = models.IntegerField(default=0)
+    active_mobile_users = models.IntegerField(default=0)
     peak_active_users = models.IntegerField(default=0)
     total_cards_created = models.IntegerField(default=0)
     total_cards_approved = models.IntegerField(default=0)
@@ -21,7 +23,7 @@ class StatsSnapshot(models.Model):
         ordering = ['-timestamp']
 
     def __str__(self):
-        return f"StatsSnapshot at {self.timestamp} (Clients: {self.active_clients}, Assistants: {self.active_assistants})"
+        return f"StatsSnapshot at {self.timestamp} (Desktop: {self.active_desktop_users}, Mobile: {self.active_mobile_users})"
 
 
 class ServerLoadAlert(models.Model):

@@ -313,8 +313,6 @@
     min-height: 200px;
   }
 
-  /* Two column charts grid - now handled above as snap section */
-
   @media (max-width: 1024px) {
     .charts-split-grid {
       grid-template-columns: 1fr;
@@ -413,7 +411,7 @@
           <div class="metric-label">Live Active Sessions</div>
           <div class="metric-footer">
             <i class="fa-solid fa-circle-check" style="color:#10b981;"></i>
-            <span>Clients + Assistants online now</span>
+            <span>All concurrent online users</span>
           </div>
         </div>
       </div>
@@ -448,17 +446,17 @@
         </div>
       </div>
 
-      <!-- Batch Job Success -->
+      <!-- Live Mobile App Users -->
       <div class="metric-card">
         <div class="metric-icon-wrap color-info">
-          <i class="fa-solid fa-gears"></i>
+          <i class="fa-solid fa-mobile-screen-button"></i>
         </div>
         <div class="metric-info">
-          <div class="metric-value" id="valSuccessRate">-</div>
-          <div class="metric-label">Batch Job Success Rate</div>
+          <div class="metric-value" id="valMobileActive">-</div>
+          <div class="metric-label">Live Mobile Users</div>
           <div class="metric-footer">
             <i class="fa-solid fa-circle-check" style="color:#06b6d4;"></i>
-            <span id="valProcessingTasks">0 jobs processing now</span>
+            <span>Mobile app concurrent users</span>
           </div>
         </div>
       </div>
@@ -473,7 +471,7 @@
       <div class="chart-header">
         <div class="chart-title-area">
           <h3>User Activities Overview</h3>
-          <p>Real database counts — Client admins &amp; Workflow assistants active per period</p>
+          <p>Real database counts — Active Web Desktop vs Mobile App users per period</p>
         </div>
         <div class="range-selector">
           <button class="range-btn active" data-range="hourly">Hours</button>
@@ -489,15 +487,15 @@
 
     <!-- Split Row -->
     <div class="charts-split-grid">
-      <!-- Batch Tasks -->
+      <!-- ID Cards Created -->
       <div class="chart-card" style="position:relative;">
         <div class="chart-loader" id="batchChartLoader">
           <div class="spinner"></div>
         </div>
         <div class="chart-header">
           <div class="chart-title-area">
-            <h3>Background Batch Tasks</h3>
-            <p>Export jobs, template checks and reuploads — real counts</p>
+            <h3>ID Cards Created</h3>
+            <p>Total student &amp; staff cards generated per period</p>
           </div>
         </div>
         <div class="split-chart-container">
@@ -558,18 +556,17 @@
     setEl('valCurrentActive',  summary.current_active_users);
     setEl('valPeakActive',     summary.peak_active_users);
     setEl('valPeakHour',       summary.peak_working_hour || '—');
-    setEl('valSuccessRate',    summary.batch_jobs_success_rate + '%');
-    setEl('valProcessingTasks', summary.batch_jobs_processing + ' jobs processing now');
+    setEl('valMobileActive',   summary.live_mobile_users !== undefined ? summary.live_mobile_users : '0');
   }
 
-  function renderMainActivityChart(labels, clients, assistants) {
+  function renderMainActivityChart(labels, desktopData, mobileData) {
     var ctx = document.getElementById('mainActivityChart').getContext('2d');
-    var gradClient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradClient.addColorStop(0, 'rgba(79,70,229,0.40)');
-    gradClient.addColorStop(1, 'rgba(79,70,229,0.03)');
-    var gradAssistant = ctx.createLinearGradient(0, 0, 0, 400);
-    gradAssistant.addColorStop(0, 'rgba(16,185,129,0.40)');
-    gradAssistant.addColorStop(1, 'rgba(16,185,129,0.03)');
+    var gradDesktop = ctx.createLinearGradient(0, 0, 0, 400);
+    gradDesktop.addColorStop(0, 'rgba(79,70,229,0.40)');
+    gradDesktop.addColorStop(1, 'rgba(79,70,229,0.03)');
+    var gradMobile = ctx.createLinearGradient(0, 0, 0, 400);
+    gradMobile.addColorStop(0, 'rgba(16,185,129,0.40)');
+    gradMobile.addColorStop(1, 'rgba(16,185,129,0.03)');
 
     if (mainChart) mainChart.destroy();
     mainChart = new Chart(ctx, {
@@ -578,10 +575,10 @@
         labels: labels,
         datasets: [
           {
-            label: 'Active Client Admins',
-            data: clients,
+            label: 'Active Desktop (Web) Users',
+            data: desktopData,
             borderColor: '#4f46e5',
-            backgroundColor: gradClient,
+            backgroundColor: gradDesktop,
             borderWidth: 2,
             fill: true,
             tension: 0.3,
@@ -591,10 +588,10 @@
             pointHoverRadius: 7
           },
           {
-            label: 'Active Workflow Assistants',
-            data: assistants,
+            label: 'Active Mobile App Users',
+            data: mobileData,
             borderColor: '#10b981',
-            backgroundColor: gradAssistant,
+            backgroundColor: gradMobile,
             borderWidth: 2,
             fill: true,
             tension: 0.3,
@@ -619,7 +616,7 @@
         scales: {
           y: {
             beginAtZero: true,
-            suggestedMax: Math.max(10, Math.max.apply(null, clients.concat(assistants)) + 5),
+            suggestedMax: Math.max(10, Math.max.apply(null, desktopData.concat(mobileData)) + 5),
             grid: { color: 'rgba(0,0,0,0.05)' },
             ticks: { font: { weight: '600' }, precision: 0 }
           },
@@ -648,7 +645,7 @@
       data: {
         labels: labels,
         datasets: [{
-          label: 'Batch Jobs',
+          label: 'ID Cards Created',
           data: counts,
           backgroundColor: barGrad,
           borderRadius: 4,
@@ -715,8 +712,8 @@
         if (!data.success) return;
         updateMetrics(data.summary);
         if (typeof Chart !== 'undefined') {
-          try { renderMainActivityChart(data.labels, data.client_activity, data.assistant_activity); } catch(e) { console.error('main chart:', e); }
-          try { renderBatchChart(data.labels, data.batch_jobs_count); } catch(e) { console.error('batch chart:', e); }
+          try { renderMainActivityChart(data.labels, data.desktop_activity, data.mobile_activity); } catch(e) { console.error('main chart:', e); }
+          try { renderBatchChart(data.labels, data.cards_created); } catch(e) { console.error('cards created chart:', e); }
           try { renderDistributionChart(data.labels, data.all_user_activity); } catch(e) { console.error('dist chart:', e); }
         }
       })
@@ -764,7 +761,6 @@
       .then(function(data) {
         if (data.success) {
           updateLoadBanner(data.alert_level, data.concurrent);
-          // Also update Live Active Sessions KPI with fresh data
           if (data.concurrent !== undefined) {
             var el = document.getElementById('valCurrentActive');
             if (el && el.textContent === '-') el.textContent = data.concurrent;
