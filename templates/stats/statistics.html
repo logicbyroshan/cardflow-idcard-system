@@ -391,6 +391,14 @@
     {% include 'partials/pro-feature-tabs.html' with pro_tab='statistics' %}
   </div>
 
+  <!-- Server Load Alert Banner (hidden by default, shown by JS) -->
+  <div id="serverLoadBanner" style="display:none;padding:10px 20px;font-size:13px;font-weight:600;letter-spacing:0.01em;align-items:center;gap:10px;flex-shrink:0;">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span id="serverLoadBannerText"></span>
+    <span id="serverLoadUserCount" style="font-weight:800;"></span>
+    <span id="serverLoadBannerSuffix" style="font-weight:400;opacity:0.85;"></span>
+  </div>
+
   <div class="stats-grid-wrap">
 
     <!-- Metrics Row -->
@@ -405,7 +413,7 @@
           <div class="metric-label">Live Active Sessions</div>
           <div class="metric-footer">
             <i class="fa-solid fa-circle-check" style="color:#10b981;"></i>
-            <span>Real-time presence tabs</span>
+            <span>Clients + Assistants online now</span>
           </div>
         </div>
       </div>
@@ -420,7 +428,7 @@
           <div class="metric-label">All-Time Peak Active</div>
           <div class="metric-footer">
             <i class="fa-solid fa-arrow-up" style="color:#10b981;"></i>
-            <span>Max concurrent sessions</span>
+            <span>Max concurrent sessions ever</span>
           </div>
         </div>
       </div>
@@ -431,11 +439,11 @@
           <i class="fa-solid fa-clock"></i>
         </div>
         <div class="metric-info">
-          <div class="metric-value" id="valPeakHour" style="font-size: 16px; min-height: 28px; display: flex; align-items: center;">-</div>
-          <div class="metric-label">Busiest Interval</div>
+          <div class="metric-value" id="valPeakHour" style="font-size:16px;min-height:28px;display:flex;align-items:center;">-</div>
+          <div class="metric-label">Busiest Interval (Today)</div>
           <div class="metric-footer">
             <i class="fa-solid fa-bolt" style="color:#f59e0b;"></i>
-            <span>Busiest operations hour</span>
+            <span>Highest-traffic 2-hour window</span>
           </div>
         </div>
       </div>
@@ -447,10 +455,10 @@
         </div>
         <div class="metric-info">
           <div class="metric-value" id="valSuccessRate">-</div>
-          <div class="metric-label">Batch Job Success</div>
+          <div class="metric-label">Batch Job Success Rate</div>
           <div class="metric-footer">
             <i class="fa-solid fa-circle-check" style="color:#06b6d4;"></i>
-            <span id="valProcessingTasks">0 jobs currently processing</span>
+            <span id="valProcessingTasks">0 jobs processing now</span>
           </div>
         </div>
       </div>
@@ -465,7 +473,7 @@
       <div class="chart-header">
         <div class="chart-title-area">
           <h3>User Activities Overview</h3>
-          <p>Real-time client administrators and workflow assistants active sessions</p>
+          <p>Real database counts — Client admins &amp; Workflow assistants active per period</p>
         </div>
         <div class="range-selector">
           <button class="range-btn active" data-range="hourly">Hours</button>
@@ -489,7 +497,7 @@
         <div class="chart-header">
           <div class="chart-title-area">
             <h3>Background Batch Tasks</h3>
-            <p>Export jobs, template checks and reuploads count over time</p>
+            <p>Export jobs, template checks and reuploads — real counts</p>
           </div>
         </div>
         <div class="split-chart-container">
@@ -497,15 +505,15 @@
         </div>
       </div>
 
-      <!-- Peak Hour Distribution -->
+      <!-- Total Active Users distribution -->
       <div class="chart-card" style="position:relative;">
         <div class="chart-loader" id="distributionChartLoader">
           <div class="spinner"></div>
         </div>
         <div class="chart-header">
           <div class="chart-title-area">
-            <h3>Busiest Time Distribution</h3>
-            <p>Active users across all roles over the selected range</p>
+            <h3>Total Active Users</h3>
+            <p>Distinct active users across all roles per period</p>
           </div>
         </div>
         <div class="split-chart-container">
@@ -524,110 +532,46 @@
 <script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
 (function() {
-  var mainChart = null;
-  var batchChart = null;
+  var mainChart        = null;
+  var batchChart       = null;
   var distributionChart = null;
-  var currentRange = 'hourly';
+  var currentRange     = 'hourly';
 
-  // Demo data for when real data is empty/zero
-  var DEMO = {
-    hourly:  { labels: ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'], clients: [2,5,9,14,12,8,11,13,10,6,2], assistants: [1,3,7,11,9,6,9,10,7,4,1], batch: [0,1,3,2,5,4,2,3,1,0,0] },
-    daily:   { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], clients: [12,18,22,19,24,8,4], assistants: [8,14,17,15,20,5,2], batch: [3,6,8,7,9,2,1] },
-    weekly:  { labels: ['W1','W2','W3','W4','W5'], clients: [60,95,110,88,72], assistants: [45,78,92,70,58], batch: [18,32,40,28,22] },
-    monthly: { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], clients: [40,55,72,68,90,85,95,88,76,82,78,60], assistants: [30,42,58,54,74,70,80,72,62,68,64,48], batch: [10,15,22,20,30,28,35,30,24,28,26,18] }
-  };
-
-  function isAllZero(arr) { return !arr || arr.length === 0 || arr.every(function(v){ return !v || v === 0; }); }
-
-  function fetchStats(range) {
-    showLoaders(true);
-    fetch('{% url "api_statistics_data" %}?range=' + range)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        showLoaders(false);
-        if (data.success) {
-          updateMetrics(data.summary);
-          // Use demo data if real data is all zeros
-          var demo = DEMO[range] || DEMO.hourly;
-          var labels = (isAllZero(data.client_activity) && isAllZero(data.assistant_activity)) ? demo.labels : data.labels;
-          var clients = isAllZero(data.client_activity) ? demo.clients : data.client_activity;
-          var assistants = isAllZero(data.assistant_activity) ? demo.assistants : data.assistant_activity;
-          var batchCounts = isAllZero(data.batch_jobs_count) ? demo.batch : data.batch_jobs_count;
-          
-          var allUserActivity = isAllZero(data.all_user_activity) ? demo.clients.map(function(c, idx) {
-             return c + demo.assistants[idx] + 3;
-          }) : data.all_user_activity;
-
-          if (typeof Chart !== 'undefined') {
-            try { renderMainActivityChart(labels, clients, assistants); } catch (e) { console.error('main chart:', e); }
-            try { renderBatchChart(labels, batchCounts); } catch (e) { console.error('batch chart:', e); }
-            try { renderDistributionChart(labels, allUserActivity); } catch (e) { console.error('dist chart:', e); }
-          } else {
-            showChartErrorMessages();
-          }
-        }
-      })
-      .catch(function(err) {
-        showLoaders(false);
-        console.error('Failed to load statistics:', err);
-      });
-  }
-
-  function showChartErrorMessages() {
-    var canvasIds = ['mainActivityChart', 'batchChart', 'distributionChart'];
-    canvasIds.forEach(function(id) {
-      var canvas = document.getElementById(id);
-      if (canvas) {
-        var parent = canvas.parentElement;
-        if (parent) {
-          parent.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-gray-500);font-weight:600;font-size:13px;padding:20px;text-align:center;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:8px;color:var(--color-warning);"></i> Chart.js failed to load. Please check your internet connection.</div>';
-        }
-      }
-    });
-  }
+  // ── Chart render helpers ──────────────────────────────────────────────
 
   function showLoaders(show) {
-    var loaders = ['mainChartLoader', 'batchChartLoader', 'distributionChartLoader'];
-    loaders.forEach(function(id) {
+    ['mainChartLoader','batchChartLoader','distributionChartLoader'].forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) {
-        el.style.opacity = show ? '1' : '0';
-        el.style.pointerEvents = show ? 'auto' : 'none';
-        if (show) {
-          el.style.display = 'flex';
-        } else {
-          setTimeout(function() {
-            if (el.style.opacity === '0') el.style.display = 'none';
-          }, 300);
-        }
-      }
+      if (!el) return;
+      el.style.opacity = show ? '1' : '0';
+      el.style.pointerEvents = show ? 'auto' : 'none';
+      if (show) { el.style.display = 'flex'; }
+      else { setTimeout(function(){ if (el.style.opacity === '0') el.style.display = 'none'; }, 300); }
     });
   }
 
   function updateMetrics(summary) {
-    document.getElementById('valCurrentActive').textContent = summary.current_active_users;
-    document.getElementById('valPeakActive').textContent = summary.peak_active_users;
-    document.getElementById('valPeakHour').textContent = summary.peak_working_hour;
-    document.getElementById('valSuccessRate').textContent = summary.batch_jobs_success_rate + '%';
-    document.getElementById('valProcessingTasks').textContent = summary.batch_jobs_processing + ' jobs processing now';
+    var setEl = function(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text;
+    };
+    setEl('valCurrentActive',  summary.current_active_users);
+    setEl('valPeakActive',     summary.peak_active_users);
+    setEl('valPeakHour',       summary.peak_working_hour || '—');
+    setEl('valSuccessRate',    summary.batch_jobs_success_rate + '%');
+    setEl('valProcessingTasks', summary.batch_jobs_processing + ' jobs processing now');
   }
 
   function renderMainActivityChart(labels, clients, assistants) {
     var ctx = document.getElementById('mainActivityChart').getContext('2d');
-    
-    // Create solid gradients for stronger area fill
     var gradClient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradClient.addColorStop(0, 'rgba(79, 70, 229, 0.45)');
-    gradClient.addColorStop(1, 'rgba(79, 70, 229, 0.05)');
-
+    gradClient.addColorStop(0, 'rgba(79,70,229,0.40)');
+    gradClient.addColorStop(1, 'rgba(79,70,229,0.03)');
     var gradAssistant = ctx.createLinearGradient(0, 0, 0, 400);
-    gradAssistant.addColorStop(0, 'rgba(16, 185, 129, 0.45)');
-    gradAssistant.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+    gradAssistant.addColorStop(0, 'rgba(16,185,129,0.40)');
+    gradAssistant.addColorStop(1, 'rgba(16,185,129,0.03)');
 
-    if (mainChart) {
-      mainChart.destroy();
-    }
-
+    if (mainChart) mainChart.destroy();
     mainChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -640,9 +584,9 @@
             backgroundColor: gradClient,
             borderWidth: 2,
             fill: true,
-            tension: 0,
+            tension: 0.3,
             pointStyle: 'rectRounded',
-            pointRadius: 5,
+            pointRadius: 4,
             pointBackgroundColor: '#4f46e5',
             pointHoverRadius: 7
           },
@@ -653,9 +597,9 @@
             backgroundColor: gradAssistant,
             borderWidth: 2,
             fill: true,
-            tension: 0,
+            tension: 0.3,
             pointStyle: 'rectRounded',
-            pointRadius: 5,
+            pointRadius: 4,
             pointBackgroundColor: '#10b981',
             pointHoverRadius: 7
           }
@@ -664,29 +608,29 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 400 },
         plugins: {
           legend: {
             position: 'top',
-            labels: {
-              boxWidth: 12,
-              font: { weight: '600', size: 12 }
-            }
+            labels: { boxWidth: 12, font: { weight: '600', size: 12 } }
           },
-          tooltip: {
-            padding: 12,
-            cornerRadius: 8
-          }
+          tooltip: { padding: 12, cornerRadius: 8 }
         },
         scales: {
           y: {
             beginAtZero: true,
-            max: 100,
-            grid: { color: 'rgba(0, 0, 0, 0.05)' },
-            ticks: { font: { weight: '600' } }
+            suggestedMax: Math.max(10, Math.max.apply(null, clients.concat(assistants)) + 5),
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { font: { weight: '600' }, precision: 0 }
           },
           x: {
             grid: { display: false },
-            ticks: { font: { weight: '600' } }
+            ticks: {
+              font: { weight: '600' },
+              maxRotation: 45,
+              autoSkip: true,
+              maxTicksLimit: 24
+            }
           }
         }
       }
@@ -695,21 +639,16 @@
 
   function renderBatchChart(labels, counts) {
     var ctx = document.getElementById('batchChart').getContext('2d');
-    
-    if (batchChart) {
-      batchChart.destroy();
-    }
-
     var barGrad = ctx.createLinearGradient(0, 0, 0, 200);
     barGrad.addColorStop(0, '#06b6d4');
     barGrad.addColorStop(1, '#0891b2');
-
+    if (batchChart) batchChart.destroy();
     batchChart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: labels,
         datasets: [{
-          label: 'Batch Jobs Processed',
+          label: 'Batch Jobs',
           data: counts,
           backgroundColor: barGrad,
           borderRadius: 4,
@@ -719,17 +658,11 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
+        animation: { duration: 400 },
+        plugins: { legend: { display: false } },
         scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color: 'rgba(0, 0, 0, 0.05)' }
-          },
-          x: {
-            grid: { display: false }
-          }
+          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { precision: 0 } },
+          x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 20 } }
         }
       }
     });
@@ -737,43 +670,112 @@
 
   function renderDistributionChart(labels, allUserActivity) {
     var ctx = document.getElementById('distributionChart').getContext('2d');
-    if (distributionChart) {
-      distributionChart.destroy();
-    }
-
-    var grad = ctx.createLinearGradient(0, 0, 0, 200);
-    grad.addColorStop(0, '#f59e0b');
-    grad.addColorStop(1, '#fbbf24');
-
+    if (distributionChart) distributionChart.destroy();
     distributionChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: labels,
         datasets: [{
-          label: 'Active Users',
+          label: 'All Active Users',
           data: allUserActivity,
           borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.06)',
+          backgroundColor: 'rgba(245,158,11,0.08)',
           borderWidth: 2,
           fill: true,
-          tension: 0.4
+          tension: 0.35,
+          pointRadius: 3,
+          pointHoverRadius: 6
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
+        animation: { duration: 400 },
+        plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true },
-          x: { grid: { display: false } }
+          y: {
+            beginAtZero: true,
+            suggestedMax: Math.max(10, Math.max.apply(null, allUserActivity) + 5),
+            ticks: { precision: 0 }
+          },
+          x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 20 } }
         }
       }
     });
   }
 
-  // Bind range selector buttons
+  // ── Fetch + render statistics ─────────────────────────────────────────
+
+  function fetchStats(range) {
+    showLoaders(true);
+    fetch('{% url "api_statistics_data" %}?range=' + range)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        showLoaders(false);
+        if (!data.success) return;
+        updateMetrics(data.summary);
+        if (typeof Chart !== 'undefined') {
+          try { renderMainActivityChart(data.labels, data.client_activity, data.assistant_activity); } catch(e) { console.error('main chart:', e); }
+          try { renderBatchChart(data.labels, data.batch_jobs_count); } catch(e) { console.error('batch chart:', e); }
+          try { renderDistributionChart(data.labels, data.all_user_activity); } catch(e) { console.error('dist chart:', e); }
+        }
+      })
+      .catch(function(err) {
+        showLoaders(false);
+        console.error('Statistics load failed:', err);
+      });
+  }
+
+  // ── Server load alert banner ──────────────────────────────────────────
+
+  var LOAD_STYLES = {
+    warning:  { bg: '#fffbeb', border: '#f59e0b', color: '#92400e', text: '⚠ Server is slow —', suffix: 'concurrent users online. Response times may be degrading.' },
+    critical: { bg: '#fff1f2', border: '#ef4444', color: '#991b1b', text: '🚨 Server is struggling —', suffix: 'concurrent users online. Action may be needed.' },
+    danger:   { bg: '#450a0a', border: '#7f1d1d', color: '#fca5a5', text: '🔴 SERVER WILL CRASH —', suffix: 'concurrent users online. Scale immediately!' }
+  };
+
+  function updateLoadBanner(alertLevel, concurrent) {
+    var banner = document.getElementById('serverLoadBanner');
+    var bannerText = document.getElementById('serverLoadBannerText');
+    var bannerCount = document.getElementById('serverLoadUserCount');
+    var bannerSuffix = document.getElementById('serverLoadBannerSuffix');
+    if (!banner) return;
+
+    if (!alertLevel) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    var style = LOAD_STYLES[alertLevel];
+    if (!style) { banner.style.display = 'none'; return; }
+
+    banner.style.display      = 'flex';
+    banner.style.background   = style.bg;
+    banner.style.borderBottom = '2px solid ' + style.border;
+    banner.style.color        = style.color;
+    bannerText.textContent    = style.text;
+    bannerCount.textContent   = concurrent + ' ';
+    bannerSuffix.textContent  = style.suffix;
+  }
+
+  function checkServerLoad() {
+    fetch('{% url "api_check_server_load" %}')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.success) {
+          updateLoadBanner(data.alert_level, data.concurrent);
+          // Also update Live Active Sessions KPI with fresh data
+          if (data.concurrent !== undefined) {
+            var el = document.getElementById('valCurrentActive');
+            if (el && el.textContent === '-') el.textContent = data.concurrent;
+          }
+        }
+      })
+      .catch(function() { /* silently fail */ });
+  }
+
+  // ── Event wiring ──────────────────────────────────────────────────────
+
   document.querySelectorAll('.range-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -785,6 +787,11 @@
 
   // Initial load
   fetchStats(currentRange);
+
+  // Server load check: immediately, then every 2 minutes
+  checkServerLoad();
+  setInterval(checkServerLoad, 2 * 60 * 1000);
+
 })();
 </script>
 {% endblock %}
