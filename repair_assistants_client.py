@@ -191,7 +191,6 @@ def repair():
                 # Get groups that are student-related (must contain 'student' or 'STUDENT')
                 student_groups = IDCardGroup.objects.filter(client=target_client, name__icontains='student')
                 if not student_groups.exists():
-                    # Fallback to all groups if no group contains 'student'
                     student_groups = IDCardGroup.objects.filter(client=target_client)
                 
                 # Get all active tables under student groups
@@ -303,13 +302,25 @@ def repair():
                             if parsed_section:
                                 matched_sections.add(parsed_section)
                 
+                # Deduplicate and normalize representation to keep only the Roman numeral version if it exists
+                cleaned_matched_classes = set()
+                for c in matched_classes:
+                    if c in ROMAN_MAPPING:
+                        cleaned_matched_classes.add(ROMAN_MAPPING[c][-1])
+                    else:
+                        cleaned_matched_classes.add(c)
+                matched_classes = cleaned_matched_classes
+                
+                matched_sections = {s.upper() for s in matched_sections}
+                
                 # 2c. Save Matches and Scopes
                 if matched_classes:
                     print(f"  [Fix] Matches found! Assigning allowed_classes: {list(matched_classes)}, allowed_sections: {list(matched_sections)}")
                     ast.allowed_classes = list(matched_classes)
                     ast.allowed_sections = list(matched_sections)
                     
-                    groups = IDCardGroup.objects.filter(tables__id__in=matched_table_ids).distinct()
+                    # Filter assigned groups to ONLY be from student groups
+                    groups = IDCardGroup.objects.filter(tables__id__in=matched_table_ids, id__in=student_groups).distinct()
                     ast.assigned_groups.set(groups)
                     
                     scopes = []
@@ -317,6 +328,12 @@ def repair():
                         group_table_ids = [t.id for t in group.tables.all() if t.id in matched_table_ids]
                         for t_id in group_table_ids:
                             table_name = table_field_map[t_id]['table'].name
+                            
+                            # Construct class_sections object mapping class name to lists of sections
+                            class_sections = {}
+                            for c in matched_classes:
+                                class_sections[c] = list(matched_sections)
+                                
                             scopes.append({
                                 'scope_type': 'table',
                                 'scope_id': t_id,
@@ -325,7 +342,8 @@ def repair():
                                 'group_name': group.name,
                                 'classes': list(matched_classes),
                                 'sections': list(matched_sections),
-                                'branches': []
+                                'branches': [],
+                                'class_sections': class_sections
                             })
                     
                     ast.assignment_scopes = scopes
