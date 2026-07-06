@@ -142,7 +142,7 @@ def repair():
             continue
             
         # 2. Check and repair class/section assignments
-        if not ast.allowed_classes or client_changed:
+        if True:
             print("  Attempting to parse and restore class/section assignments...")
             
             # Remove acronym prefixes from name to isolate class part
