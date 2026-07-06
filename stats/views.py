@@ -43,13 +43,19 @@ def statistics_page(request):
 
 
 def _get_active_device_counts():
-    """Retrieve current distinct active users by device type (web vs mobile)."""
-    from django.contrib.sessions.models import Session
+    """Retrieve current distinct active users by device type (web vs mobile) in the last 15 minutes."""
     now = timezone.now()
-    active_keys = set(Session.objects.filter(expire_date__gt=now).values_list('session_key', flat=True))
+    cutoff = now - timezone.timedelta(minutes=15)
 
-    desktop_count = UserDeviceSession.objects.filter(session_key__in=active_keys, device_type='web').values('user_id').distinct().count()
-    mobile_count = UserDeviceSession.objects.filter(session_key__in=active_keys, device_type='mobile').values('user_id').distinct().count()
+    desktop_count = UserDeviceSession.objects.filter(
+        last_active__gte=cutoff,
+        device_type='web'
+    ).values('user_id').distinct().count()
+
+    mobile_count = UserDeviceSession.objects.filter(
+        last_active__gte=cutoff,
+        device_type='mobile'
+    ).values('user_id').distinct().count()
 
     return desktop_count, mobile_count
 
@@ -64,7 +70,7 @@ def _take_hourly_snapshot(user):
         return  # not time yet
 
     desktop_users_count, mobile_users_count = _get_active_device_counts()
-    live_users_count = UserDeviceSession.objects.values('user_id').distinct().count()
+    live_users_count = desktop_users_count + mobile_users_count
 
     hour_ago = now - timedelta(hours=1)
     cards_created = IDCard.objects.filter(created_at__gte=hour_ago).count()
@@ -264,8 +270,7 @@ def api_statistics_data(request):
 
     # ── Live summary metrics ────────────────────────────────────────────
     current_desktop, current_mobile = _get_active_device_counts()
-    current_live_sessions   = UserDeviceSession.objects.values('user_id').distinct().count()
-    current_active_users    = max(current_live_sessions, current_desktop + current_mobile)
+    current_active_users    = current_desktop + current_mobile
 
     # Overwrite the last data point with actual live numbers (most-recent on right)
     if desktop_activity:
@@ -441,7 +446,7 @@ def api_check_server_load(request):
         return JsonResponse({'success': False}, status=403)
 
     desktop, mobile = _get_active_device_counts()
-    concurrent = max(desktop + mobile, UserDeviceSession.objects.values('user_id').distinct().count())
+    concurrent = desktop + mobile
 
     alert_level = None
     if concurrent >= 100:

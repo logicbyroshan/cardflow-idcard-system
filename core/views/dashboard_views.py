@@ -86,10 +86,12 @@ def _dashboard_live_surface_counts(*, user, is_scoped=False, accessible_ids=None
     # Get unexpired active session keys
     active_session_keys = set(Session.objects.filter(expire_date__gt=now).values_list('session_key', flat=True))
 
-    # Fetch device sessions matching the active sessions, ordered by last_active descending (most recent first)
+    # Fetch device sessions active in the last 15 minutes, ordered by last_active descending (most recent first)
+    cutoff = now - timezone.timedelta(minutes=15)
     device_sessions = UserDeviceSession.objects.filter(
         session_key__in=active_session_keys,
-        user_id__in=allowed_user_ids
+        user_id__in=allowed_user_ids,
+        last_active__gte=cutoff
     ).order_by('-last_active')
 
     # Get the latest device surface type for each active user
