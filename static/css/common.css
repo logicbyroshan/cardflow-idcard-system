@@ -355,6 +355,20 @@ body[style*="overflow:hidden"] {
    =========================================== */
 .data-table tbody tr.selected td:first-child { box-shadow: inset 5px 0 0 0 var(--blue); }
 
+/* Make .data-table headers sticky so they don't scroll away */
+.data-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  /* Ensure a solid gradient background is rendered so row text doesn't show behind header cells */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
 /* ===========================================
    EMPTY STATES
    =========================================== */
