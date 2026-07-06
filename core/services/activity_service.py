@@ -28,8 +28,8 @@ class ActivityService:
     RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS = 900
     # Group repeated non-auth activity rows when they occur in a short working burst.
     RECENT_ACTIVITY_SIMILAR_COMBINE_WINDOW_SECONDS = 3600
-    RECENT_ACTIVITY_FETCH_MULTIPLIER = 10
-    RECENT_ACTIVITY_FETCH_CAP = 300
+    RECENT_ACTIVITY_FETCH_MULTIPLIER = 20
+    RECENT_ACTIVITY_FETCH_CAP = 2000
     RECENT_ACTIVITY_SIMILAR_ACTIONS = {
         'client_update',
         'client_status',
