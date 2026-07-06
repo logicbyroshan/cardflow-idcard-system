@@ -214,12 +214,31 @@ class StaffCompatQuerySet:
                 parts[-1] = 'id'
 
             if parts == ['id'] and lookup_type == 'exact':
-                from core.services.compat_service import CompatibilityService
-                staff_type, real_id = CompatibilityService.decode_id(val)
-                if staff_type != 'unknown':
-                    filtered = [item for item in filtered if item.delegate.id == real_id and item.staff_type == staff_type]
+                try:
+                    val_int = int(val)
+                except (TypeError, ValueError):
+                    val_int = None
+
+                if val_int is not None:
+                    if val_int >= 300000:
+                        # Photographer
+                        filtered = [item for item in filtered if item.delegate.id == (val_int - 300000) and item.staff_type == 'photographer']
+                    elif val_int >= 200000:
+                        # Assistant (client_staff)
+                        filtered = [item for item in filtered if item.delegate.id == (val_int - 200000) and item.staff_type == 'client_staff']
+                    elif val_int >= 100000:
+                        # Operator (admin_staff)
+                        filtered = [item for item in filtered if item.delegate.id == (val_int - 100000) and item.staff_type == 'admin_staff']
+                    else:
+                        filtered = [item for item in filtered if item.delegate.id == val_int]
                 else:
-                    filtered = [item for item in filtered if item.delegate.id == val]
+                    # Fallback to string-based legacy decode if it's an encoded token
+                    from core.services.compat_service import CompatibilityService
+                    staff_type, real_id = CompatibilityService.decode_id(val)
+                    if staff_type != 'unknown':
+                        filtered = [item for item in filtered if item.delegate.id == real_id and item.staff_type == staff_type]
+                    else:
+                        filtered = [item for item in filtered if item.delegate.id == val]
                 continue
 
             def get_nested_val(obj, path_parts):
