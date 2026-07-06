@@ -339,10 +339,10 @@ class ClientCardService(BaseService):
         if not PermissionService.is_client_staff(user):
             return qs
 
-        # If ignore_pool_bypass is False, bypass row-level scoping for pool status
-        if not ignore_pool_bypass:
-            if status_filter == 'pool':
-                return qs
+        # Do not bypass row-level scoping for pool status
+        # if not ignore_pool_bypass:
+        #     if status_filter == 'pool':
+        #         return qs
 
         staff = getattr(user, 'staff_profile', None)
         if not staff:
