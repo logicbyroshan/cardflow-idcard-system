@@ -27,6 +27,10 @@ def repair():
     print(f"Found {len(assistants)} Assistant(s) and {len(clients)} Client(s) in the database.\n")
     
     for ast in assistants:
+        # Only repair assistants created on July 4, 2026
+        if not (ast.created_at.year == 2026 and ast.created_at.month == 7 and ast.created_at.day == 4):
+            continue
+
         username = ast.user.username
         email = ast.user.email or ""
         name = ast.user.get_full_name() or username
