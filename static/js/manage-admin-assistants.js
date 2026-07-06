@@ -2572,7 +2572,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (res.success && res.groups && res.groups.length > 0) {
                             var html = '<option value="">Select Group/List</option>';
                             res.groups.forEach(function(g) {
-                                html += `<option value="${g.group_id}">${g.name}</option>`;
+                                // Store both the display id (g.id) and the source type
+                                // so the submit handler can send the right field to the backend.
+                                html += `<option value="${g.id}" data-source="${g.source}" data-group-id="${g.group_id}">${g.name}</option>`;
                             });
                             groupSelect.innerHTML = html;
                             groupSelect.disabled = false;
@@ -2603,6 +2605,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (typeof showToast === 'function') showToast('Please select a Group/List first.', 'warning');
                 return;
             }
+            // Read the source type stored on the selected option
+            var groupSelectEl = document.getElementById('autoCreateGroup');
+            var selectedOpt = groupSelectEl && groupSelectEl.options[groupSelectEl.selectedIndex];
+            var idSource = (selectedOpt && selectedOpt.getAttribute('data-source')) || 'group';
 
             var acronym = document.getElementById('autoCreateAcronym').value;
             var mode = document.querySelector('input[name="autoCreateMode"]:checked').value;
@@ -2615,7 +2621,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var formData = new FormData();
             formData.append('client_id', clientId);
-            formData.append('group_id', groupId);
+            formData.append('id_source', idSource);
+            // Send the selected id under the correct field name
+            if (idSource === 'table') {
+                formData.append('table_id', groupId);
+            } else {
+                formData.append('group_id', groupId);
+            }
             formData.append('acronym', acronym);
             formData.append('mode', mode);
             formData.append('assign', assign);

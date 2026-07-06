@@ -1138,16 +1138,24 @@ class AssistantService(BaseService):
             return cls._unexpected_error_result('bulk_create_from_excel', e)
 
     @classmethod
-    def get_client_class_sections(cls, client, group=None):
-        """Returns a dict of class names to a list of their section names for a client."""
+    def get_client_class_sections(cls, client, group=None, table=None):
+        """Returns a dict of class names to a list of their section names for a client.
+        
+        Filtering priority:
+          - table  → only cards from that specific table
+          - group  → all tables inside that group
+          - neither → all tables for the client
+        """
         from idcards.models import IDCardTable, IDCard
         tables = IDCardTable.objects.filter(group__client=client, deleted_by_client=False)
-        if group:
+        if table:
+            tables = tables.filter(id=table.id)
+        elif group:
             tables = tables.filter(group=group)
         table_field_map = {}
-        for table in tables:
+        for t in tables:
             class_field, section_field = None, None
-            for field in (table.fields or []):
+            for field in (t.fields or []):
                 ft = field.get('type', '').lower()
                 fn = field.get('name', '')
                 fn_lower = fn.lower()
@@ -1156,7 +1164,7 @@ class AssistantService(BaseService):
                 elif ft == 'section' or fn_lower == 'section':
                     section_field = fn
             if class_field or section_field:
-                table_field_map[table.id] = {'class_field': class_field, 'section_field': section_field}
+                table_field_map[t.id] = {'class_field': class_field, 'section_field': section_field}
 
         class_sections = {}
         if not table_field_map:
@@ -1184,8 +1192,13 @@ class AssistantService(BaseService):
         return {k: sorted(list(v)) for k, v in class_sections.items()}
 
     @classmethod
-    def auto_create_assistants(cls, user, target_client, acronym, mode, auto_assign=True, group=None) -> ServiceResult:
-        """Auto create assistants based on client classes/sections and return an Excel file buffer."""
+    def auto_create_assistants(cls, user, target_client, acronym, mode, auto_assign=True, group=None, table=None) -> ServiceResult:
+        """Auto create assistants based on client classes/sections and return an Excel file buffer.
+        
+        When 'table' is provided (single-list selection), classes/sections are read
+        only from that table and assignments are scoped to that table.
+        When only 'group' is provided, all tables in the group are used.
+        """
         import openpyxl
         import io
         import re
@@ -1202,9 +1215,10 @@ class AssistantService(BaseService):
         if mode not in ('class', 'section'):
             return ServiceResult(success=False, message="Mode must be 'class' or 'section'")
 
-        class_sections = cls.get_client_class_sections(target_client, group=group)
+        class_sections = cls.get_client_class_sections(target_client, group=group, table=table)
         if not class_sections:
-            return ServiceResult(success=False, message="No classes found for this client/group")
+            scope_desc = 'list/table' if table else 'client/group'
+            return ServiceResult(success=False, message=f"No classes found for this {scope_desc}")
 
         def clean_for_email(text):
             # Remove all non-alphanumeric characters and lowercase
@@ -1254,18 +1268,30 @@ class AssistantService(BaseService):
                         if group:
                             assistant.assigned_groups.add(group)
                             if auto_assign:
-                                class_sections = {}
-                                if allowed_classes:
-                                    class_sections[cls_name] = []
-                                assistant.assignment_scopes = [{
-                                    'scope_type': 'group',
-                                    'scope_id': group.id,
-                                    'group_id': group.id,
-                                    'classes': allowed_classes,
-                                    'sections': [],
-                                    'branches': [],
-                                    'class_sections': class_sections
-                                }]
+                                _cs = {cls_name: []} if allowed_classes else {}
+                                if table:
+                                    # Scoped to a specific table
+                                    assistant.assignment_scopes = [{
+                                        'scope_type': 'table',
+                                        'scope_id': table.id,
+                                        'group_id': group.id,
+                                        'table_id': table.id,
+                                        'classes': allowed_classes,
+                                        'sections': [],
+                                        'branches': [],
+                                        'class_sections': _cs,
+                                    }]
+                                else:
+                                    # Scoped to the whole group
+                                    assistant.assignment_scopes = [{
+                                        'scope_type': 'group',
+                                        'scope_id': group.id,
+                                        'group_id': group.id,
+                                        'classes': allowed_classes,
+                                        'sections': [],
+                                        'branches': [],
+                                        'class_sections': _cs,
+                                    }]
                                 assistant.save(update_fields=['assignment_scopes'])
                         existing_emails.add(email)
                         existing_usernames.add(email)
@@ -1317,18 +1343,30 @@ class AssistantService(BaseService):
                             if group:
                                 assistant.assigned_groups.add(group)
                                 if auto_assign:
-                                    class_sections = {}
-                                    if allowed_classes:
-                                        class_sections[cls_name] = allowed_sections
-                                    assistant.assignment_scopes = [{
-                                        'scope_type': 'group',
-                                        'scope_id': group.id,
-                                        'group_id': group.id,
-                                        'classes': allowed_classes,
-                                        'sections': allowed_sections,
-                                        'branches': [],
-                                        'class_sections': class_sections
-                                    }]
+                                    _cs = {cls_name: allowed_sections} if allowed_classes else {}
+                                    if table:
+                                        # Scoped to a specific table
+                                        assistant.assignment_scopes = [{
+                                            'scope_type': 'table',
+                                            'scope_id': table.id,
+                                            'group_id': group.id,
+                                            'table_id': table.id,
+                                            'classes': allowed_classes,
+                                            'sections': allowed_sections,
+                                            'branches': [],
+                                            'class_sections': _cs,
+                                        }]
+                                    else:
+                                        # Scoped to the whole group
+                                        assistant.assignment_scopes = [{
+                                            'scope_type': 'group',
+                                            'scope_id': group.id,
+                                            'group_id': group.id,
+                                            'classes': allowed_classes,
+                                            'sections': allowed_sections,
+                                            'branches': [],
+                                            'class_sections': _cs,
+                                        }]
                                     assistant.save(update_fields=['assignment_scopes'])
                             existing_emails.add(email)
                             existing_usernames.add(email)

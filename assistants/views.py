@@ -547,9 +547,12 @@ def api_client_groups_list(request):
     
     groups_qs = IDCardGroup.objects.filter(client=client).order_by('name')
     group_count = groups_qs.count()
-    for_auto_create = request.GET.get('for_auto_create') == 'true'
 
-    if group_count <= 1 and not for_auto_create:
+    if group_count <= 1:
+        # Single-group client: show individual tables so the user can pick
+        # which list (Student List, Staff List, etc.) to use.
+        # This applies both for the assignment drawer AND for the auto-create
+        # modal — previously for_auto_create=true bypassed this, hiding tables.
         tables_qs = IDCardTable.objects.filter(
             group__client=client,
             deleted_by_client=False,
@@ -816,25 +819,50 @@ def api_staff_bulk_upload_xlsx(request):
 def api_staff_auto_create(request):
     """
     API: Auto create assistants based on classes or sections.
+
+    Accepts either:
+      - group_id + id_source='group'  → filter all tables inside that group
+      - table_id + id_source='table'  → filter only that specific table
+
+    For backward compatibility, a bare group_id with no id_source is still
+    treated as id_source='group'.
     """
     client_id = request.POST.get('client_id')
-    group_id = request.POST.get('group_id')
     acronym = request.POST.get('acronym')
     mode = request.POST.get('mode')  # 'class' or 'section'
     auto_assign = request.POST.get('assign') == 'true'
+    id_source = (request.POST.get('id_source') or '').strip().lower()  # 'group' or 'table'
 
-    if not client_id or not group_id or not acronym or not mode:
-        return JsonResponse({'success': False, 'message': 'client_id, group_id, acronym, and mode are required'}, status=400)
+    # Accept either group_id or table_id depending on id_source
+    group_id = request.POST.get('group_id')
+    table_id = request.POST.get('table_id')
+    # Resolve the primary selection id
+    selection_id = table_id if id_source == 'table' else group_id
+
+    if not client_id or not selection_id or not acronym or not mode:
+        return JsonResponse({'success': False, 'message': 'client_id, a group or table selection, acronym, and mode are required'}, status=400)
 
     target_client = Client.objects.filter(id=client_id).first()
     if not target_client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
 
-    target_group = IDCardGroup.objects.filter(id=group_id, client=target_client).first()
-    if not target_group:
-        return JsonResponse({'success': False, 'message': 'Group/List not found'}, status=404)
+    target_group = None
+    target_table = None
 
-    result = AssistantService.auto_create_assistants(request.user, target_client, acronym, mode, auto_assign, group=target_group)
+    if id_source == 'table':
+        target_table = IDCardTable.objects.filter(id=selection_id, group__client=target_client, deleted_by_client=False).first()
+        if not target_table:
+            return JsonResponse({'success': False, 'message': 'List/Table not found'}, status=404)
+        target_group = target_table.group  # also carry the parent group for assignment
+    else:
+        target_group = IDCardGroup.objects.filter(id=selection_id, client=target_client).first()
+        if not target_group:
+            return JsonResponse({'success': False, 'message': 'Group/List not found'}, status=404)
+
+    result = AssistantService.auto_create_assistants(
+        request.user, target_client, acronym, mode, auto_assign,
+        group=target_group, table=target_table,
+    )
 
     if result.success:
         try:
