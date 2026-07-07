@@ -21,7 +21,7 @@ class LiveClientPresenceService:
 
     @classmethod
     def _live_window_seconds(cls):
-        return max(int(getattr(settings, 'DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', 180) or 0), 30)
+        return max(int(getattr(settings, 'DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', 300) or 0), 30)
 
     @classmethod
     def _retention_hours(cls):

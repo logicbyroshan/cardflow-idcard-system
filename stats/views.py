@@ -28,6 +28,30 @@ def _get_user_role(user):
     return str(getattr(user, 'role', '') or '').strip().lower()
 
 
+def _estimate_activity_from_logs(start_time, end_time):
+    """Estimate active desktop/web vs mobile users from ActivityLog during a time period."""
+    from core.models import ActivityLog
+
+    total_active_users = ActivityLog.objects.filter(
+        created_at__range=(start_time, end_time),
+    ).values('user_id').distinct().count()
+
+    mobile_users = ActivityLog.objects.filter(
+        created_at__range=(start_time, end_time),
+        action__in=('login', 'logout'),
+        description__icontains='mobile app'
+    ).values('user_id').distinct().count()
+
+    photographer_users = ActivityLog.objects.filter(
+        created_at__range=(start_time, end_time),
+        user__role='photographer'
+    ).values('user_id').distinct().count()
+
+    ma = mobile_users + photographer_users
+    da = max(0, total_active_users - ma)
+    return da, ma
+
+
 @login_required
 def statistics_page(request):
     """Render the main statistics dashboard for pro users and super admins."""
@@ -131,8 +155,12 @@ def api_statistics_data(request):
                 da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
                 ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
                 cc = sum(s.total_cards_created for s in bucket)
+                if ma == 0:
+                    _, estimated_ma = _estimate_activity_from_logs(slot_start, slot_end)
+                    ma = estimated_ma
             else:
-                da = ma = cc = 0
+                da, ma = _estimate_activity_from_logs(slot_start, slot_end)
+                cc = 0
 
             desktop_activity.append(da)
             mobile_activity.append(ma)
@@ -160,16 +188,11 @@ def api_statistics_data(request):
                 da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
                 ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
                 cc = sum(s.total_cards_created for s in bucket)
+                if ma == 0:
+                    _, estimated_ma = _estimate_activity_from_logs(day_start, day_end)
+                    ma = estimated_ma
             else:
-                da = ActivityLog.objects.filter(
-                    created_at__range=(day_start, day_end),
-                    user__role='client',
-                ).values('user').distinct().count()
-                da += ActivityLog.objects.filter(
-                    created_at__range=(day_start, day_end),
-                    user__role__in=('assistant', 'client_staff'),
-                ).values('user').distinct().count()
-                ma = 0
+                da, ma = _estimate_activity_from_logs(day_start, day_end)
                 cc = IDCard.objects.filter(
                     created_at__range=(day_start, day_end),
                 ).count()
@@ -198,16 +221,11 @@ def api_statistics_data(request):
                 da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
                 ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
                 cc = sum(s.total_cards_created for s in bucket)
+                if ma == 0:
+                    _, estimated_ma = _estimate_activity_from_logs(wk_start, wk_end)
+                    ma = estimated_ma
             else:
-                da = ActivityLog.objects.filter(
-                    created_at__gte=wk_start, created_at__lt=wk_end,
-                    user__role='client',
-                ).values('user').distinct().count()
-                da += ActivityLog.objects.filter(
-                    created_at__gte=wk_start, created_at__lt=wk_end,
-                    user__role__in=('assistant', 'client_staff'),
-                ).values('user').distinct().count()
-                ma = 0
+                da, ma = _estimate_activity_from_logs(wk_start, wk_end)
                 cc = IDCard.objects.filter(
                     created_at__gte=wk_start, created_at__lt=wk_end,
                 ).count()
@@ -243,17 +261,11 @@ def api_statistics_data(request):
                 da = int(sum((s.active_desktop_users or (s.active_clients + s.active_assistants)) for s in bucket) / len(bucket))
                 ma = int(sum((s.active_mobile_users or 0) for s in bucket) / len(bucket))
                 cc = sum(s.total_cards_created for s in bucket)
+                if ma == 0:
+                    _, estimated_ma = _estimate_activity_from_logs(mo_start, mo_end)
+                    ma = estimated_ma
             else:
-                from core.models import ActivityLog as AL
-                da = AL.objects.filter(
-                    created_at__range=(mo_start, mo_end),
-                    user__role='client',
-                ).values('user').distinct().count()
-                da += AL.objects.filter(
-                    created_at__range=(mo_start, mo_end),
-                    user__role__in=('assistant', 'client_staff'),
-                ).values('user').distinct().count()
-                ma = 0
+                da, ma = _estimate_activity_from_logs(mo_start, mo_end)
                 cc = IDCard.objects.filter(
                     created_at__range=(mo_start, mo_end),
                 ).count()

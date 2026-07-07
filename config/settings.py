@@ -454,7 +454,7 @@ SESSION_ABSOLUTE_MAX_AGE = int(os.getenv('SESSION_ABSOLUTE_MAX_AGE', str(60 * 60
 # ── Dashboard live-activity window (seconds) ──
 # Used by dashboard "Live Working Clients". A user is considered live only if
 # their session `_last_activity` is within this recent window.
-DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS = int(os.getenv('DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', '180'))
+DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS = int(os.getenv('DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', '300'))
 
 # ── Activity log clear safety toggles ──
 # Disabled by default to prevent accidental destructive clears from the UI.
