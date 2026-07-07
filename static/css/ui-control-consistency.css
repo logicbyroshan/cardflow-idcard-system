@@ -540,3 +540,11 @@ body {
     box-sizing: border-box !important;
     flex-shrink: 0 !important;
 }
+
+/* Fix for dynamic badge container overflow lines */
+.dynamic-badge-container {
+    max-height: 20px !important;
+}
+.staff-assignment-chip {
+    line-height: 1.2 !important;
+}
