@@ -9,6 +9,7 @@ urlpatterns = [
     
     # API endpoints
     path('api/staff/', views.api_staff_list_create, name='api_staff_list'),
+    path('api/staff/bulk-delete/', views.api_staff_bulk_delete, name='api_staff_bulk_delete'),
     path('api/staff/<int:staff_id>/', views.api_staff_detail, name='api_staff_detail'),
     path('api/staff/<int:staff_id>/toggle-status/', views.api_staff_toggle_status, name='api_staff_toggle_status'),
     path('api/staff/<int:staff_id>/set-temp-password/', views.api_staff_set_temp_password, name='api_staff_set_temp_password'),

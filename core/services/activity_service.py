@@ -40,6 +40,7 @@ class ActivityService:
         'backup_initiate',
         'backup_start',
         'backup_delete',
+        'backup_download',
         'group_create',
         'group_update',
         'group_delete',
@@ -47,22 +48,26 @@ class ActivityService:
         'table_update',
         'table_delete',
         'reprint_request',
+        'reprint_status',
+        'reprint_reject',
         'staff_update',
         'staff_assignment',
         'staff_status',
         'card_create',
         'card_update',
+        'card_delete',
+        'card_image_delete',
         'card_status',
         'card_bulk_status',
         'image_upload',
         'image_reupload',
-        'table_update',
-        'group_update',
-        'reprint_status',
         'settings_update',
         'bulk_upgrade',
         'bulk_delete',
         'card_bulk_download',
+        'card_bulk_upload',
+        'card_export',
+        'client_message_send',
     }
     CARD_ACTIVITY_DESCRIPTION_RE = re.compile(
         r'^(?P<count>\d+)\s+cards?\s+(?P<status>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
@@ -88,6 +93,60 @@ class ActivityService:
     }
 
     # ── helpers ──────────────────────────────────────────────
+
+    @classmethod
+    def _get_user_type_label(cls, obj):
+        if not obj:
+            return 'Staff'
+        class_name = obj.__class__.__name__
+        if class_name == 'Operator':
+            return 'Operator'
+        if class_name == 'Assistant':
+            return 'Assistant'
+        if class_name == 'Photographer':
+            return 'Photographer'
+        if class_name == 'Client':
+            return 'Client'
+        if class_name == 'User':
+            # Check user role / profile
+            if getattr(obj, 'role', '') == 'super_admin':
+                return 'Admin'
+            if hasattr(obj, 'operator_profile'):
+                return 'Operator'
+            if hasattr(obj, 'assistant_profile'):
+                return 'Assistant'
+            if hasattr(obj, 'photographer_profile'):
+                return 'Photographer'
+            if hasattr(obj, 'client_profile'):
+                return 'Client'
+        return 'Staff'
+
+    @classmethod
+    def _format_last_active(cls, user_obj):
+        if not user_obj:
+            return "never active"
+        try:
+            from accounts.models import UserDeviceSession
+            session = UserDeviceSession.objects.filter(user=user_obj).order_by('-last_active').first()
+            if session:
+                dt = session.last_active
+            else:
+                dt = user_obj.last_login
+
+            if not dt:
+                return "never active"
+            
+            from django.utils import timezone
+            from django.utils.timesince import timesince
+            now = timezone.now()
+            if dt > now:
+                dt = now
+            diff = timesince(dt)
+            if ',' in diff:
+                diff = diff.split(',')[0]
+            return f"last active {diff} ago"
+        except Exception:
+            return "never active"
 
     @staticmethod
     def _normalize_ip(raw_value):
@@ -298,9 +357,11 @@ class ActivityService:
 
     @classmethod
     def log_client_create(cls, request, client):
+        user = getattr(client, 'user', None) if client else None
+        last_active_str = cls._format_last_active(user)
         cls.log(
             'client_create',
-            f'New client "{client.name}" registered',
+            f'New Client "{client.name}" registered ({last_active_str})',
             request=request,
             target_model='Client',
             target_id=client.pk,
@@ -309,9 +370,11 @@ class ActivityService:
 
     @classmethod
     def log_client_update(cls, request, client):
+        user = getattr(client, 'user', None) if client else None
+        last_active_str = cls._format_last_active(user)
         cls.log(
             'client_update',
-            f'Client "{client.name}" details updated',
+            f'Client "{client.name}" details updated ({last_active_str})',
             request=request,
             target_model='Client',
             target_id=client.pk,
@@ -319,10 +382,10 @@ class ActivityService:
         )
 
     @classmethod
-    def log_client_delete(cls, request, client_name, client_id=None):
+    def log_client_delete(cls, request, client_name, last_active_str, client_id=None):
         cls.log(
             'client_delete',
-            f'Client "{client_name}" deleted',
+            f'Client "{client_name}" deleted ({last_active_str})',
             request=request,
             target_model='Client',
             target_id=client_id,
@@ -331,9 +394,12 @@ class ActivityService:
 
     @classmethod
     def log_client_status(cls, request, client, new_status):
+        user_obj = getattr(client, 'user', None)
+        last_active_str = cls._format_last_active(user_obj)
+        status_label = 'active' if new_status == 'active' else ('inactive' if new_status == 'inactive' else str(new_status))
         cls.log(
             'client_status',
-            f'Client "{client.name}" status changed to {new_status}',
+            f'Client "{client.name}" marked as {status_label} ({last_active_str})',
             request=request,
             target_model='Client',
             target_id=client.pk,
@@ -342,24 +408,28 @@ class ActivityService:
 
     @classmethod
     def log_staff_create(cls, request, staff):
+        user_type = cls._get_user_type_label(staff)
         name = staff.user.get_full_name() or staff.user.username
+        last_active_str = cls._format_last_active(staff.user)
         cls.log(
             'staff_create',
-            f'New staff member "{name}" added',
+            f'New {user_type} "{name}" created ({last_active_str})',
             request=request,
-            target_model='Staff',
+            target_model=user_type,
             target_id=staff.pk,
             target_name=name,
         )
 
     @classmethod
     def log_staff_update(cls, request, staff):
+        user_type = cls._get_user_type_label(staff)
         name = staff.user.get_full_name() or staff.user.username
+        last_active_str = cls._format_last_active(staff.user)
         cls.log(
             'staff_update',
-            f'Staff "{name}" details updated',
+            f'{user_type} "{name}" details updated ({last_active_str})',
             request=request,
-            target_model='Staff',
+            target_model=user_type,
             target_id=staff.pk,
             target_name=name,
         )
@@ -410,33 +480,68 @@ class ActivityService:
         before = before_snapshot if isinstance(before_snapshot, dict) else {}
         after = after_snapshot if isinstance(after_snapshot, dict) else {}
 
-        fields = [
-            ('client_ids', 'clients', cls._normalize_assignment_int_list),
-            ('group_ids', 'groups', cls._normalize_assignment_int_list),
-            ('table_ids', 'tables', cls._normalize_assignment_int_list),
-            ('classes', 'classes', cls._normalize_assignment_text_list),
-            ('sections', 'sections', cls._normalize_assignment_text_list),
-            ('branches', 'branches', cls._normalize_assignment_text_list),
-        ]
+        user_type = cls._get_user_type_label(staff)
+        name = staff.user.get_full_name() or staff.user.username
 
         parts = []
-        for key, label, normalizer in fields:
-            before_values = normalizer(before.get(key, []))
-            after_values = normalizer(after.get(key, []))
-            if before_values != after_values:
-                parts.append(f'{label} {len(before_values)}->{len(after_values)}')
+        from client.models import Client
 
-        before_scope_count = int(before.get('scope_count') or 0)
-        after_scope_count = int(after.get('scope_count') or 0)
-        if before_scope_count != after_scope_count:
-            parts.append(f'scopes {before_scope_count}->{after_scope_count}')
+        # 1. Clients
+        before_clients = set(before.get('client_ids', []))
+        after_clients = set(after.get('client_ids', []))
+        if before_clients != after_clients:
+            added = after_clients - before_clients
+            removed = before_clients - after_clients
+            client_parts = []
+            if added:
+                names = list(Client.objects.filter(id__in=added).values_list('name', flat=True))
+                quoted = ', '.join('"' + n + '"' for n in names)
+                client_parts.append('assigned to client(s) ' + quoted)
+            if removed:
+                names = list(Client.objects.filter(id__in=removed).values_list('name', flat=True))
+                quoted = ', '.join('"' + n + '"' for n in names)
+                client_parts.append('unassigned from client(s) ' + quoted)
+            if client_parts:
+                parts.append('; '.join(client_parts))
+
+        # 2. Groups / Classes
+        before_classes = set(before.get('classes', []))
+        after_classes = set(after.get('classes', []))
+        if before_classes != after_classes:
+            added = after_classes - before_classes
+            removed = before_classes - after_classes
+            class_parts = []
+            if added:
+                quoted = ', '.join('"' + c + '"' for c in added)
+                class_parts.append('assigned classes ' + quoted)
+            if removed:
+                quoted = ', '.join('"' + c + '"' for c in removed)
+                class_parts.append('unassigned classes ' + quoted)
+            if class_parts:
+                parts.append('; '.join(class_parts))
+
+        # 3. Sections
+        before_sections = set(before.get('sections', []))
+        after_sections = set(after.get('sections', []))
+        if before_sections != after_sections:
+            added = after_sections - before_sections
+            removed = before_sections - after_sections
+            section_parts = []
+            if added:
+                quoted = ', '.join('"' + s + '"' for s in added)
+                section_parts.append('assigned sections ' + quoted)
+            if removed:
+                quoted = ', '.join('"' + s + '"' for s in removed)
+                section_parts.append('unassigned sections ' + quoted)
+            if section_parts:
+                parts.append('; '.join(section_parts))
 
         if not parts:
             return
 
-        name = staff.user.get_full_name() or staff.user.username
+        last_active_str = cls._format_last_active(staff.user)
         action_word = 'initialized' if str(reason or '').strip().lower() == 'created' else 'updated'
-        description = f'Staff "{name}" assignment {action_word}: ' + '; '.join(parts)
+        description = f'{user_type} "{name}" assignment {action_word}: ' + '; '.join(parts) + f' ({last_active_str})'
         if len(description) > 500:
             description = description[:497] + '...'
 
@@ -444,31 +549,33 @@ class ActivityService:
             'staff_assignment',
             description,
             request=request,
-            target_model='Staff',
+            target_model=user_type,
             target_id=staff.pk,
             target_name=name,
         )
 
     @classmethod
-    def log_staff_delete(cls, request, staff_name, staff_id=None):
+    def log_staff_delete(cls, request, staff_name, last_active_str, staff_id=None, user_type='Staff'):
         cls.log(
             'staff_delete',
-            f'Staff "{staff_name}" removed',
+            f'{user_type} "{staff_name}" removed ({last_active_str})',
             request=request,
-            target_model='Staff',
+            target_model=user_type,
             target_id=staff_id,
             target_name=staff_name,
         )
 
     @classmethod
     def log_staff_status(cls, request, staff, new_status):
+        user_type = cls._get_user_type_label(staff)
         name = staff.user.get_full_name() or staff.user.username
+        last_active_str = cls._format_last_active(staff.user)
         status_label = 'active' if new_status else 'inactive'
         cls.log(
             'staff_status',
-            f'Staff "{name}" marked as {status_label}',
+            f'{user_type} "{name}" marked as {status_label} ({last_active_str})',
             request=request,
-            target_model='Staff',
+            target_model=user_type,
             target_id=staff.pk,
             target_name=name,
         )
@@ -527,13 +634,201 @@ class ActivityService:
 
     @classmethod
     def log_card_create(cls, request, count, client_name=''):
-        suffix = f' for {client_name}' if client_name else ''
+        suffix = ' for ' + client_name if client_name else ''
         cls.log(
             'card_create',
-            f'{count} new ID card{"s" if count != 1 else ""} added{suffix}',
+            str(count) + ' new ID card' + ('s' if count != 1 else '') + ' added' + suffix,
             request=request,
             target_model='IDCard',
         )
+
+    @classmethod
+    def log_card_create_rich(cls, request, card, table=None, image_fields_uploaded=None):
+        """Rich single-card creation log with table/client context and image info."""
+        try:
+            table = table or getattr(card, 'table', None)
+            client_name = ''
+            table_name = ''
+            try:
+                client_name = table.group.client.name
+                table_name = table.name
+            except Exception:
+                pass
+            parts = []
+            if table_name:
+                parts.append('in table "' + table_name + '"')
+            if client_name:
+                parts.append('for ' + client_name)
+            if image_fields_uploaded:
+                img_list = ', '.join('"' + f + '"' for f in image_fields_uploaded)
+                parts.append('with image(s) ' + img_list)
+            context = (' — ' + '; '.join(parts)) if parts else ''
+            cls.log(
+                'card_create',
+                'ID card #' + str(card.pk) + ' created' + context,
+                request=request,
+                target_model='IDCard',
+                target_id=card.pk,
+                target_name='Card #' + str(card.pk),
+            )
+        except Exception:
+            logger.exception('log_card_create_rich failed')
+
+    @classmethod
+    def log_card_delete(cls, request, card_id, table=None, card_name=''):
+        """Log single card deletion with table + client context."""
+        try:
+            client_name = ''
+            table_name = ''
+            try:
+                client_name = table.group.client.name
+                table_name = table.name
+            except Exception:
+                pass
+            parts = []
+            if table_name:
+                parts.append('from table "' + table_name + '"')
+            if client_name:
+                parts.append('(' + client_name + ')')
+            context = ' ' + ' '.join(parts) if parts else ''
+            cls.log(
+                'card_delete',
+                'Card #' + str(card_id) + ' deleted' + context,
+                request=request,
+                target_model='IDCard',
+                target_id=card_id,
+                target_name=card_name or ('Card #' + str(card_id)),
+            )
+        except Exception:
+            logger.exception('log_card_delete failed')
+
+    @classmethod
+    def log_card_field_update(cls, request, card_id, field_name, old_value=None, new_value=None, is_image=False):
+        """Log a single-field inline edit with old→new value diff (non-image fields only)."""
+        try:
+            if is_image:
+                msg = 'Image "' + field_name + '" updated on Card #' + str(card_id)
+            else:
+                def _short(v):
+                    s = str(v or '').strip()
+                    return (s[:47] + '...') if len(s) > 50 else s
+                if old_value is not None and new_value is not None:
+                    msg = 'Field "' + field_name + '" changed: "' + _short(old_value) + '" → "' + _short(new_value) + '" on Card #' + str(card_id)
+                else:
+                    msg = 'Field "' + field_name + '" updated on Card #' + str(card_id)
+            cls.log(
+                'card_update',
+                msg,
+                request=request,
+                target_model='IDCard',
+                target_id=card_id,
+                target_name='Card #' + str(card_id),
+            )
+        except Exception:
+            logger.exception('log_card_field_update failed')
+
+    @classmethod
+    def log_card_image_deleted(cls, request, card_id, field_name, table=None):
+        """Log when a card image is explicitly removed/cleared."""
+        try:
+            table_context = ''
+            try:
+                table_context = ' in table "' + table.name + '"'
+            except Exception:
+                pass
+            cls.log(
+                'card_image_delete',
+                'Image "' + field_name + '" removed from Card #' + str(card_id) + table_context,
+                request=request,
+                target_model='IDCard',
+                target_id=card_id,
+                target_name='Card #' + str(card_id),
+            )
+        except Exception:
+            logger.exception('log_card_image_deleted failed')
+
+    @classmethod
+    def log_bulk_upload(cls, request, cards_created, images_matched=0, table=None, file_format='', is_async=False):
+        """Log bulk Excel/CSV import."""
+        try:
+            client_name = ''
+            table_name = ''
+            try:
+                client_name = table.group.client.name
+                table_name = table.name
+            except Exception:
+                pass
+            fmt_part = (' via ' + file_format.upper()) if file_format else ''
+            img_part = (', ' + str(images_matched) + ' image(s) matched') if images_matched else ''
+            tbl_part = (' in "' + table_name + '"') if table_name else ''
+            client_part = (' for ' + client_name) if client_name else ''
+            queue_part = ' [queued]' if is_async else ''
+            msg = (str(cards_created) + ' card(s) imported' + fmt_part + img_part + tbl_part + client_part + queue_part)
+            cls.log(
+                'card_bulk_upload',
+                msg,
+                request=request,
+                target_model='IDCardTable',
+                target_id=getattr(table, 'id', None),
+                target_name=table_name or '',
+            )
+        except Exception:
+            logger.exception('log_bulk_upload failed')
+
+    @classmethod
+    def log_image_reupload(cls, request, updated_count, matched_count=0, table=None, target_field='', is_async=False):
+        """Log ZIP image reupload."""
+        try:
+            client_name = ''
+            table_name = ''
+            try:
+                client_name = table.group.client.name
+                table_name = table.name
+            except Exception:
+                pass
+            field_part = (' [field: "' + target_field + '"]') if target_field else ''
+            img_part = (', ' + str(matched_count) + ' image(s) matched') if matched_count else ''
+            tbl_part = (' in "' + table_name + '"') if table_name else ''
+            client_part = (' for ' + client_name) if client_name else ''
+            queue_part = ' [queued]' if is_async else ''
+            msg = (str(updated_count) + ' card(s) updated with re-uploaded images' + field_part + img_part + tbl_part + client_part + queue_part)
+            cls.log(
+                'image_reupload',
+                msg,
+                request=request,
+                target_model='IDCardTable',
+                target_id=getattr(table, 'id', None),
+                target_name=table_name or '',
+            )
+        except Exception:
+            logger.exception('log_image_reupload failed')
+
+    @classmethod
+    def log_card_export(cls, request, fmt, count=0, table=None, is_async=False):
+        """Log card export/download task."""
+        try:
+            client_name = ''
+            table_name = ''
+            try:
+                client_name = table.group.client.name
+                table_name = table.name
+            except Exception:
+                pass
+            count_part = (str(count) + ' card(s) ') if count else ''
+            tbl_part = (' from "' + table_name + '"') if table_name else ''
+            client_part = (' for ' + client_name) if client_name else ''
+            queue_part = ' [queued]' if is_async else ''
+            msg = (count_part + 'exported as ' + str(fmt).upper() + tbl_part + client_part + queue_part)
+            cls.log(
+                'card_export',
+                msg,
+                request=request,
+                target_model='IDCardTable',
+                target_id=getattr(table, 'id', None),
+                target_name=table_name or '',
+            )
+        except Exception:
+            logger.exception('log_card_export failed')
 
     @classmethod
     def log_image_upload(cls, request, count, client_name=''):
@@ -609,8 +904,204 @@ class ActivityService:
 
     @classmethod
     def log_settings_update(cls, request, setting_name=''):
-        label = f'Settings updated: {setting_name}' if setting_name else 'System settings updated'
+        label = 'Settings updated: ' + setting_name if setting_name else 'System settings updated'
         cls.log('settings_update', label, request=request)
+
+    @classmethod
+    def log_profile_update(cls, user, changed_fields, request=None):
+        """Log when a user updates their own profile (name, email, phone, username)."""
+        try:
+            if not changed_fields:
+                return
+            fields_str = ', '.join('"' + f + '"' for f in changed_fields)
+            name = user.get_full_name() or user.username
+            cls.log(
+                'settings_update',
+                'Profile updated (' + fields_str + ') by "' + name + '"',
+                user=user,
+                request=request,
+                target_model='User',
+                target_id=user.pk,
+                target_name=name,
+            )
+        except Exception:
+            logger.exception('log_profile_update failed')
+
+    @classmethod
+    def log_security_settings_update(cls, user, changed_settings, request=None):
+        """Log when a user changes their security settings (2FA, session timeout)."""
+        try:
+            if not changed_settings:
+                return
+            label_map = {
+                'two_factor_enabled': '2FA',
+                'login_notifications_enabled': 'Login notifications',
+                'session_timeout_minutes': 'Session timeout',
+            }
+            parts = []
+            for key, val in changed_settings.items():
+                label = label_map.get(key, key)
+                parts.append(label + ' → ' + str(val))
+            name = user.get_full_name() or user.username
+            cls.log(
+                'settings_update',
+                'Security settings changed (' + ', '.join(parts) + ') by "' + name + '"',
+                user=user,
+                request=request,
+                target_model='User',
+                target_id=user.pk,
+                target_name=name,
+            )
+        except Exception:
+            logger.exception('log_security_settings_update failed')
+
+    @classmethod
+    def log_backup_start(cls, request, task_id, client_names_dict):
+        """Log backup start with full client names list (up to 5 + overflow)."""
+        try:
+            names = list((client_names_dict or {}).values())
+            count = len(names)
+            if count == 0:
+                names_str = 'no clients'
+            elif count <= 5:
+                names_str = ', '.join(names)
+            else:
+                names_str = ', '.join(names[:5]) + ' and ' + str(count - 5) + ' more'
+            cls.log(
+                'backup_start',
+                'Backup started for ' + str(count) + ' client(s): ' + names_str + ' (task #' + str(task_id) + ')',
+                request=request,
+                target_model='BackupTask',
+                target_id=task_id,
+                target_name='Backup #' + str(task_id),
+            )
+        except Exception:
+            logger.exception('log_backup_start failed')
+
+    @classmethod
+    def log_backup_delete(cls, request, task_id, client_names_dict):
+        """Log backup delete with full client names list."""
+        try:
+            names = list((client_names_dict or {}).values())
+            count = len(names)
+            if count == 0:
+                names_str = 'unknown clients'
+            elif count <= 5:
+                names_str = ', '.join(names)
+            else:
+                names_str = ', '.join(names[:5]) + ' and ' + str(count - 5) + ' more'
+            cls.log(
+                'backup_delete',
+                'Backup files deleted for ' + str(count) + ' client(s): ' + names_str + ' (task #' + str(task_id) + ')',
+                request=request,
+                target_model='BackupTask',
+                target_id=task_id,
+                target_name='Backup #' + str(task_id),
+            )
+        except Exception:
+            logger.exception('log_backup_delete failed')
+
+    @classmethod
+    def log_backup_download(cls, request, task_id, client_names_dict):
+        """Log when a backup ZIP is downloaded."""
+        try:
+            names = list((client_names_dict or {}).values())
+            count = len(names)
+            if count == 0:
+                names_str = ''
+            elif count <= 5:
+                names_str = ' (' + ', '.join(names) + ')'
+            else:
+                names_str = ' (' + ', '.join(names[:5]) + ' and ' + str(count - 5) + ' more)'
+            cls.log(
+                'backup_download',
+                'Backup ZIP downloaded' + names_str + ' — task #' + str(task_id),
+                request=request,
+                target_model='BackupTask',
+                target_id=task_id,
+                target_name='Backup #' + str(task_id),
+            )
+        except Exception:
+            logger.exception('log_backup_download failed')
+
+    @classmethod
+    def log_client_message_send(cls, request, client_name, scope, recipient_count, is_group=False, group_client_count=0):
+        """Log client message send (single client or group)."""
+        try:
+            if is_group:
+                desc = ('Group client message sent to ' + str(group_client_count) + ' client(s)'
+                        + ', scope: ' + str(scope)
+                        + ', ' + str(recipient_count) + ' recipient(s)')
+                target = 'Group Message'
+            else:
+                desc = ('Client message sent to "' + str(client_name) + '"'
+                        + ' (' + str(scope) + ')'
+                        + ', ' + str(recipient_count) + ' recipient(s)')
+                target = client_name
+            cls.log(
+                'client_message_send',
+                desc,
+                request=request,
+                target_model='ClientMessage',
+                target_name=target,
+            )
+        except Exception:
+            logger.exception('log_client_message_send failed')
+
+    @classmethod
+    def log_reprint_summary(cls, user, action, count, table=None, from_status='', to_status=''):
+        """Log a batch reprint operation as ONE summary entry instead of per-card spam."""
+        try:
+            client_name = ''
+            table_name = ''
+            try:
+                client_name = table.group.client.name
+                table_name = table.name
+            except Exception:
+                pass
+            tbl_part = ' in "' + table_name + '"' if table_name else ''
+            client_part = ' for ' + client_name if client_name else ''
+            if from_status and to_status:
+                msg = (str(count) + ' reprint(s) moved from '
+                       + str(from_status) + ' to ' + str(to_status)
+                       + tbl_part + client_part)
+            else:
+                msg = str(count) + ' ' + str(action) + tbl_part + client_part
+            cls.log(
+                'reprint_status',
+                msg,
+                user=user,
+                target_model='IDCardTable',
+                target_id=getattr(table, 'id', None),
+                target_name=table_name or '',
+            )
+        except Exception:
+            logger.exception('log_reprint_summary failed')
+
+    @classmethod
+    def log_reprint_reject(cls, user, count, table=None, move_to_pool=False):
+        """Log reprint request rejection as ONE summary entry."""
+        try:
+            client_name = ''
+            table_name = ''
+            try:
+                client_name = table.group.client.name
+                table_name = table.name
+            except Exception:
+                pass
+            tbl_part = ' in "' + table_name + '"' if table_name else ''
+            client_part = ' for ' + client_name if client_name else ''
+            pool_part = ' (cards moved to pool)' if move_to_pool else ''
+            cls.log(
+                'reprint_reject',
+                str(count) + ' reprint request(s) rejected' + pool_part + tbl_part + client_part,
+                user=user,
+                target_model='IDCardTable',
+                target_id=getattr(table, 'id', None),
+                target_name=table_name or '',
+            )
+        except Exception:
+            logger.exception('log_reprint_reject failed')
 
     # ── query methods ───────────────────────────────────────
 
@@ -882,8 +1373,13 @@ class ActivityService:
                 return _with_merge_suffix(base)
             return _with_merge_suffix(text)
 
-        if action in {'image_upload', 'image_reupload'}:
-            verb = 'uploaded images' if action == 'image_upload' else 're-uploaded images'
+        if action in {'image_upload', 'image_reupload', 'card_image_delete'}:
+            if action == 'image_upload':
+                verb = 'uploaded images'
+            elif action == 'card_image_delete':
+                verb = 'removed card image'
+            else:
+                verb = 're-uploaded images'
             target = target_name or client_context
             if actor_descriptor != 'System':
                 if target:
@@ -891,11 +1387,16 @@ class ActivityService:
                 return _with_merge_suffix(f'{actor_descriptor} {verb}')
             return _with_merge_suffix(text)
 
-        if action in {'card_update', 'card_status', 'card_bulk_status', 'card_create', 'bulk_upgrade', 'bulk_delete', 'card_bulk_download'}:
-            # Show clean concise text for card actions — description already has full context.
-            # Only prepend actor when it adds genuine value (not for system actions or when
-            # actor name is already embedded), and never append "| Client:" suffix which
-            # makes chips too verbose compared to the editing display style.
+        if action in {'card_update', 'card_status', 'card_bulk_status', 'card_create', 'card_delete',
+                       'card_image_delete', 'bulk_upgrade', 'bulk_delete', 'card_bulk_download',
+                       'card_bulk_upload', 'card_export',
+                       'backup_initiate', 'backup_start', 'backup_delete', 'backup_download',
+                       'reprint_request', 'reprint_status', 'reprint_reject',
+                       'notification_create', 'notification_delete',
+                       'email_send', 'email_resend',
+                       'client_message_send',
+                       'settings_update'}:
+            # Show clean concise text — description already has full context.
             if actor_descriptor != 'System' and actor_descriptor.lower() not in text.lower():
                 text = f'{actor_descriptor}: {text}'
             return _with_merge_suffix(text)

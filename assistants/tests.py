@@ -50,6 +50,38 @@ class AutoCreateAssistantsTests(TestCase):
 
         self.assertEqual(Assistant.objects.filter(client=self.client_obj).count(), 3)
 
+    def test_auto_create_fallback_mode_when_no_columns(self):
+        # Create a new table with NO Class or Section fields
+        simple_table = IDCardTable.objects.create(
+            group=self.group,
+            name='Simple Staff Table',
+            fields=[{'name': 'Full Name', 'type': 'text'}, {'name': 'Phone', 'type': 'text'}]
+        )
+        IDCard.objects.create(table=simple_table, field_data={'Full Name': 'John Doe', 'Phone': '12345'})
+
+        # Run auto create for this specific table (single list)
+        result = AssistantService.auto_create_assistants(
+            self.user, self.client_obj, 'STGS', 'class', auto_assign=True,
+            group=self.group, table=simple_table
+        )
+        self.assertTrue(result.success)
+        # Should create exactly 1 assistant for the entire table
+        self.assertEqual(result.data['count'], 1)
+
+        # Retrieve the assistant and verify properties
+        assistant = Assistant.objects.filter(client=self.client_obj, user__email__icontains='simplestafftable').first()
+        self.assertIsNotNone(assistant)
+        # Should be assigned to the group
+        self.assertIn(self.group, assistant.assigned_groups.all())
+        # Should be assigned to the table with full access (empty allowed_classes)
+        self.assertEqual(assistant.allowed_classes, [])
+        self.assertEqual(assistant.allowed_sections, [])
+        self.assertEqual(len(assistant.assignment_scopes), 1)
+        self.assertEqual(assistant.assignment_scopes[0]['scope_type'], 'table')
+        self.assertEqual(assistant.assignment_scopes[0]['table_id'], simple_table.id)
+        self.assertEqual(assistant.assignment_scopes[0]['classes'], [])
+        self.assertEqual(assistant.assignment_scopes[0]['sections'], [])
+
 
 from django.urls import reverse
 

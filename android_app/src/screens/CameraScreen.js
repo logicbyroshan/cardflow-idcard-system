@@ -7,7 +7,7 @@ import { Accelerometer } from 'expo-sensors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DynamicIcon } from '../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, Mask, Rect, Ellipse } from 'react-native-svg';
+import Svg, { Defs, Mask, Rect, Ellipse, Path, G } from 'react-native-svg';
 
 import { colors, radius, shadows, fontFamily } from '../theme';
 
@@ -407,6 +407,46 @@ export default function CameraScreen({ navigation, route }) {
             strokeDasharray="6 6" 
             fill="none" 
           />
+
+          {/* Custom Silhouette Outline Guide (Head & Shoulders) */}
+          <G>
+            <Path
+              d="M 500,40 C 660,40 750,140 750,270 C 750,305 742,330 735,350 C 765,340 775,360 775,395 C 775,435 745,465 715,475 C 685,550 600,670 500,670 C 400,670 315,550 285,475 C 255,465 225,435 225,395 C 225,360 235,340 265,350 C 258,330 250,305 250,270 C 250,140 340,40 500,40 Z"
+              x={ovalCx - ovalRx}
+              y={ovalCy - ovalRy}
+              scaleX={(ovalRx * 2) / 1000}
+              scaleY={(ovalRy * 2) / 1000}
+              stroke={isReady ? '#22c55e' : '#f59e0b'}
+              strokeWidth={3.5 * (1000 / (ovalRx * 2))}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <Path
+              d="M 680,545 C 670,620 710,720 950,830"
+              x={ovalCx - ovalRx}
+              y={ovalCy - ovalRy}
+              scaleX={(ovalRx * 2) / 1000}
+              scaleY={(ovalRy * 2) / 1000}
+              stroke={isReady ? '#22c55e' : '#f59e0b'}
+              strokeWidth={3.5 * (1000 / (ovalRx * 2))}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <Path
+              d="M 320,545 C 330,620 290,720 50,830"
+              x={ovalCx - ovalRx}
+              y={ovalCy - ovalRy}
+              scaleX={(ovalRx * 2) / 1000}
+              scaleY={(ovalRy * 2) / 1000}
+              stroke={isReady ? '#22c55e' : '#f59e0b'}
+              strokeWidth={3.5 * (1000 / (ovalRx * 2))}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </G>
         </Svg>
 
         {/* Dynamic Scanning Box around the oval */}

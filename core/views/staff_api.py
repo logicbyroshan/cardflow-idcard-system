@@ -434,11 +434,12 @@ def api_staff_delete(request, staff_id):
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
         
         name = operator.user.get_full_name() or operator.user.username
+        last_active_str = ActivityService._format_last_active(operator.user)
         raw_result = OperatorCreationService.delete_operator(deleted_by=request.user, operator_id=real_id)
         result = DictServiceResult(raw_result)
         
         if result.success:
-            ActivityService.log_staff_delete(request, name, real_id)
+            ActivityService.log_staff_delete(request, name, last_active_str, real_id, user_type='Operator')
             
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except Exception as e:

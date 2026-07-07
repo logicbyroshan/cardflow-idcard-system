@@ -636,15 +636,6 @@ class ImpersonateStartAPIView(LoginRequiredMixin, View):
                 return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
 
             result = ImpersonateService.start(request, int(target_user_id))
-            if result.get('success'):
-                ActivityService.log(
-                    'impersonate_start',
-                    f"Impersonation started for user_id={int(target_user_id)}",
-                    user=actor_user,
-                    request=request,
-                    target_model='User',
-                    target_id=int(target_user_id),
-                )
             status = 200 if result['success'] else 403
             return JsonResponse(result, status=status)
         except (json.JSONDecodeError, ValueError, TypeError):
@@ -673,13 +664,6 @@ class ImpersonateStopAPIView(LoginRequiredMixin, View):
                     pass
 
             result = ImpersonateService.stop(request, next_url=next_url)
-            if result.get('success'):
-                ActivityService.log(
-                    'impersonate_stop',
-                    'Impersonation stopped',
-                    user=request.user,
-                    request=request,
-                )
             status = 200 if result['success'] else 400
             return JsonResponse(result, status=status)
         except Exception as e:

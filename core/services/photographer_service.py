@@ -418,9 +418,10 @@ class PhotographerService(BaseService):
 
             # Log this action using ActivityService
             from core.services.activity_service import ActivityService
+            last_active_str = ActivityService._format_last_active(user)
             ActivityService.log(
                 'staff_password_reset',
-                f'Temporary password set for photographer "{user.get_full_name()}"',
+                f'Temporary password set for Photographer "{user.get_full_name()}" ({last_active_str})',
                 user=request.user if request else None,
                 request=request,
                 target_model='Photographer',

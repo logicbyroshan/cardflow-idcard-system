@@ -432,6 +432,17 @@ def api_email_send_new(request):
         log.status = EmailLog.STATUS_FAILED
         log.error_message = str(e)[:2000]
         log.save(update_fields=['status', 'error_message'])
+        try:
+            ActivityService.log(
+                'email_send',
+                '[FAILED] Email to ' + recipient_email + ' — ' + str(e)[:100],
+                request=request,
+                target_model='EmailLog',
+                target_id=log.id,
+                target_name=recipient_email,
+            )
+        except Exception:
+            pass
         return JsonResponse({'success': False, 'message': 'Failed to send email.'}, status=500)
 
 

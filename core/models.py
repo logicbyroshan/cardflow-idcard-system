@@ -298,8 +298,6 @@ class ActivityLog(models.Model):
         ('login', 'Logged in'),
         ('logout', 'Logged out'),
         ('password_reset', 'Password reset completed'),
-        ('impersonate_start', 'Impersonation started'),
-        ('impersonate_stop', 'Impersonation stopped'),
         # Client management
         ('client_create', 'Client created'),
         ('client_update', 'Client updated'),
@@ -323,6 +321,8 @@ class ActivityLog(models.Model):
         # Image operations
         ('image_upload', 'Images uploaded'),
         ('image_reupload', 'Images re-uploaded'),
+        ('card_image_delete', 'Card image removed'),
+        ('card_export', 'Cards exported'),
         # ID Card group/table
         ('group_create', 'Group created'),
         ('group_update', 'Group updated'),
@@ -340,9 +340,13 @@ class ActivityLog(models.Model):
         ('backup_initiate', 'Backup initiated'),
         ('backup_start', 'Backup started'),
         ('backup_delete', 'Backup deleted'),
+        ('backup_download', 'Backup downloaded'),
         # Reprint
         ('reprint_request', 'Reprint requested'),
         ('reprint_status', 'Reprint status changed'),
+        ('reprint_reject', 'Reprint request rejected'),
+        # Communication
+        ('client_message_send', 'Client message sent'),
         # Settings
         ('settings_update', 'Settings updated'),
         # Other
@@ -354,8 +358,6 @@ class ActivityLog(models.Model):
         'login': ('fa-right-to-bracket', 'verify'),
         'logout': ('fa-right-from-bracket', 'edit'),
         'password_reset': ('fa-key', 'approve'),
-        'impersonate_start': ('fa-user-secret', 'approve'),
-        'impersonate_stop': ('fa-user-check', 'verify'),
         'client_create': ('fa-user-plus', 'add'),
         'client_update': ('fa-user-pen', 'edit'),
         'client_delete': ('fa-user-minus', 'delete'),
@@ -375,6 +377,8 @@ class ActivityLog(models.Model):
         'card_bulk_download': ('fa-download', 'approve'),
         'image_upload': ('fa-image', 'add'),
         'image_reupload': ('fa-images', 'edit'),
+        'card_image_delete': ('fa-image', 'delete'),
+        'card_export': ('fa-file-export', 'approve'),
         'group_create': ('fa-folder-plus', 'add'),
         'group_update': ('fa-folder-open', 'edit'),
         'group_delete': ('fa-folder-minus', 'delete'),
@@ -390,8 +394,11 @@ class ActivityLog(models.Model):
         'backup_initiate': ('fa-database', 'edit'),
         'backup_start': ('fa-vault', 'approve'),
         'backup_delete': ('fa-trash-can', 'delete'),
+        'backup_download': ('fa-cloud-arrow-down', 'approve'),
         'reprint_request': ('fa-print', 'add'),
         'reprint_status': ('fa-print', 'verify'),
+        'reprint_reject': ('fa-ban', 'delete'),
+        'client_message_send': ('fa-comment-dots', 'approve'),
         'settings_update': ('fa-gear', 'edit'),
         'other': ('fa-circle-info', 'edit'),
     }

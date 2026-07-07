@@ -51,27 +51,46 @@ class UserProfileService:
         from core.models import User
 
         with transaction.atomic():
+            changed_fields = []
             if 'first_name' in data:
+                if user.first_name != data['first_name'].strip():
+                    changed_fields.append('First name')
                 user.first_name = data['first_name'].strip()
             if 'last_name' in data:
+                if user.last_name != data['last_name'].strip():
+                    changed_fields.append('Last name')
                 user.last_name = data['last_name'].strip()
 
             if 'username' in data and data['username'].strip():
                 new_username = data['username'].strip()
                 if User.objects.filter(username=new_username).exclude(id=user.id).exists():
                     return False, 'Username already taken', None
+                if user.username != new_username:
+                    changed_fields.append('Username')
                 user.username = new_username
 
             if 'email' in data and data['email'].strip():
                 new_email = data['email'].strip()
                 if User.objects.filter(email=new_email).exclude(id=user.id).exists():
                     return False, 'Email already in use', None
+                if user.email != new_email:
+                    changed_fields.append('Email')
                 user.email = new_email
 
             if 'phone' in data:
+                if getattr(user, 'phone', '') != data['phone'].strip():
+                    changed_fields.append('Phone')
                 user.phone = data['phone'].strip()
 
             user.save()
+
+        # Log profile update
+        if changed_fields:
+            try:
+                from core.services.activity_service import ActivityService
+                ActivityService.log_profile_update(user, changed_fields, request=request)
+            except Exception:
+                logger.warning('Failed to log profile update for user=%s', user.pk)
 
         return True, 'Profile updated', {
             'full_name': user.get_full_name() or user.username,
@@ -112,6 +131,21 @@ class UserProfileService:
             _revoke_user_sessions(user.pk, exclude_session_key=current_session_key or '')
         except Exception as exc:
             logger.warning('Password-change session revocation failed for user=%s: %s', user.pk, exc)
+
+        # Log password change
+        try:
+            from core.services.activity_service import ActivityService
+            last_active_str = ActivityService._format_last_active(user)
+            ActivityService.log(
+                'password_reset',
+                f'Password changed by "{user.get_full_name() or user.email}" ({last_active_str})',
+                user=user,
+                target_model='User',
+                target_id=user.pk,
+                target_name=user.get_full_name() or user.email,
+            )
+        except Exception:
+            logger.warning('Failed to log password change for user=%s', user.pk)
 
         return True, 'Password changed successfully'
 
@@ -245,4 +279,21 @@ class UserProfileService:
             )
 
         current = UserProfileService.get_security_settings(user)
+
+        # Log security settings change
+        try:
+            from core.services.activity_service import ActivityService
+            # Build human-readable changed settings dict
+            readable = {}
+            if 'two_factor_enabled' in updates:
+                readable['two_factor_enabled'] = 'On' if updates['two_factor_enabled'] else 'Off'
+            if 'login_notifications_enabled' in updates:
+                readable['login_notifications_enabled'] = 'On' if updates['login_notifications_enabled'] else 'Off'
+            if 'session_timeout_minutes' in updates:
+                t = updates['session_timeout_minutes']
+                readable['session_timeout_minutes'] = ('Never' if t == 0 else str(t) + ' min')
+            ActivityService.log_security_settings_update(user, readable)
+        except Exception:
+            logger.warning('Failed to log security settings update for user=%s', user.pk)
+
         return True, 'Security settings updated', current

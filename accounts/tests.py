@@ -1009,6 +1009,93 @@ class OTPServiceEdgeTests(TestCase):
         self.assertTrue(reset_result['success'])
         self.assertFalse(Session.objects.filter(session_key=session_key).exists())
 
+    @override_settings(DEBUG=True)
+    def test_forgot_password_via_username_and_phone(self):
+        from accounts.services import OTPService
+        
+        user = User.objects.create_user(
+            username='mycustomuser',
+            email='realemail@example.com',
+            password='oldpassword123',
+            role='photographer',
+            phone='+91 9999999999'
+        )
+
+        # 1. Send OTP using username
+        result_username = OTPService.send_otp('mycustomuser')
+        self.assertTrue(result_username['success'])
+        dev_otp_username = result_username.get('dev_otp')
+        self.assertIsNotNone(dev_otp_username)
+
+        # Verify using username
+        verify_username = OTPService.verify_otp('mycustomuser', dev_otp_username)
+        self.assertTrue(verify_username['success'])
+        
+        reset_username = OTPService.reset_password(
+            'mycustomuser',
+            verify_username['reset_token'],
+            'newusernamepass123'
+        )
+        self.assertTrue(reset_username['success'])
+        
+        # Verify user can login with new password
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('newusernamepass123'))
+
+        # 2. Send OTP using phone number
+        result_phone = OTPService.send_otp('9999999999')
+        self.assertTrue(result_phone['success'])
+        dev_otp_phone = result_phone.get('dev_otp')
+        self.assertIsNotNone(dev_otp_phone)
+
+        # Verify using phone
+        verify_phone = OTPService.verify_otp('9999999999', dev_otp_phone)
+        self.assertTrue(verify_phone['success'])
+        
+        reset_phone = OTPService.reset_password(
+            '9999999999',
+            verify_phone['reset_token'],
+            'newphonepass123'
+        )
+        self.assertTrue(reset_phone['success'])
+        
+        # Verify user can login with new password
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('newphonepass123'))
+
+    def test_photographer_permissions_respect_profile(self):
+        from core.services.permission_service import PermissionService
+        from core.models import Photographer
+        
+        photo_user = User.objects.create_user(
+            username='photouser@example.com',
+            email='photouser@example.com',
+            password='password123',
+            role='photographer',
+        )
+        
+        # Set specific permission profile settings in DB
+        Photographer.objects.create(
+            user=photo_user,
+            perm_mobile_app=False,
+            perm_idcard_add=True,
+            perm_idcard_info=False,
+            perm_idcard_pending_list=True
+        )
+        
+        # Verify PermissionService respects these database profile toggles
+        self.assertFalse(PermissionService.has(photo_user, 'perm_mobile_app'))
+        self.assertTrue(PermissionService.has(photo_user, 'perm_idcard_add'))
+        self.assertFalse(PermissionService.has(photo_user, 'perm_idcard_info'))
+        self.assertTrue(PermissionService.has(photo_user, 'perm_idcard_pending_list'))
+        
+        # Also check permission context mappings
+        context = PermissionService.get_permission_context(photo_user)
+        self.assertFalse(context['perm_mobile_app'])
+        self.assertTrue(context['perm_idcard_add'])
+        self.assertFalse(context['perm_idcard_info'])
+        self.assertTrue(context['perm_idcard_pending_list'])
+
 
 class UserProfileServiceTests(TestCase):
     def setUp(self):

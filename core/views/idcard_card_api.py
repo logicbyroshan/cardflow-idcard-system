@@ -1174,15 +1174,27 @@ def api_idcard_create(request, table_id):
                 created_card = (result.data or {}).get('card') or {}
                 created_card_id = created_card.get('id')
                 if created_card_id:
-                    ActivityService.log(
-                        'card_create',
-                        'ID card created',
-                        user=request.user if request.user.is_authenticated else None,
-                        request=request,
-                        target_model='IDCard',
-                        target_id=created_card_id,
-                        target_name=f'Card #{created_card_id}',
-                    )
+                    from idcards.models import IDCard as _IDCard
+                    _card_obj = _IDCard.objects.select_related('table__group__client').filter(pk=created_card_id).first()
+                    if _card_obj:
+                        uploaded_img_fields = list(image_files.keys()) if image_files else []
+                        if legacy_photo_file:
+                            uploaded_img_fields.append('photo')
+                        ActivityService.log_card_create_rich(
+                            request,
+                            _card_obj,
+                            table=_card_obj.table,
+                            image_fields_uploaded=uploaded_img_fields or None,
+                        )
+                    else:
+                        ActivityService.log(
+                            'card_create',
+                            'ID card created',
+                            request=request,
+                            target_model='IDCard',
+                            target_id=created_card_id,
+                            target_name='Card #' + str(created_card_id),
+                        )
             except Exception:
                 pass
             return JsonResponse({
@@ -1408,35 +1420,42 @@ def api_idcard_update(request, card_id):
         if result.success:
             card_data = result.data['card']
             try:
-                ActivityService.log(
-                    'card_update',
-                    'ID card updated',
-                    user=request.user if request.user.is_authenticated else None,
-                    request=request,
-                    target_model='IDCard',
-                    target_id=card_id,
-                    target_name=f'Card #{card_id}',
-                )
+                # Build field diff: compare original field_data vs updated field_data
+                orig_field_data = getattr(_card, 'field_data', {}) or {}
+                new_field_data = card_data.get('field_data', {}) or {}
+
+                # Log image changes (re-uploads)
                 if image_files:
                     for img_field in image_files.keys():
-                        ActivityService.log(
-                            'card_update',
-                            f'Image "{img_field}" re-uploaded',
-                            user=request.user if request.user.is_authenticated else None,
-                            request=request,
-                            target_model='IDCard',
-                            target_id=card_id,
-                            target_name=f'Card #{card_id}',
+                        ActivityService.log_card_field_update(
+                            request, card_id, img_field, is_image=True
                         )
                 if legacy_photo_file:
+                    ActivityService.log_card_field_update(
+                        request, card_id, 'photo', is_image=True
+                    )
+
+                # Log non-image field changes
+                changed_fields = []
+                for fld, new_val in new_field_data.items():
+                    old_val = orig_field_data.get(fld)
+                    if str(old_val or '').strip() != str(new_val or '').strip():
+                        changed_fields.append((fld, old_val, new_val))
+
+                if changed_fields:
+                    for fld, old_val, new_val in changed_fields[:8]:  # cap at 8 fields
+                        ActivityService.log_card_field_update(
+                            request, card_id, fld, old_value=old_val, new_value=new_val
+                        )
+                elif not image_files and not legacy_photo_file:
+                    # Fallback: general update log if nothing specific detected
                     ActivityService.log(
                         'card_update',
-                        'Image "photo" re-uploaded',
-                        user=request.user if request.user.is_authenticated else None,
+                        'Card #' + str(card_id) + ' updated',
                         request=request,
                         target_model='IDCard',
                         target_id=card_id,
-                        target_name=f'Card #{card_id}',
+                        target_name='Card #' + str(card_id),
                     )
             except Exception:
                 pass
@@ -1498,7 +1517,19 @@ def api_idcard_delete(request, card_id):
     if _is_client_readonly(request.user, _card.status):
         return _client_readonly_response()
     try:
+        # Capture context before deletion (card object gone after delete)
+        _card_table = _card.table
+        _card_id_for_log = _card.id
         result = IDCardService.delete_card(card_id)
+        if result.success:
+            try:
+                ActivityService.log_card_delete(
+                    request,
+                    _card_id_for_log,
+                    table=_card_table,
+                )
+            except Exception:
+                logger.exception('Card delete activity log failed')
         return JsonResponse(
             {'success': result.success, 'message': result.message},
             status=200 if result.success else 400
@@ -1523,7 +1554,10 @@ def api_idcard_update_field(request, card_id):
         data = json.loads(request.body)
         field = data.get('field')
         value = data.get('value', '')
-        
+
+        # Capture old value for diff logging before update
+        old_value = (_card.field_data or {}).get(field) if field else None
+
         result = IDCardService.update_single_field(
             card_id, field, value,
             modified_by=request.user.username if request.user.is_authenticated else '',
@@ -1548,14 +1582,13 @@ def api_idcard_update_field(request, card_id):
                 pass
 
             try:
-                ActivityService.log(
-                    'card_update',
-                    f'Field "{field}" updated',
-                    user=request.user if request.user.is_authenticated else None,
-                    request=request,
-                    target_model='IDCard',
-                    target_id=card_id,
-                    target_name=f'Card #{card_id}',
+                ActivityService.log_card_field_update(
+                    request,
+                    card_id,
+                    field,
+                    old_value=old_value,
+                    new_value=value,
+                    is_image=False,
                 )
             except Exception:
                 pass
@@ -1817,11 +1850,28 @@ def api_idcard_bulk_delete(request, table_id):
         if result.success:
             # Support both legacy 'deleted_count' and new 'moved_count' keys
             count = result.data.get('deleted_count') or result.data.get('moved_count') or len(card_ids)
+            try:
+                client_name = _tbl.group.client.name if _tbl else ''
+                table_name = _tbl.name if _tbl else ''
+            except Exception:
+                client_name = ''
+                table_name = ''
             if delete_all:
-                target_label = 'moved to pool (all cards)'
+                action_desc = str(count) + ' card(s) moved to pool (all cards)'
             else:
-                target_label = f'deleted {count} card(s)'
-            ActivityService.log_bulk_delete(request, target_label, count)
+                action_desc = str(count) + ' card(s) deleted'
+            if table_name:
+                action_desc += ' from "' + table_name + '"'
+            if client_name:
+                action_desc += ' (' + client_name + ')'
+            ActivityService.log(
+                'bulk_delete',
+                action_desc,
+                request=request,
+                target_model='IDCardTable',
+                target_id=table_id,
+                target_name=table_name or '',
+            )
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)

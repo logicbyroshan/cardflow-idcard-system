@@ -2717,6 +2717,177 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ==================== CHECKBOX & BULK DELETE SETUP ====================
+    var selectAllCheckbox = document.getElementById('select-all-staff');
+    var bulkDeleteBtn = document.getElementById('bulkDeleteStaffBtn');
+    var isBulkDeleteMode = false;
+    var selectedStaffIdsForBulk = [];
+
+    function getSelectedStaffIds() {
+        var ids = [];
+        document.querySelectorAll('.staff-row-checkbox:checked').forEach(function(cb) {
+            ids.push(parseInt(cb.value, 10));
+        });
+        return ids;
+    }
+
+    function updateBulkDeleteButtonVisibility() {
+        if (!bulkDeleteBtn) return;
+        var selectedIds = getSelectedStaffIds();
+        if (selectedIds.length > 0) {
+            bulkDeleteBtn.style.display = 'inline-flex';
+            // Disable single action buttons to avoid conflict
+            var deleteStaffBtn = document.getElementById('deleteStaffBtn');
+            if (deleteStaffBtn) deleteStaffBtn.disabled = true;
+            var editStaffBtn = document.getElementById('editStaffBtn');
+            if (editStaffBtn) editStaffBtn.disabled = true;
+            var viewStaffBtn = document.getElementById('viewStaffBtn');
+            if (viewStaffBtn) viewStaffBtn.disabled = true;
+            var assignStaffBtn = document.getElementById('assignStaffBtn');
+            if (assignStaffBtn) assignStaffBtn.disabled = true;
+            var activeStaffBtn = document.getElementById('activeStaffBtn');
+            if (activeStaffBtn) activeStaffBtn.disabled = true;
+        } else {
+            bulkDeleteBtn.style.display = 'none';
+            // Re-evaluate standard selection state
+            if (mgr && typeof mgr.getSelectedStaffId === 'function' && mgr.getSelectedStaffId()) {
+                if (mgr && typeof mgr.updateActiveButtonState === 'function') {
+                    mgr.updateActiveButtonState();
+                }
+                var editBtn = document.getElementById('editStaffBtn');
+                if (editBtn) editBtn.disabled = false;
+                var viewBtn = document.getElementById('viewStaffBtn');
+                if (viewBtn) viewBtn.disabled = false;
+                var assignBtn = document.getElementById('assignStaffBtn');
+                if (assignBtn) assignBtn.disabled = false;
+                var delBtn = document.getElementById('deleteStaffBtn');
+                if (delBtn) delBtn.disabled = false;
+            }
+        }
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            var checked = selectAllCheckbox.checked;
+            document.querySelectorAll('.staff-row-checkbox').forEach(function(cb) {
+                cb.checked = checked;
+            });
+            updateBulkDeleteButtonVisibility();
+        });
+    }
+
+    // Delegate row checkbox change events to the table body
+    var staffTbody = document.getElementById('staff-table-body');
+    if (staffTbody) {
+        staffTbody.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('staff-row-checkbox')) {
+                var total = document.querySelectorAll('.staff-row-checkbox').length;
+                var checked = document.querySelectorAll('.staff-row-checkbox:checked').length;
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = (total > 0 && total === checked);
+                }
+                updateBulkDeleteButtonVisibility();
+            }
+        });
+    }
+
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            selectedStaffIdsForBulk = getSelectedStaffIds();
+            if (selectedStaffIdsForBulk.length === 0) return;
+
+            isBulkDeleteMode = true;
+            
+            // Clear single selection to bypass manage-staff-common-list.js confirmation handler
+            if (mgr && typeof mgr.clearSelection === 'function') {
+                mgr.clearSelection();
+            }
+
+            // Set text inside delete modal
+            var deleteStaffNameEl = document.getElementById('deleteStaffName');
+            if (deleteStaffNameEl) {
+                deleteStaffNameEl.textContent = selectedStaffIdsForBulk.length + ' selected assistants';
+            }
+
+            // Open the standard delete modal
+            if (window.alpineOpenModal) {
+                window.alpineOpenModal('delete');
+            } else {
+                var deleteModal = document.getElementById('delete-modal');
+                if (deleteModal) {
+                    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+                        window.AdarshModalBridge.open('delete-modal', { overlayClass: 'show', focusSelector: '#confirmDeleteBtn' });
+                    } else {
+                        deleteModal.classList.add('show');
+                        document.body.style.overflow = 'hidden';
+                    }
+                }
+            }
+        });
+    }
+
+    var cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', function() {
+            isBulkDeleteMode = false;
+            selectedStaffIdsForBulk = [];
+        });
+    }
+
+    // Intercept standard delete modal confirmation button to support bulk delete
+    var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', async function(e) {
+            if (!isBulkDeleteMode) return;
+            e.stopImmediatePropagation();
+
+            var csrfCookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+            var csrfToken = csrfCookie ? csrfCookie.split('=')[1] : '';
+
+            try {
+                var res = await fetch('/panel/assistants/api/staff/bulk-delete/', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ ids: selectedStaffIdsForBulk })
+                });
+
+                var result = await res.json();
+                if (result.success) {
+                    if (typeof showToast === 'function') showToast(result.message || 'Selected assistants deleted successfully', 'success');
+                    
+                    closeDeleteModalFn();
+
+                    // Remove row from UI table
+                    selectedStaffIdsForBulk.forEach(function(id) {
+                        var row = document.querySelector(`tr[data-staff-id="${id}"]`);
+                        if (row) row.remove();
+                    });
+
+                    // Clear selection states
+                    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+                    document.querySelectorAll('.staff-row-checkbox').forEach(function(cb) {
+                        cb.checked = false;
+                    });
+                    if (mgr && typeof mgr.clearSelection === 'function') mgr.clearSelection();
+
+                    updateBulkDeleteButtonVisibility();
+                } else {
+                    if (typeof showToast === 'function') showToast(result.error || 'Failed to delete selected assistants', 'error');
+                }
+            } catch (err) {
+                console.error('Bulk delete error:', err);
+                if (typeof showToast === 'function') showToast('Network error during bulk delete', 'error');
+            } finally {
+                isBulkDeleteMode = false;
+                selectedStaffIdsForBulk = [];
+            }
+        });
+    }
+
     // Initial state setup
     updateAddButtonState();
 });

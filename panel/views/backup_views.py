@@ -201,13 +201,10 @@ def api_backup_start(request):
     from panel.services.backup_service import start_backup
     start_backup(task.pk)
 
-    ActivityService.log(
-        'backup_start',
-        f'Backup started for {valid_client_count} client(s) (task #{task.pk})',
-        request=request,
-        target_model='BackupTask',
-        target_id=task.pk,
-        target_name=f'Backup #{task.pk}',
+    ActivityService.log_backup_start(
+        request,
+        task_id=task.pk,
+        client_names_dict=task.client_names,
     )
 
     return JsonResponse({
@@ -279,13 +276,10 @@ def api_backup_delete_now(request, task_id):
 
     from panel.services.backup_service import delete_backup_files
     delete_backup_files(task.pk)
-    ActivityService.log(
-        'backup_delete',
-        f'Backup files deleted for task #{task.pk}',
-        request=request,
-        target_model='BackupTask',
-        target_id=task.pk,
-        target_name=f'Backup #{task.pk}',
+    ActivityService.log_backup_delete(
+        request,
+        task_id=task.pk,
+        client_names_dict=task.client_names,
     )
     return JsonResponse({'success': True, 'message': 'Backup files deleted successfully.'})
 
@@ -310,6 +304,16 @@ def api_backup_download(request, task_id):
     filename = os.path.basename(str(info.get('filename') or 'Adarsh Backup.zip')).replace('\r', '').replace('\n', '')
     if not filename:
         filename = 'Adarsh Backup.zip'
+
+    # Log the download
+    try:
+        ActivityService.log_backup_download(
+            request,
+            task_id=task_id,
+            client_names_dict=task.client_names,
+        )
+    except Exception:
+        pass
 
     response = FileResponse(
         open(abs_path, 'rb'),

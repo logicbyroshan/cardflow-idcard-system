@@ -302,9 +302,14 @@ def api_client_delete(request, client_id):
     except Client.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
         
+    try:
+        last_active_str = ActivityService._format_last_active(client_obj.user)
+    except Exception:
+        last_active_str = 'never active'
+
     result = ClientService.delete(client_id)
     if result.success:
-        ActivityService.log_client_delete(request, client_name, client_id)
+        ActivityService.log_client_delete(request, client_name, last_active_str, client_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
@@ -317,13 +322,18 @@ def api_client_toggle_status(request, client_id):
         return _manage_client_permission_denied_response()
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    try:
+        client_obj = Client.objects.select_related('user').get(pk=client_id)
+    except Client.DoesNotExist:
+        client_obj = None
+
     result = ClientService.toggle_status(client_id)
     if result.success:
         new_status = result.data.get('new_status', result.data.get('status', ''))
-        client_name = result.data.get('client_name', result.data.get('name', ''))
         ActivityService.log_client_status(
             request,
-            type('Obj', (), {'name': client_name, 'pk': client_id})(),
+            client_obj,
             new_status,
         )
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
@@ -609,13 +619,11 @@ def api_client_message_send(request, client_id):
 
     _bump_client_message_cache_versions(client.id, recipient_ids)
 
-    ActivityService.log(
-        'notification_create',
-        f'Client message sent to {client.name} ({message_row.get_scope_display()})',
-        request=request,
-        target_model='ClientMessage',
-        target_id=message_row.id,
-        target_name=client.name,
+    ActivityService.log_client_message_send(
+        request,
+        client_name=client.name,
+        scope=scope,
+        recipient_count=len(recipient_ids),
     )
 
     return JsonResponse({
@@ -783,13 +791,13 @@ def api_client_messages_group_send(request):
             'failed_clients': failed_clients,
         }, status=400)
 
-    ActivityService.log(
-        'notification_create',
-        f'Group client message sent ({len(sent_items)} clients, {scope})',
-        request=request,
-        target_model='ClientMessage',
-        target_id=sent_items[0]['id'],
-        target_name='Group Client Message',
+    ActivityService.log_client_message_send(
+        request,
+        client_name='',
+        scope=scope,
+        recipient_count=total_recipients,
+        is_group=True,
+        group_client_count=len(sent_items),
     )
 
     return JsonResponse({

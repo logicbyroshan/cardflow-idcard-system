@@ -10,6 +10,10 @@ Uses Tailwind CSS component classes.
     <table class="data-table min-w-[800px]" id="staff-table">
         <thead>
             <tr>
+                {% if active_page == 'manage_assistants' %}
+                <th scope="col" class="w-10 text-center"><input type="checkbox" id="select-all-staff"></th>
+                <th scope="col" class="text-left">Client</th>
+                {% endif %}
                 <th scope="col" class="text-left">Name</th>
                 <th scope="col" class="min-w-[130px] text-left">Email</th>
                 <th scope="col" class="min-w-[120px] text-center">Phone</th>
@@ -26,6 +30,10 @@ Uses Tailwind CSS component classes.
         <tbody id="staff-table-body">
             {% for staff in staff_list %}
             <tr data-staff-id="{{ staff.id }}" data-staff-status="{% if staff.user.is_active %}active{% else %}inactive{% endif %}" data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}">
+                {% if active_page == 'manage_assistants' %}
+                <td class="text-center"><input type="checkbox" class="staff-row-checkbox" value="{{ staff.id }}"></td>
+                <td class="text-left font-semibold text-slate-700">{{ staff.client.name|default:"-" }}</td>
+                {% endif %}
                 <td class="font-medium text-gray-800 text-left">{{ staff.user.get_full_name|default:staff.user.username }}</td>
                 <td class="email-cell text-left">{{ staff.user.email|email_break }}</td>
                 <td class="phone-cell text-center">{{ staff.user.phone|default:"-"|phone_break }}</td>
@@ -89,7 +97,7 @@ Uses Tailwind CSS component classes.
             </tr>
             {% empty %}
             <tr class="empty-row">
-                <td colspan="7" class="empty-cell">
+                <td colspan="{% if active_page == 'manage_assistants' %}9{% else %}7{% endif %}" class="empty-cell">
                     {% if active_page == 'manage_staff' and not is_client_admin %}
                     {% include 'components/empty-state.html' with id='staff-table-empty-inline' icon='fa-user-slash' title='No Operator Found' message='No operators match your current filters. Try adjusting your search.' hidden=False %}
                     {% else %}

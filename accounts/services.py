@@ -821,7 +821,7 @@ class OTPService:
         Generate and send OTP to user's email.
         
         Args:
-            email: User's email address
+            email: User's email address, username, or phone number
             
         Returns:
             dict: {success: bool, message: str, dev_otp: str (only in DEBUG)}
@@ -829,10 +829,10 @@ class OTPService:
         try:
             from core.models import EmailLog
 
-            email = _normalize_identifier(email)
+            identifier = _normalize_identifier(email)
 
-            # Check if user exists
-            user = User.objects.filter(email__iexact=email).first()
+            # Find user using the robust helper (finds via email, username, or phone number)
+            user = AuthService._find_user(identifier)
             if not user:
                 # Return same success message to prevent user enumeration
                 return {
@@ -840,24 +840,34 @@ class OTPService:
                     'message': f'If an account exists with this email, an OTP has been sent to {email}'
                 }
             
+            # Use the user's actual registered email address for sending and caching
+            actual_email = (user.email or '').strip()
+            
+            # If the user doesn't have a valid email address (e.g. placeholder locals used for phones)
+            if not actual_email or actual_email.endswith('@noemail.local'):
+                return {
+                    'success': False,
+                    'message': 'This account does not have a valid registered email address. Please contact your administrator.'
+                }
+
             # Generate OTP
             otp = cls.generate_otp()
-            cache_key = cls._get_otp_cache_key(email)
+            cache_key = cls._get_otp_cache_key(actual_email)
             
             # Store OTP in cache with expiry
             cache.set(cache_key, {
-                'otp_hash': cls._otp_hash(email, otp),
-                'email': email.lower(),
+                'otp_hash': cls._otp_hash(actual_email, otp),
+                'email': actual_email.lower(),
                 'created_at': timezone.now().isoformat()
             }, timeout=OTP_EXPIRY_MINUTES * 60)
             
             # Reset attempts counter
-            attempts_key = cls._get_otp_attempts_key(email)
+            attempts_key = cls._get_otp_attempts_key(actual_email)
             cache.set(attempts_key, 0, timeout=OTP_EXPIRY_MINUTES * 60)
 
             log = EmailLog.objects.create(
-                recipient_name=user.get_full_name() or user.username or email,
-                recipient_email=email,
+                recipient_name=user.get_full_name() or user.username or actual_email,
+                recipient_email=actual_email,
                 subject='Password Reset OTP',
                 email_type=EmailLog.EMAIL_TYPE_OTP_RESET,
                 status=EmailLog.STATUS_PENDING,
@@ -866,9 +876,9 @@ class OTPService:
             # Send email (or just log in development)
             if settings.DEBUG:
                 if getattr(settings, 'DEV_LOG_OTP', DEV_LOG_OTP):
-                    logger.info("[DEV] OTP for %s: %s", email, otp)
+                    logger.info("[DEV] OTP for %s: %s", actual_email, otp)
                 else:
-                    logger.debug("[DEV] OTP generated for %s (logging suppressed)", email)
+                    logger.debug("[DEV] OTP generated for %s (logging suppressed)", actual_email)
                 log.status = EmailLog.STATUS_SENT
                 log.sent_at = timezone.now()
                 log.error_message = ''
@@ -912,7 +922,7 @@ class OTPService:
                     plain_content=plain_content,
                     html_content=html_content,
                     from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
+                    recipient_list=[actual_email],
                     on_success=_mark_sent,
                     on_failure=_mark_failed,
                     skip_logging=True,
@@ -922,7 +932,7 @@ class OTPService:
                     'success': True,
                     'message': f'If an account exists with this email, an OTP has been sent to {email}'
                 }
-                    
+                     
         except Exception as e:
             logger.error("Error generating OTP for %s: %s", email, e)
             try:
@@ -948,16 +958,19 @@ class OTPService:
         Verify the OTP entered by user.
         
         Args:
-            email: User's email
+            email: User's email, username, or phone number
             otp: OTP entered by user
             
         Returns:
             dict: {success: bool, reset_token: str, message: str}
         """
         try:
-            email = _normalize_identifier(email)
-            cache_key = cls._get_otp_cache_key(email)
-            attempts_key = cls._get_otp_attempts_key(email)
+            identifier = _normalize_identifier(email)
+            user = AuthService._find_user(identifier)
+            actual_email = (user.email or '').strip().lower() if user else identifier.lower()
+
+            cache_key = cls._get_otp_cache_key(actual_email)
+            attempts_key = cls._get_otp_attempts_key(actual_email)
             
             # Get stored OTP data
             otp_data = cache.get(cache_key)
@@ -988,7 +1001,7 @@ class OTPService:
             # Backward-compatible fallback supports entries created before hashing.
             stored_hash = otp_data.get('otp_hash')
             if stored_hash:
-                candidate_hash = cls._otp_hash(email, otp)
+                candidate_hash = cls._otp_hash(actual_email, otp)
                 is_valid = hmac.compare_digest(str(stored_hash), str(candidate_hash))
             else:
                 is_valid = hmac.compare_digest(str(otp_data.get('otp', '')), str(otp))
@@ -1001,12 +1014,12 @@ class OTPService:
             
             # OTP verified - generate reset token
             reset_token = cls.generate_reset_token()
-            token_key = cls._get_reset_token_key(email)
+            token_key = cls._get_reset_token_key(actual_email)
             
             # Store reset token (valid for 15 minutes)
             cache.set(token_key, {
                 'token': reset_token,
-                'email': email.lower(),
+                'email': actual_email,
                 'verified_at': timezone.now().isoformat()
             }, timeout=15 * 60)
             
@@ -1033,7 +1046,7 @@ class OTPService:
         Reset user's password after OTP verification.
         
         Args:
-            email: User's email
+            email: User's email, username, or phone number
             reset_token: Token from OTP verification
             new_password: New password to set
             
@@ -1041,8 +1054,11 @@ class OTPService:
             dict: {success: bool, message: str}
         """
         try:
-            email = _normalize_identifier(email)
-            token_key = cls._get_reset_token_key(email)
+            identifier = _normalize_identifier(email)
+            user = AuthService._find_user(identifier)
+            actual_email = (user.email or '').strip().lower() if user else identifier.lower()
+
+            token_key = cls._get_reset_token_key(actual_email)
             token_data = cache.get(token_key)
             
             if not token_data:
@@ -1057,7 +1073,7 @@ class OTPService:
                     'message': 'Invalid reset token. Please start again.'
                 }
 
-            if str(token_data.get('email', '')).lower() != email:
+            if str(token_data.get('email', '')).lower() != actual_email:
                 return {
                     'success': False,
                     'message': 'Invalid reset session. Please start again.'
@@ -1083,7 +1099,8 @@ class OTPService:
                 }
             
             # Get user and update password
-            user = User.objects.filter(email__iexact=email).first()
+            if not user:
+                user = User.objects.filter(email__iexact=actual_email).first()
             if not user:
                 return {
                     'success': False,
@@ -1117,6 +1134,21 @@ class OTPService:
             
             # Clear reset token
             cache.delete(token_key)
+
+            # Log password reset
+            try:
+                from core.services.activity_service import ActivityService
+                last_active_str = ActivityService._format_last_active(user)
+                ActivityService.log(
+                    'password_reset',
+                    f'Password reset completed for "{user.get_full_name() or user.email}" via OTP ({last_active_str})',
+                    user=user,
+                    target_model='User',
+                    target_id=user.pk,
+                    target_name=user.get_full_name() or user.email,
+                )
+            except Exception:
+                logger.warning('Failed to log OTP password reset for user=%s', user.pk)
             
             return {
                 'success': True,

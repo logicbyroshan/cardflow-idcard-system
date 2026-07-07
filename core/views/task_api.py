@@ -841,6 +841,20 @@ def api_create_bulk_upload_task(request, table_id):
         
         # Submit to the queue dispatcher (Celery if configured, otherwise local worker)
         dispatch_background_task(task.id)
+
+        # Activity log — queued
+        try:
+            from core.services.activity_service import ActivityService
+            file_ext = os.path.splitext(uploaded_file.name)[1].lstrip('.').lower() or 'xlsx'
+            ActivityService.log_bulk_upload(
+                request,
+                cards_created=0,
+                table=table,
+                file_format=file_ext,
+                is_async=True,
+            )
+        except Exception:
+            logger.exception('Bulk upload task activity log failed')
         
         return JsonResponse({
             'success': True,
@@ -991,6 +1005,19 @@ def api_create_reupload_task(request, table_id):
         
         # Submit to the queue dispatcher (Celery if configured, otherwise local worker)
         dispatch_background_task(task.id)
+
+        # Activity log — queued
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_image_reupload(
+                request,
+                updated_count=0,
+                table=get_object_or_404(IDCardTable, id=table_id),
+                target_field=target_field or '',
+                is_async=True,
+            )
+        except Exception:
+            logger.exception('Reupload task activity log failed')
         
         return JsonResponse({
             'success': True,
@@ -1149,6 +1176,20 @@ def api_create_export_task(request, table_id):
         
         # Submit to the queue dispatcher (Celery if configured, otherwise local worker)
         dispatch_background_task(task.id)
+
+        # Activity log — queued
+        try:
+            from core.services.activity_service import ActivityService
+            count = len(card_ids) if card_ids else 0
+            ActivityService.log_card_export(
+                request,
+                fmt=export_type,
+                count=count,
+                table=table,
+                is_async=True,
+            )
+        except Exception:
+            logger.exception('Export task activity log failed')
         
         return JsonResponse({
             'success': True,

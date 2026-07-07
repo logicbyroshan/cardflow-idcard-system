@@ -418,6 +418,19 @@ def api_idcard_bulk_upload(request, table_id):
                 CacheVersionService.bump('global_search', 'all')
             except Exception:
                 pass
+
+            # Activity log
+            try:
+                from core.services.activity_service import ActivityService
+                ActivityService.log_bulk_upload(
+                    request,
+                    cards_created=cards_created,
+                    images_matched=total_photos_matched,
+                    table=table,
+                    file_format='xlsx' if not is_csv else 'csv',
+                )
+            except Exception:
+                logger.exception('Bulk upload activity log failed')
         
         # Return result
         photo_msg = f" with {total_photos_matched} photos matched" if total_photos_matched > 0 else ""
@@ -928,6 +941,19 @@ def api_idcard_reupload_images(request, table_id):
 
         # Build response
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"
+        # Activity log
+        try:
+            from core.services.activity_service import ActivityService
+            ActivityService.log_image_reupload(
+                request,
+                updated_count=updated_count,
+                matched_count=matched_count,
+                table=table,
+                target_field=target_field if target_field else '',
+            )
+        except Exception:
+            logger.exception('Image reupload activity log failed')
+
         response = {
             'success': True,
             'message': result_msg,

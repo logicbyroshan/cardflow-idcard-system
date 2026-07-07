@@ -1216,9 +1216,16 @@ class AssistantService(BaseService):
             return ServiceResult(success=False, message="Mode must be 'class' or 'section'")
 
         class_sections = cls.get_client_class_sections(target_client, group=group, table=table)
+        is_fallback_mode = False
         if not class_sections:
-            scope_desc = 'list/table' if table else 'client/group'
-            return ServiceResult(success=False, message=f"No classes found for this {scope_desc}")
+            is_fallback_mode = True
+            if table:
+                class_sections = {table.name: []}
+            elif group:
+                class_sections = {group.name: []}
+            else:
+                scope_desc = 'list/table' if table else 'client/group'
+                return ServiceResult(success=False, message=f"No classes found for this {scope_desc}")
 
         def clean_for_email(text):
             # Remove all non-alphanumeric characters and lowercase
@@ -1259,7 +1266,7 @@ class AssistantService(BaseService):
                         new_user.set_password(password)
                         new_user.save()
 
-                        allowed_classes = [cls_name] if auto_assign else []
+                        allowed_classes = [] if is_fallback_mode else ([cls_name] if auto_assign else [])
                         assistant = Assistant.objects.create(
                             user=new_user,
                             client=target_client,
@@ -1268,7 +1275,7 @@ class AssistantService(BaseService):
                         if group:
                             assistant.assigned_groups.add(group)
                             if auto_assign:
-                                _cs = {cls_name: []} if allowed_classes else {}
+                                _cs = {} if is_fallback_mode else ({cls_name: []} if allowed_classes else {})
                                 if table:
                                     # Scoped to a specific table
                                     assistant.assignment_scopes = [{
@@ -1332,8 +1339,8 @@ class AssistantService(BaseService):
                             new_user.set_password(password)
                             new_user.save()
 
-                            allowed_classes = [cls_name] if auto_assign else []
-                            allowed_sections = [sec_name] if (auto_assign and sec_name) else []
+                            allowed_classes = [] if is_fallback_mode else ([cls_name] if auto_assign else [])
+                            allowed_sections = [] if is_fallback_mode else ([sec_name] if (auto_assign and sec_name) else [])
                             assistant = Assistant.objects.create(
                                 user=new_user,
                                 client=target_client,
@@ -1343,7 +1350,7 @@ class AssistantService(BaseService):
                             if group:
                                 assistant.assigned_groups.add(group)
                                 if auto_assign:
-                                    _cs = {cls_name: allowed_sections} if allowed_classes else {}
+                                    _cs = {} if is_fallback_mode else ({cls_name: allowed_sections} if allowed_classes else {})
                                     if table:
                                         # Scoped to a specific table
                                         assistant.assignment_scopes = [{

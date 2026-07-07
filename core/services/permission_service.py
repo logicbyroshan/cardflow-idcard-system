@@ -406,11 +406,16 @@ class PermissionService:
                     'perm_idcard_pending_list',
                     'perm_idcard_verified_list',
                     'perm_idcard_pool_list',
+                    'perm_idcard_bulk_download',
                 }
                 if client_obj is not None:
                     if client_obj.id not in cls.get_accessible_client_ids(user):
                         return False
-                return perm_key in ALLOWED_PHOTOGRAPHER_PERMS
+                if perm_key not in ALLOWED_PHOTOGRAPHER_PERMS:
+                    return False
+                if hasattr(profile, perm_key):
+                    return bool(getattr(profile, perm_key, False))
+                return True
 
             # Check Django permission mapping first
             has_mapped_perm = False
@@ -693,6 +698,7 @@ class PermissionService:
                 else:
                     context[perm] = False
         elif is_photo:
+            profile = getattr(user, 'photographer_profile', None)
             ALLOWED_PHOTOGRAPHER_PERMS = {
                 'perm_mobile_app',
                 'perm_idcard_add',
@@ -701,9 +707,16 @@ class PermissionService:
                 'perm_idcard_pending_list',
                 'perm_idcard_verified_list',
                 'perm_idcard_pool_list',
+                'perm_idcard_bulk_download',
             }
             for perm in cls.ALL_PERMISSION_KEYS:
-                context[perm] = perm in ALLOWED_PHOTOGRAPHER_PERMS
+                if perm in ALLOWED_PHOTOGRAPHER_PERMS:
+                    if profile and hasattr(profile, perm):
+                        context[perm] = bool(getattr(profile, perm, False))
+                    else:
+                        context[perm] = True
+                else:
+                    context[perm] = False
         elif is_cl:
             profile = getattr(user, 'client_profile', None)
             active = profile.status == 'active' if profile else False

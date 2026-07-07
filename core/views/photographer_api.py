@@ -16,6 +16,7 @@ from core.services.photographer_service import PhotographerService
 from core.views.base_helpers import get_user_role, get_page_range
 from accounts.rate_limit import rate_limit
 from functools import wraps
+from core.services.activity_service import ActivityService
 
 def api_require_photographer_manager(view_func):
     @wraps(view_func)
@@ -44,6 +45,14 @@ def _parse_json_object(request):
     if not isinstance(data, dict):
         return None, JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
     return data, None
+
+
+def _photographer_assignment_snapshot(photographer_obj):
+    if not photographer_obj:
+        return {'client_ids': []}
+    return {
+        'client_ids': list(photographer_obj.photographer_assignments.values_list('client_id', flat=True))
+    }
 
 
 @login_required
@@ -134,6 +143,21 @@ def api_photographer_create(request):
             return json_err
 
         result = PhotographerService.create(data, request=request)
+        if result.success:
+            try:
+                photographer_id = result.data.get('staff', {}).get('id')
+                photographer = Photographer.objects.select_related('user').filter(id=photographer_id).first()
+                if photographer:
+                    ActivityService.log_staff_create(request, photographer)
+                    ActivityService.log_staff_assignment_change(
+                        request,
+                        photographer,
+                        before_snapshot={},
+                        after_snapshot=_photographer_assignment_snapshot(photographer),
+                        reason='created',
+                    )
+            except Exception:
+                logger.exception("Failed to log photographer create activity")
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except Exception as e:
         logger.exception("Photographer API create error: %s", e)
@@ -158,7 +182,28 @@ def api_photographer_update(request, staff_id):
         if json_err:
             return json_err
 
+        try:
+            photographer = Photographer.objects.select_related('user').filter(id=staff_id).first()
+            before_snapshot = _photographer_assignment_snapshot(photographer) if photographer else None
+        except Exception:
+            before_snapshot = None
+            photographer = None
+
         result = PhotographerService.update(staff_id, data)
+        if result.success and photographer:
+            try:
+                photographer.refresh_from_db()
+                ActivityService.log_staff_update(request, photographer)
+                after_snapshot = _photographer_assignment_snapshot(photographer)
+                ActivityService.log_staff_assignment_change(
+                    request,
+                    photographer,
+                    before_snapshot=before_snapshot,
+                    after_snapshot=after_snapshot,
+                    reason='updated',
+                )
+            except Exception:
+                logger.exception("Failed to log photographer update activity")
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except Exception as e:
         logger.exception("Photographer API update error: %s", e)
@@ -170,7 +215,24 @@ def api_photographer_update(request, staff_id):
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='photographer_delete')
 def api_photographer_delete(request, staff_id):
     """API endpoint to delete a photographer"""
+    try:
+        photographer = Photographer.objects.select_related('user').filter(id=staff_id).first()
+        if photographer:
+            name = photographer.user.get_full_name() or photographer.user.username
+            last_active_str = ActivityService._format_last_active(photographer.user)
+        else:
+            name = f'Photographer #{staff_id}'
+            last_active_str = 'never active'
+    except Exception:
+        name = f'Photographer #{staff_id}'
+        last_active_str = 'never active'
+
     result = PhotographerService.delete(staff_id)
+    if result.success:
+        try:
+            ActivityService.log_staff_delete(request, name, last_active_str, staff_id, user_type='Photographer')
+        except Exception:
+            logger.exception("Failed to log photographer delete activity")
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
@@ -178,7 +240,17 @@ def api_photographer_delete(request, staff_id):
 @api_require_photographer_manager
 def api_photographer_toggle_status(request, staff_id):
     """API endpoint to toggle photographer active/inactive status"""
+    try:
+        photographer = Photographer.objects.select_related('user').filter(id=staff_id).first()
+    except Exception:
+        photographer = None
+
     result = PhotographerService.toggle_status(staff_id)
+    if result.success and photographer:
+        try:
+            ActivityService.log_staff_status(request, photographer, result.data.get('is_active', False))
+        except Exception:
+            logger.exception("Failed to log photographer status activity")
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
@@ -196,9 +268,11 @@ def api_photographer_assign_clients(request, staff_id):
         from django.db import transaction
 
         try:
-            staff = Photographer.objects.get(id=staff_id)
+            staff = Photographer.objects.select_related('user').get(id=staff_id)
         except Photographer.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Photographer not found'}, status=404)
+
+        before_snapshot = _photographer_assignment_snapshot(staff)
 
         assigned_clients = data.get('assigned_clients', [])
         if isinstance(assigned_clients, str):
@@ -255,6 +329,17 @@ def api_photographer_assign_clients(request, staff_id):
             else:
                 # Super Admin: delete all missing
                 staff.photographer_assignments.exclude(client_id__in=keep_client_ids).delete()
+
+        try:
+            ActivityService.log_staff_assignment_change(
+                request,
+                staff,
+                before_snapshot=before_snapshot,
+                after_snapshot=_photographer_assignment_snapshot(staff),
+                reason='updated',
+            )
+        except Exception:
+            logger.exception("Failed to log photographer assignment change")
 
         return JsonResponse({'success': True, 'message': 'Client assignments saved successfully'})
     except Exception as e:

@@ -513,10 +513,12 @@ def api_staff_detail(request, staff_id):
     
     # DELETE
     staff_name = f'Staff #{raw_id}'
+    last_active_str = 'never active'
     try:
         existing_staff = Assistant.objects.select_related('user').filter(id=raw_id).first()
         if existing_staff:
             staff_name = existing_staff.user.get_full_name() or existing_staff.user.username
+            last_active_str = ActivityService._format_last_active(existing_staff.user)
     except Exception:
         logger.exception('Failed to resolve staff name before delete for staff_id=%s', raw_id)
 
@@ -524,7 +526,7 @@ def api_staff_detail(request, staff_id):
     
     if result.success:
         try:
-            ActivityService.log_staff_delete(request, staff_name, raw_id)
+            ActivityService.log_staff_delete(request, staff_name, last_active_str, raw_id, user_type='Assistant')
         except Exception:
             logger.exception('Failed to log staff delete activity for staff_id=%s', raw_id)
         return JsonResponse({

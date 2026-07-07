@@ -105,14 +105,26 @@ class ReprintWorkflowService:
             reprint_req.save(update_fields=['status', 'updated_at'])
 
         cls._bump_dashboard_cache_versions(reprint_req.table)
-        ActivityService.log(
-            'reprint_status',
-            f'Reprint moved from {cls._status_label(current)} to {cls._status_label(target_status)}',
-            user=user,
-            target_model='IDCard',
-            target_id=reprint_req.card_id,
-            target_name=f'Card #{reprint_req.card_id}',
-        )
+        try:
+            client_name = ''
+            table_name = ''
+            try:
+                client_name = reprint_req.table.group.client.name
+                table_name = reprint_req.table.name
+            except Exception:
+                pass
+            tbl_part = ' in "' + table_name + '"' if table_name else ''
+            client_part = ' for ' + client_name if client_name else ''
+            ActivityService.log(
+                'reprint_status',
+                'Reprint moved from ' + cls._status_label(current) + ' to ' + cls._status_label(target_status) + tbl_part + client_part,
+                user=user,
+                target_model='IDCard',
+                target_id=reprint_req.card_id,
+                target_name='Card #' + str(reprint_req.card_id),
+            )
+        except Exception:
+            pass
 
         return ServiceResult(
             success=True,
@@ -165,15 +177,15 @@ class ReprintWorkflowService:
             )
 
         cls._bump_dashboard_cache_versions(table)
-        for row in transition_rows:
-            ActivityService.log(
-                'reprint_status',
-                f'Reprint moved from {cls._status_label(row.get("status"))} to {cls._status_label(target_status)}',
-                user=user,
-                target_model='IDCard',
-                target_id=row.get('card_id'),
-                target_name=f'Card #{row.get("card_id")}',
-            )
+        # One summary log for the batch — not per-card spam
+        ActivityService.log_reprint_summary(
+            user=user,
+            action='',
+            count=updated,
+            table=table,
+            from_status=', '.join(set(row.get('status', '') for row in transition_rows)),
+            to_status=target_status,
+        )
 
         return ServiceResult(
             success=True,
@@ -236,30 +248,12 @@ class ReprintWorkflowService:
 
         if created > 0:
             cls._bump_dashboard_cache_versions(table)
-            client_name = ''
-            try:
-                client_name = table.group.client.name
-            except Exception:
-                client_name = ''
-            suffix = f' for {client_name}' if client_name else ''
-            table_suffix = f' (Table: {table.name})' if getattr(table, 'name', '') else ''
-            ActivityService.log(
-                'reprint_request',
-                f'{created} reprint request(s) created{suffix}{table_suffix}',
+            ActivityService.log_reprint_summary(
                 user=requested_by,
-                target_model='ReprintRequest',
-                target_id=table.id,
-                target_name=getattr(table, 'name', ''),
+                action='reprint request(s) created',
+                count=created,
+                table=table,
             )
-            for cid in new_ids:
-                ActivityService.log(
-                    'reprint_request',
-                    f'Reprint requested{suffix}',
-                    user=requested_by,
-                    target_model='IDCard',
-                    target_id=cid,
-                    target_name=f'Card #{cid}',
-                )
 
         return ServiceResult(
             success=True,
@@ -306,15 +300,13 @@ class ReprintWorkflowService:
             rr_qs.delete()
 
         cls._bump_dashboard_cache_versions(table)
-        for card_id in card_ids:
-            ActivityService.log(
-                'reprint_status',
-                'Reprint rejected and card moved to pool' if move_card_to_pool else 'Reprint rejected',
-                user=user,
-                target_model='IDCard',
-                target_id=card_id,
-                target_name=f'Card #{card_id}',
-            )
+        # One summary reprint_reject log — not per-card spam
+        ActivityService.log_reprint_reject(
+            user=user,
+            count=rejected_count,
+            table=table,
+            move_to_pool=bool(move_card_to_pool),
+        )
 
         return ServiceResult(
             success=True,

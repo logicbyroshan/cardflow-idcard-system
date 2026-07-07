@@ -140,12 +140,12 @@ def manage_assistants(request):
 
     if PermissionService.is_super_admin(user):
         clients = Client.objects.all().order_by('name')
-        staff_list = Assistant.objects.all().select_related('user').order_by('-created_at')
+        staff_list = Assistant.objects.all().select_related('user', 'client').order_by('-created_at')
     else:
         operator = getattr(user, 'operator_profile', None)
         if operator:
             clients = operator.assigned_clients.all().order_by('name')
-            staff_list = Assistant.objects.filter(client__in=clients).select_related('user').order_by('-created_at')
+            staff_list = Assistant.objects.filter(client__in=clients).select_related('user', 'client').order_by('-created_at')
         else:
             clients = Client.objects.none()
             staff_list = Assistant.objects.none()
@@ -406,10 +406,12 @@ def api_staff_detail(request, staff_id):
     
     # DELETE
     staff_name = f'Staff #{staff_id}'
+    last_active_str = 'never active'
     try:
         existing_staff = Assistant.objects.select_related('user').filter(id=staff_id).first()
         if existing_staff:
             staff_name = existing_staff.user.get_full_name() or existing_staff.user.username
+            last_active_str = ActivityService._format_last_active(existing_staff.user)
     except Exception:
         logger.exception('Failed to resolve staff name before delete for staff_id=%s', staff_id)
 
@@ -417,7 +419,7 @@ def api_staff_detail(request, staff_id):
     
     if result.success:
         try:
-            ActivityService.log_staff_delete(request, staff_name, staff_id)
+            ActivityService.log_staff_delete(request, staff_name, last_active_str, staff_id, user_type='Assistant')
         except Exception:
             logger.exception('Failed to log staff delete activity for staff_id=%s', staff_id)
         return JsonResponse({
@@ -883,3 +885,56 @@ def api_staff_auto_create(request):
         return response
 
     return JsonResponse(result.to_response_dict(), status=400)
+
+
+@api_require_assistant_manager
+@require_http_methods(["DELETE"])
+def api_staff_bulk_delete(request):
+    """
+    API: Bulk delete assistants.
+    Expects JSON body: {"ids": [1, 2, 3]}
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+
+    staff_ids = data.get('ids', [])
+    if not staff_ids:
+        return JsonResponse({'success': False, 'error': 'No assistant IDs provided'}, status=400)
+
+    deleted_names = []
+    failed_ids = []
+
+    for staff_id in staff_ids:
+        staff_name = f'Staff #{staff_id}'
+        last_active_str = 'never active'
+        try:
+            existing_staff = Assistant.objects.select_related('user').filter(id=staff_id).first()
+            if existing_staff:
+                staff_name = existing_staff.user.get_full_name() or existing_staff.user.username
+                last_active_str = ActivityService._format_last_active(existing_staff.user)
+        except Exception:
+            pass
+
+        result = AssistantService.delete_assistant(request.user, staff_id)
+        if result.success:
+            deleted_names.append(staff_name)
+            try:
+                ActivityService.log_staff_delete(request, staff_name, last_active_str, staff_id, user_type='Assistant')
+            except Exception:
+                logger.exception('Failed to log staff delete activity for staff_id=%s', staff_id)
+        else:
+            failed_ids.append(staff_id)
+
+    if failed_ids:
+        if len(deleted_names) > 0:
+            msg = f'Deleted {len(deleted_names)} assistants, but failed to delete {len(failed_ids)}.'
+            return JsonResponse({'success': True, 'message': msg})
+        else:
+            return JsonResponse({'success': False, 'error': 'Failed to delete selected assistants'}, status=400)
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Successfully deleted {len(deleted_names)} assistant(s)!'
+    })

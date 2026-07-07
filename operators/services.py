@@ -694,7 +694,22 @@ class OperatorCreationService:
                 phone=getattr(user, 'phone', ''),
                 email_variant='temp_password',
             )
-            
+
+            # Log password reset
+            try:
+                from core.services.activity_service import ActivityService
+                last_active_str = ActivityService._format_last_active(user)
+                ActivityService.log(
+                    'staff_password_reset',
+                    f'Password reset for Operator "{user.get_full_name()}" by admin ({last_active_str})',
+                    target_model='Operator',
+                    target_id=operator.pk,
+                    target_name=user.get_full_name(),
+                    user=reset_by,
+                )
+            except Exception:
+                logger.exception('Failed to log operator password reset')
+
             return {
                 'success': True,
                 'message': f'Password reset for "{user.get_full_name()}"',
@@ -754,6 +769,21 @@ class OperatorCreationService:
                 )
             except Exception as e:
                 logger.warning('Failed to send temp password email: %s', e)
+
+            # Log password reset
+            try:
+                from core.services.activity_service import ActivityService
+                last_active_str = ActivityService._format_last_active(user)
+                ActivityService.log(
+                    'staff_password_reset',
+                    f'Temporary password set for {role_label.capitalize()} "{user.get_full_name()}" ({last_active_str})',
+                    request=request,
+                    target_model=role_label.capitalize(),
+                    target_id=profile.pk,
+                    target_name=user.get_full_name(),
+                )
+            except Exception:
+                logger.exception('Failed to log staff temp password reset')
 
             return {
                 'success': True,

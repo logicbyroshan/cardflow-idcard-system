@@ -33,6 +33,10 @@
         {% if is_super_admin or perm_idcard_client_list or perm_manage_client_staff %}
         <button class="btn btn-md btn-danger" id="deleteStaffBtn" title="Delete Selected {% if active_page == 'manage_staff' and not is_client_admin %}Operator{% else %}Assistent{% endif %}" disabled><i class="fa-solid fa-trash"></i> Delete
         </button>
+        {% if active_page == 'manage_assistants' %}
+        <button class="btn btn-md btn-danger" id="bulkDeleteStaffBtn" title="Bulk Delete Selected Assistants" style="display: none;"><i class="fa-solid fa-trash-can"></i> Bulk Delete
+        </button>
+        {% endif %}
         {% endif %}
         {% if is_super_admin or perm_idcard_client_list or perm_manage_client_staff %}
         <button class="btn btn-md btn-warning" id="activeStaffBtn" title="Toggle {% if active_page == 'manage_staff' and not is_client_admin %}Operator{% else %}Assistent{% endif %} Status" disabled><i class="fa-solid fa-toggle-on"></i> Active

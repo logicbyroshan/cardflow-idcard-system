@@ -5312,9 +5312,10 @@ def api_staff_delete(request, staff_id):
             staff = Staff.objects.select_related('user').get(id=staff_id, staff_type='admin_staff')
             staff_id_for_log = staff.id
             name = staff.user.get_full_name() or staff.user.username
+            last_active_str = ActivityService._format_last_active(staff.user)
             staff.user.delete()  # cascade deletes staff profile
             try:
-                ActivityService.log_staff_delete(request, name, staff_id_for_log)
+                ActivityService.log_staff_delete(request, name, last_active_str, staff_id_for_log)
             except Exception:
                 logger.exception('Mobile staff-delete activity logging failed')
             return JsonResponse({'success': True, 'message': f'{name} deleted'})
@@ -7177,10 +7178,11 @@ def api_client_delete(request, client_id):
     try:
         client = get_object_or_404(Client, id=client_id)
         client_name = client.name
+        last_active_str = ActivityService._format_last_active(getattr(client, 'user', None))
         result = ClientService.delete(client_id)
         if result.success:
             try:
-                ActivityService.log_client_delete(request, client_name, client_id)
+                ActivityService.log_client_delete(request, client_name, last_active_str, client_id)
             except Exception:
                 logger.exception('Mobile client-delete activity logging failed')
         return JsonResponse(
