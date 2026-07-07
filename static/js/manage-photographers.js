@@ -272,6 +272,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (customGroup) {
             customGroup.style.display = (val === 'custom') ? '' : 'none';
         }
+        var pwInput = document.getElementById('staff-password');
+        if (pwInput) {
+            pwInput.required = (val === 'custom' && NS.currentMode === 'add');
+        }
     }
 
     // ==================== DRAWER OPEN/CLOSE ====================
@@ -357,6 +361,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (tempPwBtn) tempPwBtn.style.display = (mode === 'edit') ? '' : 'none';
             var pwRow = document.getElementById('staffPasswordOptionRow');
             if (pwRow) pwRow.style.display = 'none';
+            var customPwGroup = document.getElementById('staffCustomPasswordGroup');
+            if (customPwGroup) customPwGroup.style.display = 'none';
+            var pwInput = document.getElementById('staff-password');
+            if (pwInput) pwInput.required = false;
 
             if (data) {
                 document.getElementById('staff-id').value = data.id;
