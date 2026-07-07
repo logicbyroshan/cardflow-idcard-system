@@ -49,3 +49,67 @@ class AutoCreateAssistantsTests(TestCase):
         self.assertEqual(len(df), 3)
 
         self.assertEqual(Assistant.objects.filter(client=self.client_obj).count(), 3)
+
+
+from django.urls import reverse
+
+class AssistantAPIViewPermissionTests(TestCase):
+    def setUp(self):
+        # Create users
+        self.super_admin = User.objects.create_user(
+            username='super_admin@test.com', email='super_admin@test.com', password='adminpass1', role='super_admin'
+        )
+        self.client_user = User.objects.create_user(
+            username='client_user@test.com', email='client_user@test.com', password='clientpass1', role='client'
+        )
+        self.client_obj = Client.objects.create(name='Test Client Permissions', user=self.client_user)
+
+        self.group = IDCardGroup.objects.create(client=self.client_obj, name='Test Group')
+        self.table = IDCardTable.objects.create(
+            group=self.group, 
+            name='Test Table',
+            fields=[{'name': 'Class', 'type': 'text'}, {'name': 'Section', 'type': 'text'}]
+        )
+        # Create at least one IDCard so auto-create has data to work with
+        IDCard.objects.create(table=self.table, field_data={'Class': 'V', 'Section': 'A'})
+
+    def test_auto_create_endpoint_allows_super_admin(self):
+        self.client.force_login(self.super_admin)
+        response = self.client.post(reverse('assistants:api_staff_auto_create'), {
+            'client_id': self.client_obj.id,
+            'acronym': 'TST',
+            'mode': 'class',
+            'assign': 'true',
+            'id_source': 'group',
+            'group_id': self.group.id
+        })
+        # Should succeed and return the Excel spreadsheet
+        self.assertEqual(response.status_code, 200)
+
+    def test_auto_create_endpoint_denies_client_admin(self):
+        self.client.force_login(self.client_user)
+        response = self.client.post(reverse('assistants:api_staff_auto_create'), {
+            'client_id': self.client_obj.id,
+            'acronym': 'TST',
+            'mode': 'class',
+            'assign': 'true',
+            'id_source': 'group',
+            'group_id': self.group.id
+        })
+        self.assertEqual(response.status_code, 403)
+
+    def test_bulk_upload_endpoint_allows_super_admin_pass_gate(self):
+        self.client.force_login(self.super_admin)
+        response = self.client.post(reverse('assistants:api_staff_bulk_upload_xlsx'), {
+            'client_id': self.client_obj.id,
+        })
+        # If it passed the decorator gate, it will fail on file validation (400) rather than permission (403)
+        self.assertEqual(response.status_code, 400)
+
+    def test_bulk_upload_endpoint_denies_client_admin(self):
+        self.client.force_login(self.client_user)
+        response = self.client.post(reverse('assistants:api_staff_bulk_upload_xlsx'), {
+            'client_id': self.client_obj.id,
+        })
+        self.assertEqual(response.status_code, 403)
+

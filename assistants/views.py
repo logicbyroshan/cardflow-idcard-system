@@ -772,7 +772,7 @@ def api_class_section_options(request):
     return JsonResponse(payload)
 
 
-@api_require_assistant_manager
+@api_require_super_admin
 @require_http_methods(["POST"])
 def api_staff_bulk_upload_xlsx(request):
     """
@@ -814,7 +814,7 @@ def api_staff_bulk_upload_xlsx(request):
     return JsonResponse(result.to_response_dict(), status=400)
 
 
-@api_require_assistant_manager
+@api_require_super_admin
 @require_http_methods(["POST"])
 def api_staff_auto_create(request):
     """

@@ -393,10 +393,12 @@
 {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="assistant" %}
 
 <!-- Auto Create Assistants Modal -->
+{% if is_super_admin %}
 {% include 'assistants/auto-create-modal.html' %}
 
 <!-- Bulk Upload Assistants Modal -->
 {% include 'assistants/bulk-upload-assistants-modal.html' %}
+{% endif %}
 
 <!-- Toast Notifications -->
 {% include 'partials/common/toast.html' %}
