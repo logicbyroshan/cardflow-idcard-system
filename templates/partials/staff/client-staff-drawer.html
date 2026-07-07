@@ -128,15 +128,29 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
             
             <!-- Permissions Section -->
             <div class="form-section" id="staff-permissions-section">
-                <div class="permission-header">
-                    <i class="fa-solid fa-shield-halved"></i> User Permission
+                <div class="permission-header" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fa-solid fa-shield-halved"></i> User Permission</span>
+                    {% if not is_client_admin %}
+                    <label class="toggle-switch" style="margin-left: auto; margin-right: 12px;">
+                        <input type="checkbox" class="master-toggle-input">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    {% endif %}
                 </div>
 
                 {# A locked permission row = client admin doesn't have that perm => can't delegate it #}
 
                 <!-- ID Card List Tabs -->
                 <div class="permission-category">
-                    <div class="category-title"><i class="fa-solid fa-list"></i> ID Card List Tabs</div>
+                    <div class="category-title" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="fa-solid fa-list"></i> ID Card List Tabs</span>
+                        {% if not is_client_admin %}
+                        <label class="toggle-switch" style="margin-left: auto;">
+                            <input type="checkbox" class="category-toggle-input">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        {% endif %}
+                    </div>
                     <div class="permissions-grid">
                         <div class="permission-row{% if not perm_idcard_pending_list %} perm-locked{% endif %}" {% if not perm_idcard_pending_list %}title="Admin has not granted you this permission"{% endif %}>
                             <label class="toggle-switch">
@@ -165,7 +179,15 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
 
                 <!-- Export & Download -->
                 <div class="permission-category">
-                    <div class="category-title"><i class="fa-solid fa-file-pdf"></i> Export &amp; Download</div>
+                    <div class="category-title" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="fa-solid fa-file-pdf"></i> Export &amp; Download</span>
+                        {% if not is_client_admin %}
+                        <label class="toggle-switch" style="margin-left: auto;">
+                            <input type="checkbox" class="category-toggle-input">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        {% endif %}
+                    </div>
                     <div class="permissions-grid">
                         <div class="permission-row{% if not perm_idcard_bulk_download %} perm-locked{% endif %}" {% if not perm_idcard_bulk_download %}title="Admin has not granted you this permission"{% endif %}>
                             <label class="toggle-switch">
@@ -179,7 +201,15 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
 
                 <!-- Card Actions -->
                 <div class="permission-category">
-                    <div class="category-title"><i class="fa-solid fa-id-card"></i> Card Actions</div>
+                    <div class="category-title" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="fa-solid fa-id-card"></i> Card Actions</span>
+                        {% if not is_client_admin %}
+                        <label class="toggle-switch" style="margin-left: auto;">
+                            <input type="checkbox" class="category-toggle-input">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        {% endif %}
+                    </div>
                     <div class="permissions-grid">
                         <div class="permission-row{% if not perm_idcard_add %} perm-locked{% endif %}" {% if not perm_idcard_add %}title="Admin has not granted you this permission"{% endif %}>
                             <label class="toggle-switch">
@@ -235,7 +265,15 @@ Mirrors operator-drawer.html but with Group Assignment instead of Client Assignm
 
                 <!-- App & Access -->
                 <div class="permission-category">
-                    <div class="category-title"><i class="fa-solid fa-mobile-screen"></i> App &amp; Access</div>
+                    <div class="category-title" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="fa-solid fa-mobile-screen"></i> App &amp; Access</span>
+                        {% if not is_client_admin %}
+                        <label class="toggle-switch" style="margin-left: auto;">
+                            <input type="checkbox" class="category-toggle-input">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        {% endif %}
+                    </div>
                     <div class="permissions-grid">
                         <div class="permission-row{% if not perm_mobile_app %} perm-locked{% endif %}" {% if not perm_mobile_app %}title="Admin has not granted you this permission"{% endif %}>
                             <label class="toggle-switch">

@@ -159,13 +159,159 @@
   <!-- HTMX Configuration -->
   {% include 'partials/htmx-config.html' %}
 
-    <!-- Register panel service worker for standalone install UX. -->
+  <!-- Register panel service worker for standalone install UX. -->
   <script>
   if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/sw.js?v={{ APP_VERSION|urlencode }}', { scope: '/' }).catch(function () {});
       });
   }
+  </script>
+
+  <!-- Master / Category Permission Toggles sync logic -->
+  <script>
+    (function() {
+        function updateCategoryToggleState(category) {
+            var catInput = category.querySelector('.category-toggle-input');
+            if (!catInput) return;
+            
+            var checkboxes = category.querySelectorAll('.permissions-grid input[type="checkbox"]:not(.category-toggle-input):not(.master-toggle-input)');
+            if (checkboxes.length === 0) return;
+            
+            var allChecked = true;
+            checkboxes.forEach(function(cb) {
+                if (!cb.checked) {
+                    allChecked = false;
+                }
+            });
+            catInput.checked = allChecked;
+        }
+
+        function updateMasterToggleState(section) {
+            var masterInput = section.querySelector('.master-toggle-input');
+            if (!masterInput) return;
+            
+            var checkboxes = section.querySelectorAll('.permissions-grid input[type="checkbox"]:not(.category-toggle-input):not(.master-toggle-input)');
+            if (checkboxes.length === 0) return;
+            
+            var allChecked = true;
+            checkboxes.forEach(function(cb) {
+                if (!cb.checked) {
+                    allChecked = false;
+                }
+            });
+            masterInput.checked = allChecked;
+        }
+
+        function initializeAllToggles(container) {
+            if (!container) return;
+            container.querySelectorAll('.permission-category').forEach(function(cat) {
+                updateCategoryToggleState(cat);
+            });
+            var section = container.querySelector('.form-section');
+            if (section) {
+                updateMasterToggleState(section);
+            }
+        }
+
+        // Event delegation for checkbox changes
+        document.addEventListener('change', function(e) {
+            if (!e.target) return;
+
+            // 1. Master Toggle changed
+            if (e.target.classList.contains('master-toggle-input')) {
+                var section = e.target.closest('.form-section');
+                if (!section) return;
+                var checked = e.target.checked;
+                
+                // Set all category toggles in this section
+                section.querySelectorAll('.category-toggle-input').forEach(function(catInput) {
+                    catInput.checked = checked;
+                });
+                
+                // Set all regular permission inputs
+                section.querySelectorAll('.permissions-grid input[type="checkbox"]').forEach(function(input) {
+                    if (!input.disabled && input.checked !== checked) {
+                        input.checked = checked;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            }
+            
+            // 2. Category Toggle changed
+            else if (e.target.classList.contains('category-toggle-input')) {
+                var category = e.target.closest('.permission-category');
+                if (!category) return;
+                var checked = e.target.checked;
+                
+                category.querySelectorAll('.permissions-grid input[type="checkbox"]').forEach(function(input) {
+                    if (!input.disabled && input.checked !== checked) {
+                        input.checked = checked;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+                
+                // Update master toggle
+                var section = category.closest('.form-section');
+                if (section) {
+                    updateMasterToggleState(section);
+                }
+            }
+            
+            // 3. Regular checkbox changed
+            else if (e.target.closest('.permissions-grid') && e.target.type === 'checkbox') {
+                var category = e.target.closest('.permission-category');
+                if (category) {
+                    updateCategoryToggleState(category);
+                }
+                var section = e.target.closest('.form-section');
+                if (section) {
+                    updateMasterToggleState(section);
+                }
+            }
+        });
+
+        // MutationObserver to watch side-drawers and side-modals being opened/transitioned
+        var drawerObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && (mutation.attributeName === 'class' || mutation.attributeName === 'style')) {
+                    var target = mutation.target;
+                    if (target.classList.contains('open') || target.classList.contains('active') || (target.style && target.style.display !== 'none')) {
+                        // Check if drawer has permissions section and initialize
+                        setTimeout(function() {
+                            initializeAllToggles(target);
+                        }, 50); // slight delay to let other populating scripts complete
+                    }
+                }
+            });
+        });
+
+        // Start observing drawers / modals
+        document.addEventListener('DOMContentLoaded', function() {
+            var drawers = document.querySelectorAll('.side-drawer, .side-modal, .drawer-content, aside, .modal');
+            drawers.forEach(function(drawer) {
+                drawerObserver.observe(drawer, { attributes: true, attributeFilter: ['class', 'style'] });
+                // Initial check
+                initializeAllToggles(drawer);
+            });
+
+            // Body observer for dynamically injected elements
+            var bodyObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) {
+                            var matches = node.matches('.side-drawer, .side-modal, .drawer-content, aside, .modal') ? [node] : node.querySelectorAll('.side-drawer, .side-modal, .drawer-content, aside, .modal');
+                            matches.forEach(function(drawer) {
+                                drawerObserver.observe(drawer, { attributes: true, attributeFilter: ['class', 'style'] });
+                                initializeAllToggles(drawer);
+                            });
+                        }
+                    });
+                });
+            });
+            bodyObserver.observe(document.body, { childList: true, subtree: true });
+        });
+    })();
   </script>
 
     <!-- Impersonate Modal (Pro User) -->
