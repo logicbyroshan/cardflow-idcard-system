@@ -374,6 +374,67 @@ class PhotographerService(BaseService):
             return cls._unexpected_error_result('toggle_status', e)
 
     @classmethod
+    def set_temp_password(cls, staff_id: int, new_password: str, request=None) -> ServiceResult:
+        """
+        Set a temporary password for a photographer.
+        Sends a welcome email with the new credentials.
+        """
+        try:
+            photographer = Photographer.objects.filter(id=staff_id).select_related('user').first()
+            if not photographer:
+                return ServiceResult(success=False, message='Photographer not found')
+
+            user = photographer.user
+            if not new_password or not new_password.strip():
+                return ServiceResult(success=False, message='Password cannot be empty')
+
+            # Normalization (e.g. if the user enters space-padded values or phone numbers)
+            normalized_password = normalize_password_input(new_password)
+
+            user.set_password(normalized_password)
+            user.save(update_fields=['password'])
+
+            # Send welcome email with new temp password
+            email_sent = False
+            try:
+                email_sent, _ = send_welcome_email(
+                    name=user.get_full_name(),
+                    email=user.email,
+                    password=new_password,
+                    role='photographer',
+                    phone=user.phone or '',
+                    request=request,
+                    email_variant='temp_password',
+                )
+                EmailLog.objects.create(
+                    recipient_name=user.get_full_name(),
+                    recipient_email=user.email,
+                    subject='Temporary password update',
+                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
+                    status=EmailLog.STATUS_SENT if email_sent else EmailLog.STATUS_FAILED,
+                )
+            except Exception as e:
+                logger.warning('Failed to send photographer temp password email: %s', e)
+
+            # Log this action using ActivityService
+            from core.services.activity_service import ActivityService
+            ActivityService.log(
+                'staff_password_reset',
+                f'Temporary password set for photographer "{user.get_full_name()}"',
+                user=request.user if request else None,
+                request=request,
+                target_model='Photographer',
+                target_id=photographer.id,
+                target_name=user.get_full_name(),
+            )
+
+            msg = f'Temporary password updated successfully for photographer "{user.get_full_name()}".'
+            return ServiceResult(success=True, message=msg, data={'email_sent': email_sent})
+        except Exception as e:
+            logger.exception("PhotographerService temp password error: %s", e)
+            return ServiceResult(success=False, message='An error occurred')
+
+    @classmethod
     def _unexpected_error_result(cls, method_name: str, e: Exception) -> ServiceResult:
         logger.exception("Unexpected error in PhotographerService.%s: %s", method_name, e)
         return ServiceResult(success=False, message=f"An unexpected error occurred during {method_name}")

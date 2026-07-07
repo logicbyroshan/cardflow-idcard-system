@@ -836,7 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
         try {
-            var url = '/api/staff/' + tempPwTargetId + '/set-temp-password/';
+            var url = '/panel/api/photographer/' + tempPwTargetId + '/set-temp-password/';
             var result = await ApiClient.post(url, { password: password });
             if (result.success) {
                 closeTempPasswordModal();

@@ -315,3 +315,31 @@ def api_photographer_client_tables(request, client_id):
     except Exception as e:
         logger.exception("Photographer client tables error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
+
+
+@require_http_methods(["POST"])
+@api_require_photographer_manager
+def api_photographer_set_temp_password(request, staff_id):
+    """API endpoint to set a temporary password for a photographer"""
+    try:
+        data, json_err = _parse_json_object(request)
+        if json_err:
+            return json_err
+        new_password = data.get('password', '').strip()
+        if not new_password:
+            return JsonResponse({'success': False, 'message': 'Password is required'}, status=400)
+        if len(new_password) < 8:
+            return JsonResponse({'success': False, 'message': 'Password must be at least 8 characters'}, status=400)
+
+        # Validate against Django password validators
+        from django.contrib.auth.password_validation import validate_password
+        try:
+            validate_password(new_password)
+        except Exception as validation_error:
+            return JsonResponse({'success': False, 'message': '; '.join(validation_error.messages)}, status=400)
+
+        result = PhotographerService.set_temp_password(staff_id, new_password, request=request)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except Exception as e:
+        logger.exception("Photographer temp password error: %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)

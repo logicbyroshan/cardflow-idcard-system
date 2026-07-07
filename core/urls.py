@@ -172,6 +172,7 @@ urlpatterns = [
     path('api/photographer/<int:staff_id>/toggle-status/', views.api_photographer_toggle_status, name='api_photographer_toggle_status'),
     path('api/photographer/<int:staff_id>/assign-clients/', views.api_photographer_assign_clients, name='api_photographer_assign_clients'),
     path('api/photographer/client/<int:client_id>/tables/', views.api_photographer_client_tables, name='api_photographer_client_tables'),
+    path('api/photographer/<int:staff_id>/set-temp-password/', views.api_photographer_set_temp_password, name='api_photographer_set_temp_password'),
     
     # ID Card Table APIs
     path('api/group/<int:group_id>/tables/', views.api_idcard_table_list, name='api_idcard_table_list'),

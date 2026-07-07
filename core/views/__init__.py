@@ -210,5 +210,6 @@ from .photographer_api import (
     api_photographer_toggle_status,
     api_photographer_assign_clients,
     api_photographer_client_tables,
+    api_photographer_set_temp_password,
 )
 
