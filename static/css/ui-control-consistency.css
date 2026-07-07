@@ -345,15 +345,9 @@ label,
   font-size: var(--ui-modal-control-size) !important;
 }
 
-/* Status Badges - uniform icon-only rounded square status badge overrides */
-.status-badge,
+/* Status Badges - uniform icon-only rounded square status badge overrides for Dashboard, and text badges elsewhere */
 .dashboard-client-status-badge,
-.assist-status-badge,
-.staff-status-badge,
-.client-status-badge,
-.reprint-status-badge,
-.email-status-badge,
-.wf-status-badge {
+.assist-status-badge {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -372,14 +366,30 @@ label,
     overflow: visible !important;
 }
 
-.status-badge::before,
+.status-badge,
+.staff-status-badge,
+.client-status-badge,
+.reprint-status-badge,
+.email-status-badge,
+.wf-status-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 3px 10px !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    text-transform: capitalize !important;
+    box-shadow: none !important;
+    margin: 0 4px !important;
+    vertical-align: middle !important;
+    border: 1px solid transparent !important;
+}
+
+/* Pseudo-elements for dashboard icon badges */
 .dashboard-client-status-badge::before,
-.assist-status-badge::before,
-.staff-status-badge::before,
-.client-status-badge::before,
-.reprint-status-badge::before,
-.email-status-badge::before,
-.wf-status-badge::before {
+.assist-status-badge::before {
     font-family: "Font Awesome 6 Free" !important;
     font-weight: 900 !important;
     display: inline-flex !important;
@@ -395,7 +405,17 @@ label,
     height: 18px !important;
 }
 
-/* Active status styles (Checkmark icon inside green rounded square) */
+/* Remove icon prefix from other status badges so they only show text */
+.status-badge::before,
+.staff-status-badge::before,
+.client-status-badge::before,
+.reprint-status-badge::before,
+.email-status-badge::before,
+.wf-status-badge::before {
+    content: none !important;
+}
+
+/* Active status styles */
 .status-badge.active,
 .status-badge.status-active,
 .status-badge.status-printed,
@@ -406,20 +426,15 @@ label,
 .email-status-badge.sent {
     background: #d1fae5 !important; /* Green-100 */
     border-color: #6ee7b7 !important; /* Green-300 */
-}
-.status-badge.active::before,
-.status-badge.status-active::before,
-.status-badge.status-printed::before,
-.dashboard-client-status-badge.is-active::before,
-.assist-status-badge:not(.inactive)::before,
-.staff-status-badge.active::before,
-.client-status-badge.active::before,
-.email-status-badge.sent::before {
-    content: "\f00c" !important; /* checkmark */
     color: #065f46 !important; /* Green-800 */
 }
+.dashboard-client-status-badge.is-active::before,
+.assist-status-badge:not(.inactive)::before {
+    content: "\f00c" !important; /* checkmark */
+    color: #065f46 !important;
+}
 
-/* Inactive / Deleted / Failed status styles (Cross icon inside red rounded square) */
+/* Inactive / Deleted / Failed status styles */
 .status-badge.inactive,
 .status-badge.status-inactive,
 .status-badge.status-deleted,
@@ -430,20 +445,15 @@ label,
 .email-status-badge.failed {
     background: #fee2e2 !important; /* Red-100 */
     border-color: #fca5a5 !important; /* Red-300 */
-}
-.status-badge.inactive::before,
-.status-badge.status-inactive::before,
-.status-badge.status-deleted::before,
-.dashboard-client-status-badge.is-inactive::before,
-.assist-status-badge.inactive::before,
-.staff-status-badge.inactive::before,
-.client-status-badge.inactive::before,
-.email-status-badge.failed::before {
-    content: "\f00d" !important; /* times / xmark */
     color: #991b1b !important; /* Red-800 */
 }
+.dashboard-client-status-badge.is-inactive::before,
+.assist-status-badge.inactive::before {
+    content: "\f00d" !important; /* times / xmark */
+    color: #991b1b !important;
+}
 
-/* Pending / Suspended / Warning status styles (Exclamation icon inside orange rounded square) */
+/* Pending / Suspended / Warning status styles */
 .status-badge.pending,
 .status-badge.status-pending,
 .dashboard-client-status-badge.is-suspended,
@@ -451,14 +461,13 @@ label,
 .email-status-badge.on-hold {
     background: #ffedd5 !important; /* Orange-100 */
     border-color: #fdba74 !important; /* Orange-300 */
+    color: #ea580c !important; /* Orange-600 */
 }
-.status-badge.pending::before,
-.status-badge.status-pending::before,
 .dashboard-client-status-badge.is-suspended::before,
 .email-status-badge.pending::before,
 .email-status-badge.on-hold::before {
     content: "\f12a" !important; /* exclamation point */
-    color: #ea580c !important; /* Orange-600 */
+    color: #ea580c !important;
 }
 
 
