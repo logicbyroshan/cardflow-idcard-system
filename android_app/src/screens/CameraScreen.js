@@ -84,14 +84,36 @@ export default function CameraScreen({ navigation, route }) {
   const cameraReadyTimestamp = useRef(0);
 
   // Dynamic layout dimension for the camera preview box to center coordinates
-  const [containerLayout, setContainerLayout] = useState({ width, height: height - 260 });
+  const [containerLayout, setContainerLayout] = useState({ width, height: height - 260, y: 80 });
+
+  // Toggles for face check simulator warning testing
+  const [simNoPerson, setSimNoPerson] = useState(false);
+  const [simClosedEyes, setSimClosedEyes] = useState(false);
+  const [simSunglasses, setSimSunglasses] = useState(false);
+  const [simOpticalGlasses, setSimOpticalGlasses] = useState(false);
+  const [showQaPanel, setShowQaPanel] = useState(false);
 
   const onCameraReady = useCallback(() => {
     setIsCameraReady(true);
     cameraReadyTimestamp.current = Date.now();
   }, []);
 
-  const isReady = isLevel;
+  // Determine active warning message based on priority order
+  let activeWarning = '';
+  if (!isLevel) {
+    activeWarning = angleError || 'Align Device Upright';
+  } else if (simNoPerson) {
+    activeWarning = 'No Person Detected';
+  } else if (simClosedEyes) {
+    activeWarning = 'Closed Eyes Detected';
+  } else if (simSunglasses) {
+    activeWarning = 'Sunglasses Detected';
+  } else if (simOpticalGlasses) {
+    activeWarning = 'Optical Glasses Detected';
+  }
+
+  const isReady = !activeWarning;
+
 
   useEffect(() => {
     if (!isFocused) {
@@ -339,9 +361,9 @@ export default function CameraScreen({ navigation, route }) {
   const takePicture = async () => {
     if (!cameraRef.current || !isCameraReady || isCapturing) return;
 
-    // Enforce level camera angle
-    if (!isLevel) {
-      alert('Hold phone straight! ' + (angleError || 'Please align the camera.'));
+    // Block capture if any alignment or face warning is active
+    if (activeWarning) {
+      alert(`Capture Blocked: ${activeWarning}`);
       return;
     }
 
@@ -396,7 +418,7 @@ export default function CameraScreen({ navigation, route }) {
   const rectW = containerLayout.width * 0.76;
   const rectH = rectW * (25 / 19.5); // 19.5 to 25 ratio
   const rectX = (containerLayout.width - rectW) / 2;
-  const rectY = (containerLayout.height - rectH) / 2;
+  const rectY = containerLayout.y + (containerLayout.height - rectH) / 2;
 
   const ovalCx = containerLayout.width / 2;
   const ovalCy = rectY + rectH / 2;
@@ -411,11 +433,125 @@ export default function CameraScreen({ navigation, route }) {
   // Align the top of the head (Y = 40) to have exactly a 10% gap from the top of the box
   const silY = rectY + (rectH * 0.1) - 40 * scaleVal;
 
-
   return (
     <View style={s.root}>
       <StatusBar hidden />
       
+      {/* Background Camera Feed (renders full screen to completely avoid black letterbox gaps) */}
+      <View style={StyleSheet.absoluteFill}>
+        {isFocused && (
+          <CameraView 
+            style={s.camera} 
+            ref={cameraRef} 
+            facing={facing}
+            onCameraReady={onCameraReady}
+          />
+        )}
+      </View>
+
+      {/* Full-screen Svg Stencil Overlay */}
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <Svg height="100%" width="100%">
+          <Defs>
+            <Mask id="mask">
+              <Rect width="100%" height="100%" fill="#fff" />
+              <Rect 
+                x={rectX} 
+                y={rectY} 
+                width={rectW} 
+                height={rectH} 
+                rx={16} 
+                ry={16} 
+                fill="#000" 
+              />
+            </Mask>
+          </Defs>
+          <Rect width="100%" height="100%" fill="rgba(15, 23, 42, 0.65)" mask="url(#mask)" />
+
+          {/* Custom Silhouette Outline Guide (Head & Shoulders, perfectly mapped inside 19.5:25 frame without squeeze) */}
+          <G>
+            <Path
+              d="M 500,40 C 660,40 750,140 750,270 C 750,305 742,330 735,350 C 765,340 775,360 775,395 C 775,435 745,465 715,475 C 685,550 600,670 500,670 C 400,670 315,550 285,475 C 255,465 225,435 225,395 C 225,360 235,340 265,350 C 258,330 250,305 250,270 C 250,140 340,40 500,40 Z"
+              x={silX}
+              y={silY}
+              scaleX={scaleVal}
+              scaleY={scaleVal}
+              stroke={isReady ? '#22c55e' : '#f59e0b'}
+              strokeWidth={3 / scaleVal}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <Path
+              d="M 680,545 C 670,620 710,720 950,830"
+              x={silX}
+              y={silY}
+              scaleX={scaleVal}
+              scaleY={scaleVal}
+              stroke={isReady ? '#22c55e' : '#f59e0b'}
+              strokeWidth={3 / scaleVal}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <Path
+              d="M 320,545 C 330,620 290,720 50,830"
+              x={silX}
+              y={silY}
+              scaleX={scaleVal}
+              scaleY={scaleVal}
+              stroke={isReady ? '#22c55e' : '#f59e0b'}
+              strokeWidth={3 / scaleVal}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </G>
+        </Svg>
+
+        {/* Dynamic Scanning Box around the oval */}
+        <Animated.View style={[
+          s.trackerContainer, 
+          { 
+            top: rectY - 15, 
+            left: rectX - 15,
+            width: rectW + 30,
+            height: rectH + 30,
+            transform: [{ scale: pulseAnim }],
+            opacity: isReady ? 1 : 0.8
+          }
+        ]}>
+          {/* Tracker Corner Brackets */}
+          <View style={[s.cornerTL, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
+          <View style={[s.cornerTR, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
+          <View style={[s.cornerBL, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
+          <View style={[s.cornerBR, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
+
+          {/* Animated Laser Scanning Sweep */}
+          <Animated.View style={[
+            s.laserLine,
+            {
+              backgroundColor: isReady ? '#22c55e' : '#f59e0b',
+              shadowColor: isReady ? '#22c55e' : '#f59e0b',
+              transform: [{
+                translateY: scanAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [15, rectH + 15]
+                })
+              }]
+            }
+          ]} />
+        </Animated.View>
+        
+        {/* scanner guide layout */}
+        <View style={[s.guideBox, { top: rectY - 42, left: ovalCx - (containerLayout.width * 0.7) / 2 }]}>
+          <Text style={[s.guideLabel, { color: isReady ? '#22c55e' : '#f59e0b' }]}>
+            {isReady ? "FACE LOCK ALIGNED" : activeWarning.toUpperCase()}
+          </Text>
+        </View>
+      </View>
+
+      {/* Naturally positioned layout elements overlay on top of the camera background */}
       {/* Top Status Bar sits naturally at the top */}
       <View style={s.topStatus}>
         {currentStudent ? (
@@ -434,134 +570,22 @@ export default function CameraScreen({ navigation, route }) {
           <View style={[isReady ? s.bgSuccess : s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
             <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
             <Text style={[s.levelText, { marginLeft: 0, fontSize: 13, fontFamily: fontFamily.bold }]}>
-              {angleError || "Biometric Face Aligned"}
+              {activeWarning || "Biometric Face Aligned"}
             </Text>
           </View>
         )}
       </View>
 
-      {/* Camera view container is naturally constrained to take all remaining middle space */}
+      {/* Naturally positioned transparent mock view to measure the available middle layout space */}
       <View 
-        style={s.cameraContainer}
+        style={{ flex: 1, backgroundColor: 'transparent' }} 
         onLayout={(e) => {
-          const { width: w, height: h } = e.nativeEvent.layout;
+          const { width: w, height: h, y } = e.nativeEvent.layout;
           if (w && h) {
-            setContainerLayout({ width: w, height: h });
+            setContainerLayout({ width: w, height: h, y });
           }
         }}
-      >
-        {isFocused && (
-          <CameraView 
-            style={s.camera} 
-            ref={cameraRef} 
-            facing={facing}
-            onCameraReady={onCameraReady}
-          />
-        )}
-
-        {/* Premium Face Scanner Stencil Overlay resides inside the camera view container to only overlay the camera feed */}
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-          <Svg height="100%" width="100%">
-            <Defs>
-              <Mask id="mask">
-                <Rect width="100%" height="100%" fill="#fff" />
-                <Rect 
-                  x={rectX} 
-                  y={rectY} 
-                  width={rectW} 
-                  height={rectH} 
-                  rx={16} 
-                  ry={16} 
-                  fill="#000" 
-                />
-              </Mask>
-            </Defs>
-            <Rect width="100%" height="100%" fill="rgba(15, 23, 42, 0.65)" mask="url(#mask)" />
-
-            {/* Custom Silhouette Outline Guide (Head & Shoulders, perfectly mapped inside 19.5:25 frame without squeeze) */}
-            <G>
-              <Path
-                d="M 500,40 C 660,40 750,140 750,270 C 750,305 742,330 735,350 C 765,340 775,360 775,395 C 775,435 745,465 715,475 C 685,550 600,670 500,670 C 400,670 315,550 285,475 C 255,465 225,435 225,395 C 225,360 235,340 265,350 C 258,330 250,305 250,270 C 250,140 340,40 500,40 Z"
-                x={silX}
-                y={silY}
-                scaleX={scaleVal}
-                scaleY={scaleVal}
-                stroke={isReady ? '#22c55e' : '#f59e0b'}
-                strokeWidth={3 / scaleVal}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-              <Path
-                d="M 680,545 C 670,620 710,720 950,830"
-                x={silX}
-                y={silY}
-                scaleX={scaleVal}
-                scaleY={scaleVal}
-                stroke={isReady ? '#22c55e' : '#f59e0b'}
-                strokeWidth={3 / scaleVal}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-              <Path
-                d="M 320,545 C 330,620 290,720 50,830"
-                x={silX}
-                y={silY}
-                scaleX={scaleVal}
-                scaleY={scaleVal}
-                stroke={isReady ? '#22c55e' : '#f59e0b'}
-                strokeWidth={3 / scaleVal}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </G>
-          </Svg>
-
-
-          {/* Dynamic Scanning Box around the oval */}
-          <Animated.View style={[
-            s.trackerContainer, 
-            { 
-              top: rectY - 15, 
-              left: rectX - 15,
-              width: rectW + 30,
-              height: rectH + 30,
-              transform: [{ scale: pulseAnim }],
-              opacity: isReady ? 1 : 0.8
-            }
-          ]}>
-            {/* Tracker Corner Brackets */}
-            <View style={[s.cornerTL, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
-            <View style={[s.cornerTR, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
-            <View style={[s.cornerBL, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
-            <View style={[s.cornerBR, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
-
-            {/* Animated Laser Scanning Sweep */}
-            <Animated.View style={[
-              s.laserLine,
-              {
-                backgroundColor: isReady ? '#22c55e' : '#f59e0b',
-                shadowColor: isReady ? '#22c55e' : '#f59e0b',
-                transform: [{
-                  translateY: scanAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [15, rectH + 15]
-                  })
-                }]
-              }
-            ]} />
-          </Animated.View>
-          
-          {/* scanner guide layout */}
-          <View style={[s.guideBox, { top: rectY - 42, left: ovalCx - (containerLayout.width * 0.7) / 2 }]}>
-            <Text style={[s.guideLabel, { color: isReady ? '#22c55e' : '#f59e0b' }]}>
-              {isReady ? "FACE LOCK ALIGNED" : "ALIGN DEVICE UPRIGHT"}
-            </Text>
-          </View>
-        </View>
-      </View>
+      />
 
       {/* Bottom Controls sit naturally at the bottom */}
       <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15, flexDirection: 'column', paddingHorizontal: 0, paddingTop: 0 }]}>
@@ -577,32 +601,73 @@ export default function CameraScreen({ navigation, route }) {
             })()}
           </View>
         )}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%', paddingHorizontal: 20, marginTop: nextStudent ? 0 : 20 }}>
-        <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
-          <View style={s.controlIconSquare}>
-            <DynamicIcon name="redo" size={18} color="#fff" />
-          </View>
-          <Text style={s.controlLabel}>Flip</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[s.captureBtnMain, (!isCameraReady || isCapturing) && { opacity: 0.5 }]} 
-          onPress={takePicture} 
-          disabled={!isCameraReady || isCapturing}
-        >
-           <View style={s.captureBtnOuter}>
-              <View style={s.captureBtnInnerMain} />
-           </View>
-           <Text style={s.controlLabel}>Capture</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.controlItem} onPress={() => navigation.goBack()}>
-          <View style={s.controlIconSquare}>
-            <DynamicIcon name="times" size={18} color="#fff" />
+        {/* Collapsible QA Simulation Test Panel */}
+        {showQaPanel && (
+          <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', width: '100%', paddingHorizontal: 12, marginBottom: 16 }}>
+            <TouchableOpacity 
+              style={[{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }, simNoPerson && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
+              onPress={() => setSimNoPerson(p => !p)}
+            >
+              <Text style={{ color: '#fff', fontSize: 9, fontFamily: fontFamily.bold }}>No Person</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }, simClosedEyes && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
+              onPress={() => setSimClosedEyes(p => !p)}
+            >
+              <Text style={{ color: '#fff', fontSize: 9, fontFamily: fontFamily.bold }}>Closed Eyes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }, simSunglasses && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
+              onPress={() => setSimSunglasses(p => !p)}
+            >
+              <Text style={{ color: '#fff', fontSize: 9, fontFamily: fontFamily.bold }}>Sunglasses</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }, simOpticalGlasses && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
+              onPress={() => setSimOpticalGlasses(p => !p)}
+            >
+              <Text style={{ color: '#fff', fontSize: 9, fontFamily: fontFamily.bold }}>Glasses</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={s.controlLabel}>Cancel</Text>
-        </TouchableOpacity>
+        )}
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%', paddingHorizontal: 20, marginTop: nextStudent ? 0 : 20, marginBottom: 8 }}>
+          <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
+            <View style={s.controlIconSquare}>
+              <DynamicIcon name="redo" size={18} color="#fff" />
+            </View>
+            <Text style={s.controlLabel}>Flip</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[s.captureBtnMain, (!isCameraReady || isCapturing) && { opacity: 0.5 }]} 
+            onPress={takePicture} 
+            disabled={!isCameraReady || isCapturing}
+          >
+             <View style={s.captureBtnOuter}>
+                <View style={s.captureBtnInnerMain} />
+             </View>
+             <Text style={s.controlLabel}>Capture</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.controlItem} onPress={() => navigation.goBack()}>
+            <View style={s.controlIconSquare}>
+              <DynamicIcon name="times" size={18} color="#fff" />
+            </View>
+            <Text style={s.controlLabel}>Cancel</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Debug panel toggler link */}
+        <TouchableOpacity 
+          style={{ paddingVertical: 6, width: '100%', alignItems: 'center' }} 
+          onPress={() => setShowQaPanel(p => !p)}
+        >
+          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, fontFamily: fontFamily.bold, letterSpacing: 0.5 }}>
+            {showQaPanel ? "[- CLOSE DEBUG PANEL]" : "[+ OPEN SIMULATOR PANEL]"}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
