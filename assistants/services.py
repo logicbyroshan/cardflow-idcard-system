@@ -938,8 +938,9 @@ class AssistantService(BaseService):
     def toggle_assistant_status(cls, user, assistant_id: int) -> ServiceResult:
         """Toggle assistant active/inactive status."""
         try:
+            # First fetch without locking to do permission checks cheaply
             try:
-                assistant = Assistant.objects.select_for_update().select_related('user', 'client').get(id=assistant_id)
+                assistant = Assistant.objects.select_related('user', 'client').get(id=assistant_id)
             except Assistant.DoesNotExist:
                 return ServiceResult(success=False, message='Assistant not found')
 
@@ -949,7 +950,7 @@ class AssistantService(BaseService):
                     return ServiceResult(success=False, message='Access denied')
                 if not cls._has_staff_management_access(user):
                     return ServiceResult(success=False, message='Permission denied')
-            
+
             client = assistant.client
             with transaction.atomic():
                 # Re-query inside atomic transaction with select_for_update
@@ -959,15 +960,15 @@ class AssistantService(BaseService):
                 assistant_user.save(update_fields=['is_active'])
 
                 transaction.on_commit(lambda cid=client.id: cls._bump_dashboard_cache_versions(cid))
-            
+
             status = 'active' if assistant_user.is_active else 'inactive'
-            
+
             return ServiceResult(
                 success=True,
                 message=f'Assistant status changed to {status}!',
                 data={'is_active': assistant_user.is_active}
             )
-            
+
         except Exception as e:
             return cls._unexpected_error_result('toggle_assistant_status', e)
     

@@ -308,6 +308,29 @@ class PermissionService:
         return f'perm:client_ids:v1:{user.pk}:{role}:{marker}'
 
     @classmethod
+    def _get_or_create_photographer_profile(cls, user):
+        """Get or create the Photographer profile for the photographer user."""
+        profile = getattr(user, 'photographer_profile', None)
+        if profile is None and cls.is_photographer(user):
+            from core.models import Photographer
+            try:
+                profile, created = Photographer.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'perm_mobile_app': True,
+                        'perm_idcard_pending_list': True,
+                        'perm_idcard_verified_list': True,
+                        'perm_idcard_add': True,
+                        'perm_idcard_info': True,
+                        'perm_idcard_bulk_download': True,
+                    }
+                )
+                setattr(user, 'photographer_profile', profile)
+            except Exception as e:
+                logger.error("Failed to get_or_create photographer profile for user %s: %s", getattr(user, 'username', '?'), e)
+        return profile
+
+    @classmethod
     def get_profile(cls, user):
         """
         Get the permission-bearing profile for a user.
@@ -317,7 +340,7 @@ class PermissionService:
         if cls.is_operator(user):
             return getattr(user, 'operator_profile', None)
         if cls.is_photographer(user):
-            return getattr(user, 'photographer_profile', None)
+            return cls._get_or_create_photographer_profile(user)
         if cls.is_client(user):
             return getattr(user, 'client_profile', None)
         if cls.is_assistant(user):
@@ -385,7 +408,7 @@ class PermissionService:
 
         # --- 2. operator / photographer ---
         if cls.is_operator(user) or cls.is_photographer(user):
-            profile = getattr(user, 'operator_profile', None) if cls.is_operator(user) else getattr(user, 'photographer_profile', None)
+            profile = cls.get_profile(user)
             if not profile:
                 logger.warning("PermissionService.has: user %s has no profile", user.pk)
                 return False
@@ -508,6 +531,8 @@ class PermissionService:
                 )
                 assistant_value = False  # fail closed: deny if not explicitly defined
 
+
+
             # Client perm
             if hasattr(assistant.client, perm_key):
                 client_value = getattr(assistant.client, perm_key, False)
@@ -584,7 +609,7 @@ class PermissionService:
                 return ids
 
             if cls.is_photographer(user):
-                photo = getattr(user, 'photographer_profile', None)
+                photo = cls.get_profile(user)
                 if photo:
                     from django.utils import timezone
                     from django.db.models import Q
@@ -698,7 +723,7 @@ class PermissionService:
                 else:
                     context[perm] = False
         elif is_photo:
-            profile = getattr(user, 'photographer_profile', None)
+            profile = cls.get_profile(user)
             ALLOWED_PHOTOGRAPHER_PERMS = {
                 'perm_mobile_app',
                 'perm_idcard_add',

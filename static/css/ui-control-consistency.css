@@ -385,6 +385,11 @@ label,
     margin: 0 4px !important;
     vertical-align: middle !important;
     border: 1px solid transparent !important;
+    /* Reset width/height constraints from icon-only badges */
+    width: auto !important;
+    min-width: unset !important;
+    max-width: unset !important;
+    height: auto !important;
 }
 
 /* Pseudo-elements for dashboard icon badges */
@@ -407,11 +412,17 @@ label,
 
 /* Remove icon prefix from other status badges so they only show text */
 .status-badge::before,
+.status-badge::after,
 .staff-status-badge::before,
+.staff-status-badge::after,
 .client-status-badge::before,
+.client-status-badge::after,
 .reprint-status-badge::before,
+.reprint-status-badge::after,
 .email-status-badge::before,
-.wf-status-badge::before {
+.email-status-badge::after,
+.wf-status-badge::before,
+.wf-status-badge::after {
     content: none !important;
 }
 
