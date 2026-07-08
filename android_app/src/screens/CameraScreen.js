@@ -91,7 +91,7 @@ export default function CameraScreen({ navigation, route }) {
   const [simClosedEyes, setSimClosedEyes] = useState(false);
   const [simSunglasses, setSimSunglasses] = useState(false);
   const [simOpticalGlasses, setSimOpticalGlasses] = useState(false);
-  const [showQaPanel, setShowQaPanel] = useState(false);
+  const [showQaPanel, setShowQaPanel] = useState(true);
 
   const onCameraReady = useCallback(() => {
     setIsCameraReady(true);
@@ -610,35 +610,41 @@ export default function CameraScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* Collapsible QA Simulation Test Panel */}
+        {/* QA Biometric Simulation Panel - Open by default for easy testing */}
         {showQaPanel && (
-          <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', width: '100%', paddingHorizontal: 12, marginBottom: 16 }}>
-            <TouchableOpacity 
-              style={[{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }, simNoPerson && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
-              onPress={() => setSimNoPerson(p => !p)}
-            >
-              <Text style={{ color: '#fff', fontSize: 9, fontFamily: fontFamily.bold }}>No Person</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }, simClosedEyes && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
-              onPress={() => setSimClosedEyes(p => !p)}
-            >
-              <Text style={{ color: '#fff', fontSize: 9, fontFamily: fontFamily.bold }}>Closed Eyes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }, simSunglasses && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
-              onPress={() => setSimSunglasses(p => !p)}
-            >
-              <Text style={{ color: '#fff', fontSize: 9, fontFamily: fontFamily.bold }}>Sunglasses</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[{ paddingVertical: 5, paddingHorizontal: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }, simOpticalGlasses && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
-              onPress={() => setSimOpticalGlasses(p => !p)}
-            >
-              <Text style={{ color: '#fff', fontSize: 9, fontFamily: fontFamily.bold }}>Glasses</Text>
-            </TouchableOpacity>
+          <View style={{ width: '100%', paddingHorizontal: 16, marginBottom: 12, alignItems: 'center' }}>
+            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: fontFamily.bold, marginBottom: 8, letterSpacing: 1 }}>
+              QA BIOMETRIC SIMULATOR (TAP TO TEST WARNINGS)
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', width: '100%' }}>
+              <TouchableOpacity 
+                style={[{ flex: 1, paddingVertical: 8, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' }, simNoPerson && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
+                onPress={() => setSimNoPerson(p => !p)}
+              >
+                <Text style={{ color: '#fff', fontSize: 10, fontFamily: fontFamily.bold }}>No Person</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[{ flex: 1, paddingVertical: 8, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' }, simClosedEyes && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
+                onPress={() => setSimClosedEyes(p => !p)}
+              >
+                <Text style={{ color: '#fff', fontSize: 10, fontFamily: fontFamily.bold }}>Closed Eyes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[{ flex: 1, paddingVertical: 8, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' }, simSunglasses && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
+                onPress={() => setSimSunglasses(p => !p)}
+              >
+                <Text style={{ color: '#fff', fontSize: 10, fontFamily: fontFamily.bold }}>Sunglasses</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[{ flex: 1, paddingVertical: 8, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' }, simOpticalGlasses && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
+                onPress={() => setSimOpticalGlasses(p => !p)}
+              >
+                <Text style={{ color: '#fff', fontSize: 10, fontFamily: fontFamily.bold }}>Glasses</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
+
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%', paddingHorizontal: 20, marginTop: nextStudent ? 0 : 20, marginBottom: 8 }}>
           <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
