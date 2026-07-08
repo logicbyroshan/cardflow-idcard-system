@@ -75,12 +75,16 @@ export default function CameraScreen({ navigation, route }) {
   const nextStudent = fastCaptureCards?.[currentIndex + 1];
 
   const [isLevel, setIsLevel] = useState(true);
+  const [angleError, setAngleError] = useState('');
   const [isCapturing, setIsCapturing] = useState(false);
   const [hasSensor, setHasSensor] = useState(true);
   const [facing, setFacing] = useState('back');
   const [isCameraReady, setIsCameraReady] = useState(false);
   const cameraRef = useRef(null);
   const cameraReadyTimestamp = useRef(0);
+
+  // Dynamic layout dimension for the camera preview box to center coordinates
+  const [containerLayout, setContainerLayout] = useState({ width, height: height - 260 });
 
   const onCameraReady = useCallback(() => {
     setIsCameraReady(true);
@@ -164,16 +168,32 @@ export default function CameraScreen({ navigation, route }) {
         setHasSensor(available);
         if (!available) {
           setIsLevel(true);
+          setAngleError('');
           return;
         }
         subscription = Accelerometer.addListener(data => {
-          // Purely active advisory sensor; set isLevel to true to ensure flat-desk testing is fully unlocked
-          setIsLevel(true);
+          // Verify phone is held upright and straight (within roll and pitch limits)
+          const rollAngle = Math.abs(data.x);
+          const pitchAngle = Math.abs(data.z);
+          const isPortrait = data.y < -0.7;
+
+          let err = '';
+          if (!isPortrait) {
+            err = 'Hold phone in portrait mode';
+          } else if (rollAngle > 0.15) {
+            err = 'Phone is tilted left/right';
+          } else if (pitchAngle > 0.20) {
+            err = 'Phone is tilted forward/backward';
+          }
+
+          setAngleError(err);
+          setIsLevel(!err);
         });
         Accelerometer.setUpdateInterval(200);
       } catch (e) {
         setHasSensor(false);
         setIsLevel(true);
+        setAngleError('');
       }
     };
     subscribe();
@@ -318,6 +338,13 @@ export default function CameraScreen({ navigation, route }) {
 
   const takePicture = async () => {
     if (!cameraRef.current || !isCameraReady || isCapturing) return;
+
+    // Enforce level camera angle
+    if (!isLevel) {
+      alert('Hold phone straight! ' + (angleError || 'Please align the camera.'));
+      return;
+    }
+
     // Wait at least 400ms after camera ready before capturing to avoid init errors
     const elapsed = Date.now() - cameraReadyTimestamp.current;
     if (elapsed < 400) {
@@ -365,132 +392,20 @@ export default function CameraScreen({ navigation, route }) {
     );
   }
 
-  // Stencil position values
-  const ovalCx = width / 2;
-  const ovalCy = height / 2.3;
-  const ovalRx = width * 0.35;
-  const ovalRy = height * 0.26;
+  // Stencil position values (Strict 2:3 aspect ratio card frame)
+  const rectW = containerLayout.width * 0.76;
+  const rectH = rectW * 1.5; // 2:3 Ratio
+  const rectX = (containerLayout.width - rectW) / 2;
+  const rectY = (containerLayout.height - rectH) / 2;
+
+  const ovalCx = containerLayout.width / 2;
+  const ovalCy = rectY + rectH / 2;
 
   return (
     <View style={s.root}>
       <StatusBar hidden />
       
-      <View style={s.cameraContainer}>
-        {isFocused && (
-          <CameraView 
-            style={s.camera} 
-            ref={cameraRef} 
-            facing={facing}
-            onCameraReady={onCameraReady}
-          />
-        )}
-      </View>
-
-      {/* Premium Face Scanner Stencil Overlay with Dynamic Tracker & Laser */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Svg height="100%" width="100%">
-          <Defs>
-            <Mask id="mask">
-              <Rect width="100%" height="100%" fill="#fff" />
-              <Ellipse cx={ovalCx} cy={ovalCy} rx={ovalRx} ry={ovalRy} fill="#000" />
-            </Mask>
-          </Defs>
-          <Rect width="100%" height="100%" fill="rgba(15, 23, 42, 0.65)" mask="url(#mask)" />
-          
-          <Ellipse 
-            cx={ovalCx} 
-            cy={ovalCy} 
-            rx={ovalRx} 
-            ry={ovalRy} 
-            stroke={isReady ? '#22c55e' : '#f59e0b'} 
-            strokeWidth="2.5" 
-            strokeDasharray="6 6" 
-            fill="none" 
-          />
-
-          {/* Custom Silhouette Outline Guide (Head & Shoulders) */}
-          <G>
-            <Path
-              d="M 500,40 C 660,40 750,140 750,270 C 750,305 742,330 735,350 C 765,340 775,360 775,395 C 775,435 745,465 715,475 C 685,550 600,670 500,670 C 400,670 315,550 285,475 C 255,465 225,435 225,395 C 225,360 235,340 265,350 C 258,330 250,305 250,270 C 250,140 340,40 500,40 Z"
-              x={ovalCx - ovalRx}
-              y={ovalCy - ovalRy}
-              scaleX={(ovalRx * 2) / 1000}
-              scaleY={(ovalRy * 2) / 1000}
-              stroke={isReady ? '#22c55e' : '#f59e0b'}
-              strokeWidth={3.5 * (1000 / (ovalRx * 2))}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-            <Path
-              d="M 680,545 C 670,620 710,720 950,830"
-              x={ovalCx - ovalRx}
-              y={ovalCy - ovalRy}
-              scaleX={(ovalRx * 2) / 1000}
-              scaleY={(ovalRy * 2) / 1000}
-              stroke={isReady ? '#22c55e' : '#f59e0b'}
-              strokeWidth={3.5 * (1000 / (ovalRx * 2))}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-            <Path
-              d="M 320,545 C 330,620 290,720 50,830"
-              x={ovalCx - ovalRx}
-              y={ovalCy - ovalRy}
-              scaleX={(ovalRx * 2) / 1000}
-              scaleY={(ovalRy * 2) / 1000}
-              stroke={isReady ? '#22c55e' : '#f59e0b'}
-              strokeWidth={3.5 * (1000 / (ovalRx * 2))}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          </G>
-        </Svg>
-
-        {/* Dynamic Scanning Box around the oval */}
-        <Animated.View style={[
-          s.trackerContainer, 
-          { 
-            top: ovalCy - ovalRy - 15, 
-            left: ovalCx - ovalRx - 15,
-            width: (ovalRx * 2) + 30,
-            height: (ovalRy * 2) + 30,
-            transform: [{ scale: pulseAnim }],
-            opacity: isReady ? 1 : 0.8
-          }
-        ]}>
-          {/* Tracker Corner Brackets */}
-          <View style={[s.cornerTL, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
-          <View style={[s.cornerTR, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
-          <View style={[s.cornerBL, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
-          <View style={[s.cornerBR, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
-
-          {/* Animated Laser Scanning Sweep */}
-          <Animated.View style={[
-            s.laserLine,
-            {
-              backgroundColor: isReady ? '#22c55e' : '#f59e0b',
-              shadowColor: isReady ? '#22c55e' : '#f59e0b',
-              transform: [{
-                translateY: scanAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [15, (ovalRy * 2) + 15]
-                })
-              }]
-            }
-          ]} />
-        </Animated.View>
-        
-        {/* scanner guide layout */}
-        <View style={[s.guideBox, { top: ovalCy - ovalRy - 42, left: ovalCx - (width * 0.7) / 2 }]}>
-          <Text style={[s.guideLabel, { color: isReady ? '#22c55e' : '#f59e0b' }]}>
-            {isReady ? "FACE LOCK ALIGNED" : "POSITION FACE INSIDE OVAL"}
-          </Text>
-        </View>
-      </View>
-
+      {/* Top Status Bar sits naturally at the top */}
       <View style={s.topStatus}>
         {currentStudent ? (
           <View style={[s.bgSuccess, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', ...shadows.md }]}>
@@ -508,12 +423,135 @@ export default function CameraScreen({ navigation, route }) {
           <View style={[isReady ? s.bgSuccess : s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
             <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
             <Text style={[s.levelText, { marginLeft: 0, fontSize: 13, fontFamily: fontFamily.bold }]}>
-              {!isLevel ? "Align Face & Hold Upright" : "Biometric Face Aligned"}
+              {angleError || "Biometric Face Aligned"}
             </Text>
           </View>
         )}
       </View>
 
+      {/* Camera view container is naturally constrained to take all remaining middle space */}
+      <View 
+        style={s.cameraContainer}
+        onLayout={(e) => {
+          const { width: w, height: h } = e.nativeEvent.layout;
+          if (w && h) {
+            setContainerLayout({ width: w, height: h });
+          }
+        }}
+      >
+        {isFocused && (
+          <CameraView 
+            style={s.camera} 
+            ref={cameraRef} 
+            facing={facing}
+            onCameraReady={onCameraReady}
+          />
+        )}
+
+        {/* Premium Face Scanner Stencil Overlay resides inside the camera view container to only overlay the camera feed */}
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <Svg height="100%" width="100%">
+            <Defs>
+              <Mask id="mask">
+                <Rect width="100%" height="100%" fill="#fff" />
+                <Rect 
+                  x={rectX} 
+                  y={rectY} 
+                  width={rectW} 
+                  height={rectH} 
+                  rx={16} 
+                  ry={16} 
+                  fill="#000" 
+                />
+              </Mask>
+            </Defs>
+            <Rect width="100%" height="100%" fill="rgba(15, 23, 42, 0.65)" mask="url(#mask)" />
+
+            {/* Custom Silhouette Outline Guide (Head & Shoulders, perfectly mapped inside 2:3 frame) */}
+            <G>
+              <Path
+                d="M 500,40 C 660,40 750,140 750,270 C 750,305 742,330 735,350 C 765,340 775,360 775,395 C 775,435 745,465 715,475 C 685,550 600,670 500,670 C 400,670 315,550 285,475 C 255,465 225,435 225,395 C 225,360 235,340 265,350 C 258,330 250,305 250,270 C 250,140 340,40 500,40 Z"
+                x={rectX}
+                y={rectY}
+                scaleX={rectW / 1000}
+                scaleY={rectH / 1000}
+                stroke={isReady ? '#22c55e' : '#f59e0b'}
+                strokeWidth={3.5 * (1000 / rectW)}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+              <Path
+                d="M 680,545 C 670,620 710,720 950,830"
+                x={rectX}
+                y={rectY}
+                scaleX={rectW / 1000}
+                scaleY={rectH / 1000}
+                stroke={isReady ? '#22c55e' : '#f59e0b'}
+                strokeWidth={3.5 * (1000 / rectW)}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+              <Path
+                d="M 320,545 C 330,620 290,720 50,830"
+                x={rectX}
+                y={rectY}
+                scaleX={rectW / 1000}
+                scaleY={rectH / 1000}
+                stroke={isReady ? '#22c55e' : '#f59e0b'}
+                strokeWidth={3.5 * (1000 / rectW)}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </G>
+          </Svg>
+
+          {/* Dynamic Scanning Box around the oval */}
+          <Animated.View style={[
+            s.trackerContainer, 
+            { 
+              top: rectY - 15, 
+              left: rectX - 15,
+              width: rectW + 30,
+              height: rectH + 30,
+              transform: [{ scale: pulseAnim }],
+              opacity: isReady ? 1 : 0.8
+            }
+          ]}>
+            {/* Tracker Corner Brackets */}
+            <View style={[s.cornerTL, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
+            <View style={[s.cornerTR, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
+            <View style={[s.cornerBL, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
+            <View style={[s.cornerBR, { borderColor: isReady ? '#22c55e' : '#f59e0b' }]} />
+
+            {/* Animated Laser Scanning Sweep */}
+            <Animated.View style={[
+              s.laserLine,
+              {
+                backgroundColor: isReady ? '#22c55e' : '#f59e0b',
+                shadowColor: isReady ? '#22c55e' : '#f59e0b',
+                transform: [{
+                  translateY: scanAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [15, rectH + 15]
+                  })
+                }]
+              }
+            ]} />
+          </Animated.View>
+          
+          {/* scanner guide layout */}
+          <View style={[s.guideBox, { top: rectY - 42, left: ovalCx - (containerLayout.width * 0.7) / 2 }]}>
+            <Text style={[s.guideLabel, { color: isReady ? '#22c55e' : '#f59e0b' }]}>
+              {isReady ? "FACE LOCK ALIGNED" : "ALIGN DEVICE UPRIGHT"}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Bottom Controls sit naturally at the bottom */}
       <View style={[s.bottomControls, { paddingBottom: Math.max(insets.bottom, 25) + 15, flexDirection: 'column', paddingHorizontal: 0, paddingTop: 0 }]}>
         {nextStudent && (
           <View style={{ backgroundColor: '#f97316', width: '100%', paddingVertical: 10, paddingHorizontal: 20, marginBottom: 20, alignItems: 'center', justifyContent: 'center' }}>
@@ -567,7 +605,7 @@ const s = StyleSheet.create({
   },
   camera: { flex: 1 },
   
-  topStatus: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, alignItems: 'stretch' },
+  topStatus: { alignItems: 'stretch' },
   levelIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, ...shadows.md },
   bgSuccess: { backgroundColor: '#22c55e' },
   bgError: { backgroundColor: '#ef4444' },
@@ -577,8 +615,6 @@ const s = StyleSheet.create({
   guideLabel: { fontSize: 11, fontFamily: 'SairaSemiCondensed-Bold', textAlign: 'center', backgroundColor: 'rgba(15, 23, 42, 0.8)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: radius.xs, letterSpacing: 0.5 },
 
   bottomControls: { 
-    position: 'absolute', 
-    bottom: 0, 
     width: '100%', 
     flexDirection: 'row', 
     alignItems: 'center', 
