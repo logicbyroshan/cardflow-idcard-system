@@ -555,34 +555,33 @@ export default function CameraScreen({ navigation, route }) {
       {/* Naturally positioned layout elements overlay on top of the camera background */}
       {/* Top Status Bar sits naturally at the top */}
       <View style={s.topStatus}>
-        {activeWarning ? (
-          <View style={[s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
-            <DynamicIcon name="exclamation-triangle" size={14} color="#fff" />
-            <Text style={[s.levelText, { marginLeft: 0, fontSize: 13, fontFamily: fontFamily.bold }]}>
-              {activeWarning.toUpperCase()}
-            </Text>
-          </View>
-        ) : currentStudent ? (
-          <View style={[s.bgSuccess, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', ...shadows.md }]}>
+        {currentStudent ? (
+          <View style={[isReady ? s.bgSuccess : s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', ...shadows.md }]}>
             {(() => {
               const info = resolveStudentInfo(currentStudent);
               return (
                 <>
-                  <Text style={[s.levelText, { fontSize: 16, fontFamily: fontFamily.bold, color: '#fff', textAlign: 'center', marginLeft: 0 }]}>{info.name.toUpperCase()}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {!isReady && <DynamicIcon name="exclamation-triangle" size={14} color="#fff" />}
+                    <Text style={[s.levelText, { fontSize: 16, fontFamily: fontFamily.bold, color: '#fff', textAlign: 'center', marginLeft: 0 }]}>
+                      {info.name.toUpperCase()}
+                    </Text>
+                  </View>
                   <Text style={[s.levelText, { fontSize: 12, color: 'rgba(255, 255, 255, 0.9)', marginTop: 2, textAlign: 'center', marginLeft: 0, fontFamily: fontFamily.medium }]}>CLASS: {info.classVal.toUpperCase()}  |  SECTION: {info.sectionVal.toUpperCase()}</Text>
                 </>
               );
             })()}
           </View>
         ) : (
-          <View style={[s.bgSuccess, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
-            <DynamicIcon name="check" size={14} color="#fff" />
+          <View style={[isReady ? s.bgSuccess : s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
+            <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
             <Text style={[s.levelText, { marginLeft: 0, fontSize: 13, fontFamily: fontFamily.bold }]}>
-              BIOMETRIC FACE ALIGNED
+              {activeWarning || "BIOMETRIC FACE ALIGNED"}
             </Text>
           </View>
         )}
       </View>
+
 
 
       {/* Naturally positioned transparent mock view to measure the available middle layout space */}
