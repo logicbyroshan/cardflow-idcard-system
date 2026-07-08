@@ -108,10 +108,8 @@ export default function CameraScreen({ navigation, route }) {
     activeWarning = 'No Person Detected';
   } else if (simClosedEyes) {
     activeWarning = 'Closed Eyes Detected';
-  } else if (simSunglasses) {
-    activeWarning = 'Sunglasses Detected';
-  } else if (simOpticalGlasses) {
-    activeWarning = 'Optical Glasses Detected';
+  } else if (simSunglasses || simOpticalGlasses) {
+    activeWarning = 'Glasses Detected';
   } else if (serverWarning) {
     activeWarning = serverWarning;
   } else if (!isLevel) {
@@ -434,10 +432,8 @@ export default function CameraScreen({ navigation, route }) {
             setServerWarning('No Person Detected');
           } else if (!eyes_open) {
             setServerWarning('Closed Eyes Detected');
-          } else if (wearing_sunglasses) {
-            setServerWarning('Sunglasses Detected');
-          } else if (wearing_glasses) {
-            setServerWarning('Optical Glasses Detected');
+          } else if (wearing_sunglasses || wearing_glasses) {
+            setServerWarning('Glasses Detected');
           } else {
             // Success! Set the photo state to move to preview
             setPhoto(photoObj);
