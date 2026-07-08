@@ -87,13 +87,6 @@ export default function CameraScreen({ navigation, route }) {
   // Dynamic layout dimension for the camera preview box to center coordinates
   const [containerLayout, setContainerLayout] = useState({ width, height: height - 260, y: 80 });
 
-  // Toggles for face check simulator warning testing
-  const [simNoPerson, setSimNoPerson] = useState(false);
-  const [simClosedEyes, setSimClosedEyes] = useState(false);
-  const [simSunglasses, setSimSunglasses] = useState(false);
-  const [simOpticalGlasses, setSimOpticalGlasses] = useState(false);
-  const [showQaPanel, setShowQaPanel] = useState(true);
-
   const [serverWarning, setServerWarning] = useState('');
   const [isValidating, setIsValidating] = useState(false);
 
@@ -102,15 +95,9 @@ export default function CameraScreen({ navigation, route }) {
     cameraReadyTimestamp.current = Date.now();
   }, []);
 
-  // Determine active warning message based on priority order (simulations take priority during QA testing)
+  // Determine active warning message based on priority order
   let activeWarning = '';
-  if (simNoPerson) {
-    activeWarning = 'No Person Detected';
-  } else if (simClosedEyes) {
-    activeWarning = 'Closed Eyes Detected';
-  } else if (simSunglasses || simOpticalGlasses) {
-    activeWarning = 'Glasses Detected';
-  } else if (serverWarning) {
+  if (serverWarning) {
     activeWarning = serverWarning;
   } else if (!isLevel) {
     activeWarning = angleError || 'Align Device Upright';
@@ -118,8 +105,8 @@ export default function CameraScreen({ navigation, route }) {
 
   const isReady = !activeWarning;
 
-  // Only layout tilt alignment and simulations block capture initially
-  const captureBlocker = simNoPerson || simClosedEyes || simSunglasses || simOpticalGlasses || (!isLevel ? (angleError || 'Align Device Upright') : '');
+  // Only layout tilt alignment blocks capture initially
+  const captureBlocker = !isLevel ? (angleError || 'Align Device Upright') : '';
 
 
 
@@ -662,42 +649,6 @@ export default function CameraScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* QA Biometric Simulation Panel - Open by default for easy testing */}
-        {showQaPanel && (
-          <View style={{ width: '100%', paddingHorizontal: 16, marginBottom: 12, alignItems: 'center' }}>
-            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: fontFamily.bold, marginBottom: 8, letterSpacing: 1 }}>
-              QA BIOMETRIC SIMULATOR (TAP TO TEST WARNINGS)
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', width: '100%' }}>
-              <TouchableOpacity 
-                style={[{ flex: 1, paddingVertical: 8, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' }, simNoPerson && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
-                onPress={() => setSimNoPerson(p => !p)}
-              >
-                <Text style={{ color: '#fff', fontSize: 10, fontFamily: fontFamily.bold }}>No Person</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[{ flex: 1, paddingVertical: 8, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' }, simClosedEyes && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
-                onPress={() => setSimClosedEyes(p => !p)}
-              >
-                <Text style={{ color: '#fff', fontSize: 10, fontFamily: fontFamily.bold }}>Closed Eyes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[{ flex: 1, paddingVertical: 8, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' }, simSunglasses && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
-                onPress={() => setSimSunglasses(p => !p)}
-              >
-                <Text style={{ color: '#fff', fontSize: 10, fontFamily: fontFamily.bold }}>Sunglasses</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[{ flex: 1, paddingVertical: 8, borderRadius: radius.xs, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' }, simOpticalGlasses && { backgroundColor: '#ef4444', borderColor: '#fca5a5' }]} 
-                onPress={() => setSimOpticalGlasses(p => !p)}
-              >
-                <Text style={{ color: '#fff', fontSize: 10, fontFamily: fontFamily.bold }}>Glasses</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%', paddingHorizontal: 20, marginTop: nextStudent ? 0 : 20, marginBottom: 8 }}>
           <TouchableOpacity style={s.controlItem} onPress={() => { setFacing(p => p === 'back' ? 'front' : 'back'); setServerWarning(''); }}>
             <View style={s.controlIconSquare}>
@@ -724,16 +675,6 @@ export default function CameraScreen({ navigation, route }) {
             <Text style={s.controlLabel}>Cancel</Text>
           </TouchableOpacity>
         </View>
- 
-        {/* Debug panel toggler link */}
-        <TouchableOpacity 
-          style={{ paddingVertical: 6, width: '100%', alignItems: 'center' }} 
-          onPress={() => setShowQaPanel(p => !p)}
-        >
-          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, fontFamily: fontFamily.bold, letterSpacing: 0.5 }}>
-            {showQaPanel ? "[- CLOSE DEBUG PANEL]" : "[+ OPEN SIMULATOR PANEL]"}
-          </Text>
-        </TouchableOpacity>
       </View>
 
       {isValidating && (
