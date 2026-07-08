@@ -28,6 +28,9 @@ from django.views.decorators.http import require_http_methods
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import make_aware, is_naive, localtime
 from django.utils import timezone
+import numpy as np
+import cv2
+
 from django.db import transaction
 from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.utils.timesince import timesince
@@ -7731,9 +7734,6 @@ def api_validate_photo(request):
         return JsonResponse({'success': False, 'message': 'No photo uploaded'}, status=400)
         
     try:
-        import numpy as np
-        import cv2
-        
         # Read image bytes
         file_bytes = np.asarray(bytearray(photo.read()), dtype=np.uint8)
         img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
