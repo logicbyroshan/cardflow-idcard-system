@@ -208,10 +208,9 @@
             container.querySelectorAll('.permission-category').forEach(function(cat) {
                 updateCategoryToggleState(cat);
             });
-            var section = container.querySelector('.form-section');
-            if (section) {
+            container.querySelectorAll('.form-section').forEach(function(section) {
                 updateMasterToggleState(section);
-            }
+            });
         }
 
         // Expose globally so page-specific JS can call after async data population

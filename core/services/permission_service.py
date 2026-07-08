@@ -309,12 +309,23 @@ class PermissionService:
 
     @classmethod
     def _get_or_create_photographer_profile(cls, user):
-        """Get or create the Photographer profile for the photographer user."""
-        profile = getattr(user, 'photographer_profile', None)
-        if profile is None and cls.is_photographer(user):
-            from core.models import Photographer
+        """Get or create the Photographer profile for the photographer user.
+
+        Always fetches fresh from the DB to avoid returning a stale cached
+        instance (e.g., perm_mobile_app=False) that was loaded before the
+        admin saved updated permissions.
+        """
+        from core.models import Photographer
+        try:
+            # Direct DB lookup — bypasses any cached instance on the user object
+            profile = Photographer.objects.get(user=user)
+            return profile
+        except Photographer.DoesNotExist:
+            if not cls.is_photographer(user):
+                return None
+            # Profile doesn't exist yet — create one with all permissions enabled
             try:
-                profile, created = Photographer.objects.get_or_create(
+                profile, _ = Photographer.objects.get_or_create(
                     user=user,
                     defaults={
                         'perm_mobile_app': True,
@@ -325,10 +336,19 @@ class PermissionService:
                         'perm_idcard_bulk_download': True,
                     }
                 )
-                setattr(user, 'photographer_profile', profile)
+                return profile
             except Exception as e:
-                logger.error("Failed to get_or_create photographer profile for user %s: %s", getattr(user, 'username', '?'), e)
-        return profile
+                logger.error(
+                    "Failed to get_or_create photographer profile for user %s: %s",
+                    getattr(user, 'username', '?'), e,
+                )
+                return None
+        except Exception as e:
+            logger.error(
+                "Failed to fetch photographer profile for user %s: %s",
+                getattr(user, 'username', '?'), e,
+            )
+            return None
 
     @classmethod
     def get_profile(cls, user):
