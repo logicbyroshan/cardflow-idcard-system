@@ -401,15 +401,16 @@ export default function CameraScreen({ navigation, route }) {
   const ovalCx = containerLayout.width / 2;
   const ovalCy = rectY + rectH / 2;
 
-  // Compute a uniform scale so the head-and-shoulders silhouette guide is not squeezed/distorted
-  const designW = 1000;
-  const designH = 1000;
-  const scaleVal = Math.min(rectW / designW, rectH / designH) * 0.82;
+  // Compute a uniform scale so the head-and-shoulders silhouette touches the left and right borders of the box perfectly
+  // Design coordinate width is from X = 50 to X = 950 (width of 900 units)
+  const scaleVal = rectW / 900;
 
-  const silW = designW * scaleVal;
-  const silH = designH * scaleVal;
-  const silX = rectX + (rectW - silW) / 2;
-  const silY = rectY + (rectH - silH) / 2;
+  // Align the left border of the guide (X = 50) with the left border of the box (rectX)
+  const silX = rectX - 50 * scaleVal;
+
+  // Align the top of the head (Y = 40) to have exactly a 10% gap from the top of the box
+  const silY = rectY + (rectH * 0.1) - 40 * scaleVal;
+
 
   return (
     <View style={s.root}>
@@ -613,7 +614,9 @@ const s = StyleSheet.create({
   cameraContainer: { 
     flex: 1,
     backgroundColor: '#000',
+    overflow: 'hidden',
   },
+
   camera: { flex: 1 },
   
   topStatus: { alignItems: 'stretch' },
