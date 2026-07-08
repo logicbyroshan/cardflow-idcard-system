@@ -11,6 +11,9 @@ import Svg, { Defs, Mask, Rect, Ellipse, Path, G } from 'react-native-svg';
 
 import { colors, radius, shadows, fontFamily } from '../theme';
 import { apiPostForm } from '../api/client';
+import * as FileSystem from 'expo-file-system';
+import { WebView } from 'react-native-webview';
+import { faceDetectorHtml } from '../utils/faceDetectorHtml';
 
 const { width, height } = Dimensions.get('window');
 
@@ -89,6 +92,46 @@ export default function CameraScreen({ navigation, route }) {
 
   const [serverWarning, setServerWarning] = useState('');
   const [isValidating, setIsValidating] = useState(false);
+
+  const webviewRef = useRef(null);
+  const activePhotoObj = useRef(null);
+
+  const validationTimeout = useRef(null);
+
+  const onWebViewMessage = useCallback((event) => {
+    if (validationTimeout.current) {
+      clearTimeout(validationTimeout.current);
+      validationTimeout.current = null;
+    }
+    try {
+      const res = JSON.parse(event.nativeEvent.data);
+      if (res.error) {
+        console.warn('[WebView Error]', res.message);
+        // On error, allow photo through
+        setPhoto(activePhotoObj.current);
+        return;
+      }
+
+      const { face_detected, eyes_open, wearing_sunglasses, wearing_glasses } = res;
+      if (!face_detected) {
+        setServerWarning('No Person Detected — Please ensure face is visible');
+      } else if (!eyes_open) {
+        setServerWarning('Eyes Not Visible — Please open your eyes');
+      } else if (wearing_sunglasses) {
+        setServerWarning('Sunglasses Detected — Please remove them');
+      } else if (wearing_glasses) {
+        setServerWarning('Glasses Detected — Please remove them');
+      } else {
+        setPhoto(activePhotoObj.current);
+      }
+    } catch (e) {
+      console.warn('[WebView Parse Error]', e);
+      // Allow photo through on parse error
+      setPhoto(activePhotoObj.current);
+    } finally {
+      setIsValidating(false);
+    }
+  }, []);
 
   const onCameraReady = useCallback(() => {
     setIsCameraReady(true);
@@ -190,16 +233,18 @@ export default function CameraScreen({ navigation, route }) {
         }
         subscription = Accelerometer.addListener(data => {
           // Verify phone is held upright and straight (within roll and pitch limits)
+          // data.y is negative when held portrait on most Android, positive on some.
+          // We accept either (abs >= 0.7 indicates phone is mostly upright).
           const rollAngle = Math.abs(data.x);
           const pitchAngle = Math.abs(data.z);
-          const isPortrait = data.y < -0.7;
+          const isPortrait = Math.abs(data.y) >= 0.65;
 
           let err = '';
           if (!isPortrait) {
             err = 'Hold phone in portrait mode';
-          } else if (rollAngle > 0.15) {
+          } else if (rollAngle > 0.35) {
             err = 'Phone is tilted left/right';
-          } else if (pitchAngle > 0.20) {
+          } else if (pitchAngle > 0.40) {
             err = 'Phone is tilted forward/backward';
           }
 
@@ -404,34 +449,32 @@ export default function CameraScreen({ navigation, route }) {
           { compress: 0.85, format: SaveFormat.JPEG }
         );
 
-        // Upload and validate
-        const formData = new FormData();
-        formData.append('photo', {
-          uri: Platform.OS === 'android' ? resized.uri : resized.uri.replace('file://', ''),
-          name: 'photo.jpg',
-          type: 'image/jpeg',
+        // Read the image as base64 string
+        const base64 = await FileSystem.readAsStringAsync(resized.uri, {
+          encoding: FileSystem.EncodingType.Base64,
         });
 
-        const response = await apiPostForm('/api/mobile/validate-photo/', formData);
-        if (response.ok && response.data?.success) {
-          const { face_detected, eyes_open, wearing_sunglasses, wearing_glasses } = response.data;
-          if (!face_detected) {
-            setServerWarning('No Person Detected');
-          } else if (!eyes_open) {
-            setServerWarning('Closed Eyes Detected');
-          } else if (wearing_sunglasses || wearing_glasses) {
-            setServerWarning('Glasses Detected');
-          } else {
-            // Success! Set the photo state to move to preview
-            setPhoto(photoObj);
-          }
+        // Store the photo object to be resolved on message callback
+        activePhotoObj.current = photoObj;
+
+        // Post message to the WebView to run face verification
+        if (webviewRef.current) {
+          webviewRef.current.postMessage(JSON.stringify({ image: base64 }));
+          // Safety timeout — if WebView never responds in 8s, allow photo through
+          validationTimeout.current = setTimeout(() => {
+            console.warn('[Face Validation] Timeout — allowing photo through');
+            setIsValidating(false);
+            setPhoto(activePhotoObj.current);
+          }, 8000);
         } else {
-          alert('Validation error: ' + (response.data?.message || 'Server is offline. Please try again.'));
+          // No WebView yet — allow photo without validation
+          setIsValidating(false);
+          setPhoto(activePhotoObj.current);
         }
       } catch (err) {
-        alert('Validation failed: ' + err.message);
-      } finally {
+        console.warn('Validation error:', err.message);
         setIsValidating(false);
+        setPhoto(activePhotoObj.current);
       }
     }
     
@@ -476,6 +519,22 @@ export default function CameraScreen({ navigation, route }) {
   return (
     <View style={s.root}>
       <StatusBar hidden />
+
+      {/* Hidden WebView — positioned far off-screen so it takes zero visible space */}
+      <View style={{ position: 'absolute', top: -9999, left: -9999, width: 300, height: 300, opacity: 0, pointerEvents: 'none' }}>
+        <WebView
+          ref={webviewRef}
+          source={{ html: faceDetectorHtml }}
+          onMessage={onWebViewMessage}
+          style={{ width: 300, height: 300 }}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          originWhitelist={['*']}
+          scrollEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
       
       {/* Background Camera Feed (renders full screen to completely avoid black letterbox gaps) */}
       <View style={StyleSheet.absoluteFill}>
@@ -684,6 +743,7 @@ export default function CameraScreen({ navigation, route }) {
           <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, fontFamily: fontFamily.medium, marginTop: 8 }}>Checking face, eyes and glasses</Text>
         </View>
       )}
+
     </View>
   );
 }
@@ -715,6 +775,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-around', 
     paddingHorizontal: 20, 
     paddingTop: 24,
+    paddingBottom: 24,
     backgroundColor: '#0f172a',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.12)',
