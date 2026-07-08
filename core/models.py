@@ -1242,7 +1242,7 @@ class Photographer(models.Model):
     perm_idcard_verified_list = models.BooleanField(default=False)
     perm_idcard_add = models.BooleanField(default=False)
     perm_idcard_info = models.BooleanField(default=False)
-    perm_mobile_app = models.BooleanField(default=False)
+    perm_mobile_app = models.BooleanField(default=True)
     perm_idcard_bulk_download = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
