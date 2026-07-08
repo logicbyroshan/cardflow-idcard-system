@@ -392,14 +392,24 @@ export default function CameraScreen({ navigation, route }) {
     );
   }
 
-  // Stencil position values (Strict 2:3 aspect ratio card frame)
+  // Stencil position values (Strict 19.5 : 25 aspect ratio card frame)
   const rectW = containerLayout.width * 0.76;
-  const rectH = rectW * 1.5; // 2:3 Ratio
+  const rectH = rectW * (25 / 19.5); // 19.5 to 25 ratio
   const rectX = (containerLayout.width - rectW) / 2;
   const rectY = (containerLayout.height - rectH) / 2;
 
   const ovalCx = containerLayout.width / 2;
   const ovalCy = rectY + rectH / 2;
+
+  // Compute a uniform scale so the head-and-shoulders silhouette guide is not squeezed/distorted
+  const designW = 1000;
+  const designH = 1000;
+  const scaleVal = Math.min(rectW / designW, rectH / designH) * 0.82;
+
+  const silW = designW * scaleVal;
+  const silH = designH * scaleVal;
+  const silX = rectX + (rectW - silW) / 2;
+  const silY = rectY + (rectH - silH) / 2;
 
   return (
     <View style={s.root}>
@@ -467,46 +477,47 @@ export default function CameraScreen({ navigation, route }) {
             </Defs>
             <Rect width="100%" height="100%" fill="rgba(15, 23, 42, 0.65)" mask="url(#mask)" />
 
-            {/* Custom Silhouette Outline Guide (Head & Shoulders, perfectly mapped inside 2:3 frame) */}
+            {/* Custom Silhouette Outline Guide (Head & Shoulders, perfectly mapped inside 19.5:25 frame without squeeze) */}
             <G>
               <Path
                 d="M 500,40 C 660,40 750,140 750,270 C 750,305 742,330 735,350 C 765,340 775,360 775,395 C 775,435 745,465 715,475 C 685,550 600,670 500,670 C 400,670 315,550 285,475 C 255,465 225,435 225,395 C 225,360 235,340 265,350 C 258,330 250,305 250,270 C 250,140 340,40 500,40 Z"
-                x={rectX}
-                y={rectY}
-                scaleX={rectW / 1000}
-                scaleY={rectH / 1000}
+                x={silX}
+                y={silY}
+                scaleX={scaleVal}
+                scaleY={scaleVal}
                 stroke={isReady ? '#22c55e' : '#f59e0b'}
-                strokeWidth={3.5 * (1000 / rectW)}
+                strokeWidth={3 / scaleVal}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 fill="none"
               />
               <Path
                 d="M 680,545 C 670,620 710,720 950,830"
-                x={rectX}
-                y={rectY}
-                scaleX={rectW / 1000}
-                scaleY={rectH / 1000}
+                x={silX}
+                y={silY}
+                scaleX={scaleVal}
+                scaleY={scaleVal}
                 stroke={isReady ? '#22c55e' : '#f59e0b'}
-                strokeWidth={3.5 * (1000 / rectW)}
+                strokeWidth={3 / scaleVal}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 fill="none"
               />
               <Path
                 d="M 320,545 C 330,620 290,720 50,830"
-                x={rectX}
-                y={rectY}
-                scaleX={rectW / 1000}
-                scaleY={rectH / 1000}
+                x={silX}
+                y={silY}
+                scaleX={scaleVal}
+                scaleY={scaleVal}
                 stroke={isReady ? '#22c55e' : '#f59e0b'}
-                strokeWidth={3.5 * (1000 / rectW)}
+                strokeWidth={3 / scaleVal}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 fill="none"
               />
             </G>
           </Svg>
+
 
           {/* Dynamic Scanning Box around the oval */}
           <Animated.View style={[

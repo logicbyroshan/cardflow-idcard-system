@@ -1,6 +1,10 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, Animated, Image, Dimensions, Appearance, LogBox, ActivityIndicator, TouchableOpacity, BackHandler } from 'react-native';
-// LogBox.ignoreAllLogs();
+// Ignore known harmless library-level styling warnings
+LogBox.ignoreLogs([
+  'Warning: Invalid prop `style` supplied to `React.Fragment`',
+]);
+
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -108,9 +112,9 @@ function AppContent() {
       return false; // let default behavior (exit/minimize) handle it
     };
 
-    BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
     return () => {
-      BackHandler.removeEventListener('hardwareBackPress', handleHardwareBack);
+      subscription.remove();
     };
   }, []);
 
