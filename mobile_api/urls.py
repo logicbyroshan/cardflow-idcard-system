@@ -70,4 +70,5 @@ urlpatterns = [
 
     # Device token registration for push notifications
     path('device-token/register/', views.api_register_device_token, name='api_register_device_token'),
+    path('validate-photo/', views.api_validate_photo, name='api_validate_photo'),
 ]

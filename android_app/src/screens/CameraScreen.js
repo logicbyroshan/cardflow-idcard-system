@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, Mask, Rect, Ellipse, Path, G } from 'react-native-svg';
 
 import { colors, radius, shadows, fontFamily } from '../theme';
+import { apiPostForm } from '../api/client';
 
 const { width, height } = Dimensions.get('window');
 
@@ -93,6 +94,9 @@ export default function CameraScreen({ navigation, route }) {
   const [simOpticalGlasses, setSimOpticalGlasses] = useState(false);
   const [showQaPanel, setShowQaPanel] = useState(true);
 
+  const [serverWarning, setServerWarning] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+
   const onCameraReady = useCallback(() => {
     setIsCameraReady(true);
     cameraReadyTimestamp.current = Date.now();
@@ -108,11 +112,16 @@ export default function CameraScreen({ navigation, route }) {
     activeWarning = 'Sunglasses Detected';
   } else if (simOpticalGlasses) {
     activeWarning = 'Optical Glasses Detected';
+  } else if (serverWarning) {
+    activeWarning = serverWarning;
   } else if (!isLevel) {
     activeWarning = angleError || 'Align Device Upright';
   }
 
   const isReady = !activeWarning;
+
+  // Only layout tilt alignment and simulations block capture initially
+  const captureBlocker = simNoPerson || simClosedEyes || simSunglasses || simOpticalGlasses || (!isLevel ? (angleError || 'Align Device Upright') : '');
 
 
 
@@ -333,6 +342,7 @@ export default function CameraScreen({ navigation, route }) {
                 navigation.goBack();
               } else {
                 setPhoto(null);
+                setServerWarning('');
               }
             }}
             disabled={cropping}
@@ -362,9 +372,9 @@ export default function CameraScreen({ navigation, route }) {
   const takePicture = async () => {
     if (!cameraRef.current || !isCameraReady || isCapturing) return;
 
-    // Block capture if any alignment or face warning is active
-    if (activeWarning) {
-      alert(`Capture Blocked: ${activeWarning}`);
+    // Block capture if any alignment or simulator warning is active
+    if (captureBlocker) {
+      alert(`Capture Blocked: ${captureBlocker}`);
       return;
     }
 
@@ -374,7 +384,9 @@ export default function CameraScreen({ navigation, route }) {
       await new Promise(resolve => setTimeout(resolve, 400 - elapsed));
     }
     setIsCapturing(true);
+    setServerWarning('');
     let attempts = 3;
+    let photoObj = null;
     while (attempts > 0) {
       try {
         const p = await cameraRef.current.takePictureAsync({
@@ -382,7 +394,7 @@ export default function CameraScreen({ navigation, route }) {
           shutterSound: false,
         });
         if (p) {
-          setPhoto(p);
+          photoObj = p;
           break;
         }
       } catch (e) {
@@ -396,6 +408,50 @@ export default function CameraScreen({ navigation, route }) {
         }
       }
     }
+
+    if (photoObj) {
+      setIsValidating(true);
+      try {
+        // Resize captured photo to 600px width for fast upload
+        const resized = await manipulateAsync(
+          photoObj.uri,
+          [{ resize: { width: 600 } }],
+          { compress: 0.85, format: SaveFormat.JPEG }
+        );
+
+        // Upload and validate
+        const formData = new FormData();
+        formData.append('photo', {
+          uri: Platform.OS === 'android' ? resized.uri : resized.uri.replace('file://', ''),
+          name: 'photo.jpg',
+          type: 'image/jpeg',
+        });
+
+        const response = await apiPostForm('/api/mobile/validate-photo/', formData);
+        if (response.ok && response.data?.success) {
+          const { face_detected, eyes_open, wearing_sunglasses, wearing_glasses } = response.data;
+          if (!face_detected) {
+            setServerWarning('No Person Detected');
+          } else if (!eyes_open) {
+            setServerWarning('Closed Eyes Detected');
+          } else if (wearing_sunglasses) {
+            setServerWarning('Sunglasses Detected');
+          } else if (wearing_glasses) {
+            setServerWarning('Optical Glasses Detected');
+          } else {
+            // Success! Set the photo state to move to preview
+            setPhoto(photoObj);
+          }
+        } else {
+          alert('Validation error: ' + (response.data?.message || 'Server is offline. Please try again.'));
+        }
+      } catch (err) {
+        alert('Validation failed: ' + err.message);
+      } finally {
+        setIsValidating(false);
+      }
+    }
+    
     setTimeout(() => setIsCapturing(false), 500);
   };
 
@@ -647,13 +703,13 @@ export default function CameraScreen({ navigation, route }) {
 
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', width: '100%', paddingHorizontal: 20, marginTop: nextStudent ? 0 : 20, marginBottom: 8 }}>
-          <TouchableOpacity style={s.controlItem} onPress={() => setFacing(p => p === 'back' ? 'front' : 'back')}>
+          <TouchableOpacity style={s.controlItem} onPress={() => { setFacing(p => p === 'back' ? 'front' : 'back'); setServerWarning(''); }}>
             <View style={s.controlIconSquare}>
               <DynamicIcon name="redo" size={18} color="#fff" />
             </View>
             <Text style={s.controlLabel}>Flip</Text>
           </TouchableOpacity>
-
+ 
           <TouchableOpacity 
             style={[s.captureBtnMain, (!isCameraReady || isCapturing) && { opacity: 0.5 }]} 
             onPress={takePicture} 
@@ -664,7 +720,7 @@ export default function CameraScreen({ navigation, route }) {
              </View>
              <Text style={s.controlLabel}>Capture</Text>
           </TouchableOpacity>
-
+ 
           <TouchableOpacity style={s.controlItem} onPress={() => navigation.goBack()}>
             <View style={s.controlIconSquare}>
               <DynamicIcon name="times" size={18} color="#fff" />
@@ -672,7 +728,7 @@ export default function CameraScreen({ navigation, route }) {
             <Text style={s.controlLabel}>Cancel</Text>
           </TouchableOpacity>
         </View>
-
+ 
         {/* Debug panel toggler link */}
         <TouchableOpacity 
           style={{ paddingVertical: 6, width: '100%', alignItems: 'center' }} 
@@ -683,6 +739,14 @@ export default function CameraScreen({ navigation, route }) {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {isValidating && (
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 999 }]}>
+          <ActivityIndicator size="large" color="#f97316" />
+          <Text style={{ color: '#fff', fontSize: 16, fontFamily: fontFamily.bold, marginTop: 16 }}>Validating Biometric Face...</Text>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, fontFamily: fontFamily.medium, marginTop: 8 }}>Checking face, eyes and glasses</Text>
+        </View>
+      )}
     </View>
   );
 }

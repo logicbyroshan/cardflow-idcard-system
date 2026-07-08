@@ -7719,3 +7719,105 @@ def api_photographer_upload_offline(request):
         'failed': failed
     })
 
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_validate_photo(request):
+    """
+    Validate a captured photo for face presence, open eyes, sunglasses, and glasses.
+    """
+    photo = request.FILES.get('photo')
+    if not photo:
+        return JsonResponse({'success': False, 'message': 'No photo uploaded'}, status=400)
+        
+    try:
+        import numpy as np
+        import cv2
+        
+        # Read image bytes
+        file_bytes = np.asarray(bytearray(photo.read()), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        if img is None:
+            return JsonResponse({'success': False, 'message': 'Invalid image file'}, status=400)
+            
+        h, w, _ = img.shape
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        
+        if len(faces) == 0:
+            return JsonResponse({
+                'success': True,
+                'face_detected': False,
+                'eyes_open': False,
+                'wearing_sunglasses': False,
+                'wearing_glasses': False,
+                'message': 'No Person Detected'
+            })
+            
+        # Get the largest face
+        faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
+        fx, fy, fw, fh = faces[0]
+        
+        face_gray = gray[fy:fy+fh, fx:fx+fw]
+        
+        # Upper area of face for eyes
+        eye_region_y_start = int(fh * 0.2)
+        eye_region_y_end = int(fh * 0.55)
+        eye_roi_gray = face_gray[eye_region_y_start:eye_region_y_end, :]
+        
+        eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+        eye_glasses_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye_tree_eyeglasses.xml')
+        
+        eyes = eye_cascade.detectMultiScale(eye_roi_gray, 1.15, 3)
+        eyes_glasses = eye_glasses_cascade.detectMultiScale(eye_roi_gray, 1.15, 3)
+        
+        # Sunglasses check: Check if eye band region is extremely dark
+        eye_band = face_gray[int(fh*0.35):int(fh*0.5), int(fw*0.15):int(fw*0.85)]
+        forehead_band = face_gray[int(fh*0.05):int(fh*0.2), int(fw*0.2):int(fw*0.8)]
+        
+        avg_eye_brightness = np.mean(eye_band) if eye_band.size > 0 else 128
+        avg_forehead_brightness = np.mean(forehead_band) if forehead_band.size > 0 else 128
+        
+        sunglasses_ratio = avg_eye_brightness / max(1.0, avg_forehead_brightness)
+        wearing_sunglasses = (sunglasses_ratio < 0.48) or (avg_eye_brightness < 50)
+        
+        # Optical Glasses check: Edge density on the nose bridge region
+        nose_x_start = int(fw * 0.4)
+        nose_x_end = int(fw * 0.6)
+        nose_y_start = int(fh * 0.3)
+        nose_y_end = int(fh * 0.45)
+        
+        nose_roi = face_gray[nose_y_start:nose_y_end, nose_x_start:nose_x_end]
+        wearing_glasses = False
+        if nose_roi.size > 0:
+            edges = cv2.Canny(nose_roi, 50, 150)
+            edge_density = np.sum(edges > 0) / edges.size
+            wearing_glasses = edge_density > 0.08
+            
+        # Eyes open check: if not wearing sunglasses, check detected eye count
+        eyes_open = True
+        if not wearing_sunglasses:
+            detected_eye_count = max(len(eyes), len(eyes_glasses))
+            if detected_eye_count < 2:
+                eyes_open = False
+                
+        return JsonResponse({
+            'success': True,
+            'face_detected': True,
+            'eyes_open': bool(eyes_open),
+            'wearing_sunglasses': bool(wearing_sunglasses),
+            'wearing_glasses': bool(wearing_glasses),
+            'message': 'Success'
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'Server processing error: {str(e)}'
+        }, status=500)
+
+
