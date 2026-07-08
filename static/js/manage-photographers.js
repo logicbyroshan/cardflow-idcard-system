@@ -866,10 +866,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var pwOptionInput = document.getElementById('staff-password-option');
     if (pwOptionInput) {
         pwOptionInput.addEventListener('change', function() {
-            var customGroup = document.getElementById('staffCustomPasswordGroup');
-            if (customGroup) {
-                customGroup.style.display = (this.value === 'custom') ? '' : 'none';
-            }
+            setPasswordOptionValue(this.value);
         });
     }
 

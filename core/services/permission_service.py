@@ -318,7 +318,7 @@ class PermissionService:
         from core.models import Photographer
         try:
             # Direct DB lookup — bypasses any cached instance on the user object
-            profile = Photographer.objects.get(user=user)
+            profile = Photographer.objects.get(user_id=user.id)
             return profile
         except Photographer.DoesNotExist:
             if not cls.is_photographer(user):
@@ -326,7 +326,7 @@ class PermissionService:
             # Profile doesn't exist yet — create one with all permissions enabled
             try:
                 profile, _ = Photographer.objects.get_or_create(
-                    user=user,
+                    user_id=user.id,
                     defaults={
                         'perm_mobile_app': True,
                         'perm_idcard_pending_list': True,
