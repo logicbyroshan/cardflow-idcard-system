@@ -382,6 +382,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (el) el.checked = data[apiField] === true;
                 });
 
+                // Sync master + category toggle visual states now that checkboxes are set
+                if (typeof window.refreshPermissionToggles === 'function') {
+                    window.refreshPermissionToggles(staffDrawer);
+                }
+
                 // Populate assignments
                 if (data.assigned_clients) {
                     data.assigned_clients.forEach(function(ass) {

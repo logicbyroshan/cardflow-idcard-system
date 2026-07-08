@@ -214,6 +214,11 @@
             }
         }
 
+        // Expose globally so page-specific JS can call after async data population
+        window.refreshPermissionToggles = function(container) {
+            initializeAllToggles(container || document);
+        };
+
         // Event delegation for checkbox changes
         document.addEventListener('change', function(e) {
             if (!e.target) return;
@@ -277,10 +282,12 @@
                 if (mutation.type === 'attributes' && (mutation.attributeName === 'class' || mutation.attributeName === 'style')) {
                     var target = mutation.target;
                     if (target.classList.contains('open') || target.classList.contains('active') || (target.style && target.style.display !== 'none')) {
-                        // Check if drawer has permissions section and initialize
+                        // Delay long enough so async data-fetch populates checkboxes first.
+                        // Page JS should also call window.refreshPermissionToggles() after
+                        // setting checkbox states from fetched data.
                         setTimeout(function() {
                             initializeAllToggles(target);
-                        }, 50); // slight delay to let other populating scripts complete
+                        }, 700); // increased from 50ms to outlast typical API fetch
                     }
                 }
             });
