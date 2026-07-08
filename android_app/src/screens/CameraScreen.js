@@ -98,11 +98,9 @@ export default function CameraScreen({ navigation, route }) {
     cameraReadyTimestamp.current = Date.now();
   }, []);
 
-  // Determine active warning message based on priority order
+  // Determine active warning message based on priority order (simulations take priority during QA testing)
   let activeWarning = '';
-  if (!isLevel) {
-    activeWarning = angleError || 'Align Device Upright';
-  } else if (simNoPerson) {
+  if (simNoPerson) {
     activeWarning = 'No Person Detected';
   } else if (simClosedEyes) {
     activeWarning = 'Closed Eyes Detected';
@@ -110,9 +108,12 @@ export default function CameraScreen({ navigation, route }) {
     activeWarning = 'Sunglasses Detected';
   } else if (simOpticalGlasses) {
     activeWarning = 'Optical Glasses Detected';
+  } else if (!isLevel) {
+    activeWarning = angleError || 'Align Device Upright';
   }
 
   const isReady = !activeWarning;
+
 
 
   useEffect(() => {
@@ -554,7 +555,14 @@ export default function CameraScreen({ navigation, route }) {
       {/* Naturally positioned layout elements overlay on top of the camera background */}
       {/* Top Status Bar sits naturally at the top */}
       <View style={s.topStatus}>
-        {currentStudent ? (
+        {activeWarning ? (
+          <View style={[s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
+            <DynamicIcon name="exclamation-triangle" size={14} color="#fff" />
+            <Text style={[s.levelText, { marginLeft: 0, fontSize: 13, fontFamily: fontFamily.bold }]}>
+              {activeWarning.toUpperCase()}
+            </Text>
+          </View>
+        ) : currentStudent ? (
           <View style={[s.bgSuccess, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', ...shadows.md }]}>
             {(() => {
               const info = resolveStudentInfo(currentStudent);
@@ -567,14 +575,15 @@ export default function CameraScreen({ navigation, route }) {
             })()}
           </View>
         ) : (
-          <View style={[isReady ? s.bgSuccess : s.bgError, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
-            <DynamicIcon name={isReady ? "check" : "exclamation-triangle"} size={14} color="#fff" />
+          <View style={[s.bgSuccess, { width: '100%', paddingTop: insets.top + 12, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...shadows.md }]}>
+            <DynamicIcon name="check" size={14} color="#fff" />
             <Text style={[s.levelText, { marginLeft: 0, fontSize: 13, fontFamily: fontFamily.bold }]}>
-              {activeWarning || "Biometric Face Aligned"}
+              BIOMETRIC FACE ALIGNED
             </Text>
           </View>
         )}
       </View>
+
 
       {/* Naturally positioned transparent mock view to measure the available middle layout space */}
       <View 
