@@ -165,6 +165,39 @@ class LiveClientPresenceService:
         if changed:
             cls._publish_dashboard_presence_changed(trigger='record_event', action=action)
 
+        # Check active users threshold for emergency alerts
+        try:
+            from django.core.cache import cache
+            active_users_count = cls._active_queryset(now=now).values_list('session_key', flat=True).distinct().count()
+            if active_users_count > 50:
+                if not cache.get('emergency_server_email_sent'):
+                    cache.set('emergency_server_email_sent', True, 1800) # Throttled for 30 minutes
+                    
+                    from core.models import User
+                    from core.utils.threaded_email import send_mail_async
+                    
+                    admin_emails = list(User.objects.filter(
+                        role='super_admin',
+                        is_active=True,
+                        email__isnull=False
+                    ).exclude(email='').values_list('email', flat=True))
+                    
+                    if admin_emails:
+                        subject = "[EMERGENCY] Update the Server / High Traffic Detected"
+                        message = (
+                            f"Emergency! Please update the server.\n\n"
+                            f"Live working users count has reached {active_users_count}, which is above the safe threshold of 50."
+                        )
+                        send_mail_async(
+                            subject=subject,
+                            message=message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=admin_emails,
+                            email_type='system'
+                        )
+        except Exception as alert_err:
+            logger.error("Failed to process emergency active users alert: %s", alert_err)
+
         return {
             'tracked': True,
             'changed': changed,
