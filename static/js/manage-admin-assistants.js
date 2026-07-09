@@ -713,7 +713,16 @@ document.addEventListener('DOMContentLoaded', function () {
     function _setChipClassSections(chip, cls, sections) {
         if (!chip) return;
         if (!chip.classSectionSelections) chip.classSectionSelections = {};
-        chip.classSectionSelections[String(cls)] = _normalizeStringList(sections || []);
+        var normalized = _normalizeStringList(sections || []);
+        if (normalized.length) {
+            // Has sections — store them.
+            chip.classSectionSelections[String(cls)] = normalized;
+        } else {
+            // No sections: remove the key so _syncChipSelections drops the class.
+            // Callers that want to explicitly keep a class-only entry must manage
+            // classSectionSelections directly (see class-only checkbox handler).
+            delete chip.classSectionSelections[String(cls)];
+        }
         _syncChipSelections(chip);
     }
 
@@ -1002,11 +1011,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 availableSections = chip.sectionOptions.slice();
             }
             var selectedSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
-            // A class is considered assigned if it has sections selected, OR if it was
-            // explicitly checked in a class-only table (key exists in classSectionSelections
-            // with empty sections because the table has no section field).
-            var classExplicitlySelected = chip.classSectionSelections && Object.prototype.hasOwnProperty.call(chip.classSectionSelections, cls);
-            var isAssignedClass = selectedSections.length > 0 || (classExplicitlySelected && !availableSections.length && !chip.hasSection);
+            // A class is considered assigned if it has sections selected OR if the class
+            // itself is in chip.classes (handles class-only tables at any loading stage).
+            var isAssignedClass = selectedSections.length > 0 || chip.classes.indexOf(cls) !== -1;
             var isClassFullySelected = availableSections.length > 0 && availableSections.every(function (s) {
                 return selectedSections.indexOf(s) !== -1;
             });
@@ -1024,7 +1031,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 classInput.indeterminate = false;
                 classInput.id = String(chip.groupId) + '-class-' + cls.replace(/[^a-zA-Z0-9_-]/g, '_');
                 classInput.addEventListener('change', function () {
-                    if (classInput.checked) {
+                    if (!availableSections.length && !chip.hasSection) {
+                        // Class-only table: no sections exist, so track via chip.classes
+                        // directly and mirror into classSectionSelections for round-trip.
+                        if (!chip.classSectionSelections) chip.classSectionSelections = {};
+                        if (classInput.checked) {
+                            // Add to classSectionSelections with empty array (class-only marker)
+                            chip.classSectionSelections[String(cls)] = [];
+                            // Directly add to chip.classes so _syncChipSelections picks it up.
+                            if (chip.classes.indexOf(cls) === -1) {
+                                chip.classes = _normalizeStringList(chip.classes.concat([cls]));
+                            }
+                        } else {
+                            // Remove from both structures.
+                            delete chip.classSectionSelections[String(cls)];
+                            chip.classes = chip.classes.filter(function (v) {
+                                return _toCompareKey(v) !== _toCompareKey(cls);
+                            });
+                        }
+                    } else if (classInput.checked) {
                         _setChipClassSections(chip, cls, availableSections);
                     } else {
                         _setChipClassSections(chip, cls, []);
@@ -1430,18 +1455,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 var selectedSections = _normalizeStringList(chip.classSectionSelections[cls] || []);
                 if (selectedSections.length) {
                     classSections[cls] = selectedSections;
+                } else {
+                    // Class-only table: include the class key with an empty array so
+                    // the round-trip through the server preserves the selection.
+                    classSections[cls] = [];
                 }
             });
-
-            if (!Object.keys(classSections).length) {
-                if ((chip.classes || []).length === 1 && (chip.sections || []).length) {
-                    classSections[chip.classes[0]] = _normalizeStringList(chip.sections || []);
-                } else if ((chip.sections || []).length === 1 && (chip.classes || []).length) {
-                    (chip.classes || []).forEach(function (cls) {
-                        classSections[cls] = [chip.sections[0]];
-                    });
+            // Also ensure any classes in chip.classes that aren't already in classSections
+            // are included, to handle legacy/partial state.
+            (chip.classes || []).forEach(function (cls) {
+                if (!Object.prototype.hasOwnProperty.call(classSections, cls)) {
+                    classSections[cls] = [];
                 }
-            }
+            });
 
             payload.assignment_scopes.push({
                 scope_type: scopeType,
@@ -1494,7 +1520,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     classes: _normalizeStringList(scope.classes || []),
                     sections: _normalizeStringList(scope.sections || []),
                     branches: _normalizeStringList(scope.branches || []),
-                    classSectionSelections: _cloneClassSectionSelections(scope.class_sections || {}),
+                    classSectionSelections: (function() {
+                        // Build classSectionSelections from class_sections, but also
+                        // synthesize entries for classes that exist in scope.classes but
+                        // not in class_sections — this handles class-only tables where
+                        // class_sections has no section data.
+                        var csl = _cloneClassSectionSelections(scope.class_sections || {});
+                        (scope.classes || []).forEach(function (cls) {
+                            var key = String(cls);
+                            if (!Object.prototype.hasOwnProperty.call(csl, key)) {
+                                csl[key] = [];
+                            }
+                        });
+                        return csl;
+                    })(),
                     classOptions: [],
                     sectionOptions: [],
                     branchOptions: [],
