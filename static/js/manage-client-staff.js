@@ -310,6 +310,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function upsertStaffRow(detail, mode) {
         if (!detail || !detail.id) return;
+
+        // Normalize 200000+ client staff IDs to raw DB IDs to match the DOM's data-staff-id
+        var rawId = detail.id >= 200000 ? (detail.id - 200000) : detail.id;
+        detail.id = rawId;
+
         var tbody = document.getElementById('staff-table-body');
         if (!tbody) return;
 
@@ -2156,6 +2161,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var editedId = meta && meta.selectedStaffId ? parseInt(meta.selectedStaffId, 10) : null;
             var createdId = result && result.data && result.data.staff_id ? parseInt(result.data.staff_id, 10) : null;
             var targetId = mode === 'add' ? createdId : editedId;
+
+            // Normalize 200000+ client staff IDs to raw DB IDs to match targetId
+            if (targetId && targetId >= 200000) {
+                targetId -= 200000;
+            }
 
             if (!targetId) {
                 setTimeout(function () { location.reload(); }, 250);
