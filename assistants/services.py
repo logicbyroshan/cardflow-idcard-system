@@ -359,6 +359,7 @@ class AssistantService(BaseService):
                     'id': assistant.id,
                     'user_id': assistant.user.id,
                     'client_id': assistant.client_id,
+                    'client_name': assistant.client.name if assistant.client else '-',
                     'name': assistant.user.get_full_name() or assistant.user.username,
                     'email': cls._public_email(assistant.user.email),
                     'phone': assistant.user.phone or '',
@@ -427,6 +428,7 @@ class AssistantService(BaseService):
             detail = {
                 'id': assistant.id,
                 'client_id': assistant.client_id,
+                'client_name': assistant.client.name if assistant.client else '-',
                 'first_name': assistant.user.first_name,
                 'last_name': assistant.user.last_name,
                 'name': assistant.user.get_full_name() or assistant.user.username,

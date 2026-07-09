@@ -327,14 +327,21 @@ document.addEventListener('DOMContentLoaded', function () {
             row = document.createElement('tr');
             row.setAttribute('data-staff-id', String(detail.id));
             row.innerHTML = [
-                '<td class="font-medium text-gray-800"></td>',
-                '<td class="email-cell"></td>',
-                '<td class="phone-cell"></td>',
+                '<td class="font-medium text-gray-800 text-left"></td>',
+                '<td class="text-left"></td>',
+                '<td class="email-cell text-left"></td>',
+                '<td class="phone-cell text-center"></td>',
                 '<td class="text-center"></td>',
-                '<td class="text-gray-500"></td>',
-                '<td class="text-gray-500"></td>',
-                '<td class="text-left" style="min-width: 250px;"></td>'
+                '<td class="text-gray-500 text-center"></td>',
+                '<td class="text-gray-500 text-center"></td>',
+                '<td class="text-left" style="width: 350px; max-width: 400px;"></td>'
             ].join('');
+            
+            // Check if log/history column exists in the table header/first row to decide if we should append it
+            var hasLogCol = !!tbody.closest('table').querySelector('th[title="Log"]');
+            if (hasLogCol) {
+                row.innerHTML += '<td class="text-center"></td>';
+            }
             tbody.insertBefore(row, tbody.firstChild);
         }
 
@@ -344,20 +351,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var cells = row.children;
         if (cells[0]) cells[0].textContent = detail.name || '-';
-        if (cells[1]) cells[1].textContent = detail.email || '-';
-        if (cells[2]) cells[2].textContent = detail.phone || '-';
-        if (cells[3]) {
-            cells[3].innerHTML = '<span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Inactive') + '</span>';
+        if (cells[1]) cells[1].textContent = detail.client_name || '-';
+        if (cells[2]) cells[2].textContent = detail.email || '-';
+        if (cells[3]) cells[3].textContent = detail.phone || '-';
+        if (cells[4]) {
+            cells[4].innerHTML = '<span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Inactive') + '</span>';
         }
 
-        if (cells[4] && (isNew || mode === 'add')) {
-            cells[4].textContent = formatDateTimeDisplay(detail.created_at);
-        }
-        if (cells[5]) {
-            cells[5].textContent = formatDateTimeDisplay(new Date());
+        if (cells[5] && (isNew || mode === 'add')) {
+            cells[5].textContent = formatDateTimeDisplay(detail.created_at);
         }
         if (cells[6]) {
-            cells[6].innerHTML = buildAssignmentCellHtml(detail);
+            cells[6].textContent = formatDateTimeDisplay(new Date());
+        }
+        if (cells[7]) {
+            cells[7].innerHTML = buildAssignmentCellHtml(detail);
+        }
+
+        var hasLogCol = !!tbody.closest('table').querySelector('th[title="Log"]');
+        var _esc = window.escapeHtml || function (s) {
+            return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        };
+        if (cells[8] && hasLogCol) {
+            cells[8].innerHTML = [
+                '<div style="display: inline-flex; align-items: center; gap: 4px;">',
+                '  <button type="button" class="client-staff-history-trigger" data-staff-id="' + detail.id + '" data-staff-name="' + _esc(detail.name) + '" title="View login history" aria-label="View login history"><i class="fa-solid fa-circle-info" aria-hidden="true"></i></button>',
+                '  <button type="button" class="client-staff-assignment-history-trigger" data-staff-id="' + detail.id + '" data-staff-name="' + _esc(detail.name) + '" title="View assignment timeline" aria-label="View assignment timeline"><i class="fa-solid fa-list-check" aria-hidden="true"></i></button>',
+                '</div>'
+            ].join('');
         }
     }
 

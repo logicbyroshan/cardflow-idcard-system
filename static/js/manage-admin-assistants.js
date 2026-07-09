@@ -315,13 +315,15 @@ document.addEventListener('DOMContentLoaded', function () {
             row = document.createElement('tr');
             row.setAttribute('data-staff-id', String(detail.id));
             row.innerHTML = [
-                '<td class="font-medium text-gray-800"></td>',
-                '<td class="email-cell"></td>',
-                '<td class="phone-cell"></td>',
+                '<td class="text-center"><input type="checkbox" class="staff-row-checkbox" value="' + detail.id + '"></td>',
+                '<td class="text-left font-semibold text-slate-700"></td>',
+                '<td class="font-medium text-gray-800 text-left"></td>',
+                '<td class="email-cell text-left"></td>',
+                '<td class="phone-cell text-center"></td>',
                 '<td class="text-center"></td>',
-                '<td class="text-gray-500"></td>',
-                '<td class="text-gray-500"></td>',
-                '<td class="text-left" style="min-width: 250px;"></td>'
+                '<td class="text-gray-500 text-center"></td>',
+                '<td class="text-gray-500 text-center"></td>',
+                '<td class="text-left" style="width: 350px; max-width: 400px;"></td>'
             ].join('');
             tbody.insertBefore(row, tbody.firstChild);
         }
@@ -331,21 +333,27 @@ document.addEventListener('DOMContentLoaded', function () {
         row.setAttribute('data-staff-name', String(detail.name || '').trim());
 
         var cells = row.children;
-        if (cells[0]) cells[0].textContent = detail.name || '-';
-        if (cells[1]) cells[1].textContent = detail.email || '-';
-        if (cells[2]) cells[2].textContent = detail.phone || '-';
-        if (cells[3]) {
-            cells[3].innerHTML = '<span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Inactive') + '</span>';
+        var cbInput = cells[0] ? cells[0].querySelector('input[type="checkbox"]') : null;
+        if (cbInput) {
+            cbInput.value = detail.id;
         }
 
-        if (cells[4] && (isNew || mode === 'add')) {
-            cells[4].textContent = formatDateTimeDisplay(detail.created_at);
-        }
+        if (cells[1]) cells[1].textContent = detail.client_name || '-';
+        if (cells[2]) cells[2].textContent = detail.name || '-';
+        if (cells[3]) cells[3].textContent = detail.email || '-';
+        if (cells[4]) cells[4].textContent = detail.phone || '-';
         if (cells[5]) {
-            cells[5].textContent = formatDateTimeDisplay(new Date());
+            cells[5].innerHTML = '<span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Inactive') + '</span>';
         }
-        if (cells[6]) {
-            cells[6].innerHTML = buildAssignmentCellHtml(detail);
+
+        if (cells[6] && (isNew || mode === 'add')) {
+            cells[6].textContent = formatDateTimeDisplay(detail.created_at);
+        }
+        if (cells[7]) {
+            cells[7].textContent = formatDateTimeDisplay(new Date());
+        }
+        if (cells[8]) {
+            cells[8].innerHTML = buildAssignmentCellHtml(detail);
         }
     }
 
@@ -2415,7 +2423,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (staffList.length === 0) {
                         var tr = document.createElement('tr');
                         tr.className = 'no-data-row';
-                        tr.innerHTML = '<td colspan="7">' +
+                        tr.innerHTML = '<td colspan="9">' +
                             '<div class="empty-state" id="staff-table-empty-inline">' +
                             '<i class="fa-solid fa-user-slash empty-icon"></i>' +
                             '<h3 class="empty-title">No Assistant Found</h3>' +
@@ -2430,6 +2438,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 name: staff.name || staff.username || '',
                                 email: staff.email || '',
                                 phone: staff.phone || '',
+                                client_name: staff.client_name || '',
                                 status: staff.is_active ? 'active' : 'inactive',
                                 is_active: !!staff.is_active,
                                 created_at: staff.created_at,
