@@ -685,13 +685,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         Object.keys(chip.classSectionSelections || {}).forEach(function (cls) {
             var selectedSections = _normalizeStringList(chip.classSectionSelections[cls] || []);
-            if (!selectedSections.length) return;
 
+            // Always add the class if it's a key in classSectionSelections — even when
+            // sections are empty (class-only tables with no section field).
             var classKey = String(cls).trim().toLowerCase();
             if (classKey && !seenClasses.has(classKey)) {
                 seenClasses.add(classKey);
                 classNames.push(String(cls).trim());
             }
+
+            // Only add sections when they exist.
+            if (!selectedSections.length) return;
 
             selectedSections.forEach(function (sec) {
                 var secKey = String(sec).trim().toLowerCase();
@@ -998,7 +1002,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 availableSections = chip.sectionOptions.slice();
             }
             var selectedSections = _normalizeStringList((chip.classSectionSelections && chip.classSectionSelections[cls]) || []);
-            var isAssignedClass = selectedSections.length > 0;
+            // A class is considered assigned if it has sections selected, OR if it was
+            // explicitly checked in a class-only table (key exists in classSectionSelections
+            // with empty sections because the table has no section field).
+            var classExplicitlySelected = chip.classSectionSelections && Object.prototype.hasOwnProperty.call(chip.classSectionSelections, cls);
+            var isAssignedClass = selectedSections.length > 0 || (classExplicitlySelected && !availableSections.length && !chip.hasSection);
             var isClassFullySelected = availableSections.length > 0 && availableSections.every(function (s) {
                 return selectedSections.indexOf(s) !== -1;
             });
@@ -1756,9 +1764,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var key = _chipKey(currentDraftGroupId);
             
-            // Check if they selected any classes/sections/branches, if the list supports them
+            // Check if they selected any classes/sections/branches, if the list supports them.
+            // For class-only tables (hasSection=false), only classes need to be present.
             var requiresSelections = activeBuilderScope.hasClass || activeBuilderScope.hasSection || activeBuilderScope.hasBranch;
-            var hasSelections = activeBuilderScope.classes.length || activeBuilderScope.sections.length || activeBuilderScope.branches.length;
+            var hasSelections = activeBuilderScope.classes.length ||
+                activeBuilderScope.sections.length ||
+                activeBuilderScope.branches.length;
+            // When only hasClass is set (no section field), also accept classes stored in
+            // classSectionSelections even if chip.classes wasn't synced yet.
+            if (!hasSelections && activeBuilderScope.hasClass && !activeBuilderScope.hasSection && !activeBuilderScope.hasBranch) {
+                hasSelections = Object.keys(activeBuilderScope.classSectionSelections || {}).length > 0;
+            }
             
             if (requiresSelections && !hasSelections) {
                 if (typeof showToast === 'function') {
@@ -2028,6 +2044,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (activeBuilderScope && currentDraftGroupId) {
                 var requiresSelections = activeBuilderScope.hasClass || activeBuilderScope.hasSection || activeBuilderScope.hasBranch;
                 var hasSelections = activeBuilderScope.classes.length || activeBuilderScope.sections.length || activeBuilderScope.branches.length;
+                // For class-only tables (no section field), also check classSectionSelections keys.
+                if (!hasSelections && activeBuilderScope.hasClass && !activeBuilderScope.hasSection && !activeBuilderScope.hasBranch) {
+                    hasSelections = Object.keys(activeBuilderScope.classSectionSelections || {}).length > 0;
+                }
                 if (requiresSelections && !hasSelections) {
                     throw new Error('Please select at least one class, section, or branch for the selected group before saving.');
                 }
