@@ -105,7 +105,7 @@ function createRowFromCard(card, index) {
         card.ordered_fields.forEach(field => {
             const fieldName = field.name;
             const fieldType = field.type;
-            const fieldValue = field.value || '';
+            const fieldValue = (field.value !== undefined && field.value !== null) ? field.value : '';
             const safeFieldName = _esc(fieldName);
             const safeFieldValue = _esc(fieldValue);
             

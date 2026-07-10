@@ -25,7 +25,8 @@ function _getCardSortName(cardData) {
     for (var i = 0; i < cardData.ordered_fields.length; i++) {
         var field = cardData.ordered_fields[i];
         if (field && field.type === 'name') {
-            return String(field.value || '').toLowerCase().trim();
+            var val = (field.value !== undefined && field.value !== null) ? field.value : '';
+            return String(val).toLowerCase().trim();
         }
     }
 

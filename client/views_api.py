@@ -858,10 +858,59 @@ def api_class_section_options(request):
                 class_section_counts[class_val].get(section_val, 0) + 1
             )
 
+    # ── Normalize class values ──
+    from core.utils.field_utils import normalize_class_value, CLASS_ORDER, CLASS_ORDER_UNKNOWN
+    from collections import defaultdict
+
+    class_groups = defaultdict(list)
+    for raw_cls, count in class_counts.items():
+        canonical = normalize_class_value(raw_cls)
+        if canonical:
+            class_groups[canonical].append((raw_cls, count))
+
+    raw_class_to_best = {}
+    best_classes = set()
+    best_class_counts = {}
+    best_class_sections = {}
+    best_class_section_counts = {}
+
+    for canonical, variants in class_groups.items():
+        best_raw = max(variants, key=lambda x: x[1])[0]
+        best_classes.add(best_raw)
+        for raw_cls, _ in variants:
+            raw_class_to_best[raw_cls] = best_raw
+
+    for raw_cls, count in class_counts.items():
+        best_cls = raw_class_to_best.get(raw_cls, raw_cls)
+        best_class_counts[best_cls] = best_class_counts.get(best_cls, 0) + count
+
+    for raw_cls, secs in class_sections.items():
+        best_cls = raw_class_to_best.get(raw_cls, raw_cls)
+        if best_cls not in best_class_sections:
+            best_class_sections[best_cls] = set()
+        best_class_sections[best_cls].update(secs)
+
+    for raw_cls, sec_cnts in class_section_counts.items():
+        best_cls = raw_class_to_best.get(raw_cls, raw_cls)
+        if best_cls not in best_class_section_counts:
+            best_class_section_counts[best_cls] = {}
+        for sec, count in sec_cnts.items():
+            best_class_section_counts[best_cls][sec] = (
+                best_class_section_counts[best_cls].get(sec, 0) + count
+            )
+
+    classes = best_classes
+    class_counts = best_class_counts
+    class_sections = best_class_sections
+    class_section_counts = best_class_section_counts
+
     payload = {
         'success': True,
         'resolved_id_source': resolved_id_source,
-        'classes': sorted(classes),
+        'classes': sorted(
+            classes,
+            key=lambda x: (CLASS_ORDER.get(normalize_class_value(x), CLASS_ORDER_UNKNOWN), normalize_class_value(x))
+        ),
         'sections': sorted(sections),
         'branches': sorted(branches),
         'has_class_field': has_class_field,
@@ -869,11 +918,11 @@ def api_class_section_options(request):
         'has_branch_field': has_branch_field,
         'class_sections': {
             cls_name: sorted(sec_values)
-            for cls_name, sec_values in sorted(class_sections.items(), key=lambda x: x[0])
+            for cls_name, sec_values in sorted(class_sections.items(), key=lambda x: (CLASS_ORDER.get(normalize_class_value(x[0]), CLASS_ORDER_UNKNOWN), normalize_class_value(x[0])))
         },
         'class_counts': {
             cls_name: int(count)
-            for cls_name, count in sorted(class_counts.items(), key=lambda x: x[0])
+            for cls_name, count in sorted(class_counts.items(), key=lambda x: (CLASS_ORDER.get(normalize_class_value(x[0]), CLASS_ORDER_UNKNOWN), normalize_class_value(x[0])))
         },
         'section_counts': {
             sec_name: int(count)
@@ -884,7 +933,7 @@ def api_class_section_options(request):
                 sec_name: int(sec_count)
                 for sec_name, sec_count in sorted(sec_counts.items(), key=lambda x: x[0])
             }
-            for cls_name, sec_counts in sorted(class_section_counts.items(), key=lambda x: x[0])
+            for cls_name, sec_counts in sorted(class_section_counts.items(), key=lambda x: (CLASS_ORDER.get(normalize_class_value(x[0]), CLASS_ORDER_UNKNOWN), normalize_class_value(x[0])))
         },
     }
     return JsonResponse(payload)

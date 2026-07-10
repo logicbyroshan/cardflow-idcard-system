@@ -789,6 +789,22 @@ class IDCardCardService(BaseService):
 
             # Uppercase text values only — preserve image paths
             field_data = cls.uppercase_field_data_selective(field_data, table.fields)
+
+            # Normalize keys to canonical table field names case-insensitively
+            canonical_field_data = {}
+            for key, value in field_data.items():
+                if not isinstance(key, str):
+                    canonical_field_data[key] = value
+                    continue
+                key_upper = key.strip().upper()
+                canonical_key = key
+                for field in table.fields:
+                    if field.get('name', '').strip().upper() == key_upper:
+                        canonical_key = field.get('name')
+                        break
+                canonical_field_data[canonical_key] = value
+            field_data = canonical_field_data
+
             normalized_field_data = {
                 str(k).strip().upper(): v
                 for k, v in field_data.items()
@@ -1014,6 +1030,7 @@ class IDCardCardService(BaseService):
         expected_updated_at: str = None,
         legacy_photo_file=None,
         modified_by: str = None,
+        force: bool = False,
     ) -> ServiceResult:
         """Update an ID Card with atomic concurrency control.
 
@@ -1040,17 +1057,21 @@ class IDCardCardService(BaseService):
                 client = table.group.client
 
                 # ── Optimistic concurrency check ──
-                if expected_updated_at:
+                if expected_updated_at and not force:
                     expected_dt = parse_datetime(expected_updated_at)
-                    if expected_dt and card.updated_at and abs((card.updated_at - expected_dt).total_seconds()) > 1:
-                        return ServiceResult(
-                            success=False,
-                            message='This card was modified by another user. Please refresh and try again.',
-                            data={
-                                'conflict': True,
-                                'server_updated_at': card.updated_at.isoformat(),
-                            },
-                        )
+                    if expected_dt and card.updated_at:
+                        from django.utils.timezone import is_naive, make_aware, utc
+                        dt_expected = make_aware(expected_dt) if is_naive(expected_dt) else expected_dt
+                        dt_card = make_aware(card.updated_at) if is_naive(card.updated_at) else card.updated_at
+                        if abs((dt_card.astimezone(utc) - dt_expected.astimezone(utc)).total_seconds()) > 1:
+                            return ServiceResult(
+                                success=False,
+                                message='This card was modified by another user. Please refresh and try again.',
+                                data={
+                                    'conflict': True,
+                                    'server_updated_at': card.updated_at.isoformat(),
+                                },
+                            )
 
                 existing_data = card.field_data or {}
                 image_field_names = cls.get_image_field_names(table.fields)

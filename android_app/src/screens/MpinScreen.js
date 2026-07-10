@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, Animated, Dimensions, Platform,
   TextInput, KeyboardAvoidingView, ActivityIndicator,
-  Alert, Image,
+  Alert, Image, ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -361,60 +361,79 @@ export default function MpinScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* Brand / Header Section */}
-        <View style={s.headerSection}>
-          <View style={s.appIcon}>
-            <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
-          </View>
-          <Text style={s.title}>{header.title}</Text>
-          <Text style={s.subtitle}>{header.subtitle}</Text>
-        </View>
-
-        {/* Dots & Keypad or Password Fallback */}
         {isSilentAuthFailed || step === 'forgot_password' ? (
-          <View style={s.passwordContainer}>
-            <View style={s.passwordInputWrapper}>
-              <TextInput
-                style={s.passwordInput}
-                placeholder="Enter your account password"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={s.eyeIcon}>
-                <DynamicIcon name={showPassword ? 'eye-slash' : 'eye'} size={18} color={colors.white} />
-              </TouchableOpacity>
-            </View>
-            <View style={s.passwordBtnRow}>
-              {isSilentAuthFailed ? (
-                <TouchableOpacity style={s.passwordCancelBtn} onPress={handleHardLogout}>
-                  <Text style={s.passwordCancelText}>Logout</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={s.passwordCancelBtn} onPress={() => {
-                  setStep('enter_pin');
-                  setPassword('');
-                }}>
-                  <Text style={s.passwordCancelText}>Back to PIN</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity 
-                style={s.passwordSubmitBtn} 
-                onPress={isSilentAuthFailed ? handlePasswordSubmit : handleForgotPasswordSubmit} 
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color={colors.brandSecondaryDark} />
-                ) : (
-                  <Text style={s.passwordSubmitText}>{isSilentAuthFailed ? 'Unlock App' : 'Verify'}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1 }}
+          >
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 24 }}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+            >
+              {/* Brand / Header Section */}
+              <View style={s.headerSection}>
+                <View style={s.appIcon}>
+                  <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
+                </View>
+                <Text style={s.title}>{header.title}</Text>
+                <Text style={s.subtitle}>{header.subtitle}</Text>
+              </View>
+
+              <View style={s.passwordContainer}>
+                <View style={s.passwordInputWrapper}>
+                  <TextInput
+                    style={s.passwordInput}
+                    placeholder="Enter your account password"
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={s.eyeIcon}>
+                    <DynamicIcon name={showPassword ? 'eye-slash' : 'eye'} size={18} color={colors.white} />
+                  </TouchableOpacity>
+                </View>
+                <View style={s.passwordBtnRow}>
+                  {isSilentAuthFailed ? (
+                    <TouchableOpacity style={s.passwordCancelBtn} onPress={handleHardLogout}>
+                      <Text style={s.passwordCancelText}>Logout</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={s.passwordCancelBtn} onPress={() => {
+                      setStep('enter_pin');
+                      setPassword('');
+                    }}>
+                      <Text style={s.passwordCancelText}>Back to PIN</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity 
+                    style={s.passwordSubmitBtn} 
+                    onPress={isSilentAuthFailed ? handlePasswordSubmit : handleForgotPasswordSubmit} 
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color={colors.brandSecondaryDark} />
+                    ) : (
+                      <Text style={s.passwordSubmitText}>{isSilentAuthFailed ? 'Unlock App' : 'Verify'}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         ) : (
           <>
+            {/* Brand / Header Section */}
+            <View style={s.headerSection}>
+              <View style={s.appIcon}>
+                <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
+              </View>
+              <Text style={s.title}>{header.title}</Text>
+              <Text style={s.subtitle}>{header.subtitle}</Text>
+            </View>
             {/* Dots Representation */}
             <Animated.View style={[s.dotsRow, { transform: [{ translateX: shakeAnim }] }]}>
               {[0, 1, 2, 3].map((idx) => {

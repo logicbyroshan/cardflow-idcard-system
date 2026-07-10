@@ -80,13 +80,16 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
         if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
     });
 }
-
-function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
+function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto, force = false) {
     
     // Send field data as-is - backend handles selective uppercase
     // (uppercasing text fields while preserving image paths)
     const formData = new FormData();
     formData.append('field_data', JSON.stringify(fieldData));
+    
+    if (force) {
+        formData.append('force', 'true');
+    }
     
     // Optimistic concurrency: send the timestamp from when we loaded the card
     if (IDCardApp.currentEditUpdatedAt) {
@@ -128,7 +131,10 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
         } else {
             // Check for concurrency conflict
             if (data.conflict) {
-                if (typeof showToast === 'function') showToast('This card was modified by another user. Please close and reopen to see latest data.', false);
+                if (confirm('This card was modified by another user. Do you want to force save and overwrite their changes?')) {
+                    updateExistingCard(cardId, fieldData, imageFiles, mainPhoto, true);
+                    return;
+                }
             } else {
                 if (typeof showToast === 'function') showToast(data.message || 'Error updating card', false);
             }
@@ -137,7 +143,19 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
     })
     .catch(error => {
         console.error('Error:', error);
-        if (typeof showToast === 'function') showToast('Error updating card', false);
+        if (error && error.status === 409 && error.data && error.data.conflict) {
+            if (confirm('This card was modified by another user. Do you want to force save and overwrite their changes?')) {
+                updateExistingCard(cardId, fieldData, imageFiles, mainPhoto, true);
+                return;
+            }
+        }
+        let errorMsg = 'Error updating card';
+        if (error && error.data && error.data.message) {
+            errorMsg = error.data.message;
+        } else if (error && error.message) {
+            errorMsg = error.message;
+        }
+        if (typeof showToast === 'function') showToast(errorMsg, false);
         if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
     });
 }

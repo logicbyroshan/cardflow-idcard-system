@@ -73,12 +73,17 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   return (
     <LinearGradient colors={gradients.brandFull} start={{ x: 0.3, y: 0 }} end={{ x: 0.7, y: 1 }} style={s.root}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      {/* Fixed Back Button */}
+      <TouchableOpacity 
+        onPress={() => step === STEPS.EMAIL || step === STEPS.DONE ? navigation.goBack() : setStep(step === STEPS.RESET ? STEPS.OTP : STEPS.EMAIL)} 
+        style={[s.backBtn, { top: (insets.top || 0) > 0 ? insets.top + 10 : 16 }]} 
+        activeOpacity={0.7}
+      >
+        <DynamicIcon name="arrow-left" size={14} color="#fff" />
+      </TouchableOpacity>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top }]} keyboardShouldPersistTaps="handled" bounces={false}>
-          {/* Back */}
-          <TouchableOpacity onPress={() => step === STEPS.EMAIL || step === STEPS.DONE ? navigation.goBack() : setStep(step === STEPS.RESET ? STEPS.OTP : STEPS.EMAIL)} style={s.backBtn} activeOpacity={0.7}>
-            <DynamicIcon name="arrow-left" size={14} color="#fff" />
-          </TouchableOpacity>
 
           {/* Header */}
           <View style={s.header}>

@@ -1350,6 +1350,7 @@ def api_idcard_update(request, card_id):
             field_data = json.loads(request.POST.get('field_data', '{}'))
             expected_updated_at = request.POST.get('expected_updated_at', None)
             reprint_modal_edit = _as_bool(request.POST.get('reprint_modal_edit'))
+            force = _as_bool(request.POST.get('force'))
             # Extract legacy 'photo' key FIRST, then build image_files
             # WITHOUT it to prevent the same file object being processed twice.
             legacy_photo_file = request.FILES.get('photo')
@@ -1363,6 +1364,7 @@ def api_idcard_update(request, card_id):
             field_data = data.get('field_data')
             expected_updated_at = data.get('expected_updated_at', None)
             reprint_modal_edit = _as_bool(data.get('reprint_modal_edit'))
+            force = _as_bool(data.get('force'))
             image_files = None
             legacy_photo_file = None
 
@@ -1415,6 +1417,7 @@ def api_idcard_update(request, card_id):
             expected_updated_at=expected_updated_at,
             legacy_photo_file=legacy_photo_file,
             modified_by=request.user.username if request.user.is_authenticated else '',
+            force=force,
         )
 
         if result.success:

@@ -191,6 +191,24 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
       // Separate image URIs from regular data
       const fieldData = { ...values };
       
+      // Ensure all non-image text values are converted to uppercase before submission
+      Object.keys(fieldData).forEach(k => {
+        const val = fieldData[k];
+        if (typeof val === 'string') {
+          const isImg = fields.some(f => {
+            if (f.name === k || (f.name || '').toUpperCase() === k.toUpperCase()) {
+              const t = (f.type || '').toLowerCase();
+              const n = (f.name || '').toLowerCase();
+              return t.includes('image') || t.includes('photo') || n.includes('photo') || (n.includes('sign') && !n.includes('designation')) || n.includes('pic');
+            }
+            return false;
+          });
+          if (!isImg) {
+            fieldData[k] = val.toUpperCase();
+          }
+        }
+      });
+      
       for (const key in fieldData) {
         const val = fieldData[key];
         const isLocalUri = typeof val === 'string' && (
@@ -358,7 +376,7 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
         <TouchableOpacity style={s.dismissSpacer} activeOpacity={1} onPress={() => { if (typeof onClose === 'function') onClose(); }} />
         
         <Animated.View style={[s.sheetWrap, { transform: [{ translateY: slideAnim }] }]}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
             <View style={s.sheet}>
               <View style={s.handle} />
               
@@ -460,7 +478,9 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                               style={[s.fieldInput, user?.role === 'photographer' && { backgroundColor: '#f1f5f9', color: colors.gray500 }]}
                               editable={user?.role !== 'photographer'}
                               value={values[field.name] || ''}
-                              onChangeText={t => setValues(prev => ({ ...prev, [field.name]: t.toUpperCase() }))}
+                              onChangeText={t => setValues(prev => ({ ...prev, [field.name]: t }))}
+                              autoCapitalize="characters"
+                              autoCorrect={false}
                               placeholder={`Enter ${field.name.toLowerCase()}`}
                               placeholderTextColor={colors.gray300}
                             />
