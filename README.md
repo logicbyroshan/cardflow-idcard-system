@@ -18,8 +18,8 @@ Live domains:
 
 Current version source of truth:
 
-- VERSION.txt: v3.20.0
-Last deep README refresh: 2026-04-16
+- VERSION.txt: v4.19.0
+Last deep README refresh: 2026-07-10
 
 ---
 
@@ -95,6 +95,15 @@ This section summarizes important recent platform-level updates now live on main
 - **Improved Cold Boot Times**: Removed font-loading dependencies during the application initialization phase, speeding up startup on mid-range and premium devices.
 - **Global UI Coverage**: Updated Home, Login, Welcome, Landing, and Card List screens to use 100% SVG iconography, ensuring visual parity and reliability across all user roles.
 - **Production Build v1.0.45**: Updated `targetSdkVersion` to 35 and incremented build number to satisfy latest Google Play Store security and compliance requirements.
+
+### 7) Real-Time Mobile Biometrics, Word Layout, and Case Preservation (2026-07-10)
+
+- **Real-Time Mobile Biometrics & UI Overhaul**: Upgraded the Android CameraScreen from simulator checks to direct biometric scanning for face/eyes presence, sunglasses, and optical glasses. Overhauled the top status indicator with a color-coded dynamic layout (Green, Amber, Red) that preserves layout flow and avoids text collision.
+- **Word (.docx) Class/Section Page Breaks**: Integrated layout option controls into the Word export modal and backend. Word document generation now supports page breaks when crossing class or section boundaries (using OOXML row-level paragraph formatting properties), matching the PDF exporter logic.
+- **Case Preservation**: Disallowed forced uppercase formatting on card create and update, ensuring the system preserves the user's input casing exactly.
+- **Headless OpenCV Production Face Detection**: Added `opencv-python-headless` and module-level cv2/numpy imports to fix Gunicorn lazy-loading crashes during background face validation.
+- **Optimistic Concurrency & Bypass**: Strengthened card updates with conflict checks and allowed force-save bypass for super administrators.
+- **Workspace Sanitization**: Cleaned up stale exports, debug APKs, and developer log files.
 
 ---
 
@@ -775,6 +784,15 @@ This rebuilds Tailwind output and dist bundles.
 
 Recent commits on main include:
 
+- Add custom Page Break Options (Class+Section, Class Only) to Word export modal and exporter.
+- Preserved casing exactly for text fields in card creation/update operations.
+- Workspace cleanup of debug APKs, dev logs, and temp exports.
+- Fix optimistic concurrency conflict check on card update and support force save bypass.
+- Table layout recovery, status dropdown layering, and bulk delete checkbox fixes.
+- Super-admin email alert when active working users exceed 50.
+- Client portal assistant row duplication and class-only assignment edit hotfixes.
+- Biometric face, eyes, and glasses validation implementation in Android CameraScreen.
+- cv2/numpy lazy-loading and headless opencv production dependencies fixes.
 - Fix reprint list modal API crash for relation-photo fallback.
 - Fix cardprint migration 0013 PostgreSQL trigger conflict.
 - Add core migration compatibility merge chain.

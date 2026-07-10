@@ -384,28 +384,18 @@ class BaseService:
     @classmethod
     def uppercase_field_data_selective(cls, data: dict, table_fields: List[dict]) -> dict:
         """
-        Convert text field values to uppercase, preserving image paths as-is.
-        
-        CRITICAL: Image paths must NOT be uppercased to prevent case-sensitive
-        filesystem issues on Linux servers.
+        Preserve text field values exactly as-is (no uppercase conversion).
         
         Args:
             data: Dict of field_name -> value
             table_fields: List of field configs from IDCardTable.fields
             
         Returns:
-            Dict with text fields uppercased, image fields preserved
+            Dict with field values exactly as entered
         """
         result = {}
         for key, value in data.items():
-            if isinstance(value, str):
-                # Skip uppercase for image fields - preserve paths exactly
-                if cls.is_image_field_name_for_table(key, table_fields):
-                    result[key] = value
-                else:
-                    result[key] = value.upper()
-            else:
-                result[key] = value
+            result[key] = value
         return result
     
     @staticmethod

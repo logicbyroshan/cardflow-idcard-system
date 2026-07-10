@@ -1344,10 +1344,7 @@ class IDCardCardService(BaseService):
                     except Exception:
                         field_data[canonical_field] = new_img_value
                 else:
-                    if isinstance(value, str):
-                        field_data[canonical_field] = value.upper()
-                    else:
-                        field_data[canonical_field] = value
+                    field_data[canonical_field] = value
 
                 card.field_data = field_data
                 if modified_by:
