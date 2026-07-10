@@ -3,7 +3,9 @@ import sys
 import re
 
 # Set up Django environment
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(script_dir) if os.path.basename(script_dir) == 'scripts' else script_dir
+sys.path.insert(0, root_dir)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 import django

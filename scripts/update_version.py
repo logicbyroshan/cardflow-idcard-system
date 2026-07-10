@@ -1,7 +1,10 @@
 import os
 
 def main():
-    gradle_path = 'android_app/android/app/build.gradle'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(script_dir) if os.path.basename(script_dir) == 'scripts' else os.path.abspath('.')
+    gradle_path = os.path.join(root_dir, 'android_app/android/app/build.gradle')
+    
     if not os.path.exists(gradle_path):
         print(f"File not found: {gradle_path}")
         return
