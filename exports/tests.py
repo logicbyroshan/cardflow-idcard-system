@@ -1769,6 +1769,105 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertEqual(call_kwargs.get('h_rule'), 'atLeast')
         self.assertGreaterEqual(call_kwargs.get('row_height_cm', 0), exporter.ROW_HEIGHT_CM)
 
+    def test_create_data_tables_word_page_breaks_by_class_and_section(self):
+        from exports.word import WordExporter
+        from docx import Document
+        from docx.shared import Cm, Pt, RGBColor
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml import parse_xml, OxmlElement
+        from docx.oxml.ns import nsdecls, qn
+        from PIL import Image, ImageOps
+
+        exporter = WordExporter()
+        doc = Document()
+
+        ordered_fields = [
+            {'name': 'CLASS', 'is_image': False, 'type': 'class'},
+            {'name': 'SECTION', 'is_image': False, 'type': 'section'},
+        ]
+        column_widths = {0: 1.0, 1: 2.0, 2: 2.0}
+
+        class _Card:
+            def __init__(self, data):
+                self.field_data = data
+
+        # Let's create cards across classes & sections:
+        # Card 1: Class I, Sec A
+        # Card 2: Class I, Sec A
+        # Card 3: Class I, Sec B  (breaks on class_section, not on class_only)
+        # Card 4: Class II, Sec A (breaks on both class_section and class_only)
+        cards = [
+            _Card({'CLASS': 'Class I', 'SECTION': 'A'}),
+            _Card({'CLASS': 'Class I', 'SECTION': 'A'}),
+            _Card({'CLASS': 'Class I', 'SECTION': 'B'}),
+            _Card({'CLASS': 'Class II', 'SECTION': 'A'}),
+        ]
+
+        # 1. Test class_section break_mode
+        exporter._create_data_tables(
+            doc=doc,
+            cards_list=cards,
+            ordered_fields=ordered_fields,
+            column_widths=column_widths,
+            num_cols=3,
+            Cm=Cm,
+            Pt=Pt,
+            RGBColor=RGBColor,
+            WD_TABLE_ALIGNMENT=WD_TABLE_ALIGNMENT,
+            WD_ALIGN_PARAGRAPH=WD_ALIGN_PARAGRAPH,
+            parse_xml=parse_xml,
+            nsdecls=nsdecls,
+            OxmlElement=OxmlElement,
+            qn=qn,
+            Image=Image,
+            ImageOps=ImageOps,
+            class_field_name='CLASS',
+            section_field_name='SECTION',
+            break_mode='class_section',
+        )
+
+        table = doc.tables[0]
+        # Row 0 (header) - no break
+        self.assertFalse('pageBreakBefore' in table.rows[0]._tr.xml)
+        self.assertFalse('pageBreakBefore' in table.rows[1]._tr.xml)
+        self.assertFalse('pageBreakBefore' in table.rows[2]._tr.xml)
+        # Row 3 (Sec A -> B) - should have break
+        self.assertTrue('pageBreakBefore' in table.rows[3]._tr.xml)
+        # Row 4 (Class I -> II) - should have break
+        self.assertTrue('pageBreakBefore' in table.rows[4]._tr.xml)
+
+        # 2. Test class_only break_mode
+        doc2 = Document()
+        exporter._create_data_tables(
+            doc=doc2,
+            cards_list=cards,
+            ordered_fields=ordered_fields,
+            column_widths=column_widths,
+            num_cols=3,
+            Cm=Cm,
+            Pt=Pt,
+            RGBColor=RGBColor,
+            WD_TABLE_ALIGNMENT=WD_TABLE_ALIGNMENT,
+            WD_ALIGN_PARAGRAPH=WD_ALIGN_PARAGRAPH,
+            parse_xml=parse_xml,
+            nsdecls=nsdecls,
+            OxmlElement=OxmlElement,
+            qn=qn,
+            Image=Image,
+            ImageOps=ImageOps,
+            class_field_name='CLASS',
+            section_field_name='SECTION',
+            break_mode='class_only',
+        )
+        table2 = doc2.tables[0]
+        self.assertFalse('pageBreakBefore' in table2.rows[1]._tr.xml)
+        self.assertFalse('pageBreakBefore' in table2.rows[2]._tr.xml)
+        # Row 3: section changes but break_mode is class_only -> no break!
+        self.assertFalse('pageBreakBefore' in table2.rows[3]._tr.xml)
+        # Row 4: class changes -> must have break!
+        self.assertTrue('pageBreakBefore' in table2.rows[4]._tr.xml)
+
     def test_missing_image_placeholder_uses_row_height_minimum(self):
         from exports.word import WordExporter
         from docx import Document

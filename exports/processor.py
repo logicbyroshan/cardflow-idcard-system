@@ -463,6 +463,8 @@ def process_export_docx(task):
     except (TypeError, ValueError):
         break_pages = 0
     
+    break_mode = str(metadata.get('break_mode') or 'class_section').strip().lower()
+    
     if card_ids:
         cards_qs = IDCard.objects.filter(table=table, id__in=card_ids)
     elif status_filter:
@@ -514,6 +516,7 @@ def process_export_docx(task):
             cancel_check=lambda: _task_cancelled(task),
             break_enabled=break_enabled,
             break_pages=break_pages,
+            break_mode=break_mode,
         )
 
         if not result.success and str(result.message).strip().lower() == 'export cancelled':

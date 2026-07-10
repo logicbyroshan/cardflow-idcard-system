@@ -31,7 +31,7 @@ from .utils import (
     generate_export_filename,
     sort_cards_for_export,
     get_class_field_name,
-    
+    get_section_field_name,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,6 +91,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         break_enabled: bool = False,
         break_pages: int = 0,
         output_path: Optional[str] = None,
+        break_mode: str = 'class_section',
     ) -> WordExportResult:
         """
         Export cards to Word format (.docx only).
@@ -186,7 +187,8 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
                             user=user,
                             break_enabled=False,
                             break_pages=0,
-                            output_path=chunk_tmp_name
+                            output_path=chunk_tmp_name,
+                            break_mode=break_mode,
                         )
                         
                         if not chunk_result.success:
@@ -309,11 +311,14 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             
             # Create tables with data (page-break per N rows)
             class_field_name = get_class_field_name(table.fields)
+            section_field_name = get_section_field_name(table.fields)
             self._create_data_tables(
                 doc, cards_list, ordered_fields, column_widths, num_cols,
                 Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT, WD_ALIGN_PARAGRAPH,
                 parse_xml, nsdecls, OxmlElement, qn, Image, ImageOps,
                 class_field_name=class_field_name,
+                section_field_name=section_field_name,
+                break_mode=break_mode,
                 progress_callback=progress_callback,
                 cancel_check=cancel_check,
             )

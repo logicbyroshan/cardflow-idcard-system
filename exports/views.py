@@ -893,6 +893,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     selected_classes = []
     break_enabled = False
     break_pages = 0
+    break_mode = 'class_section'
 
     if _is_json_request(request):
         data = _get_json_body(request) or {}
@@ -909,6 +910,9 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
             break_pages = int(data.get('break_pages') or 0)
         except (ValueError, TypeError):
             break_pages = 0
+        requested_break_mode = str(data.get('break_mode') or '').strip().lower()
+        if requested_break_mode in ('class_only', 'class_section', 'none'):
+            break_mode = requested_break_mode
 
     card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
@@ -958,6 +962,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
             template_id=template_id,
             break_enabled=break_enabled,
             break_pages=break_pages,
+            break_mode=break_mode,
         )
         try:
             from core.services.activity_service import ActivityService
@@ -994,6 +999,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
             allow_large=allow_large_exports,
             break_enabled=break_enabled,
             break_pages=break_pages,
+            break_mode=break_mode,
         )
         
         if not result.success:

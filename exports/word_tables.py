@@ -436,6 +436,7 @@ class WordTablesMixin:
                             num_cols, Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT,
                             WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, OxmlElement,
                             qn, Image, ImageOps, class_field_name=None,
+                            section_field_name=None, break_mode='class_section',
                             progress_callback=None, cancel_check=None):
         """Create ONE continuous table with all card data.
 
@@ -444,14 +445,14 @@ class WordTablesMixin:
 
         Page-break rules (inserted inside the table via pageBreakBefore):
           1. Every ENTRIES_PER_PAGE rows → page break before next row
-          2. When class value changes → force page break even if current
-             page has room
+          2. When class/section value changes (according to break_mode) → force page break
+             even if current page has room
 
         The column-heading row appears on the first page ONLY.
         """
         sr_no = 1
         rows_on_current_page = 0
-        prev_class_val = None
+        prev_group_key = None
 
         # Pre-compute fixed image dimensions per image field (from subtype)
         image_fixed_widths = {}
@@ -529,16 +530,27 @@ class WordTablesMixin:
                 if callable(cancel_check) and cancel_check():
                     return False
                 fd = card.field_data or {}
+                
+                # Check resolved break_mode
+                resolved_break_mode = str(break_mode or 'class_section').strip().lower()
+                if resolved_break_mode not in ('class_only', 'class_section', 'none'):
+                    resolved_break_mode = 'class_section'
+
                 cur_class_val = (
                     str(fd.get(class_field_name, '') or '').strip().upper()
-                    if class_field_name else None
+                    if class_field_name and resolved_break_mode in ('class_only', 'class_section') else None
                 )
+                cur_section_val = (
+                    str(fd.get(section_field_name, '') or '').strip().upper()
+                    if section_field_name and resolved_break_mode == 'class_section' else None
+                )
+                cur_group_key = (cur_class_val, cur_section_val)
 
                 # Decide whether to insert a page break before this row.
-                # Note: class-based page breaks are PDF-only; Word uses
-                # continuous layout so all data flows without class gaps.
                 need_page_break = False
                 if rows_on_current_page >= self.ENTRIES_PER_PAGE:
+                    need_page_break = True
+                elif resolved_break_mode != 'none' and prev_group_key is not None and cur_group_key != prev_group_key:
                     need_page_break = True
 
                 # Add the data row (images served from pre-fetched cache)
@@ -564,7 +576,7 @@ class WordTablesMixin:
 
                 sr_no += 1
                 rows_on_current_page += 1
-                prev_class_val = cur_class_val
+                prev_group_key = cur_group_key
 
                 if callable(progress_callback):
                     # Keep callback cadence light to avoid excessive DB writes.

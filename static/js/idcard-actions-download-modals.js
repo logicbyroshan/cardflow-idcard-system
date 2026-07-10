@@ -2713,6 +2713,11 @@ function openDownloadDocxModal(cardIds, format) {
         classListEl.style.display = 'none';
     }
 
+    const breakSectionEl = document.getElementById('downloadDocxBreakClassSection');
+    const breakClassOnlyEl = document.getElementById('downloadDocxBreakClassOnly');
+    if (breakSectionEl) breakSectionEl.checked = true;
+    if (breakClassOnlyEl) breakClassOnlyEl.checked = false;
+
     const breakEnabledEl = document.getElementById('downloadDocxCustomBreakEnabled');
     if (breakEnabledEl) breakEnabledEl.checked = false;
     const breakInputArea = document.getElementById('downloadDocxCustomBreakInputArea');
@@ -2806,13 +2811,16 @@ function initDownloadDocxHandlers() {
         e.stopPropagation();
         const templateSelect = document.getElementById('downloadDocxTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
+        const breakClassOnlyCb = document.getElementById('downloadDocxBreakClassOnly');
+        const breakMode = (breakClassOnlyCb && breakClassOnlyCb.checked) ? 'class_only' : 'class_section';
+        
         if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
             // Ensure presenter type is set before preparing so isActive() returns true
             try { window.IDCardApp.downloadProgressPresenter.setType('docx'); } catch (err) {}
             window.IDCardApp.downloadProgressPresenter.prepare('Preparing download...', -1);
         }
         markNextBulkUiLock();
-        window.IDCardApp.downloadDocx(pendingDocxDownloadIds, pendingDocxFormat, templateId);
+        window.IDCardApp.downloadDocx(pendingDocxDownloadIds, pendingDocxFormat, templateId, breakMode);
     });
 
     const downloadDocxBtnIds = ['downloadDocxBtn', 'downloadDocxBtnV', 'downloadDocxBtnP', 'downloadDocxBtnA', 'downloadDocxBtnD'];
@@ -2831,6 +2839,26 @@ function initDownloadDocxHandlers() {
             }
         });
     });
+
+    // Mutual exclusivity for Word page-break checkboxes
+    const breakDocxSectionCb = document.getElementById('downloadDocxBreakClassSection');
+    const breakDocxClassOnlyCb = document.getElementById('downloadDocxBreakClassOnly');
+    if (breakDocxSectionCb && breakDocxClassOnlyCb) {
+        breakDocxSectionCb.addEventListener('change', function() {
+            if (breakDocxSectionCb.checked) {
+                breakDocxClassOnlyCb.checked = false;
+            } else if (!breakDocxClassOnlyCb.checked) {
+                breakDocxSectionCb.checked = true;
+            }
+        });
+        breakDocxClassOnlyCb.addEventListener('change', function() {
+            if (breakDocxClassOnlyCb.checked) {
+                breakDocxSectionCb.checked = false;
+            } else if (!breakDocxSectionCb.checked) {
+                breakDocxClassOnlyCb.checked = true;
+            }
+        });
+    }
     } catch (err) { console.error('[DL] initDownloadDocxHandlers error', err); }
     try { console.log('[DL] initDownloadDocxHandlers bound handlers'); } catch (e) {}
 }

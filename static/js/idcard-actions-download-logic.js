@@ -731,8 +731,9 @@ function downloadImages(cardIds, renameOptions) {
 // Uses DownloadManager for blob-based response
 // ==========================================
 
-function downloadDocx(cardIds, format, templateId) {
+function downloadDocx(cardIds, format, templateId, breakMode) {
     format = 'docx';
+    breakMode = breakMode || 'class_section';
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
@@ -775,7 +776,8 @@ function downloadDocx(cardIds, format, templateId) {
                 class_filter_enabled: classFilterEnabled,
                 selected_classes: selectedClasses,
                 break_enabled: breakEnabled,
-                break_pages: breakPages
+                break_pages: breakPages,
+                break_mode: breakMode
             },
             onComplete: function() {
                 _moveCardsToDownloadIfApproved(cardIds);
@@ -803,7 +805,8 @@ function downloadDocx(cardIds, format, templateId) {
                 class_filter_enabled: classFilterEnabled,
                 selected_classes: selectedClasses,
                 break_enabled: breakEnabled,
-                break_pages: breakPages
+                break_pages: breakPages,
+                break_mode: breakMode
             }, _getActiveFilters()),
             lockUi: true,
             modalType: 'docx',
@@ -911,7 +914,8 @@ function downloadDocx(cardIds, format, templateId) {
         class_filter_enabled: classFilterEnabled,
         selected_classes: selectedClasses,
         break_enabled: breakEnabled,
-        break_pages: breakPages
+        break_pages: breakPages,
+        break_mode: breakMode
     }, _getActiveFilters())));
 }
 

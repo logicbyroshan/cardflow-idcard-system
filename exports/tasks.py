@@ -203,6 +203,7 @@ class BackgroundExportManager:
         template_id: int = None,
         break_enabled: bool = False,
         break_pages: int = 0,
+        break_mode: str = 'class_section',
     ) -> str:
         """Enqueue a Word export and return a task_id string."""
         from core.models import BackgroundTask
@@ -217,6 +218,7 @@ class BackgroundExportManager:
             'template_id': template_id,
             'break_enabled': break_enabled,
             'break_pages': break_pages,
+            'break_mode': break_mode,
         }
 
         task, error = BackgroundTask.create_if_no_active(
