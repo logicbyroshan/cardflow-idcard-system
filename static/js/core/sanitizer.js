@@ -177,20 +177,44 @@
                 return;
             }
             var isEmail = el.type === 'email' || (el.name && el.name.toLowerCase().includes('email'));
+            
+            // Programmatically disable autocorrect and enforce character autocapitalize
+            el.setAttribute('autocorrect', 'off');
+            el.setAttribute('autocapitalize', 'characters');
+            el.setAttribute('spellcheck', 'false');
+
             // Sanitize on blur (after user finishes typing)
             el.addEventListener('blur', function () {
                 sanitizeInputElement(el, isEmail);
             });
-            // Clear hint when user starts editing again
+            // Clear hint and force uppercase live as user types/pastes
             el.addEventListener('input', function () {
                 showInlineHint(el, '');
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+                this.value = this.value.toUpperCase();
+                if (start !== null && end !== null) {
+                    this.setSelectionRange(start, end);
+                }
             });
         });
         // Also handle email inputs
         var emailInputs = formEl.querySelectorAll('input[type="email"], input[name*="email"], input[id*="email"]');
         emailInputs.forEach(function (el) {
+            el.setAttribute('autocorrect', 'off');
+            el.setAttribute('autocapitalize', 'characters');
+            el.setAttribute('spellcheck', 'false');
+            
             el.addEventListener('blur', function () { sanitizeInputElement(el, true); });
-            el.addEventListener('input', function () { showInlineHint(el, ''); });
+            el.addEventListener('input', function () {
+                showInlineHint(el, '');
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+                this.value = this.value.toUpperCase();
+                if (start !== null && end !== null) {
+                    this.setSelectionRange(start, end);
+                }
+            });
         });
     }
 

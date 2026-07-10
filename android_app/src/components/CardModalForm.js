@@ -478,9 +478,10 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
                               style={[s.fieldInput, user?.role === 'photographer' && { backgroundColor: '#f1f5f9', color: colors.gray500 }]}
                               editable={user?.role !== 'photographer'}
                               value={values[field.name] || ''}
-                              onChangeText={t => setValues(prev => ({ ...prev, [field.name]: t }))}
+                              onChangeText={t => setValues(prev => ({ ...prev, [field.name]: (t || '').toUpperCase() }))}
                               autoCapitalize="characters"
                               autoCorrect={false}
+                              spellCheck={false}
                               placeholder={`Enter ${field.name.toLowerCase()}`}
                               placeholderTextColor={colors.gray300}
                             />

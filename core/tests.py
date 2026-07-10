@@ -253,7 +253,7 @@ class IDCardCardServiceCreateTests(TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.data['card']['field_data']['PHOTO'], 'PENDING:avatar-1.jpg')
 
-    def test_create_and_update_card_preserves_case(self):
+    def test_create_and_update_card_forces_uppercase(self):
         result = IDCardCardService.create_card(
             self.table.id,
             {'NAME': 'Alice Smith', 'CLASS': '10th B'},
@@ -261,8 +261,8 @@ class IDCardCardServiceCreateTests(TestCase):
         )
         self.assertTrue(result.success)
         card_id = result.data['card']['id']
-        self.assertEqual(result.data['card']['field_data']['NAME'], 'Alice Smith')
-        self.assertEqual(result.data['card']['field_data']['CLASS'], '10th B')
+        self.assertEqual(result.data['card']['field_data']['NAME'], 'ALICE SMITH')
+        self.assertEqual(result.data['card']['field_data']['CLASS'], '10TH B')
 
         update_result = IDCardCardService.update_card(
             card_id=card_id,
@@ -270,8 +270,8 @@ class IDCardCardServiceCreateTests(TestCase):
             uploaded_by=self.user,
         )
         self.assertTrue(update_result.success)
-        self.assertEqual(update_result.data['card']['field_data']['NAME'], 'Bob Jones')
-        self.assertEqual(update_result.data['card']['field_data']['CLASS'], '12th A')
+        self.assertEqual(update_result.data['card']['field_data']['NAME'], 'BOB JONES')
+        self.assertEqual(update_result.data['card']['field_data']['CLASS'], '12TH A')
 
         single_result = IDCardCardService.update_single_field(
             card_id=card_id,
@@ -279,7 +279,7 @@ class IDCardCardServiceCreateTests(TestCase):
             value='Charlie Brown',
         )
         self.assertTrue(single_result.success)
-        self.assertEqual(single_result.data['value'], 'Charlie Brown')
+        self.assertEqual(single_result.data['value'], 'CHARLIE BROWN')
 
 
 class IDCardApiUploadTests(TestCase):

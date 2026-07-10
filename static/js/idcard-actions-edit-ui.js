@@ -142,6 +142,10 @@ function startCellEdit(cell) {
             line-height: 1.3;
         `;
         
+        editElement.setAttribute('autocorrect', 'off');
+        editElement.setAttribute('autocapitalize', 'characters');
+        editElement.setAttribute('spellcheck', 'false');
+        
         cell.style.position = 'relative';
         cell.style.overflow = 'hidden';
         cell.innerHTML = '';
@@ -152,10 +156,16 @@ function startCellEdit(cell) {
         editElement.style.height = 'auto';
         editElement.style.height = editElement.scrollHeight + 'px';
         
-        // Re-size on input so textarea grows/shrinks with content
+        // Re-size and force uppercase live on input
         editElement.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = this.scrollHeight + 'px';
+            var start = this.selectionStart;
+            var end = this.selectionEnd;
+            this.value = this.value.toUpperCase();
+            if (start !== null && end !== null) {
+                this.setSelectionRange(start, end);
+            }
         });
         
         editElement.focus();
@@ -189,6 +199,19 @@ function startCellEdit(cell) {
             margin: 0;
             z-index: 5;
         `;
+        
+        editElement.setAttribute('autocorrect', 'off');
+        editElement.setAttribute('autocapitalize', 'characters');
+        editElement.setAttribute('spellcheck', 'false');
+        
+        editElement.addEventListener('input', function() {
+            var start = this.selectionStart;
+            var end = this.selectionEnd;
+            this.value = this.value.toUpperCase();
+            if (start !== null && end !== null) {
+                this.setSelectionRange(start, end);
+            }
+        });
         
         cell.style.position = 'relative';
         cell.style.overflow = 'hidden';

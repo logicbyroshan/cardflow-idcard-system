@@ -80,7 +80,10 @@ id="sideModalOverlay"
                            id="path_{{ field.name|slugify }}" 
                            data-field-name="{{ field.name }}"
                            placeholder="Enter image filename..."
-                           autocomplete="off">
+                           autocomplete="off"
+                           autocorrect="off"
+                           autocapitalize="characters"
+                           spellcheck="false">
                   </div>
                   {% endif %}
                 </div>
@@ -105,7 +108,10 @@ id="sideModalOverlay"
                         data-field-name="{{ field.name }}"
                         data-field-type="{{ field.type }}"
                         rows="3"
-                        placeholder="Enter {{ field.name|lower }}..."></textarea>
+                        placeholder="Enter {{ field.name|lower }}..."
+                        autocorrect="off"
+                        autocapitalize="characters"
+                        spellcheck="false"></textarea>
             </div>
             {% elif field.type == 'date' %}
             <div class="form-group">
@@ -126,7 +132,10 @@ id="sideModalOverlay"
                      class="form-control"
                      data-field-name="{{ field.name }}"
                      data-field-type="{{ field.type }}"
-                     placeholder="Enter {{ field.name|lower }}...">
+                     placeholder="Enter {{ field.name|lower }}..."
+                     autocorrect="off"
+                     autocapitalize="characters"
+                     spellcheck="false">
             </div>
             {% elif field.type == 'email' %}
             <div class="form-group">
@@ -137,7 +146,10 @@ id="sideModalOverlay"
                      class="form-control"
                      data-field-name="{{ field.name }}"
                      data-field-type="{{ field.type }}"
-                     placeholder="Enter {{ field.name|lower }}...">
+                     placeholder="Enter {{ field.name|lower }}..."
+                     autocorrect="off"
+                     autocapitalize="characters"
+                     spellcheck="false">
             </div>
             {% else %}
             <div class="form-group">
@@ -153,6 +165,9 @@ id="sideModalOverlay"
                      data-field-name="{{ field.name }}"
                      data-field-type="{{ field.type }}"
                      placeholder="Enter {{ field.name|lower }}..."
+                     autocorrect="off"
+                     autocapitalize="characters"
+                     spellcheck="false"
                      {% if field.type == 'class' %}autocomplete="off" data-uppercase="true"{% endif %}
                      {% if field.type == 'section' %}autocomplete="off" data-uppercase="true"{% endif %}>
             </div>
