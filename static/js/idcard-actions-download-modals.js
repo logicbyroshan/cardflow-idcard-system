@@ -2715,7 +2715,7 @@ function openDownloadDocxModal(cardIds, format) {
 
     const breakSectionEl = document.getElementById('downloadDocxBreakClassSection');
     const breakClassOnlyEl = document.getElementById('downloadDocxBreakClassOnly');
-    if (breakSectionEl) breakSectionEl.checked = true;
+    if (breakSectionEl) breakSectionEl.checked = false;
     if (breakClassOnlyEl) breakClassOnlyEl.checked = false;
 
     const breakEnabledEl = document.getElementById('downloadDocxCustomBreakEnabled');
@@ -2812,7 +2812,13 @@ function initDownloadDocxHandlers() {
         const templateSelect = document.getElementById('downloadDocxTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
         const breakClassOnlyCb = document.getElementById('downloadDocxBreakClassOnly');
-        const breakMode = (breakClassOnlyCb && breakClassOnlyCb.checked) ? 'class_only' : 'class_section';
+        const breakSectionCb = document.getElementById('downloadDocxBreakClassSection');
+        let breakMode = 'none';
+        if (breakClassOnlyCb && breakClassOnlyCb.checked) {
+            breakMode = 'class_only';
+        } else if (breakSectionCb && breakSectionCb.checked) {
+            breakMode = 'class_section';
+        }
         
         if (window.IDCardApp && window.IDCardApp.downloadProgressPresenter) {
             // Ensure presenter type is set before preparing so isActive() returns true
@@ -2847,15 +2853,11 @@ function initDownloadDocxHandlers() {
         breakDocxSectionCb.addEventListener('change', function() {
             if (breakDocxSectionCb.checked) {
                 breakDocxClassOnlyCb.checked = false;
-            } else if (!breakDocxClassOnlyCb.checked) {
-                breakDocxSectionCb.checked = true;
             }
         });
         breakDocxClassOnlyCb.addEventListener('change', function() {
             if (breakDocxClassOnlyCb.checked) {
                 breakDocxSectionCb.checked = false;
-            } else if (!breakDocxSectionCb.checked) {
-                breakDocxClassOnlyCb.checked = true;
             }
         });
     }

@@ -191,23 +191,8 @@
       </div>
     </div>
 
-    <!-- Page Break Options for Word -->
-    <div class="mt-3 mb-1 p-3 rounded-lg bg-indigo-50 border border-indigo-200">
-      <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700 mb-2">Page Break Options</p>
-      <label for="downloadDocxBreakClassSection" class="flex items-start gap-2 cursor-pointer select-none mb-2">
-        <input type="checkbox" id="downloadDocxBreakClassSection" checked
-               class="mt-0.5 w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-        <span class="text-sm text-gray-700">Break Pages By Class + Section</span>
-      </label>
-      <label for="downloadDocxBreakClassOnly" class="flex items-start gap-2 cursor-pointer select-none">
-        <input type="checkbox" id="downloadDocxBreakClassOnly"
-               class="mt-0.5 w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-        <span class="text-sm text-gray-700">Break Pages By Class Only</span>
-      </label>
-    </div>
-
     <!-- Custom Break Option Card -->
-    <div class="download-xlsx-option-card">
+    <div class="download-xlsx-option-card mt-3">
       <label class="download-xlsx-option-label" for="downloadDocxCustomBreakEnabled">
         <input type="checkbox" id="downloadDocxCustomBreakEnabled" class="download-xlsx-option-checkbox">
         <span>Custom Break</span>
@@ -217,6 +202,21 @@
         <label for="downloadDocxCustomBreakPages" class="download-docx-break-label">How many pages after break?</label>
         <input type="number" id="downloadDocxCustomBreakPages" class="download-img-kb-input" min="1" step="1" value="10">
       </div>
+    </div>
+
+    <!-- Page Break Options for Word -->
+    <div class="mt-3 mb-1 p-3 rounded-lg bg-indigo-50 border border-indigo-200">
+      <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700 mb-2">Page Break Options</p>
+      <label for="downloadDocxBreakClassSection" class="flex items-start gap-2 cursor-pointer select-none mb-2">
+        <input type="checkbox" id="downloadDocxBreakClassSection"
+               class="mt-0.5 w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+        <span class="text-sm text-gray-700">Break Pages By Class + Section</span>
+      </label>
+      <label for="downloadDocxBreakClassOnly" class="flex items-start gap-2 cursor-pointer select-none">
+        <input type="checkbox" id="downloadDocxBreakClassOnly"
+               class="mt-0.5 w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+        <span class="text-sm text-gray-700">Break Pages By Class Only</span>
+      </label>
     </div>
     </div>
     <div id="downloadDocxProgressStep" class="download-modal-progress-step" style="display:none;">
