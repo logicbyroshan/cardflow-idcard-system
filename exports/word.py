@@ -91,7 +91,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         break_enabled: bool = False,
         break_pages: int = 0,
         output_path: Optional[str] = None,
-        break_mode: str = 'class_section',
+        break_mode: str = 'none',
     ) -> WordExportResult:
         """
         Export cards to Word format (.docx only).

@@ -463,7 +463,7 @@ def process_export_docx(task):
     except (TypeError, ValueError):
         break_pages = 0
     
-    break_mode = str(metadata.get('break_mode') or 'class_section').strip().lower()
+    break_mode = str(metadata.get('break_mode') or 'none').strip().lower()
     
     if card_ids:
         cards_qs = IDCard.objects.filter(table=table, id__in=card_ids)

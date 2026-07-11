@@ -893,7 +893,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     selected_classes = []
     break_enabled = False
     break_pages = 0
-    break_mode = 'class_section'
+    break_mode = 'none'
 
     if _is_json_request(request):
         data = _get_json_body(request) or {}

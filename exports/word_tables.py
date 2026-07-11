@@ -436,7 +436,7 @@ class WordTablesMixin:
                             num_cols, Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT,
                             WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, OxmlElement,
                             qn, Image, ImageOps, class_field_name=None,
-                            section_field_name=None, break_mode='class_section',
+                            section_field_name=None, break_mode='none',
                             progress_callback=None, cancel_check=None):
         """Create ONE continuous table with all card data.
 
@@ -532,9 +532,9 @@ class WordTablesMixin:
                 fd = card.field_data or {}
                 
                 # Check resolved break_mode
-                resolved_break_mode = str(break_mode or 'class_section').strip().lower()
+                resolved_break_mode = str(break_mode or 'none').strip().lower()
                 if resolved_break_mode not in ('class_only', 'class_section', 'none'):
-                    resolved_break_mode = 'class_section'
+                    resolved_break_mode = 'none'
 
                 cur_class_val = (
                     str(fd.get(class_field_name, '') or '').strip().upper()
