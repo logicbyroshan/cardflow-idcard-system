@@ -1060,10 +1060,12 @@ class IDCardCardService(BaseService):
                 if expected_updated_at and not force:
                     expected_dt = parse_datetime(expected_updated_at)
                     if expected_dt and card.updated_at:
-                        from django.utils.timezone import is_naive, make_aware, utc
+                        import datetime as _dt
+                        from django.utils.timezone import is_naive, make_aware
+                        _utc = _dt.timezone.utc
                         dt_expected = make_aware(expected_dt) if is_naive(expected_dt) else expected_dt
                         dt_card = make_aware(card.updated_at) if is_naive(card.updated_at) else card.updated_at
-                        if abs((dt_card.astimezone(utc) - dt_expected.astimezone(utc)).total_seconds()) > 1:
+                        if abs((dt_card.astimezone(_utc) - dt_expected.astimezone(_utc)).total_seconds()) > 1:
                             return ServiceResult(
                                 success=False,
                                 message='This card was modified by another user. Please refresh and try again.',
