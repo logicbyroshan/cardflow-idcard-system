@@ -118,3 +118,33 @@ class DesktopAppApiTests(TestCase):
             self.assertIn('manifest.json', names)
             self.assertIn('clients.json', names)
             self.assertTrue(any(name.startswith('original_images/') for name in names))
+
+    def test_export_images_archive_only_contains_images(self):
+        upload = SimpleUploadedFile('student-photo.jpg', b'fake-image-bytes', content_type='image/jpeg')
+        CardMedia.objects.create(
+            card=self.card,
+            group=self.group,
+            client=self.client_obj,
+            file=upload,
+            media_type='photo',
+            field_name='PHOTO',
+            original_filename='student-photo.jpg',
+        )
+        token = self._register_device()
+        
+        # Test default/both approved and download status list
+        response = self.client.get(
+            f'/api/desktop/export-images/?client_id={self.client_obj.id}&group_id={self.group.id}&table_id={self.table.id}',
+            HTTP_AUTHORIZATION=f'Bearer {token}'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['X-Desktop-Export-Count'], '1')
+        
+        archive_bytes = b''.join(response.streaming_content)
+        with zipfile.ZipFile(io.BytesIO(archive_bytes), 'r') as zf:
+            names = set(zf.namelist())
+            # Ensure JSON manifests are NOT present
+            self.assertNotIn('manifest.json', names)
+            self.assertNotIn('clients.json', names)
+            # Ensure the image file IS present in the original_images folder
+            self.assertTrue(any(name.startswith('original_images/') for name in names))

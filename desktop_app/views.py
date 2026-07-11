@@ -158,6 +158,28 @@ def export_archive(request):
 
 @require_GET
 @desktop_api_required
+def export_images(request):
+    client_id = request.GET.get('client_id')
+    group_id = request.GET.get('group_id')
+    table_id = request.GET.get('table_id')
+    status = request.GET.get('status')
+    
+    result = DesktopAppService.build_images_zip(
+        client_id=int(client_id) if client_id and client_id.isdigit() else None,
+        group_id=int(group_id) if group_id and group_id.isdigit() else None,
+        table_id=int(table_id) if table_id and table_id.isdigit() else None,
+        status=status,
+        request=request,
+    )
+    if not result.get('success'):
+        return JsonResponse({'success': False, 'message': result.get('message', 'Export failed.')}, status=404)
+    response = FileResponse(result['archive'], as_attachment=True, filename=result['filename'])
+    response['X-Desktop-Export-Count'] = str(result['media_count'])
+    return response
+
+
+@require_GET
+@desktop_api_required
 def download_original_file(request, file_path):
     normalized = DesktopAppService.resolve_download_path(file_path)
     if not normalized:

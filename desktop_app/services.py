@@ -433,6 +433,69 @@ class DesktopAppService:
         return {'success': True, 'archive': temp_file, 'filename': archive_name, 'manifest': manifest}
 
     @classmethod
+    def build_images_zip(
+        cls,
+        *,
+        client_id: Optional[int] = None,
+        group_id: Optional[int] = None,
+        table_id: Optional[int] = None,
+        status: Optional[str] = None,
+        request=None
+    ) -> Dict[str, Any]:
+        status = str(status or '').strip().lower()
+        if status == 'approved':
+            status_list = ['approved']
+        elif status == 'download':
+            status_list = ['download']
+        else:
+            status_list = ['approved', 'download']
+
+        cards = IDCard.objects.select_related('table', 'table__group', 'table__group__client')
+        
+        if client_id:
+            cards = cards.filter(table__group__client_id=client_id)
+        if group_id:
+            cards = cards.filter(table__group_id=group_id)
+        if table_id:
+            cards = cards.filter(table_id=table_id)
+            
+        cards = cards.filter(status__in=status_list).order_by('-id')
+        
+        media_entries = cls._collect_media_entries(cards, request=request)
+        if not media_entries:
+            return {'success': False, 'message': 'No images found for the specified filters.'}
+
+        temp_file = tempfile.SpooledTemporaryFile(max_size=32 * 1024 * 1024, mode='w+b')
+        archive_name = f'desktop_images_{timezone.now().strftime("%Y%m%d_%H%M%S")}.zip'
+
+        with zipfile.ZipFile(temp_file, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            chunk_size = int(getattr(settings, 'DESKTOP_APP_DOWNLOAD_CHUNK_SIZE', 1024 * 1024) or 1024 * 1024)
+            for item in media_entries:
+                if not item.get('exists'):
+                    continue
+                file_path = item['file_path']
+                if not cls.is_allowed_media_path(file_path):
+                    continue
+                try:
+                    with default_storage.open(file_path, 'rb') as source:
+                        with zip_file.open(item['archive_path'], 'w') as destination:
+                            while True:
+                                chunk = source.read(chunk_size)
+                                if not chunk:
+                                    break
+                                destination.write(chunk)
+                except Exception:
+                    continue
+
+        temp_file.seek(0)
+        return {
+            'success': True,
+            'archive': temp_file,
+            'filename': archive_name,
+            'media_count': len(media_entries)
+        }
+
+    @classmethod
     def resolve_download_path(cls, file_path: str):
         normalized = _normalize_media_path(file_path)
         if not cls.is_allowed_media_path(normalized):

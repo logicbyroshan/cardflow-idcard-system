@@ -78,6 +78,19 @@ Returns a ZIP archive containing:
 - `media.json`
 - `original_images/...`
 
+### Download images zip only
+
+`GET /api/desktop/export-images/`
+
+Optional query params:
+
+- `client_id=<id>` (Filter by client ID)
+- `group_id=<id>` (Filter by group ID)
+- `table_id=<id>` (Filter by table/list ID)
+- `status=<approved|download|both>` (Filter by card status, defaults to `both`)
+
+Returns a ZIP archive containing only the image files inside `original_images/...` without any JSON files (such as `manifest.json`, `cards.json`, etc.).
+
 ### Download a single file
 
 `GET /api/desktop/download/<relative_path>/`
