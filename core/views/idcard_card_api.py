@@ -1399,11 +1399,20 @@ def api_idcard_update(request, card_id):
                             if sub_sec.lower() not in allow_sec_low:
                                 return JsonResponse({'success': False, 'message': f'Not authorized. You can only edit cards within assigned sections: {", ".join(allowed_secs)}'}, status=400)
 
+        # Block editing if there is an active reprint request for the card (requested or confirmed status)
+        if request.user.role in ('client', 'client_staff'):
+            from reprintcard.models import ReprintRequest
+            if ReprintRequest.objects.filter(card=_card, status__in=['requested', 'confirmed']).exists():
+                return JsonResponse({'success': False, 'message': 'Cards with active reprint requests cannot be edited.'}, status=403)
+
         # Default lock remains in place. Bypass is only for reprint-modal edits
         # when caller has reprint permission.
         can_bypass_edit_lock = (
             reprint_modal_edit
-            and PermissionService.has(request.user, 'perm_idcard_reprint_list')
+            and (
+                PermissionService.has(request.user, 'perm_idcard_reprint_list')
+                or PermissionService.has(request.user, 'perm_reprint_request_list')
+            )
             and str(_card.status or '').strip().lower() in ('pool', 'approved', 'download', 'reprint')
         )
         if _is_client_edit_locked(request.user, _card.status) and not can_bypass_edit_lock:
@@ -1550,6 +1559,11 @@ def api_idcard_update_field(request, card_id):
     if err: return err
     if not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    # Block editing if there is an active reprint request for the card (requested or confirmed status)
+    if request.user.role in ('client', 'client_staff'):
+        from reprintcard.models import ReprintRequest
+        if ReprintRequest.objects.filter(card=_card, status__in=['requested', 'confirmed']).exists():
+            return JsonResponse({'success': False, 'message': 'Cards with active reprint requests cannot be edited.'}, status=403)
     # Client/client_staff cannot edit cards in approved/download/reprint.
     if _is_client_edit_locked(request.user, _card.status):
         return _client_edit_locked_response()

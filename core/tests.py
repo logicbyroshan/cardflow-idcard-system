@@ -2124,7 +2124,8 @@ class SecurityApiRegressionTests(TestCase):
     def test_client_reprint_modal_flag_still_denied_without_reprint_permission(self):
         self.client_a.perm_idcard_edit = True
         self.client_a.perm_idcard_reprint_list = False
-        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list'])
+        self.client_a.perm_reprint_request_list = False
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list', 'perm_reprint_request_list'])
         self.card_a.status = 'download'
         self.card_a.save(update_fields=['status'])
 
@@ -2140,6 +2141,88 @@ class SecurityApiRegressionTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertIn('cannot be edited', response.json().get('message', '').lower())
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
+    def test_client_reprint_modal_flag_can_edit_download_card_with_reprint_request_permission(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = False
+        self.client_a.perm_reprint_request_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list', 'perm_reprint_request_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({
+                'field_data': {'NAME': 'UPDATED FROM REPRINT MODAL WITH REPRINT REQUEST PERM'},
+                'reprint_modal_edit': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'UPDATED FROM REPRINT MODAL WITH REPRINT REQUEST PERM')
+
+    def test_client_cannot_edit_card_with_active_reprint_request_even_with_modal_flag(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = False
+        self.client_a.perm_reprint_request_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list', 'perm_reprint_request_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        # Create active reprint request
+        from reprintcard.models import ReprintRequest
+        ReprintRequest.objects.create(
+            card=self.card_a,
+            table=self.card_a.table,
+            status='requested',
+        )
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({
+                'field_data': {'NAME': 'SHOULD BLOCK EDIT'},
+                'reprint_modal_edit': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('active reprint requests cannot be edited', response.json().get('message', '').lower())
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
+    def test_client_cannot_inline_edit_card_with_active_reprint_request(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = False
+        self.client_a.perm_reprint_request_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list', 'perm_reprint_request_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        # Create active reprint request
+        from reprintcard.models import ReprintRequest
+        ReprintRequest.objects.create(
+            card=self.card_a,
+            table=self.card_a.table,
+            status='requested',
+        )
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update-field/',
+            data=json.dumps({'field': 'NAME', 'value': 'SHOULD BLOCK EDIT'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('active reprint requests cannot be edited', response.json().get('message', '').lower())
         self.card_a.refresh_from_db()
         self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
 
