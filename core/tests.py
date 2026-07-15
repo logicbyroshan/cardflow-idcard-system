@@ -4286,4 +4286,61 @@ class ClearPendingPathsApiTests(TestCase):
         self.assertEqual(self.card1.field_data['SIGNATURE'], '')  # Cleared!
 
 
+class ExportTaskClassFilterTests(TestCase):
+    def setUp(self):
+        self.super_admin = _create_super_admin('export-task-admin@test.com', 'adminpass1')
+        self.client_user, self.client_obj = _create_client_user('export-task-client@test.com', 'clientpass1')
+        
+        self.group, self.table = _create_table(
+            self.client_obj,
+            fields=[
+                {'name': 'NAME', 'type': 'text', 'order': 1},
+                {'name': 'CLASS', 'type': 'class', 'order': 2},
+            ]
+        )
+        
+        # Create some cards with different classes
+        self.card1 = _create_card(self.table, field_data={'NAME': 'Alice', 'CLASS': 'V'}, status='pending')
+        self.card2 = _create_card(self.table, field_data={'NAME': 'Bob', 'CLASS': 'VI'}, status='pending')
+        self.card3 = _create_card(self.table, field_data={'NAME': 'Charlie', 'CLASS': 'V'}, status='pending')
+
+    def test_create_export_task_with_class_filter_and_breaks(self):
+        self.client.force_login(self.super_admin)
+        
+        url = reverse('api_create_export_task', args=[self.table.id])
+        payload = {
+            'export_type': 'docx',
+            'card_ids': [self.card1.id, self.card2.id, self.card3.id],
+            'class_filter_enabled': True,
+            'selected_classes': ['V'],
+            'break_enabled': True,
+            'break_pages': 5,
+            'break_mode': 'class_only'
+        }
+        
+        response = self.client.post(
+            url,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        
+        # Check task was created with correct metadata
+        from core.models import BackgroundTask
+        task = BackgroundTask.objects.get(id=data['task_id'])
+        metadata = task.metadata
+        
+        # Class filter should have filtered cards down to Alice and Charlie (class V)
+        self.assertEqual(set(metadata['card_ids']), {self.card1.id, self.card3.id})
+        
+        # Break options should be correctly passed
+        self.assertTrue(metadata['break_enabled'])
+        self.assertEqual(metadata['break_pages'], 5)
+        self.assertEqual(metadata['break_mode'], 'class_only')
+
+
+
 

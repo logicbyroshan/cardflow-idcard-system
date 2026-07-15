@@ -1130,15 +1130,92 @@ def api_create_export_task(request, table_id):
         else:
             replace_active = bool(replace_active_raw)
 
+        # Parse class filter options
+        class_filter_enabled = False
+        selected_classes = []
+        if isinstance(data, dict) or hasattr(data, 'get'):
+            class_filter_enabled_raw = data.get('class_filter_enabled', False)
+            if isinstance(class_filter_enabled_raw, str):
+                class_filter_enabled = class_filter_enabled_raw.strip().lower() in ('1', 'true', 'yes', 'on')
+            else:
+                class_filter_enabled = bool(class_filter_enabled_raw)
+            selected_classes = data.get('selected_classes', [])
+            if isinstance(selected_classes, str):
+                try:
+                    selected_classes = json.loads(selected_classes)
+                except (json.JSONDecodeError, TypeError):
+                    selected_classes = []
+            if not isinstance(selected_classes, list):
+                selected_classes = []
+
+        # Parse break options
+        break_enabled = False
+        break_pages = 0
+        break_mode = 'none'
+        if isinstance(data, dict) or hasattr(data, 'get'):
+            break_enabled_raw = data.get('break_enabled', False)
+            if isinstance(break_enabled_raw, str):
+                break_enabled = break_enabled_raw.strip().lower() in ('1', 'true', 'yes', 'on')
+            else:
+                break_enabled = bool(break_enabled_raw)
+            
+            try:
+                break_pages = int(data.get('break_pages') or 0)
+            except (TypeError, ValueError):
+                break_pages = 0
+                
+            requested_break_mode = str(data.get('break_mode') or '').strip().lower()
+            if requested_break_mode in ('class_only', 'class_section', 'none'):
+                break_mode = requested_break_mode
+
+        # Apply class filter if enabled
+        if class_filter_enabled and selected_classes:
+            from core.views.idcard_helpers import _get_class_section_course_branch_field_names
+            from idcards.models import IDCard
+            from core.utils.field_utils import normalize_class_value
+
+            class_field, _, _, _ = _get_class_section_course_branch_field_names(table)
+            if class_field:
+                cards_qs = IDCard.objects.filter(id__in=card_ids)
+                filtered_card_ids = []
+                # Make sure to normalize selected classes for robust matching!
+                selected_classes_set = {normalize_class_value(str(c).strip()) for c in selected_classes if c}
+                for card in cards_qs:
+                    val = card.field_data.get(class_field)
+                    if val:
+                        norm = normalize_class_value(str(val).strip())
+                        if norm in selected_classes_set:
+                            filtered_card_ids.append(card.id)
+                card_ids = filtered_card_ids
+
+        if class_filter_enabled and selected_classes and not card_ids:
+            return JsonResponse({
+                'success': False,
+                'message': 'No cards selected for export after applying class filter'
+            }, status=400)
+
         metadata = {
             'table_id': table_id,
             'card_ids': card_ids,
             'status': status_filter,
         }
-        # No super mode metadata to update
         if task_type == 'export_docx':
             metadata['doc_format'] = doc_format
             metadata['template_id'] = template_id
+            metadata['break_enabled'] = break_enabled
+            metadata['break_pages'] = break_pages
+            metadata['break_mode'] = break_mode
+        elif task_type == 'export_pdf':
+            font_mode = str(data.get('font_mode', 'auto') or 'auto').strip().lower()
+            shorten_titles_raw = data.get('shorten_titles', False)
+            if isinstance(shorten_titles_raw, str):
+                shorten_titles = shorten_titles_raw.strip().lower() in ('1', 'true', 'yes', 'on')
+            else:
+                shorten_titles = bool(shorten_titles_raw)
+            metadata['template_id'] = template_id
+            metadata['font_mode'] = font_mode
+            metadata['shorten_titles'] = shorten_titles
+            metadata['break_mode'] = break_mode
 
         def _create_task_once():
             return BackgroundTask.create_if_no_active(
