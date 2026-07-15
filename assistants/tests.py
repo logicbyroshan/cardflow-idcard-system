@@ -9,9 +9,15 @@ from idcards.models import IDCardGroup, IDCardTable, IDCard
 
 class AutoCreateAssistantsTests(TestCase):
     def setUp(self):
-        # Create a dummy client
+        # Create a dummy client with permissions set
         self.user = User.objects.create(username='test_admin', email='test@test.com')
-        self.client_obj = Client.objects.create(name='Test Client Auto Create', user=self.user)
+        self.client_obj = Client.objects.create(
+            name='Test Client Auto Create',
+            user=self.user,
+            perm_idcard_pending_list=True,
+            perm_idcard_verified_list=True,
+            perm_mobile_app=True
+        )
 
         # Create dummy IDCardGroup, IDCardTable, IDCard
         self.group = IDCardGroup.objects.create(client=self.client_obj, name='Test Group')
@@ -38,6 +44,13 @@ class AutoCreateAssistantsTests(TestCase):
         
         # Verify assistants were created
         self.assertEqual(Assistant.objects.filter(client=self.client_obj).count(), 2)
+        
+        # Verify permissions were auto-assigned matching client permissions
+        for assistant in Assistant.objects.filter(client=self.client_obj):
+            self.assertTrue(assistant.perm_idcard_pending_list)
+            self.assertTrue(assistant.perm_idcard_verified_list)
+            self.assertTrue(assistant.perm_mobile_app)
+            self.assertFalse(assistant.perm_idcard_pool_list)
 
     def test_auto_create_section_mode(self):
         result = AssistantService.auto_create_assistants(self.user, self.client_obj, 'STGS', 'section', True)
