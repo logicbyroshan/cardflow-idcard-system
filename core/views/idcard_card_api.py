@@ -1107,6 +1107,70 @@ def api_idcard_filter_options(request, table_id):
 
 
 @require_http_methods(["POST"])
+@api_require_any_authenticated
+def api_idcard_class_counts(request, table_id):
+    """Return count of cards grouped by normalized class for the given card_ids.
+
+    POST /api/table/<table_id>/cards/class-counts/
+    """
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
+
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+    except (json.JSONDecodeError, ValueError):
+        data = request.POST
+
+    card_ids = data.get('card_ids', [])
+    if isinstance(card_ids, str):
+        try:
+            card_ids = json.loads(card_ids)
+        except (json.JSONDecodeError, TypeError):
+            card_ids = []
+
+    from core.views.task_api import _normalize_positive_int_ids
+    card_ids = _normalize_positive_int_ids(card_ids)
+
+    if not card_ids:
+        return JsonResponse({'success': True, 'class_counts': {}})
+
+    class_field_name, _, _, _ = _get_class_section_course_branch_field_names(table)
+    if not class_field_name:
+        return JsonResponse({'success': True, 'class_counts': {}})
+
+    from django.db.models.fields.json import KeyTextTransform
+    from django.db.models.functions import Cast
+    from django.db.models import CharField, Count
+    from core.utils.field_utils import normalize_class_value
+    from collections import defaultdict
+
+    qs = IDCard.objects.filter(table=table, id__in=card_ids)
+
+    raw_with_counts = (
+        qs.annotate(_cv=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+        .exclude(_cv__isnull=True).exclude(_cv='')
+        .order_by()
+        .values('_cv')
+        .annotate(cnt=Count('id'))
+    )
+
+    class_counts = defaultdict(int)
+    for entry in raw_with_counts:
+        raw = entry['_cv'].strip()
+        canonical = normalize_class_value(raw)
+        class_counts[canonical] += entry['cnt']
+
+    return JsonResponse({
+        'success': True,
+        'class_counts': dict(class_counts)
+    })
+
+
+@require_http_methods(["POST"])
 @api_require_permission('perm_idcard_add')
 def api_idcard_create(request, table_id):
     """API endpoint to create a new ID Card with file upload support.

@@ -2684,7 +2684,7 @@ function closeDocFormatModal() {
     pendingDocxDownloadIds = [];
 }
 
-function openDownloadDocxModal(cardIds, format) {
+async function openDownloadDocxModal(cardIds, format) {
     try { console.log('[DL] openDownloadDocxModal', {cardIdsCount: Array.isArray(cardIds)?cardIds.length:0, format: format}); } catch (e) {}
     pendingDocxDownloadIds = cardIds;
     pendingDocxFormat = 'docx';
@@ -2725,6 +2725,43 @@ function openDownloadDocxModal(cardIds, format) {
     const breakPagesEl = document.getElementById('downloadDocxCustomBreakPages');
     if (breakPagesEl) breakPagesEl.value = '10';
 
+    // Fetch class counts for the exact cardIds
+    let cardClassCounts = {};
+    const tableId = (window.IDCardApp && window.IDCardApp.tableId) || (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
+    if (cardIds && cardIds.length > 0 && tableId) {
+        try {
+            const resp = await fetch(`/api/table/${tableId}/cards/class-counts/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
+                },
+                body: JSON.stringify({ card_ids: cardIds })
+            });
+            const data = await resp.json();
+            if (data && data.success) {
+                cardClassCounts = data.class_counts || {};
+            }
+        } catch (e) {
+            console.error('Failed to fetch card class counts:', e);
+        }
+    }
+
+    // Update count display based on selected classes
+    window._updateDownloadDocxCount = function() {
+        if (!cardCountEl) return;
+        const filterEnabled = classFilterEnabledEl ? classFilterEnabledEl.checked : false;
+        if (filterEnabled) {
+            let total = 0;
+            document.querySelectorAll('.download-docx-class-checkbox:checked').forEach(chk => {
+                total += (cardClassCounts[chk.value] || 0);
+            });
+            cardCountEl.textContent = total;
+        } else {
+            cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
+        }
+    };
+
     // Populate classes checklist
     const classOptions = (window.IDCardApp && typeof window.IDCardApp.getAllClassOptions === 'function') ? window.IDCardApp.getAllClassOptions() : [];
     const classFilterCard = document.getElementById('downloadDocxClassFilterCard');
@@ -2733,6 +2770,7 @@ function openDownloadDocxModal(cardIds, format) {
         classOptions.forEach(opt => {
             const val = window.IDCardApp.getClassOptionValue(opt);
             const label = window.IDCardApp.getClassOptionLabel(opt);
+            const count = cardClassCounts[val] || 0;
             
             const labelEl = document.createElement('label');
             labelEl.className = 'download-docx-class-item';
@@ -2742,9 +2780,10 @@ function openDownloadDocxModal(cardIds, format) {
             chk.className = 'download-docx-class-checkbox';
             chk.value = val;
             chk.checked = true;
+            chk.addEventListener('change', window._updateDownloadDocxCount);
             
             const textSpan = document.createElement('span');
-            textSpan.textContent = label;
+            textSpan.textContent = label + ' (' + count + ')';
             
             labelEl.appendChild(chk);
             labelEl.appendChild(textSpan);
@@ -2799,6 +2838,7 @@ function initDownloadDocxHandlers() {
     document.getElementById('downloadDocxClassFilterEnabled')?.addEventListener('change', function() {
         const classList = document.getElementById('downloadDocxClassList');
         if (classList) classList.style.display = this.checked ? 'flex' : 'none';
+        if (typeof window._updateDownloadDocxCount === 'function') window._updateDownloadDocxCount();
     });
 
     document.getElementById('downloadDocxCustomBreakEnabled')?.addEventListener('change', function() {

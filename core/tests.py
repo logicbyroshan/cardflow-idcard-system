@@ -4341,6 +4341,29 @@ class ExportTaskClassFilterTests(TestCase):
         self.assertEqual(metadata['break_pages'], 5)
         self.assertEqual(metadata['break_mode'], 'class_only')
 
+    def test_class_counts_endpoint(self):
+        self.client.force_login(self.super_admin)
+        url = reverse('api_idcard_class_counts', args=[self.table.id])
+        
+        payload = {
+            'card_ids': [self.card1.id, self.card2.id, self.card3.id]
+        }
+        
+        response = self.client.post(
+            url,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        
+        # card1 (V), card2 (VI), card3 (V)
+        class_counts = data['class_counts']
+        self.assertEqual(class_counts.get('V'), 2)
+        self.assertEqual(class_counts.get('VI'), 1)
+
 
 
 

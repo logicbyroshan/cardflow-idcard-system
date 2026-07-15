@@ -119,6 +119,7 @@ from .idcard_api import (
     api_idcard_search,
     api_idcard_all_ids,
     api_idcard_filter_options,
+    api_idcard_class_counts,
     api_table_status_counts,
     api_idcard_bulk_upload,
     api_idcard_reupload_images,

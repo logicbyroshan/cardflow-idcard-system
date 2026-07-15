@@ -511,7 +511,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                 if (typeof showProgressToast === 'function') {
                     showProgressToast(msg, Math.round(displayPct), cancelFn);
                 }
-                setTimeout(poll, _POLL_INTERVAL);
+                window.bgSetTimeout(poll, _POLL_INTERVAL);
             })
             .catch(function (err) {
                 console.error('Task status poll error:', err);
@@ -522,11 +522,11 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                     finalizeOnce();
                     return;
                 }
-                setTimeout(poll, _POLL_INTERVAL * 2);
+                window.bgSetTimeout(poll, _POLL_INTERVAL * 2);
             });
     }
 
-    setTimeout(poll, 1000);
+    window.bgSetTimeout(poll, 1000);
 }
 
 // ==========================================

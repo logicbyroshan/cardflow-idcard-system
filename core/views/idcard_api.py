@@ -43,6 +43,7 @@ from .idcard_card_api import (
     api_idcard_cards_json,
     api_idcard_all_ids,
     api_idcard_filter_options,
+    api_idcard_class_counts,
     api_idcard_create,
     api_idcard_get,
     api_idcard_history,
