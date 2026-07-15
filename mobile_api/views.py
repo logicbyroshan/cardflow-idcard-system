@@ -182,6 +182,12 @@ class StaffCompatQuerySet:
             return StaffCompatQuerySet(self.items[k])
         return self.items[k]
 
+    def get(self, *args, **kwargs):
+        res = self.filter(*args, **kwargs)
+        if len(res) == 0:
+            raise ObjectDoesNotExist("Staff matching query does not exist")
+        return res[0]
+
 
 class StaffCompatManager:
     def all(self):
@@ -5649,6 +5655,7 @@ def api_mobile_staff_assignment(request, staff_id):
                 'assigned_tables': assigned_tables,
                 'assignment_scopes': staff.assignment_scopes or [],
                 'assignment_id_source': assignment_id_source,
+                'id_source': assignment_id_source,
                 'class_section_options': global_options,
                 'group_options': group_options_json,
                 'table_options': table_options_json

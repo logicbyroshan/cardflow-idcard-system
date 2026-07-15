@@ -38,3 +38,53 @@ class PhotoValidationApiTests(TestCase):
         self.assertTrue(data['success'])
         self.assertFalse(data['face_detected'])
         self.assertEqual(data['message'], 'No Person Detected')
+
+
+class MobileStaffAssignmentTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from client.models import Client
+        from assistants.models import Assistant
+        from idcards.models import IDCardGroup, IDCardTable
+
+        User = get_user_model()
+        self.superuser = User.objects.create_superuser(
+            username='super@test.com', email='super@test.com', password='superpass1', role='super_admin'
+        )
+        self.client_user = User.objects.create_user(
+            username='client@test.com', email='client@test.com', password='clientpass1', role='client'
+        )
+        self.client_obj = Client.objects.create(user=self.client_user, name='Test Client')
+        
+        self.assistant_user = User.objects.create_user(
+            username='assistant@test.com', email='assistant@test.com', password='assistantpass1', role='client_staff'
+        )
+        self.assistant = Assistant.objects.create(
+            user=self.assistant_user, client=self.client_obj
+        )
+        
+        self.group = IDCardGroup.objects.create(client=self.client_obj, name='Test Group')
+        self.table = IDCardTable.objects.create(group=self.group, name='Test Table')
+        
+    def test_mobile_staff_assignment_endpoint(self):
+        # Set session flag
+        session = self.client.session
+        session['mobile_auth_ok'] = True
+        session.save()
+
+        self.client.force_login(self.superuser)
+        url = reverse('mobile_api:api_mobile_staff_assignment', args=[self.assistant.id])
+        
+        response = self.client.get(
+            url,
+            HTTP_USER_AGENT='Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        
+        # Verify assignment_id_source and id_source are both present in returned data
+        payload = data['data']
+        self.assertIn('assignment_id_source', payload)
+        self.assertIn('id_source', payload)
+        self.assertEqual(payload['assignment_id_source'], payload['id_source'])
