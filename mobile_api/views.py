@@ -5456,7 +5456,7 @@ def api_mobile_staff_assignment(request, staff_id):
 
         # Load client's groups and tables
         groups = IDCardGroup.objects.filter(client_id=client_id).values('id', 'name').order_by('name')
-        tables = IDCardTable.objects.filter(group__client_id=client_id, is_active=True, deleted_by_client=False).values('id', 'name', 'group_id').order_by('group__name', 'name')
+        tables = IDCardTable.objects.filter(group__client_id=client_id, deleted_by_client=False).values('id', 'name', 'group_id').order_by('group__name', 'name')
         
         assigned_groups = list(staff.assigned_groups.values_list('id', flat=True))
         assigned_tables = [
@@ -5701,10 +5701,15 @@ def api_mobile_staff_assignment_update(request, staff_id):
             client_id = staff.client_id
             from client.models import Client
             target_client = Client.objects.filter(id=client_id).first()
-            group_count = IDCardGroup.objects.filter(client_id=client_id).count()
-            id_source = 'table' if group_count <= 1 else 'group'
-            if target_client and getattr(target_client, 'assignment_id_source', '') == 'table':
-                id_source = 'table'
+            
+            req_id_source = data.get('assignment_id_source', '').lower()
+            if req_id_source in ('group', 'table'):
+                id_source = req_id_source
+            else:
+                group_count = IDCardGroup.objects.filter(client_id=client_id).count()
+                id_source = 'table' if group_count <= 1 else 'group'
+                if target_client and getattr(target_client, 'assignment_id_source', '') == 'table':
+                    id_source = 'table'
                 
             client_staff_payload = {
                 'assigned_groups': payload['assigned_tables'] if id_source == 'table' else payload['assigned_groups'],

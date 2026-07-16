@@ -136,6 +136,7 @@ export default function StaffManageScreen({ navigation, route }) {
   const [assignData, setAssignData] = useState({ groups: [], tables: [], clients: [], class_section_options: {}, group_options: {}, table_options: {} });
   const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [selectedTableIds, setSelectedTableIds] = useState([]);
+  const [activeAssignmentMode, setActiveAssignmentMode] = useState('group'); // 'group' or 'table'
   const [selectedClientIds, setSelectedClientIds] = useState([]);
   const [assignmentScopes, setAssignmentScopes] = useState([]);
   const [savedScopeIds, setSavedScopeIds] = useState(new Set()); // tracks which scopes have been saved
@@ -285,9 +286,11 @@ export default function StaffManageScreen({ navigation, route }) {
     try {
       const { ok, data } = await apiGet(`/api/mobile/staff/${member.id}/assignment/`);
       if (ok && data.success) {
-        if (data.data.groups) {
-          data.data.groups = data.data.groups.filter(g => !g.name?.toLowerCase().includes('default group'));
+        let finalGroups = data.data.groups || [];
+        if (finalGroups) {
+          finalGroups = finalGroups.filter(g => !g.name?.toLowerCase().includes('default group'));
         }
+        data.data.groups = finalGroups;
         setAssignData(data.data);
         // Load existing scopes as saved (pre-hydrated) so user sees what's already assigned
         const existingGroupIds = data.data.assigned_groups || [];
@@ -334,7 +337,11 @@ export default function StaffManageScreen({ navigation, route }) {
         setSavedScopeIds(saved);
 
         let autoOpenTarget = null;
-        const idSource = data.data.assignment_id_source || data.data.id_source || 'table';
+        let idSource = data.data.assignment_id_source || data.data.id_source || 'table';
+        if (idSource === 'group' && finalGroups.length === 0) {
+          idSource = 'table';
+        }
+        setActiveAssignmentMode(idSource);
         
         if (idSource === 'table' && existingTableIds.length === 1) {
           const tid = existingTableIds[0];
@@ -408,6 +415,7 @@ export default function StaffManageScreen({ navigation, route }) {
         group_ids: selectedGroupIds,
         table_ids: selectedTableIds,
         client_ids: selectedClientIds,
+        assignment_id_source: activeAssignmentMode,
         assignment_scopes: selectedGroupIds.map(gid => {
           const scope = assignmentScopes.find(s => s.scope_type === 'group' && parseInt(s.scope_id) === gid) || { classes: [], sections: [], branches: [], class_sections: {} };
           
@@ -967,8 +975,7 @@ export default function StaffManageScreen({ navigation, route }) {
                   </>
                 ) : (
                   <>
-                    {/* Render Group selection or Table selection based on id_source */}
-                    {(assignData.assignment_id_source || assignData.id_source || 'table') === 'group' ? (
+                    {activeAssignmentMode === 'group' ? (
                       <>
                         <Text style={s.sectionTitle}>Select Groups</Text>
                         <Text style={s.sectionHint}>Tap a group to select it, then configure class/section access below it.</Text>

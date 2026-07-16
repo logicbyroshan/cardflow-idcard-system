@@ -88,3 +88,41 @@ class MobileStaffAssignmentTests(TestCase):
         self.assertIn('assignment_id_source', payload)
         self.assertIn('id_source', payload)
         self.assertEqual(payload['assignment_id_source'], payload['id_source'])
+
+    def test_mobile_staff_assignment_update_endpoint(self):
+        import json
+        # Set session flag
+        session = self.client.session
+        session['mobile_auth_ok'] = True
+        session.save()
+
+        self.client.force_login(self.superuser)
+        url = reverse('mobile_api:api_mobile_staff_assignment_update', args=[self.assistant.id])
+        
+        # Test updating with assignment_id_source = 'table'
+        payload = {
+            'group_ids': [],
+            'table_ids': [self.table.id],
+            'client_ids': [],
+            'assignment_scopes': [],
+            'assignment_id_source': 'table'
+        }
+        
+        response = self.client.post(
+            url,
+            data=json.dumps(payload),
+            content_type='application/json',
+            HTTP_USER_AGENT='Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        
+        # Reload and verify assignment_id_source on load
+        load_url = reverse('mobile_api:api_mobile_staff_assignment', args=[self.assistant.id])
+        load_response = self.client.get(
+            load_url,
+            HTTP_USER_AGENT='Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1'
+        )
+        load_data = load_response.json()
+        self.assertEqual(load_data['data']['assignment_id_source'], 'table')
