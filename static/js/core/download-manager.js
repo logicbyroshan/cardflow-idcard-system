@@ -26,11 +26,20 @@
     var bgTimers = {};
     var bgTimerNextId = 1;
     var bgWorker = null;
+    var workerWorking = false;
     try {
-        var code = "var timers = {}; self.onmessage = function(e) { if (e.data.action === 'start') { var id = e.data.id; var delay = e.data.delay; timers[id] = setTimeout(function() { self.postMessage({ id: id }); delete timers[id]; }, delay); } else if (e.data.action === 'clear') { clearTimeout(timers[e.data.id]); delete timers[e.data.id]; } };";
+        var code = "var timers = {}; self.onmessage = function(e) { " +
+                   "if (e.data.action === 'ping') { self.postMessage({ action: 'pong' }); } " +
+                   "else if (e.data.action === 'start') { var id = e.data.id; var delay = e.data.delay; " +
+                   "timers[id] = setTimeout(function() { self.postMessage({ id: id }); delete timers[id]; }, delay); } " +
+                   "else if (e.data.action === 'clear') { clearTimeout(timers[e.data.id]); delete timers[e.data.id]; } };";
         var blob = new Blob([code], { type: 'application/javascript' });
         bgWorker = new Worker(URL.createObjectURL(blob));
         bgWorker.onmessage = function(e) {
+            if (e.data && e.data.action === 'pong') {
+                workerWorking = true;
+                return;
+            }
             var id = e.data.id;
             var cb = bgTimers[id];
             if (cb) {
@@ -38,12 +47,13 @@
                 cb();
             }
         };
+        bgWorker.postMessage({ action: 'ping' });
     } catch (err) {
         console.warn('Background Web Worker timer not available:', err);
     }
 
     window.bgSetTimeout = function(callback, delay) {
-        if (!bgWorker) return setTimeout(callback, delay);
+        if (!bgWorker || !workerWorking) return setTimeout(callback, delay);
         var id = bgTimerNextId++;
         bgTimers[id] = callback;
         bgWorker.postMessage({ action: 'start', id: id, delay: delay });
@@ -51,7 +61,7 @@
     };
 
     window.bgClearTimeout = function(id) {
-        if (!bgWorker) return clearTimeout(id);
+        if (!bgWorker || !workerWorking) return clearTimeout(id);
         delete bgTimers[id];
         bgWorker.postMessage({ action: 'clear', id: id });
     };

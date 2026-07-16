@@ -25,7 +25,10 @@
       "package": "com.adarshid.app",
       "versionCode": 106,
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
