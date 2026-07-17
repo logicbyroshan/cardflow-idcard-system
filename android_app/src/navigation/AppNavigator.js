@@ -11,6 +11,8 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import PublicProductDetailScreen from '../screens/PublicProductDetailScreen';
+import WhyChooseUsScreen from '../screens/WhyChooseUsScreen';
 
 // Eagerly load HomeScreen (primary authenticated screen)
 import HomeScreen from '../screens/HomeScreen';
@@ -71,6 +73,8 @@ export default function AppNavigator() {
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="NoAccess" component={NoAccessScreen} />
+          <Stack.Screen name="PublicProductDetail" component={PublicProductDetailScreen} />
+          <Stack.Screen name="WhyChooseUs" component={WhyChooseUsScreen} />
         </>
       ) : !isAppUnlocked ? (
         <>
@@ -109,6 +113,8 @@ export default function AppNavigator() {
           
           {/* Allowed to change MPIN when unlocked */}
           <Stack.Screen name="Mpin" component={MpinScreen} />
+          <Stack.Screen name="PublicProductDetail" component={PublicProductDetailScreen} />
+          <Stack.Screen name="WhyChooseUs" component={WhyChooseUsScreen} />
         </>
       )}
     </Stack.Navigator>

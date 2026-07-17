@@ -7337,9 +7337,11 @@ def api_website_landing_data(request):
 @require_http_methods(['POST'])
 def api_website_contact_submit(request):
     """
-    Fallback for contact form submission.
-    Logs the enquiry since the website service is removed.
+    Handles submission of contact/enquiry form.
+    Proxies the request to the landing website's secure API.
     """
+    import json
+    import requests
     try:
         if request.content_type == 'application/json':
             data = json.loads(request.body)
@@ -7348,16 +7350,51 @@ def api_website_contact_submit(request):
 
         name = str(data.get('name', '')).strip()
         email = str(data.get('email', '')).strip()
+        phone = str(data.get('phone', '')).strip()
         message = str(data.get('message', '')).strip()
+        subject = str(data.get('subject', 'Mobile App Contact Submission')).strip()
 
         if not all([name, email, message]):
             return JsonResponse({'success': False, 'message': 'Required fields missing'}, status=400)
 
-        logger.info('Mobile contact enquiry received (fallback): %s <%s>', name, email)
-        return JsonResponse({'success': True, 'message': 'Thank you! We have received your message.'})
+        # Forward the submission to the landing website API securely
+        landing_website_url = os.getenv('LANDING_WEBSITE_URL', 'https://www.adarshbhopal.in').strip()
+        api_url = f"{landing_website_url}/api/web-share/contact/"
+        api_key = getattr(settings, 'WEB_APP_API_KEY', 'adarsh_secure_fallback_key_2026_web_app')
+
+        payload = {
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'subject': subject,
+            'message': message
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-API-KEY': api_key
+        }
+
+        try:
+            response = requests.post(api_url, json=payload, headers=headers, timeout=10)
+            if response.status_code == 200:
+                res_data = response.json()
+                if res_data.get('success'):
+                    return JsonResponse({'success': True, 'message': res_data.get('message', 'Message sent successfully!')})
+                else:
+                    return JsonResponse({'success': False, 'message': res_data.get('message', 'Failed to submit.')}, status=400)
+            else:
+                logger.error("Landing site contact API returned status %s: %s", response.status_code, response.text)
+        except Exception as proxy_err:
+            logger.error("Enquiry proxy forwarding failed: %s", proxy_err)
+
+        # Fallback to local log if the website endpoint fails or is unreachable
+        logger.info('Mobile contact enquiry received (local fallback): %s <%s>', name, email)
+        return JsonResponse({'success': True, 'message': 'Thank you! We have logged your message.'})
+
     except Exception as e:
-        logger.error('Mobile contact fallback failed: %s', e)
-        return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
+        logger.error('Mobile contact submit failed: %s', e)
+        return JsonResponse({'success': False, 'message': 'Internal server error'}, status=500)
 
 
 @require_mobile_client
