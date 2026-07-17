@@ -40,6 +40,12 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     letter-spacing: 0.05em;
     margin-bottom: 4px;
 }
+.mandatory-indicator {
+    color: #ef4444; /* bold red asterisk */
+    margin-left: 2px;
+    font-weight: 700;
+}
+
 
 /* Photo Section in Form */
 .btn.btn-upload {
