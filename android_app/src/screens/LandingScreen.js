@@ -53,52 +53,26 @@ export default function LandingScreen({ navigation, route }) {
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const loadLandingData = useCallback(async () => {
-    // 1. Fetch server basic landing fallback config (hero_images, business etc.)
-    let fallbackData = null;
     try {
       const { ok, data: res } = await apiGet('/api/mobile/pub/website/landing/');
       if (ok && res.success) {
-        fallbackData = res.data;
+        return res.data;
       }
     } catch (e) {
-      console.warn("Failed to load local app landing fallback config", e);
+      console.warn("Failed to load app landing data from server", e);
     }
 
-    // 2. Fetch from website share API
-    let portfolioRes = null;
-    let clientsRes = null;
-    try {
-      const [pRes, cRes] = await Promise.all([
-        fetchPortfolio(),
-        fetchClients()
-      ]);
-      
-      if (pRes.ok && pRes.data?.success) {
-        portfolioRes = pRes.data.categories;
-      }
-      if (cRes.ok && cRes.data?.success) {
-        clientsRes = cRes.data.clients.map(c => ({
-          id: c.id,
-          name: c.name,
-          logo: c.logo_url, // map to logo for backwards-compat
-          total_records: c.total_records
-        }));
-      }
-    } catch (e) {
-      console.warn("Failed to fetch Web-Share API data, falling back to local static info", e);
-    }
-
-    // Combine or fallback
-    const combinedData = {
-      hero_images: fallbackData?.hero_images || [
+    // Offline / fallback data
+    return {
+      hero_images: [
         {
           id: 1,
-          image: 'https://panel.adarshbhopal.in/static/img/landing-hero-1.jpg',
+          image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop',
           title: 'Premium ID Cards',
           subtitle: 'High-quality PVC printing for all institutions',
         }
       ],
-      business: fallbackData?.business || {
+      business: {
         site_name: 'Adarsh ID Cards',
         tagline: 'Excellence in Identification',
         address: 'Bhopal, MP, India',
@@ -106,11 +80,9 @@ export default function LandingScreen({ navigation, route }) {
         email: 'info@adarshbhopal.in',
         whatsapp: '91XXXXXXXXXX',
       },
-      categories: portfolioRes || fallbackData?.categories || [],
-      clients: clientsRes || fallbackData?.clients || []
+      categories: [],
+      clients: []
     };
-
-    return combinedData;
   }, []);
 
   const {
@@ -248,11 +220,13 @@ export default function LandingScreen({ navigation, route }) {
         <View style={s.headerInner}>
           <View style={s.logoSide}>
             <View style={s.logoWrap}>
-              <View style={s.logoCircle}>
-                <DynamicIcon name="id-card" size={20} color="#fff" />
-              </View>
+              <Image
+                source={require("../../assets/logo.png")}
+                style={s.logoImg}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={s.logoText}>ADARSH</Text>
+            <Text style={s.logoText}>ADARSH ID CARDS</Text>
           </View>
           <TouchableOpacity
             onPress={() =>
@@ -338,27 +312,102 @@ export default function LandingScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* Promotional Why Choose Us Banner */}
-        <TouchableOpacity
-          style={s.promoBanner}
-          onPress={() => navigation.navigate("WhyChooseUs")}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={gradients.brand}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.promoBannerGrad}
-          >
-            <View style={s.promoTextWrap}>
-              <Text style={s.promoTitle}>Why Choose Adarsh?</Text>
-              <Text style={s.promoSub}>Learn about our 20+ years of quality standards and bento school layouts.</Text>
+        {/* Why Choose Us Section (Bento Grid) */}
+        <View style={s.section}>
+          <View style={s.sectionPadding}>
+            <Text style={s.sectionTitle}>Why Choose Adarsh?</Text>
+            <Text style={s.sectionSub}>
+              Two decades of quality printing, elite service standards, and reliability.
+            </Text>
+          </View>
+
+          {/* Bento Card 1: Bulk Excellence — text LEFT, image RIGHT */}
+          <View style={[s.sectionPadding, { marginBottom: 16 }]}>
+            <View style={s.bentoCardRow}>
+              <View style={s.bentoRowBody}>
+                <Text style={s.bentoEyebrow}>BULK EXCELLENCE</Text>
+                <Text style={s.bentoCardTitle}>Built for Schools & Bulk Orders</Text>
+                <Text style={s.bentoCopy}>
+                  High-volume printing for schools. Consistent quality across large batches.
+                </Text>
+                <View style={s.pointsCol}>
+                  <View style={s.pointRow}>
+                    <DynamicIcon name="check" size={10} color={colors.brandPrimary} />
+                    <Text style={s.pointText}>Bulk expertise & scaling</Text>
+                  </View>
+                  <View style={s.pointRow}>
+                    <DynamicIcon name="check" size={10} color={colors.brandPrimary} />
+                    <Text style={s.pointText}>Peak season turnarounds</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={s.bentoRowImageWrap}>
+                <Image
+                  source={require("../../assets/built-for-schools.webp")}
+                  style={s.bentoRowImage}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
-            <View style={s.promoIconWrap}>
-              <DynamicIcon name="chevron-right" size={14} color="#fff" />
+          </View>
+
+          {/* Bento Card 2: Customization — image LEFT, text RIGHT */}
+          <View style={[s.sectionPadding, { marginBottom: 16 }]}>
+            <View style={s.bentoCardRow}>
+              <View style={s.bentoRowImageWrap}>
+                <Image
+                  source={require("../../assets/customization.webp")}
+                  style={s.bentoRowImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={s.bentoRowBody}>
+                <Text style={s.bentoEyebrow}>TOTAL CUSTOMIZATION</Text>
+                <Text style={s.bentoCardTitle}>Complete Customization</Text>
+                <Text style={s.bentoCopy}>
+                  End-to-end custom printing from ID cards to lanyards, gifts & more.
+                </Text>
+                <View style={s.pointsCol}>
+                  <View style={s.pointRow}>
+                    <DynamicIcon name="check" size={10} color={colors.brandPrimary} />
+                    <Text style={s.pointText}>Custom gifts & accessories</Text>
+                  </View>
+                  <View style={s.pointRow}>
+                    <DynamicIcon name="check" size={10} color={colors.brandPrimary} />
+                    <Text style={s.pointText}>One vendor for all needs</Text>
+                  </View>
+                </View>
+              </View>
             </View>
-          </LinearGradient>
-        </TouchableOpacity>
+          </View>
+
+          {/* Bento Card 3 & 4 Grid: Reliable & Affordable (centered) */}
+          <View style={[s.sectionPadding, s.bentoGrid, { marginBottom: 16 }]}>
+            <View style={s.bentoHalfCard}>
+              <Text style={[s.bentoEyebrow, { textAlign: 'center' }]}>RELIABLE & TIMELY</Text>
+              <Text style={[s.halfCardTitle, { textAlign: 'center' }]}>Guaranteed Delivery</Text>
+              <Text style={[s.halfCardCopy, { textAlign: 'center' }]}>
+                We align production with your academic milestones for zero delays.
+              </Text>
+              <View style={[s.miniChips, { alignItems: 'center' }]}>
+                <Text style={s.miniChip}>✔ On-time promise</Text>
+                <Text style={s.miniChip}>✔ Multi-stage QC</Text>
+              </View>
+            </View>
+
+            <View style={s.bentoHalfCard}>
+              <Text style={[s.bentoEyebrow, { textAlign: 'center' }]}>VALUE DRIVEN</Text>
+              <Text style={[s.halfCardTitle, { textAlign: 'center' }]}>Budget Friendly</Text>
+              <Text style={[s.halfCardCopy, { textAlign: 'center' }]}>
+                Competitive wholesale rates without compromise on durability.
+              </Text>
+              <View style={[s.miniChips, { alignItems: 'center' }]}>
+                <Text style={s.miniChip}>✔ Bulk discounts</Text>
+                <Text style={s.miniChip}>✔ Priority support</Text>
+              </View>
+            </View>
+          </View>
+        </View>
 
         {/* Categories & Products Section */}
         {landingData?.categories?.length > 0 && (
@@ -1049,5 +1098,120 @@ const s = StyleSheet.create({
     fontFamily: 'SairaSemiCondensed-Bold',
     color: colors.brandPrimary,
     textDecorationLine: "underline",
+  },
+  bentoCard: {
+    backgroundColor: "#fff",
+    borderRadius: radius.md,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.gray100,
+    ...shadows.sm,
+  },
+  bentoCardRow: {
+    backgroundColor: "#fff",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.gray100,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+    ...shadows.sm,
+  },
+  bentoRowBody: {
+    flex: 1,
+    padding: 16,
+  },
+  bentoRowImageWrap: {
+    width: 130,
+    height: 130,
+    margin: 12,
+    backgroundColor: "#f5f5f5",
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  bentoRowImage: {
+    width: 115,
+    height: 115,
+  },
+  logoImg: {
+    width: "100%",
+    height: "100%",
+  },
+  bentoBody: {
+    padding: 20,
+  },
+  bentoEyebrow: {
+    fontSize: 9,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.brandPrimary,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  bentoCardTitle: {
+    fontSize: 16,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray900,
+    marginBottom: 8,
+  },
+  bentoCopy: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Regular',
+    color: colors.gray600,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  pointsCol: {
+    gap: 8,
+  },
+  pointRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pointText: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Medium',
+    color: colors.gray700,
+  },
+  bentoGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  bentoHalfCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: radius.md,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.gray100,
+    ...shadows.sm,
+  },
+  halfCardTitle: {
+    fontSize: 14,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray900,
+    marginVertical: 4,
+  },
+  halfCardCopy: {
+    fontSize: 11,
+    fontFamily: 'SairaSemiCondensed-Regular',
+    color: colors.gray500,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  miniChips: {
+    gap: 4,
+  },
+  miniChip: {
+    fontSize: 9,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
+    color: colors.gray700,
+    backgroundColor: colors.gray50,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
+    alignSelf: "flex-start",
   },
 });

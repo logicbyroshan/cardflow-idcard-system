@@ -66,11 +66,13 @@ export default function WhyChooseUsScreen({ navigation }) {
         
         {/* Bento 1: Built for Schools */}
         <View style={styles.bentoCard}>
-          <Image
-            source={require("../../assets/built-for-schools.webp")}
-            style={styles.bentoImage}
-            resizeMode="cover"
-          />
+          <View style={styles.bentoImageContainer}>
+            <Image
+              source={require("../../assets/built-for-schools.webp")}
+              style={styles.bentoImage}
+              resizeMode="contain"
+            />
+          </View>
           <View style={styles.bentoBody}>
             <Text style={styles.bentoEyebrow}>BULK EXCELLENCE</Text>
             <Text style={styles.bentoCardTitle}>Built for Schools & Bulk Orders</Text>
@@ -97,11 +99,13 @@ export default function WhyChooseUsScreen({ navigation }) {
 
         {/* Bento 2: Complete Customization */}
         <View style={styles.bentoCard}>
-          <Image
-            source={require("../../assets/customization.webp")}
-            style={styles.bentoImage}
-            resizeMode="cover"
-          />
+          <View style={styles.bentoImageContainer}>
+            <Image
+              source={require("../../assets/customization.webp")}
+              style={styles.bentoImage}
+              resizeMode="contain"
+            />
+          </View>
           <View style={styles.bentoBody}>
             <Text style={styles.bentoEyebrow}>TOTAL CUSTOMIZATION</Text>
             <Text style={styles.bentoCardTitle}>Complete Customization Under One Roof</Text>
@@ -354,10 +358,18 @@ const styles = StyleSheet.create({
     borderColor: colors.gray100,
     ...shadows.sm,
   },
-  bentoImage: {
+  bentoImageContainer: {
     width: "100%",
-    height: 180,
-    backgroundColor: colors.gray50,
+    height: 160,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 16,
+  },
+  bentoImage: {
+    width: 140,
+    height: 140,
+    backgroundColor: "#fff",
   },
   bentoBody: {
     padding: 20,
