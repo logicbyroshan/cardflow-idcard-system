@@ -160,6 +160,7 @@ INSTALLED_APPS = [
     # 'officework',  # Removed - app not found
     'mobile_api',
     'desktop_app',
+    'web_app',
 ]
 
 # Debug toolbar is optional; only enable if DEBUG is on and package is installed.
@@ -1044,3 +1045,8 @@ LOGGING = {
 # Mobile App Version Tracking
 # Can be set dynamically via .env (e.g. LATEST_MOBILE_VERSION=1.1.7)
 LATEST_MOBILE_VERSION = os.getenv('LATEST_MOBILE_VERSION', '').strip() or None
+
+# Web App API Key for Landing Website Integration
+# Default fallback is provided if not set in .env
+WEB_APP_API_KEY = os.getenv('WEB_APP_API_KEY', 'adarsh_secure_fallback_key_2026_web_app').strip()
+

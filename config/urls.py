@@ -204,6 +204,9 @@ urlpatterns += [
 
     # ==================== DESKTOP APP API (/api/desktop/) ====================
     path('api/desktop/', include('desktop_app.urls')),
+
+    # ==================== WEB APP PUBLIC API (/api/web/) ====================
+    path('api/web/', include('web_app.urls')),
 ]
 
 # Media file serving — always register the route so uploaded images/exports
