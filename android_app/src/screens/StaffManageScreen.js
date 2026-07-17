@@ -476,8 +476,13 @@ export default function StaffManageScreen({ navigation, route }) {
       };
       
       const { ok, data } = await apiPost(`/api/mobile/staff/${assigningId}/assignment/update/`, payload);
-      if (ok && data.success) { showToast('Assignments updated', 'success'); setShowAssign(false); }
-      else showToast(data.message || 'Error saving', 'error');
+      if (ok && data.success) { 
+        showToast('Assignments updated', 'success'); 
+        setShowAssign(false); 
+        refresh();
+      } else {
+        showToast(data.message || 'Error saving', 'error');
+      }
     } catch (e) { showToast('Network error', 'error'); }
     setSavingAssign(false);
   };
