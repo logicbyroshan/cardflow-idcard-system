@@ -1048,5 +1048,5 @@ LATEST_MOBILE_VERSION = os.getenv('LATEST_MOBILE_VERSION', '').strip() or None
 
 # Web App API Key for Landing Website Integration
 # Default fallback is provided if not set in .env
-WEB_APP_API_KEY = os.getenv('WEB_APP_API_KEY', 'adarsh_secure_fallback_key_2026_web_app').strip()
+WEB_APP_API_KEY = os.getenv('WEB_APP_API_KEY', 'adarsh_secure_fallback_key_2026_web_app').strip().strip("'\"")
 
