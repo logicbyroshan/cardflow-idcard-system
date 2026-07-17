@@ -5,11 +5,6 @@ from django.db.models.functions import Coalesce
 from client.models import Client
 from idcards.models import IDCard
 
-import hashlib
-import logging
-
-logger = logging.getLogger(__name__)
-
 def api_public_clients_list(request):
     """
     Expose a list of all client profiles with their names, emails,
@@ -20,19 +15,6 @@ def api_public_clients_list(request):
     # Accept header first, fallback to query param
     provided_key = request.META.get('HTTP_X_API_KEY') or request.GET.get('api_key', '')
     expected_key = getattr(settings, 'WEB_APP_API_KEY', '')
-
-    # Log diagnostics to resolve mismatch
-    raw_prov = provided_key or ''
-    raw_exp = expected_key or ''
-    
-    masked_prov = (raw_prov[:3] + "..." + raw_prov[-3:]) if len(raw_prov) > 6 else "***"
-    masked_exp = (raw_exp[:3] + "..." + raw_exp[-3:]) if len(raw_exp) > 6 else "***"
-    
-    hash_prov = hashlib.sha256(raw_prov.encode('utf-8')).hexdigest()
-    hash_exp = hashlib.sha256(raw_exp.encode('utf-8')).hexdigest()
-    
-    logger.warning("[API DIAGNOSTIC] Received request. Provided Key: %s (len: %s, hash: %s)", masked_prov, len(raw_prov), hash_prov)
-    logger.warning("[API DIAGNOSTIC] Expected Key: %s (len: %s, hash: %s)", masked_exp, len(raw_exp), hash_exp)
 
     if not expected_key or provided_key != expected_key:
         return JsonResponse({
