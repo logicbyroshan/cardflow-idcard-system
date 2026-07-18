@@ -340,8 +340,8 @@ def _sanitize_client_audit_fields(table, modifier, updated_at, updated_at_iso, m
     if role in ('client', 'client_staff'):
         # Client-role modifier: show their display name
         return _client_modifier_display_name(table), updated_at, updated_at_iso
-    # Admin/admin_staff modifier: hide name but keep timestamps
-    return '', updated_at, updated_at_iso
+    # Admin/admin_staff modifier: hide name and display timestamp but keep ISO timestamp for concurrency tracking
+    return '', None, updated_at_iso
 
 
 # ==================== ID CARD API ENDPOINTS ====================
