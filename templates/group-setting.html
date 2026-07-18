@@ -38,7 +38,7 @@
 {% block topbar_right %}
   <div class="nav-right">
     {% include 'partials/notification-bell.html' %}
-    <div class="page-switch-btns">
+    <div class="page-switch-btns" style="display: inline-flex; align-items: center; gap: 8px;">
       {% if not is_client and not is_client_staff %}
         {% if is_super_admin or perm_idcard_client_list %}
         <button class="btn btn-md btn-neutral" id="editClientBtn" title="Edit Client">
@@ -54,7 +54,7 @@
           <i class="fa-solid fa-trash"></i> <span>Delete</span>
         </button>
         {% endif %}
-        <div class="btn-separator" style="width: 1px; height: 24px; background: rgba(255, 255, 255, 0.25); margin: 0 10px; display: inline-block; vertical-align: middle;"></div>
+        <div class="btn-separator" style="width: 1px; height: 20px; background: #cbd5e1; margin: 0 4px; display: inline-block; vertical-align: middle;"></div>
       {% endif %}
 
       {% if client %}
