@@ -47,6 +47,24 @@
       <a href="#" class="btn btn-md btn-primary" title="Group Setting">
         <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
       </a>
+      
+      {% if not is_client and not is_client_staff %}
+        {% if is_super_admin or perm_idcard_client_list %}
+        <div class="btn-separator" style="width: 1px; height: 24px; background: rgba(255, 255, 255, 0.25); margin: 0 10px; display: inline-block; vertical-align: middle;"></div>
+        <button class="btn btn-md btn-neutral" id="editClientBtn" title="Edit Client">
+          <i class="fa-solid fa-pen"></i> <span>Edit Client</span>
+        </button>
+        <button class="btn btn-md {% if client.status == 'active' %}btn-warning{% else %}btn-success{% endif %}" id="activeClientBtn" data-status="{{ client.status }}" title="{% if client.status == 'active' %}Deactivate{% else %}Activate{% endif %}">
+          <i class="fa-solid {% if client.status == 'active' %}fa-ban{% else %}fa-check{% endif %}"></i>
+          <span>{% if client.status == 'active' %}Deactivate{% else %}Activate{% endif %}</span>
+        </button>
+        {% endif %}
+        {% if is_super_admin %}
+        <button class="btn btn-md btn-danger" id="deleteClientBtn" title="Delete Client">
+          <i class="fa-solid fa-trash"></i> <span>Delete</span>
+        </button>
+        {% endif %}
+      {% endif %}
     </div>
   </div>
 {% endblock %}
@@ -70,6 +88,13 @@
   {% include 'components/status-modal.html' with modal_id="status-modal" item_name="table" %}
   {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="table" %}
   {% include 'partials/components/create-xlsx-modal.html' %}
+  
+  {% if not is_client and not is_client_staff %}
+    {% include 'partials/client/client-drawer.html' %}
+    {% include 'partials/client/delete-modal.html' %}
+    {% include 'partials/client/status-modal.html' %}
+    {% include 'partials/staff/temp-password-modal.html' %}
+  {% endif %}
 {% endblock %}
 
 {% block page_vars %}
@@ -78,6 +103,34 @@
     var _cfg = JSON.parse(document.getElementById('page-config').textContent);
     const GROUP_ID = _cfg.groupId;
     const IS_CLIENT_ROLE = _cfg.isClient || _cfg.isClientStaff;
+    
+    window.isSuperAdmin = JSON.parse('{{ is_super_admin|yesno:"true,false" }}');
+    window.canManageClients = JSON.parse('{{ perm_idcard_client_list|yesno:"true,false" }}') || window.isSuperAdmin;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      if (IS_CLIENT_ROLE) return;
+
+      window.ManageClientPage = window.ManageClientPage || {};
+      window.ManageClientPage.selectedClientId = "{{ client.id }}";
+      window.ManageClientPage.selectedRow = {
+        dataset: {
+          clientId: "{{ client.id }}",
+          clientName: "{{ client.name|escapejs }}",
+          clientStatus: "{{ client.status }}",
+          clientIcon: "{{ client.icon|default:'fa-solid fa-building' }}",
+          clientHasData: "false"
+        }
+      };
+
+      setTimeout(function() {
+        var editBtn = document.getElementById('editClientBtn');
+        var activeBtn = document.getElementById('activeClientBtn');
+        var deleteBtn = document.getElementById('deleteClientBtn');
+        if (editBtn) editBtn.disabled = false;
+        if (activeBtn) activeBtn.disabled = false;
+        if (deleteBtn) deleteBtn.disabled = false;
+      }, 100);
+    });
   </script>
 {% endblock %}
 
@@ -94,4 +147,10 @@
     });
   </script>
   <script defer src="{% static 'js/create-xlsx.js' %}"></script>
+  
+  {% if not is_client and not is_client_staff %}
+  <script defer src="{% static 'js/manage-client-ui.js' %}"></script>
+  <script defer src="{% static 'js/manage-client-api.js' %}"></script>
+  <script defer src="{% static 'js/manage-client-handlers.js' %}"></script>
+  {% endif %}
 {% endblock %}
