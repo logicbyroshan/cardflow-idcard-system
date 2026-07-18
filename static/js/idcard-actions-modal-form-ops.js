@@ -95,6 +95,11 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto, force = fa
     if (IDCardApp.currentEditUpdatedAt) {
         formData.append('expected_updated_at', IDCardApp.currentEditUpdatedAt);
     }
+
+    // 3-way merge: send the base snapshot so the backend knows what we changed
+    if (IDCardApp.currentBaseFieldData) {
+        formData.append('base_field_data', JSON.stringify(IDCardApp.currentBaseFieldData));
+    }
     
     if (mainPhoto) {
         formData.append('photo', mainPhoto);
@@ -113,6 +118,12 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto, force = fa
             // This preserves scroll position and avoids losing user context.
             IDCardApp._updateRowInPlace(cardId, data.card);
 
+            // Keep our local timestamp in sync with the server so that a
+            // second save (without re-opening the modal) uses the fresh stamp.
+            if (data.card && data.card.updated_at_iso) {
+                IDCardApp.currentEditUpdatedAt = data.card.updated_at_iso;
+            }
+
             // If we need to retrieve this card after saving, do so now
             if (window.IDCardApp.retrieveOnSave) {
                 window.IDCardApp.retrieveOnSave = false;
@@ -129,26 +140,12 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto, force = fa
             }));
             if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
         } else {
-            // Check for concurrency conflict
-            if (data.conflict) {
-                if (confirm('This card was modified by another user. Do you want to force save and overwrite their changes?')) {
-                    updateExistingCard(cardId, fieldData, imageFiles, mainPhoto, true);
-                    return;
-                }
-            } else {
-                if (typeof showToast === 'function') showToast(data.message || 'Error updating card', false);
-            }
+            if (typeof showToast === 'function') showToast(data.message || 'Error updating card', false);
             if (IDCardApp._restoreSaveBtn) IDCardApp._restoreSaveBtn();
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        if (error && error.status === 409 && error.data && error.data.conflict) {
-            if (confirm('This card was modified by another user. Do you want to force save and overwrite their changes?')) {
-                updateExistingCard(cardId, fieldData, imageFiles, mainPhoto, true);
-                return;
-            }
-        }
         let errorMsg = 'Error updating card';
         if (error && error.data && error.data.message) {
             errorMsg = error.data.message;

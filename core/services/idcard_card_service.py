@@ -1031,20 +1031,25 @@ class IDCardCardService(BaseService):
         legacy_photo_file=None,
         modified_by: str = None,
         force: bool = False,
+        base_field_data: Dict[str, Any] = None,
     ) -> ServiceResult:
-        """Update an ID Card with atomic concurrency control.
+        """Update an ID Card with smart 3-way field-level merge.
 
         Args:
             card_id: IDCard PK.
-            field_data: Partial field_data to merge (text + image path values).
+            field_data: Desired final field_data from the saving user.
             status: Ignored — use WorkflowService.transition().
             image_files: Dict of uploaded files keyed by ``image_<field_name>``.
             uploaded_by: User who triggered the upload.
-            expected_updated_at: ISO-8601 timestamp for optimistic concurrency.
-                If the card was modified since this timestamp, a 'conflict'
-                ServiceResult is returned.
+            expected_updated_at: ISO-8601 timestamp captured when the user
+                opened the card. Used to detect concurrent edits so we can
+                perform a 3-way merge instead of overwriting blindly.
             legacy_photo_file: Optional UploadedFile for the legacy ``photo``
                                key (pre-field-config tables).
+            base_field_data: Snapshot of field_data when the user opened the
+                card. Combined with ``expected_updated_at`` this lets us compute
+                exactly which fields the user changed so we can merge them
+                onto the concurrent DB state without clobbering unrelated edits.
         """
         try:
             from django.db import transaction as db_transaction
@@ -1056,7 +1061,12 @@ class IDCardCardService(BaseService):
                 table = card.table
                 client = table.group.client
 
-                # ── Optimistic concurrency check ──
+                # ── Smart 3-way field-level merge on concurrent edit ──
+                # When two users edit the same card simultaneously:
+                #   - Fields only this user changed  → this user's value wins
+                #   - Fields only the other user changed → other user's value kept
+                #   - Fields changed by both           → this user's value wins (last writer per field)
+                #   - Images uploaded                  → always applied
                 if expected_updated_at and not force:
                     expected_dt = parse_datetime(expected_updated_at)
                     if expected_dt and card.updated_at:
@@ -1066,14 +1076,22 @@ class IDCardCardService(BaseService):
                         dt_expected = make_aware(expected_dt) if is_naive(expected_dt) else expected_dt
                         dt_card = make_aware(card.updated_at) if is_naive(card.updated_at) else card.updated_at
                         if abs((dt_card.astimezone(_utc) - dt_expected.astimezone(_utc)).total_seconds()) > 1:
-                            return ServiceResult(
-                                success=False,
-                                message='This card was modified by another user. Please refresh and try again.',
-                                data={
-                                    'conflict': True,
-                                    'server_updated_at': card.updated_at.isoformat(),
-                                },
-                            )
+                            # Concurrent edit detected — perform field-level merge
+                            if field_data is not None:
+                                db_data = {str(k).strip().upper(): v for k, v in (card.field_data or {}).items()}
+                                incoming = {str(k).strip().upper(): v for k, v in field_data.items()}
+                                if base_field_data is not None:
+                                    # True 3-way merge: only apply fields this user actually changed
+                                    base = {str(k).strip().upper(): v for k, v in base_field_data.items()}
+                                    merged = dict(db_data)  # start from what's in DB (other user's save)
+                                    for key, our_val in incoming.items():
+                                        base_val = base.get(key)
+                                        # Apply our change if we actually modified this field
+                                        # (our value differs from what we saw when we opened the card)
+                                        if str(our_val or '').strip() != str(base_val or '').strip():
+                                            merged[key] = our_val
+                                    field_data = {k: v for k, v in merged.items()}  # normalised to uppercase keys
+                                # else: no base provided → use incoming as-is (full overwrite, backward compat)
 
                 existing_data = card.field_data or {}
                 image_field_names = cls.get_image_field_names(table.fields)
