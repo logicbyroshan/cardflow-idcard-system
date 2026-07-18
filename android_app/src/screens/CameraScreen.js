@@ -112,18 +112,16 @@ export default function CameraScreen({ navigation, route }) {
         return;
       }
 
-      const { face_detected, eyes_open, wearing_sunglasses, wearing_glasses } = res;
+      const { face_detected, too_far } = res;
+      let warning = '';
       if (!face_detected) {
-        setServerWarning('No Person Detected — Please ensure face is visible');
-      } else if (!eyes_open) {
-        setServerWarning('Eyes Not Visible — Please open your eyes');
-      } else if (wearing_sunglasses) {
-        setServerWarning('Sunglasses Detected — Please remove them');
-      } else if (wearing_glasses) {
-        setServerWarning('Glasses Detected — Please remove them');
-      } else {
-        setPhoto(activePhotoObj.current);
+        warning = 'No Person Detected — Please ensure face is visible';
+      } else if (too_far) {
+        warning = 'Person Too Far — Please move closer to the camera';
       }
+      
+      setServerWarning(warning);
+      setPhoto(activePhotoObj.current);
     } catch (e) {
       console.warn('[WebView Parse Error]', e);
       // Allow photo through on parse error
@@ -298,8 +296,35 @@ export default function CameraScreen({ navigation, route }) {
       }
       
       if (fastCaptureCards && currentStudent) {
-        // Save to offline storage
-        await AsyncStorage.setItem(`offline_photo_${currentStudent.id}`, manipulated.uri);
+        let uploadedSuccessfully = false;
+        const tableId = route.params?.tableId;
+        
+        // Attempt online upload first for non-photographers or online users
+        if (tableId && currentStudent.id) {
+          try {
+            const formData = new FormData();
+            const filename = manipulated.uri.split('/').pop() || 'photo.jpg';
+            formData.append('photo', {
+              uri: manipulated.uri,
+              name: filename,
+              type: 'image/jpeg'
+            });
+            formData.append('field_data', '{}');
+            
+            const url = `/api/mobile/table/${tableId}/card/${currentStudent.id}/update/`;
+            const response = await apiPostForm(url, formData);
+            if (response?.ok && response?.data?.success) {
+              uploadedSuccessfully = true;
+            }
+          } catch (uploadErr) {
+            console.warn('[CameraScreen] Online upload failed, falling back to offline:', uploadErr);
+          }
+        }
+
+        // Save to offline storage if online upload was not successful or was skipped
+        if (!uploadedSuccessfully) {
+          await AsyncStorage.setItem(`offline_photo_${currentStudent.id}`, manipulated.uri);
+        }
         
         // Update the offline data state to mark as captured
         const offlineStr = await AsyncStorage.getItem('photographer_offline_data');
@@ -316,8 +341,9 @@ export default function CameraScreen({ navigation, route }) {
         if (nextStudent) {
             setPhoto(null);
             setCurrentIndex(currentIndex + 1);
+            setServerWarning('');
         } else {
-            alert('All students in this list have been captured!');
+            alert('All students in this list have been processed!');
             navigation.goBack();
         }
       } else {
@@ -360,6 +386,13 @@ export default function CameraScreen({ navigation, route }) {
                 <Text style={s.previewTopSub}>Confirm or retake the photo</Text>
               </>
             )}
+
+            {serverWarning ? (
+              <View style={s.previewWarningBanner}>
+                <DynamicIcon name="exclamation-triangle" size={12} color="#d97706" />
+                <Text style={s.previewWarningText}>{serverWarning.toUpperCase()}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -401,12 +434,6 @@ export default function CameraScreen({ navigation, route }) {
 
   const takePicture = async () => {
     if (!cameraRef.current || !isCameraReady || isCapturing) return;
-
-    // Block capture if any alignment or simulator warning is active
-    if (captureBlocker) {
-      alert(`Capture Blocked: ${captureBlocker}`);
-      return;
-    }
 
     // Wait at least 400ms after camera ready before capturing to avoid init errors
     const elapsed = Date.now() - cameraReadyTimestamp.current;
@@ -739,8 +766,8 @@ export default function CameraScreen({ navigation, route }) {
       {isValidating && (
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 999 }]}>
           <ActivityIndicator size="large" color="#f97316" />
-          <Text style={{ color: '#fff', fontSize: 16, fontFamily: fontFamily.bold, marginTop: 16 }}>Validating Biometric Face...</Text>
-          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, fontFamily: fontFamily.medium, marginTop: 8 }}>Checking face, eyes and glasses</Text>
+          <Text style={{ color: '#fff', fontSize: 16, fontFamily: fontFamily.bold, marginTop: 16 }}>Checking Image Quality...</Text>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, fontFamily: fontFamily.medium, marginTop: 8 }}>Verifying face alignment and distance</Text>
         </View>
       )}
 
@@ -855,5 +882,23 @@ const s = StyleSheet.create({
     width: 14,
     height: 14,
     borderColor: '#fff',
+  },
+  previewWarningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fffbeb',
+    borderColor: '#fef3c7',
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: radius.sm,
+    marginTop: 10,
+    gap: 8,
+  },
+  previewWarningText: {
+    color: '#d97706',
+    fontSize: 11,
+    fontFamily: 'SairaSemiCondensed-Medium',
   },
 });

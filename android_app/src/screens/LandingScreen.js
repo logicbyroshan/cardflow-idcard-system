@@ -24,17 +24,20 @@ import {
   fontFamily,
 } from "../theme";
 import { apiGet, apiPost, BASE_URL } from "../api/client";
+import { fetchPortfolio, fetchClients } from "../api/webShare";
 import { useAuth } from "../context/AuthContext";
 import Toast from "../components/Toast";
 import useRefreshableResource from "../hooks/useRefreshableResource";
 
 const { width } = Dimensions.get("window");
 
-export default function LandingScreen({ navigation }) {
+export default function LandingScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { isAuthenticated } = useAuth();
   const [activeHero, setActiveHero] = useState(0);
   const heroRef = useRef(null);
+  const scrollRef = useRef(null);
+  const [activeCatId, setActiveCatId] = useState(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -52,14 +55,34 @@ export default function LandingScreen({ navigation }) {
   const loadLandingData = useCallback(async () => {
     try {
       const { ok, data: res } = await apiGet('/api/mobile/pub/website/landing/');
-      if (ok && res.success) return res.data;
-      throw new Error(
-        res.message || "Failed to load content. Please try again.",
-      );
+      if (ok && res.success) {
+        return res.data;
+      }
     } catch (e) {
-      console.error(e);
-      throw e;
+      console.warn("Failed to load app landing data from server", e);
     }
+
+    // Offline / fallback data
+    return {
+      hero_images: [
+        {
+          id: 1,
+          image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop',
+          title: 'Premium ID Cards',
+          subtitle: 'High-quality PVC printing for all institutions',
+        }
+      ],
+      business: {
+        site_name: 'Adarsh ID Cards',
+        tagline: 'Excellence in Identification',
+        address: 'Bhopal, MP, India',
+        phone: '+91-XXXXXXXXXX',
+        email: 'info@adarshbhopal.in',
+        whatsapp: '91XXXXXXXXXX',
+      },
+      categories: [],
+      clients: []
+    };
   }, []);
 
   const {
@@ -70,11 +93,33 @@ export default function LandingScreen({ navigation }) {
   } = useRefreshableResource(loadLandingData, { initialData: null });
 
   useEffect(() => {
+    if (landingData?.categories?.length > 0 && activeCatId === null) {
+      setActiveCatId(landingData.categories[0].id);
+    }
+  }, [landingData, activeCatId]);
+
+  useEffect(() => {
+    if (route?.params?.prefillProduct) {
+      const { prefillProduct, categoryName } = route.params;
+      setForm(prev => ({
+        ...prev,
+        message: `Hi, I am interested in: ${prefillProduct.title} (${categoryName || 'Portfolio'}). Please share details.`
+      }));
+      // Scroll to enquiry form after short delay to allow layout to settle
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 300);
+    }
+  }, [route?.params?.prefillProduct]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       if (landingData?.hero_images?.length > 1) {
         const next = (activeHero + 1) % landingData.hero_images.length;
-        heroRef.current?.scrollToIndex({ index: next, animated: true });
-        setActiveHero(next);
+        try {
+          heroRef.current?.scrollToIndex({ index: next, animated: true });
+          setActiveHero(next);
+        } catch (err) {}
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -175,11 +220,13 @@ export default function LandingScreen({ navigation }) {
         <View style={s.headerInner}>
           <View style={s.logoSide}>
             <View style={s.logoWrap}>
-              <View style={s.logoCircle}>
-                <DynamicIcon name="id-card" size={20} color="#fff" />
-              </View>
+              <Image
+                source={require("../../assets/logo.png")}
+                style={s.logoImg}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={s.logoText}>ADARSH</Text>
+            <Text style={s.logoText}>ADARSH ID CARDS</Text>
           </View>
           <TouchableOpacity
             onPress={() =>
@@ -207,6 +254,7 @@ export default function LandingScreen({ navigation }) {
       </Animated.View>
 
       <Animated.ScrollView
+        ref={scrollRef}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false },
@@ -263,6 +311,226 @@ export default function LandingScreen({ navigation }) {
             </Text>
           </View>
         </View>
+
+        {/* Why Choose Us Section (Bento Grid) */}
+        <View style={s.section}>
+          <View style={s.sectionPadding}>
+            <Text style={s.sectionTitle}>Why Choose Adarsh?</Text>
+            <Text style={s.sectionSub}>
+              Two decades of quality printing, elite service standards, and reliability.
+            </Text>
+          </View>
+
+          {/* Bento Card 1: Bulk Excellence — text LEFT, image RIGHT */}
+          <View style={[s.sectionPadding, { marginBottom: 16 }]}>
+            <View style={s.bentoCardRow}>
+              <View style={s.bentoRowBody}>
+                <Text style={s.bentoEyebrow}>BULK EXCELLENCE</Text>
+                <Text style={s.bentoCardTitle}>Built for Schools & Bulk Orders</Text>
+                <Text style={s.bentoCopy}>
+                  High-volume printing for schools. Consistent quality across large batches.
+                </Text>
+                <View style={s.pointsCol}>
+                  <View style={s.pointRow}>
+                    <DynamicIcon name="check" size={10} color={colors.brandPrimary} />
+                    <Text style={s.pointText}>Bulk expertise & scaling</Text>
+                  </View>
+                  <View style={s.pointRow}>
+                    <DynamicIcon name="check" size={10} color={colors.brandPrimary} />
+                    <Text style={s.pointText}>Peak season turnarounds</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={s.bentoRowImageWrap}>
+                <Image
+                  source={require("../../assets/built-for-schools.webp")}
+                  style={s.bentoRowImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Bento Card 2: Customization — image LEFT, text RIGHT */}
+          <View style={[s.sectionPadding, { marginBottom: 16 }]}>
+            <View style={s.bentoCardRow}>
+              <View style={s.bentoRowImageWrap}>
+                <Image
+                  source={require("../../assets/customization.webp")}
+                  style={s.bentoRowImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={s.bentoRowBody}>
+                <Text style={s.bentoEyebrow}>TOTAL CUSTOMIZATION</Text>
+                <Text style={s.bentoCardTitle}>Complete Customization</Text>
+                <Text style={s.bentoCopy}>
+                  End-to-end custom printing from ID cards to lanyards, gifts & more.
+                </Text>
+                <View style={s.pointsCol}>
+                  <View style={s.pointRow}>
+                    <DynamicIcon name="check" size={10} color={colors.brandPrimary} />
+                    <Text style={s.pointText}>Custom gifts & accessories</Text>
+                  </View>
+                  <View style={s.pointRow}>
+                    <DynamicIcon name="check" size={10} color={colors.brandPrimary} />
+                    <Text style={s.pointText}>One vendor for all needs</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Bento Card 3 & 4 Grid: Reliable & Affordable (centered) */}
+          <View style={[s.sectionPadding, s.bentoGrid, { marginBottom: 16 }]}>
+            <View style={s.bentoHalfCard}>
+              <Text style={[s.bentoEyebrow, { textAlign: 'center' }]}>RELIABLE & TIMELY</Text>
+              <Text style={[s.halfCardTitle, { textAlign: 'center' }]}>Guaranteed Delivery</Text>
+              <Text style={[s.halfCardCopy, { textAlign: 'center' }]}>
+                We align production with your academic milestones for zero delays.
+              </Text>
+              <View style={[s.miniChips, { alignItems: 'center' }]}>
+                <Text style={s.miniChip}>✔ On-time promise</Text>
+                <Text style={s.miniChip}>✔ Multi-stage QC</Text>
+              </View>
+            </View>
+
+            <View style={s.bentoHalfCard}>
+              <Text style={[s.bentoEyebrow, { textAlign: 'center' }]}>VALUE DRIVEN</Text>
+              <Text style={[s.halfCardTitle, { textAlign: 'center' }]}>Budget Friendly</Text>
+              <Text style={[s.halfCardCopy, { textAlign: 'center' }]}>
+                Competitive wholesale rates without compromise on durability.
+              </Text>
+              <View style={[s.miniChips, { alignItems: 'center' }]}>
+                <Text style={s.miniChip}>✔ Bulk discounts</Text>
+                <Text style={s.miniChip}>✔ Priority support</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Categories & Products Section */}
+        {landingData?.categories?.length > 0 && (
+          <View style={s.section}>
+            <View style={s.sectionPadding}>
+              <Text style={s.sectionTitle}>Our Portfolio & Products</Text>
+              <Text style={s.sectionSub}>
+                Explore our catalog of custom printed ID cards, tags, and lanyards.
+              </Text>
+            </View>
+
+            {/* Category Filter Chips */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.catScroll}
+            >
+              {landingData.categories.map((cat) => {
+                const isActive = activeCatId === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setActiveCatId(cat.id)}
+                    style={[
+                      s.catChip,
+                      isActive && s.catChipActive
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    <View style={s.catIconWrap}>
+                      <DynamicIcon 
+                        name={cat.icon} 
+                        size={12} 
+                        color={isActive ? "#fff" : colors.gray600} 
+                      />
+                    </View>
+                    <Text style={[s.catChipText, isActive && s.catChipTextActive]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Products Grid */}
+            <View style={[s.sectionPadding, s.prodGridWrap]}>
+              {(() => {
+                const activeCategory = landingData.categories.find(c => c.id === activeCatId);
+                const productsToShow = activeCategory?.products || [];
+
+                if (productsToShow.length === 0) {
+                  return (
+                    <View style={s.emptyProducts}>
+                      <DynamicIcon name="exclamation-circle" size={32} color={colors.gray300} />
+                      <Text style={s.emptyProductsText}>No products available in this category.</Text>
+                    </View>
+                  );
+                }
+
+                return (
+                  <View style={s.prodGrid}>
+                    {productsToShow.map((product) => {
+                      const isLarge = product.is_featured || product.bento_size === "large";
+                      const cardWidth = isLarge ? (width - 40) : ((width - 50) / 2);
+                      const cardHeight = isLarge ? 220 : 170;
+
+                      return (
+                        <TouchableOpacity
+                          key={product.id}
+                          style={[s.prodCard, { width: cardWidth, height: cardHeight }]}
+                          onPress={() => navigation.navigate("PublicProductDetail", {
+                            product,
+                            categoryName: activeCategory.name,
+                            businessContact: landingData.business
+                          })}
+                          activeOpacity={0.8}
+                        >
+                          <Image
+                            source={{ uri: product.media_url || product.video_thumbnail_url }}
+                            style={s.prodImg}
+                            resizeMode="cover"
+                          />
+                          {/* Gradient Overlay */}
+                          <LinearGradient
+                            colors={["transparent", "rgba(0,0,0,0.85)"]}
+                            style={StyleSheet.absoluteFill}
+                          />
+
+                          {/* Top row with badges */}
+                          <View style={s.prodBadgeRow}>
+                            {product.item_type === "video" && (
+                              <View style={s.videoBadge}>
+                                <DynamicIcon name="redo" size={9} color="#fff" />
+                                <Text style={s.badgeText}>VIDEO</Text>
+                              </View>
+                            )}
+                            {product.is_featured && (
+                              <View style={s.featuredBadge}>
+                                <Text style={s.badgeText}>FEATURED</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {/* Text Overlay */}
+                          <View style={s.prodInfo}>
+                            <Text style={s.prodTitle} numberOfLines={1}>
+                              {product.title}
+                            </Text>
+                            {isLarge && product.description ? (
+                              <Text style={s.prodDesc} numberOfLines={2}>
+                                {product.description}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                );
+              })()}
+            </View>
+          </View>
+        )}
 
         <View style={s.section}>
           <View style={s.sectionPadding}>
@@ -349,6 +617,13 @@ export default function LandingScreen({ navigation }) {
           </View>
 
           <View style={s.footer}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("WhyChooseUs")}
+              style={s.footerLink}
+              activeOpacity={0.7}
+            >
+              <Text style={s.footerLinkText}>Why Choose Adarsh ID Cards? Learn More →</Text>
+            </TouchableOpacity>
             <Text style={s.footerText}>
               © 2024 Adarsh Bhopal. All rights reserved.
             </Text>
@@ -602,6 +877,115 @@ const s = StyleSheet.create({
   },
   clientLogo: { width: "100%", height: "100%" },
 
+  catScroll: { paddingHorizontal: 15, paddingBottom: 12, marginTop: 4 },
+  catChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  catChipActive: {
+    backgroundColor: colors.brandPrimary,
+    borderColor: colors.brandPrimaryDark,
+  },
+  catChipText: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Medium',
+    color: "#475569",
+  },
+  catChipTextActive: {
+    color: "#fff",
+    fontFamily: 'SairaSemiCondensed-Bold',
+  },
+  prodGridWrap: {
+    marginTop: 16,
+  },
+  prodGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  prodCard: {
+    borderRadius: radius.md,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    ...shadows.sm,
+  },
+  prodImg: {
+    width: "100%",
+    height: "100%",
+  },
+  prodBadgeRow: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    right: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  videoBadge: {
+    backgroundColor: colors.brandPrimary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  featuredBadge: {
+    backgroundColor: colors.yellow,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: "#fff",
+  },
+  prodInfo: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 12,
+  },
+  prodTitle: {
+    fontSize: 13,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: "#fff",
+  },
+  prodDesc: {
+    fontSize: 11,
+    fontFamily: 'SairaSemiCondensed-Regular',
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 4,
+    lineHeight: 14,
+  },
+  emptyProducts: {
+    width: "100%",
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  emptyProductsText: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Medium',
+    color: colors.gray500,
+    marginTop: 8,
+  },
+
   contactSection: { marginTop: 40, paddingHorizontal: 20, paddingBottom: 40 },
   contactCard: {
     backgroundColor: "#fff",
@@ -668,4 +1052,166 @@ const s = StyleSheet.create({
   benefitSub: { fontSize: 11, color: colors.gray500, textAlign: 'center', fontFamily: 'SairaSemiCondensed-Regular' },
   loading: { flex: 1, backgroundColor: colors.surfaceBg, alignItems: 'center', justifyContent: 'center' },
   loadingText: { marginTop: 16, fontSize: 14, fontFamily: 'SairaSemiCondensed-SemiBold', color: colors.brandPrimary },
+
+  promoBanner: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+    borderRadius: radius.md,
+    overflow: "hidden",
+    ...shadows.md,
+  },
+  promoBannerGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
+  },
+  promoTextWrap: {
+    flex: 1,
+  },
+  promoTitle: {
+    fontSize: 15,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: "#fff",
+  },
+  promoSub: {
+    fontSize: 11,
+    fontFamily: 'SairaSemiCondensed-Regular',
+    color: "rgba(255, 255, 255, 0.8)",
+    marginTop: 2,
+  },
+  promoIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerLink: {
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
+  footerLinkText: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.brandPrimary,
+    textDecorationLine: "underline",
+  },
+  bentoCard: {
+    backgroundColor: "#fff",
+    borderRadius: radius.md,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.gray100,
+    ...shadows.sm,
+  },
+  bentoCardRow: {
+    backgroundColor: "#fff",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.gray100,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+    ...shadows.sm,
+  },
+  bentoRowBody: {
+    flex: 1,
+    padding: 16,
+  },
+  bentoRowImageWrap: {
+    width: 130,
+    height: 130,
+    margin: 12,
+    backgroundColor: "#f5f5f5",
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  bentoRowImage: {
+    width: 115,
+    height: 115,
+  },
+  logoImg: {
+    width: "100%",
+    height: "100%",
+  },
+  bentoBody: {
+    padding: 20,
+  },
+  bentoEyebrow: {
+    fontSize: 9,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.brandPrimary,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  bentoCardTitle: {
+    fontSize: 16,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray900,
+    marginBottom: 8,
+  },
+  bentoCopy: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Regular',
+    color: colors.gray600,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  pointsCol: {
+    gap: 8,
+  },
+  pointRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pointText: {
+    fontSize: 12,
+    fontFamily: 'SairaSemiCondensed-Medium',
+    color: colors.gray700,
+  },
+  bentoGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  bentoHalfCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: radius.md,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.gray100,
+    ...shadows.sm,
+  },
+  halfCardTitle: {
+    fontSize: 14,
+    fontFamily: 'SairaSemiCondensed-Bold',
+    color: colors.gray900,
+    marginVertical: 4,
+  },
+  halfCardCopy: {
+    fontSize: 11,
+    fontFamily: 'SairaSemiCondensed-Regular',
+    color: colors.gray500,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  miniChips: {
+    gap: 4,
+  },
+  miniChip: {
+    fontSize: 9,
+    fontFamily: 'SairaSemiCondensed-SemiBold',
+    color: colors.gray700,
+    backgroundColor: colors.gray50,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
+    alignSelf: "flex-start",
+  },
 });

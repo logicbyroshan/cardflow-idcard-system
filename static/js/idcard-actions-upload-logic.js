@@ -63,11 +63,11 @@ function initXlsxUpload() {
 
     function _clearAsyncTimers() {
         if (_taskPollTimer) {
-            clearTimeout(_taskPollTimer);
+            window.bgClearTimeout(_taskPollTimer);
             _taskPollTimer = null;
         }
         if (_retryTimer) {
-            clearTimeout(_retryTimer);
+            window.bgClearTimeout(_retryTimer);
             _retryTimer = null;
         }
     }
@@ -418,7 +418,7 @@ function initXlsxUpload() {
                                     resetUploadState();
                                     return;
                                 }
-                                _taskPollTimer = setTimeout(_pollOnce, 3000);
+                                _taskPollTimer = window.bgSetTimeout(_pollOnce, 3000);
                                 return;
                             }
 
@@ -470,7 +470,7 @@ function initXlsxUpload() {
                                 updateBlockingOverlay(displayPct, 'Processing... ' + displayPct + '%');
                             }
 
-                            _taskPollTimer = setTimeout(_pollOnce, 2000);
+                             _taskPollTimer = window.bgSetTimeout(_pollOnce, 2000);
                         })
                         .catch(function(err) {
                             if (_cancelRequested || !_uploadInProgress) return;
@@ -481,7 +481,7 @@ function initXlsxUpload() {
                                 resetUploadState();
                                 return;
                             }
-                            _taskPollTimer = setTimeout(_pollOnce, 4000);
+                            _taskPollTimer = window.bgSetTimeout(_pollOnce, 4000);
                         });
                 }
 
@@ -564,7 +564,7 @@ function initXlsxUpload() {
                 var delayMsg = reason === 'network' ? 'Network error. Retrying in 5s...' : 'Server is busy. Retrying...';
                 if (timeText) timeText.textContent = delayMsg;
                 if (reason === 'network' && typeof showToast === 'function') showToast('Network error. Retrying automatically...', false);
-                _retryTimer = setTimeout(function() {
+                _retryTimer = window.bgSetTimeout(function() {
                     if (_cancelRequested || !_uploadInProgress) return;
                     if (timeText) timeText.textContent = 'Retrying upload...';
                     if (progressBar) { progressBar.style.width = '0%'; progressBar.classList.remove('processing'); }

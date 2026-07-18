@@ -22,6 +22,7 @@ import Toast from '../components/Toast';
 import UpdatePromptModal from '../components/UpdatePromptModal';
 import { DashboardSkeleton } from '../components/Skeleton';
 import { ErrorBanner, ErrorView, ERROR_TYPES } from '../components/NetworkGuard';
+import { registerForPushNotificationsAsync, registerDeviceTokenOnBackend } from '../utils/notifications';
 
 const { width } = Dimensions.get('window');
 
@@ -69,50 +70,45 @@ export default function HomeScreen({ navigation }) {
       try {
         const currentVersion = Constants?.expoConfig?.version || '1.0.63';
         const lastVersion = await AsyncStorage.getItem('adarsh_last_seen_version');
-        
-        const { status: camStatus, canAskAgain: camCanAsk } = await ImagePicker.getCameraPermissionsAsync();
-        
-        // Android 13+ (SDK 33) does not require photo library permissions when using the system photo picker
-        const isAndroid13OrHigher = Platform.OS === 'android' && Platform.Version >= 33;
-        
-        let mediaStatus = 'granted';
-        let mediaCanAsk = false;
-        
-        if (!isAndroid13OrHigher) {
-          const media = await ImagePicker.getMediaLibraryPermissionsAsync();
-          mediaStatus = media.status;
-          mediaCanAsk = media.canAskAgain;
-        }
-
-        let needsPrompt = false;
-        
-        // If app version changed (updated), or first time, or if permissions are not set/granted
         const isAppUpdated = lastVersion !== currentVersion;
         
         if (isAppUpdated) {
           await AsyncStorage.setItem('adarsh_last_seen_version', currentVersion);
         }
 
-        if (camStatus !== 'granted') {
-          if (camCanAsk) {
-            await ImagePicker.requestCameraPermissionsAsync();
-          } else if (isAppUpdated || camStatus === 'denied') {
-            needsPrompt = true;
-          }
+        // 1. Check & Request Camera permissions
+        const { status: camStatus, canAskAgain: camCanAsk } = await ImagePicker.getCameraPermissionsAsync();
+        let currentCamStatus = camStatus;
+        if (camStatus !== 'granted' && camCanAsk) {
+          const res = await ImagePicker.requestCameraPermissionsAsync();
+          currentCamStatus = res.status;
         }
 
-        if (mediaStatus !== 'granted') {
-          if (mediaCanAsk) {
-            await ImagePicker.requestMediaLibraryPermissionsAsync();
-          } else if (isAppUpdated || mediaStatus === 'denied') {
-            needsPrompt = true;
-          }
+        // 2. Check & Request Photo Library permissions
+        const media = await ImagePicker.getMediaLibraryPermissionsAsync();
+        let currentMediaStatus = media.status;
+        let mediaCanAsk = media.canAskAgain;
+        if (media.status !== 'granted' && mediaCanAsk) {
+          const res = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          currentMediaStatus = res.status;
         }
 
+        // 3. Request Push Notification permissions
+        try {
+          const pushToken = await registerForPushNotificationsAsync();
+          if (pushToken) {
+            await registerDeviceTokenOnBackend(pushToken);
+          }
+        } catch (pushErr) {
+          console.warn('[PushNotification] Registration on startup failed:', pushErr);
+        }
+
+        // If permission request failed and it was the first app open/updated version, show settings prompt
+        const needsPrompt = currentCamStatus !== 'granted' || currentMediaStatus !== 'granted';
         if (needsPrompt && isAppUpdated) {
           Alert.alert(
             'Permissions Required',
-            'Adarsh has been updated to the latest premium version! To capture and upload ID photos, please ensure Camera and Photo Library permissions are enabled.',
+            'To capture and upload ID photos, please ensure Camera and Photo Library permissions are enabled.',
             [
               { text: 'Later', style: 'cancel' },
               { 

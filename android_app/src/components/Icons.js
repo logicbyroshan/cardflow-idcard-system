@@ -352,6 +352,22 @@ export const IconBackspace = ({ size = 24, color = "#fff" }) => (
     <Path d="M18 9L12 15M12 9L18 15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
+
+export const IconMicrochip = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="5" y="5" width="14" height="14" rx="2" stroke={color} strokeWidth="2" />
+    <Path d="M9 2V5M15 2V5M9 19V22M15 19V22M2 9H5M2 15H5M19 9H22M19 15H22" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Rect x="9" y="9" width="6" height="6" rx="1" fill={color} />
+  </Svg>
+);
+
+export const IconRibbon = ({ size = 24, color = "#fff" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 2C8.69 2 6 4.69 6 8C6 11.23 9 14.5 12 17M12 2C15.31 2 18 4.69 18 8C18 11.23 15 14.5 12 17" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M12 17L8 22M12 17L16 22" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
 /**
  * Dynamic mapping component to bridge FontAwesome-style names to premium SVG icons.
  */
@@ -370,6 +386,9 @@ export const DynamicIcon = ({ name, size = 18, color = "#fff" }) => {
   if (n === 'pool' || n === 'archive') return <IconArchive size={size} color={color} />;
   if (n === 'reprint' || n === 'redo') return <IconRedo size={size} color={color} />;
   if (n === 'backspace') return <IconBackspace size={size} color={color} />;
+  if (n === 'microchip') return <IconMicrochip size={size} color={color} />;
+  if (n === 'ribbon') return <IconRibbon size={size} color={color} />;
+  if (n === 'id-card' || n === 'id-cards' || n === 'total') return <IconTotal size={size} color={color} />;
   
   if (n === 'trash' || n === 'trash-alt') return <IconTrash size={size} color={color} />;
   if (n === 'edit' || n === 'pen') return <IconEdit size={size} color={color} />;

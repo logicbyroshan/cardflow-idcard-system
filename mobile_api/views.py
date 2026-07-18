@@ -46,171 +46,8 @@ from mediafiles.utils import get_card_photo_url
 from idcards.models import IDCard, IDCardTable
 from client.models import Client
 
-class StaffCompatWrapper:
-    def __init__(self, delegate, staff_type):
-        self.delegate = delegate
-        self.staff_type = staff_type
+from staff.models import Staff
 
-    @property
-    def id(self):
-        return self.delegate.id
-
-    @property
-    def pk(self):
-        return self.delegate.id
-
-    @property
-    def user(self):
-        return self.delegate.user
-
-    @property
-    def user_id(self):
-        return self.delegate.user_id
-
-    @property
-    def client(self):
-        if hasattr(self.delegate, 'client'):
-            return self.delegate.client
-        return None
-
-    @property
-    def client_id(self):
-        if hasattr(self.delegate, 'client_id'):
-            return self.delegate.client_id
-        return None
-
-    @property
-    def created_at(self):
-        return self.delegate.created_at
-
-    @property
-    def department(self):
-        return getattr(self.delegate, 'department', '')
-
-    @property
-    def designation(self):
-        return getattr(self.delegate, 'designation', '')
-
-    def get_staff_type_display(self):
-        if self.staff_type == 'admin_staff':
-            return 'Admin Staff'
-        elif self.staff_type == 'client_staff':
-            return 'Client Staff'
-        else:
-            return 'Photographer'
-
-    @property
-    def assigned_clients(self):
-        if hasattr(self.delegate, 'assigned_clients'):
-            return self.delegate.assigned_clients
-        if self.staff_type == 'photographer':
-            class AssignedClientsWrapper:
-                def __init__(self, photographer):
-                    self.photographer = photographer
-                def all(self):
-                    from client.models import Client
-                    client_ids = self.photographer.photographer_assignments.values_list('client_id', flat=True)
-                    return Client.objects.filter(id__in=client_ids)
-                def values_list(self, *args, **kwargs):
-                    from client.models import Client
-                    client_ids = self.photographer.photographer_assignments.values_list('client_id', flat=True)
-                    return Client.objects.filter(id__in=client_ids).values_list(*args, **kwargs)
-            return AssignedClientsWrapper(self.delegate)
-        from client.models import Client
-        return Client.objects.none()
-
-    def __getattr__(self, name):
-        return getattr(self.delegate, name)
-
-    def save(self, *args, **kwargs):
-        return self.delegate.save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        user = self.delegate.user
-        self.delegate.delete(*args, **kwargs)
-        if user:
-            user.delete()
-
-
-class StaffCompatQuerySet:
-    def __init__(self, items):
-        self.items = items
-        self.model = Staff
-
-    def __iter__(self):
-        return iter(self.items)
-
-    def __len__(self):
-        return len(self.items)
-
-    def count(self):
-        return len(self.items)
-
-    def filter(self, *args, **kwargs):
-        filtered = self.items
-        for key, val in kwargs.items():
-            if key == 'staff_type':
-                filtered = [item for item in filtered if item.staff_type == val]
-            elif key == 'id':
-                filtered = [item for item in filtered if item.id == val]
-            elif key == 'id__in':
-                filtered = [item for item in filtered if item.id in val]
-            else:
-                filtered = [item for item in filtered if getattr(item, key, None) == val]
-        return StaffCompatQuerySet(filtered)
-
-    def exclude(self, *args, **kwargs):
-        excluded = self.items
-        for key, val in kwargs.items():
-            excluded = [item for item in excluded if getattr(item, key, None) != val]
-        return StaffCompatQuerySet(excluded)
-
-    def select_related(self, *args, **kwargs):
-        return self
-
-    def prefetch_related(self, *args, **kwargs):
-        return self
-
-    def order_by(self, *args, **kwargs):
-        return self
-
-    def distinct(self):
-        return self
-
-    def __getitem__(self, k):
-        if isinstance(k, slice):
-            return StaffCompatQuerySet(self.items[k])
-        return self.items[k]
-
-
-class StaffCompatManager:
-    def all(self):
-        items = []
-        for o in Operator.objects.all():
-            items.append(StaffCompatWrapper(o, 'admin_staff'))
-        for a in Assistant.objects.all():
-            items.append(StaffCompatWrapper(a, 'client_staff'))
-        for p in Photographer.objects.all():
-            items.append(StaffCompatWrapper(p, 'photographer'))
-        return StaffCompatQuerySet(items)
-
-    def filter(self, *args, **kwargs):
-        return self.all().filter(*args, **kwargs)
-
-    def get(self, *args, **kwargs):
-        res = self.filter(*args, **kwargs)
-        if len(res) == 0:
-            from django.core.exceptions import ObjectDoesNotExist
-            raise ObjectDoesNotExist("Staff matching query does not exist")
-        return res[0]
-
-
-from django.core.exceptions import ObjectDoesNotExist
-
-class Staff:
-    objects = StaffCompatManager()
-    _default_manager = objects
-    DoesNotExist = ObjectDoesNotExist
 
 MAX_REPRINT_ACTION_IDS = 200
 
@@ -5450,7 +5287,7 @@ def api_mobile_staff_assignment(request, staff_id):
 
         # Load client's groups and tables
         groups = IDCardGroup.objects.filter(client_id=client_id).values('id', 'name').order_by('name')
-        tables = IDCardTable.objects.filter(group__client_id=client_id, is_active=True, deleted_by_client=False).values('id', 'name', 'group_id').order_by('group__name', 'name')
+        tables = IDCardTable.objects.filter(group__client_id=client_id, deleted_by_client=False).values('id', 'name', 'group_id').order_by('group__name', 'name')
         
         assigned_groups = list(staff.assigned_groups.values_list('id', flat=True))
         assigned_tables = [
@@ -5649,6 +5486,7 @@ def api_mobile_staff_assignment(request, staff_id):
                 'assigned_tables': assigned_tables,
                 'assignment_scopes': staff.assignment_scopes or [],
                 'assignment_id_source': assignment_id_source,
+                'id_source': assignment_id_source,
                 'class_section_options': global_options,
                 'group_options': group_options_json,
                 'table_options': table_options_json
@@ -5694,10 +5532,15 @@ def api_mobile_staff_assignment_update(request, staff_id):
             client_id = staff.client_id
             from client.models import Client
             target_client = Client.objects.filter(id=client_id).first()
-            group_count = IDCardGroup.objects.filter(client_id=client_id).count()
-            id_source = 'table' if group_count <= 1 else 'group'
-            if target_client and getattr(target_client, 'assignment_id_source', '') == 'table':
-                id_source = 'table'
+            
+            req_id_source = data.get('assignment_id_source', '').lower()
+            if req_id_source in ('group', 'table'):
+                id_source = req_id_source
+            else:
+                group_count = IDCardGroup.objects.filter(client_id=client_id).count()
+                id_source = 'table' if group_count <= 1 else 'group'
+                if target_client and getattr(target_client, 'assignment_id_source', '') == 'table':
+                    id_source = 'table'
                 
             client_staff_payload = {
                 'assigned_groups': payload['assigned_tables'] if id_source == 'table' else payload['assigned_groups'],
@@ -7452,41 +7295,206 @@ def api_app_version(request):
 @require_http_methods(['GET'])
 def api_website_landing_data(request):
     """
-    Public fallback for mobile app landing screen.
-    Returns static content since the website app has been removed.
+    Public endpoint for mobile app landing screen.
+    Priority:
+      1. Django ORM (works on production where website app is co-installed)
+      2. SQLite direct query (works locally where apps are separate)
     """
-    data = {
-        'hero_images': [
-            {
-                'id': 1,
-                'image': 'https://panel.adarshbhopal.in/static/img/landing-hero-1.jpg',
-                'title': 'Premium ID Cards',
-                'subtitle': 'High-quality PVC printing for all institutions',
-            },
-            {
-                'id': 2,
-                'image': 'https://panel.adarshbhopal.in/static/img/landing-hero-2.jpg',
-                'title': 'Secure & Fast',
-                'subtitle': 'Trusted by 1000+ organizations across India',
-            },
-        ],
-        'categories': [
-            {'id': 1, 'name': 'PVC Cards', 'icon': 'id-card', 'description': 'Standard PVC Identification Cards'},
-            {'id': 2, 'name': 'RFID Cards', 'icon': 'microchip', 'description': 'Contactless Smart Cards'},
-            {'id': 3, 'name': 'Lanyards', 'icon': 'ribbon', 'description': 'Custom Printed Lanyards'},
-        ],
-        'products': [],
-        'clients': [],
-        'business': {
-            'site_name': 'Adarsh ID Cards',
-            'tagline': 'Excellence in Identification',
-            'address': 'Bhopal, MP, India',
-            'phone': '+91-XXXXXXXXXX',
-            'email': 'info@adarshbhopal.in',
-            'whatsapp': '91XXXXXXXXXX',
-        },
+    import os
+    import sqlite3
+
+    # 1. Determine website media base URL
+    proto = "https" if request.is_secure() else "http"
+    ip_or_domain = request.get_host().split(':')[0]
+    if 'panel.adarshbhopal.in' in ip_or_domain:
+        website_base_url = "https://www.adarshbhopal.in"
+    else:
+        env_url = os.getenv('LANDING_WEBSITE_URL', '').rstrip('/')
+        website_base_url = env_url if env_url else f"{proto}://{ip_or_domain}:8001"
+
+    def make_absolute(path):
+        if not path:
+            return ''
+        if path.startswith(('http://', 'https://')):
+            return path
+        rel = path.lstrip('/')
+        return f"{website_base_url}/{rel}" if rel.startswith('media/') else f"{website_base_url}/media/{rel}"
+
+    categories = []
+    clients = []
+    business = {
+        'site_name': 'Adarsh ID Cards',
+        'tagline': 'Excellence in Identification',
+        'address': 'Bhopal, MP, India',
+        'phone': '+91-XXXXXXXXXX',
+        'email': 'info@adarshbhopal.in',
+        'whatsapp': '91XXXXXXXXXX',
     }
-    return JsonResponse({'success': True, 'data': data})
+    data_loaded = False
+
+    # ------------------------------------------------------------------
+    # STRATEGY 1: Django ORM — works on production (co-deployed apps)
+    # ------------------------------------------------------------------
+    try:
+        from website.models import PortfolioCategory, PortfolioItem, WebsiteClientLogo
+
+        try:
+            from website.models import BusinessDetails
+            biz = BusinessDetails.objects.filter(is_active=True).first()
+            if biz:
+                ph = getattr(biz, 'phone1', '') or getattr(biz, 'phone2', '') or ''
+                business.update({
+                    'site_name': biz.site_name or business['site_name'],
+                    'address': biz.address or business['address'],
+                    'phone': ph or business['phone'],
+                    'email': biz.email or business['email'],
+                    'whatsapp': ''.join(c for c in ph if c.isdigit()) or business['whatsapp'],
+                })
+        except Exception:
+            pass
+
+        for cat in PortfolioCategory.objects.filter(is_active=True).order_by('order', 'name'):
+            icon_name = (getattr(cat, 'icon', '') or 'folder').replace('fas fa-', '').replace('fa-', '')
+            products_list = []
+            for item in cat.items.filter(is_active=True).order_by('order', '-created_at'):
+                img_path = str(item.image) if item.image else ''
+                vf_path = str(item.video_file) if item.video_file else ''
+                if item.item_type in ('video', 'reel'):
+                    media_url = make_absolute(img_path) if img_path else make_absolute(vf_path)
+                else:
+                    media_url = make_absolute(img_path)
+                products_list.append({
+                    'id': item.id, 'title': item.title, 'slug': item.slug,
+                    'description': item.description or '',
+                    'item_type': item.item_type or 'image',
+                    'orientation': getattr(item, 'orientation', '') or '',
+                    'media_url': media_url,
+                    'video_url': item.video_url or '',
+                    'video_fallback_url': make_absolute(vf_path),
+                    'video_stream_url': '',
+                    'video_thumbnail_url': make_absolute(img_path),
+                    'is_featured': bool(item.is_featured),
+                    'order': item.order,
+                    'created_at': item.created_at.isoformat(),
+                })
+            categories.append({
+                'id': cat.id, 'name': cat.name, 'slug': cat.slug, 'icon': icon_name,
+                'description': cat.description or '', 'is_bento': bool(cat.is_bento),
+                'bento_size': cat.bento_size or 'normal', 'order': cat.order, 'products': products_list,
+            })
+
+        for cl in WebsiteClientLogo.objects.filter(website_is_visible=True).order_by('website_display_order', '-created_at'):
+            clients.append({
+                'id': cl.id, 'name': cl.name,
+                'logo': make_absolute(str(cl.logo)) if cl.logo else '',
+                'total_records': cl.total_records or 0,
+            })
+
+        data_loaded = True
+        logger.info("landing_data: loaded via Django ORM (%d categories)", len(categories))
+
+    except ImportError:
+        logger.info("landing_data: website ORM not available, trying SQLite")
+    except Exception as orm_err:
+        logger.error("landing_data: ORM error: %s", orm_err)
+
+    # ------------------------------------------------------------------
+    # STRATEGY 2: SQLite — works locally when apps are in separate dirs
+    # ------------------------------------------------------------------
+    if not data_loaded:
+        db_path = os.getenv('WEBSITE_DATABASE_PATH')
+        if not db_path:
+            candidates = [
+                r'E:\E\Adarsh Website New\db.sqlite3',
+                os.path.abspath(os.path.join(settings.BASE_DIR, '..', 'Adarsh Website New', 'db.sqlite3')),
+                os.path.abspath(os.path.join(settings.BASE_DIR, '..', 'Adarsh-Website-New', 'db.sqlite3')),
+            ]
+            db_path = next((p for p in candidates if os.path.exists(p)), None)
+
+        if db_path:
+            conn = None
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                cur = conn.cursor()
+
+                try:
+                    row = cur.execute('SELECT site_name,address,phone1,phone2,email FROM website_businessdetails WHERE is_active=1 LIMIT 1').fetchone()
+                    if row:
+                        r = dict(row)
+                        ph = r.get('phone1') or r.get('phone2') or ''
+                        business.update({'site_name': r.get('site_name') or business['site_name'],
+                                         'address': r.get('address') or business['address'],
+                                         'phone': ph or business['phone'],
+                                         'email': r.get('email') or business['email'],
+                                         'whatsapp': ''.join(c for c in ph if c.isdigit()) or business['whatsapp']})
+                except Exception:
+                    pass
+
+                for cat_row in cur.execute(
+                    'SELECT id,name,slug,icon,description,is_bento,bento_size,"order" FROM website_portfoliocategory WHERE is_active=1 ORDER BY "order",name'
+                ).fetchall():
+                    cat = dict(cat_row)
+                    icon_name = (cat.get('icon') or 'folder').replace('fas fa-', '').replace('fa-', '')
+                    products_list = []
+                    for pr in cur.execute(
+                        'SELECT id,title,slug,description,image,orientation,item_type,video_url,video_file,is_featured,"order",created_at '
+                        'FROM website_portfolioitem WHERE is_active=1 AND category_id=? ORDER BY "order",created_at DESC',
+                        (cat['id'],)
+                    ).fetchall():
+                        p = dict(pr)
+                        img = p.get('image') or ''
+                        vf = p.get('video_file') or ''
+                        if p.get('item_type') in ('video', 'reel'):
+                            media_url = make_absolute(img) if img else make_absolute(vf)
+                        else:
+                            media_url = make_absolute(img)
+                        products_list.append({
+                            'id': p['id'], 'title': p['title'], 'slug': p['slug'],
+                            'description': p['description'] or '',
+                            'item_type': p['item_type'] or 'image', 'orientation': p['orientation'] or '',
+                            'media_url': media_url, 'video_url': p['video_url'] or '',
+                            'video_fallback_url': make_absolute(vf), 'video_stream_url': '',
+                            'video_thumbnail_url': make_absolute(img),
+                            'is_featured': bool(p['is_featured']), 'order': p['order'], 'created_at': p['created_at'],
+                        })
+                    categories.append({
+                        'id': cat['id'], 'name': cat['name'], 'slug': cat['slug'], 'icon': icon_name,
+                        'description': cat['description'] or '', 'is_bento': bool(cat['is_bento']),
+                        'bento_size': cat['bento_size'] or 'normal', 'order': cat['order'], 'products': products_list,
+                    })
+
+                for cr in cur.execute(
+                    'SELECT id,name,logo,website_display_order,total_records FROM website_websiteclientlogo WHERE website_is_visible=1 ORDER BY website_display_order,created_at DESC'
+                ).fetchall():
+                    c = dict(cr)
+                    clients.append({'id': c['id'], 'name': c['name'], 'logo': make_absolute(c['logo']), 'total_records': c['total_records'] or 0})
+
+                data_loaded = True
+                logger.info("landing_data: loaded via SQLite (%d categories)", len(categories))
+            except Exception as sq_err:
+                logger.error("landing_data: SQLite error: %s", sq_err)
+            finally:
+                if conn:
+                    conn.close()
+
+    # Build hero slider
+    all_prods = [p for cat in categories for p in cat.get('products', [])]
+    featured = [p for p in all_prods if p.get('is_featured')][:3] or all_prods[:3]
+    hero_images = [
+        {'id': p['id'], 'image': p.get('media_url') or '', 'title': p['title'],
+          'subtitle': (p['description'][:60] + '...') if p.get('description') else 'Premium PVC ID cards and accessories'}
+        for p in featured
+    ] or [
+        {'id': 1, 'image': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop',
+          'title': 'Premium ID Cards', 'subtitle': 'High-quality PVC printing for all institutions'},
+        {'id': 2, 'image': 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&auto=format&fit=crop',
+          'title': 'Secure & Fast', 'subtitle': 'Trusted by 1000+ organizations across India'},
+    ]
+
+    return JsonResponse({'success': True, 'data': {
+        'hero_images': hero_images, 'categories': categories, 'clients': clients, 'business': business,
+    }})
 
 
 @require_mobile_client(allow_public=True)
@@ -7494,9 +7502,11 @@ def api_website_landing_data(request):
 @require_http_methods(['POST'])
 def api_website_contact_submit(request):
     """
-    Fallback for contact form submission.
-    Logs the enquiry since the website service is removed.
+    Handles submission of contact/enquiry form.
+    Proxies the request to the landing website's secure API.
     """
+    import json
+    import requests
     try:
         if request.content_type == 'application/json':
             data = json.loads(request.body)
@@ -7505,16 +7515,51 @@ def api_website_contact_submit(request):
 
         name = str(data.get('name', '')).strip()
         email = str(data.get('email', '')).strip()
+        phone = str(data.get('phone', '')).strip()
         message = str(data.get('message', '')).strip()
+        subject = str(data.get('subject', 'Mobile App Contact Submission')).strip()
 
         if not all([name, email, message]):
             return JsonResponse({'success': False, 'message': 'Required fields missing'}, status=400)
 
-        logger.info('Mobile contact enquiry received (fallback): %s <%s>', name, email)
-        return JsonResponse({'success': True, 'message': 'Thank you! We have received your message.'})
+        # Forward the submission to the landing website API securely
+        landing_website_url = os.getenv('LANDING_WEBSITE_URL', 'https://www.adarshbhopal.in').strip()
+        api_url = f"{landing_website_url}/api/web-share/contact/"
+        api_key = getattr(settings, 'WEB_APP_API_KEY', 'adarsh_secure_fallback_key_2026_web_app')
+
+        payload = {
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'subject': subject,
+            'message': message
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-API-KEY': api_key
+        }
+
+        try:
+            response = requests.post(api_url, json=payload, headers=headers, timeout=10)
+            if response.status_code == 200:
+                res_data = response.json()
+                if res_data.get('success'):
+                    return JsonResponse({'success': True, 'message': res_data.get('message', 'Message sent successfully!')})
+                else:
+                    return JsonResponse({'success': False, 'message': res_data.get('message', 'Failed to submit.')}, status=400)
+            else:
+                logger.error("Landing site contact API returned status %s: %s", response.status_code, response.text)
+        except Exception as proxy_err:
+            logger.error("Enquiry proxy forwarding failed: %s", proxy_err)
+
+        # Fallback to local log if the website endpoint fails or is unreachable
+        logger.info('Mobile contact enquiry received (local fallback): %s <%s>', name, email)
+        return JsonResponse({'success': True, 'message': 'Thank you! We have logged your message.'})
+
     except Exception as e:
-        logger.error('Mobile contact fallback failed: %s', e)
-        return JsonResponse({'success': False, 'message': 'Internal error'}, status=500)
+        logger.error('Mobile contact submit failed: %s', e)
+        return JsonResponse({'success': False, 'message': 'Internal server error'}, status=500)
 
 
 @require_mobile_client

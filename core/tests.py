@@ -2124,7 +2124,8 @@ class SecurityApiRegressionTests(TestCase):
     def test_client_reprint_modal_flag_still_denied_without_reprint_permission(self):
         self.client_a.perm_idcard_edit = True
         self.client_a.perm_idcard_reprint_list = False
-        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list'])
+        self.client_a.perm_reprint_request_list = False
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list', 'perm_reprint_request_list'])
         self.card_a.status = 'download'
         self.card_a.save(update_fields=['status'])
 
@@ -2140,6 +2141,88 @@ class SecurityApiRegressionTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertIn('cannot be edited', response.json().get('message', '').lower())
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
+    def test_client_reprint_modal_flag_can_edit_download_card_with_reprint_request_permission(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = False
+        self.client_a.perm_reprint_request_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list', 'perm_reprint_request_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({
+                'field_data': {'NAME': 'UPDATED FROM REPRINT MODAL WITH REPRINT REQUEST PERM'},
+                'reprint_modal_edit': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'UPDATED FROM REPRINT MODAL WITH REPRINT REQUEST PERM')
+
+    def test_client_cannot_edit_card_with_active_reprint_request_even_with_modal_flag(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = False
+        self.client_a.perm_reprint_request_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list', 'perm_reprint_request_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        # Create active reprint request
+        from reprintcard.models import ReprintRequest
+        ReprintRequest.objects.create(
+            card=self.card_a,
+            table=self.card_a.table,
+            status='requested',
+        )
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({
+                'field_data': {'NAME': 'SHOULD BLOCK EDIT'},
+                'reprint_modal_edit': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('active reprint requests cannot be edited', response.json().get('message', '').lower())
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
+    def test_client_cannot_inline_edit_card_with_active_reprint_request(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = False
+        self.client_a.perm_reprint_request_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list', 'perm_reprint_request_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        # Create active reprint request
+        from reprintcard.models import ReprintRequest
+        ReprintRequest.objects.create(
+            card=self.card_a,
+            table=self.card_a.table,
+            status='requested',
+        )
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update-field/',
+            data=json.dumps({'field': 'NAME', 'value': 'SHOULD BLOCK EDIT'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('active reprint requests cannot be edited', response.json().get('message', '').lower())
         self.card_a.refresh_from_db()
         self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
 
@@ -4201,6 +4284,86 @@ class ClearPendingPathsApiTests(TestCase):
         # PHOTO (even though missing) must NOT be cleared because we only specified SIGNATURE
         self.assertEqual(self.card1.field_data['PHOTO'], 'adarshimg/photo1.jpg')
         self.assertEqual(self.card1.field_data['SIGNATURE'], '')  # Cleared!
+
+
+class ExportTaskClassFilterTests(TestCase):
+    def setUp(self):
+        self.super_admin = _create_super_admin('export-task-admin@test.com', 'adminpass1')
+        self.client_user, self.client_obj = _create_client_user('export-task-client@test.com', 'clientpass1')
+        
+        self.group, self.table = _create_table(
+            self.client_obj,
+            fields=[
+                {'name': 'NAME', 'type': 'text', 'order': 1},
+                {'name': 'CLASS', 'type': 'class', 'order': 2},
+            ]
+        )
+        
+        # Create some cards with different classes
+        self.card1 = _create_card(self.table, field_data={'NAME': 'Alice', 'CLASS': 'V'}, status='pending')
+        self.card2 = _create_card(self.table, field_data={'NAME': 'Bob', 'CLASS': 'VI'}, status='pending')
+        self.card3 = _create_card(self.table, field_data={'NAME': 'Charlie', 'CLASS': 'V'}, status='pending')
+
+    def test_create_export_task_with_class_filter_and_breaks(self):
+        self.client.force_login(self.super_admin)
+        
+        url = reverse('api_create_export_task', args=[self.table.id])
+        payload = {
+            'export_type': 'docx',
+            'card_ids': [self.card1.id, self.card2.id, self.card3.id],
+            'class_filter_enabled': True,
+            'selected_classes': ['V'],
+            'break_enabled': True,
+            'break_pages': 5,
+            'break_mode': 'class_only'
+        }
+        
+        response = self.client.post(
+            url,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        
+        # Check task was created with correct metadata
+        from core.models import BackgroundTask
+        task = BackgroundTask.objects.get(id=data['task_id'])
+        metadata = task.metadata
+        
+        # Class filter should have filtered cards down to Alice and Charlie (class V)
+        self.assertEqual(set(metadata['card_ids']), {self.card1.id, self.card3.id})
+        
+        # Break options should be correctly passed
+        self.assertTrue(metadata['break_enabled'])
+        self.assertEqual(metadata['break_pages'], 5)
+        self.assertEqual(metadata['break_mode'], 'class_only')
+
+    def test_class_counts_endpoint(self):
+        self.client.force_login(self.super_admin)
+        url = reverse('api_idcard_class_counts', args=[self.table.id])
+        
+        payload = {
+            'card_ids': [self.card1.id, self.card2.id, self.card3.id]
+        }
+        
+        response = self.client.post(
+            url,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        
+        # card1 (V), card2 (VI), card3 (V)
+        class_counts = data['class_counts']
+        self.assertEqual(class_counts.get('V'), 2)
+        self.assertEqual(class_counts.get('VI'), 1)
+
 
 
 

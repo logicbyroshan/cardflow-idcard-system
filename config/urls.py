@@ -89,6 +89,11 @@ def _protected_media_serve(request, path, document_root=None):
                     Q(result_path=normalized_path.replace('/', '\\'))
                 ).exists()
                 if not owns_file:
+                    # Allow admins/operators to download exports that don't have BackgroundTask records (e.g. synchronous download-all or large image fallback on disk)
+                    if PermissionService.is_any_admin(request.user):
+                        owns_file = True
+                
+                if not owns_file:
                     return HttpResponse(status=404)
 
             # For all other protected folders, keep access to admins only.
@@ -199,6 +204,9 @@ urlpatterns += [
 
     # ==================== DESKTOP APP API (/api/desktop/) ====================
     path('api/desktop/', include('desktop_app.urls')),
+
+    # ==================== WEB APP PUBLIC API (/api/web/) ====================
+    path('api/web/', include('web_app.urls')),
 ]
 
 # Media file serving — always register the route so uploaded images/exports

@@ -381,7 +381,7 @@
         <div class="imp-pills" id="impPills">
           <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client <span class="imp-pill-count">0</span></button>
-          <button class="imp-pill" data-role="assistant" onclick="__impSetRole('assistant',this)">Assistant <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistant <span class="imp-pill-count">0</span></button>
           <button class="imp-pill" data-role="guest_user" onclick="__impSetRole('guest_user',this)">Guest User <span class="imp-pill-count">0</span></button>
         </div>
       </div>
@@ -438,8 +438,8 @@
   var _page = 1;
   var _perPage = 25;
   var _pagerBound = false;
-  var COLORS = { client:'#38a169', assistant:'#3182ce', guest_user:'#64748b' };
-  var ROLE_LABELS = { assistant:'Assistant', guest_user:'Guest User' };
+  var COLORS = { client:'#38a169', client_staff:'#3182ce', guest_user:'#64748b' };
+  var ROLE_LABELS = { client_staff:'Assistant', guest_user:'Guest User' };
 
   function _displayRole(role, fallback) {
     return ROLE_LABELS[role] || fallback || String(role || '').replace('_', ' ');

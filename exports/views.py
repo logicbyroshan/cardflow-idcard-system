@@ -933,7 +933,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
             if class_field:
                 cards_qs = IDCard.objects.filter(id__in=card_ids)
                 filtered_card_ids = []
-                selected_classes_set = set(selected_classes)
+                selected_classes_set = {normalize_class_value(str(c).strip()) for c in selected_classes if c}
                 for card in cards_qs:
                     val = card.field_data.get(class_field)
                     if val:

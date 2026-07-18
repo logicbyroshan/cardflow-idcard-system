@@ -1270,11 +1270,17 @@ class AssistantService(BaseService):
                         new_user.save()
 
                         allowed_classes = [] if is_fallback_mode else ([cls_name] if auto_assign else [])
-                        assistant = Assistant.objects.create(
-                            user=new_user,
-                            client=target_client,
-                            allowed_classes=allowed_classes
-                        )
+                        assistant_kwargs = {
+                            'user': new_user,
+                            'client': target_client,
+                            'allowed_classes': allowed_classes
+                        }
+                        for perm in cls.ASSISTANT_PERMISSION_FIELDS:
+                            if getattr(target_client, perm, False):
+                                assistant_kwargs[perm] = True
+                            else:
+                                assistant_kwargs[perm] = False
+                        assistant = Assistant.objects.create(**assistant_kwargs)
                         if group:
                             assistant.assigned_groups.add(group)
                             if auto_assign:
@@ -1344,12 +1350,18 @@ class AssistantService(BaseService):
 
                             allowed_classes = [] if is_fallback_mode else ([cls_name] if auto_assign else [])
                             allowed_sections = [] if is_fallback_mode else ([sec_name] if (auto_assign and sec_name) else [])
-                            assistant = Assistant.objects.create(
-                                user=new_user,
-                                client=target_client,
-                                allowed_classes=allowed_classes,
-                                allowed_sections=allowed_sections
-                            )
+                            assistant_kwargs = {
+                                'user': new_user,
+                                'client': target_client,
+                                'allowed_classes': allowed_classes,
+                                'allowed_sections': allowed_sections
+                            }
+                            for perm in cls.ASSISTANT_PERMISSION_FIELDS:
+                                if getattr(target_client, perm, False):
+                                    assistant_kwargs[perm] = True
+                                else:
+                                    assistant_kwargs[perm] = False
+                            assistant = Assistant.objects.create(**assistant_kwargs)
                             if group:
                                 assistant.assigned_groups.add(group)
                                 if auto_assign:

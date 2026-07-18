@@ -116,7 +116,8 @@ class NotificationService:
                 elif target == 'all':
                     push_user_ids = list(User.objects.filter(is_active=True).values_list('id', flat=True))
                 else:
-                    push_user_ids = list(User.objects.filter(is_active=True, role=target).values_list('id', flat=True))
+                    role = 'operator' if target == 'admin_staff' else ('assistant' if target == 'client_staff' else target)
+                    push_user_ids = list(User.objects.filter(is_active=True, role=role).values_list('id', flat=True))
                 
                 if push_user_ids:
                     cls._send_push_notifications_async(push_user_ids, title.strip(), message.strip())
@@ -175,7 +176,8 @@ class NotificationService:
         qs = qs.select_related('created_by')
 
         # Filter by target scope
-        role_filter = Q(target='all') | Q(target=user.role)
+        target_role = 'admin_staff' if user.role == 'operator' else ('client_staff' if user.role == 'assistant' else user.role)
+        role_filter = Q(target='all') | Q(target=target_role)
         if user.role in ('super_admin',):
             # Super admin sees everything
             role_filter = Q(target='all') | Q(target='super_admin')
@@ -226,7 +228,8 @@ class NotificationService:
             & (Q(expires_at__isnull=True) | Q(expires_at__gt=now))
         )
 
-        role_filter = Q(target='all') | Q(target=user.role)
+        target_role = 'admin_staff' if user.role == 'operator' else ('client_staff' if user.role == 'assistant' else user.role)
+        role_filter = Q(target='all') | Q(target=target_role)
         selected_filter = Q(target='selected', target_users=user)
         qs = qs.filter(role_filter | selected_filter).distinct()
 
@@ -396,7 +399,8 @@ class NotificationService:
         """Count how many active users match a target scope."""
         if target == 'all':
             return User.objects.filter(is_active=True).count()
-        return User.objects.filter(is_active=True, role=target).count()
+        role = 'operator' if target == 'admin_staff' else ('assistant' if target == 'client_staff' else target)
+        return User.objects.filter(is_active=True, role=role).count()
 
     @classmethod
     def _serialize(cls, notif, user=None):
@@ -538,9 +542,10 @@ class NotificationService:
                     ).exclude(email='').values_list('email', flat=True)
                 )
             else:
+                role = 'operator' if notif.target == 'admin_staff' else ('assistant' if notif.target == 'client_staff' else notif.target)
                 recipients = list(
                     User.objects.filter(
-                        is_active=True, role=notif.target, email__isnull=False
+                        is_active=True, role=role, email__isnull=False
                     ).exclude(email='').values_list('email', flat=True)
                 )
 

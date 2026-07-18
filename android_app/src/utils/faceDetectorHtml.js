@@ -34,7 +34,7 @@ export const faceDetectorHtml = `<!DOCTYPE html>
             for (var x = cx1; x < cx2; x++) {
               var i = (y * w + x) * 4;
               var r = data[i], g = data[i+1], b = data[i+2];
-              // Standard skin tone RGB heuristics (works for all skin tones)
+              // Standard skin tone RGB heuristics
               var maxRGB = Math.max(r,g,b), minRGB = Math.min(r,g,b);
               if (r > 60 && g > 30 && b > 15 && r > g && r > b &&
                   (maxRGB - minRGB) > 15 && r > 100) {
@@ -44,80 +44,16 @@ export const faceDetectorHtml = `<!DOCTYPE html>
             }
           }
           var skinRatio = skinPx / totalPx;
-          var faceDetected = skinRatio > 0.06; // >=6% skin pixels = face present
-
-          // ----- 2. EYES OPEN via dark-pixel density in eye zone -----
-          // Eye region = middle horizontal band, top 25-45% of frame
-          var ex1 = Math.floor(w * 0.25), ex2 = Math.floor(w * 0.75);
-          var ey1 = Math.floor(h * 0.25), ey2 = Math.floor(h * 0.45);
-          var darkPx = 0, eyePxTotal = 0, eyeBrightSum = 0;
-          for (var y = ey1; y < ey2; y++) {
-            for (var x = ex1; x < ex2; x++) {
-              var i = (y * w + x) * 4;
-              var gray = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
-              eyeBrightSum += gray;
-              if (gray < 55) darkPx++;
-              eyePxTotal++;
-            }
-          }
-          var darkRatio = darkPx / eyePxTotal;
-          var avgEyeBright = eyeBrightSum / eyePxTotal;
-          // Open eyes have visible dark pupils/iris - at least 1.5% very dark pixels
-          var eyesOpen = darkRatio > 0.015;
-
-          // ----- 3. SUNGLASSES via eye-zone vs forehead brightness ratio -----
-          var fhY1 = Math.floor(h * 0.05), fhY2 = Math.floor(h * 0.22);
-          var fhBrightSum = 0, fhCount = 0;
-          for (var y = fhY1; y < fhY2; y++) {
-            for (var x = ex1; x < ex2; x++) {
-              var i = (y * w + x) * 4;
-              fhBrightSum += 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
-              fhCount++;
-            }
-          }
-          var avgFhBright = fhBrightSum / fhCount;
-          // Sunglasses: eye band is much darker than forehead AND very dark overall
-          var sunglassRatio = avgEyeBright / Math.max(1, avgFhBright);
-          var wearingSunglasses = sunglassRatio < 0.50 && avgEyeBright < 75;
-
-          // ----- 4. OPTICAL GLASSES via Sobel edge density on nose-bridge area -----
-          var nbX1 = Math.floor(w * 0.40), nbX2 = Math.floor(w * 0.60);
-          var nbY1 = Math.floor(h * 0.38), nbY2 = Math.floor(h * 0.50);
-          var edgePx = 0, edgeTotal = 0;
-          for (var y = nbY1 + 1; y < nbY2 - 1; y++) {
-            for (var x = nbX1 + 1; x < nbX2 - 1; x++) {
-              var idx = function(yy, xx) {
-                return (yy * w + xx) * 4;
-              };
-              var gx = (
-                -1 * (0.299*data[idx(y-1,x-1)] + 0.587*data[idx(y-1,x-1)+1] + 0.114*data[idx(y-1,x-1)+2]) +
-                 1 * (0.299*data[idx(y-1,x+1)] + 0.587*data[idx(y-1,x+1)+1] + 0.114*data[idx(y-1,x+1)+2]) +
-                -2 * (0.299*data[idx(y,x-1)]   + 0.587*data[idx(y,x-1)+1]   + 0.114*data[idx(y,x-1)+2]) +
-                 2 * (0.299*data[idx(y,x+1)]   + 0.587*data[idx(y,x+1)+1]   + 0.114*data[idx(y,x+1)+2]) +
-                -1 * (0.299*data[idx(y+1,x-1)] + 0.587*data[idx(y+1,x-1)+1] + 0.114*data[idx(y+1,x-1)+2]) +
-                 1 * (0.299*data[idx(y+1,x+1)] + 0.587*data[idx(y+1,x+1)+1] + 0.114*data[idx(y+1,x+1)+2])
-              );
-              if (Math.abs(gx) > 40) edgePx++;
-              edgeTotal++;
-            }
-          }
-          var edgeDensity = edgePx / Math.max(1, edgeTotal);
-          var wearingGlasses = edgeDensity > 0.10;
-
-          // Override: if sunglasses detected, eyes are not visible anyway
-          if (wearingSunglasses) eyesOpen = false;
+          // >=5.5% skin pixels = face present
+          var faceDetected = skinRatio >= 0.055;
+          // if face detected but skin ratio under 13%, person is too far from camera
+          var tooFar = faceDetected && (skinRatio < 0.13);
 
           var result = {
             face_detected: faceDetected,
-            eyes_open: eyesOpen,
-            wearing_sunglasses: wearingSunglasses,
-            wearing_glasses: wearingGlasses,
+            too_far: tooFar,
             debug: {
-              skinRatio: Math.round(skinRatio * 1000) / 10,
-              darkRatio: Math.round(darkRatio * 1000) / 10,
-              avgEyeBright: Math.round(avgEyeBright),
-              avgFhBright: Math.round(avgFhBright),
-              edgeDensity: Math.round(edgeDensity * 1000) / 10
+              skinRatio: Math.round(skinRatio * 1000) / 10
             }
           };
 

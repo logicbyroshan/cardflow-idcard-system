@@ -208,6 +208,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/status-counts/', views.api_table_status_counts, name='api_table_status_counts'),
     path('api/table/<int:table_id>/cards/download-images/', export_views.api_export_images, name='api_idcard_download_images'),
     path('api/table/<int:table_id>/cards/reupload-images/', views.api_idcard_reupload_images, name='api_idcard_reupload_images'),
+    path('api/table/<int:table_id>/cards/class-counts/', views.api_idcard_class_counts, name='api_idcard_class_counts'),
     path('api/table/<int:table_id>/modals-html/', views.api_idcard_modals_html, name='api_idcard_modals_html'),
     path('api/table/<int:table_id>/cards/download-docx/', export_views.api_export_docx, name='api_idcard_download_docx'),
     path('api/table/<int:table_id>/cards/download-xlsx/', export_views.api_export_xlsx, name='api_idcard_download_xlsx'),
