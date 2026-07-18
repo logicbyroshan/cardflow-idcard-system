@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let userName = '';
     let resetToken = '';
     let resendCountdown = 0;
+    let isSubmitting = false;
     
     // Elements
     const steps = document.querySelectorAll('.login-step');
@@ -86,6 +87,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (response.status === 429) {
+            if (data && data.silent) {
+                return { success: false, silent: true };
+            }
             throw new Error(data.message || 'Too many requests. Please wait and try again.');
         }
         if (response.status >= 500) {
@@ -139,12 +143,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Email Step
     btnStep1Next.addEventListener('click', async function() {
+        if (isSubmitting) return;
         email = emailInput.value.trim();
         if (!email) {
             showMessage('Please enter your email, username, or phone');
             return;
         }
         
+        isSubmitting = true;
         setButtonLoading(this, true);
         
         try {
@@ -156,13 +162,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 goToStep(2);
                 passwordInput.focus();
             } else {
-                showMessage(data.message);
+                if (data && !data.silent) {
+                    showMessage(data.message);
+                }
             }
         } catch (error) {
             showMessage(error.message || 'Network error. Please try again.');
         }
         
         setButtonLoading(this, false);
+        isSubmitting = false;
     });
     
     emailInput.addEventListener('keypress', function(e) {
@@ -177,12 +186,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     btnLogin.addEventListener('click', async function() {
+        if (isSubmitting) return;
         const password = passwordInput.value;
         if (!password) {
             showMessage('Please enter your password');
             return;
         }
         
+        isSubmitting = true;
         setButtonLoading(this, true);
         
         try {
@@ -226,12 +237,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.href = redirectTo;
                 }, 500);
             } else {
-                showMessage(data.message);
+                if (data && !data.silent) {
+                    showMessage(data.message);
+                }
                 setButtonLoading(this, false);
+                isSubmitting = false;
             }
         } catch (error) {
             showMessage(error.message || 'Network error. Please try again.');
             setButtonLoading(this, false);
+            isSubmitting = false;
         }
     });
     
@@ -246,6 +261,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Forgot Password
     btnForgotPassword.addEventListener('click', async function() {
+        if (isSubmitting) return;
+        isSubmitting = true;
         setButtonLoading(btnLogin, true);
         
         try {
@@ -262,13 +279,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     devOtpValue.textContent = data.dev_otp;
                 }
             } else {
-                showMessage(data.message);
+                if (data && !data.silent) {
+                    showMessage(data.message);
+                }
             }
         } catch (error) {
             showMessage(error.message || 'Network error. Please try again.');
         }
         
         setButtonLoading(btnLogin, false);
+        isSubmitting = false;
     });
     
     // OTP Input handling
@@ -316,6 +336,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     btnResendOtp.addEventListener('click', async function() {
+        if (isSubmitting) return;
+        isSubmitting = true;
         try {
             const data = await safePost('/api/auth/forgot-password/', { email });
             if (data.success) {
@@ -325,19 +347,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.dev_otp) {
                     devOtpValue.textContent = data.dev_otp;
                 }
+            } else {
+                if (data && !data.silent) {
+                    showMessage(data.message);
+                }
             }
         } catch (error) {
             showMessage(error.message || 'Failed to resend OTP');
         }
+        isSubmitting = false;
     });
     
     btnVerifyOtp.addEventListener('click', async function() {
+        if (isSubmitting) return;
         const otp = Array.from(otpInputs).map(i => i.value).join('');
         if (otp.length !== 6) {
             showMessage('Please enter complete 6-digit OTP');
             return;
         }
         
+        isSubmitting = true;
         setButtonLoading(this, true);
         
         try {
@@ -347,13 +376,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 goToStep(4);
                 newPasswordInput.focus();
             } else {
-                showMessage(data.message);
+                if (data && !data.silent) {
+                    showMessage(data.message);
+                }
             }
         } catch (error) {
             showMessage(error.message || 'Network error. Please try again.');
         }
         
         setButtonLoading(this, false);
+        isSubmitting = false;
     });
     
     btnStep3Back.addEventListener('click', function() {
@@ -370,6 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     btnResetPassword.addEventListener('click', async function() {
+        if (isSubmitting) return;
         const newPassword = newPasswordInput.value;
         const confirmPassword = confirmPasswordInput.value;
         
@@ -388,6 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        isSubmitting = true;
         setButtonLoading(this, true);
         
         try {
@@ -407,12 +441,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     goToStep(2);
                 }, 2000);
             } else {
-                showMessage(data.message);
+                if (data && !data.silent) {
+                    showMessage(data.message);
+                }
             }
         } catch (error) {
             showMessage(error.message || 'Network error. Please try again.');
         }
         
         setButtonLoading(this, false);
+        isSubmitting = false;
     });
 });

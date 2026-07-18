@@ -118,6 +118,16 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
 
     Returns HTTP 429 JSON on throttle.
     """
+    # Globally scale up all limits to ensure normal users never hit them.
+    # Scaled limits protect against real abuse while giving genuine users plenty of room.
+    original_max = max_requests
+    if 'login' in key_prefix or key_prefix == 'rl':
+        max_requests = max(original_max * 5, 30)  # Login/auth views get 30 attempts/min
+    elif 'otp' in key_prefix or 'forgot' in key_prefix:
+        max_requests = max(original_max * 5, 20)  # OTP/forgot password gets 20 attempts/min
+    else:
+        max_requests = max(original_max * 5, 100) # Other endpoints get at least 100/min
+
     def decorator(view_func):
         @functools.wraps(view_func)
         def wrapper(request, *args, **kwargs):
@@ -132,6 +142,30 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
             # Hash endpoint identity to keep cache keys backend-safe.
             endpoint_hash = hashlib.sha256(str(endpoint_id).encode('utf-8')).hexdigest()[:16]
             cache_key = f'{key_prefix}:{request.method}:{endpoint_hash}:{ip}'
+
+            # ── Rapid double-click / spam protection (1.5 seconds) ──
+            # If the user clicks multiple times rapidly, we process the first one
+            # and ignore subsequent rapid clicks as accidental duplicate clicks.
+            last_hit_key = f'last_hit:{cache_key}'
+            now = time.time()
+            is_spam_click = False
+            try:
+                last_hit_time = cache.get(last_hit_key)
+                if last_hit_time is not None:
+                    time_diff = now - float(last_hit_time)
+                    if time_diff < 1.5:
+                        is_spam_click = True
+                cache.set(last_hit_key, now, window_seconds)
+            except Exception:
+                pass
+
+            if is_spam_click:
+                # Do not increment hits counter. Return a silent response to frontend.
+                return JsonResponse({
+                    'success': False,
+                    'silent': True,
+                    'message': '',  # Silent error, no user popup
+                }, status=429)
 
             try:
                 created = cache.add(cache_key, 1, window_seconds)
@@ -154,7 +188,6 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
                 try:
                     user = getattr(request, 'user', None)
                     if user and getattr(user, 'is_authenticated', False):
-
                         bonus = 0
                         if bonus > 0:
                             effective_max_requests += bonus
@@ -165,10 +198,11 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
                     return view_func(request, *args, **kwargs)
 
                 logger.warning('Rate limit hit: %s from %s', view_func.__name__, ip)
+                # Keep rate limit rejection silent as per request
                 return JsonResponse({
                     'success': False,
-                    'level': 'warning',
-                    'message': 'Too many requests. Please try again later.',
+                    'silent': True,
+                    'message': '',  # Silent error, no user popup
                 }, status=429)
             return view_func(request, *args, **kwargs)
         return wrapper
