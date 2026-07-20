@@ -87,6 +87,9 @@ def normalize_image_bytes_for_storage(
     try:
         from PIL import Image, ImageOps
 
+        # Allow ultra-high-resolution photos/scans (up to 250 MP)
+        Image.MAX_IMAGE_PIXELS = 250_000_000
+
         register_heif_opener()
 
         with Image.open(BytesIO(image_bytes)) as verify_img:
@@ -116,8 +119,8 @@ def normalize_image_bytes_for_storage(
 
                 max_side = 2400
                 min_side = 900
-                target_max_bytes = 1_800_000
-                quality_steps = (88, 82, 76, 70, 64, 58, 52)
+                target_max_bytes = 500_000  # < 500 KB target
+                quality_steps = (90, 84, 78, 72, 65, 58, 50, 42)
                 resample_filter = getattr(getattr(Image, 'Resampling', Image), 'LANCZOS', Image.LANCZOS)
 
                 def _fit_size(img):

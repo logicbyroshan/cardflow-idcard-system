@@ -37,7 +37,7 @@ class CoreConfig(AppConfig):
         # ── Pillow decompression-bomb guard (set once, process-wide) ──
         try:
             from PIL import Image
-            Image.MAX_IMAGE_PIXELS = 25_000_000  # ~25 MP
+            Image.MAX_IMAGE_PIXELS = 250_000_000  # ~250 MP (allow high-resolution photos/scans)
         except ImportError:
             pass
 
