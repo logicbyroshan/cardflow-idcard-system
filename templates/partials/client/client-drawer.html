@@ -1,13 +1,12 @@
 {% load static %}
     <!-- Add/Edit Client Drawer (Side Modal) -->
     <div class="drawer-overlay" id="client-drawer-overlay"></div>
-    <div id="client-drawer" class="side-drawer">
-      <div class="drawer-content">
-        <div class="drawer-header">
-          <h3 id="drawerTitle"><i class="fa-solid fa-user-plus" id="drawerIcon"></i> <span id="drawerTitleText">Add New Client</span></h3>
-          <button class="drawer-close" id="closeClientDrawer" aria-label="Close client drawer"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <form id="clientForm">
+    <aside id="client-drawer" class="side-drawer">
+      <div class="drawer-header">
+        <h3 id="drawerTitle"><i class="fa-solid fa-user-plus" id="drawerIcon"></i> <span id="drawerTitleText">Add New Client</span></h3>
+        <button class="drawer-close" id="closeClientDrawer" aria-label="Close client drawer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="clientForm">
           <input type="hidden" id="clientId" name="clientId" value="">
           <div class="drawer-body">
             
@@ -373,5 +372,4 @@
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </aside>
