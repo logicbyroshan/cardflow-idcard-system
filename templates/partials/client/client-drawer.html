@@ -1,5 +1,6 @@
 {% load static %}
     <!-- Add/Edit Client Drawer (Side Modal) -->
+    <div class="drawer-overlay" id="client-drawer-overlay"></div>
     <div id="client-drawer" class="side-drawer">
       <div class="drawer-content">
         <div class="drawer-header">
@@ -35,9 +36,8 @@
               </div>
               
 
-
               <div class="form-row" id="clientPasswordOptionRow">
-                <div class="form-group">
+                <div class="form-group" id="clientStatusGroup">
                   <label class="form-label" for="clientStatusToggle">Status</label>
                   <div class="custom-dropdown form-dropdown" id="clientStatusDropdown">
                     <button type="button" class="dropdown-toggle" id="clientStatusToggle" aria-expanded="false">
@@ -51,7 +51,7 @@
                   </div>
                   <input type="hidden" id="clientStatus" name="is_active" value="false">
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="clientPasswordOptionGroup">
                   <label class="form-label">Password Option</label>
                   <div class="custom-dropdown form-dropdown" id="clientPasswordOptionDropdown">
                     <button type="button" class="dropdown-toggle" aria-expanded="false">

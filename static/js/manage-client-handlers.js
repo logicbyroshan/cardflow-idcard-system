@@ -591,6 +591,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
+      var clientDrawerOverlay = document.getElementById('client-drawer-overlay');
+      if (clientDrawerOverlay) clientDrawerOverlay.addEventListener('click', function() { NS.closeDrawerFn(); });
       if (closeClientDrawer) closeClientDrawer.addEventListener('click', function() { NS.closeDrawerFn(); });
       if (cancelClientDrawer) cancelClientDrawer.addEventListener('click', function() { NS.closeDrawerFn(); });
       if (closeViewModal) closeViewModal.addEventListener('click', function() { NS.closeViewModalFn(); });

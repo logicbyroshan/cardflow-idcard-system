@@ -18,6 +18,126 @@ body[style*="overflow:hidden"] {
 }
 
 /* ===========================================
+   SIDE DRAWER & DRAWER OVERLAY COMPONENT
+   =========================================== */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 1040;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.drawer-overlay.open,
+.drawer-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.side-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 560px;
+  max-width: 100vw;
+  background: #ffffff;
+  z-index: 1050;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  visibility: hidden;
+}
+
+.side-drawer.open,
+.side-drawer.active {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.side-drawer .drawer-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.side-drawer form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.side-drawer .drawer-header {
+  padding: 16px 20px;
+  background: #1e293b;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.side-drawer .drawer-header h2,
+.side-drawer .drawer-header h3,
+.side-drawer .drawer-header .drawer-title {
+  margin: 0;
+  color: #ffffff;
+  font-size: var(--ui-font-size-md, 14px);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.side-drawer .drawer-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #ffffff;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.side-drawer .drawer-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.side-drawer .drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.side-drawer .drawer-footer {
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ===========================================
    BUTTONS — Compound rules only (bases in tailwind)
    =========================================== */
 
