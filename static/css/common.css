@@ -25,7 +25,7 @@ body[style*="overflow:hidden"] {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
-  z-index: 1049;
+  z-index: 190;
 }
 .drawer-overlay.open,
 .drawer-overlay.active {
@@ -35,9 +35,15 @@ body[style*="overflow:hidden"] {
 /* ===========================================
    DRAWER CONTENT WRAPPER FIX
    The .drawer-content div wraps the <form> inside .side-drawer.
-   Tailwind's component CSS targets .side-drawer > form directly,
-   so we need to propagate the flex column layout through this wrapper.
+   Tailwind's .side-drawer uses z-index: var(--z-drawer) which is
+   undefined on admin pages (tailwind-variable-bridge.css not loaded),
+   so we set an explicit z-index above the overlay.
+   Also propagates flex column layout through the .drawer-content wrapper
+   since Tailwind targets .side-drawer > form (direct child only).
    =========================================== */
+.side-drawer {
+  z-index: 200;
+}
 .side-drawer .drawer-content {
   display: flex;
   flex-direction: column;
@@ -54,9 +60,10 @@ body[style*="overflow:hidden"] {
   overflow: hidden;
 }
 
-
+/* ===========================================
    BUTTONS — Compound rules only (bases in tailwind)
    =========================================== */
+
 
 /* Legacy table action buttons — only compound states */
 .actions .btn:active:not(:disabled) { transform: scale(0.97); }
