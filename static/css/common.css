@@ -58,6 +58,16 @@ body[style*="overflow:hidden"] {
   visibility: hidden;
 }
 
+.side-drawer.drawer-wide,
+.side-drawer:has(.drawer-wide) {
+  width: 680px;
+}
+
+.side-drawer.drawer-xl,
+.side-drawer:has(.drawer-xl) {
+  width: 850px;
+}
+
 .side-drawer.open,
 .side-drawer.active {
   transform: translateX(0);
