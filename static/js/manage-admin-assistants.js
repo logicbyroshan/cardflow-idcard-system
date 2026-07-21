@@ -2457,6 +2457,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (mgr && typeof mgr.refreshTableState === 'function') {
                     mgr.refreshTableState();
                 }
+                if (typeof syncCheckboxDisabledState === 'function') {
+                    syncCheckboxDisabledState();
+                }
             } else {
                 if (typeof showToast === 'function') {
                     showToast(response.error || 'Failed to reload assistants list', 'error');
@@ -2478,6 +2481,9 @@ document.addEventListener('DOMContentLoaded', function () {
             setSelectedClientId(val);
             updateAddButtonState();
             reloadAssistantsTable();
+            if (typeof syncCheckboxDisabledState === 'function') {
+                syncCheckboxDisabledState();
+            }
         });
     }
 
@@ -2801,8 +2807,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateBulkDeleteButtonVisibility() {
         if (!bulkDeleteBtn) return;
+        var clientSelector = document.getElementById('clientSelector');
+        var hasClient = clientSelector && clientSelector.value;
         var selectedIds = getSelectedStaffIds();
-        if (selectedIds.length > 0) {
+        if (selectedIds.length > 0 && hasClient) {
             bulkDeleteBtn.style.display = 'inline-flex';
             // Disable single action buttons to avoid conflict
             var deleteStaffBtn = document.getElementById('deleteStaffBtn');
@@ -2836,8 +2844,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
+            var clientSelector = document.getElementById('clientSelector');
+            var hasClient = clientSelector && clientSelector.value;
+            if (!hasClient) {
+                selectAllCheckbox.checked = false;
+                if (typeof showToast === 'function') {
+                    showToast('Please select a specific client first to use select-all.', 'warning');
+                }
+                return;
+            }
+
             var checked = selectAllCheckbox.checked;
             document.querySelectorAll('.staff-row-checkbox').forEach(function(cb) {
+                if (cb.disabled) return;
                 cb.checked = checked;
             });
             updateBulkDeleteButtonVisibility();
@@ -2849,6 +2868,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (staffTbody) {
         staffTbody.addEventListener('change', function(e) {
             if (e.target && e.target.classList.contains('staff-row-checkbox')) {
+                var clientSelector = document.getElementById('clientSelector');
+                var hasClient = clientSelector && clientSelector.value;
+                if (!hasClient) {
+                    e.target.checked = false;
+                    if (typeof showToast === 'function') {
+                        showToast('Please select a specific client first to select assistants.', 'warning');
+                    }
+                    return;
+                }
                 var total = document.querySelectorAll('.staff-row-checkbox').length;
                 var checked = document.querySelectorAll('.staff-row-checkbox:checked').length;
                 if (selectAllCheckbox) {
@@ -2956,6 +2984,23 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function syncCheckboxDisabledState() {
+        var clientSelector = document.getElementById('clientSelector');
+        var hasClient = clientSelector && clientSelector.value;
+        
+        var selectAllCheckbox = document.getElementById('select-all-staff');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.disabled = !hasClient;
+            if (!hasClient) selectAllCheckbox.checked = false;
+        }
+        
+        document.querySelectorAll('.staff-row-checkbox').forEach(function(cb) {
+            cb.disabled = !hasClient;
+            if (!hasClient) cb.checked = false;
+        });
+    }
+
     // Initial state setup
     updateAddButtonState();
+    syncCheckboxDisabledState();
 });
