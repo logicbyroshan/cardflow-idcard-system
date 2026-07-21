@@ -355,8 +355,8 @@ document.addEventListener('DOMContentLoaded', function() {
           NS.setClientPasswordOption('custom');
           
           // Show password option for new clients
-          var pwGroup = document.getElementById('clientPasswordOptionGroup') || document.getElementById('clientPasswordOptionRow');
-          if (pwGroup) pwGroup.style.display = '';
+          var pwRow = document.getElementById('clientPasswordOptionRow');
+          if (pwRow) pwRow.style.display = '';
           
           // Hide temp password button in add mode
           var tempPwBtn = document.getElementById('tempPasswordClientBtn');
@@ -370,13 +370,8 @@ document.addEventListener('DOMContentLoaded', function() {
           NS.setClientPasswordOption('phone');
           
           // Hide password option when editing (change via settings/forgot password)
-          var pwGroup = document.getElementById('clientPasswordOptionGroup');
-          if (pwGroup) {
-            pwGroup.style.display = 'none';
-          } else {
-            var pwRow = document.getElementById('clientPasswordOptionRow');
-            if (pwRow) pwRow.style.display = 'none';
-          }
+          var pwRow = document.getElementById('clientPasswordOptionRow');
+          if (pwRow) pwRow.style.display = 'none';
           
           // Show temp password button in edit mode
           var tempPwBtn = document.getElementById('tempPasswordClientBtn');
@@ -408,8 +403,6 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         }
         
-        var overlay = document.getElementById('client-drawer-overlay');
-        if (overlay) overlay.classList.add('open');
         clientDrawer.classList.add('open');
         document.body.style.overflow = 'hidden';
 
@@ -418,8 +411,6 @@ document.addEventListener('DOMContentLoaded', function() {
       };
       
       NS.closeDrawerFn = function() {
-        var overlay = document.getElementById('client-drawer-overlay');
-        if (overlay) overlay.classList.remove('open');
         clientDrawer.classList.remove('open');
         document.body.style.overflow = '';
       };

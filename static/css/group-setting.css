@@ -401,34 +401,29 @@
    Drawer Modal View Mode
    ==================== */
 
-.drawer-modal.view-mode .field-type-select,
-.side-drawer.view-mode .field-type-select {
+.drawer-modal.view-mode .field-type-select {
   pointer-events: none;
   background: var(--color-gray-50);
   color: var(--color-gray-500);
 }
 
-.drawer-modal.view-mode .field-name-input,
-.side-drawer.view-mode .field-name-input {
+.drawer-modal.view-mode .field-name-input {
   pointer-events: none;
   background: var(--color-gray-50);
   color: var(--color-gray-500);
   border-color: var(--color-gray-100);
 }
 
-.drawer-modal.view-mode .remove-field-btn,
-.side-drawer.view-mode .remove-field-btn {
+.drawer-modal.view-mode .remove-field-btn {
   display: none;
 }
 
-.drawer-modal.view-mode .field-drag,
-.side-drawer.view-mode .field-drag {
+.drawer-modal.view-mode .field-drag {
   pointer-events: none;
   opacity: 0.4;
 }
 
-.drawer-modal.view-mode .mandatory-toggle,
-.side-drawer.view-mode .mandatory-toggle {
+.drawer-modal.view-mode .mandatory-toggle {
   pointer-events: none;
   opacity: 0.6;
 }
