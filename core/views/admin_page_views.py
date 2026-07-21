@@ -724,12 +724,14 @@ def idcard_group(request, client_id):
     # Get default group for Create with XLSX button
     group = IDCardService.ensure_default_group(client)
     
+    can_manage_clients = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
     context = {
         'active_page': 'manage_clients',
         'user_role': get_user_role(request.user),
         'client': client,
         'group': group,
         'tables': tables,
+        'can_manage_clients': can_manage_clients,
     }
     return render(request, 'idcard-group.html', context)
 
@@ -980,6 +982,7 @@ def group_settings(request, client_id):
     paginator = Paginator(tables_qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page', 1))
     
+    can_manage_clients = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
     context = {
         'active_page': 'manage_clients',
         'user_role': get_user_role(request.user),
@@ -991,6 +994,7 @@ def group_settings(request, client_id):
         'per_page': per_page,
         'per_page_options': PER_PAGE_OPTIONS,
         'search_query': search_query,
+        'can_manage_clients': can_manage_clients,
     }
     
     if is_htmx(request):
