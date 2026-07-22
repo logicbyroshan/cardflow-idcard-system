@@ -24,6 +24,7 @@ from django.utils.dateparse import parse_datetime
 
 from idcards.models import IDCard, IDCardTable
 from core.services import IDCardService
+from core.services.base import BaseService
 from core.services.permission_service import PermissionService, api_require_permission
 from core.services.activity_service import ActivityService
 from core.views.base import get_user_role

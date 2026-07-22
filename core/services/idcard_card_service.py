@@ -1366,38 +1366,126 @@ class IDCardCardService(BaseService):
                         clean_val = str(new_img_value or '').strip()
                         if clean_val.upper().startswith('PENDING:'):
                             clean_val = clean_val[8:].strip()
-                        
-                        base_val, ext_val = os.path.splitext(clean_val)
-                        if not ext_val:
-                            base_val = clean_val
-                        
-                        prefix = ''
-                        ext = '.jpg'
-                        is_existing_pending = True
-                        
-                        if existing_value:
-                            norm_existing = str(existing_value).strip()
-                            if norm_existing.upper().startswith('PENDING:'):
-                                is_existing_pending = True
-                                filename = norm_existing[8:]
-                            else:
-                                is_existing_pending = False
-                                filename = norm_existing
-                                if '/' in filename or '\\' in filename:
-                                    prefix = filename.rsplit('/', 1)[0] + '/' if '/' in filename else filename.rsplit('\\', 1)[0] + '\\'
-                            
-                            _, existing_ext = os.path.splitext(filename)
+
+                        # Extract base filename (without directory or extension)
+                        submitted_filename = os.path.basename(clean_val.replace('\\', '/'))
+                        submitted_base = os.path.splitext(submitted_filename)[0].strip()
+
+                        existing_str = str(existing_value or '').strip()
+                        existing_filename = os.path.basename(existing_str.replace('PENDING:', '').replace('\\', '/'))
+                        existing_base = os.path.splitext(existing_filename)[0].strip()
+
+                        is_existing_real_image = (
+                            bool(existing_str)
+                            and not existing_str.upper().startswith('PENDING:')
+                        )
+
+                        if not submitted_base:
+                            # User cleared the path field
+                            field_data[canonical_field] = ''
+                            card.field_data = field_data
+                            card.save()
+                            cls._bump_table_cache_versions(table)
+
+                            return ServiceResult(
+                                success=True,
+                                message='Field updated successfully!',
+                                data={
+                                    'field': canonical_field,
+                                    'value': '',
+                                    'is_path_field': True,
+                                    'photo_field_name': canonical_field,
+                                    'photo_field_value': '',
+                                }
+                            )
+
+                        if is_existing_real_image and (submitted_base.lower() == existing_base.lower()):
+                            # User clicked or re-entered the exact same base path of an existing real image!
+                            # PRESERVE existing_value 100% UNTOUCHED!
+                            field_data[canonical_field] = existing_value
+                            card.field_data = field_data
+                            card.save()
+                            cls._bump_table_cache_versions(table)
+
+                            return ServiceResult(
+                                success=True,
+                                message='Field updated successfully!',
+                                data={
+                                    'field': canonical_field,
+                                    'value': existing_value,
+                                    'is_path_field': True,
+                                    'photo_field_name': canonical_field,
+                                    'photo_field_value': existing_value,
+                                }
+                            )
+
+                        # Check if CardMedia has an existing real file for this card and submitted_base
+                        real_media_path = None
+                        try:
+                            from mediafiles.models import CardMedia
+                            media_qs = CardMedia.objects.filter(
+                                client=table.group.client,
+                                field_name__iexact=canonical_field
+                            )
+                            if card and card.id:
+                                media_qs = media_qs.filter(card=card)
+                            for media in media_qs:
+                                m_file = str(media.file or '')
+                                m_orig = str(media.original_filename or '')
+                                if submitted_base.lower() in m_file.lower() or submitted_base.lower() in m_orig.lower():
+                                    real_media_path = m_file
+                                    break
+                        except Exception:
+                            pass
+
+                        if real_media_path:
+                            field_data[canonical_field] = real_media_path
+                            card.field_data = field_data
+                            card.save()
+                            cls._bump_table_cache_versions(table)
+
+                            return ServiceResult(
+                                success=True,
+                                message='Field updated successfully!',
+                                data={
+                                    'field': canonical_field,
+                                    'value': real_media_path,
+                                    'is_path_field': True,
+                                    'photo_field_name': canonical_field,
+                                    'photo_field_value': real_media_path,
+                                }
+                            )
+
+                        # Otherwise construct updated path or pending reference
+                        if is_existing_real_image:
+                            prefix = ''
+                            ext = '.jpg'
+                            if '/' in existing_str or '\\' in existing_str:
+                                prefix = existing_str.rsplit('/', 1)[0] + '/' if '/' in existing_str else existing_str.rsplit('\\', 1)[0] + '\\'
+                            _, existing_ext = os.path.splitext(existing_filename)
                             if existing_ext:
                                 ext = existing_ext
-                        
-                        if not clean_val:
-                            new_img_value = ''
-                        elif not is_existing_pending and existing_value:
-                            # Existing image is a REAL uploaded image (not PENDING).
-                            # Keep the real image path prefix and extension intact!
-                            new_img_value = f"{prefix}{base_val}{ext}" if (prefix or ext_val) else f"{base_val}{ext}"
+                            new_img_value = f"{prefix}{submitted_base}{ext}" if prefix else f"{submitted_base}{ext}"
+                            field_data[canonical_field] = new_img_value
+                            card.field_data = field_data
+                            card.save()
+                            cls._bump_table_cache_versions(table)
+
+                            return ServiceResult(
+                                success=True,
+                                message='Field updated successfully!',
+                                data={
+                                    'field': canonical_field,
+                                    'value': new_img_value,
+                                    'is_path_field': True,
+                                    'photo_field_name': canonical_field,
+                                    'photo_field_value': new_img_value,
+                                }
+                            )
                         else:
-                            new_img_value = f"PENDING:{base_val}{ext}"
+                            _, ext_val = os.path.splitext(submitted_filename)
+                            ext = ext_val if ext_val else '.jpg'
+                            new_img_value = f"PENDING:{submitted_base}{ext}"
                     try:
                         result = ImageService.process_image_field(
                             field_name=canonical_field,

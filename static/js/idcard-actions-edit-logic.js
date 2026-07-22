@@ -181,6 +181,13 @@ function saveCellEdit(cell, newValue, cardId, field) {
 
                 if (existingImg && !isPending && strVal) {
                     // Real image already rendered in DOM! Do NOT overwrite or remove the picture!
+                } else if (!isPending && strVal && (strVal.includes('/') || strVal.includes('\\') || /\.(jpg|jpeg|png|webp|gif)$/i.test(strVal))) {
+                    // Real image path returned (e.g. re-typed path matching existing uploaded photo)
+                    const imgUrl = strVal.startsWith('/') || strVal.startsWith('http') ? strVal : '/media/' + strVal;
+                    photoTd.innerHTML = `<img src="${esc(imgUrl)}" class="photo-thumbnail" style="cursor: pointer;"><button class="image-edit-btn" onclick="startCellEdit(this.closest('td'))" title="Click to edit/replace image">Edit</button>`;
+                    if (typeof IDCardApp.initImageCellHandlers === 'function') {
+                        IDCardApp.initImageCellHandlers();
+                    }
                 } else if (isPending) {
                     photoTd.innerHTML = `<div class="no-image pending-placeholder" title="Waiting for upload: ${esc(strVal)}"><i class="fa-solid fa-clock"></i></div><button class="image-edit-btn" onclick="startCellEdit(this.closest('td'))" title="Click to edit/replace image">Edit</button>`;
                 } else if (!strVal) {
