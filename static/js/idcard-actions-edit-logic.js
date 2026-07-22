@@ -175,9 +175,15 @@ function saveCellEdit(cell, newValue, cardId, field) {
 
             if (photoTd) {
                 photoTd.setAttribute('data-original-value', photoVal);
-                if (photoVal && String(photoVal).trim()) {
-                    photoTd.innerHTML = `<div class="no-image pending-placeholder" title="Waiting for upload: ${esc(photoVal)}"><i class="fa-solid fa-clock"></i></div><button class="image-edit-btn" onclick="startCellEdit(this.closest('td'))" title="Click to edit/replace image">Edit</button>`;
-                } else {
+                const strVal = String(photoVal || '').trim();
+                const isPending = strVal.toUpperCase().startsWith('PENDING:');
+                const existingImg = photoTd.querySelector('img');
+
+                if (existingImg && !isPending && strVal) {
+                    // Real image already rendered in DOM! Do NOT overwrite or remove the picture!
+                } else if (isPending) {
+                    photoTd.innerHTML = `<div class="no-image pending-placeholder" title="Waiting for upload: ${esc(strVal)}"><i class="fa-solid fa-clock"></i></div><button class="image-edit-btn" onclick="startCellEdit(this.closest('td'))" title="Click to edit/replace image">Edit</button>`;
+                } else if (!strVal) {
                     photoTd.innerHTML = `<div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div><button class="image-edit-btn" onclick="startCellEdit(this.closest('td'))" title="Click to edit/replace image">Edit</button>`;
                 }
             }

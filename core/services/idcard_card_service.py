@@ -1361,9 +1361,9 @@ class IDCardCardService(BaseService):
                     existing_value = field_data.get(canonical_field, '')
                     new_img_value = '' if (value is None or value == '') else value
 
-                    if is_path_field and new_img_value:
+                    if is_path_field:
                         import os
-                        clean_val = str(new_img_value).strip()
+                        clean_val = str(new_img_value or '').strip()
                         if clean_val.upper().startswith('PENDING:'):
                             clean_val = clean_val[8:].strip()
                         
@@ -1373,7 +1373,7 @@ class IDCardCardService(BaseService):
                         
                         prefix = ''
                         ext = '.jpg'
-                        is_existing_pending = False
+                        is_existing_pending = True
                         
                         if existing_value:
                             norm_existing = str(existing_value).strip()
@@ -1381,6 +1381,7 @@ class IDCardCardService(BaseService):
                                 is_existing_pending = True
                                 filename = norm_existing[8:]
                             else:
+                                is_existing_pending = False
                                 filename = norm_existing
                                 if '/' in filename or '\\' in filename:
                                     prefix = filename.rsplit('/', 1)[0] + '/' if '/' in filename else filename.rsplit('\\', 1)[0] + '\\'
@@ -1389,10 +1390,12 @@ class IDCardCardService(BaseService):
                             if existing_ext:
                                 ext = existing_ext
                         
-                        if is_existing_pending:
-                            new_img_value = f"PENDING:{base_val}{ext}"
-                        elif prefix:
-                            new_img_value = f"{prefix}{base_val}{ext}"
+                        if not clean_val:
+                            new_img_value = ''
+                        elif not is_existing_pending and existing_value:
+                            # Existing image is a REAL uploaded image (not PENDING).
+                            # Keep the real image path prefix and extension intact!
+                            new_img_value = f"{prefix}{base_val}{ext}" if (prefix or ext_val) else f"{base_val}{ext}"
                         else:
                             new_img_value = f"PENDING:{base_val}{ext}"
                     try:
