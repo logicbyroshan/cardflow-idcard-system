@@ -8,9 +8,9 @@
         {% if active_page == 'manage_assistants' %}
         <button class="btn btn-md btn-success" id="bulkUploadAssistantsBtn" title="Bulk Add Assistants via XLSX" disabled><i class="fa-solid fa-file-excel"></i> Bulk Add
         </button>
-        {% endif %}
-        <button class="btn btn-md btn-warning" id="autoCreateAssistantsBtn" title="Auto Create Assistants" {% if active_page == 'manage_assistants' %}disabled{% endif %}><i class="fa-solid fa-wand-magic-sparkles"></i> Auto Create
+        <button class="btn btn-md btn-warning" id="autoCreateAssistantsBtn" title="Auto Create Assistants"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto Create
         </button>
+        {% endif %}
         {% endif %}
         {% if is_super_admin or perm_idcard_client_list or perm_manage_client_staff %}
         <button class="btn btn-md btn-neutral" id="editStaffBtn" title="Edit Selected {% if active_page == 'manage_staff' and not is_client_admin %}Operator{% else %}Assistent{% endif %}" disabled><i class="fa-solid fa-pen"></i> Edit
