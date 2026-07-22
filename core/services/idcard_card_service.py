@@ -1419,28 +1419,64 @@ class IDCardCardService(BaseService):
                                 }
                             )
 
-                        # Check if CardMedia has an existing real file for this card and submitted_base
+                        # Check if CardMedia or physical file has an existing real image for submitted_base
                         real_media_path = None
                         try:
                             from mediafiles.models import CardMedia
-                            media_qs = CardMedia.objects.filter(
-                                client=table.group.client,
-                                field_name__iexact=canonical_field
-                            )
-                            if card and card.id:
-                                media_qs = media_qs.filter(card=card)
+                            media_qs = CardMedia.objects.filter(client=table.group.client)
                             for media in media_qs:
                                 m_file = str(media.file or '')
                                 m_orig = str(media.original_filename or '')
-                                if submitted_base.lower() in m_file.lower() or submitted_base.lower() in m_orig.lower():
+                                m_file_base = os.path.splitext(os.path.basename(m_file.replace('\\', '/')))[0].lower()
+                                m_orig_base = os.path.splitext(os.path.basename(m_orig.replace('\\', '/')))[0].lower()
+                                if submitted_base.lower() == m_file_base or submitted_base.lower() == m_orig_base:
                                     real_media_path = m_file
                                     break
                         except Exception:
                             pass
 
+                        # Also check physical image file on disk in media_root
+                        if not real_media_path:
+                            from django.conf import settings
+                            media_root = getattr(settings, 'MEDIA_ROOT', '')
+                            if media_root:
+                                client_id_str = str(table.group.client_id) if (table and getattr(table.group, 'client_id', None)) else ''
+                                # Check client specific paths first
+                                possible_rel_paths = []
+                                if client_id_str:
+                                    possible_rel_paths.extend([
+                                        f"idcard_photos/{client_id_str}/{submitted_base}.jpg",
+                                        f"idcard_photos/{client_id_str}/{submitted_base}.jpeg",
+                                        f"idcard_photos/{client_id_str}/{submitted_base}.png",
+                                        f"card_media/{client_id_str}/photo/{submitted_base}.jpg",
+                                        f"card_media/{client_id_str}/photo/{submitted_base}.jpeg",
+                                        f"card_media/{client_id_str}/photo/{submitted_base}.png",
+                                    ])
+                                for rel_p in possible_rel_paths:
+                                    full_p = os.path.join(media_root, rel_p.replace('/', os.sep))
+                                    if os.path.exists(full_p):
+                                        real_media_path = rel_p
+                                        break
+
+                                # Fallback: search all media subfolders for submitted_base
+                                if not real_media_path:
+                                    for sub_folder in ['idcard_photos', 'card_media']:
+                                        search_dir = os.path.join(media_root, sub_folder)
+                                        if os.path.exists(search_dir):
+                                            for root_dir, _, filenames in os.walk(search_dir):
+                                                for fn in filenames:
+                                                    b_name, b_ext = os.path.splitext(fn)
+                                                    if b_name.lower() == submitted_base.lower() and b_ext.lower() in ('.jpg', '.jpeg', '.png', '.webp'):
+                                                        real_media_path = os.path.relpath(os.path.join(root_dir, fn), media_root).replace('\\', '/')
+                                                        break
+                                                if real_media_path:
+                                                    break
+
                         if real_media_path:
                             field_data[canonical_field] = real_media_path
                             card.field_data = field_data
+                            if modified_by:
+                                card.modified_by = modified_by
                             card.save()
                             cls._bump_table_cache_versions(table)
 
@@ -1456,36 +1492,30 @@ class IDCardCardService(BaseService):
                                 }
                             )
 
-                        # Otherwise construct updated path or pending reference
-                        if is_existing_real_image:
-                            prefix = ''
-                            ext = '.jpg'
-                            if '/' in existing_str or '\\' in existing_str:
-                                prefix = existing_str.rsplit('/', 1)[0] + '/' if '/' in existing_str else existing_str.rsplit('\\', 1)[0] + '\\'
-                            _, existing_ext = os.path.splitext(existing_filename)
-                            if existing_ext:
-                                ext = existing_ext
-                            new_img_value = f"{prefix}{submitted_base}{ext}" if prefix else f"{submitted_base}{ext}"
-                            field_data[canonical_field] = new_img_value
-                            card.field_data = field_data
-                            card.save()
-                            cls._bump_table_cache_versions(table)
+                        # User changed path to a new path for which no uploaded image file exists:
+                        # Set to PENDING:<submitted_base> (old image file stays soft-preserved in storage/CardMedia)
+                        _, ext_val = os.path.splitext(submitted_filename)
+                        ext = ext_val if ext_val else ''
+                        pending_val = f"PENDING:{submitted_base}{ext}" if ext else f"PENDING:{submitted_base}"
 
-                            return ServiceResult(
-                                success=True,
-                                message='Field updated successfully!',
-                                data={
-                                    'field': canonical_field,
-                                    'value': new_img_value,
-                                    'is_path_field': True,
-                                    'photo_field_name': canonical_field,
-                                    'photo_field_value': new_img_value,
-                                }
-                            )
-                        else:
-                            _, ext_val = os.path.splitext(submitted_filename)
-                            ext = ext_val if ext_val else '.jpg'
-                            new_img_value = f"PENDING:{submitted_base}{ext}"
+                        field_data[canonical_field] = pending_val
+                        card.field_data = field_data
+                        if modified_by:
+                            card.modified_by = modified_by
+                        card.save()
+                        cls._bump_table_cache_versions(table)
+
+                        return ServiceResult(
+                            success=True,
+                            message='Field updated successfully!',
+                            data={
+                                'field': canonical_field,
+                                'value': pending_val,
+                                'is_path_field': True,
+                                'photo_field_name': canonical_field,
+                                'photo_field_value': pending_val,
+                            }
+                        )
                     try:
                         result = ImageService.process_image_field(
                             field_name=canonical_field,
