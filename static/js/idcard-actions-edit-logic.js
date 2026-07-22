@@ -178,20 +178,22 @@ function saveCellEdit(cell, newValue, cardId, field) {
                 const strVal = String(photoVal || '').trim();
                 const isPending = strVal.toUpperCase().startsWith('PENDING:');
                 const existingImg = photoTd.querySelector('img');
+                const cardIdAttr = (row && row.getAttribute('data-card-id')) || (typeof cardId !== 'undefined' ? cardId : '') || '';
 
                 if (existingImg && !isPending && strVal) {
                     // Real image already rendered in DOM! Do NOT overwrite or remove the picture!
                 } else if (!isPending && strVal && (strVal.includes('/') || strVal.includes('\\') || /\.(jpg|jpeg|png|webp|gif)$/i.test(strVal))) {
                     // Real image path returned (e.g. re-typed path matching existing uploaded photo)
                     const imgUrl = strVal.startsWith('/') || strVal.startsWith('http') ? strVal : '/media/' + strVal;
-                    photoTd.innerHTML = `<img src="${esc(imgUrl)}" class="photo-thumbnail" style="cursor: pointer;"><button class="image-edit-btn" onclick="startCellEdit(this.closest('td'))" title="Click to edit/replace image">Edit</button>`;
+                    photoTd.innerHTML = `<div class="image-with-edit"><img src="${esc(imgUrl)}" class="table-image photo-thumbnail" style="cursor: pointer;"><button class="edit-photo-btn" data-card-id="${esc(cardIdAttr)}" title="Edit Card">Edit</button></div>`;
                     if (typeof IDCardApp.initImageCellHandlers === 'function') {
                         IDCardApp.initImageCellHandlers();
                     }
                 } else if (isPending) {
-                    photoTd.innerHTML = `<div class="no-image pending-placeholder" title="Waiting for upload: ${esc(strVal)}"><i class="fa-solid fa-clock"></i></div><button class="image-edit-btn" onclick="startCellEdit(this.closest('td'))" title="Click to edit/replace image">Edit</button>`;
+                    const pendingRef = strVal.substring(8);
+                    photoTd.innerHTML = `<div class="image-with-edit"><div class="no-image pending-placeholder" title="Waiting for upload: ${esc(pendingRef)}"><i class="fa-solid fa-clock"></i></div><button class="edit-photo-btn" data-card-id="${esc(cardIdAttr)}" title="Edit Card">Edit</button></div>`;
                 } else if (!strVal) {
-                    photoTd.innerHTML = `<div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div><button class="image-edit-btn" onclick="startCellEdit(this.closest('td'))" title="Click to edit/replace image">Edit</button>`;
+                    photoTd.innerHTML = `<div class="image-with-edit"><div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div><button class="edit-photo-btn" data-card-id="${esc(cardIdAttr)}" title="Edit Card">Edit</button></div>`;
                 }
             }
         }
