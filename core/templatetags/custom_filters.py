@@ -57,6 +57,8 @@ def is_image_field_by_name(field_name):
     """
     if not field_name:
         return False
+    if str(field_name).lower().endswith('path'):
+        return False
     name_lower = field_name.lower()
     normalized_name = re.sub(r'[\s_-]+', ' ', name_lower).strip()
 
@@ -76,6 +78,17 @@ def _is_image_field(field):
         field_type = field.get('type', '')
         field_name = field.get('name', '')
         return field_type in IMAGE_FIELD_TYPES or is_image_field_by_name(field_name)
+
+
+@register.filter
+def is_show_path_enabled(field):
+    """Template filter to safely check if show_path is enabled for a field config dict."""
+    if not isinstance(field, dict):
+        return False
+    val = field.get('show_path')
+    if isinstance(val, str):
+        return val.strip().lower() in ('true', '1', 'yes', 'on')
+    return bool(val)
     return False
 
 

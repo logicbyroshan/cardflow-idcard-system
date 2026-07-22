@@ -217,6 +217,10 @@ def _build_ordered_fields(card, table):
             fval = _normalize_image_value(fval)
 
         ordered_fields.append({'name': fname, 'type': ftype, 'value': fval})
+
+        if _is_image_field(ftype, fname) and field.get('type') in ('photo', 'rel_photo', 'mother_photo', 'father_photo') and BaseService.is_show_path_enabled(field):
+            display_val = BaseService.extract_photo_path_display_value(card, fname, fval)
+            ordered_fields.append({'name': fname + ' Path', 'type': 'text', 'value': display_val})
     return ordered_fields
 
 

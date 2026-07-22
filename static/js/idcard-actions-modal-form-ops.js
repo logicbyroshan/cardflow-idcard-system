@@ -182,8 +182,40 @@ function initModalModule() {
         }
     
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && sideModalOverlay?.classList.contains('active')) {
+        const sideModalOverlay = document.getElementById('sideModalOverlay');
+        if (!sideModalOverlay || !sideModalOverlay.classList.contains('active')) return;
+
+        // Escape key closes side modal drawer (for all users)
+        if (e.key === 'Escape') {
             IDCardApp.closeSideModal();
+            return;
+        }
+
+        // Enter key saves form & closes side modal drawer (ADMIN & OPERATOR ONLY)
+        if (e.key === 'Enter') {
+            const isClient = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER) || (window.IDCardApp && window.IDCardApp.isClientUser === true);
+            if (isClient) return; // Blocked for client
+
+            // Allow multiline enter in textareas unless Ctrl+Enter
+            if (e.target && e.target.tagName === 'TEXTAREA' && !e.ctrlKey) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const saveBtn = document.getElementById('saveSideModal');
+            if (saveBtn && saveBtn.style.display !== 'none' && !saveBtn.disabled) {
+                saveBtn.click();
+            } else if (typeof IDCardApp.saveCardForm === 'function') {
+                IDCardApp.saveCardForm().then(function(success) {
+                    if (success !== false) {
+                        IDCardApp.closeSideModal();
+                    }
+                }).catch(function(err) {
+                    console.error('Error saving side modal via Enter key:', err);
+                });
+            }
         }
     });
     

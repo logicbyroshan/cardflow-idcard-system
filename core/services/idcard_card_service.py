@@ -1314,6 +1314,20 @@ class IDCardCardService(BaseService):
                 if not field_name:
                     return ServiceResult(success=False, message='Field name is required!')
 
+                is_path_field = False
+                # Resolve Photo Path column updates back to the base photo field
+                if field_name.lower().endswith(' path'):
+                    possible_base = field_name[:-5].strip()
+                    for f in (table.fields or []):
+                        if not isinstance(f, dict):
+                            continue
+                        fname = str(f.get('name', '')).strip()
+                        ftype = str(f.get('type', 'text')).strip().lower()
+                        if ftype in ('photo', 'rel_photo') and fname.lower() == possible_base.lower():
+                            field_name = fname
+                            is_path_field = True
+                            break
+
                 valid_field_map = {}
                 normalized_field_map = {}
                 for table_field in (table.fields or []):
@@ -1346,6 +1360,41 @@ class IDCardCardService(BaseService):
                 if cls.is_image_field_name_for_table(canonical_field, table.fields):
                     existing_value = field_data.get(canonical_field, '')
                     new_img_value = '' if (value is None or value == '') else value
+
+                    if is_path_field and new_img_value:
+                        import os
+                        clean_val = str(new_img_value).strip()
+                        if clean_val.upper().startswith('PENDING:'):
+                            clean_val = clean_val[8:].strip()
+                        
+                        base_val, ext_val = os.path.splitext(clean_val)
+                        if not ext_val:
+                            base_val = clean_val
+                        
+                        prefix = ''
+                        ext = '.jpg'
+                        is_existing_pending = False
+                        
+                        if existing_value:
+                            norm_existing = str(existing_value).strip()
+                            if norm_existing.upper().startswith('PENDING:'):
+                                is_existing_pending = True
+                                filename = norm_existing[8:]
+                            else:
+                                filename = norm_existing
+                                if '/' in filename or '\\' in filename:
+                                    prefix = filename.rsplit('/', 1)[0] + '/' if '/' in filename else filename.rsplit('\\', 1)[0] + '\\'
+                            
+                            _, existing_ext = os.path.splitext(filename)
+                            if existing_ext:
+                                ext = existing_ext
+                        
+                        if is_existing_pending:
+                            new_img_value = f"PENDING:{base_val}{ext}"
+                        elif prefix:
+                            new_img_value = f"{prefix}{base_val}{ext}"
+                        else:
+                            new_img_value = f"PENDING:{base_val}{ext}"
                     try:
                         result = ImageService.process_image_field(
                             field_name=canonical_field,
@@ -1387,7 +1436,13 @@ class IDCardCardService(BaseService):
                 return ServiceResult(
                     success=True,
                     message='Field updated successfully!',
-                    data={'field': canonical_field, 'value': field_data[canonical_field]}
+                    data={
+                        'field': canonical_field,
+                        'value': field_data.get(canonical_field, ''),
+                        'is_path_field': is_path_field,
+                        'photo_field_name': canonical_field if is_path_field else None,
+                        'photo_field_value': field_data.get(canonical_field, '') if is_path_field else None,
+                    }
                 )
 
         except IDCard.DoesNotExist:

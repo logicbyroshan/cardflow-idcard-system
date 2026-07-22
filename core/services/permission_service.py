@@ -713,7 +713,8 @@ class PermissionService:
             'is_client': is_cl,
             'is_guest_user': is_guest,
             'is_assistant': is_as,
-            'is_client_staff': is_as,
+            'is_admin_or_operator': (is_sa or is_op),
+            'is_client_viewer': (is_cl or is_guest or is_as),
             'user_role': user.role if user.is_authenticated else None,
         }
 

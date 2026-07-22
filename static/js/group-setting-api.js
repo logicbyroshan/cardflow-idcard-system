@@ -313,7 +313,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const payload = {
             name: name,
-            fields: GSP.currentFields.map((f, idx) => ({ name: f.name, type: f.type, order: idx, mandatory: f.mandatory || false }))
+            fields: GSP.currentFields.map((f, idx) => ({
+                name: f.name,
+                type: f.type,
+                order: idx,
+                mandatory: f.mandatory || false,
+                show_path: f.show_path || false
+            }))
         };
 
         try {
@@ -324,10 +330,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast(data.message || 'Table saved successfully!', 'success');
                 GSP.closeDrawerModal();
                 setTimeout(function() {
+                    if (window.IDCardApp && window.IDCardApp._ts && window.IDCardApp._ts.lazyLoadState) {
+                        window.IDCardApp._ts.lazyLoadState.cardsCache = {};
+                        window.IDCardApp._ts.lazyLoadState.allCards = [];
+                    }
                     if (typeof htmx !== 'undefined' && document.getElementById('gs-table-container')) {
                         htmx.trigger(document.body, 'refreshTable');
                     } else {
-                        console.warn('group-setting save refresh skipped: HTMX target missing');
+                        window.location.reload();
                     }
                 }, 300);
             } else {

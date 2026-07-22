@@ -17,6 +17,10 @@
                 {% if is_img %}
                 <!-- Image columns  -  30px fixed -->
                 <th class="w-[50px] min-w-[50px] text-center" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name|wrap_header }}</th>
+                {% if field.type in 'photo rel_photo mother_photo father_photo' and field|is_show_path_enabled and is_admin_or_operator %}
+                <!-- Adjacent Photo Path header for admins/operators only -->
+                <th class="min-w-[150px] text-left whitespace-normal break-words" data-field-name="{{ field.name }} Path" data-field-type="text">{{ field.name }} Path</th>
+                {% endif %}
                 {% else %}
                 <!-- Dynamic columns  -  intelligent width -->
                 <th class="{{ field|get_column_width_class }} {{ field|get_column_align_class }}" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name|humanize_header }}</th>

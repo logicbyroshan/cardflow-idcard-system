@@ -15,6 +15,7 @@ import os
 
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 
 from idcards.models import IDCard
 from mediafiles.utils import normalize_image_bytes_for_storage
@@ -460,6 +461,7 @@ def api_idcard_list(request, table_id):
 
 
 @require_http_methods(["GET"])
+@never_cache
 @api_require_any_authenticated
 def api_idcard_cards_json(request, table_id):
     """JSON endpoint for virtual table rendering.
@@ -777,6 +779,14 @@ def api_idcard_cards_json(request, table_id):
                 entry['thumb'] = _thumb(val) if val else ''
             ordered.append(entry)
 
+            if is_img and field.get('type') in ('photo', 'rel_photo', 'mother_photo', 'father_photo') and BaseService.is_show_path_enabled(field) and not _is_client_viewer:
+                display_val = BaseService.extract_photo_path_display_value(card, fname, val)
+                ordered.append({
+                    'name': fname + ' Path',
+                    'type': 'text',
+                    'value': display_val
+                })
+
         # By default include complete audit metadata; client viewers are sanitized below.
         _modifier = card.modified_by or ''
         _card_updated_at = localtime(card.updated_at).strftime('%d-%b-%Y %H:%M') if card.updated_at else None
@@ -815,10 +825,12 @@ def api_idcard_cards_json(request, table_id):
     return JsonResponse({
         'success': True,
         'total': total,
+        'total_count': total,
         'offset': offset,
         'limit': limit,
         'has_more': has_more,
         'next_cursor': next_cursor,
+        'cards': results,
         'results': results,
     })
 

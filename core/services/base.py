@@ -264,6 +264,8 @@ class BaseService:
         """Check if field name suggests it's an image field"""
         if not field_name:
             return False
+        if str(field_name).lower().endswith('path'):
+            return False
         import re
         name_lower = field_name.lower()
         normalized_name = re.sub(r'[\s_-]+', ' ', name_lower).strip()
@@ -281,6 +283,49 @@ class BaseService:
                 return True
         return False
     
+    @classmethod
+    def is_show_path_enabled(cls, field: dict) -> bool:
+        """Check if show_path flag is enabled for a field configuration dict."""
+        if not isinstance(field, dict):
+            return False
+        val = field.get('show_path')
+        if isinstance(val, str):
+            return val.strip().lower() in ('true', '1', 'yes', 'on')
+        return bool(val)
+
+    @classmethod
+    def extract_photo_path_display_value(cls, card, field_name: str, val: Any = None) -> str:
+        """
+        Extract the image filename without extension for a photo field.
+        Handles PENDING: prefix, Windows/POSIX path separators, file extensions,
+        and fallbacks to card.field_data (PATH key) or card.photo.
+        """
+        import os
+        clean_val = val or ''
+        if not clean_val and card:
+            fd = getattr(card, 'field_data', {}) or {}
+            clean_val = fd.get('PATH') or fd.get('path') or fd.get('Path') or ''
+            if not clean_val and hasattr(card, 'photo') and card.photo:
+                try:
+                    clean_val = card.photo.name or ''
+                except Exception:
+                    pass
+
+        if not clean_val or not isinstance(clean_val, str):
+            return ''
+
+        if clean_val.startswith('PENDING:'):
+            clean_val = clean_val[8:]
+
+        clean_val = clean_val.strip()
+        if not clean_val:
+            return ''
+
+        clean_val = clean_val.replace('\\', '/')
+        filename = clean_val.split('/')[-1]
+        name_without_ext, _ = os.path.splitext(filename)
+        return name_without_ext
+
     @classmethod
     def is_image_field(cls, field: dict) -> bool:
         """Check if a field is an image field by type OR name"""

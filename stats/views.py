@@ -292,10 +292,15 @@ def api_statistics_data(request):
     if all_user_activity:
         all_user_activity[-1] = max(all_user_activity[-1],  current_active_users)
 
-    # Historical peak
-    peak_snap         = StatsSnapshot.objects.order_by('-peak_active_users').first()
-    peak_active_users = max(peak_snap.peak_active_users if peak_snap else 0,
-                            current_active_users)
+    # Today's Peak Active
+    from django.utils.timezone import localdate
+    today = localdate()
+    todays_snapshots = StatsSnapshot.objects.filter(timestamp__date=today)
+    peak_active_users = current_active_users
+    for snap in todays_snapshots:
+        snap_peak = max(snap.peak_active_users, snap.active_desktop_users + snap.active_mobile_users)
+        if snap_peak > peak_active_users:
+            peak_active_users = snap_peak
 
     # Busiest 2-hour window (hourly range only)
     busiest_hour_str = '—'

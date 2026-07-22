@@ -12,45 +12,99 @@ window.IDCardApp = window.IDCardApp || {};
 // ==========================================
 
 function getAdjacentCell(currentCell, direction) {
+    if (!currentCell) {
+        var table = document.getElementById('data-table');
+        if (!table) return null;
+        return table.querySelector('tbody tr[data-card-id] td.editable-cell[data-field]:not(.image-field)');
+    }
+
     const row = currentCell.closest('tr');
-    // Only select text cells that are editable (excludes image-field, action, SR NO, dates)
-    const allCells = Array.from(row.querySelectorAll('td.editable-cell[data-field]:not(.image-field)'));
-    const currentIndex = allCells.indexOf(currentCell);
-    
-    if (direction === 'next') {
-        // Try next cell in same row
-        if (currentIndex + 1 < allCells.length) {
-            return allCells[currentIndex + 1];
+    if (!row) return null;
+
+    const fieldName = currentCell.getAttribute('data-field');
+    const allRowCells = Array.from(row.querySelectorAll('td.editable-cell[data-field]:not(.image-field)'));
+    const currentIndex = allRowCells.indexOf(currentCell);
+
+    // 1. Move Right / Forward (Tab or Right Arrow)
+    if (direction === 'next' || direction === 'right') {
+        if (currentIndex !== -1 && currentIndex + 1 < allRowCells.length) {
+            return allRowCells[currentIndex + 1];
         }
         // Wrap to first editable cell of next row
         var nextRow = row.nextElementSibling;
-        while (nextRow && nextRow.tagName === 'TR') {
+        while (nextRow && nextRow.tagName === 'TR' && nextRow.getAttribute('data-card-id')) {
             var nextCells = nextRow.querySelectorAll('td.editable-cell[data-field]:not(.image-field)');
             if (nextCells.length > 0) {
-                // Scroll the next row into view so the user can see it
-                nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                nextRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 return nextCells[0];
             }
             nextRow = nextRow.nextElementSibling;
         }
         return null;
-    } else if (direction === 'prev') {
-        // Try previous cell in same row
-        if (currentIndex - 1 >= 0) {
-            return allCells[currentIndex - 1];
+    } 
+    
+    // 2. Move Left / Backward (Shift + Tab or Left Arrow)
+    if (direction === 'prev' || direction === 'left') {
+        if (currentIndex !== -1 && currentIndex - 1 >= 0) {
+            return allRowCells[currentIndex - 1];
         }
         // Wrap to last editable cell of previous row
         var prevRow = row.previousElementSibling;
-        while (prevRow && prevRow.tagName === 'TR') {
+        while (prevRow && prevRow.tagName === 'TR' && prevRow.getAttribute('data-card-id')) {
             var prevCells = prevRow.querySelectorAll('td.editable-cell[data-field]:not(.image-field)');
             if (prevCells.length > 0) {
-                prevRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                prevRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 return prevCells[prevCells.length - 1];
             }
             prevRow = prevRow.previousElementSibling;
         }
         return null;
     }
+
+    // 3. Move Down Column (Ctrl + Tab or Down Arrow)
+    if (direction === 'down') {
+        var targetRow = row.nextElementSibling;
+        while (targetRow && targetRow.tagName === 'TR' && targetRow.getAttribute('data-card-id')) {
+            if (fieldName) {
+                var sameFieldCell = targetRow.querySelector(`td.editable-cell[data-field="${CSS.escape(fieldName)}"]`);
+                if (sameFieldCell) {
+                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    return sameFieldCell;
+                }
+            }
+            var targetCells = targetRow.querySelectorAll('td.editable-cell[data-field]:not(.image-field)');
+            if (targetCells.length > 0) {
+                var idx = Math.min(currentIndex !== -1 ? currentIndex : 0, targetCells.length - 1);
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                return targetCells[idx];
+            }
+            targetRow = targetRow.nextElementSibling;
+        }
+        return null;
+    }
+
+    // 4. Move Up Column (Alt + Tab or Up Arrow)
+    if (direction === 'up') {
+        var targetRowPrev = row.previousElementSibling;
+        while (targetRowPrev && targetRowPrev.tagName === 'TR' && targetRowPrev.getAttribute('data-card-id')) {
+            if (fieldName) {
+                var sameFieldCellPrev = targetRowPrev.querySelector(`td.editable-cell[data-field="${CSS.escape(fieldName)}"]`);
+                if (sameFieldCellPrev) {
+                    targetRowPrev.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    return sameFieldCellPrev;
+                }
+            }
+            var targetCellsPrev = targetRowPrev.querySelectorAll('td.editable-cell[data-field]:not(.image-field)');
+            if (targetCellsPrev.length > 0) {
+                var idxPrev = Math.min(currentIndex !== -1 ? currentIndex : 0, targetCellsPrev.length - 1);
+                targetRowPrev.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                return targetCellsPrev[idxPrev];
+            }
+            targetRowPrev = targetRowPrev.previousElementSibling;
+        }
+        return null;
+    }
+
     return null;
 }
 
@@ -59,6 +113,7 @@ function getAdjacentCell(currentCell, direction) {
 // ==========================================
 
 function startCellEdit(cell) {
+    if (!cell) return;
     if (cell.querySelector('input, textarea, select')) return; // Already editing
     if (cell.classList.contains('editing')) return; // Already in edit mode
     
@@ -68,8 +123,11 @@ function startCellEdit(cell) {
     var ft = (cell.getAttribute('data-field-type') || '').toLowerCase();
     if (ft === 'image') return;
     var fn = (cell.getAttribute('data-field') || '').toLowerCase();
-    if (fn.includes('photo') || fn.includes('image') || fn.includes('picture')) return;
+    if ((fn.includes('photo') || fn.includes('image') || fn.includes('picture')) && !fn.endsWith('path')) return;
     
+    // Track last active cell for table-wide keyboard navigation
+    window.IDCardApp._lastActiveCell = cell;
+
     // Mark cell as editing to prevent duplicate clicks (Phase 5)
     cell.classList.add('editing');
     
@@ -230,8 +288,10 @@ function startCellEdit(cell) {
         IDCardApp.saveCellEdit(cell, newVal, cardId, field);
     });
     
-    // Handle keydown
+    // Handle keydown navigation
     editElement.addEventListener('keydown', function(e) {
+        const isClient = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER) || (window.IDCardApp && window.IDCardApp.isClientUser === true);
+
         if (e.key === 'Enter') {
             // Always save on Enter (no newline needed for inline cell edit)
             e.preventDefault();
@@ -241,10 +301,60 @@ function startCellEdit(cell) {
             cancelCellEdit(cell);
         } else if (e.key === 'Tab') {
             e.preventDefault();
+            e.stopPropagation();
             editElement.blur();
-            const adjacentCell = getAdjacentCell(cell, e.shiftKey ? 'prev' : 'next');
-            if (adjacentCell) {
-                startCellEdit(adjacentCell);
+
+            var dir = 'right';
+            if (e.ctrlKey) {
+                if (isClient) return; // Ctrl+Tab (column down) is ADMIN/OPERATOR ONLY
+                dir = 'down';
+            } else if (e.altKey) {
+                if (isClient) return; // Alt+Tab (column up) is ADMIN/OPERATOR ONLY
+                dir = 'up';
+            } else if (e.shiftKey) {
+                dir = 'left'; // Shift+Tab (row prev) allowed for ALL
+            } else {
+                dir = 'right'; // Tab (row next) allowed for ALL
+            }
+
+            const nextCell = getAdjacentCell(cell, dir);
+            if (nextCell) {
+                setTimeout(function() { startCellEdit(nextCell); }, 50);
+            }
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            // Arrow key cell navigation is ADMIN/OPERATOR ONLY
+            if (isClient) return;
+
+            if (e.key === 'ArrowRight') {
+                var isAtEnd = (editElement.selectionEnd === editElement.value.length);
+                if (isAtEnd || e.ctrlKey || e.altKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    editElement.blur();
+                    const nextCell = getAdjacentCell(cell, 'right');
+                    if (nextCell) setTimeout(function() { startCellEdit(nextCell); }, 50);
+                }
+            } else if (e.key === 'ArrowLeft') {
+                var isAtStart = (editElement.selectionStart === 0);
+                if (isAtStart || e.ctrlKey || e.altKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    editElement.blur();
+                    const prevCell = getAdjacentCell(cell, 'left');
+                    if (prevCell) setTimeout(function() { startCellEdit(prevCell); }, 50);
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                editElement.blur();
+                const downCell = getAdjacentCell(cell, 'down');
+                if (downCell) setTimeout(function() { startCellEdit(downCell); }, 50);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopPropagation();
+                editElement.blur();
+                const upCell = getAdjacentCell(cell, 'up');
+                if (upCell) setTimeout(function() { startCellEdit(upCell); }, 50);
             }
         }
     });
@@ -397,6 +507,68 @@ function openImagePreview(src) {
         }
     });
 }
+
+// ==========================================
+// GLOBAL TABLE KEYBOARD NAVIGATION
+// ==========================================
+
+document.addEventListener('keydown', function(e) {
+    // If user is inside an input, textarea or select, keydown on that element handles it
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+        return;
+    }
+
+    const table = document.getElementById('data-table');
+    if (!table) return;
+
+    // Skip if modal, side drawer or photo cropper is open
+    const modal = document.getElementById('sideModalOverlay');
+    if (modal && modal.classList.contains('active')) return;
+
+    const isClient = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER) || (window.IDCardApp && window.IDCardApp.isClientUser === true);
+
+    let targetDir = null;
+    if (e.key === 'Tab') {
+        if (e.ctrlKey) {
+            if (isClient) return; // Blocked for client
+            targetDir = 'down';
+        } else if (e.altKey) {
+            if (isClient) return; // Blocked for client
+            targetDir = 'up';
+        } else if (e.shiftKey) {
+            targetDir = 'left'; // Allowed for client
+        } else {
+            targetDir = 'right'; // Allowed for client
+        }
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        // Arrow keys are ADMIN / OPERATOR ONLY
+        if (isClient) return;
+
+        if (e.key === 'ArrowRight') targetDir = 'right';
+        else if (e.key === 'ArrowLeft') targetDir = 'left';
+        else if (e.key === 'ArrowDown') targetDir = 'down';
+        else if (e.key === 'ArrowUp') targetDir = 'up';
+    }
+
+    if (targetDir) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        let activeCell = window.IDCardApp._lastActiveCell;
+        if (!activeCell || !document.body.contains(activeCell)) {
+            activeCell = table.querySelector('tbody tr[data-card-id] td.editable-cell[data-field]:not(.image-field)');
+        }
+
+        if (activeCell) {
+            const nextCell = getAdjacentCell(activeCell, targetDir);
+            const target = nextCell || activeCell;
+            if (target) {
+                startCellEdit(target);
+            }
+        }
+    }
+});
 
 // ==========================================
 // EXPORTS

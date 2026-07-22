@@ -143,11 +143,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     const idx = parseInt(action.fieldIndex, 10);
                     if (!Number.isFinite(idx) || idx < 0 || idx >= GSP.currentFields.length) {
                         showToast('Could not remove that field.', 'error');
+                        if (window.alpineCloseModal) window.alpineCloseModal();
                         return;
                     }
 
                     GSP.currentFields.splice(idx, 1);
                     GSP.renderFieldList();
+                    if (window.alpineCloseModal) window.alpineCloseModal();
                     showToast(action.toastMessage || 'Field removed successfully!', 'success');
                     return;
                 }
@@ -251,10 +253,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 finalMandatory = true;
             }
 
-            GSP.currentFields.push({ name: name, type: finalType, order: GSP.currentFields.length, mandatory: finalMandatory });
+            const pathCheckbox = document.getElementById('new-field-path');
+            const showPath = (finalType === 'photo' || finalType === 'rel_photo') && pathCheckbox && pathCheckbox.checked;
+
+            GSP.currentFields.push({
+                name: name,
+                type: finalType,
+                order: GSP.currentFields.length,
+                mandatory: finalMandatory,
+                show_path: showPath
+            });
             GSP.renderFieldList();
             GSP.newFieldName.value = '';
             if (GSP.newFieldMandatory) GSP.newFieldMandatory.checked = false;
+            if (pathCheckbox) pathCheckbox.checked = false;
             GSP.resetFieldTypeDropdown();
             showToast('Field added!', 'success');
         });
@@ -288,6 +300,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Update name input based on field type
                 GSP.updateFieldNameInput(selectedType);
+
+                // Show/hide path toggle wrapper
+                const pathWrap = document.getElementById('new-field-path-wrap');
+                if (pathWrap) {
+                    if (selectedType === 'photo' || selectedType === 'rel_photo') {
+                        pathWrap.style.display = 'inline-flex';
+                    } else {
+                        pathWrap.style.display = 'none';
+                        const pathCheckbox = document.getElementById('new-field-path');
+                        if (pathCheckbox) pathCheckbox.checked = false;
+                    }
+                }
 
                 // Close dropdown
                 GSP.fieldTypeDropdown.classList.remove('open');
@@ -361,13 +385,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Auto-set mandatory for image-type fields
                 if (GSP.imageFieldTypes.includes(e.target.value)) {
                     GSP.currentFields[idx].mandatory = true;
-                    GSP.renderFieldList();
                 }
+                GSP.renderFieldList();
             }
             // Handle mandatory checkbox changes
             if (e.target.classList.contains('field-mandatory-checkbox')) {
                 const idx = parseInt(e.target.dataset.idx);
                 GSP.currentFields[idx].mandatory = e.target.checked;
+            }
+            // Handle path checkbox changes
+            if (e.target.classList.contains('field-path-checkbox')) {
+                const idx = parseInt(e.target.dataset.idx);
+                GSP.currentFields[idx].show_path = e.target.checked;
             }
         });
 
