@@ -2,7 +2,7 @@
   "expo": {
     "name": "Adarsh ID",
     "slug": "adarsh-final-deploye",
-    "version": "1.1.25",
+    "version": "1.1.26",
     "orientation": "portrait",
     "icon": "./assets/adarsh-logo-small.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.adarshid.app",
-      "buildNumber": "125"
+      "buildNumber": "126"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +23,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.adarshid.app",
-      "versionCode": 125,
+      "versionCode": 126,
       "permissions": [
         "CAMERA",
         "POST_NOTIFICATIONS"
