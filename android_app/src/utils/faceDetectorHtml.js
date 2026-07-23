@@ -27,27 +27,32 @@ export const faceDetectorHtml = `<!DOCTYPE html>
           var data = ctx.getImageData(0, 0, w, h).data;
 
           // ----- 1. FACE DETECTION via skin tone pixels in center region -----
-          var cx1 = Math.floor(w * 0.20), cx2 = Math.floor(w * 0.80);
+          var cx1 = Math.floor(w * 0.15), cx2 = Math.floor(w * 0.85);
           var cy1 = Math.floor(h * 0.05), cy2 = Math.floor(h * 0.85);
           var skinPx = 0, totalPx = 0;
           for (var y = cy1; y < cy2; y++) {
             for (var x = cx1; x < cx2; x++) {
               var i = (y * w + x) * 4;
               var r = data[i], g = data[i+1], b = data[i+2];
-              // Standard skin tone RGB heuristics
-              var maxRGB = Math.max(r,g,b), minRGB = Math.min(r,g,b);
-              if (r > 60 && g > 30 && b > 15 && r > g && r > b &&
-                  (maxRGB - minRGB) > 15 && r > 100) {
+
+              // Convert RGB to YCbCr space for lighting-independent skin detection
+              var cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+              var cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+
+              var isSkinYCbCr = (cb >= 77 && cb <= 132 && cr >= 128 && cr <= 175);
+              var isSkinRGB = (r > 40 && g > 20 && b > 10 && r > g && r > b && Math.abs(r - g) > 8);
+
+              if (isSkinYCbCr || isSkinRGB) {
                 skinPx++;
               }
               totalPx++;
             }
           }
           var skinRatio = skinPx / totalPx;
-          // >=5.5% skin pixels = face present
-          var faceDetected = skinRatio >= 0.055;
-          // if face detected but skin ratio under 13%, person is too far from camera
-          var tooFar = faceDetected && (skinRatio < 0.13);
+          // >=4.5% skin pixels in central area = person/face detected
+          var faceDetected = skinRatio >= 0.045;
+          // if face detected but skin ratio < 11%, person is too far from camera
+          var tooFar = faceDetected && (skinRatio < 0.11);
 
           var result = {
             face_detected: faceDetected,

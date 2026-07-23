@@ -435,6 +435,11 @@ export default function CameraScreen({ navigation, route }) {
   const takePicture = async () => {
     if (!cameraRef.current || !isCameraReady || isCapturing) return;
 
+    if (!isLevel) {
+      alert(angleError || 'Phone is tilted! Please hold your device upright and level before capturing.');
+      return;
+    }
+
     // Wait at least 400ms after camera ready before capturing to avoid init errors
     const elapsed = Date.now() - cameraReadyTimestamp.current;
     if (elapsed < 400) {
