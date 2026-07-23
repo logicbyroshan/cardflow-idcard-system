@@ -327,13 +327,63 @@
   line-height: 1;
 }
 
-.field-name-input-wrap .mandatory-indicator {
+.field-name-input.has-path-inline {
+  padding-right: 78px !important;
+}
+
+.field-name-input-wrap .field-input-inside-controls {
   position: absolute;
   top: 50%;
   right: 8px;
   transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.field-name-input-wrap .mandatory-indicator {
+  position: relative;
+  top: auto;
+  right: auto;
+  transform: none;
   margin-left: 0;
   pointer-events: none;
+}
+
+.field-path-inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-gray-600);
+  cursor: pointer;
+  user-select: none;
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
+  padding: 1px 5px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.field-path-inline-toggle:hover {
+  background: var(--color-gray-200);
+  color: var(--color-gray-900);
+}
+
+.field-path-inline-toggle input[type="checkbox"] {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #22c55e;
+}
+
+.field-path-inline-toggle input[type="checkbox"]:checked + span {
+  color: #16a34a;
+  font-weight: 600;
 }
 
 .field-name > .mandatory-indicator {
@@ -382,10 +432,11 @@
   height: 12px;
   width: 12px;
   left: 2px;
-  bottom: 2px;
+  top: 50%;
+  transform: translateY(-50%);
   background-color: var(--color-white);
-  transition: 0.3s;
-  border-radius: 8px;
+  transition: transform 0.3s ease;
+  border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
@@ -394,7 +445,7 @@
 }
 
 .mandatory-toggle input:checked + .toggle-slider::before {
-  transform: translateX(14px);
+  transform: translate(14px, -50%);
 }
 
 /* ==================== 
@@ -461,4 +512,72 @@
 #tablesBody tr.row-deleted-by-client:hover {
   background: var(--color-gray-100);
   opacity: 0.75;
+}
+
+/* ==================== 
+   Path Toggle Styles
+   ==================== */
+
+.path-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.path-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.path-toggle .toggle-slider {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 16px;
+  background-color: var(--color-gray-400);
+  transition: 0.3s;
+  border-radius: 20px;
+}
+
+.path-toggle .toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: var(--color-white);
+  transition: transform 0.3s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.path-toggle input:checked + .toggle-slider {
+  background-color: #22c55e; /* Green for path toggled */
+}
+
+.path-toggle input:checked + .toggle-slider::before {
+  transform: translate(14px, -50%);
+}
+
+.drawer-modal.view-mode .path-toggle {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.field-path-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 6px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  margin-left: 10px;
+  color: #475569;
+  font-weight: 500;
+  border: 1px solid #e2e8f0;
 }

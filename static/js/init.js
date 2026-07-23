@@ -26,6 +26,15 @@
 (function() {
     'use strict';
 
+    // Unregister legacy service worker if present to avoid stale API/script caching
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var registration of registrations) {
+                registration.unregister();
+            }
+        }).catch(function() {});
+    }
+
     // ==========================================
     // GLOBAL NAMESPACE
     // ==========================================

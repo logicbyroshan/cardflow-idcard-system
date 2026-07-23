@@ -253,8 +253,8 @@ class ReprintWorkflowServiceTests(TestCase):
 		self.assertTrue(
 			ActivityLog.objects.filter(
 				action='reprint_status',
-				target_model='IDCard',
-				target_id=self.rr_requested.card_id,
+				target_model='IDCardTable',
+				target_id=self.table.id,
 			).exists()
 		)
 

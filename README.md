@@ -18,7 +18,7 @@ Live domains:
 
 Current version source of truth:
 
-- VERSION.txt: v4.19.0
+- VERSION.txt: v4.19.01
 Last deep README refresh: 2026-07-10
 
 ---

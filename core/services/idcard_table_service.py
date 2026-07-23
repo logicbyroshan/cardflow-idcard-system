@@ -84,6 +84,7 @@ class IDCardTableService(BaseService):
                 field_name = field.get('name', '').strip().upper()
                 field_type = cls._normalize_field_type(field.get('type', 'text'))
                 field_mandatory = bool(field.get('mandatory', False))
+                field_show_path = bool(field.get('show_path', False))
 
                 if not field_name:
                     return ServiceResult(
@@ -98,7 +99,8 @@ class IDCardTableService(BaseService):
                     'name': field_name,
                     'type': field_type,
                     'order': idx,
-                    'mandatory': field_mandatory
+                    'mandatory': field_mandatory,
+                    'show_path': field_show_path
                 })
 
             table = IDCardTable.objects.create(
@@ -152,6 +154,7 @@ class IDCardTableService(BaseService):
                 field_name = field.get('name', '').strip().upper()
                 field_type = cls._normalize_field_type(field.get('type', 'text'))
                 field_mandatory = bool(field.get('mandatory', False))
+                field_show_path = bool(field.get('show_path', False))
 
                 if not field_name:
                     return ServiceResult(
@@ -166,7 +169,8 @@ class IDCardTableService(BaseService):
                     'name': field_name,
                     'type': field_type,
                     'order': idx,
-                    'mandatory': field_mandatory
+                    'mandatory': field_mandatory,
+                    'show_path': field_show_path
                 })
 
             table.name = name

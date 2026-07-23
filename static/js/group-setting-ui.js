@@ -26,6 +26,12 @@ document.addEventListener('DOMContentLoaded', function() {
             GSP.newFieldName.disabled = false;
             GSP.newFieldName.classList.remove('disabled');
         }
+        const pathWrap = document.getElementById('new-field-path-wrap');
+        if (pathWrap) {
+            pathWrap.style.display = 'none';
+            const pathCheckbox = document.getElementById('new-field-path');
+            if (pathCheckbox) pathCheckbox.checked = false;
+        }
     };
 
     // ==================== ACTION BUTTONS ====================
@@ -93,10 +99,25 @@ document.addEventListener('DOMContentLoaded', function() {
             const requiredIndicatorHtml = field.mandatory
                 ? '<span class="mandatory-indicator" title="Required field" aria-hidden="true">*</span>'
                 : '';
-            // In add/edit mode, field name is an editable input; in view mode it's plain text
+            const isPhotoType = (field.type === 'photo' || field.type === 'rel_photo' || field.type === 'mother_photo' || field.type === 'father_photo');
+
+            let inlinePathHtml = '';
+            if (isPhotoType) {
+                if (GSP.currentMode !== 'view') {
+                    inlinePathHtml = `
+                        <label class="field-path-inline-toggle" title="Show Path Column (Admin/Operator only)">
+                            <input type="checkbox" class="field-path-checkbox" data-idx="${idx}" ${field.show_path ? 'checked' : ''}>
+                            <span>Path</span>
+                        </label>`;
+                } else if (field.show_path) {
+                    inlinePathHtml = `<span class="field-path-badge" style="font-size: 10px; padding: 1px 4px; background: #e2e8f0; border-radius: 3px; color: #475569; font-weight: 500;">Path</span>`;
+                }
+            }
+
+            const hasInlinePath = isPhotoType && GSP.currentMode !== 'view';
             const fieldNameHtml = GSP.currentMode !== 'view'
-                ? `<span class="field-name"><span class="field-name-input-wrap"><input type="text" class="field-name-input" data-idx="${idx}" value="${_esc(field.name)}" placeholder="Field name">${requiredIndicatorHtml}</span></span>`
-                : `<span class="field-name">${_esc(field.name)}${requiredIndicatorHtml}</span>`;
+                ? `<span class="field-name"><span class="field-name-input-wrap"><input type="text" class="field-name-input ${hasInlinePath ? 'has-path-inline' : ''}" data-idx="${idx}" value="${_esc(field.name)}" placeholder="Field name"><span class="field-input-inside-controls">${inlinePathHtml}${requiredIndicatorHtml}</span></span></span>`
+                : `<span class="field-name">${_esc(field.name)}${requiredIndicatorHtml}${inlinePathHtml}</span>`;
 
             // Mandatory checkbox for edit mode
             const mandatoryHtml = GSP.currentMode !== 'view'

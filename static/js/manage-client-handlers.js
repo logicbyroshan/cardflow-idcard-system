@@ -523,6 +523,12 @@ document.addEventListener('DOMContentLoaded', function() {
               NS.selectedClientId = null;
               NS.selectedRow = null;
               NS.disableActionButtons();
+              if (!document.getElementById('client-table-container')) {
+                setTimeout(function() {
+                  window.location.href = panelBasePath() + '/manage-clients/';
+                }, 800);
+                return;
+              }
             } else {
               showToast((result && result.message) || 'Failed to delete client', 'error');
             }
@@ -544,19 +550,33 @@ document.addEventListener('DOMContentLoaded', function() {
           showToast(result.message, 'success');
           NS.closeStatusModalFn();
 
-          NS.selectedRow.dataset.clientStatus = result.status;
-          var statusBadge = NS.selectedRow.querySelector('.status-badge');
-          statusBadge.textContent = result.status_display;
-          statusBadge.className = 'status-badge ' + (result.status === 'active' ? 'active' : 'inactive');
+          if (NS.selectedRow) {
+            NS.selectedRow.dataset = NS.selectedRow.dataset || {};
+            NS.selectedRow.dataset.clientStatus = result.status;
+            if (typeof NS.selectedRow.querySelector === 'function') {
+              var statusBadge = NS.selectedRow.querySelector('.status-badge');
+              if (statusBadge) {
+                statusBadge.textContent = result.status_display;
+                statusBadge.className = 'status-badge ' + (result.status === 'active' ? 'active' : 'inactive');
+              }
+            }
+          }
 
-          if (result.status === 'active') {
-            activeClientBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Inactive';
-            activeClientBtn.classList.remove('btn-active');
-            activeClientBtn.classList.add('btn-inactive');
-          } else {
-            activeClientBtn.innerHTML = '<i class="fa-solid fa-check"></i> Active';
-            activeClientBtn.classList.remove('btn-inactive');
-            activeClientBtn.classList.add('btn-active');
+          if (activeClientBtn) {
+            if (result.status === 'active') {
+              activeClientBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Inactive';
+              activeClientBtn.classList.remove('btn-active');
+              activeClientBtn.classList.add('btn-inactive');
+            } else {
+              activeClientBtn.innerHTML = '<i class="fa-solid fa-check"></i> Active';
+              activeClientBtn.classList.remove('btn-inactive');
+              activeClientBtn.classList.add('btn-active');
+            }
+          }
+
+          if (!document.getElementById('client-table-container')) {
+            setTimeout(function() { window.location.reload(); }, 800);
+            return;
           }
         } else {
           showToast(result.message || 'Failed to update status', 'error');

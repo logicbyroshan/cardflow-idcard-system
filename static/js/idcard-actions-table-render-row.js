@@ -74,6 +74,7 @@ function createRowFromCard(card, index) {
     }
     
     function isImageField(fieldType, fieldName) {
+        if (fieldName && fieldName.toLowerCase().endsWith('path')) return false;
         return isImageFieldType(fieldType) || isImageFieldByName(fieldName);
     }
     
@@ -101,6 +102,47 @@ function createRowFromCard(card, index) {
     html += `<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">${card.sr_no}</td>`;
     
     if (card.ordered_fields) {
+        // ── HEADER-BODY SYNCHRONIZATION GUARD ──
+        // Read field column names directly from DOM <thead> to guarantee 100% 1-to-1 alignment
+        const headerThs = document.querySelectorAll('#data-table thead th[data-field-name]');
+        if (headerThs && headerThs.length > 0) {
+            const fieldMap = new Map();
+            card.ordered_fields.forEach(f => fieldMap.set(f.name, f));
+
+            const syncFields = [];
+            headerThs.forEach(th => {
+                const fname = th.dataset.fieldName;
+                if (!fname) return;
+                if (fieldMap.has(fname)) {
+                    syncFields.push(fieldMap.get(fname));
+                } else if (fname.toLowerCase().endsWith(' path')) {
+                    // Header exists in <thead> (e.g. "PHOTO N Path"), extract filename from base photo field
+                    const basePhotoName = fname.substring(0, fname.length - 5).trim();
+                    let pathVal = '';
+                    // Find base photo field (case-insensitive lookup)
+                    for (const [k, photoObj] of fieldMap.entries()) {
+                        if (k.toLowerCase() === basePhotoName.toLowerCase()) {
+                            let photoVal = photoObj ? (photoObj.value || '') : '';
+                            if (photoVal) {
+                                if (photoVal.startsWith('PENDING:')) photoVal = photoVal.substring(8);
+                                photoVal = photoVal.replace(/\\/g, '/');
+                                const filename = photoVal.split('/').pop();
+                                const idxDot = filename.lastIndexOf('.');
+                                pathVal = idxDot !== -1 ? filename.substring(0, idxDot) : filename;
+                            }
+                            break;
+                        }
+                    }
+                    syncFields.push({ name: fname, type: 'text', value: pathVal });
+                } else {
+                    // Fallback for missing text fields
+                    const ftype = th.dataset.fieldType || 'text';
+                    syncFields.push({ name: fname, type: ftype, value: '' });
+                }
+            });
+            card.ordered_fields = syncFields;
+        }
+
         const _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
         card.ordered_fields.forEach(field => {
             const fieldName = field.name;

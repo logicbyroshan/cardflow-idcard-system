@@ -158,6 +158,46 @@ function saveCellEdit(cell, newValue, cardId, field) {
         // Update data-original-value so next edit reads the new value
         cell.setAttribute('data-original-value', finalValue);
         
+        // ── Real-time DOM sync for Photo Placeholder when Photo Path is edited ──
+        const resData = (data && data.data) ? data.data : data;
+        const row = cell.closest('tr');
+        if (row && (field.toLowerCase().endsWith(' path') || (resData && resData.is_path_field))) {
+            const photoName = (resData && resData.photo_field_name) ? resData.photo_field_name : field.substring(0, field.length - 5).trim();
+            const photoVal = (resData && resData.photo_field_value !== undefined) ? resData.photo_field_value : '';
+            
+            let photoTd = null;
+            const tdList = row.querySelectorAll('td[data-field]');
+            tdList.forEach(td => {
+                const f = td.getAttribute('data-field') || '';
+                if (f.toLowerCase() === photoName.toLowerCase()) photoTd = td;
+            });
+            if (!photoTd) photoTd = row.querySelector('td.image-field');
+
+            if (photoTd) {
+                photoTd.setAttribute('data-original-value', photoVal);
+                const strVal = String(photoVal || '').trim();
+                const isPending = strVal.toUpperCase().startsWith('PENDING:');
+                const existingImg = photoTd.querySelector('img');
+                const cardIdAttr = (row && row.getAttribute('data-card-id')) || (typeof cardId !== 'undefined' ? cardId : '') || '';
+
+                if (existingImg && !isPending && strVal) {
+                    // Real image already rendered in DOM! Do NOT overwrite or remove the picture!
+                } else if (!isPending && strVal && (strVal.includes('/') || strVal.includes('\\') || /\.(jpg|jpeg|png|webp|gif)$/i.test(strVal))) {
+                    // Real image path returned (e.g. re-typed path matching existing uploaded photo)
+                    const imgUrl = strVal.startsWith('/') || strVal.startsWith('http') ? strVal : '/media/' + strVal;
+                    photoTd.innerHTML = `<div class="image-with-edit"><img src="${esc(imgUrl)}" class="table-image photo-thumbnail" style="cursor: pointer;"><button class="edit-photo-btn" data-card-id="${esc(cardIdAttr)}" title="Edit Card">Edit</button></div>`;
+                    if (typeof IDCardApp.initImageCellHandlers === 'function') {
+                        IDCardApp.initImageCellHandlers();
+                    }
+                } else if (isPending) {
+                    const pendingRef = strVal.substring(8);
+                    photoTd.innerHTML = `<div class="image-with-edit"><div class="no-image pending-placeholder" title="Waiting for upload: ${esc(pendingRef)}"><i class="fa-solid fa-clock"></i></div><button class="edit-photo-btn" data-card-id="${esc(cardIdAttr)}" title="Edit Card">Edit</button></div>`;
+                } else if (!strVal) {
+                    photoTd.innerHTML = `<div class="image-with-edit"><div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div><button class="edit-photo-btn" data-card-id="${esc(cardIdAttr)}" title="Edit Card">Edit</button></div>`;
+                }
+            }
+        }
+
         // Show success feedback
         cell.style.backgroundColor = '#d4edda';
         setTimeout(() => {
@@ -172,7 +212,6 @@ function saveCellEdit(cell, newValue, cardId, field) {
         // If a class/section/course/branch filter is active and we just changed that field,
         // the row may no longer match the filter  animate it out.
         const fieldUpper = field.toUpperCase();
-        const row = cell.closest('tr');
         var changedClassOrSection = _isClassLikeField(fieldUpper)
             || _isSectionLikeField(fieldUpper)
             || _isCourseLikeField(fieldUpper)
@@ -258,12 +297,12 @@ function makeTableCellsEditable() {
             return;
         }
         
-        // Don't edit image fields via inline edit
+        // Don't edit image fields via inline edit (except path columns)
         const ft = (cell.getAttribute('data-field-type') || '').toLowerCase();
         if (ft === 'image' ||
-            field.toLowerCase().includes('photo') || 
-            field.toLowerCase().includes('image') ||
-            field.toLowerCase().includes('picture')) {
+            ((field.toLowerCase().includes('photo') || 
+              field.toLowerCase().includes('image') ||
+              field.toLowerCase().includes('picture')) && !field.toLowerCase().endsWith('path'))) {
             return;
         }
         
@@ -345,6 +384,45 @@ function initEditModule() {
     makeTableCellsEditable();
     IDCardApp.addEditableHints();
     IDCardApp.initImageCellHandlers();
+
+    // Bind navigation keyboard shortcuts (Admin/Operator only)
+    var isClientUser = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER);
+    if (!isClientUser) {
+        document.addEventListener('keydown', function(e) {
+            var tableContainer = document.querySelector('.table-container') || document.querySelector('.idcard-table');
+            if (!tableContainer) return;
+
+            // Ctrl + Home -> Scroll to top of table
+            if (e.ctrlKey && e.key === 'Home') {
+                e.preventDefault();
+                tableContainer.scrollTop = 0;
+            }
+
+            // Ctrl + End -> Scroll to bottom of table
+            if (e.ctrlKey && e.key === 'End') {
+                e.preventDefault();
+                tableContainer.scrollTop = tableContainer.scrollHeight;
+            }
+
+            // Ctrl + Tab -> Scroll to bottom of table (if not actively editing a text cell)
+            if (e.ctrlKey && e.key === 'Tab' && !e.shiftKey) {
+                var editing = document.querySelector('td.editing');
+                if (!editing) {
+                    e.preventDefault();
+                    tableContainer.scrollTop = tableContainer.scrollHeight;
+                }
+            }
+
+            // Alt + Tab -> Scroll to top of table (if not actively editing a text cell)
+            if (e.altKey && e.key === 'Tab') {
+                var editing = document.querySelector('td.editing');
+                if (!editing) {
+                    e.preventDefault();
+                    tableContainer.scrollTop = 0;
+                }
+            }
+        });
+    }
 }
 
 // ==========================================

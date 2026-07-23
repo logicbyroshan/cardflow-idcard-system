@@ -16,8 +16,8 @@ class ImageCompressMixin:
     Image compression: quality-only JPEG compression to meet a target file size.
     """
 
-    # Target size for stored images (5 MB)
-    MAX_STORED_IMAGE_SIZE = 5 * 1024 * 1024
+    # Target size for stored images (500 KB)
+    MAX_STORED_IMAGE_SIZE = 500 * 1024
 
     @classmethod
     def compress_to_target_size(
@@ -40,6 +40,8 @@ class ImageCompressMixin:
         """
         import tempfile
         from PIL import Image
+
+        Image.MAX_IMAGE_PIXELS = 250_000_000
 
         target_size = target_size or cls.MAX_STORED_IMAGE_SIZE
 

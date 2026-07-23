@@ -1031,20 +1031,25 @@ class IDCardCardService(BaseService):
         legacy_photo_file=None,
         modified_by: str = None,
         force: bool = False,
+        base_field_data: Dict[str, Any] = None,
     ) -> ServiceResult:
-        """Update an ID Card with atomic concurrency control.
+        """Update an ID Card with smart 3-way field-level merge.
 
         Args:
             card_id: IDCard PK.
-            field_data: Partial field_data to merge (text + image path values).
+            field_data: Desired final field_data from the saving user.
             status: Ignored — use WorkflowService.transition().
             image_files: Dict of uploaded files keyed by ``image_<field_name>``.
             uploaded_by: User who triggered the upload.
-            expected_updated_at: ISO-8601 timestamp for optimistic concurrency.
-                If the card was modified since this timestamp, a 'conflict'
-                ServiceResult is returned.
+            expected_updated_at: ISO-8601 timestamp captured when the user
+                opened the card. Used to detect concurrent edits so we can
+                perform a 3-way merge instead of overwriting blindly.
             legacy_photo_file: Optional UploadedFile for the legacy ``photo``
                                key (pre-field-config tables).
+            base_field_data: Snapshot of field_data when the user opened the
+                card. Combined with ``expected_updated_at`` this lets us compute
+                exactly which fields the user changed so we can merge them
+                onto the concurrent DB state without clobbering unrelated edits.
         """
         try:
             from django.db import transaction as db_transaction
@@ -1056,7 +1061,12 @@ class IDCardCardService(BaseService):
                 table = card.table
                 client = table.group.client
 
-                # ── Optimistic concurrency check ──
+                # ── Smart 3-way field-level merge on concurrent edit ──
+                # When two users edit the same card simultaneously:
+                #   - Fields only this user changed  → this user's value wins
+                #   - Fields only the other user changed → other user's value kept
+                #   - Fields changed by both           → this user's value wins (last writer per field)
+                #   - Images uploaded                  → always applied
                 if expected_updated_at and not force:
                     expected_dt = parse_datetime(expected_updated_at)
                     if expected_dt and card.updated_at:
@@ -1066,14 +1076,22 @@ class IDCardCardService(BaseService):
                         dt_expected = make_aware(expected_dt) if is_naive(expected_dt) else expected_dt
                         dt_card = make_aware(card.updated_at) if is_naive(card.updated_at) else card.updated_at
                         if abs((dt_card.astimezone(_utc) - dt_expected.astimezone(_utc)).total_seconds()) > 1:
-                            return ServiceResult(
-                                success=False,
-                                message='This card was modified by another user. Please refresh and try again.',
-                                data={
-                                    'conflict': True,
-                                    'server_updated_at': card.updated_at.isoformat(),
-                                },
-                            )
+                            # Concurrent edit detected — perform field-level merge
+                            if field_data is not None:
+                                db_data = {str(k).strip().upper(): v for k, v in (card.field_data or {}).items()}
+                                incoming = {str(k).strip().upper(): v for k, v in field_data.items()}
+                                if base_field_data is not None:
+                                    # True 3-way merge: only apply fields this user actually changed
+                                    base = {str(k).strip().upper(): v for k, v in base_field_data.items()}
+                                    merged = dict(db_data)  # start from what's in DB (other user's save)
+                                    for key, our_val in incoming.items():
+                                        base_val = base.get(key)
+                                        # Apply our change if we actually modified this field
+                                        # (our value differs from what we saw when we opened the card)
+                                        if str(our_val or '').strip() != str(base_val or '').strip():
+                                            merged[key] = our_val
+                                    field_data = {k: v for k, v in merged.items()}  # normalised to uppercase keys
+                                # else: no base provided → use incoming as-is (full overwrite, backward compat)
 
                 existing_data = card.field_data or {}
                 image_field_names = cls.get_image_field_names(table.fields)
@@ -1296,6 +1314,20 @@ class IDCardCardService(BaseService):
                 if not field_name:
                     return ServiceResult(success=False, message='Field name is required!')
 
+                is_path_field = False
+                # Resolve Photo Path column updates back to the base photo field
+                if field_name.lower().endswith(' path'):
+                    possible_base = field_name[:-5].strip()
+                    for f in (table.fields or []):
+                        if not isinstance(f, dict):
+                            continue
+                        fname = str(f.get('name', '')).strip()
+                        ftype = str(f.get('type', 'text')).strip().lower()
+                        if ftype in ('photo', 'rel_photo') and fname.lower() == possible_base.lower():
+                            field_name = fname
+                            is_path_field = True
+                            break
+
                 valid_field_map = {}
                 normalized_field_map = {}
                 for table_field in (table.fields or []):
@@ -1328,6 +1360,162 @@ class IDCardCardService(BaseService):
                 if cls.is_image_field_name_for_table(canonical_field, table.fields):
                     existing_value = field_data.get(canonical_field, '')
                     new_img_value = '' if (value is None or value == '') else value
+
+                    if is_path_field:
+                        import os
+                        clean_val = str(new_img_value or '').strip()
+                        if clean_val.upper().startswith('PENDING:'):
+                            clean_val = clean_val[8:].strip()
+
+                        # Extract base filename (without directory or extension)
+                        submitted_filename = os.path.basename(clean_val.replace('\\', '/'))
+                        submitted_base = os.path.splitext(submitted_filename)[0].strip()
+
+                        existing_str = str(existing_value or '').strip()
+                        existing_filename = os.path.basename(existing_str.replace('PENDING:', '').replace('\\', '/'))
+                        existing_base = os.path.splitext(existing_filename)[0].strip()
+
+                        is_existing_real_image = (
+                            bool(existing_str)
+                            and not existing_str.upper().startswith('PENDING:')
+                        )
+
+                        if not submitted_base:
+                            # User cleared the path field
+                            field_data[canonical_field] = ''
+                            card.field_data = field_data
+                            card.save()
+                            cls._bump_table_cache_versions(table)
+
+                            return ServiceResult(
+                                success=True,
+                                message='Field updated successfully!',
+                                data={
+                                    'field': canonical_field,
+                                    'value': '',
+                                    'is_path_field': True,
+                                    'photo_field_name': canonical_field,
+                                    'photo_field_value': '',
+                                }
+                            )
+
+                        if is_existing_real_image and (submitted_base.lower() == existing_base.lower()):
+                            # User clicked or re-entered the exact same base path of an existing real image!
+                            # PRESERVE existing_value 100% UNTOUCHED!
+                            field_data[canonical_field] = existing_value
+                            card.field_data = field_data
+                            card.save()
+                            cls._bump_table_cache_versions(table)
+
+                            return ServiceResult(
+                                success=True,
+                                message='Field updated successfully!',
+                                data={
+                                    'field': canonical_field,
+                                    'value': existing_value,
+                                    'is_path_field': True,
+                                    'photo_field_name': canonical_field,
+                                    'photo_field_value': existing_value,
+                                }
+                            )
+
+                        # Check if CardMedia or physical file has an existing real image for submitted_base
+                        real_media_path = None
+                        try:
+                            from mediafiles.models import CardMedia
+                            media_qs = CardMedia.objects.filter(client=table.group.client)
+                            for media in media_qs:
+                                m_file = str(media.file or '')
+                                m_orig = str(media.original_filename or '')
+                                m_file_base = os.path.splitext(os.path.basename(m_file.replace('\\', '/')))[0].lower()
+                                m_orig_base = os.path.splitext(os.path.basename(m_orig.replace('\\', '/')))[0].lower()
+                                if submitted_base.lower() == m_file_base or submitted_base.lower() == m_orig_base:
+                                    real_media_path = m_file
+                                    break
+                        except Exception:
+                            pass
+
+                        # Also check physical image file on disk in media_root
+                        if not real_media_path:
+                            from django.conf import settings
+                            media_root = getattr(settings, 'MEDIA_ROOT', '')
+                            if media_root:
+                                client_id_str = str(table.group.client_id) if (table and getattr(table.group, 'client_id', None)) else ''
+                                # Check client specific paths first
+                                possible_rel_paths = []
+                                if client_id_str:
+                                    possible_rel_paths.extend([
+                                        f"idcard_photos/{client_id_str}/{submitted_base}.jpg",
+                                        f"idcard_photos/{client_id_str}/{submitted_base}.jpeg",
+                                        f"idcard_photos/{client_id_str}/{submitted_base}.png",
+                                        f"card_media/{client_id_str}/photo/{submitted_base}.jpg",
+                                        f"card_media/{client_id_str}/photo/{submitted_base}.jpeg",
+                                        f"card_media/{client_id_str}/photo/{submitted_base}.png",
+                                    ])
+                                for rel_p in possible_rel_paths:
+                                    full_p = os.path.join(media_root, rel_p.replace('/', os.sep))
+                                    if os.path.exists(full_p):
+                                        real_media_path = rel_p
+                                        break
+
+                                # Fallback: search all media subfolders for submitted_base
+                                if not real_media_path:
+                                    for sub_folder in ['idcard_photos', 'card_media']:
+                                        search_dir = os.path.join(media_root, sub_folder)
+                                        if os.path.exists(search_dir):
+                                            for root_dir, _, filenames in os.walk(search_dir):
+                                                for fn in filenames:
+                                                    b_name, b_ext = os.path.splitext(fn)
+                                                    if b_name.lower() == submitted_base.lower() and b_ext.lower() in ('.jpg', '.jpeg', '.png', '.webp'):
+                                                        real_media_path = os.path.relpath(os.path.join(root_dir, fn), media_root).replace('\\', '/')
+                                                        break
+                                                if real_media_path:
+                                                    break
+
+                        if real_media_path:
+                            field_data[canonical_field] = real_media_path
+                            card.field_data = field_data
+                            if modified_by:
+                                card.modified_by = modified_by
+                            card.save()
+                            cls._bump_table_cache_versions(table)
+
+                            return ServiceResult(
+                                success=True,
+                                message='Field updated successfully!',
+                                data={
+                                    'field': canonical_field,
+                                    'value': real_media_path,
+                                    'is_path_field': True,
+                                    'photo_field_name': canonical_field,
+                                    'photo_field_value': real_media_path,
+                                }
+                            )
+
+                        # User changed path to a new path for which no uploaded image file exists:
+                        # Set to PENDING:<submitted_base> (old image file stays soft-preserved in storage/CardMedia)
+                        _, ext_val = os.path.splitext(submitted_filename)
+                        ext = ext_val if ext_val else ''
+                        pending_val = f"PENDING:{submitted_base}{ext}" if ext else f"PENDING:{submitted_base}"
+
+                        field_data[canonical_field] = pending_val
+                        card.field_data = field_data
+                        if modified_by:
+                            card.modified_by = modified_by
+                        card.save()
+                        cls._bump_table_cache_versions(table)
+
+                        return ServiceResult(
+                            success=True,
+                            message='Field updated successfully!',
+                            data={
+                                'field': canonical_field,
+                                'value': pending_val,
+                                'is_path_field': True,
+                                'photo_field_name': canonical_field,
+                                'photo_field_value': pending_val,
+                            }
+                        )
                     try:
                         result = ImageService.process_image_field(
                             field_name=canonical_field,
@@ -1369,7 +1557,13 @@ class IDCardCardService(BaseService):
                 return ServiceResult(
                     success=True,
                     message='Field updated successfully!',
-                    data={'field': canonical_field, 'value': field_data[canonical_field]}
+                    data={
+                        'field': canonical_field,
+                        'value': field_data.get(canonical_field, ''),
+                        'is_path_field': is_path_field,
+                        'photo_field_name': canonical_field if is_path_field else None,
+                        'photo_field_value': field_data.get(canonical_field, '') if is_path_field else None,
+                    }
                 )
 
         except IDCard.DoesNotExist:

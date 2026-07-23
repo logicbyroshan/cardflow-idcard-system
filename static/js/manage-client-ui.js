@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
       var NS = window.ManageClientPage;
 
       // ==================== SHARED STATE ====================
-      NS.selectedClientId = null;
-      NS.selectedRow = null;
+      NS.selectedClientId = NS.selectedClientId || null;
+      NS.selectedRow = NS.selectedRow || null;
       NS.selectedProfileFile = null; // Kept for API compatibility
 
       // Capability flags for manage-clients actions

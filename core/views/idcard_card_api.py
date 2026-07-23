@@ -15,6 +15,7 @@ import os
 
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 
 from idcards.models import IDCard
 from mediafiles.utils import normalize_image_bytes_for_storage
@@ -328,12 +329,20 @@ def _client_modifier_display_name(table):
 
 
 def _sanitize_client_audit_fields(table, modifier, updated_at, updated_at_iso, modifier_role_map):
-    """Hide admin metadata for client/client_staff viewers."""
+    """Hide admin modifier name for client/client_staff viewers.
+
+    We always return the real ``updated_at`` / ``updated_at_iso`` timestamps
+    so the frontend concurrency tracker (``currentEditUpdatedAt``) stays valid
+    regardless of who last edited the card.  Only the human-readable modifier
+    name is suppressed when the last editor was an admin/admin_staff role.
+    """
     raw_modifier = (modifier or '').strip()
     role = modifier_role_map.get(raw_modifier)
     if role in ('client', 'client_staff'):
+        # Client-role modifier: show their display name
         return _client_modifier_display_name(table), updated_at, updated_at_iso
-    return '', None, None
+    # Admin/admin_staff modifier: hide name and display timestamp but keep ISO timestamp for concurrency tracking
+    return '', None, updated_at_iso
 
 
 # ==================== ID CARD API ENDPOINTS ====================
@@ -452,6 +461,7 @@ def api_idcard_list(request, table_id):
 
 
 @require_http_methods(["GET"])
+@never_cache
 @api_require_any_authenticated
 def api_idcard_cards_json(request, table_id):
     """JSON endpoint for virtual table rendering.
@@ -769,6 +779,14 @@ def api_idcard_cards_json(request, table_id):
                 entry['thumb'] = _thumb(val) if val else ''
             ordered.append(entry)
 
+            if is_img and field.get('type') in ('photo', 'rel_photo', 'mother_photo', 'father_photo') and BaseService.is_show_path_enabled(field) and not _is_client_viewer:
+                display_val = BaseService.extract_photo_path_display_value(card, fname, val)
+                ordered.append({
+                    'name': fname + ' Path',
+                    'type': 'text',
+                    'value': display_val
+                })
+
         # By default include complete audit metadata; client viewers are sanitized below.
         _modifier = card.modified_by or ''
         _card_updated_at = localtime(card.updated_at).strftime('%d-%b-%Y %H:%M') if card.updated_at else None
@@ -807,10 +825,12 @@ def api_idcard_cards_json(request, table_id):
     return JsonResponse({
         'success': True,
         'total': total,
+        'total_count': total,
         'offset': offset,
         'limit': limit,
         'has_more': has_more,
         'next_cursor': next_cursor,
+        'cards': results,
         'results': results,
     })
 
@@ -1413,6 +1433,8 @@ def api_idcard_update(request, card_id):
         if request.content_type and 'multipart/form-data' in request.content_type:
             field_data = json.loads(request.POST.get('field_data', '{}'))
             expected_updated_at = request.POST.get('expected_updated_at', None)
+            base_field_data_raw = request.POST.get('base_field_data', None)
+            base_field_data = json.loads(base_field_data_raw) if base_field_data_raw else None
             reprint_modal_edit = _as_bool(request.POST.get('reprint_modal_edit'))
             force = _as_bool(request.POST.get('force'))
             # Extract legacy 'photo' key FIRST, then build image_files
@@ -1427,6 +1449,7 @@ def api_idcard_update(request, card_id):
             data = json.loads(request.body)
             field_data = data.get('field_data')
             expected_updated_at = data.get('expected_updated_at', None)
+            base_field_data = data.get('base_field_data', None)
             reprint_modal_edit = _as_bool(data.get('reprint_modal_edit'))
             force = _as_bool(data.get('force'))
             image_files = None
@@ -1488,6 +1511,7 @@ def api_idcard_update(request, card_id):
             image_files=image_files,
             uploaded_by=request.user if request.user.is_authenticated else None,
             expected_updated_at=expected_updated_at,
+            base_field_data=base_field_data,
             legacy_photo_file=legacy_photo_file,
             modified_by=request.user.username if request.user.is_authenticated else '',
             force=force,
@@ -1564,15 +1588,6 @@ def api_idcard_update(request, card_id):
                 'message': result.message,
                 'card': response_card,
             })
-
-        # Concurrency conflict → 409
-        if result.data and result.data.get('conflict'):
-            return JsonResponse({
-                'success': False,
-                'message': result.message,
-                'conflict': True,
-                'server_updated_at': result.data['server_updated_at'],
-            }, status=409)
 
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     except json.JSONDecodeError:

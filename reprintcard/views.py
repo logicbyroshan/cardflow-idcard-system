@@ -24,6 +24,7 @@ from django.utils.dateparse import parse_datetime
 
 from idcards.models import IDCard, IDCardTable
 from core.services import IDCardService
+from core.services.base import BaseService
 from core.services.permission_service import PermissionService, api_require_permission
 from core.services.activity_service import ActivityService
 from core.views.base import get_user_role
@@ -217,6 +218,10 @@ def _build_ordered_fields(card, table):
             fval = _normalize_image_value(fval)
 
         ordered_fields.append({'name': fname, 'type': ftype, 'value': fval})
+
+        if _is_image_field(ftype, fname) and field.get('type') in ('photo', 'rel_photo', 'mother_photo', 'father_photo') and BaseService.is_show_path_enabled(field):
+            display_val = BaseService.extract_photo_path_display_value(card, fname, fval)
+            ordered_fields.append({'name': fname + ' Path', 'type': 'text', 'value': display_val})
     return ordered_fields
 
 

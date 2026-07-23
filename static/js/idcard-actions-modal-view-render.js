@@ -12,6 +12,7 @@
 let currentModalMode = 'add';
 let currentEditCardId = null;
 let currentEditUpdatedAt = null;  // ISO timestamp for optimistic concurrency
+let currentBaseFieldData = null;  // deep copy of field_data when card modal was opened (for 3-way merge)
 
 // ==========================================
 // SIDE MODAL FUNCTIONS
@@ -32,6 +33,10 @@ function openSideModal(mode, cardData = null) {
     currentModalMode = mode;
     currentEditCardId = cardData?.id || null;
     currentEditUpdatedAt = cardData?.updated_at_iso || null;
+    // Deep-copy field_data snapshot for 3-way merge (so later edits don't mutate it)
+    currentBaseFieldData = (cardData && cardData.field_data)
+        ? JSON.parse(JSON.stringify(cardData.field_data))
+        : null;
     
     // Reset form
     const form = document.getElementById('cardForm');
@@ -392,7 +397,8 @@ window.IDCardApp._updateRowInPlace = _updateRowInPlace;
 Object.defineProperties(IDCardApp, {
     currentModalMode: { get: function() { return currentModalMode; }, set: function(v) { currentModalMode = v; }, configurable: true },
     currentEditCardId: { get: function() { return currentEditCardId; }, set: function(v) { currentEditCardId = v; }, configurable: true },
-    currentEditUpdatedAt: { get: function() { return currentEditUpdatedAt; }, set: function(v) { currentEditUpdatedAt = v; }, configurable: true }
+    currentEditUpdatedAt: { get: function() { return currentEditUpdatedAt; }, set: function(v) { currentEditUpdatedAt = v; }, configurable: true },
+    currentBaseFieldData: { get: function() { return currentBaseFieldData; }, set: function(v) { currentBaseFieldData = v; }, configurable: true }
 });
 
 // Only set global openSideModal/closeSideModal if Alpine hasn't already set them
