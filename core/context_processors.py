@@ -99,15 +99,18 @@ def permissions(request):
     # Merge subdomain URLs
     context.update(base_context)
 
-    current_client = None
-    try:
-        if context.get('is_client'):
-            current_client = getattr(request.user, 'client_profile', None)
-        elif context.get('is_client_staff'):
-            staff_profile = getattr(request.user, 'staff_profile', None)
-            current_client = getattr(staff_profile, 'client', None)
-    except Exception:
-        current_client = None
+    current_client = getattr(request.user, '_cached_current_client', None)
+    if current_client is None:
+        try:
+            if context.get('is_client'):
+                current_client = getattr(request.user, 'client_profile', None)
+            elif context.get('is_client_staff'):
+                assistant = getattr(request.user, 'assistant_profile', None) or getattr(request.user, 'staff_profile', None)
+                current_client = getattr(assistant, 'client', None) if assistant else None
+        except Exception:
+            current_client = None
+        if current_client is not None:
+            request.user._cached_current_client = current_client
 
     context['current_client'] = current_client
 

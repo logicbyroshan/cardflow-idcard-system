@@ -414,9 +414,10 @@ class ClientDashboardService(BaseService):
                     recent_staff_qs = (
                         Assistant.objects.filter(client=client)
                         .select_related('user')
-                        .order_by('-id')
+                        .prefetch_related('assigned_groups')
+                        .order_by('-id')[:5]
                     )
-                    active_tables = list(IDCardTable.objects.filter(group__client=client, is_active=True))
+                    active_tables = list(IDCardTable.objects.filter(group__client=client, is_active=True)[:10])
                     
                     for s in recent_staff_qs:
                         s.user.assistant_profile = s
@@ -452,7 +453,7 @@ class ClientDashboardService(BaseService):
                                     for sec in scope.get('sections') or []:
                                         if sec: sections.add(str(sec))
                         
-                        has_group_assign = s.assigned_groups.exists()
+                        has_group_assign = bool(s.assigned_groups.all())
                         has_table_assign = bool(s.assigned_table_ids)
                         has_scope_assign = False
                         if isinstance(s.assignment_scopes, list):

@@ -657,7 +657,7 @@ class PermissionService:
             user._cached_accessible_client_ids = ids
             return ids
         if cls.is_assistant(user):
-            assistant = getattr(user, 'assistant_profile', None)
+            assistant = getattr(user, 'assistant_profile', None) or getattr(user, 'staff_profile', None)
             ids = [assistant.client_id] if assistant and assistant.client_id else []
             user._cached_accessible_client_ids = ids
             return ids
