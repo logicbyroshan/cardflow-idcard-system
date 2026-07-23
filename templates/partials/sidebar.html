@@ -68,7 +68,6 @@
     {% endif %}
     
     {% if is_client or is_client_staff %}
-    {% if is_client or is_client_staff and perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list or tables or accessible_tables %}
     <!-- ID Card Management Section - Client & Assistant -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
@@ -91,7 +90,6 @@
     <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
       <i class="fa-solid fa-gear"></i><span>Settings</span>
     </a>
-    {% endif %}
     {% endif %}
 
     {% if is_super_admin or perm_manage_panel_backup or perm_manage_panel_email %}
