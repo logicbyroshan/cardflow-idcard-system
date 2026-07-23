@@ -104,33 +104,49 @@ function createRowFromCard(card, index) {
     if (card.ordered_fields) {
         // ── HEADER-BODY SYNCHRONIZATION GUARD ──
         // Read field column names directly from DOM <thead> to guarantee 100% 1-to-1 alignment
+        const normKey = (n) => n ? String(n).toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
         const headerThs = document.querySelectorAll('#data-table thead th[data-field-name]');
         if (headerThs && headerThs.length > 0) {
             const fieldMap = new Map();
-            card.ordered_fields.forEach(f => fieldMap.set(f.name, f));
+            const fieldData = card.field_data || {};
+            card.ordered_fields.forEach(f => {
+                if (f && f.name) {
+                    fieldMap.set(normKey(f.name), f);
+                }
+            });
+            for (const fk in fieldData) {
+                const fnk = normKey(fk);
+                if (!fieldMap.has(fnk)) {
+                    fieldMap.set(fnk, { name: fk, type: 'text', value: fieldData[fk] });
+                }
+            }
 
             const syncFields = [];
             headerThs.forEach(th => {
                 const fname = th.dataset.fieldName;
                 if (!fname) return;
-                if (fieldMap.has(fname)) {
-                    syncFields.push(fieldMap.get(fname));
+                const fKey = normKey(fname);
+
+                if (fieldMap.has(fKey)) {
+                    const matchedField = fieldMap.get(fKey);
+                    syncFields.push({
+                        name: fname,
+                        type: th.dataset.fieldType || matchedField.type || 'text',
+                        value: (matchedField.value !== undefined && matchedField.value !== null) ? matchedField.value : ''
+                    });
                 } else if (fname.toLowerCase().endsWith(' path')) {
                     // Header exists in <thead> (e.g. "PHOTO N Path"), extract filename from base photo field
                     const basePhotoName = fname.substring(0, fname.length - 5).trim();
+                    const baseKey = normKey(basePhotoName);
                     let pathVal = '';
-                    // Find base photo field (case-insensitive lookup)
-                    for (const [k, photoObj] of fieldMap.entries()) {
-                        if (k.toLowerCase() === basePhotoName.toLowerCase()) {
-                            let photoVal = photoObj ? (photoObj.value || '') : '';
-                            if (photoVal) {
-                                if (photoVal.startsWith('PENDING:')) photoVal = photoVal.substring(8);
-                                photoVal = photoVal.replace(/\\/g, '/');
-                                const filename = photoVal.split('/').pop();
-                                const idxDot = filename.lastIndexOf('.');
-                                pathVal = idxDot !== -1 ? filename.substring(0, idxDot) : filename;
-                            }
-                            break;
+                    if (fieldMap.has(baseKey)) {
+                        let photoVal = fieldMap.get(baseKey).value || '';
+                        if (photoVal) {
+                            if (photoVal.startsWith('PENDING:')) photoVal = photoVal.substring(8);
+                            photoVal = photoVal.replace(/\\/g, '/');
+                            const filename = photoVal.split('/').pop();
+                            const idxDot = filename.lastIndexOf('.');
+                            pathVal = idxDot !== -1 ? filename.substring(0, idxDot) : filename;
                         }
                     }
                     syncFields.push({ name: fname, type: 'text', value: pathVal });

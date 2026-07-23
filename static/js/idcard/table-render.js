@@ -407,19 +407,60 @@
         // SR NO
         entry.srNo.textContent = card.sr_no;
 
-        // Field cells
-        var ordered = card.ordered_fields;
-        for (var i = 0; i < entry.fields.length && i < ordered.length; i++) {
-            var f    = entry.fields[i];
-            var data = ordered[i];
-            var val  = data.value || '';
+        // Field cells - match by normalized column header key instead of positional array index
+        var normKey = function(n) { return n ? String(n).toUpperCase().replace(/[^A-Z0-9]/g, '') : ''; };
+        var fieldMap = {};
+        var fieldData = card.field_data || {};
+        var ordered = card.ordered_fields || [];
 
-            f.td.dataset.field         = data.name;
-            f.td.dataset.fieldType     = data.type;
+        for (var o = 0; o < ordered.length; o++) {
+            var item = ordered[o];
+            if (item && item.name) {
+                fieldMap[normKey(item.name)] = item;
+            }
+        }
+        for (var fk in fieldData) {
+            var fnk = normKey(fk);
+            if (!fieldMap[fnk]) {
+                fieldMap[fnk] = { name: fk, type: 'text', value: fieldData[fk] };
+            }
+        }
+
+        for (var c = 0; c < entry.fields.length; c++) {
+            var f = entry.fields[c];
+            var col = _cols[c];
+            var colName = col ? col.name : '';
+            var colKey = normKey(colName);
+            var data = null;
+            var val = '';
+
+            if (colName.toLowerCase().endsWith(' path')) {
+                var basePhotoName = colName.substring(0, colName.length - 5).trim();
+                var baseKey = normKey(basePhotoName);
+                var photoItem = fieldMap[baseKey];
+                var photoVal = photoItem ? (photoItem.value || '') : '';
+                if (photoVal) {
+                    if (photoVal.indexOf('PENDING:') === 0) photoVal = photoVal.substring(8);
+                    photoVal = photoVal.replace(/\\/g, '/');
+                    var filename = photoVal.split('/').pop();
+                    var idxDot = filename.lastIndexOf('.');
+                    val = (idxDot !== -1) ? filename.substring(0, idxDot) : filename;
+                }
+                data = { name: colName, type: 'text', value: val };
+            } else {
+                data = fieldMap[colKey];
+                if (!data) {
+                    data = { name: colName, type: (col ? col.type : 'text'), value: '' };
+                } else {
+                    val = (data.value !== undefined && data.value !== null) ? data.value : '';
+                }
+            }
+
+            f.td.dataset.field         = colName;
+            f.td.dataset.fieldType     = col ? col.type : 'text';
             f.td.dataset.originalValue = val;
 
             if (f.type === 'text') {
-                var colName = data.name || '';
                 if (val && _isPhoneCol(colName)) {
                     f.span.innerHTML = _fmtPhone(val);
                 } else if (val && _isEmailCol(colName)) {

@@ -705,19 +705,37 @@ def api_idcard_cards_json(request, table_id):
         except Exception:
             return path
 
+    import re
+    def _norm_name(name):
+        return re.sub(r'[^A-Z0-9]+', '', str(name or '').upper())
+
     def _lookup_field_value(field_data, field_data_upper, field_name):
-        """Lookup field value by exact/case-insensitive/trimmed key variants."""
+        """Lookup field value by exact/case-insensitive/normalized key variants."""
         if not field_name:
             return ''
-        # Fast path
-        val = field_data.get(field_name, '') or field_data_upper.get(field_name.upper(), '')
-        if val:
+        # Fast path 1: exact match
+        val = field_data.get(field_name)
+        if val is not None and str(val).strip():
             return val
 
+        # Fast path 2: upper match
+        val = field_data_upper.get(str(field_name).upper())
+        if val is not None and str(val).strip():
+            return val
+
+        # Path 3: stripped uppercase match
         wanted = str(field_name).strip().upper()
         for k, v in field_data.items():
-            if str(k).strip().upper() == wanted and v:
+            if str(k).strip().upper() == wanted and v is not None and str(v).strip():
                 return v
+
+        # Path 4: normalized key match (removes dots, spaces, underscores, hyphens)
+        wanted_norm = _norm_name(field_name)
+        if wanted_norm:
+            for k, v in field_data.items():
+                if _norm_name(k) == wanted_norm and v is not None and str(v).strip():
+                    return v
+
         return ''
 
     def _looks_like_image_value(v):

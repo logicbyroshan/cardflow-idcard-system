@@ -422,8 +422,8 @@ class IDCardCardService(BaseService):
             ordered_fields = []
             field_data = card.field_data or {}
 
-            # Create case-insensitive lookup
-            field_data_normalized = {k.upper(): v for k, v in field_data.items()}
+            # Create case-insensitive & normalized key lookup dictionaries
+            field_data_normalized = {cls.normalize_name(k): v for k, v in field_data.items() if k}
 
             # Reorder fields: text first, then images in canonical order
             # Must match the template filter reorder_fields_for_display
@@ -437,8 +437,11 @@ class IDCardCardService(BaseService):
                 if cls.is_image_field(field):
                     field_type = 'image'
 
-                # Get value (case-insensitive)
-                field_value = field_data.get(field_name, '') or field_data_normalized.get(field_name.upper(), '')
+                # Get value (supports exact, upper, or normalized name lookup)
+                norm_name = cls.normalize_name(field_name)
+                field_value = field_data.get(field_name)
+                if field_value is None or field_value == '':
+                    field_value = field_data_normalized.get(norm_name, '')
 
                 # Legacy fallback: if PHOTO field is empty, try card.photo (deprecated ImageField)
                 if not field_value and field_name.upper() == 'PHOTO' and card.photo:
