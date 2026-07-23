@@ -216,12 +216,38 @@
     var overlay = document.getElementById('mobileBlockOverlay');
     if (!overlay) return;
 
-    var isSmallScreen = window.innerWidth < 999;
-    var ua = navigator.userAgent || navigator.vendor || window.opera || '';
-    var isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    var isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0) && (window.innerWidth < 1024 || window.innerHeight < 768);
+    // Viewport width check
+    var isSmallViewport = window.innerWidth < 999;
 
-    if (isSmallScreen || isMobileDevice || isTouchDevice) {
+    // Physical screen hardware check (Catches Mobile Chrome "Desktop Site" mode)
+    var isSmallPhysicalScreen = false;
+    if (window.screen) {
+      var scrW = window.screen.width || 0;
+      var scrH = window.screen.height || 0;
+      var availW = window.screen.availWidth || 0;
+      var availH = window.screen.availHeight || 0;
+      if ((scrW > 0 && scrW < 999) || (scrH > 0 && scrH < 999) || (availW > 0 && availW < 999) || (availH > 0 && availH < 999)) {
+        isSmallPhysicalScreen = true;
+      }
+    }
+
+    // User agent check
+    var ua = navigator.userAgent || navigator.vendor || window.opera || '';
+    var isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+
+    // Touch pointer & coarse input check (Touchscreen phone/tablet detection)
+    var isTouchPointer = false;
+    if ('ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)) {
+      if (window.matchMedia) {
+        if (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches) {
+          isTouchPointer = true;
+        }
+      } else {
+        isTouchPointer = true;
+      }
+    }
+
+    if (isSmallViewport || isSmallPhysicalScreen || isMobileDevice || isTouchPointer) {
       overlay.style.display = 'flex';
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
