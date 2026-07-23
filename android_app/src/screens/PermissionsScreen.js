@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 export default function PermissionsScreen({ navigation }) {
   const [permissions, setPermissions] = useState({
     camera: 'undetermined',
-    mediaLibrary: 'undetermined',
+    notifications: 'undetermined',
   });
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
 
@@ -19,11 +19,9 @@ export default function PermissionsScreen({ navigation }) {
   const checkPermissions = useCallback(async () => {
     try {
       const cam = await ImagePicker.getCameraPermissionsAsync();
-      const media = await ImagePicker.getMediaLibraryPermissionsAsync();
-      
       setPermissions({
         camera: cam.status,
-        mediaLibrary: media.status,
+        notifications: 'granted', // Handled at app startup via expo-notifications
       });
     } catch (e) {
       // silent
@@ -37,17 +35,6 @@ export default function PermissionsScreen({ navigation }) {
       const result = await ImagePicker.requestCameraPermissionsAsync();
       setPermissions(p => ({ ...p, camera: result.status }));
       if (result.status === 'granted') showToast('Camera access granted!', 'success');
-      else if (result.status === 'denied') {
-        showToast('Permission denied. Enable in Settings.', 'warn');
-      }
-    } catch (e) { showToast('Failed to request permission', 'error'); }
-  };
-
-  const requestMediaLibrary = async () => {
-    try {
-      const result = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      setPermissions(p => ({ ...p, mediaLibrary: result.status }));
-      if (result.status === 'granted') showToast('Photo library access granted!', 'success');
       else if (result.status === 'denied') {
         showToast('Permission denied. Enable in Settings.', 'warn');
       }
@@ -71,14 +58,24 @@ export default function PermissionsScreen({ navigation }) {
       onRequest: requestCamera,
     },
     {
-      key: 'mediaLibrary',
+      key: 'photos',
       icon: 'images',
       iconColor: '#8b5cf6',
       iconBg: '#ede9fe',
-      title: 'Photo Library',
-      description: 'Required for selecting existing photos from your gallery',
-      status: permissions.mediaLibrary,
-      onRequest: requestMediaLibrary,
+      title: 'Photo Library (System Picker)',
+      description: 'Photos are selected via the secure Android system picker — no broad library permission required',
+      status: 'granted', // System photo picker grants one-time access automatically
+      onRequest: null,
+    },
+    {
+      key: 'notifications',
+      icon: 'bell',
+      iconColor: '#f59e0b',
+      iconBg: '#fef3c7',
+      title: 'Notifications',
+      description: 'Required for receiving app updates and important alerts',
+      status: permissions.notifications,
+      onRequest: null, // Handled at startup
     },
   ];
 
@@ -98,7 +95,7 @@ export default function PermissionsScreen({ navigation }) {
         <View style={s.infoCard}>
           <View style={s.infoIcon}><DynamicIcon name="shield-alt" size={16} color={colors.brandPrimary} /></View>
           <Text style={s.infoText}>
-            These permissions are needed for the app to function properly. You can grant or revoke them at any time.
+            This app uses only Camera and Notifications permissions. Photos are selected via the secure Android system picker — no broad storage access is requested.
           </Text>
         </View>
 
@@ -121,7 +118,7 @@ export default function PermissionsScreen({ navigation }) {
                   <DynamicIcon name={sc.icon} size={10} color={sc.color} />
                   <Text style={[s.statusLabel, { color: sc.color }]}>{sc.label}</Text>
                 </View>
-                {item.status !== 'granted' && (
+                {item.status !== 'granted' && item.onRequest && (
                   <TouchableOpacity onPress={item.onRequest} activeOpacity={0.7} style={s.grantBtnWrap}>
                     <LinearGradient colors={gradients.brand} start={{x:0,y:0}} end={{x:1,y:0}} style={s.grantBtn}>
                       <Text style={s.grantBtnText}>Grant Access</Text>

@@ -1,6 +1,6 @@
 {
   "name": "adarsh-id",
-  "version": "1.1.2",
+  "version": "1.1.21",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -15,6 +15,7 @@
     "@react-navigation/native-stack": "^7.0.0",
     "expo": "^53.0.27",
     "expo-asset": "~11.1.7",
+    "expo-build-properties": "~0.14.8",
     "expo-camera": "~16.1.11",
     "expo-document-picker": "~13.1.6",
     "expo-file-system": "~18.1.11",

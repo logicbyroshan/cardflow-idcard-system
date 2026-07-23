@@ -2,7 +2,7 @@
   "expo": {
     "name": "Adarsh ID",
     "slug": "adarsh-final-deploye",
-    "version": "1.1.6",
+    "version": "1.1.21",
     "orientation": "portrait",
     "icon": "./assets/adarsh-logo-small.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.adarshid.app",
-      "buildNumber": "101"
+      "buildNumber": "120"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,12 +23,15 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.adarshid.app",
-      "versionCode": 106,
+      "versionCode": 121,
       "permissions": [
         "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES",
         "POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -41,7 +44,18 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you choose ID card photos."
+          "photosPermission": "The app accesses your photos to let you choose ID card photos.",
+          "cameraPermission": "The app accesses your camera to let you take ID card photos."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
+          }
         }
       ],
       [

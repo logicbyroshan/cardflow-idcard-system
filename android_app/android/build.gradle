@@ -1,9 +1,5 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
-ext {
-  ndkVersion = "27.1.12297006"
-}
-
 buildscript {
   repositories {
     google()
@@ -13,27 +9,6 @@ buildscript {
     classpath('com.android.tools.build:gradle')
     classpath('com.facebook.react:react-native-gradle-plugin')
     classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
-  }
-}
-
-subprojects {
-  afterEvaluate { project ->
-    if (project.hasProperty('android')) {
-      project.android.defaultConfig {
-        externalNativeBuild {
-          cmake {
-            cFlags "-Wl,-z,max-page-size=16384"
-            cppFlags "-Wl,-z,max-page-size=16384"
-            arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
-          }
-          ndkBuild {
-            arguments "APP_SUPPORT_FLEXIBLE_PAGE_SIZES:=true"
-            cFlags "-Wl,-z,max-page-size=16384"
-            cppFlags "-Wl,-z,max-page-size=16384"
-          }
-        }
-      }
-    }
   }
 }
 

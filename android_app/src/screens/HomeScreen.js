@@ -84,14 +84,9 @@ export default function HomeScreen({ navigation }) {
           currentCamStatus = res.status;
         }
 
-        // 2. Check & Request Photo Library permissions
-        const media = await ImagePicker.getMediaLibraryPermissionsAsync();
-        let currentMediaStatus = media.status;
-        let mediaCanAsk = media.canAskAgain;
-        if (media.status !== 'granted' && mediaCanAsk) {
-          const res = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          currentMediaStatus = res.status;
-        }
+        // 2. Photo Library access is handled by the Android system Photo Picker
+        //    (no READ_MEDIA_IMAGES permission needed per Play Store policy)
+        const currentMediaStatus = 'granted'; // Picker grants one-time access automatically
 
         // 3. Request Push Notification permissions
         try {

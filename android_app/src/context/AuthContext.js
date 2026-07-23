@@ -213,11 +213,13 @@ export function AuthProvider({ children }) {
       // Check if MPIN is set for this user
       const mpin = await AsyncStorage.getItem(`adarsh_mpin_${email.toLowerCase()}`);
       if (mpin) {
+        // MPIN already set — unlock immediately. No need to enter PIN after password login.
         setIsMpinCreated(true);
-        setIsAppUnlocked(true); // Logged in with password, unlock app
+        setIsAppUnlocked(true);
       } else {
+        // No MPIN yet — force them to create one (first time setup only)
         setIsMpinCreated(false);
-        setIsAppUnlocked(false); // Force them to set MPIN
+        setIsAppUnlocked(false);
       }
 
       return { success: true, data };
@@ -442,7 +444,9 @@ export function AuthProvider({ children }) {
     setIsMpinCreated(false);
     setIsSilentAuthFailed(false);
     
-    // Clear local storage IMMEDIATELY
+    // Clear session data — but deliberately KEEP adarsh_mpin_* keys
+    // The MPIN is permanently tied to the account (email key) and must
+    // survive logout/re-login cycles. Users only set it once per account.
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
     await AsyncStorage.removeItem('adarsh_impersonate_state');
     await AsyncStorage.removeItem('adarsh_csrf_token');

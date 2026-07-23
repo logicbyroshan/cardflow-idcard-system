@@ -268,40 +268,14 @@ export default function CardModalForm({ visible, onClose, tableId, cardId, onSuc
 
   const handlePickFromGallery = async () => {
     const fieldName = photoMenu.field; // Capture BEFORE closing menu (avoids stale closure)
-    if (!ImagePicker || typeof ImagePicker.getMediaLibraryPermissionsAsync !== 'function') {
+    if (!ImagePicker || typeof ImagePicker.launchImageLibraryAsync !== 'function') {
       showToast('Gallery picker is unavailable on this device.', 'error');
       return;
     }
 
     try {
-      const permission = await ImagePicker.getMediaLibraryPermissionsAsync();
-      if (!permission?.granted) {
-        if (typeof ImagePicker.requestMediaLibraryPermissionsAsync !== 'function') {
-          showToast('Gallery permissions cannot be requested on this device.', 'error');
-          return;
-        }
-        const request = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!request?.granted) {
-          Alert.alert(
-            'Gallery Permission Required',
-            'Gallery access is required to select photos. Please enable it in system settings.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => {
-                if (Platform.OS === 'ios') Linking.openURL('app-settings:');
-                else Linking.openSettings();
-              }}
-            ]
-          );
-          return;
-        }
-      }
-
-      if (typeof ImagePicker.launchImageLibraryAsync !== 'function') {
-        showToast('Gallery picker is unavailable on this device.', 'error');
-        return;
-      }
-
+      // On Android 13+ the system Photo Picker is used automatically — no READ_MEDIA_IMAGES
+      // permission is needed. The picker grants one-time access via its own UI.
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions?.Images,
         quality: 0.8,
