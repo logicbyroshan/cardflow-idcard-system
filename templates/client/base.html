@@ -28,6 +28,9 @@
 
 <body data-user-role="{{ request.user.role|default:'' }}" x-data="layoutState" x-init="init">
 
+  <!-- Mobile & Tablet Screen Blocking Overlay -->
+  {% include 'partials/mobile-block-overlay.html' %}
+
   <!-- Premium preloader -->
   {% include 'partials/preloader.html' %}
 

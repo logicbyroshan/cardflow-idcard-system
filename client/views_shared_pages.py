@@ -150,27 +150,38 @@ def client_idcard_actions(request, table_id):
     if not client:
         return redirect(reverse('client:dashboard'))
     
-    # Require at least one list permission
+    # Require at least one list permission or table scope for assistant
     LIST_PERMISSIONS = [
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_approved_list', 'perm_idcard_download_list',
-        'perm_idcard_pool_list',
+        'perm_idcard_pool_list', 'perm_idcard_reprint_list',
+        'perm_reprint_request_list', 'perm_confirmed_list',
     ]
-    if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):
-        return redirect(reverse('client:dashboard'))
-    
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     
-    # Verify ownership
+    # Verify table access (client owner or assigned assistant)
     if not ClientAccessService.can_access_table(user, table):
         return redirect(reverse('client:idcard_group'))
+    
+    has_list_perm = any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS)
+    if not has_list_perm and not PermissionService.is_client_staff(user):
+        return redirect(reverse('client:dashboard'))
     
     status_filter = request.GET.get('status', None)
     if status_filter:
         from core.views.base import _STATUS_LIST_PERM
         required_perm = _STATUS_LIST_PERM.get(status_filter)
         if required_perm and not PermissionService.has_permission(user, required_perm):
-            return redirect(reverse('client:idcard_group'))
+            accessible_statuses = [
+                st for st, perm in _STATUS_LIST_PERM.items()
+                if PermissionService.has_permission(user, perm)
+            ]
+            if accessible_statuses:
+                return redirect(f"{reverse('client:idcard_actions', args=[table.id])}?status={accessible_statuses[0]}")
+            elif PermissionService.is_client_staff(user):
+                status_filter = None
+            else:
+                return redirect(reverse('client:idcard_group'))
     
     from core.views.base import build_idcard_actions_context
     context = build_idcard_actions_context(

@@ -623,13 +623,14 @@
   var panels  = document.querySelectorAll('.dashboard-snap-panel');
 
   function activatePanel(panelId) {
+    var target = document.getElementById(panelId);
+    if (!target) return false;
     panels.forEach(function(p) { p.classList.remove('is-active'); });
     tabBtns.forEach(function(b) {
       b.classList.remove('is-active');
       b.setAttribute('aria-pressed', 'false');
     });
-    var target = document.getElementById(panelId);
-    if (target) target.classList.add('is-active');
+    target.classList.add('is-active');
     tabBtns.forEach(function(b) {
       if (b.getAttribute('data-panel') === panelId) {
         b.classList.add('is-active');
@@ -637,7 +638,9 @@
       }
     });
     try { sessionStorage.setItem('clientDashPanel', panelId); } catch(e) {}
+    return true;
   }
+  window.activateDashboardPanel = activatePanel;
 
   tabBtns.forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -645,11 +648,24 @@
     });
   });
 
-  // Restore last selected
+  // Restore last selected only if it exists in DOM
   try {
     var saved = sessionStorage.getItem('clientDashPanel');
-    if (saved && document.getElementById(saved)) activatePanel(saved);
+    if (saved && document.getElementById(saved)) {
+      activatePanel(saved);
+    }
   } catch(e) {}
+
+  // Stat card interaction - activate ID card group tab and scroll to workspace
+  document.querySelectorAll('.stats-cards .stat-card-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var idcardPanel = document.getElementById('panel-idcard-group');
+      if (idcardPanel) {
+        activatePanel('panel-idcard-group');
+        idcardPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
 })();
 
 /* ── Dashboard data ───────────────────────────────── */
