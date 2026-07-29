@@ -108,7 +108,7 @@ export default function Sidebar({ activeTab, setActiveTab, userRole = 'super_adm
         <img
           src="/cardflow_logo_brand.png"
           alt="CardFlow"
-          style={{ maxHeight: '38px', maxWidth: '140px', width: '100%', objectFit: 'contain' }}
+          style={{ maxHeight: '38px', maxWidth: '145px', width: '100%', objectFit: 'contain' }}
         />
       </div>
 
