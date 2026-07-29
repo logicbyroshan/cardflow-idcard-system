@@ -469,28 +469,49 @@ function RecentReprintsTable({ clients, onNavigate, search }) {
 /* ─────────────────────────────────────────────────────────────────────────
    Recent Activity Updates List Sub-Component (Matches original recent-activity.html)
 ───────────────────────────────────────────────────────────────────────── */
-function RecentActivityUpdatesTable({ search }) {
-  const mockActivities = [
-    { id: 1, user: 'System Admin', action: 'Approved 120 ID cards for SAKET MGM SCHOOL (VIDISHA)', time: '10 mins ago', date: '28/07/2026 12:40', type: 'approve', iconBg: '#0050d2', icon: ThumbsUp },
-    { id: 2, user: 'Operator 1', action: 'Verified 45 student photos for MAHARSHI VASHISHTA VIDYA NIKETAN', time: '25 mins ago', date: '28/07/2026 12:25', type: 'verify', iconBg: '#10b981', icon: CheckCircle2 },
-    { id: 3, user: 'System Admin', action: 'Downloaded 550 approved ID cards PDF package', time: '1 hour ago', date: '28/07/2026 11:50', type: 'download', iconBg: '#6b7280', icon: Download },
-    { id: 4, user: 'Operator 2', action: 'Registered new client account DPS (NEELBAD)', time: '2 hours ago', date: '28/07/2026 10:45', type: 'add', iconBg: '#0ea5e9', icon: Plus },
-    { id: 5, user: 'Staff Assistant', action: 'Submitted reprint request for student Rohan Gupta', time: '3 hours ago', date: '28/07/2026 09:30', type: 'reprint', iconBg: '#f59e0b', icon: RefreshCw },
-    { id: 6, user: 'System Admin', action: 'Updated group template layout settings for RIVERTON VALLEY', time: '5 hours ago', date: '28/07/2026 07:15', type: 'edit', iconBg: '#8b5cf6', icon: CreditCard },
-  ];
+function RecentActivityUpdatesTable({ activities = [], search, loading }) {
+  const items = (activities || []).filter(a => {
+    const userStr = a.user || a.username || a.performed_by || '';
+    const actStr = a.action || a.description || a.message || a.details || '';
+    return !search || userStr.toLowerCase().includes(search.toLowerCase()) || actStr.toLowerCase().includes(search.toLowerCase());
+  });
 
-  const items = mockActivities.filter(a =>
-    !search || a.user.toLowerCase().includes(search.toLowerCase()) || a.action.toLowerCase().includes(search.toLowerCase())
-  );
+  if (loading && items.length === 0) {
+    return (
+      <div style={{ flex: 1, padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+        Loading recent activities...
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div style={{ flex: 1, padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
+        No recent activities recorded.
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', background: '#fff' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {items.map((a) => {
-          const Icon = a.icon;
+        {items.map((a, idx) => {
+          const user = a.user || a.username || a.performed_by || 'System';
+          const actionText = a.action || a.description || a.message || a.details || 'Activity log';
+          const timeText = a.created_at || a.timestamp || a.date || '';
+          
+          const act = (actionText || '').toLowerCase();
+          let iconBg = '#8b5cf6';
+          let IconComp = CreditCard;
+          if (act.includes('approve')) { iconBg = '#0050d2'; IconComp = ThumbsUp; }
+          else if (act.includes('verify')) { iconBg = '#10b981'; IconComp = CheckCircle2; }
+          else if (act.includes('download')) { iconBg = '#6b7280'; IconComp = Download; }
+          else if (act.includes('create') || act.includes('add') || act.includes('register')) { iconBg = '#0ea5e9'; IconComp = Plus; }
+          else if (act.includes('reprint')) { iconBg = '#f59e0b'; IconComp = RefreshCw; }
+
           return (
             <div
-              key={a.id}
+              key={a.id || idx}
               style={{
                 display: 'flex', alignItems: 'flex-start', gap: '10px',
                 padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0',
@@ -501,18 +522,20 @@ function RecentActivityUpdatesTable({ search }) {
             >
               <div style={{
                 width: '28px', height: '28px', borderRadius: '4px',
-                background: a.iconBg, color: '#fff', display: 'flex',
+                background: iconBg, color: '#fff', display: 'flex',
                 alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px',
               }}>
-                <Icon size={13} />
+                <IconComp size={13} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '12px', color: '#1e293b', fontWeight: 500, lineHeight: 1.35 }}>
-                  <strong style={{ color: '#0f172a', fontWeight: 700 }}>{a.user}</strong> {a.action}
+                  <strong style={{ color: '#0f172a', fontWeight: 700 }}>{user}</strong> {actionText}
                 </div>
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
-                  {a.time} • {a.date}
-                </div>
+                {timeText && (
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                    {timeText}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -521,6 +544,7 @@ function RecentActivityUpdatesTable({ search }) {
     </div>
   );
 }
+
 
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -695,11 +719,13 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
    Main DashboardView Assembly
 ───────────────────────────────────────────────────────────────────────── */
 export default function DashboardView({ onNavigate, currentUser, onOpenActionDrawer }) {
-  const [stats, setStats]           = useState(null);
-  const [clients, setClients]       = useState([]);
-  const [loading, setLoading]       = useState(false);
+  const [stats, setStats]                 = useState(null);
+  const [clients, setClients]             = useState([]);
+  const [reprintClients, setReprintClients] = useState([]);
+  const [activities, setActivities]       = useState([]);
+  const [loading, setLoading]             = useState(false);
   const [activeSection, setActiveSection] = useState('clients'); // 'clients' | 'reprints' | 'updates'
-  const [search, setSearch]         = useState('');
+  const [search, setSearch]               = useState('');
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial && !stats) setLoading(true);
@@ -708,12 +734,30 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
       setStats(statsData.stats || statsData);
 
       try {
-        const clientData = await dashboardApi.getClientOverview?.();
-        if (clientData) setClients(clientData.clients || clientData.results || []);
+        const clientData = await dashboardApi.getRecentClientUpdates();
+        if (clientData) setClients(clientData.clients || clientData.results || clientData || []);
       } catch (_) {}
+
+      try {
+        const reprintData = await dashboardApi.getReprintOverview();
+        if (reprintData) setReprintClients(reprintData.clients || reprintData.results || reprintData || []);
+      } catch (_) {}
+
+      try {
+        const actData = await dashboardApi.getRecentActivity(50);
+        if (actData) setActivities(actData.activities || actData.results || actData || []);
+      } catch (_) {}
+
     } catch (_) {}
     finally { setLoading(false); }
   }, [stats]);
+
+  useEffect(() => {
+    load(true);
+    const interval = setInterval(() => load(false), 20000);
+    return () => clearInterval(interval);
+  }, [load]);
+
 
   const getSectionTitle = () => {
     if (activeSection === 'reprints') return { title: 'Recent Reprints Queue', Icon: RefreshCw, badgeText: `Pending Reprints: ${stats?.reprint_count ?? 0}`, badgeBg: '#ffedd5', badgeColor: '#c2410c' };
@@ -802,12 +846,13 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
             <RecentClientUpdatesTable clients={clients} loading={loading} onNavigate={onNavigate} search={search} />
           )}
           {activeSection === 'reprints' && (
-            <RecentReprintsTable clients={clients} onNavigate={onNavigate} search={search} />
+            <RecentReprintsTable clients={reprintClients.length ? reprintClients : clients} onNavigate={onNavigate} search={search} />
           )}
 
           {activeSection === 'updates' && (
-            <RecentActivityUpdatesTable search={search} />
+            <RecentActivityUpdatesTable activities={activities} search={search} loading={loading} />
           )}
+
         </div>
 
         {/* Right Side Panels */}

@@ -5,6 +5,8 @@ import {
   Users, Smartphone, TrendingUp, AlertTriangle, FileText, CheckCircle, RotateCw
 } from 'lucide-react';
 
+import { clientApi, assistantApi, panelApi } from '../../services/api';
+
 export default function ManageFeaturesView({ addToast }) {
   const [activeTab, setActiveTab] = useState('impersonate');
   const [search, setSearch] = useState('');
@@ -12,29 +14,61 @@ export default function ManageFeaturesView({ addToast }) {
   const [statsRange, setStatsRange] = useState('hourly');
   const [impersonatingUser, setImpersonatingUser] = useState(null);
 
-  // Mock Users List
-  const usersList = [
-    { id: 1, name: 'Adarsh High School', email: 'admin@adarsh.com', role: 'Client Admin', rawRole: 'client', status: 'Active' },
-    { id: 2, name: 'St. Xavier Academy', email: 'info@stxaviers.edu', role: 'Client Admin', rawRole: 'client', status: 'Active' },
-    { id: 3, name: 'Ramesh Kumar', email: 'ramesh@operator.com', role: 'Operator', rawRole: 'client_staff', status: 'Active' },
-    { id: 4, name: 'Pooja Singh', email: 'pooja@staff.com', role: 'Assistant', rawRole: 'client_staff', status: 'Active' },
-    { id: 5, name: 'Anil Sharma (Inspector)', email: 'anil@inspector.gov.in', role: 'Guest User', rawRole: 'guest_user', status: 'Active' },
-  ];
+  const [usersList, setUsersList] = useState([]);
+  const [guestUsers, setGuestUsers] = useState([]);
+  const [batchJobs, setBatchJobs] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Mock Guest Users
-  const [guestUsers, setGuestUsers] = useState([
-    { id: 1, name: 'Anil Sharma (Inspector)', email: 'anil@inspector.gov.in', expires: '2026-08-15', status: 'Active', created: '2026-07-20' },
-    { id: 2, name: 'Sunita Verma (Auditor)', email: 'sunita@audit.org', expires: '2026-07-30', status: 'Active', created: '2026-07-15' },
-    { id: 3, name: 'Rajesh Gupta (Vendor)', email: 'rajesh@printvendor.com', expires: '2026-06-30', status: 'Expired', created: '2026-06-01' },
-  ]);
+  React.useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      try {
+        const [clientsRes, staffRes, opsRes] = await Promise.allSettled([
+          clientApi.getActive({ page_size: 100 }),
+          assistantApi.list({ page_size: 100 }),
+          panelApi.getOperationsFeed()
+        ]);
 
-  // Mock Batch Jobs matching original Django tab-batch-jobs schema
-  const [batchJobs, setBatchJobs] = useState([
-    { id: 'JOB-902', name: 'Class 10-A 300 DPI PDF Sheet Export', type: 'PDF Generation', user: 'Admin', progress: 100, status: 'Completed', time: '10 min ago' },
-    { id: 'JOB-901', name: 'Batch Photo Face Crop & Align (84 items)', type: 'Image Crop', user: 'Ramesh (Operator)', progress: 68, status: 'Processing', time: '2 min ago' },
-    { id: 'JOB-900', name: 'ZIP Photo Archive Compression', type: 'Compression', user: 'Pooja (Assistant)', progress: 0, status: 'Pending', time: 'Just now' },
-    { id: 'JOB-899', name: 'Monthly System Audit Log Export', type: 'Export', user: 'Super Admin', progress: 100, status: 'Completed', time: '2 hours ago' },
-  ]);
+        let list = [];
+        if (clientsRes.status === 'fulfilled' && clientsRes.value) {
+          const clientItems = clientsRes.value.clients || clientsRes.value.results || (Array.isArray(clientsRes.value) ? clientsRes.value : []);
+          clientItems.forEach(c => {
+            list.push({
+              id: `client-${c.id}`,
+              name: c.name || c.school_name || 'Client Account',
+              email: c.email || c.user?.email || 'N/A',
+              role: c.client_type === 'manager' ? 'Manager' : 'Client (Primary)',
+              rawRole: 'client',
+              status: c.status ? (c.status.charAt(0).toUpperCase() + c.status.slice(1)) : 'Active'
+            });
+          });
+        }
+
+        if (staffRes.status === 'fulfilled' && staffRes.value) {
+          const staffItems = staffRes.value.staff || staffRes.value.results || (Array.isArray(staffRes.value) ? staffRes.value : []);
+          staffItems.forEach(s => {
+            list.push({
+              id: `staff-${s.id}`,
+              name: s.name || s.user?.get_full_name || s.user?.username || 'Assistant',
+              email: s.email || s.user?.email || 'N/A',
+              role: 'Assistant',
+              rawRole: 'client_staff',
+              status: 'Active'
+            });
+          });
+        }
+        setUsersList(list);
+
+        if (opsRes.status === 'fulfilled' && opsRes.value) {
+          const jobs = opsRes.value.tasks || opsRes.value.operations || (Array.isArray(opsRes.value) ? opsRes.value : []);
+          setBatchJobs(jobs);
+        }
+      } catch (_) {}
+      finally { setLoading(false); }
+    }
+    loadData();
+  }, []);
+
 
   const handleImpersonate = (user) => {
     setImpersonatingUser(user);
