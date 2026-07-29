@@ -1,15 +1,6 @@
 from django.apps import AppConfig
 
 
-def _set_sqlite_pragmas(sender, connection, **kwargs):
-    """Enable WAL mode and extended busy_timeout for SQLite connections."""
-    if connection.vendor == 'sqlite':
-        cursor = connection.cursor()
-        cursor.execute('PRAGMA journal_mode=WAL;')
-        cursor.execute('PRAGMA synchronous=NORMAL;')
-        cursor.execute('PRAGMA busy_timeout=60000;')  # 60 s — room for background bulk writes
-
-
 class CoreConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "core"
@@ -48,9 +39,6 @@ class CoreConfig(AppConfig):
         except Exception:
             pass
 
-        # SQLite WAL mode for concurrent access (dev env; production uses PostgreSQL)
-        from django.db.backends.signals import connection_created
-        connection_created.connect(_set_sqlite_pragmas)
 
         # Register security revalidation signals once at startup.
         try:

@@ -33,27 +33,20 @@ _counter_lock = threading.Lock()
 
 class ImageRenamer:
     """
-    Image filename generation following strict naming rules.
+    Image filename generation following strict naming rules per specification:
     
-    First upload: {a|c}HHMMSSmmmuuuCC.ext (15 chars before extension)
-    - Prefix a: uploaded by admin/admin_staff/system
-    - Prefix c: uploaded by client/client_staff
-    - HH: Hour (00-23)
-    - MM: Minute (00-59)
-    - SS: Second (00-59)
-    - mmm: Milliseconds (000-999)
-    - uuu: Microseconds (000-999)
-    - CC: Counter (00-99)
+    Format: {role}{edit_count}_{root_token}.ext
+    - role: 1 character prefix ('a' = Admin/System, 'c' = Client/Assistant, 'o' = Operator)
+    - edit_count: Integer starting at 0 (0 for 1st upload, 1, 2, 3... on edit)
+    - root_token: 14-digit fixed string (HHMMSSmmmuuuCC) created on 1st upload that NEVER changes
+    - ext: Lowercase file extension (.jpg, .png, etc.)
     
-    Update/reupload: original_base_HHMMSS.ext
-    - original_base is preserved as-is (legacy 14-digit OR prefixed a/c + 14)
-    - Exactly ONE underscore + 6 digit HHMMSS appended
-    - Never chains (no original_HH_HH_HH)
+    Example: c0_14325101234501.jpg, a1_14325101234501.jpg, o2_14325101234501.jpg
     """
     
     MAX_COLLISION_RETRIES = 10
     DEFAULT_UPLOAD_PREFIX = 'a'
-    VALID_UPLOAD_PREFIXES = {'a', 'c'}
+    VALID_UPLOAD_PREFIXES = {'a', 'c', 'o'}
     
     @staticmethod
     def normalize_extension(ext: str) -> str:
@@ -72,10 +65,16 @@ class ImageRenamer:
 
     @classmethod
     def normalize_upload_prefix(cls, upload_prefix: Optional[str]) -> str:
-        """Normalize caller-provided upload prefix to one of {a, c}."""
+        """Normalize caller-provided upload prefix to one of {'a', 'c', 'o'}."""
         candidate = str(upload_prefix or '').strip().lower()
         if candidate in cls.VALID_UPLOAD_PREFIXES:
             return candidate
+        if candidate in ('admin', 'staff', 'system', 'admin_staff'):
+            return 'a'
+        if candidate in ('client', 'assistant', 'client_staff'):
+            return 'c'
+        if candidate in ('operator', 'operator_staff'):
+            return 'o'
         return cls.DEFAULT_UPLOAD_PREFIX
     
     @classmethod
@@ -85,51 +84,104 @@ class ImageRenamer:
         with _counter_lock:
             _global_counter = (_global_counter + 1) % 100
             return _global_counter
-    
+
+    @classmethod
+    def generate_root_token(cls, batch_counter: int = 1) -> str:
+        """
+        Generate a 14-digit fixed root token: HHMMSSmmmuuuCC.
+        Created once on 1st upload and preserved across all edits/undos/redos.
+        """
+        now = datetime.now()
+        time_part = now.strftime('%H%M%S')
+        microseconds = now.microsecond
+        milliseconds = microseconds // 1000
+        micros = microseconds % 1000
+        mmm = str(milliseconds).zfill(3)
+        uuu = str(micros).zfill(3)
+        effective_counter = (batch_counter + cls._get_next_counter()) % 100
+        return f"{time_part}{mmm}{uuu}{effective_counter:02d}"
+
+    @classmethod
+    def parse_filename(cls, filename_or_path: str) -> Optional[dict]:
+        """
+        Parse a filename into components: role, edit_count, root_token, extension.
+        
+        Supports new format: {role}{edit_count}_{root_token}.ext
+        Supports legacy formats:
+          - {role}{14_digits}_{HHMMSS}.ext
+          - {role}{14_digits}.ext
+          - {14_digits}.ext
+        
+        Returns dict or None if unparseable:
+          {"role": "c", "edit_count": 0, "root_token": "14325101234501", "ext": ".jpg"}
+        """
+        if not filename_or_path:
+            return None
+        
+        filename = os.path.basename(str(filename_or_path).strip())
+        base_name, ext = os.path.splitext(filename)
+        if not base_name:
+            return None
+        
+        ext = cls.normalize_extension(ext)
+
+        # 1. Standard format: {role}{edit_count}_{root_token} (e.g., c0_14325101234501)
+        if '_' in base_name:
+            parts = base_name.split('_')
+            prefix_part = parts[0]
+            token_part = parts[1] if len(parts) > 1 else ''
+            
+            # Check if prefix_part is {role}{edit_count} e.g. 'c0', 'a1', 'o2'
+            if len(prefix_part) >= 2 and prefix_part[0].lower() in cls.VALID_UPLOAD_PREFIXES and prefix_part[1:].isdigit():
+                role = prefix_part[0].lower()
+                edit_count = int(prefix_part[1:])
+                root_token = token_part if token_part else cls.generate_root_token()
+                return {"role": role, "edit_count": edit_count, "root_token": root_token, "ext": ext}
+            
+            # Legacy format: {role}{14_digits}_{suffix} e.g. a14325101234501_163045
+            if len(prefix_part) == 15 and prefix_part[0].lower() in cls.VALID_UPLOAD_PREFIXES and prefix_part[1:].isdigit():
+                return {"role": prefix_part[0].lower(), "edit_count": 1, "root_token": prefix_part[1:], "ext": ext}
+            
+            # Legacy format: {14_digits}_{suffix}
+            if len(prefix_part) == 14 and prefix_part.isdigit():
+                return {"role": "a", "edit_count": 1, "root_token": prefix_part, "ext": ext}
+
+        # 2. Single token without underscore
+        if len(base_name) == 15 and base_name[0].lower() in cls.VALID_UPLOAD_PREFIXES and base_name[1:].isdigit():
+            return {"role": base_name[0].lower(), "edit_count": 0, "root_token": base_name[1:], "ext": ext}
+        
+        if len(base_name) == 14 and base_name.isdigit():
+            return {"role": "a", "edit_count": 0, "root_token": base_name, "ext": ext}
+        
+        # Non-standard filename fallback
+        return None
+
     @classmethod
     def generate_filename(
         cls,
         batch_counter: int = 1,
         extension: str = '.jpg',
         upload_prefix: str = 'a',
+        root_token: Optional[str] = None,
+        edit_count: int = 0,
     ) -> str:
         """
-        Generate a unique prefixed filename for NEW uploaded images.
-        
-        Format: {a|c}HHMMSSmmmuuuCC.ext
-        
-        Uses a hybrid counter: combines batch_counter with a global
-        process-level counter to avoid collisions even within the same
-        millisecond.
+        Generate a filename for uploaded images per spec: {role}{edit_count}_{root_token}.ext
         
         Args:
-            batch_counter: Sequential number within current batch (0-99)
+            batch_counter: Sequential number within current batch
             extension: File extension including dot
+            upload_prefix: Uploader role ('a', 'c', 'o')
+            root_token: Optional 14-digit root token (generated if None)
+            edit_count: Edit version counter (0 for 1st upload)
             
         Returns:
-            New filename string (e.g., "a14325123456701.jpg")
+            Filename string (e.g., "c0_14325101234501.jpg")
         """
         ext = cls.normalize_extension(extension)
         prefix = cls.normalize_upload_prefix(upload_prefix)
-        now = datetime.now()
-        
-        # Time components
-        time_part = now.strftime('%H%M%S')  # HHMMSS
-        
-        # Microseconds split into milliseconds and remaining micros
-        microseconds = now.microsecond
-        milliseconds = microseconds // 1000  # 0-999
-        micros = microseconds % 1000  # 0-999
-        
-        # Format with zero padding
-        mmm = str(milliseconds).zfill(3)
-        uuu = str(micros).zfill(3)
-        
-        # Combine batch counter with global counter for uniqueness
-        effective_counter = (batch_counter + cls._get_next_counter()) % 100
-        
-        filename = f"{prefix}{time_part}{mmm}{uuu}{effective_counter:02d}{ext}"
-        return filename
+        token = str(root_token).strip() if root_token else cls.generate_root_token(batch_counter)
+        return f"{prefix}{edit_count}_{token}{ext}"
     
     @classmethod
     def generate_filename_safe(
@@ -138,92 +190,40 @@ class ImageRenamer:
         batch_counter: int = 1,
         extension: str = '.jpg',
         upload_prefix: str = 'a',
+        root_token: Optional[str] = None,
+        edit_count: int = 0,
     ) -> str:
-        """
-        Generate a unique filename that is guaranteed not to collide
-        with existing files in the given folder.
-        
-        Retries up to MAX_COLLISION_RETRIES times with microsecond delays
-        to produce a different timestamp.
-        
-        Args:
-            folder_path: Folder where the file will be saved
-            batch_counter: Sequential number within current batch
-            extension: File extension including dot
-            
-        Returns:
-            Unique filename string
-        """
+        """Generate unique filename guaranteeing no storage collisions."""
+        token = str(root_token).strip() if root_token else cls.generate_root_token(batch_counter)
         for attempt in range(cls.MAX_COLLISION_RETRIES):
             filename = cls.generate_filename(
                 batch_counter + attempt,
                 extension,
                 upload_prefix=upload_prefix,
+                root_token=token,
+                edit_count=edit_count,
             )
             full_path = f"{folder_path}/{filename}"
-            
             try:
                 if not default_storage.exists(full_path):
                     return filename
             except Exception:
-                # If storage check fails, accept the filename
                 return filename
-            
-            # Collision detected — sleep briefly to shift timestamp
-            logger.debug(
-                "Filename collision on attempt %d: %s — retrying",
-                attempt + 1, full_path
-            )
-            time.sleep(0.001)  # 1ms to shift microsecond component
+            time.sleep(0.001)
         
-        # Exhausted retries — use deterministic prefixed timestamp fallback.
-        logger.warning(
-            "Exhausted %d collision retries in %s, using fallback",
-            cls.MAX_COLLISION_RETRIES, folder_path
-        )
-        ext = cls.normalize_extension(extension)
+        # Fallback if collision
         prefix = cls.normalize_upload_prefix(upload_prefix)
-        now = datetime.now()
-        fallback_base = f"{now.strftime('%H%M%S')}{str(now.microsecond).zfill(6)[:6]}{cls._get_next_counter():02d}"
-        return f"{prefix}{fallback_base}{ext}"
-    
+        ext = cls.normalize_extension(extension)
+        return f"{prefix}{edit_count}_{token}{ext}"
+
     @classmethod
     def _extract_original_base(cls, filename_or_path: str) -> Optional[str]:
-        """
-        Extract the original base token from any filename,
-        stripping ALL existing update suffixes.
-        
-        This prevents double/chained suffixes:
-          a14325123456701_163045.jpg → a14325123456701
-          14325123456701_163045.jpg  → 14325123456701
-          a14325123456701_163045_170000.jpg → a14325123456701
-        
-        Returns:
-            Base token string or None if invalid
-        """
-        if not filename_or_path:
-            return None
-        
-        filename = os.path.basename(str(filename_or_path).strip())
-        base_name, _ = os.path.splitext(filename)
-        
-        # Always take the first segment before any underscore
-        original_base = base_name.split('_')[0]
-        
-        # New format: role prefix + 14 digits
-        if (
-            len(original_base) == 15
-            and original_base[0].lower() in cls.VALID_UPLOAD_PREFIXES
-            and original_base[1:].isdigit()
-        ):
-            return original_base[0].lower() + original_base[1:]
-
-        # Legacy format: exactly 14 digits
-        if len(original_base) == 14 and original_base.isdigit():
-            return original_base
-        
+        """Extract root token from filename or path."""
+        parsed = cls.parse_filename(filename_or_path)
+        if parsed:
+            return parsed['root_token']
         return None
-    
+
     @classmethod
     def generate_updated_filename(
         cls,
@@ -234,50 +234,29 @@ class ImageRenamer:
         """
         Generate updated filename for EXISTING images (edit/reupload).
         
-        Rules:
-        - Preserves the original 14-digit base (NEVER changes)
-        - Replaces (not appends) the update suffix: original_HHMMSS.ext
-        - If existing path has chained suffixes, strips ALL and adds one fresh suffix
-        - Falls back to fresh filename if base is invalid
-        
-        Args:
-            existing_path: Current file path or filename
-            new_extension: Optional new extension (keeps original if not provided)
-            
-        Returns:
-            Updated filename (e.g., "14325123456701_163045.jpg")
+        Preserves original root_token, increments edit_count, and sets editor role prefix.
+        Format: {role}{edit_count+1}_{root_token}.ext
         """
-        # If no valid existing path, generate fresh
         if not existing_path or existing_path in ['NOT_FOUND', '', 'PENDING'] or existing_path.startswith('PENDING:'):
             return cls.generate_filename(1, new_extension or '.jpg', upload_prefix=upload_prefix)
         
-        # Get current extension
-        filename = os.path.basename(existing_path)
-        _, current_ext = os.path.splitext(filename)
+        parsed = cls.parse_filename(existing_path)
+        ext = cls.normalize_extension(new_extension) if new_extension else (parsed['ext'] if parsed else '.jpg')
         
-        # Determine final extension
-        ext = cls.normalize_extension(new_extension) if new_extension else current_ext
-        if not ext or ext not in VALID_IMAGE_EXTENSIONS:
-            ext = current_ext or '.jpg'
+        if parsed:
+            root_token = parsed['root_token']
+            next_count = parsed['edit_count'] + 1
+        else:
+            root_token = cls.generate_root_token()
+            next_count = 1
         
-        # Extract the original 14-digit base (strips ALL suffixes)
-        original_base = cls._extract_original_base(existing_path)
-        
-        if not original_base:
-            # Invalid base — generate fresh
-            logger.warning(
-                "Cannot extract base token from '%s', generating fresh filename",
-                existing_path
-            )
-            return cls.generate_filename(1, ext, upload_prefix=upload_prefix)
-        
-        # Generate SINGLE update suffix (replaces any previous suffix)
-        now = datetime.now()
-        update_time = now.strftime('%H%M%S')
-        
-        new_filename = f"{original_base}_{update_time}{ext}"
-        return new_filename
-    
+        return cls.generate_filename(
+            extension=ext,
+            upload_prefix=upload_prefix,
+            root_token=root_token,
+            edit_count=next_count,
+        )
+
     @classmethod
     def generate_updated_filename_safe(
         cls,
@@ -286,17 +265,7 @@ class ImageRenamer:
         new_extension: Optional[str] = None,
         upload_prefix: str = 'a',
     ) -> str:
-        """
-        Generate updated filename with collision avoidance.
-        
-        Args:
-            folder_path: Folder where the file will be saved
-            existing_path: Current file path
-            new_extension: Optional new extension
-            
-        Returns:
-            Unique updated filename
-        """
+        """Generate updated filename with collision avoidance."""
         for attempt in range(cls.MAX_COLLISION_RETRIES):
             filename = cls.generate_updated_filename(
                 existing_path,
@@ -304,40 +273,22 @@ class ImageRenamer:
                 upload_prefix=upload_prefix,
             )
             full_path = f"{folder_path}/{filename}"
-            
-            # The old file at existing_path will be deleted, so if the name
-            # matches, that's fine
             existing_basename = os.path.basename(existing_path) if existing_path else ''
             if filename == existing_basename:
                 return filename
-            
             try:
                 if not default_storage.exists(full_path):
                     return filename
             except Exception:
                 return filename
-            
-            logger.debug(
-                "Updated filename collision on attempt %d: %s — retrying",
-                attempt + 1, full_path
-            )
             time.sleep(0.001)
         
-        # Fallback: use milliseconds in suffix for extra uniqueness
-        original_base = cls._extract_original_base(existing_path)
-        if not original_base:
-            original_base = cls.generate_filename(
-                batch_counter=1,
-                extension=new_extension or '.jpg',
-                upload_prefix=upload_prefix,
-            ).split('.', 1)[0]
-        now = datetime.now()
-        if new_extension:
-            ext = cls.normalize_extension(new_extension)
-        else:
-            _, existing_ext = os.path.splitext(os.path.basename(existing_path or ''))
-            ext = cls.normalize_extension(existing_ext or '.jpg')
-        return f"{original_base}_{now.strftime('%H%M%S')}{ext}"
+        parsed = cls.parse_filename(existing_path)
+        root_token = parsed['root_token'] if parsed else cls.generate_root_token()
+        next_count = (parsed['edit_count'] + 1) if parsed else 1
+        ext = cls.normalize_extension(new_extension) if new_extension else '.jpg'
+        prefix = cls.normalize_upload_prefix(upload_prefix)
+        return f"{prefix}{next_count}_{root_token}{ext}"
     
     @classmethod
     def extract_identifier(cls, filename_or_path: str) -> str:

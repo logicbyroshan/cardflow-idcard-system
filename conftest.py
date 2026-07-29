@@ -17,9 +17,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 from django.conf import settings
 import tempfile
 
-# Override database to use a file-based SQLite for tests to avoid in-memory
-# connection-scoping issues where migrations are not applied to the same
-# connection used by the test runner. Use a per-process temp file.
 _pytest_temp_db = os.path.join(tempfile.gettempdir(), f"pytest_db_{os.getpid()}.sqlite3")
 settings.DATABASES = {
     'default': {

@@ -151,6 +151,37 @@ class CardMedia(models.Model):
         help_text='Original path in legacy storage (for reference/rollback)'
     )
     
+    # Architecture fields (Image Rename, Versioning & History Pipeline)
+    root_token = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text='14-digit root token (HHMMSSmmmuuuCC) created on 1st upload'
+    )
+    version = models.IntegerField(
+        default=0,
+        help_text='Incrementing version number (0 for initial upload, 1, 2, 3...)'
+    )
+    last_edited_by_role = models.CharField(
+        max_length=1,
+        choices=[('a', 'Admin'), ('c', 'Client'), ('o', 'Operator')],
+        default='a',
+        help_text='Role of the last uploader/editor'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('active', 'Active'),
+            ('undo_stack', 'Undo Stack'),
+            ('redo_stack', 'Redo Stack'),
+            ('expired', 'Expired'),
+        ],
+        default='active',
+        db_index=True,
+        help_text='History status of this media version'
+    )
+
     class Meta:
         verbose_name = 'Card Media'
         verbose_name_plural = 'Card Media'
@@ -159,9 +190,12 @@ class CardMedia(models.Model):
             models.Index(fields=['client', 'media_type']),
             models.Index(fields=['card', 'media_type']),
             models.Index(fields=['card', 'field_name']),
+            models.Index(fields=['card', 'field_name', 'status']),
+            models.Index(fields=['root_token', 'version']),
             models.Index(fields=['original_filename']),
             models.Index(fields=['file'], name='mediafiles__file_dbc7f5_idx'),
             models.Index(fields=['created_at']),
+            models.Index(fields=['created_at', 'status']),
         ]
     
     def _get_media_type_label(self) -> str:

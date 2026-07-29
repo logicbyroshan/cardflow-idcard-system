@@ -1070,9 +1070,10 @@ def ensure_template_db():
     
     db_alias = "guest_template_init"
     db_config = dict(connections['default'].settings_dict)
-    db_config['ENGINE'] = 'django.db.backends.sqlite3'
+    if 'sqlite' in db_config.get('ENGINE', ''):
+        db_config['ENGINE'] = connections['default'].settings_dict['ENGINE']
     db_config['NAME'] = TEMPLATE_DB_PATH
-    db_config['OPTIONS'] = {'timeout': 60}
+    db_config['OPTIONS'] = {}
     
     django_settings.DATABASES[db_alias] = db_config
     connections.databases[db_alias] = db_config

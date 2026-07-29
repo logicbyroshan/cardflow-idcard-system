@@ -63,6 +63,12 @@ id="sideModalOverlay"
                           <i class="fa-solid fa-upload"></i> Upload
                         </span>
                       </label>
+                      <button type="button" class="btn btn-undo-image-field" id="undo_{{ field.name|slugify }}" data-field-name="{{ field.name }}" title="Undo image version" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-rotate-left"></i> Undo
+                      </button>
+                      <button type="button" class="btn btn-redo-image-field" id="redo_{{ field.name|slugify }}" data-field-name="{{ field.name }}" title="Redo image version" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-rotate-right"></i> Redo
+                      </button>
                       <button type="button" class="btn btn-remove-field" id="remove_{{ field.name|slugify }}" style="display: none;" data-field-name="{{ field.name }}">
                         <i class="fa-solid fa-trash"></i> Remove
                       </button>

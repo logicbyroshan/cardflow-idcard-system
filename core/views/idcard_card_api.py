@@ -2303,4 +2303,74 @@ def api_clear_pending_paths(request, table_id):
         return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
 
 
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_edit')
+def api_idcard_undo_image(request, card_id):
+    """API endpoint to undo an image version for an ID Card."""
+    _card, err = _check_client_scope_by_card(request.user, card_id)
+    if err: return err
+    if not _is_card_in_client_staff_scope(request.user, _card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    if request.user.role in ('client', 'client_staff'):
+        from reprintcard.models import ReprintRequest
+        if ReprintRequest.objects.filter(card=_card, status__in=['requested', 'confirmed']).exists():
+            return JsonResponse({'success': False, 'message': 'Cards with active reprint requests cannot be edited.'}, status=403)
+    if _is_client_edit_locked(request.user, _card.status):
+        return _client_edit_locked_response()
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        field_name = data.get('field_name') or data.get('field') or 'PHOTO'
+        
+        from mediafiles.services import ImageService
+        res = ImageService.undo_image_version(_card, field_name)
+        if res.get('success'):
+            try:
+                ActivityService.log_card_field_update(
+                    request, card_id, field_name, old_value=None, new_value=res.get('restored_path'), is_image=True
+                )
+            except Exception:
+                pass
+            return JsonResponse(res, status=200)
+        return JsonResponse(res, status=400)
+    except Exception as e:
+        logger.exception("Error undoing card image: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_edit')
+def api_idcard_redo_image(request, card_id):
+    """API endpoint to redo an image version for an ID Card."""
+    _card, err = _check_client_scope_by_card(request.user, card_id)
+    if err: return err
+    if not _is_card_in_client_staff_scope(request.user, _card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    if request.user.role in ('client', 'client_staff'):
+        from reprintcard.models import ReprintRequest
+        if ReprintRequest.objects.filter(card=_card, status__in=['requested', 'confirmed']).exists():
+            return JsonResponse({'success': False, 'message': 'Cards with active reprint requests cannot be edited.'}, status=403)
+    if _is_client_edit_locked(request.user, _card.status):
+        return _client_edit_locked_response()
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        field_name = data.get('field_name') or data.get('field') or 'PHOTO'
+        
+        from mediafiles.services import ImageService
+        res = ImageService.redo_image_version(_card, field_name)
+        if res.get('success'):
+            try:
+                ActivityService.log_card_field_update(
+                    request, card_id, field_name, old_value=None, new_value=res.get('restored_path'), is_image=True
+                )
+            except Exception:
+                pass
+            return JsonResponse(res, status=200)
+        return JsonResponse(res, status=400)
+    except Exception as e:
+        logger.exception("Error redoing card image: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
 

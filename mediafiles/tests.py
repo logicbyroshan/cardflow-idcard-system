@@ -584,3 +584,115 @@ class ThumbnailExistsCachingTests(TestCase):
 
         # Cache key should be deleted/invalidated
         self.assertIsNone(cache.get(cache_key))
+
+
+class ImageRenameAndHistoryPipelineTests(TestCase):
+    """Tests for Image Rename format, Versioning, Undo/Redo stack, and 36-Hour Cleanup."""
+
+    def test_image_renamer_format_and_parsing(self):
+        from mediafiles.services.image_rename import ImageRenamer
+
+        # Test initial filename generation for Admin ('a'), Client ('c'), Operator ('o')
+        f_admin = ImageRenamer.generate_filename(upload_prefix='a', edit_count=0)
+        f_client = ImageRenamer.generate_filename(upload_prefix='c', edit_count=0)
+        f_op = ImageRenamer.generate_filename(upload_prefix='o', edit_count=0)
+
+        self.assertTrue(f_admin.startswith('a0_'))
+        self.assertTrue(f_client.startswith('c0_'))
+        self.assertTrue(f_op.startswith('o0_'))
+
+        # Parse test
+        parsed = ImageRenamer.parse_filename('c0_14325101234501.jpg')
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed['role'], 'c')
+        self.assertEqual(parsed['edit_count'], 0)
+        self.assertEqual(parsed['root_token'], '14325101234501')
+        self.assertEqual(parsed['ext'], '.jpg')
+
+        # Test update filename (increments counter and preserves root token)
+        updated = ImageRenamer.generate_updated_filename('c0_14325101234501.jpg', upload_prefix='o')
+        self.assertTrue(updated.startswith('o1_14325101234501'))
+
+    def test_undo_redo_and_stale_warning_pipeline(self):
+        from mediafiles.services.image_records import ImageRecordsMixin
+        from mediafiles.models import CardMedia
+
+        client, group, table, card = _create_test_card()
+        field_name = 'PHOTO'
+
+        # 1. Initial save (v0)
+        rec0 = CardMedia.objects.create(
+            card=card, client=client, file='card_media/c0_14325101234501.jpg',
+            media_type='photo', field_name=field_name, root_token='14325101234501',
+            version=0, last_edited_by_role='c', status='active'
+        )
+
+        # 2. Save new version (v1) -> v0 moves to undo_stack
+        rec1 = CardMedia.objects.create(
+            card=card, client=client, file='card_media/a1_14325101234501.jpg',
+            media_type='photo', field_name=field_name, root_token='14325101234501',
+            version=1, last_edited_by_role='a', status='active'
+        )
+        ImageRecordsMixin.update_history_stack_on_save(card, field_name, rec1)
+
+        rec0.refresh_from_db()
+        self.assertEqual(rec0.status, 'undo_stack')
+        self.assertEqual(rec1.status, 'active')
+
+        # 3. Test Stale Version Warning on v0 upload attempt
+        warning = ImageRecordsMixin.check_old_version_warning(card, field_name, 'c0_14325101234501.jpg')
+        self.assertIsNotNone(warning)
+        self.assertFalse(warning['success'])
+        self.assertEqual(warning['warning_code'], 'OLD_VERSION_DETECTED')
+
+        # 4. Undo action (v1 active -> redo_stack, v0 undo_stack -> active)
+        undo_res = ImageRecordsMixin.undo_image_version(card, field_name)
+        self.assertTrue(undo_res['success'])
+        rec0.refresh_from_db()
+        rec1.refresh_from_db()
+        self.assertEqual(rec0.status, 'active')
+        self.assertEqual(rec1.status, 'redo_stack')
+
+        # 5. Redo action (v0 active -> undo_stack, v1 redo_stack -> active)
+        redo_res = ImageRecordsMixin.redo_image_version(card, field_name)
+        self.assertTrue(redo_res['success'])
+        rec0.refresh_from_db()
+        rec1.refresh_from_db()
+        self.assertEqual(rec0.status, 'undo_stack')
+        self.assertEqual(rec1.status, 'active')
+
+    def test_permanent_history_and_cleanup_command(self):
+        from mediafiles.models import CardMedia
+        from core.management.commands.cleanup_expired_history_images import cleanup_expired_history_images
+        from django.utils import timezone
+        from datetime import timedelta
+
+        client, group, table, card = _create_test_card()
+        old_time = timezone.now() - timedelta(hours=37)
+
+        # Active record (preserved permanently)
+        active_rec = CardMedia.objects.create(
+            card=card, client=client, file='card_media/c1_10000000000001.jpg',
+            media_type='photo', field_name='PHOTO', status='active'
+        )
+
+        # Undo stack record older than 36h (preserved permanently)
+        undo_rec = CardMedia.objects.create(
+            card=card, client=client, file='card_media/c0_10000000000001.jpg',
+            media_type='photo', field_name='PHOTO', status='undo_stack'
+        )
+
+        # Expired record (purged by cleanup command)
+        expired_rec = CardMedia.objects.create(
+            card=card, client=client, file='card_media/c-1_10000000000001.jpg',
+            media_type='photo', field_name='PHOTO', status='expired'
+        )
+
+        purged_count = cleanup_expired_history_images()
+        self.assertEqual(purged_count, 1)
+
+        active_rec.refresh_from_db()
+        undo_rec.refresh_from_db()
+        self.assertEqual(active_rec.status, 'active')
+        self.assertEqual(undo_rec.status, 'undo_stack')
+

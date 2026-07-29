@@ -605,6 +605,90 @@ function initFormDataHandlers() {
         });
     }
 
+    // Undo button handlers for image fields
+    document.querySelectorAll('.btn-undo-image-field').forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const cardId = window.currentSideModalCardId;
+            const fieldName = this.getAttribute('data-field-name') || 'PHOTO';
+            if (!cardId) {
+                if (window.showToast) window.showToast('Undo is available when editing an existing card.', 'warning');
+                return;
+            }
+            try {
+                const getCsrf = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+                const res = await fetch(`/api/card/${cardId}/undo-image/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+                    body: JSON.stringify({ field_name: fieldName })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const fieldCard = this.closest('.image-field-card');
+                    const pathInput = fieldCard?.querySelector('.image-path-input');
+                    const previewEl = fieldCard?.querySelector('.image-preview-box');
+                    if (pathInput) {
+                        pathInput.value = data.restored_path;
+                        pathInput.classList.remove('no-path', 'not-found');
+                        pathInput.classList.add('has-image');
+                    }
+                    if (previewEl && data.restored_path) {
+                        previewEl.innerHTML = `<img src="${encodeURI(data.restored_path)}" alt="${fieldName}" />`;
+                        previewEl.classList.remove('no-path', 'pending-image');
+                        previewEl.classList.add('has-image');
+                    }
+                    if (window.showToast) window.showToast(`Restored version ${data.version}`, 'success');
+                } else {
+                    if (window.showToast) window.showToast(data.message || 'Undo not available', 'error');
+                }
+            } catch (err) {
+                console.error('Error undoing image version:', err);
+            }
+        });
+    });
+
+    // Redo button handlers for image fields
+    document.querySelectorAll('.btn-redo-image-field').forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const cardId = window.currentSideModalCardId;
+            const fieldName = this.getAttribute('data-field-name') || 'PHOTO';
+            if (!cardId) {
+                if (window.showToast) window.showToast('Redo is available when editing an existing card.', 'warning');
+                return;
+            }
+            try {
+                const getCsrf = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+                const res = await fetch(`/api/card/${cardId}/redo-image/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+                    body: JSON.stringify({ field_name: fieldName })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const fieldCard = this.closest('.image-field-card');
+                    const pathInput = fieldCard?.querySelector('.image-path-input');
+                    const previewEl = fieldCard?.querySelector('.image-preview-box');
+                    if (pathInput) {
+                        pathInput.value = data.restored_path;
+                        pathInput.classList.remove('no-path', 'not-found');
+                        pathInput.classList.add('has-image');
+                    }
+                    if (previewEl && data.restored_path) {
+                        previewEl.innerHTML = `<img src="${encodeURI(data.restored_path)}" alt="${fieldName}" />`;
+                        previewEl.classList.remove('no-path', 'pending-image');
+                        previewEl.classList.add('has-image');
+                    }
+                    if (window.showToast) window.showToast(`Restored version ${data.version}`, 'success');
+                } else {
+                    if (window.showToast) window.showToast(data.message || 'Redo not available', 'error');
+                }
+            } catch (err) {
+                console.error('Error redoing image version:', err);
+            }
+        });
+    });
+
     // Remove button handlers for image fields
     document.querySelectorAll('.btn-remove-field').forEach(btn => {
         btn.addEventListener('click', function(e) {

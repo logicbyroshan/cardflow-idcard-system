@@ -332,10 +332,25 @@ if SENTRY_DSN:
 # Production: Set DATABASE_URL in .env
 # Example DATABASE_URL: postgres://user:password@host:5432/dbname
 
-DATABASE_URL = os.getenv('DATABASE_URL')
+import sys
+if os.getenv('RUNNING_TESTS') == '1' or 'pytest' in sys.modules or any('pytest' in arg or 'test' in arg for arg in sys.argv):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'test_db.sqlite3',
+            'ATOMIC_REQUESTS': True,
+        }
+    }
+else:
+    DATABASE_URL = os.getenv('DATABASE_URL')
+    if not DATABASE_URL:
+        db_name = os.getenv('POSTGRES_DB', 'cardflow_db')
+        db_user = os.getenv('POSTGRES_USER', 'postgres')
+        db_password = os.getenv('POSTGRES_PASSWORD', 'postgres')
+        db_host = os.getenv('POSTGRES_HOST', 'localhost')
+        db_port = os.getenv('POSTGRES_PORT', '5432')
+        DATABASE_URL = f"postgres://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
-if DATABASE_URL:
-    # Production / Staging: Use DATABASE_URL (PostgreSQL, MySQL, etc.)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -343,22 +358,6 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
-elif DEBUG:
-    # Local development only: Use SQLite (no setup needed)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-            'OPTIONS': {
-                'timeout': 60,  # Wait up to 60s for DB lock (background bulk writes can be slow)
-            },
-        }
-    }
-else:
-    raise ImproperlyConfigured(
-        'DATABASE_URL is not set. Add it to your .env file for production. '
-        'Example: DATABASE_URL=postgres://user:password@host:5432/dbname'
-    )
 
 DATABASE_ROUTERS = ['core.db_router.GuestSandboxRouter']
 

@@ -87,11 +87,32 @@ def api_check_maintenance(request):
     return JsonResponse({'active': True})
 
 
+def api_auth_me(request):
+    """Return session payload for the currently authenticated user."""
+    from django.http import JsonResponse
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({'authenticated': False}, status=200)
+
+    role = getattr(user, 'role', 'admin') or ('admin' if user.is_superuser else 'client')
+    return JsonResponse({
+        'authenticated': True,
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': getattr(user, 'email', ''),
+            'role': role,
+            'is_superuser': user.is_superuser,
+        }
+    })
+
+
 __all__ = [
     'login_view',
     'logout_view',
     'api_check_email',
     'api_login',
+    'api_auth_me',
     'api_forgot_password',
     'api_verify_otp',
     'api_reset_password',

@@ -1,0 +1,219 @@
+import React from 'react';
+import {
+  Home, Users, UserCog, UsersRound, Camera,
+  SlidersHorizontal, Gem, BookOpen, GitBranch, LogOut, ShieldCheck
+} from 'lucide-react';
+
+/*
+  Exact replica of templates/partials/sidebar.html
+  Menu items and sections match the Django template 1-to-1.
+*/
+
+// Role-gated nav structure — mirrors the Django template logic
+const NAV_CONFIG = {
+  super_admin: [
+    { id: 'dashboard', label: 'Dashboard', Icon: Home },
+    {
+      section: 'User Management',
+      items: [
+        { id: 'clients',      label: 'Manage Clients',       Icon: Users       },
+        { id: 'staff',        label: 'Manage Operator',      Icon: UserCog     },
+        { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound  },
+        { id: 'photographers',label: 'Manage Captures',       Icon: Camera      },
+      ],
+    },
+    {
+      section: 'Site Management',
+      items: [
+        { id: 'panel',   label: 'Manage Panel', Icon: SlidersHorizontal },
+        { id: 'pro',     label: 'Manage Features',     Icon: Gem               },
+      ],
+    },
+  ],
+  operator: [
+    { id: 'dashboard', label: 'Dashboard', Icon: Home },
+    {
+      section: 'User Management',
+      items: [
+        { id: 'clients',    label: 'Manage Clients',    Icon: Users      },
+        { id: 'assistants', label: 'Manage Assistant',  Icon: UsersRound },
+      ],
+    },
+  ],
+  client: [
+    { id: 'dashboard', label: 'Dashboard', Icon: Home },
+    {
+      section: 'Management',
+      items: [
+        { id: 'staff', label: 'Manage Assistant', Icon: UserCog },
+      ],
+    },
+    {
+      section: 'ID Card Management',
+      items: [
+        { id: 'schema',   label: 'Group Setting', Icon: SlidersHorizontal },
+        { id: 'cards',    label: 'ID Card Group', Icon: ShieldCheck        },
+        { id: 'settings', label: 'Settings',       Icon: UserCog           },
+      ],
+    },
+  ],
+  assistant: [
+    { id: 'dashboard', label: 'Dashboard', Icon: Home },
+    {
+      section: 'ID Card Management',
+      items: [
+        { id: 'cards',    label: 'ID Card Group', Icon: ShieldCheck        },
+      ],
+    },
+  ],
+};
+
+const ROLE_COLORS = {
+  super_admin:  { bg: 'linear-gradient(145deg, #7c3aed, #6d28d9)', color: '#ede9fe' },
+  operator:     { bg: 'linear-gradient(145deg, #2563eb, #1d4ed8)', color: '#dbeafe' },
+  client:       { bg: 'linear-gradient(145deg, #059669, #047857)', color: '#d1fae5' },
+  assistant:    { bg: 'linear-gradient(145deg, #0891b2, #0e7490)', color: '#cffafe' },
+};
+
+const ROLE_LABELS = {
+  super_admin:  'Super Admin',
+  operator:     'Operator',
+  client:       'Client',
+  assistant:    'Assistant',
+  admin_staff:  'Operator',
+  client_staff: 'Assistant',
+};
+
+const APP_VERSION = 'v4.19.01';
+
+export default function Sidebar({ activeTab, setActiveTab, userRole = 'super_admin', currentUser, onLogout }) {
+  const roleKey = userRole === 'admin' ? 'super_admin' : userRole === 'admin_staff' ? 'operator' : userRole === 'client_staff' ? 'assistant' : userRole;
+  const navConfig = NAV_CONFIG[roleKey] || NAV_CONFIG.super_admin;
+
+
+  const displayName = currentUser?.first_name
+    ? `${currentUser.first_name} ${currentUser.last_name || ''}`.trim()
+    : (currentUser?.username || currentUser?.email || 'Admin');
+
+  const initials = displayName.slice(0, 2).toUpperCase();
+  const roleLabel = ROLE_LABELS[roleKey] || roleKey;
+
+  return (
+    <aside className="sidebar" id="sidebar">
+      {/* ── Header / Logo ── */}
+      <div className="sidebar-header" style={{ padding: '8px 6px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+        <img
+          src="/cardflow_logo_brand.png"
+          alt="CardFlow"
+          style={{ maxHeight: '36px', maxWidth: '135px', width: '100%', objectFit: 'contain' }}
+        />
+      </div>
+
+      {/* ── Navigation ── */}
+      <nav aria-label="Main navigation">
+        {navConfig.map((entry, idx) => {
+          if (entry.section) {
+            return (
+              <React.Fragment key={idx}>
+                <div className="nav-section">
+                  <div className="nav-section-line" />
+                  <span className="nav-section-title">{entry.section}</span>
+                  <div className="nav-section-line" />
+                </div>
+                {entry.items.map((item) => {
+                  const Icon = item.Icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`nav-item${activeTab === item.id ? ' active' : ''}`}
+                    >
+                      <Icon size={13} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </React.Fragment>
+            );
+          }
+          const Icon = entry.Icon;
+          return (
+            <button
+              key={entry.id}
+              onClick={() => setActiveTab(entry.id)}
+              className={`nav-item${activeTab === entry.id ? ' active' : ''}`}
+            >
+              <Icon size={13} />
+              <span>{entry.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ── Footer — matches sidebar.html ── */}
+      <div className="sidebar-footer">
+
+        {/* Tutorial link */}
+        <div className="sidebar-actions">
+          <button
+            onClick={() => setActiveTab('tutorial')}
+            className={`nav-item${activeTab === 'tutorial' ? ' active' : ''}`}
+          >
+            <BookOpen size={13} />
+            <span>Tutorial</span>
+          </button>
+        </div>
+
+        {/* User tile — clicking goes to Profile / Settings */}
+        <div
+          className="sidebar-user"
+          style={{ width: 'calc(100% - 12px)', cursor: 'pointer' }}
+          onClick={() => setActiveTab('settings')}
+          title="Go to Profile / Settings"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && setActiveTab('settings')}
+        >
+          {/* Avatar */}
+          <div
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '4px',
+              background: 'linear-gradient(135deg, #f97316, #ea580c)',
+              color: '#fff',
+              fontSize: '11px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {initials}
+          </div>
+
+          {/* Name + Role */}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#fff',
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {displayName || 'System Admin'}
+            </span>
+            <span style={{ fontSize: '10px', color: '#f97316', fontWeight: 600, display: 'block' }}>
+              {roleLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}

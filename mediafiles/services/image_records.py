@@ -30,10 +30,12 @@ class ImageRecordsMixin:
 
     @staticmethod
     def _resolve_uploader_prefix(uploaded_by=None) -> str:
-        """Map uploader role to filename prefix: admin-side='a', client-side='c'."""
+        """Map uploader role to filename prefix: admin='a', client='c', operator='o'."""
         role = str(getattr(uploaded_by, 'role', '') or '').strip().lower()
-        if role in ('client', 'client_staff'):
+        if role in ('client', 'client_staff', 'assistant'):
             return 'c'
+        if role in ('operator', 'operator_staff', 'photographer'):
+            return 'o'
         return 'a'
 
     @classmethod
@@ -50,14 +52,6 @@ class ImageRecordsMixin:
     ) -> 'MediaResult':
         """
         Single entry point for saving a NEW image (no existing path).
-
-        Pipeline:
-          1. Save image to client folder (collision-safe)
-          2. Generate thumbnail
-          3. Create CardMedia record (if card provided)
-
-        Returns:
-            MediaResult with data['final_value'] — the path to store in field_data.
         """
         uploader_prefix = cls._resolve_uploader_prefix(uploaded_by)
         result = cls.save_image_with_thumbnail(
@@ -73,9 +67,12 @@ class ImageRecordsMixin:
 
         saved_path = result.data.get('path', '')
 
-        # CardMedia dual-write
         if card and saved_path:
             try:
+                parsed = ImageRenamer.parse_filename(saved_path)
+                root_token = parsed['root_token'] if parsed else None
+                version = parsed['edit_count'] if parsed else 0
+
                 cls.create_media_record(
                     saved_path=saved_path,
                     client=client,
@@ -84,6 +81,10 @@ class ImageRecordsMixin:
                     media_type='photo',
                     original_filename=original_filename,
                     uploaded_by=uploaded_by,
+                    root_token=root_token,
+                    version=version,
+                    last_edited_by_role=uploader_prefix,
+                    status='active',
                 )
             except Exception as cm_err:
                 logger.warning("CardMedia create failed in save_new_image for %s: %s", field_name, cm_err)
@@ -91,6 +92,166 @@ class ImageRecordsMixin:
         result.data['final_value'] = saved_path
         result.data['action'] = 'upload'
         return result
+
+    @classmethod
+    def check_old_version_warning(cls, card, field_name: str, incoming_filename_or_path: str, confirm_overwrite: bool = False) -> Optional[dict]:
+        """
+        Check if incoming image is an older version than current active image.
+        Returns warning dict if incoming_version < current_active_version and not confirmed.
+        """
+        if confirm_overwrite or not card or not field_name:
+            return None
+        
+        parsed = ImageRenamer.parse_filename(incoming_filename_or_path)
+        if not parsed:
+            return None
+        
+        from ..models import CardMedia
+        active_record = CardMedia.objects.filter(
+            card=card,
+            field_name=field_name,
+            status='active'
+        ).order_by('-created_at').first()
+        
+        if not active_record:
+            return None
+        
+        active_parsed = ImageRenamer.parse_filename(active_record.file.name)
+        current_version = active_record.version or (active_parsed['edit_count'] if active_parsed else 0)
+        incoming_version = parsed['edit_count']
+        
+        if incoming_version < current_version:
+            return {
+                'success': False,
+                'warning_code': 'OLD_VERSION_DETECTED',
+                'message': f'The uploaded image is version {incoming_version}, but current active image is version {current_version}.',
+                'data': {
+                    'incoming_version': incoming_version,
+                    'current_version': current_version,
+                    'root_token': parsed['root_token'],
+                    'require_confirmation': True
+                }
+            }
+        return None
+
+    @classmethod
+    def update_history_stack_on_save(cls, card, field_name: str, new_media_record):
+        """
+        Maintain 5-slot window: 1 Active + Max 2 Undo + Max 2 Redo.
+        
+        Transitions on new edit/save:
+        - Move previous active record to undo_stack
+        - Purge any redo_stack records
+        - Prune undo_stack to max 2 items (purging storage files for expired items)
+        """
+        if not card or not field_name or not new_media_record:
+            return
+        
+        from ..models import CardMedia
+        from django.core.files.storage import default_storage
+        
+        # 1. Move previous active records to undo_stack
+        CardMedia.objects.filter(
+            card=card,
+            field_name=field_name,
+            status='active'
+        ).exclude(pk=new_media_record.pk).update(status='undo_stack')
+        
+        # 2. Clear redo stack (purge files + set status expired)
+        redo_records = CardMedia.objects.filter(
+            card=card,
+            field_name=field_name,
+            status='redo_stack'
+        )
+        for rec in redo_records:
+            if rec.file and default_storage.exists(rec.file.name):
+                try:
+                    default_storage.delete(rec.file.name)
+                except Exception as del_err:
+                    logger.warning("Failed to delete redo stack file %s: %s", rec.file.name, del_err)
+            rec.status = 'expired'
+            rec.save(update_fields=['status'])
+        
+        # 3. Prune undo stack to max 2 items (keep 2 newest)
+        undo_qs = CardMedia.objects.filter(
+            card=card,
+            field_name=field_name,
+            status='undo_stack'
+        ).order_by('-created_at')
+        
+        if undo_qs.count() > 2:
+            overflow = undo_qs[2:]
+            for rec in overflow:
+                if rec.file and default_storage.exists(rec.file.name):
+                    try:
+                        default_storage.delete(rec.file.name)
+                    except Exception as del_err:
+                        logger.warning("Failed to delete expired undo file %s: %s", rec.file.name, del_err)
+                rec.status = 'expired'
+                rec.save(update_fields=['status'])
+
+    @classmethod
+    def undo_image_version(cls, card, field_name: str) -> dict:
+        """
+        Undo image version: Move active -> redo_stack, move latest undo_stack -> active.
+        Updates card's field_data with restored image path.
+        """
+        if not card or not field_name:
+            return {'success': False, 'message': 'Card and field_name required'}
+        
+        from ..models import CardMedia
+        active_rec = CardMedia.objects.filter(card=card, field_name=field_name, status='active').order_by('-created_at').first()
+        undo_rec = CardMedia.objects.filter(card=card, field_name=field_name, status='undo_stack').order_by('-created_at').first()
+        
+        if not undo_rec:
+            return {'success': False, 'message': 'No undo history available'}
+        
+        if active_rec:
+            active_rec.status = 'redo_stack'
+            active_rec.save(update_fields=['status'])
+        
+        undo_rec.status = 'active'
+        undo_rec.save(update_fields=['status'])
+        
+        restored_path = undo_rec.file.name
+        
+        # Update field_data on card
+        if hasattr(card, 'field_data') and isinstance(card.field_data, dict):
+            card.field_data[field_name] = restored_path
+            card.save(update_fields=['field_data'])
+        
+        return {'success': True, 'restored_path': restored_path, 'version': undo_rec.version}
+
+    @classmethod
+    def redo_image_version(cls, card, field_name: str) -> dict:
+        """
+        Redo image version: Move active -> undo_stack, move latest redo_stack -> active.
+        Updates card's field_data with restored image path.
+        """
+        if not card or not field_name:
+            return {'success': False, 'message': 'Card and field_name required'}
+        
+        from ..models import CardMedia
+        active_rec = CardMedia.objects.filter(card=card, field_name=field_name, status='active').order_by('-created_at').first()
+        redo_rec = CardMedia.objects.filter(card=card, field_name=field_name, status='redo_stack').order_by('-created_at').first()
+        
+        if not redo_rec:
+            return {'success': False, 'message': 'No redo history available'}
+        
+        if active_rec:
+            active_rec.status = 'undo_stack'
+            active_rec.save(update_fields=['status'])
+        
+        redo_rec.status = 'active'
+        redo_rec.save(update_fields=['status'])
+        
+        restored_path = redo_rec.file.name
+        
+        if hasattr(card, 'field_data') and isinstance(card.field_data, dict):
+            card.field_data[field_name] = restored_path
+            card.save(update_fields=['field_data'])
+        
+        return {'success': True, 'restored_path': restored_path, 'version': redo_rec.version}
 
     @classmethod
     def replace_image(
@@ -104,21 +265,12 @@ class ImageRecordsMixin:
         original_ext: str = '.jpg',
         original_filename: str = None,
         uploaded_by=None,
-        delete_old_after_save: bool = True,
+        delete_old_after_save: bool = False,
+        confirm_overwrite: bool = False,
     ) -> 'MediaResult':
         """
-        Single entry point for REPLACING an existing image.
-
-        Pipeline:
-          1. Save new image (edit naming preserves original 14-digit base)
-          2. Delete old image + old thumbnail
-          3. Generate new thumbnail
-          4. Update CardMedia record (if card provided)
-
-        Returns:
-            MediaResult with data['final_value'] — the new path to store in field_data.
+        Single entry point for REPLACING an existing image with Undo history support.
         """
-        # Treat invalid existing paths as a fresh save
         if not existing_path or existing_path in ('NOT_FOUND', '') or existing_path.startswith('PENDING:'):
             return cls.save_new_image(
                 image_bytes=image_bytes,
@@ -131,8 +283,14 @@ class ImageRecordsMixin:
                 uploaded_by=uploaded_by,
             )
 
+        # Check stale version warning
+        warning = cls.check_old_version_warning(card, field_name, existing_path, confirm_overwrite=confirm_overwrite)
+        if warning:
+            return MediaResult(success=False, message=warning['message'], data=warning['data'])
+
         uploader_prefix = cls._resolve_uploader_prefix(uploaded_by)
 
+        # Save new image version without instantly deleting old image file (enables undo)
         result = cls.save_image_with_thumbnail(
             image_bytes=image_bytes,
             client=client,
@@ -147,14 +305,15 @@ class ImageRecordsMixin:
 
         saved_path = result.data.get('path', '')
 
-        # CardMedia: delete old, create new (atomic to prevent data loss)
         if card and saved_path:
             try:
                 from django.db import transaction
-                from ..models import CardMedia
                 with transaction.atomic():
-                    CardMedia.objects.filter(card=card, field_name=field_name).delete()
-                    cls.create_media_record(
+                    parsed = ImageRenamer.parse_filename(saved_path)
+                    root_token = parsed['root_token'] if parsed else None
+                    version = parsed['edit_count'] if parsed else 1
+                    
+                    new_media = cls.create_media_record(
                         saved_path=saved_path,
                         client=client,
                         card=card,
@@ -162,14 +321,18 @@ class ImageRecordsMixin:
                         media_type='photo',
                         original_filename=original_filename,
                         uploaded_by=uploaded_by,
-                    )
+                        root_token=root_token,
+                        version=version,
+                        last_edited_by_role=uploader_prefix,
+                        status='active',
+                    ).data.get('media')
+
+                    cls.update_history_stack_on_save(card, field_name, new_media)
             except Exception as cm_err:
                 logger.warning("CardMedia update failed in replace_image for %s: %s", field_name, cm_err)
 
         result.data['final_value'] = saved_path
         result.data['action'] = 'upload'
-        if existing_path and not delete_old_after_save:
-            result.data['old_path_to_delete'] = existing_path
         return result
 
     @classmethod
@@ -234,15 +397,24 @@ class ImageRecordsMixin:
         media_type: Optional[str] = 'photo',
         field_name: Optional[str] = None,
         original_filename: Optional[str] = None,
-        uploaded_by=None
+        uploaded_by=None,
+        root_token: Optional[str] = None,
+        version: int = 0,
+        last_edited_by_role: str = 'a',
+        status: str = 'active',
     ) -> 'MediaResult':
         """
         Create a CardMedia record for a saved image.
-        
-        This enables dual-write for gradual migration to CardMedia.
         """
         try:
             from ..models import CardMedia
+            
+            if not root_token:
+                parsed = ImageRenamer.parse_filename(saved_path)
+                if parsed:
+                    root_token = parsed['root_token']
+                    version = parsed['edit_count']
+                    last_edited_by_role = parsed['role']
             
             media = CardMedia.objects.create(
                 card=card,
@@ -252,7 +424,11 @@ class ImageRecordsMixin:
                 media_type=media_type or 'photo',
                 field_name=field_name,
                 original_filename=original_filename,
-                uploaded_by=uploaded_by
+                uploaded_by=uploaded_by,
+                root_token=root_token,
+                version=version,
+                last_edited_by_role=last_edited_by_role,
+                status=status,
             )
             
             return MediaResult(

@@ -50,6 +50,8 @@ from .idcard_card_api import (
     api_idcard_update,
     api_idcard_delete,
     api_idcard_update_field,
+    api_idcard_undo_image,
+    api_idcard_redo_image,
     api_idcard_change_status,
     api_idcard_bulk_status,
     api_idcard_bulk_delete,
