@@ -6,6 +6,7 @@ import DashboardView from './components/dashboard/DashboardView';
 
 
 import ClientDirectoryView from './components/client/ClientDirectoryView';
+import ClientAccountsView from './components/client/ClientAccountsView';
 import StaffManagementView from './components/staff/StaffManagementView';
 import ManagePanelView from './components/panel/ManagePanelView';
 import CardActionBar from './components/idcard/CardActionBar';
@@ -185,8 +186,8 @@ export default function App() {
             <ReprintCardsManagerView addToast={addToast} />
           )}
 
-          {/* ── Manage Clients ── */}
-          {activeTab === 'clients' && (
+          {/* ── Manage Organisation ── */}
+          {activeTab === 'organisations' && (
             <ClientDirectoryView
               addToast={addToast}
               onOpenActionDrawer={(action) => setDrawerAction(action)}
@@ -194,6 +195,17 @@ export default function App() {
               onOpenDeleteModal={(cfg) => setDeleteModalConfig(cfg || { title: 'Confirm Permanent Delete', itemDescription: 'this item' })}
             />
           )}
+
+          {/* ── Manage Client ── */}
+          {activeTab === 'clients' && (
+            <ClientAccountsView
+              addToast={addToast}
+              onOpenActionDrawer={(action) => setDrawerAction(action)}
+              onNavigate={(tab) => setActiveTab(tab)}
+              onOpenDeleteModal={(cfg) => setDeleteModalConfig(cfg || { title: 'Confirm Permanent Delete', itemDescription: 'this item' })}
+            />
+          )}
+
 
           {/* ── Manage Staff/Operator ── */}
           {activeTab === 'staff' && (

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Home, Users, UserCog, UsersRound, Camera,
-  SlidersHorizontal, Gem, BookOpen, GitBranch, LogOut, ShieldCheck
+  SlidersHorizontal, Gem, BookOpen, GitBranch, LogOut, ShieldCheck, Building
 } from 'lucide-react';
 
 /*
@@ -16,7 +16,8 @@ const NAV_CONFIG = {
     {
       section: 'User Management',
       items: [
-        { id: 'clients',      label: 'Manage Clients',       Icon: Users       },
+        { id: 'organisations',label: 'Manage Organisation',  Icon: Building   },
+        { id: 'clients',      label: 'Manage Client',        Icon: Users      },
         { id: 'staff',        label: 'Manage Operator',      Icon: UserCog     },
         { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound  },
         { id: 'photographers',label: 'Manage Captures',       Icon: Camera      },
@@ -35,11 +36,13 @@ const NAV_CONFIG = {
     {
       section: 'User Management',
       items: [
-        { id: 'clients',    label: 'Manage Clients',    Icon: Users      },
-        { id: 'assistants', label: 'Manage Assistant',  Icon: UsersRound },
+        { id: 'organisations',label: 'Manage Organisation',  Icon: Building   },
+        { id: 'clients',      label: 'Manage Client',        Icon: Users      },
+        { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound },
       ],
     },
   ],
+
   client: [
     { id: 'dashboard', label: 'Dashboard', Icon: Home },
     {
