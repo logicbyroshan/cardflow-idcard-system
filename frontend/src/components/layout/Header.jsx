@@ -9,18 +9,21 @@ import { dashboardApi } from '../../services/api';
 */
 
 const PAGE_LABELS = {
-  dashboard:    'Dashboard',
-  cards:        'ID Card Group',
+  dashboard:    'Manage Dashboard',
+  cards:        'Tables',
   reprints:     'Reprint Queue',
-  clients:      'Manage Clients',
+  organisations:'Manage Organisation',
+  clients:      'Manage Manager',
   staff:        'Manage Operator',
   assistants:   'Manage Assistant',
-  photographers:'Manage Captures',
-  schema:       'Group Setting',
-  panel:        'Manage Panel',
+  photographers:'Manage Photographer',
+  schema:       'Table Setting',
+  panel:        'Manage CardFlow',
+
   tutorial:     'Tutorial',
   settings:     'Settings',
-  pro:          'Manage Features',
+  pro:          'Manage Pro Features',
+
 };
 
 export default function Header({

@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Plus, Pen, Eye, Trash2, ToggleRight, Download, FileSpreadsheet,
+  Plus, Pen, Eye, Trash2, ToggleRight, Download, FileSpreadsheet, SlidersHorizontal,
   Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   RefreshCw, Loader2, AlertCircle
 } from 'lucide-react';
+
 import { schemaApi, clientApi } from '../../services/api';
 
 const STATUS_TABS = ['All', 'Active', 'Inactive'];
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
-export default function GroupSettingsView({ addToast }) {
+export default function TableSettingsView({ addToast }) {
   const [tables, setTables]         = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(false);
@@ -56,7 +57,6 @@ export default function GroupSettingsView({ addToast }) {
 
   return (
     <div className="view-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-
 
       {/* ── ACTION BAR ── */}
       <div className="action-bar" id="gs-action-bar">
@@ -140,76 +140,81 @@ export default function GroupSettingsView({ addToast }) {
 
       {/* ── TABLE CONTAINER ── */}
       <div id="gs-table-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        <div className="table-wrapper" style={{ flex: 1, overflow: 'auto' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ width: '32px' }}></th>
-                <th>Table Name</th>
-                <th>Client</th>
-                <th className="text-center">Status</th>
-                <th className="text-center">Created At</th>
-                <th className="text-center">Updated At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading
-                ? Array.from({ length: 15 }).map((_, i) => (
+        <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {filtered.length === 0 && !loading ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center' }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(37,99,235,0.12)', border: '1px solid #bfdbfe', marginBottom: '12px'
+              }}>
+                <SlidersHorizontal size={30} />
+              </div>
+              <div style={{ maxWidth: '340px' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0' }}>
+                  No Table Settings Found
+                </h4>
+                <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                  {search ? `No setting tables match "${search}"` : 'There are no setting tables configured yet.'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '45px', textAlign: 'center' }}>S. No.</th>
+                  <th>Table Name</th>
+                  <th>Client</th>
+                  <th className="text-center">Status</th>
+                  <th className="text-center">Created At</th>
+                  <th className="text-center">Updated At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  Array.from({ length: 15 }).map((_, i) => (
                     <tr key={i} className="skeleton-row">
-                      {/* Checkbox */}
                       <td><div className="skeleton" style={{ width: '16px', height: '16px', borderRadius: '3px', margin: '0 auto' }} /></td>
-                      {/* Table Name */}
                       <td><div className="skeleton" style={{ height: '13px', width: `${65 + (i % 4) * 8}%` }} /></td>
-                      {/* Client */}
                       <td><div className="skeleton" style={{ height: '13px', width: `${55 + (i % 3) * 10}%` }} /></td>
-                      {/* Status Badge */}
                       <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-badge" style={{ margin: '0 auto' }} /></td>
-                      {/* Created At */}
                       <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto' }} /></td>
-                      {/* Updated At */}
                       <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto', width: '75%' }} /></td>
                     </tr>
                   ))
-                : filtered.length === 0
-                  ? (
-                    <tr className="empty-row">
-                      <td colSpan={6}>
-                        <div className="empty-state" style={{ textAlign: 'center', padding: '40px 16px' }}>
-                          <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>No Group Settings Found</h3>
-                          <p style={{ fontSize: '12px', color: '#94a3b8' }}>{search ? `No tables match "${search}"` : 'No setting tables available.'}</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                  : filtered.map((t, idx) => {
-                      const name = t.name || t.table_name || `Table #${t.id || idx}`;
-                      const clientName = t.client_name || t.client?.name || '—';
-                      const isActive = (t.status || 'active').toLowerCase() === 'active';
-                      const isSel = t.id === selected;
-                      return (
-                        <tr
-                          key={t.id || idx}
-                          className={isSel ? 'selected' : ''}
-                          onClick={() => setSelected(isSel ? null : t.id)}
-                        >
-                          <td className="col-checkbox text-center">
-                            <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
-                          </td>
-                          <td style={{ fontWeight: 600 }}>{name}</td>
-                          <td style={{ color: '#475569' }}>{clientName}</td>
-                          <td className="text-center">
-                            <span className={`badge ${isActive ? 'badge-success' : 'badge-neutral'}`}>
-                              {isActive ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td className="text-center" style={{ fontSize: '12px', color: '#6b7280' }}>{formatDate(t.created_at)}</td>
-                          <td className="text-center" style={{ fontSize: '12px', color: '#6b7280' }}>{formatDate(t.updated_at)}</td>
-                        </tr>
-                      );
-                    })
-              }
-            </tbody>
-          </table>
+                ) : (
+                  filtered.map((t, idx) => {
+                    const name = t.name || t.table_name || `Table #${t.id || idx}`;
+                    const clientName = t.client_name || t.client?.name || '—';
+                    const isActive = (t.status || 'active').toLowerCase() === 'active';
+                    const isSel = t.id === selected;
+                    return (
+                      <tr
+                        key={t.id || idx}
+                        className={isSel ? 'selected' : ''}
+                        onClick={() => setSelected(isSel ? null : t.id)}
+                      >
+                        <td className="col-checkbox text-center">
+                          <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{name}</td>
+                        <td style={{ color: '#475569' }}>{clientName}</td>
+                        <td className="text-center">
+                          <span className={`badge ${isActive ? 'badge-success' : 'badge-neutral'}`}>
+                            {isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="text-center" style={{ fontSize: '12px', color: '#6b7280' }}>{formatDate(t.created_at)}</td>
+                        <td className="text-center" style={{ fontSize: '12px', color: '#6b7280' }}>{formatDate(t.updated_at)}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

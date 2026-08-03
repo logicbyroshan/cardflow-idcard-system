@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Edit2, RotateCcw, RotateCw, RefreshCw, Search, Loader2, AlertCircle, ChevronLeft, ChevronRight, Clock, CheckCircle, Download, AlertTriangle } from 'lucide-react';
+import { Edit2, RotateCcw, RotateCw, RefreshCw, Search, X, Loader2, AlertCircle, ChevronLeft, ChevronRight, Clock, CheckCircle, Download, AlertTriangle, CreditCard } from 'lucide-react';
 import CardEditDrawer from './CardEditDrawer';
 import { cardApi } from '../../services/api';
 
@@ -56,15 +56,18 @@ export default function CardTableView({ tableId, cards: propCards, onEditCard, a
 
         {isLive && (
           <div className="action-bar-right">
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Search size={12} style={{ position: 'absolute', left: '7px', color: '#9ca3af', pointerEvents: 'none' }} />
+            <div className="notif-search-box" style={{ width: '160px' }}>
+              <Search size={12} style={{ color: '#9ca3af', flexShrink: 0, marginRight: '6px' }} />
               <input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Search…"
-                className="form-input"
-                style={{ paddingLeft: '24px', height: '26px', width: '160px', fontSize: '12px' }}
               />
+              {search && (
+                <button onClick={() => setSearch('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', padding: '0 2px' }} title="Clear search">
+                  <X size={12} />
+                </button>
+              )}
             </div>
             <button onClick={load} className="btn btn-outline btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {loading ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={11} />}
@@ -73,11 +76,8 @@ export default function CardTableView({ tableId, cards: propCards, onEditCard, a
         )}
       </div>
 
-      {error && (
-        <div style={{ padding: '6px 12px', background: '#fef2f2', borderBottom: '1px solid #fca5a5', fontSize: '12px', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <AlertCircle size={12} /> Could not load cards.
-        </div>
-      )}
+
+
 
       {!isLive && !displayCards.length && (
         <div className="empty-state">
@@ -86,8 +86,8 @@ export default function CardTableView({ tableId, cards: propCards, onEditCard, a
       )}
 
       {(isLive || displayCards.length > 0) && (
-        <div className="table-wrapper">
-          <table className="data-table">
+        <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <table className="data-table" style={{ flexShrink: 0 }}>
             <thead>
               <tr>
                 <th className="col-sr">#</th>
@@ -130,17 +130,7 @@ export default function CardTableView({ tableId, cards: propCards, onEditCard, a
                       </td>
                     </tr>
                   ))
-                : displayCards.length === 0
-                  ? (
-                    <tr>
-                      <td colSpan={8}>
-                        <div className="empty-state">
-                          <p>{search ? `No cards matching "${search}"` : 'No cards found.'}</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                  : displayCards.map((card, idx) => {
+                : displayCards.map((card, idx) => {
                       const d      = card.field_data || card.fields || {};
                       const status = card.status || 'pending';
                       const cfg    = STATUS_BADGE[status] || STATUS_BADGE.pending;
@@ -210,6 +200,28 @@ export default function CardTableView({ tableId, cards: propCards, onEditCard, a
               }
             </tbody>
           </table>
+
+          {/* Empty state — sibling to table, fills remaining height */}
+          {!loading && displayCards.length === 0 && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center', minHeight: '240px' }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(37,99,235,0.12)', border: '1px solid #bfdbfe', marginBottom: '12px'
+              }}>
+                <CreditCard size={30} />
+              </div>
+              <div style={{ maxWidth: '340px' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0' }}>
+                  No ID Cards Found
+                </h4>
+                <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                  {search ? `No cards match "${search}"` : 'There are no ID card records in this table yet.'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

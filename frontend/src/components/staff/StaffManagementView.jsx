@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Plus, Pen, Eye, Trash2, ToggleRight, Link,
-  Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Plus, Pen, Eye, Trash2, ToggleRight, Link, UsersRound, UserCog, Camera,
+  Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   RefreshCw, Loader2, AlertCircle, Info, ListCheck
 } from 'lucide-react';
+
 import { staffApi, operatorApi, assistantApi, photographerApi } from '../../services/api';
 
 /*
@@ -54,12 +55,15 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
         setStaffList(list);
         setTotal(res.count || res.total || list.length);
       }
-    } catch {
-      setError(true);
+    } catch (err) {
+      console.warn('Load staff list error:', err);
+      setStaffList([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   }, [page, search, statusTab, pageSize, isAssistant, isPhotographer]);
+
 
   useEffect(() => { load(); }, [load]);
 
@@ -130,7 +134,7 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
   };
 
 
-  const title = isAssistant ? 'Manage Assistant' : isPhotographer ? 'Manage Captures' : 'Manage Operator';
+  const title = isAssistant ? 'Manage Assistant' : isPhotographer ? 'Manage Photographer' : 'Manage Operator';
 
   return (
     <div className="view-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -160,15 +164,18 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
 
           <div className="action-divider" />
 
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={12} style={{ position: 'absolute', left: '8px', color: '#9ca3af', pointerEvents: 'none' }} />
+          <div className="notif-search-box" style={{ width: '200px' }}>
+            <Search size={13} style={{ color: '#9ca3af', flexShrink: 0, marginRight: '6px' }} />
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search staff..."
-              className="form-input"
-              style={{ paddingLeft: '26px', height: '28px', width: '180px', fontSize: '12px' }}
             />
+            {search && (
+              <button onClick={() => setSearch('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', padding: '0 2px' }} title="Clear search">
+                <X size={13} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -201,114 +208,132 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
       </div>
 
       {/* ── TABLE CONTAINER ── */}
-      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto' }}>
-        <table className="data-table" id="staff-table">
+      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <table className="data-table" id="staff-table" style={{ flexShrink: 0 }}>
           <thead>
             <tr>
-              <th style={{ width: '32px' }}></th>
+              <th style={{ width: '45px', textAlign: 'center' }}>S. No.</th>
               {isAssistant && <th>Client</th>}
-              <th>Name</th>
-              <th>Email</th>
-              <th className="text-center">Phone</th>
-              <th className="text-center">Status</th>
-              <th className="text-center">Created At</th>
-              <th className="text-center">Updated At</th>
-              <th className="text-center" title="Log">Log</th>
+              <th style={{ width: 'auto' }}>Name</th>
+              <th style={{ width: '180px' }}>Email</th>
+              <th style={{ width: '110px', textAlign: 'center' }}>Phone</th>
+              <th style={{ width: '80px', textAlign: 'center' }}>Status</th>
+              <th style={{ width: '120px', textAlign: 'center' }}>Created At</th>
+              <th style={{ width: '120px', textAlign: 'center' }}>Updated At</th>
+              <th style={{ width: '45px', textAlign: 'center' }} title="Log">Log</th>
             </tr>
           </thead>
           <tbody id="staff-table-body">
-            {loading
-              ? Array.from({ length: 15 }).map((_, i) => (
-                  <tr key={i} className="skeleton-row">
-                    {/* Checkbox */}
-                    <td><div className="skeleton" style={{ width: '16px', height: '16px', borderRadius: '3px', margin: '0 auto' }} /></td>
-                    {/* Client (assistant only) */}
-                    {isAssistant && <td><div className="skeleton skeleton-cell-mid" /></td>}
-                    {/* Name */}
-                    <td><div className="skeleton" style={{ height: '13px', width: `${65 + (i % 4) * 8}%` }} /></td>
-                    {/* Email */}
-                    <td><div className="skeleton" style={{ height: '13px', width: `${55 + (i % 3) * 10}%` }} /></td>
-                    {/* Phone */}
-                    <td style={{ textAlign: 'center' }}><div className="skeleton" style={{ height: '13px', width: '72%', margin: '0 auto' }} /></td>
-                    {/* Status Badge */}
-                    <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-badge" style={{ margin: '0 auto' }} /></td>
-                    {/* Created At */}
-                    <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto' }} /></td>
-                    {/* Updated At */}
-                    <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto', width: '75%' }} /></td>
-                    {/* Log / Action buttons */}
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
-                        <div className="skeleton skeleton-cell-btn" style={{ width: '26px', height: '26px', borderRadius: '4px' }} />
-                        <div className="skeleton skeleton-cell-btn" style={{ width: '26px', height: '26px', borderRadius: '4px' }} />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              : filtered.length === 0
-                ? (
-                  <tr className="empty-row">
-                    <td colSpan={isAssistant ? 9 : 8}>
-                      <div className="empty-state" style={{ textAlign: 'center', padding: '40px 16px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>No Records Found</h3>
-                        <p style={{ fontSize: '12px', color: '#94a3b8' }}>{search ? `No matching "${search}"` : 'No staff found for current filters.'}</p>
-                      </div>
-                    </td>
-                  </tr>
-                )
-                : filtered.map((s, idx) => {
-                    const name = s.name || s.full_name || s.user?.get_full_name || s.username || s.user?.username || `Staff #${s.id || idx}`;
-                    const email = s.email || s.user?.email || '—';
-                    const phone = s.phone || s.user?.phone || '—';
-                    const isActive = (s.status || (s.user?.is_active ? 'active' : 'inactive')).toLowerCase() === 'active';
-                    const isSel = s.id === selected;
-                    return (
-                      <tr
-                        key={s.id || idx}
-                        className={isSel ? 'selected' : ''}
-                        onClick={() => setSelected(isSel ? null : s.id)}
-                      >
-                        <td className="col-checkbox text-center">
-                          <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
-                        </td>
-                        {isAssistant && <td style={{ fontWeight: 600, color: '#374151' }}>{s.clientName || '—'}</td>}
-                        <td style={{ fontWeight: 600 }}>{name}</td>
-                        <td style={{ color: '#6b7280', fontSize: '12px' }}>{email}</td>
-                        <td className="text-center" style={{ color: '#6b7280', fontSize: '12px' }}>{phone}</td>
-                        <td className="text-center">
-                          <span className={`badge ${isActive ? 'badge-success' : 'badge-neutral'}`}>
-                            {isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="text-center" style={{ fontSize: '12px', color: '#6b7280' }}>{formatDate(s.created_at)}</td>
-                        <td className="text-center" style={{ fontSize: '12px', color: '#6b7280' }}>{formatDate(s.updated_at)}</td>
-                        <td className="text-center">
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <button
-                              className="operator-history-trigger"
-                              onClick={(e) => { e.stopPropagation(); addToast?.(`History for ${name}`, 'info'); }}
-                              title="View login history"
-                              style={{ width: '26px', height: '26px', border: 'none', borderRadius: '2px', background: 'rgba(37,99,235,0.1)', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <Info size={13} />
-                            </button>
-                            <button
-                              className="operator-assignment-history-trigger"
-                              onClick={(e) => { e.stopPropagation(); addToast?.(`Assignments for ${name}`, 'info'); }}
-                              title="View assignment timeline"
-                              style={{ width: '26px', height: '26px', border: 'none', borderRadius: '2px', background: '#ffedd5', color: '#92400e', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <ListCheck size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-            }
+            {loading ? (
+              Array.from({ length: 15 }).map((_, i) => (
+                <tr key={i} className="skeleton-row">
+                  <td><div className="skeleton" style={{ width: '16px', height: '16px', borderRadius: '3px', margin: '0 auto' }} /></td>
+                  {isAssistant && <td><div className="skeleton skeleton-cell-mid" /></td>}
+                  <td><div className="skeleton" style={{ height: '13px', width: `${65 + (i % 4) * 8}%` }} /></td>
+                  <td><div className="skeleton" style={{ height: '13px', width: `${55 + (i % 3) * 10}%` }} /></td>
+                  <td style={{ textAlign: 'center' }}><div className="skeleton" style={{ height: '13px', width: '72%', margin: '0 auto' }} /></td>
+                  <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-badge" style={{ margin: '0 auto' }} /></td>
+                  <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto' }} /></td>
+                  <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto', width: '75%' }} /></td>
+                  <td style={{ textAlign: 'center' }}>
+                    <div className="skeleton skeleton-cell-btn" style={{ width: '22px', height: '22px', borderRadius: '4px', margin: '0 auto' }} />
+                  </td>
+                </tr>
+              ))
+            ) : (
+              filtered.map((s, idx) => {
+                  const name = s.name || s.full_name || s.user?.get_full_name || s.username || s.user?.username || `Staff #${s.id || idx}`;
+                  const email = s.email || s.user?.email || '—';
+                  const phone = s.phone || s.user?.phone || '—';
+                  const isActive = (s.status || (s.user?.is_active ? 'active' : 'inactive')).toLowerCase() === 'active';
+                  const isSel = s.id === selected;
+
+                  const formatDT = (str) => {
+                    if (!str) return '—';
+                    try {
+                      const d = new Date(str);
+                      if (isNaN(d.getTime())) return str;
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const year = String(d.getFullYear()).slice(-2);
+                      const hours = String(d.getHours()).padStart(2, '0');
+                      const mins = String(d.getMinutes()).padStart(2, '0');
+                      return `${day}/${month}/${year} ${hours}:${mins}`;
+                    } catch { return str; }
+                  };
+
+                  return (
+                    <tr
+                      key={s.id || idx}
+                      className={isSel ? 'selected' : ''}
+                      onClick={() => setSelected(isSel ? null : s.id)}
+                      data-staff-id={s.id}
+                    >
+                      <td className="col-checkbox text-center" style={{ width: '45px' }}>
+                        <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
+                      </td>
+                      {isAssistant && <td><span style={{ fontSize: '11px', color: '#475569', fontWeight: 500 }}>{s.client_name || s.client?.name || '—'}</span></td>}
+                      <td style={{ width: 'auto' }}>
+                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{name}</span>
+                      </td>
+                      <td style={{ width: '180px', color: '#6b7280', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</td>
+                      <td className="text-center" style={{ width: '110px', color: '#6b7280', fontSize: '11px' }}>{phone}</td>
+                      <td className="text-center" style={{ width: '80px' }}>
+                        <span className={`badge ${isActive ? 'badge-success' : 'badge-neutral'}`}>
+                          {isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="text-center" style={{ width: '120px', fontSize: '11px', color: '#64748b' }}>{formatDT(s.created_at)}</td>
+                      <td className="text-center" style={{ width: '120px', fontSize: '11px', color: '#64748b' }}>{formatDT(s.updated_at)}</td>
+                      <td className="text-center" style={{ width: '45px' }}>
+                        <button
+                          className="client-history-trigger"
+                          onClick={(e) => { e.stopPropagation(); addToast?.(`Log: ${name}`, 'info'); }}
+                          title="View log"
+                          style={{ width: '22px', height: '22px', border: 'none', borderRadius: '3px', background: 'rgba(37,99,235,0.1)', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Info size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
           </tbody>
         </table>
+
+        {/* Empty state — sibling to table so flex:1 fills remaining height */}
+        {!loading && filtered.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center', minHeight: '240px' }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(37,99,235,0.12)', border: '1px solid #bfdbfe', marginBottom: '12px'
+            }}>
+              {isAssistant ? <UsersRound size={30} /> : isPhotographer ? <Camera size={30} /> : <UserCog size={30} />}
+            </div>
+            <div style={{ maxWidth: '340px' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0' }}>
+                {isAssistant ? 'No Assistant Accounts Found' : isPhotographer ? 'No Photographer Accounts Found' : 'No Operator Accounts Found'}
+              </h4>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                {search ? `No staff records match "${search}"` : `There are no ${title.toLowerCase()} accounts registered yet.`}
+              </p>
+            </div>
+            {!search && (
+              <button
+                onClick={() => onOpenActionDrawer?.(isAssistant ? 'add-assistant' : isPhotographer ? 'add-photographer' : 'add-operator')}
+                className="btn btn-primary btn-sm"
+                style={{ marginTop: '14px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', padding: '7px 16px', borderRadius: '5px' }}
+              >
+                <Plus size={14} /> Add First {isAssistant ? 'Assistant' : isPhotographer ? 'Photographer' : 'Operator'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
 
       {/* ── STICKY BOTTOM PAGINATION BAR ── */}
       <div className="pagination-bar" id="paginationBar">

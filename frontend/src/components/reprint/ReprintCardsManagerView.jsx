@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Printer, CheckCircle2, Search, RefreshCw, Loader2, AlertCircle,
+  Printer, CheckCircle2, Search, X, RefreshCw, Loader2, AlertCircle,
   FileCheck, RotateCcw, XCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { cardApi } from '../../services/api';
@@ -77,15 +77,18 @@ export default function ReprintCardsManagerView({ addToast }) {
 
           <div className="action-divider" />
 
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={12} style={{ position: 'absolute', left: '8px', color: '#9ca3af', pointerEvents: 'none' }} />
+          <div className="notif-search-box" style={{ width: '220px' }}>
+            <Search size={13} style={{ color: '#9ca3af', flexShrink: 0, marginRight: '6px' }} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search reprint requests..."
-              className="form-input"
-              style={{ paddingLeft: '26px', height: '28px', width: '200px', fontSize: '12px' }}
             />
+            {search && (
+              <button onClick={() => setSearch('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', padding: '0 2px' }} title="Clear search">
+                <X size={13} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -102,17 +105,17 @@ export default function ReprintCardsManagerView({ addToast }) {
         </div>
       </div>
 
-      {/* ── TABLE WRAPPER ── */}
-      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto' }}>
-        <table className="data-table">
+      {/* ── TABLE CONTAINER ── */}
+      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <table className="data-table" style={{ flexShrink: 0 }}>
           <thead>
             <tr>
-              <th style={{ width: '32px' }}></th>
+              <th style={{ width: '45px', textAlign: 'center' }}>S. No.</th>
               <th>Card / Student Name</th>
-              <th>Reason</th>
-              <th>Requested By</th>
-              <th className="text-center">Status</th>
-              <th className="text-center">Requested Date</th>
+              <th style={{ width: '180px' }}>Reprint Reason</th>
+              <th style={{ width: '140px' }}>Requested By</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>Status</th>
+              <th style={{ width: '140px', textAlign: 'center' }}>Requested Date</th>
             </tr>
           </thead>
           <tbody>
@@ -133,19 +136,7 @@ export default function ReprintCardsManagerView({ addToast }) {
                     <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto' }} /></td>
                   </tr>
                 ))
-              : filtered.length === 0
-                ? (
-                  <tr className="empty-row">
-                    <td colSpan={6}>
-                      <div className="empty-state" style={{ textAlign: 'center', padding: '40px 16px' }}>
-                        <Printer size={28} style={{ color: '#d1d5db', marginBottom: '8px' }} />
-                        <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>No Reprint Requests</h3>
-                        <p style={{ fontSize: '12px', color: '#94a3b8' }}>{search ? `No matching "${search}"` : 'No cards currently pending reprint in this queue.'}</p>
-                      </div>
-                    </td>
-                  </tr>
-                )
-                : filtered.map((r, idx) => {
+              : filtered.map((r, idx) => {
                     const name = r.name || r.field_data?.NAME || `Card #${r.card_id || r.id || idx}`;
                     const reason = r.reason || r.reprint_reason || 'Information Update';
                     const requestedBy = r.requested_by || r.username || 'Staff';
@@ -159,8 +150,8 @@ export default function ReprintCardsManagerView({ addToast }) {
                         <td><span className="badge badge-warning">{reason}</span></td>
                         <td style={{ color: '#6b7280', fontSize: '12px' }}>{requestedBy}</td>
                         <td className="text-center">
-                          <span className={`badge ${currentStep === 'confirmed' ? 'badge-success' : 'badge-pending'}`}>
-                            {currentStep === 'confirmed' ? 'Confirmed' : 'Pending Review'}
+                          <span className={`badge ${r.status === 'confirmed' ? 'badge-success' : 'badge-neutral'}`}>
+                            {r.status || 'pending'}
                           </span>
                         </td>
                         <td className="text-center" style={{ fontSize: '12px', color: '#6b7280' }}>
@@ -168,10 +159,32 @@ export default function ReprintCardsManagerView({ addToast }) {
                         </td>
                       </tr>
                     );
-                  })
+                })
             }
           </tbody>
         </table>
+
+        {/* Empty state — sibling to table, fills remaining height */}
+        {!loading && filtered.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center', minHeight: '240px' }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(37,99,235,0.12)', border: '1px solid #bfdbfe', marginBottom: '12px'
+            }}>
+              <Printer size={30} />
+            </div>
+            <div style={{ maxWidth: '340px' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0' }}>
+                No Reprint Requests Found
+              </h4>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                {search ? `No matching "${search}"` : 'No cards currently pending reprint in this queue.'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── STICKY BOTTOM PAGINATION BAR ── */}

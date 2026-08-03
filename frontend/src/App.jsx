@@ -17,11 +17,12 @@ import ConfirmDeleteModal from './components/common/ConfirmDeleteModal';
 import ToastNotification from './components/common/ToastNotification';
 import OldVersionWarningModal from './components/idcard/OldVersionWarningModal';
 import ReprintCardsManagerView from './components/reprint/ReprintCardsManagerView';
-import GroupSettingsView from './components/settings/GroupSettingsView';
+import TableSettingsView from './components/settings/TableSettingsView';
 import ProfileSettingsView from './components/settings/ProfileSettingsView';
+
 import TutorialGuideView from './components/tutorial/TutorialGuideView';
 import ManageFeaturesView from './components/pro/ManageFeaturesView';
-import LoginView from './components/auth/LoginView';
+import AuthFlowContainer from './components/auth/AuthFlowContainer';
 import Preloader from './components/common/Preloader';
 import { authApi } from './services/api';
 
@@ -102,10 +103,10 @@ export default function App() {
     );
   }
 
-  // ── Login ───────────────────────────────────────────────────────────────────
+  // ── Auth Flow ─────────────────────────────────────────────────────────────────
   if (bootState === BOOT.UNAUTH) {
     return (
-      <LoginView
+      <AuthFlowContainer
         onLoginSuccess={(user) => {
           if (user) { setCurrentUser(user); setUserRole(user.role || 'super_admin'); }
           setBootState(BOOT.AUTH);
@@ -239,10 +240,11 @@ export default function App() {
             />
           )}
 
-          {/* ── Schema / Group Settings ── */}
+          {/* ── Table Settings ── */}
           {activeTab === 'schema' && (
-            <GroupSettingsView addToast={addToast} />
+            <TableSettingsView addToast={addToast} />
           )}
+
 
           {/* ── System/Control Panel ── */}
           {activeTab === 'panel' && (

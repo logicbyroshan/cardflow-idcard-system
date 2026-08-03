@@ -1,4 +1,118 @@
 @import url('https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@300;400;500;600;700&display=swap');
+@import '../../static/css/manage-panel.css';
+
+/* ── Universal Search Box Control ── */
+.notif-search-box,
+.search-box,
+.ui-search-box {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 5px !important;
+  height: 28px !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+.notif-search-box:focus-within,
+.search-box:focus-within,
+.ui-search-box:focus-within {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+
+.notif-search-box input,
+.search-box input,
+.ui-search-box input {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  color: #0f172a !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100% !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.notif-search-box input::placeholder,
+.search-box input::placeholder,
+.ui-search-box input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* ── Universal Action Bar & Control Heights ── */
+.action-bar,
+.notif-actions-bar {
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  padding: 0 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: #f9fafb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  gap: 8px !important;
+}
+
+.action-bar-left,
+.notif-actions-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: 1 !important;
+}
+
+.action-bar-right,
+.notif-actions-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* Master Action Bar Button Sizing */
+.action-bar .btn,
+.notif-actions-bar .btn,
+.action-bar-left .btn,
+.action-bar-right .btn {
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+}
+
+/* Selects and Date Inputs in Action Bar */
+.action-bar select,
+.action-bar input[type="date"],
+.notif-actions-bar select,
+.notif-actions-bar input[type="date"] {
+  height: 28px !important;
+  min-height: 28px !important;
+  font-size: 12px !important;
+  border-radius: 4px !important;
+  border: 1px solid #cbd5e1 !important;
+  background-color: #ffffff !important;
+  padding: 0 8px !important;
+  color: #334155 !important;
+  box-sizing: border-box !important;
+}
 
 /* ============================================================
    CardFlow Design System — Faithful port of the original UI
@@ -82,7 +196,7 @@
   --space-xl: 16px;
 
   /* Layout */
-  --sidebar-width: 160px;
+  --sidebar-width: 175px;
   --topbar-height: 40px;
 
   /* Z-index */
@@ -382,6 +496,16 @@ textarea {
   background: var(--bg-body);
 }
 
+.page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+
 /* ── Topbar / Header ── */
 .topbar {
   height: 40px;
@@ -615,13 +739,9 @@ textarea {
   color: var(--gray-400);
 }
 
-/* ── Page content ── */
-.page-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: var(--bg-body);
-}
+/* ── Page content (kept for legacy compatibility) ── */
+/* Note: primary .page-content styles are at line ~385 above */
+
 
 /* ============================================================
    BUTTONS — match original exactly
@@ -731,25 +851,33 @@ textarea {
 }
 
 .btn-neutral {
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
-  color: #4338ca;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 .btn-neutral:hover:not(:disabled) {
-  background: #e0e7ff;
-  border-color: #a5b4fc;
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
 }
 
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--gray-300);
-  color: var(--gray-700);
+.btn-outline,
+.btn-outline-primary {
+  background: #ffffff !important;
+  border: 1px solid #bfdbfe !important;
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08) !important;
 }
 
-.btn-outline:hover:not(:disabled) {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
+.btn-outline:hover:not(:disabled),
+.btn-outline-primary:hover:not(:disabled) {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
 }
 
 .btn-icon {
@@ -2356,4 +2484,66 @@ input[type="checkbox"] {
 
 .dashboard-table-skeleton-row td {
   padding: 8px 10px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PAGE & TAB SMOOTH TRANSITIONS — no more splash / flicker
+   ───────────────────────────────────────────────────────────── */
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Applied to top-level page containers */
+.view-container,
+.page-content,
+[class*="view-container"],
+[class*="page-wrap"] {
+  animation: pageFadeIn 0.18s ease forwards;
+  will-change: opacity, transform;
+}
+
+/* Tab content panels */
+.tab-panel,
+.tab-content,
+[role="tabpanel"] {
+  animation: pageFadeIn 0.15s ease forwards;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EMPTY ROW — used when a table has 0 records
+   thead is always shown; empty state lives inside tbody
+   ───────────────────────────────────────────────────────────── */
+.empty-row td {
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+.empty-row:hover td {
+  background: transparent !important;
+}
+
+/* Generic empty state content block used inside empty-row */
+.empty-state-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);
+  border: 1px solid #bfdbfe;
+  margin-bottom: 12px;
 }

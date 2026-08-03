@@ -37,7 +37,7 @@ const VIDEO_PLAYLIST = [
   },
   {
     id: 'assistant',
-    title: '4. How to Create Assitent Accounts',
+    title: '4. How to Create Assistant Accounts',
     author: 'CardFlow System Guide',
     duration: '2:05',
     embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0',
@@ -74,7 +74,7 @@ export default function TutorialGuideView() {
     switch (id) {
       case 'check-update': return lang === 'hi' ? 'डेटा जाँचे & बदलें' : 'Check & Update Data';
       case 'reprint': return lang === 'hi' ? 'Reprint गाइड' : 'How to Reprint';
-      case 'assistant': return lang === 'hi' ? 'Assistant गाइड' : 'Create Assitent';
+      case 'assistant': return lang === 'hi' ? 'Assistant गाइड' : 'Create Assistant';
       case 'others': return lang === 'hi' ? 'अन्य सुविधाएँ' : 'Others';
       default: return id;
     }
@@ -95,84 +95,50 @@ export default function TutorialGuideView() {
         {/* ── LEFT COLUMN: Direct PDF Viewer (No Double Nested Apps) ── */}
         <div style={{ overflowY: 'hidden', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e8f0' }}>
           
-          {/* Top Bar Navigation Tabs */}
-          <div style={{
+          {/* Top Bar Navigation Tabs — matches Manage CardFlow (panel-tabs) UI standard */}
+          <div className="panel-tabs" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '10px 20px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.03)', flexWrap: 'wrap', gap: '12px'
+            background: '#f9fafb', borderBottom: '1px solid #e5e7eb',
+            flexShrink: 0, paddingRight: '16px'
           }}>
             {/* Tabs List */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
-              <button
-                onClick={() => setActiveTab('check-update')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 16px',
-                  fontSize: '12px', fontWeight: activeTab === 'check-update' ? 700 : 500,
-                  borderRadius: '6px', border: 'none', cursor: 'pointer',
-                  background: activeTab === 'check-update' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'check-update' ? 'rgb(0, 80, 210)' : '#64748b',
-                  boxShadow: activeTab === 'check-update' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  fontFamily: 'var(--font-family)', transition: 'all 0.15s'
-                }}
-              >
-                <CheckSquare size={14} />
-                <span>{getTabLabel('check-update')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('reprint')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 16px',
-                  fontSize: '12px', fontWeight: activeTab === 'reprint' ? 700 : 500,
-                  borderRadius: '6px', border: 'none', cursor: 'pointer',
-                  background: activeTab === 'reprint' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'reprint' ? 'rgb(0, 80, 210)' : '#64748b',
-                  boxShadow: activeTab === 'reprint' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  fontFamily: 'var(--font-family)', transition: 'all 0.15s'
-                }}
-              >
-                <Printer size={14} />
-                <span>{getTabLabel('reprint')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('assistant')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 16px',
-                  fontSize: '12px', fontWeight: activeTab === 'assistant' ? 700 : 500,
-                  borderRadius: '6px', border: 'none', cursor: 'pointer',
-                  background: activeTab === 'assistant' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'assistant' ? 'rgb(0, 80, 210)' : '#64748b',
-                  boxShadow: activeTab === 'assistant' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  fontFamily: 'var(--font-family)', transition: 'all 0.15s'
-                }}
-              >
-                <UserPlus size={14} />
-                <span>{getTabLabel('assistant')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('others')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 16px',
-                  fontSize: '12px', fontWeight: activeTab === 'others' ? 700 : 500,
-                  borderRadius: '6px', border: 'none', cursor: 'pointer',
-                  background: activeTab === 'others' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'others' ? 'rgb(0, 80, 210)' : '#64748b',
-                  boxShadow: activeTab === 'others' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  fontFamily: 'var(--font-family)', transition: 'all 0.15s'
-                }}
-              >
-                <MoreHorizontal size={14} />
-                <span>{getTabLabel('others')}</span>
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0, overflowX: 'auto' }}>
+              {[
+                { id: 'check-update', Icon: CheckSquare },
+                { id: 'reprint',      Icon: Printer },
+                { id: 'assistant',    Icon: UserPlus },
+                { id: 'others',       Icon: MoreHorizontal },
+              ].map(({ id, Icon }) => {
+                const isActive = activeTab === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className={`panel-tab${isActive ? ' active' : ''}`}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '9px 16px', fontSize: '12px', fontWeight: isActive ? 600 : 500,
+                      border: 'none',
+                      borderBottom: `2px solid ${isActive ? 'rgb(0, 80, 210)' : 'transparent'}`,
+                      background: isActive ? 'rgba(0, 80, 210, 0.06)' : 'transparent',
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      color: isActive ? 'rgb(0, 80, 210)' : '#6b7280',
+                      fontFamily: 'var(--font-family)',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <Icon size={13} />
+                    <span>{getTabLabel(id)}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Language Switcher */}
             <button
               onClick={() => setLang((prev) => (prev === 'hi' ? 'en' : 'hi'))}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px',
                 borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff',
                 color: '#334155', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                 fontFamily: 'var(--font-family)'

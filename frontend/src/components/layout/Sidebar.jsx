@@ -12,39 +12,45 @@ import {
 // Role-gated nav structure — mirrors the Django template logic
 const NAV_CONFIG = {
   super_admin: [
-    { id: 'dashboard', label: 'Dashboard', Icon: Home },
+    { id: 'dashboard', label: 'Manage Dashboard', Icon: Home },
     {
-      section: 'User Management',
+      section: 'Admin Management',
       items: [
-        { id: 'organisations',label: 'Manage Organisation',  Icon: Building   },
-        { id: 'clients',      label: 'Manage Client',        Icon: Users      },
         { id: 'staff',        label: 'Manage Operator',      Icon: UserCog     },
-        { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound  },
-        { id: 'photographers',label: 'Manage Captures',       Icon: Camera      },
+        { id: 'photographers',label: 'Manage Photographer',   Icon: Camera      },
       ],
     },
     {
-      section: 'Site Management',
+      section: 'Client Management',
       items: [
-        { id: 'panel',   label: 'Manage Panel', Icon: SlidersHorizontal },
-        { id: 'pro',     label: 'Manage Features',     Icon: Gem               },
+        { id: 'organisations',label: 'Manage Organisation',  Icon: Building   },
+        { id: 'clients',      label: 'Manage Manager',       Icon: Users      },
+        { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound  },
+      ],
+    },
+    {
+      section: 'CardFlow Management',
+      items: [
+        { id: 'panel',   label: 'Manage CardFlow',     Icon: SlidersHorizontal },
+        { id: 'pro',     label: 'Manage Pro Features', Icon: Gem               },
       ],
     },
   ],
   operator: [
-    { id: 'dashboard', label: 'Dashboard', Icon: Home },
+    { id: 'dashboard', label: 'Manage Dashboard', Icon: Home },
     {
-      section: 'User Management',
+      section: 'Client Management',
       items: [
         { id: 'organisations',label: 'Manage Organisation',  Icon: Building   },
-        { id: 'clients',      label: 'Manage Client',        Icon: Users      },
+        { id: 'clients',      label: 'Manage Manager',       Icon: Users      },
         { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound },
       ],
     },
   ],
 
+
   client: [
-    { id: 'dashboard', label: 'Dashboard', Icon: Home },
+    { id: 'dashboard', label: 'Manage Dashboard', Icon: Home },
     {
       section: 'Management',
       items: [
@@ -54,21 +60,22 @@ const NAV_CONFIG = {
     {
       section: 'ID Card Management',
       items: [
-        { id: 'schema',   label: 'Group Setting', Icon: SlidersHorizontal },
-        { id: 'cards',    label: 'ID Card Group', Icon: ShieldCheck        },
+        { id: 'schema',   label: 'Table Setting', Icon: SlidersHorizontal },
+        { id: 'cards',    label: 'Tables',        Icon: ShieldCheck        },
         { id: 'settings', label: 'Settings',       Icon: UserCog           },
       ],
     },
   ],
   assistant: [
-    { id: 'dashboard', label: 'Dashboard', Icon: Home },
+    { id: 'dashboard', label: 'Manage Dashboard', Icon: Home },
     {
       section: 'ID Card Management',
       items: [
-        { id: 'cards',    label: 'ID Card Group', Icon: ShieldCheck        },
+        { id: 'cards',    label: 'Tables',        Icon: ShieldCheck        },
       ],
     },
   ],
+
 };
 
 const ROLE_COLORS = {
@@ -108,7 +115,7 @@ export default function Sidebar({ activeTab, setActiveTab, userRole = 'super_adm
         <img
           src="/cardflow_logo_brand.png"
           alt="CardFlow"
-          style={{ maxHeight: '38px', maxWidth: '145px', width: '100%', objectFit: 'contain' }}
+          style={{ maxHeight: '42px', maxWidth: '160px', width: '100%', objectFit: 'contain' }}
         />
       </div>
 

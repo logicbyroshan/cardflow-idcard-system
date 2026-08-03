@@ -1,0 +1,310 @@
+/* ============================================================
+   Auth Flow — Seamless 3D Product Canvas & CardFlow Theme
+   ============================================================ */
+
+@keyframes floatProduct1 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-16px) rotate(3deg); }
+}
+
+@keyframes floatProduct2 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(18px) rotate(-4deg); }
+}
+
+@keyframes floatProduct3 {
+  0%, 100% { transform: scale(1) translateY(0px); }
+  50% { transform: scale(1.05) translateY(-14px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.65; transform: scale(1); }
+  50% { opacity: 0.88; transform: scale(1.08); }
+}
+
+/* Fullscreen Canvas with CardFlow Indigo-Violet Radial Glow */
+.auth-wrapper {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #667eea 0%, #4338ca 35%, #2e1065 70%, #0f0728 100%);
+  font-family: "Saira Semi Condensed", -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Radiant Center Ambient Glow */
+.auth-ambient-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1000px, 92vw);
+  height: min(1000px, 92vh);
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.45) 0%, rgba(102, 126, 234, 0.15) 50%, rgba(15, 7, 40, 0) 75%);
+  filter: blur(95px);
+  pointer-events: none;
+  z-index: 1;
+  animation: pulseGlow 8s ease-in-out infinite;
+}
+
+/* Central Frosted Glass Card */
+.auth-card {
+  position: relative;
+  width: 410px;
+  max-width: 92vw;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(34px) saturate(210%);
+  -webkit-backdrop-filter: blur(34px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 24px;
+  box-shadow:
+    0 35px 75px -15px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    0 0 45px rgba(129, 140, 248, 0.22);
+  padding: 38px 34px;
+  color: #ffffff;
+  z-index: 10;
+  box-sizing: border-box;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.auth-card:hover {
+  box-shadow:
+    0 42px 85px -15px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    0 0 55px rgba(129, 140, 248, 0.32);
+}
+
+/* Floating 3D Product Graphic Elements with Seamless Canvas Blending */
+.auth-bg-product {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.auth-bg-product img {
+  mix-blend-mode: lighten;
+  border-radius: 24px;
+  opacity: 0.92;
+}
+
+.auth-bg-product.top-left-lanyard {
+  top: 6%;
+  left: 7%;
+  animation: floatProduct1 8.5s ease-in-out infinite;
+}
+
+.auth-bg-product.top-right-diary {
+  top: 6%;
+  right: 7%;
+  animation: floatProduct2 9.5s ease-in-out infinite;
+}
+
+.auth-bg-product.bottom-left-cards {
+  bottom: 4%;
+  left: 7%;
+  animation: floatProduct3 10s ease-in-out infinite;
+}
+
+.auth-bg-product.bottom-right-badge {
+  bottom: 6%;
+  right: 9%;
+  animation: floatProduct1 9s ease-in-out infinite;
+}
+
+/* Header Typography */
+.auth-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.auth-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 6px 0;
+  text-align: left;
+  letter-spacing: 0.2px;
+}
+
+.auth-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+  text-align: left;
+}
+
+/* Form inputs & controls */
+.auth-field {
+  margin-bottom: 18px;
+}
+
+.auth-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 7px;
+  text-align: left;
+}
+
+.auth-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-icon {
+  position: absolute;
+  left: 14px;
+  color: #64748b;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.auth-input {
+  width: 100%;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  padding: 0 14px 0 42px;
+  font-size: 14px;
+  color: #0f172a;
+  box-sizing: border-box;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.auth-input::placeholder {
+  color: #94a3b8;
+}
+
+.auth-input:focus {
+  background: #ffffff;
+  border-color: #818cf8;
+  box-shadow:
+    0 0 0 3.5px rgba(129, 140, 248, 0.4),
+    0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.auth-flex-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  margin-bottom: 22px;
+}
+
+.auth-link {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.88);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+.auth-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+/* Primary Button with CardFlow Theme Colors */
+.auth-btn-primary {
+  width: 100%;
+  height: 44px;
+  background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 10px 25px -4px rgba(90, 103, 216, 0.55);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 6px;
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7b8ff5 0%, #6875ed 100%);
+  box-shadow: 0 14px 30px -4px rgba(90, 103, 216, 0.7);
+  transform: translateY(-1px);
+}
+
+.auth-btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.auth-btn-primary:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+/* Footer Link text */
+.auth-footer {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.auth-footer button {
+  color: #ffffff;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.auth-footer button:hover {
+  text-decoration: underline;
+}
+
+/* Alert / Error Box */
+.auth-error-box {
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 8px;
+  color: #fecaca;
+  font-size: 13px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(4px);
+}
+
+.auth-success-box {
+  padding: 10px 14px;
+  background: rgba(34, 197, 94, 0.25);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-radius: 8px;
+  color: #bbf7d0;
+  font-size: 13px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(4px);
+}

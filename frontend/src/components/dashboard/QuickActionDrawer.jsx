@@ -344,7 +344,7 @@ function OriginalClientDrawerForm({ onClose, addToast }) {
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.04em', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Cog size={13} /> GROUP SETTINGS
+                <Cog size={13} /> TABLE SETTINGS
               </div>
               <ToggleSwitch
                 checked={Object.values(groupPerms).every(Boolean)}
@@ -708,7 +708,7 @@ function OriginalOperatorDrawerForm({ onClose, addToast }) {
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.04em', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Cog size={13} /> GROUP SETTINGS
+                <Cog size={13} /> TABLE SETTINGS
               </div>
               <ToggleSwitch
                 checked={Object.values(groupPerms).every(Boolean)}
@@ -1251,7 +1251,7 @@ function OriginalAssistantDrawerForm({ onClose, addToast }) {
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.04em', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Cog size={13} /> GROUP SETTINGS
+                <Cog size={13} /> TABLE SETTINGS
               </div>
               <ToggleSwitch
                 checked={Object.values(groupPerms).every(Boolean)}
