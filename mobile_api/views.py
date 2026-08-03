@@ -4493,6 +4493,12 @@ def api_table_update_fields(request, table_id):
         if len(raw_fields) > MAX_FIELDS:
             return JsonResponse({'success': False, 'message': f'Maximum {MAX_FIELDS} fields allowed'}, status=400)
 
+        old_fields = table.fields if isinstance(table.fields, list) else []
+        old_fields_map = {
+            str(of.get('name', '')).strip().upper(): of
+            for of in old_fields if isinstance(of, dict) and of.get('name')
+        }
+
         validated = []
         for idx, f in enumerate(raw_fields):
             if not isinstance(f, dict):
@@ -4505,14 +4511,32 @@ def api_table_update_fields(request, table_id):
                 ftype = 'text'
             elif ftype in ('mother_photo', 'father_photo'):
                 ftype = 'rel_photo'
-            validated.append({
+
+            if 'mandatory' in f and f['mandatory'] is not None:
+                is_mandatory = bool(f['mandatory'])
+            elif name in old_fields_map:
+                is_mandatory = bool(old_fields_map[name].get('mandatory', False))
+            else:
+                is_mandatory = False
+
+            if 'show_path' in f and f['show_path'] is not None:
+                is_show_path = bool(f['show_path'])
+            elif name in old_fields_map:
+                is_show_path = bool(old_fields_map[name].get('show_path', False))
+            else:
+                is_show_path = False
+
+            field_item = {
                 'name': name,
                 'type': ftype,
                 'order': idx,
-                'mandatory': bool(f.get('mandatory', False)),
-            })
+                'mandatory': is_mandatory,
+            }
+            if is_show_path:
+                field_item['show_path'] = True
 
-        old_fields = table.fields if isinstance(table.fields, list) else []
+            validated.append(field_item)
+
         try:
             from importlib import import_module
             ma_views = import_module('mobile_app.views')

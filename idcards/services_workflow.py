@@ -66,12 +66,14 @@ class WorkflowService:
     # key = target status, value = list of source statuses that trigger the check
     FORWARD_IMAGE_CHECK: Dict[str, List[str]] = {
         'verified': ['pending'],       # pending → verified
-        'approved': ['verified'],      # verified → approved
+        'approved': ['verified', 'reprint'],      # verified → approved, reprint → approved
     }
 
     # Mandatory-field enforcement triggers (target_status, source_status)
     MANDATORY_FIELD_TRIGGERS = {
         ('verified', 'pending'),
+        ('approved', 'verified'),
+        ('approved', 'reprint'),
     }
 
     # Statuses that are read-only for client/client_staff roles
@@ -419,25 +421,26 @@ class WorkflowService:
         skipped_mandatory_ids: List[int] = []
         skipped_image_ids: List[int] = []
 
-        # ── 4. Mandatory field check (→ verified from pending) ──────
-        if enforce_required_validations and (target_status, 'pending') in cls.MANDATORY_FIELD_TRIGGERS:
-            pending_cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids, status='pending'))
+        # ── 4. Mandatory field check ──────
+        matching_triggers = {src for (tgt, src) in cls.MANDATORY_FIELD_TRIGGERS if tgt == target_status}
+        if enforce_required_validations and matching_triggers:
+            checked_cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids, status__in=matching_triggers))
             valid_ids = []
-            pending_ids = {c.id for c in pending_cards}
-            for card in pending_cards:
+            checked_ids = {c.id for c in checked_cards}
+            for card in checked_cards:
                 missing = cls._get_missing_mandatory_fields(card, table.fields or [])
                 if missing:
                     skipped_mandatory_ids.append(card.id)
                 else:
                     valid_ids.append(card.id)
-            # Non-pending cards skip mandatory check
-            non_pending_ids = [cid for cid in eligible_ids if cid not in pending_ids]
-            eligible_ids = valid_ids + non_pending_ids
+            # Unchecked cards skip mandatory check
+            unchecked_ids = [cid for cid in eligible_ids if cid not in checked_ids]
+            eligible_ids = valid_ids + unchecked_ids
 
             if not eligible_ids and skipped_mandatory_ids:
                 return ServiceResult(
                     success=False,
-                    message=f'All {len(skipped_mandatory_ids)} card(s) have missing required fields and cannot be verified.',
+                    message=f'All {len(skipped_mandatory_ids)} card(s) have missing required fields and cannot be moved.',
                     data={'skipped_count': len(skipped_mandatory_ids), 'skipped_ids': skipped_mandatory_ids}
                 )
 
