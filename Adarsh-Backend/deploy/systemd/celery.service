@@ -1,0 +1,15 @@
+[Unit]
+Description=Celery Worker Service
+After=network.target
+
+[Service]
+Type=forking
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/adarsh
+ExecStart=/var/www/adarsh/venv/bin/celery -A workers.celery_app multi start worker1     --pidfile=/var/run/celery/worker.pid     --logfile=/var/log/celery/worker.log     --loglevel=INFO -Q default,imports,exports,images,notifications
+ExecStop=/var/www/adarsh/venv/bin/celery -A workers.celery_app multi stopwait worker1     --pidfile=/var/run/celery/worker.pid
+Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+
+[Install]
+WantedBy=multi-user.target\n

@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}Group Settings - Adarsh ID Cards{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/group-setting.css' %}">
+{% endblock %}
+
+{% block extra_head %}
+  <script defer src="{% static 'js/vendor/xlsx.full.min.js' %}"></script>
+{% endblock %}
+
+{% block body_class %}class="group-setting-page"{% endblock %}
+
+{% block breadcrumb %}
+  {% if is_super_admin %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_admin_staff %}
+  <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_client or is_client_staff %}
+  <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% endif %}
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  {% if is_client or is_client_staff %}
+  <span class="breadcrumb-item active">Group Settings</span>
+  {% else %}
+  <a href="{% url 'manage_clients' %}" class="breadcrumb-item">Manage Clients</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  {% if client %}
+  <span class="breadcrumb-item active">{{ client.name }}{% if client.status != 'active' and show_inactive_in_breadcrumb %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %} - Group Settings</span>
+  {% else %}
+  <span class="breadcrumb-item active">Group Settings</span>
+  {% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block topbar_right %}
+  <div class="nav-right">
+    {% include 'partials/notification-bell.html' %}
+    <div class="page-switch-btns">
+      {% if client %}
+      <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-neutral" title="ID Card Group">
+        <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
+      </a>
+      {% endif %}
+      <a href="#" class="btn btn-md btn-primary" title="Group Setting">
+        <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
+      </a>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="main-content">
+    {% include 'partials/group-setting/action-bar.html' %}
+
+    <div id="gs-table-container"
+         hx-trigger="refreshTable from:body"
+         hx-get="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}"
+         hx-target="#gs-table-container"
+         hx-swap="innerHTML">
+      {% include 'partials/group-setting/table-container.html' %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block modals %}
+  {% include 'partials/group-setting/drawer.html' %}
+  {% include 'components/status-modal.html' with modal_id="status-modal" item_name="table" %}
+  {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="table" %}
+  {% include 'partials/components/create-xlsx-modal.html' %}
+{% endblock %}
+
+{% block page_vars %}
+  <script id="page-config" type="application/json">{"groupId": {{ group.id|default:"null" }}, "isClient": {{ is_client|yesno:"true,false" }}, "isClientStaff": {{ is_client_staff|yesno:"true,false" }} }</script>
+  <script>
+    var _cfg = JSON.parse(document.getElementById('page-config').textContent);
+    const GROUP_ID = _cfg.groupId;
+    const IS_CLIENT_ROLE = _cfg.isClient || _cfg.isClientStaff;
+  </script>
+{% endblock %}
+
+{% block page_js %}
+  <script defer src="{% static 'dist/js/group-setting.min.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      initHTMXFilters({
+        baseUrl: '{% if is_client or is_client_staff %}{% url "client:group_settings" %}{% else %}{% url "group_settings" client.id %}{% endif %}',
+        target:  '#gs-table-container',
+        searchInputId: 'searchInput',
+        filters: []
+      });
+    });
+  </script>
+  <script defer src="{% static 'js/create-xlsx.js' %}"></script>
+{% endblock %}

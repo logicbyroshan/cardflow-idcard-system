@@ -1,0 +1,45 @@
+@layer base {
+  :root {
+    --spacing-sidebar: var(--sidebar-width);
+    --spacing-topbar: var(--topbar-height);
+
+    --color-body: var(--bg-body);
+    --font-sans: var(--font-family);
+    --radius-pill: var(--radius-full);
+
+    --color-primary: var(--primary);
+    --color-primary-dark: var(--primary-dark);
+    --color-primary-bg: var(--primary-bg);
+
+    --color-success: var(--success);
+    --color-success-dark: var(--green-dark);
+    --color-success-bg: var(--green-bg);
+
+    --color-warning: var(--warning);
+    --color-warning-dark: var(--yellow-dark);
+    --color-warning-bg: var(--yellow-bg);
+
+    --color-danger: var(--danger);
+    --color-danger-dark: var(--danger-dark);
+    --color-danger-bg: var(--red-bg);
+
+    --color-blue: var(--blue);
+    --color-blue-dark: var(--blue-dark);
+    --color-blue-bg: var(--blue-bg);
+
+    --color-purple-dark: var(--purple-dark);
+    --color-purple-bg: var(--purple-bg);
+
+    --color-teal-dark: var(--teal-dark);
+    --color-teal-bg: var(--teal-bg);
+
+    --z-sidebar: 40;
+    --z-sticky: 30;
+    --z-dropdown: 60;
+    --z-drawer-backdrop: 80;
+    --z-drawer: 85;
+    --z-modal-backdrop: 90;
+    --z-modal: 100;
+    --z-toast: 12000;
+  }
+}

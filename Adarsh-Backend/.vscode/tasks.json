@@ -1,0 +1,116 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build-css",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"build-css.bat"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-commit-push",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Set-Location 'c:/Users/roshan/Desktop/Adarsh Admin New'; git add -A; git commit -m 'Remove legacy PWA CSS; scope download-app selectors; rebuild dist assets'; git push"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-commit-push-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d \"c:\\Users\\roshan\\Desktop\\Adarsh Admin New\" && git add -A && git commit -m \"Remove legacy PWA CSS; scope download-app selectors; rebuild dist assets\" && git push"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-commit-push-encoded",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-EncodedCommand",
+				"UwBlAHQALQBMAG8AYwBhAHQAaQBvAG4AIAAnAEMAOgAvAFUAcwBlAHIAcwAvAHIAbwBzAGgAYQBuAC8ARABlAHMAawB0AG8AcAAvAEEAZABhAHIAcwBoACAAQQBkAG0AaQBuACAATgBlAHcAJwA7ACAAZwBpAHQAIABhAGQAZAAgAC0AQQA7ACAAZwBpAHQAIABjAG8AbQBtAGkAdAAgAC0AbQAgACcAUgBlAG0AbwB2AGUAIABsAGUAZwBhAGMAeQAgAFAAVwBBACAAQwBTAFMAOwAgAHMAYwBvAHAAZQAgAGQAbwB3AG4AbABvAGEAZAAtAGEAcABwACAAcwBlAGwAZQBjAHQAbwByAHMAOwAgAHIAZQBiAHUAaQBsAGQAIABkAGkAcwB0ACAAYQBzAHMAZQB0AHMAJwA7ACAAZwBpAHQAIABwAHUAcwBoAA=="
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "run-django-dev",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"c:/Users/roshan/Desktop/Adarsh Admin New/.vscode/runserver.ps1"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-commit-push-homepage-bento",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-EncodedCommand",
+				"UwBlAHQALQBMAG8AYwBhAHQAaQBvAG4AIAAnAEMAOgAvAFUAcwBlAHIAcwAvAHIAbwBzAGgAYQBuAC8ARABlAHMAawB0AG8AcAAvAEEAZABhAHIAcwBoACAAQQBkAG0AaQBuACAATgBlAHcAJwA7ACAAZwBpAHQAIABhAGQAZAAgAC0AQQA7ACAAZwBpAHQAIABjAG8AbQBtAGkAdAAgAC0AbQAgACdMb2FkIG91ci13b3JrcyBzdHlsZXMgb24gaG9tZXBhZ2U7IHJlc3RvcmUgY2F0ZWdvcnkgZ3JpZCc7IGdpdCBwdXNo"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-push-only",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-EncodedCommand",
+				"UwBlAHQALQBMAG8AYwBhAHQAaQBvAG4AIAAnAEMAOgAvAFUAcwBlAHIAcwAvAHIAbwBzAGgAYQBuAC8ARABlAHMAawB0AG8AcAAvAEEAZABhAHIAcwBoACAAQQBkAG0AaQBuACAATgBlAHcAJwA7ACAAZwBpAHQAIABwAHUAcwBoAA=="
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git-commit-push-adarsh-engine-fix",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"cd 'c:\\Users\\roshan\\Desktop\\Adarsh Admin New'; git add -A; git commit -m 'Implement Adarsh Engine image persistence: save edits to folder, bulk ZIP download'; git push"
+			]
+		}
+	]
+}

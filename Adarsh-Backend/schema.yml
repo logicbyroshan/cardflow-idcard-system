@@ -1,0 +1,3540 @@
+openapi: 3.0.3
+info:
+  title: ''
+  version: 0.0.0
+paths:
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/:
+    get:
+      operationId: v1_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/assistants/:
+    get:
+      operationId: v1_assistants_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_assistants_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/assistants/{id}/:
+    delete:
+      operationId: v1_assistants_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/auth/forgot-password/:
+    post:
+      operationId: v1_auth_forgot_password_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/reset-password/:
+    post:
+      operationId: v1_auth_reset_password_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/cards/:
+    get:
+      operationId: v1_cards_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_cards_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/cards/{id}/:
+    patch:
+      operationId: v1_cards_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: v1_cards_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/cards/bulk-update/:
+    patch:
+      operationId: v1_cards_bulk_update_partial_update
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/cards/search/:
+    get:
+      operationId: v1_cards_search_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/clients/:
+    get:
+      operationId: v1_clients_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_clients_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/clients/{id}/:
+    delete:
+      operationId: v1_clients_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/desktop/cards/{card_id}/:
+    get:
+      operationId: v1_desktop_cards_retrieve
+      description: GET /desktop/cards/<card_id>/
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/cards/{card_id}/images/:
+    get:
+      operationId: v1_desktop_cards_images_retrieve
+      description: GET /desktop/cards/<card_id>/images/
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/cards/{card_id}/images/replace/:
+    post:
+      operationId: v1_desktop_cards_images_replace_create
+      description: POST /desktop/cards/<card_id>/images/replace/
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/images/{media_file_id}/download/:
+    get:
+      operationId: v1_desktop_images_download_retrieve
+      description: GET /desktop/images/<media_file_id>/download/
+      parameters:
+      - in: path
+        name: media_file_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/images/batch/:
+    post:
+      operationId: v1_desktop_images_batch_create
+      description: POST /desktop/images/batch/ — Download ZIP of images for multiple
+        cards.
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/keys/:
+    get:
+      operationId: v1_desktop_keys_retrieve
+      description: |-
+        GET  /desktop/keys/         — List all keys for the current org
+        POST /desktop/keys/         — Create new key
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_desktop_keys_create
+      description: |-
+        GET  /desktop/keys/         — List all keys for the current org
+        POST /desktop/keys/         — Create new key
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/keys/{id}/:
+    delete:
+      operationId: v1_desktop_keys_destroy
+      description: DELETE /desktop/keys/<id>/ — Revoke key
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/desktop/logs/:
+    get:
+      operationId: v1_desktop_logs_retrieve
+      description: GET /desktop/logs/ — Recent access events for this key.
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/print/:
+    post:
+      operationId: v1_desktop_print_create
+      description: POST /desktop/print/ — Mark APPROVED cards as DOWNLOADED.
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/sync/:
+    get:
+      operationId: v1_desktop_sync_retrieve
+      description: GET /desktop/sync/ — Recent sync sessions.
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/sync/{session_id}/complete/:
+    post:
+      operationId: v1_desktop_sync_complete_create
+      description: POST /desktop/sync/<session_id>/complete/
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/sync/start/:
+    post:
+      operationId: v1_desktop_sync_start_create
+      description: POST /desktop/sync/start/
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/tables/:
+    get:
+      operationId: v1_desktop_tables_retrieve
+      description: GET /desktop/tables/
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/tables/{table_id}/cards/:
+    get:
+      operationId: v1_desktop_tables_cards_retrieve
+      description: GET /desktop/tables/<table_id>/cards/
+      parameters:
+      - in: path
+        name: table_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/tables/{table_id}/dataset/:
+    get:
+      operationId: v1_desktop_tables_dataset_retrieve
+      description: GET /desktop/tables/<table_id>/dataset/ — Structured data for mail
+        merge.
+      parameters:
+      - in: path
+        name: table_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/tables/{table_id}/metadata/:
+    get:
+      operationId: v1_desktop_tables_metadata_retrieve
+      description: GET /desktop/tables/<table_id>/metadata/
+      parameters:
+      - in: path
+        name: table_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/desktop/verify/:
+    get:
+      operationId: v1_desktop_verify_retrieve
+      description: GET /desktop/verify/ — Ping to confirm key is valid.
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/exports/sessions/:
+    get:
+      operationId: v1_exports_sessions_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExportSession'
+          description: ''
+    post:
+      operationId: v1_exports_sessions_create
+      description: |-
+        Kick off an export.
+
+        POST /api/v1/exports/sessions/
+        {
+          "table_id": "<uuid>",
+          "export_type": "PDF",           // PDF | DOCX | XLSX | ZIP
+          "template_id": "<uuid>",        // optional for PDF/DOCX
+          "card_ids": ["<uuid>", ...],    // optional; drives scope
+          "status": "APPROVED",           // optional filter
+          "page_break": "BY_CLASS",       // NONE | BY_CLASS | BY_SECTION  (PDF/DOCX)
+          "field_scope": "ALL",           // ALL | VISIBLE  (XLSX)
+          "rename_pattern": "{name}_{class}" // (ZIP)
+        }
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExportSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExportSession'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSession'
+          description: ''
+  /api/v1/exports/sessions/{id}/:
+    get:
+      operationId: v1_exports_sessions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSession'
+          description: ''
+  /api/v1/exports/sessions/{id}/download/:
+    get:
+      operationId: v1_exports_sessions_download_retrieve
+      description: Stream the first artifact of a completed export session.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSession'
+          description: ''
+  /api/v1/exports/templates/:
+    get:
+      operationId: v1_exports_templates_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExportTemplate'
+          description: ''
+    post:
+      operationId: v1_exports_templates_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportTemplate'
+          description: ''
+  /api/v1/exports/templates/{id}/:
+    get:
+      operationId: v1_exports_templates_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportTemplate'
+          description: ''
+    put:
+      operationId: v1_exports_templates_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportTemplate'
+          description: ''
+    patch:
+      operationId: v1_exports_templates_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExportTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedExportTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedExportTemplate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportTemplate'
+          description: ''
+    delete:
+      operationId: v1_exports_templates_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/exports/templates/{id}/validate-placeholders/:
+    post:
+      operationId: v1_exports_templates_validate_placeholders_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExportTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportTemplate'
+          description: ''
+  /api/v1/exports/templates/{id}/versions/:
+    get:
+      operationId: v1_exports_templates_versions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportTemplate'
+          description: ''
+  /api/v1/fields/:
+    get:
+      operationId: v1_fields_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_fields_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/health/:
+    get:
+      operationId: v1_health_retrieve
+      description: |-
+        GET /health/
+        Aggregated health check endpoint. Probes all core systems.
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/health/celery/:
+    get:
+      operationId: v1_health_celery_retrieve
+      description: GET /health/celery/
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/health/db/:
+    get:
+      operationId: v1_health_db_retrieve
+      description: GET /health/db/
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/health/live/:
+    get:
+      operationId: v1_health_live_retrieve
+      description: |-
+        GET /health/live/
+        Liveness probe. Returns 200 OK immediately if web server is up.
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/health/ready/:
+    get:
+      operationId: v1_health_ready_retrieve
+      description: |-
+        GET /health/
+        Aggregated health check endpoint. Probes all core systems.
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/health/redis/:
+    get:
+      operationId: v1_health_redis_retrieve
+      description: GET /health/redis/
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/health/storage/:
+    get:
+      operationId: v1_health_storage_retrieve
+      description: GET /health/storage/
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/imports/sessions/:
+    get:
+      operationId: v1_imports_sessions_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportSession'
+          description: ''
+    post:
+      operationId: v1_imports_sessions_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+          description: ''
+  /api/v1/imports/sessions/{id}/:
+    get:
+      operationId: v1_imports_sessions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+          description: ''
+    put:
+      operationId: v1_imports_sessions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+          description: ''
+    patch:
+      operationId: v1_imports_sessions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedImportSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedImportSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedImportSession'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+          description: ''
+    delete:
+      operationId: v1_imports_sessions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/imports/sessions/{id}/error-report/:
+    get:
+      operationId: v1_imports_sessions_error_report_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+          description: ''
+  /api/v1/imports/sessions/create-table/:
+    post:
+      operationId: v1_imports_sessions_create_table_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+          description: ''
+  /api/v1/imports/sessions/preview/:
+    post:
+      operationId: v1_imports_sessions_preview_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+          description: ''
+  /api/v1/imports/sessions/xlsx/:
+    post:
+      operationId: v1_imports_sessions_xlsx_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportSession'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSession'
+          description: ''
+  /api/v1/jobs/:
+    get:
+      operationId: v1_jobs_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/jobs/{id}/:
+    get:
+      operationId: v1_jobs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this job.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/jobs/{id}/cancel/:
+    post:
+      operationId: v1_jobs_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this job.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Job'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Job'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Job'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/jobs/{id}/logs/:
+    get:
+      operationId: v1_jobs_logs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this job.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/media/:
+    get:
+      operationId: v1_media_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MediaFile'
+          description: ''
+  /api/v1/media/{id}/:
+    get:
+      operationId: v1_media_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this media file.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaFile'
+          description: ''
+  /api/v1/media/delete/:
+    post:
+      operationId: v1_media_delete_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaFile'
+          description: ''
+  /api/v1/media/replace/:
+    post:
+      operationId: v1_media_replace_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaFile'
+          description: ''
+  /api/v1/media/restore/:
+    post:
+      operationId: v1_media_restore_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaFile'
+          description: ''
+  /api/v1/media/upload/:
+    post:
+      operationId: v1_media_upload_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediaFile'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaFile'
+          description: ''
+  /api/v1/notifications/:
+    get:
+      operationId: v1_notifications_retrieve
+      description: List notifications for the logged in web user.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/{delivery_id}/archive/:
+    post:
+      operationId: v1_notifications_archive_create
+      parameters:
+      - in: path
+        name: delivery_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/{delivery_id}/dismiss/:
+    post:
+      operationId: v1_notifications_dismiss_create
+      parameters:
+      - in: path
+        name: delivery_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/{delivery_id}/read/:
+    post:
+      operationId: v1_notifications_read_create
+      parameters:
+      - in: path
+        name: delivery_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/desktop/:
+    get:
+      operationId: v1_notifications_desktop_retrieve
+      description: List notifications targeting the desktop channels inside the key's
+        organization.
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/desktop/{delivery_id}/acknowledge/:
+    post:
+      operationId: v1_notifications_desktop_acknowledge_create
+      description: Acknowledges a critical notification, making sure it is critical
+        level.
+      parameters:
+      - in: path
+        name: delivery_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/desktop/{delivery_id}/read/:
+    post:
+      operationId: v1_notifications_desktop_read_create
+      parameters:
+      - in: path
+        name: delivery_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/desktop/mark-all-read/:
+    post:
+      operationId: v1_notifications_desktop_mark_all_read_create
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/desktop/unread-count/:
+    get:
+      operationId: v1_notifications_desktop_unread_count_retrieve
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/mark-all-read/:
+    post:
+      operationId: v1_notifications_mark_all_read_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/mobile/:
+    get:
+      operationId: v1_notifications_mobile_retrieve
+      description: List notifications, verifying that MOBILE is supported in delivery
+        channels.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/mobile/{delivery_id}/read/:
+    post:
+      operationId: v1_notifications_mobile_read_create
+      parameters:
+      - in: path
+        name: delivery_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/mobile/mark-all-read/:
+    post:
+      operationId: v1_notifications_mobile_mark_all_read_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/mobile/unread-count/:
+    get:
+      operationId: v1_notifications_mobile_unread_count_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/preferences/:
+    get:
+      operationId: v1_notifications_preferences_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: v1_notifications_preferences_partial_update
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/unread-count/:
+    get:
+      operationId: v1_notifications_unread_count_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/operations/dashboard/:
+    get:
+      operationId: v1_operations_dashboard_retrieve
+      description: |-
+        GET /api/v1/operations/dashboard/
+        Retrieves complete system health diagnostics, backup status, disk/memory usage,
+        and database migrations validation.
+
+        POST /api/v1/operations/dashboard/
+        Allows running manual operational events (verification, cleanup, diagnostics, simulations).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_operations_dashboard_create
+      description: |-
+        GET /api/v1/operations/dashboard/
+        Retrieves complete system health diagnostics, backup status, disk/memory usage,
+        and database migrations validation.
+
+        POST /api/v1/operations/dashboard/
+        Allows running manual operational events (verification, cleanup, diagnostics, simulations).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/operators/assign/:
+    post:
+      operationId: v1_operators_assign_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/operators/clients/:
+    get:
+      operationId: v1_operators_clients_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/announcements/:
+    get:
+      operationId: v1_pro_announcements_retrieve
+      description: |-
+        GET  /pro/announcements/  — All active announcements
+        POST /pro/announcements/  — Create announcement
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_pro_announcements_create
+      description: |-
+        GET  /pro/announcements/  — All active announcements
+        POST /pro/announcements/  — Create announcement
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/announcements/{id}/:
+    delete:
+      operationId: v1_pro_announcements_destroy
+      description: DELETE /pro/announcements/<id>/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/pro/audit/:
+    get:
+      operationId: v1_pro_audit_retrieve
+      description: GET /pro/audit/
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/backups/:
+    get:
+      operationId: v1_pro_backups_retrieve
+      description: |-
+        GET  /pro/backups/              — List backups
+        POST /pro/backups/              — Create backup
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_pro_backups_create
+      description: |-
+        GET  /pro/backups/              — List backups
+        POST /pro/backups/              — Create backup
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/backups/{id}/download/:
+    get:
+      operationId: v1_pro_backups_download_retrieve
+      description: GET /pro/backups/<id>/download/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/clients/{org_id}/{action}/:
+    post:
+      operationId: v1_pro_clients_create
+      description: |-
+        POST /pro/clients/<org_id>/activate/
+        POST /pro/clients/<org_id>/deactivate/
+      parameters:
+      - in: path
+        name: action
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: org_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/dashboard/:
+    get:
+      operationId: v1_pro_dashboard_retrieve
+      description: GET /pro/dashboard/ — Platform health summary
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/flags/:
+    get:
+      operationId: v1_pro_flags_retrieve
+      description: |-
+        GET   /pro/flags/                  — All global flags
+        PATCH /pro/flags/<key>/            — Set global flag
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: v1_pro_flags_partial_update
+      description: |-
+        GET   /pro/flags/                  — All global flags
+        PATCH /pro/flags/<key>/            — Set global flag
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/flags/{key}/:
+    get:
+      operationId: v1_pro_flags_retrieve_2
+      description: |-
+        GET   /pro/flags/                  — All global flags
+        PATCH /pro/flags/<key>/            — Set global flag
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: v1_pro_flags_partial_update_2
+      description: |-
+        GET   /pro/flags/                  — All global flags
+        PATCH /pro/flags/<key>/            — Set global flag
+      parameters:
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/flags/{org_id}/client/:
+    get:
+      operationId: v1_pro_flags_client_retrieve
+      description: |-
+        GET   /pro/flags/<org_id>/client/  — All flags for this client
+        PATCH /pro/flags/<org_id>/client/  — Set per-client flag
+      parameters:
+      - in: path
+        name: org_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: v1_pro_flags_client_partial_update
+      description: |-
+        GET   /pro/flags/<org_id>/client/  — All flags for this client
+        PATCH /pro/flags/<org_id>/client/  — Set per-client flag
+      parameters:
+      - in: path
+        name: org_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/impersonate/:
+    get:
+      operationId: v1_pro_impersonate_retrieve
+      description: GET /pro/impersonate/ — List active sessions for this PRO_USER
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/impersonate/{session_id}/end/:
+    post:
+      operationId: v1_pro_impersonate_end_create
+      description: POST /pro/impersonate/<session_id>/end/
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/impersonate/start/:
+    post:
+      operationId: v1_pro_impersonate_start_create
+      description: POST /pro/impersonate/start/
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/maintenance/:
+    get:
+      operationId: v1_pro_maintenance_retrieve
+      description: |-
+        GET  /pro/maintenance/           — List active maintenance modes
+        POST /pro/maintenance/global/    — Enable global maintenance
+        POST /pro/maintenance/client/    — Enable per-client maintenance
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_pro_maintenance_create
+      description: |-
+        GET  /pro/maintenance/           — List active maintenance modes
+        POST /pro/maintenance/global/    — Enable global maintenance
+        POST /pro/maintenance/client/    — Enable per-client maintenance
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/maintenance/{id}/:
+    delete:
+      operationId: v1_pro_maintenance_destroy
+      description: DELETE /pro/maintenance/<id>/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/pro/statistics/:
+    get:
+      operationId: v1_pro_statistics_retrieve
+      description: |-
+        GET  /pro/statistics/          — Latest snapshot summary
+        POST /pro/statistics/generate/ — Trigger new snapshot
+        GET  /pro/statistics/history/  — All snapshots
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_pro_statistics_create
+      description: |-
+        GET  /pro/statistics/          — Latest snapshot summary
+        POST /pro/statistics/generate/ — Trigger new snapshot
+        GET  /pro/statistics/history/  — All snapshots
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/statistics/generate/:
+    get:
+      operationId: v1_pro_statistics_generate_retrieve
+      description: |-
+        GET  /pro/statistics/          — Latest snapshot summary
+        POST /pro/statistics/generate/ — Trigger new snapshot
+        GET  /pro/statistics/history/  — All snapshots
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_pro_statistics_generate_create
+      description: |-
+        GET  /pro/statistics/          — Latest snapshot summary
+        POST /pro/statistics/generate/ — Trigger new snapshot
+        GET  /pro/statistics/history/  — All snapshots
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/pro/statistics/history/:
+    get:
+      operationId: v1_pro_statistics_history_retrieve
+      description: GET /pro/statistics/history/
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/dashboard/:
+    get:
+      operationId: v1_reprints_dashboard_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/desktop/:
+    get:
+      operationId: v1_reprints_desktop_retrieve
+      description: GET /desktop/reprints/ — Fetch all CONFIRMED reprint requests for
+        this key's org.
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/desktop/{id}/images/:
+    get:
+      operationId: v1_reprints_desktop_images_retrieve
+      description: GET /desktop/reprints/<request_id>/images/ — Fetch all media file
+        metas for reprint request card.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/desktop/printed/:
+    post:
+      operationId: v1_reprints_desktop_printed_create
+      description: POST /desktop/reprints/printed/ — Mark requests as PRINTED.
+      tags:
+      - v1
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/exports/:
+    post:
+      operationId: v1_reprints_exports_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/reprints/exports/{id}/:
+    get:
+      operationId: v1_reprints_exports_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/reports/:
+    get:
+      operationId: v1_reprints_reports_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/requests/:
+    get:
+      operationId: v1_reprints_requests_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_reprints_requests_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/reprints/requests/{id}/:
+    get:
+      operationId: v1_reprints_requests_retrieve_2
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/requests/{id}/approve/:
+    post:
+      operationId: v1_reprints_requests_approve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/requests/{id}/print/:
+    post:
+      operationId: v1_reprints_requests_print_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reprints/requests/{id}/reject/:
+    post:
+      operationId: v1_reprints_requests_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reuploads/sessions/:
+    get:
+      operationId: v1_reuploads_sessions_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReuploadSession'
+          description: ''
+    post:
+      operationId: v1_reuploads_sessions_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReuploadSession'
+          description: ''
+  /api/v1/reuploads/sessions/{id}/:
+    get:
+      operationId: v1_reuploads_sessions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReuploadSession'
+          description: ''
+    put:
+      operationId: v1_reuploads_sessions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReuploadSession'
+          description: ''
+    patch:
+      operationId: v1_reuploads_sessions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReuploadSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedReuploadSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedReuploadSession'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReuploadSession'
+          description: ''
+    delete:
+      operationId: v1_reuploads_sessions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/reuploads/sessions/zip/:
+    post:
+      operationId: v1_reuploads_sessions_zip_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReuploadSession'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReuploadSession'
+          description: ''
+  /api/v1/sandbox/cards/:
+    get:
+      operationId: v1_sandbox_cards_retrieve
+      description: |-
+        GET /sandbox/cards/?table_id=<uuid>
+        Returns the merged sandbox card list for a table.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/sandbox/cards/{card_id}/:
+    get:
+      operationId: v1_sandbox_cards_retrieve_2
+      description: |-
+        GET   /sandbox/cards/<card_id>/        — Resolve a single card in sandbox context
+        PATCH /sandbox/cards/<card_id>/        — Edit fields in sandbox
+        DELETE /sandbox/cards/<card_id>/       — Mark card deleted in sandbox
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: v1_sandbox_cards_partial_update
+      description: |-
+        GET   /sandbox/cards/<card_id>/        — Resolve a single card in sandbox context
+        PATCH /sandbox/cards/<card_id>/        — Edit fields in sandbox
+        DELETE /sandbox/cards/<card_id>/       — Mark card deleted in sandbox
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: v1_sandbox_cards_destroy
+      description: |-
+        GET   /sandbox/cards/<card_id>/        — Resolve a single card in sandbox context
+        PATCH /sandbox/cards/<card_id>/        — Edit fields in sandbox
+        DELETE /sandbox/cards/<card_id>/       — Mark card deleted in sandbox
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/sandbox/cards/create/:
+    post:
+      operationId: v1_sandbox_cards_create_create
+      description: POST /sandbox/cards/ — Create a sandbox-only card.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/sandbox/changes/:
+    get:
+      operationId: v1_sandbox_changes_retrieve
+      description: GET /sandbox/changes/?table_id=<uuid> — List all field diffs in
+        this session.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/sandbox/exports/:
+    post:
+      operationId: v1_sandbox_exports_create
+      description: |-
+        POST /sandbox/exports/              — Trigger a sandbox export
+        GET  /sandbox/exports/<id>/download/ — Download the artifact
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/sandbox/exports/{id}/download/:
+    get:
+      operationId: v1_sandbox_exports_download_retrieve
+      description: GET /sandbox/exports/<id>/download/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/sandbox/imports/:
+    post:
+      operationId: v1_sandbox_imports_create
+      description: |-
+        POST /sandbox/imports/
+        Multipart: { table_id, excel_file }
+        Creates sandbox-only cards. Never writes to production.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/sandbox/sessions/:
+    get:
+      operationId: v1_sandbox_sessions_retrieve
+      description: |-
+        POST  /sandbox/sessions/          — Create or resume a session for this device
+        GET   /sandbox/sessions/current/  — Get current session info (by token)
+        DELETE /sandbox/sessions/current/ — Deactivate (clear) sandbox session
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_sandbox_sessions_create
+      description: |-
+        POST  /sandbox/sessions/          — Create or resume a session for this device
+        GET   /sandbox/sessions/current/  — Get current session info (by token)
+        DELETE /sandbox/sessions/current/ — Deactivate (clear) sandbox session
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: v1_sandbox_sessions_destroy
+      description: |-
+        POST  /sandbox/sessions/          — Create or resume a session for this device
+        GET   /sandbox/sessions/current/  — Get current session info (by token)
+        DELETE /sandbox/sessions/current/ — Deactivate (clear) sandbox session
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/sandbox/workflow/history/:
+    get:
+      operationId: v1_sandbox_workflow_history_retrieve
+      description: GET /sandbox/workflow/history/?card_id=<id>
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/sandbox/workflow/transition/:
+    post:
+      operationId: v1_sandbox_workflow_transition_create
+      description: |-
+        POST /sandbox/workflow/transition/
+        Body: { card_id, action, reason }
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/tables/:
+    get:
+      operationId: v1_tables_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_tables_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/workflow/bulk/:
+    post:
+      operationId: v1_workflow_bulk_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/workflow/cards/:
+    get:
+      operationId: v1_workflow_cards_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/workflow/counts/:
+    get:
+      operationId: v1_workflow_counts_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/workflow/transition/:
+    post:
+      operationId: v1_workflow_transition_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+components:
+  schemas:
+    ExportArtifact:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        file_name:
+          type: string
+          maxLength: 512
+        stored_path:
+          type: string
+          maxLength: 512
+        mime_type:
+          type: string
+          maxLength: 100
+        file_size:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - file_name
+      - id
+      - mime_type
+      - stored_path
+    ExportSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+        table:
+          type: string
+          format: uuid
+          nullable: true
+        template:
+          type: string
+          format: uuid
+          nullable: true
+        export_type:
+          $ref: '#/components/schemas/ExportSessionExportTypeEnum'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ExportSessionStatusEnum'
+          readOnly: true
+        options: {}
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        duration:
+          type: number
+          format: double
+          readOnly: true
+        record_count:
+          type: integer
+          readOnly: true
+        file_size:
+          type: integer
+          readOnly: true
+        error_message:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportArtifact'
+          readOnly: true
+        results_count:
+          type: string
+          readOnly: true
+        error_count:
+          type: string
+          readOnly: true
+      required:
+      - artifacts
+      - completed_at
+      - created_at
+      - duration
+      - error_count
+      - error_message
+      - export_type
+      - file_size
+      - id
+      - organization
+      - record_count
+      - results_count
+      - started_at
+      - status
+      - updated_at
+      - user
+    ExportSessionExportTypeEnum:
+      enum:
+      - PDF
+      - DOCX
+      - XLSX
+      - ZIP
+      type: string
+      description: |-
+        * `PDF` - PDF
+        * `DOCX` - DOCX
+        * `XLSX` - XLSX
+        * `ZIP` - ZIP
+    ExportSessionStatusEnum:
+      enum:
+      - PENDING
+      - PROCESSING
+      - COMPLETED
+      - FAILED
+      - PARTIAL
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `PROCESSING` - Processing
+        * `COMPLETED` - Completed
+        * `FAILED` - Failed
+        * `PARTIAL` - Partial
+    ExportTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+        table:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        export_type:
+          $ref: '#/components/schemas/ExportTemplateExportTypeEnum'
+        description:
+          type: string
+          nullable: true
+        body:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        created_by:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateAsset'
+          readOnly: true
+      required:
+      - assets
+      - created_at
+      - created_by
+      - id
+      - name
+      - organization
+      - table
+      - updated_at
+    ExportTemplateExportTypeEnum:
+      enum:
+      - PDF
+      - DOCX
+      type: string
+      description: |-
+        * `PDF` - PDF
+        * `DOCX` - DOCX
+    ImportSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+        table:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status1eaEnum'
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        total_rows:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        success_rows:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        warning_rows:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        failed_rows:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        duration:
+          type: number
+          format: double
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        warnings_count:
+          type: string
+          readOnly: true
+        results_count:
+          type: string
+          readOnly: true
+      required:
+      - completed_at
+      - created_at
+      - duration
+      - id
+      - organization
+      - results_count
+      - started_at
+      - status
+      - updated_at
+      - user
+      - warnings_count
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobLog'
+          readOnly: true
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobEvent'
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        status:
+          $ref: '#/components/schemas/JobStatusEnum'
+        progress:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        current_step:
+          type: string
+          nullable: true
+          maxLength: 255
+        error_details:
+          type: string
+          nullable: true
+        completion_metadata: {}
+        payload: {}
+        celery_task_id:
+          type: string
+          nullable: true
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - created_at
+      - events
+      - id
+      - logs
+      - type
+      - updated_at
+    JobEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_type:
+          type: string
+          maxLength: 50
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        details: {}
+        job:
+          type: string
+          format: uuid
+      required:
+      - event_type
+      - id
+      - job
+      - timestamp
+    JobLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        message:
+          type: string
+        level:
+          type: string
+          maxLength: 10
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        job:
+          type: string
+          format: uuid
+      required:
+      - created_at
+      - id
+      - job
+      - message
+    JobStatusEnum:
+      enum:
+      - QUEUED
+      - RUNNING
+      - FAILED
+      - COMPLETED
+      - CANCELLED
+      type: string
+      description: |-
+        * `QUEUED` - Queued
+        * `RUNNING` - Running
+        * `FAILED` - Failed
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+    MediaFile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          type: string
+          format: uuid
+        table:
+          type: string
+          format: uuid
+        card:
+          type: string
+          format: uuid
+          nullable: true
+        field:
+          type: string
+          format: uuid
+          nullable: true
+        original_name:
+          type: string
+          maxLength: 255
+        stored_name:
+          type: string
+          maxLength: 255
+        mime_type:
+          type: string
+          maxLength: 100
+        extension:
+          type: string
+          maxLength: 10
+        file_size:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        width:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        height:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        checksum:
+          type: string
+          maxLength: 64
+        storage_provider:
+          type: string
+          maxLength: 50
+        is_deleted:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        url:
+          type: string
+          readOnly: true
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/MediaVariant'
+          readOnly: true
+      required:
+      - checksum
+      - created_at
+      - extension
+      - file_size
+      - id
+      - mime_type
+      - organization
+      - original_name
+      - storage_provider
+      - stored_name
+      - table
+      - url
+      - variants
+    MediaVariant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        variant_name:
+          type: string
+          maxLength: 50
+        stored_name:
+          type: string
+          maxLength: 255
+        file_size:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        width:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        height:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        url:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - file_size
+      - height
+      - id
+      - stored_name
+      - url
+      - variant_name
+      - width
+    PatchedExportTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+        table:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        export_type:
+          $ref: '#/components/schemas/ExportTemplateExportTypeEnum'
+        description:
+          type: string
+          nullable: true
+        body:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        created_by:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateAsset'
+          readOnly: true
+    PatchedImportSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+        table:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status1eaEnum'
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        total_rows:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        success_rows:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        warning_rows:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        failed_rows:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        duration:
+          type: number
+          format: double
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        warnings_count:
+          type: string
+          readOnly: true
+        results_count:
+          type: string
+          readOnly: true
+    PatchedReuploadSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status1eaEnum'
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        total_images:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        matched_images:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        failed_images:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        duration:
+          type: number
+          format: double
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+        table:
+          type: string
+          format: uuid
+    ReuploadSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status1eaEnum'
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        total_images:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        matched_images:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        failed_images:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        duration:
+          type: number
+          format: double
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+        table:
+          type: string
+          format: uuid
+      required:
+      - completed_at
+      - created_at
+      - duration
+      - id
+      - organization
+      - started_at
+      - status
+      - table
+      - updated_at
+      - user
+    Status1eaEnum:
+      enum:
+      - PENDING
+      - PROCESSING
+      - COMPLETED
+      - FAILED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `PROCESSING` - Processing
+        * `COMPLETED` - Completed
+        * `FAILED` - Failed
+    TemplateAsset:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        asset_name:
+          type: string
+          maxLength: 255
+        stored_path:
+          type: string
+          maxLength: 512
+        mime_type:
+          type: string
+          maxLength: 100
+        file_size:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - asset_name
+      - created_at
+      - id
+      - mime_type
+      - stored_path
+    TypeEnum:
+      enum:
+      - IMAGE_UPLOAD
+      - IMAGE_REPLACE
+      - IMAGE_DELETE
+      - IMPORT_XLSX
+      - IMPORT_XLSX_ZIP
+      - REUPLOAD_IMAGES
+      - EXPORT_PDF
+      - EXPORT_DOCX
+      - EXPORT_XLSX
+      - EXPORT_ZIP
+      type: string
+      description: |-
+        * `IMAGE_UPLOAD` - Image Upload
+        * `IMAGE_REPLACE` - Image Replace
+        * `IMAGE_DELETE` - Image Delete
+        * `IMPORT_XLSX` - Import XLSX
+        * `IMPORT_XLSX_ZIP` - Import XLSX with Zip
+        * `REUPLOAD_IMAGES` - Reupload Images
+        * `EXPORT_PDF` - Export PDF
+        * `EXPORT_DOCX` - Export DOCX
+        * `EXPORT_XLSX` - Export XLSX
+        * `EXPORT_ZIP` - Export Zip
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

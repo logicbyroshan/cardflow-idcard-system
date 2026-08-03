@@ -1,0 +1,64 @@
+<!-- Document Format Selection Modal -->
+<div class="upload-modal-overlay" id="docFormatModalOverlay">
+  <div class="upload-modal doc-format-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-file-word"></i> Select Document Format</h3>
+      <button class="upload-modal-close" id="closeDocFormatModal" aria-label="Close document format modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="modal-stepper modal-stepper--wide doc-format-stepper" aria-hidden="true">
+        <div class="modal-step is-active" id="docFormatStep1Badge">
+          <span class="modal-step-dot">1</span>
+          <span class="modal-step-label">Format</span>
+        </div>
+        <div class="modal-stepper-line"></div>
+        <div class="modal-step" id="docFormatStep2Badge">
+          <span class="modal-step-dot">2</span>
+          <span class="modal-step-label">Download</span>
+        </div>
+      </div>
+      <div class="doc-format-options" id="docFormatOptionsPanel">
+        <p class="format-info"><i class="fa-solid fa-circle-info"></i> Choose the document format based on your Microsoft Word version:</p>
+        <div class="format-cards">
+          <div class="format-card" data-format="docx">
+            <div class="format-icon">
+              <i class="fa-solid fa-file-word"></i>
+            </div>
+            <div class="format-details">
+              <h4>.DOCX Format</h4>
+              <p>For Word 2007 and later</p>
+              <span class="format-badge recommended">Recommended</span>
+            </div>
+          </div>
+          <div class="format-card" data-format="doc">
+            <div class="format-icon">
+              <i class="fa-solid fa-file-word"></i>
+            </div>
+            <div class="format-details">
+              <h4>.DOC Format</h4>
+              <p>For Word 2003 and earlier</p>
+              <span class="format-badge legacy">Legacy</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="doc-format-progress" id="docFormatProgressPanel" style="display:none;">
+        <p class="download-modal-step-title">Step 2: Downloading</p>
+        <p class="format-info mb-3">Please keep this modal open while the file is generated and downloaded.</p>
+        <div class="center-modal-progress">
+          <div class="center-modal-progress-track">
+            <div id="docFormatProgressBar" class="center-modal-progress-bar"></div>
+          </div>
+          <p class="center-modal-progress-text" id="docFormatStatus">Preparing...</p>
+        </div>
+        <div class="download-modal-progress-meta">
+          <span id="docFormatPercent" class="download-modal-progress-pct">0%</span>
+          <span id="docFormatEta" class="download-modal-progress-eta">--</span>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button class="btn btn-md btn-neutral" id="cancelDocFormatModal"><i class="fa-solid fa-xmark"></i> Cancel</button>
+    </div>
+  </div>
+</div>

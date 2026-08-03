@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ID Card Group - {{ client.name }} - Adarsh ID Cards{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}">
+{% endblock %}
+
+{% block extra_head %}
+  <script defer src="{% static 'js/vendor/xlsx.full.min.js' %}"></script>
+{% endblock %}
+
+{% block breadcrumb %}
+  {% if is_super_admin %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_admin_staff %}
+  <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_client or is_client_staff %}
+  <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% endif %}
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  {% if is_client or is_client_staff %}
+  <span class="breadcrumb-item active">ID Card Group</span>
+  {% else %}
+  <a href="{% url 'manage_clients' %}" class="breadcrumb-item">Manage Clients</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item">{{ client.name }}{% if client.status != 'active' and show_inactive_in_breadcrumb %} <span class="status-badge inactive status-badge--sm">{{ client.get_status_display }}</span>{% endif %}</span>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">ID Card Group</span>
+  {% endif %}
+{% endblock %}
+
+{% block topbar_right %}
+  <div class="nav-right">
+    {% include 'partials/notification-bell.html' %}
+    <div class="page-switch-btns">
+      <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_group' %}{% else %}{% url 'idcard_group' client.id %}{% endif %}" class="btn btn-md btn-primary" title="ID Card Group">
+        <i class="fa-solid fa-id-card"></i> <span>ID Card Group</span>
+      </a>
+      {% if is_super_admin or perm_idcard_setting_list %}
+      <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}#{% endif %}" {% if not is_client and not is_client_staff %}id="switchToGroupSetting"{% endif %} class="btn btn-md btn-neutral" title="Group Setting">
+        <i class="fa-solid fa-table-list"></i> <span>Group Setting</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="main-content">
+    {% include 'partials/idcard-group/action-bar.html' %}
+    {% include 'partials/idcard-group/table.html' %}
+  </div>
+{% endblock %}
+
+{% block modals %}
+  {% include 'partials/components/create-xlsx-modal.html' %}
+  {% include 'partials/idcard-group/modal-download-all.html' %}
+  {% include 'partials/idcard-group/modal-delete-all.html' %}
+  {% include 'partials/idcard-group/modal-upgrade-all.html' %}
+  {% include 'partials/idcard-group/modal-reupload.html' %}
+{% endblock %}
+
+{% block page_js %}
+  <script id="page-config" type="application/json">{"clientId": {{ client.id }}, "isClientRole": {{ is_client|yesno:"true,false" }}, "isClientStaff": {{ is_client_staff|yesno:"true,false" }}, "groupId": {{ group.id|default:"null" }}, "csrfToken": "{{ csrf_token }}"}</script>
+  <script defer src="{% static 'js/idcard-group.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var _cfg = JSON.parse(document.getElementById('page-config').textContent);
+      var isClientRole = _cfg.isClientRole || _cfg.isClientStaff;
+      initIdcardGroup({
+        clientId: _cfg.clientId,
+        isClientRole: isClientRole
+      });
+    });
+  </script>
+  <script defer src="{% static 'js/create-xlsx.js' %}"></script>
+{% endblock %}

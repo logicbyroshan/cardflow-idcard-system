@@ -1,0 +1,268 @@
+<!-- === SESSIONS (Pro User) === -->
+<div class="panel-tab-content panel-tab-full-height maintenance-panel-theme" id="tab-sessions">
+<div class="panel-inline-maintenance maintenance-panel-theme" id="panelSessionsSection">
+
+  <div class="notif-actions-bar">
+    <div class="notif-actions-left">
+      <span class="panel-title">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Active Sessions
+      </span>
+      <span class="maintenance-status-text">Manage user sessions and force logout</span>
+    </div>
+    <div class="notif-actions-right">
+      <button class="btn btn-sm btn-outline-primary" onclick="reloadSessions()">
+        <i class="fa-solid fa-arrows-rotate"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="system-grid" style="gap:12px;">
+
+    <!-- Card 1: Revoke for Selected Users -->
+    <div class="system-card">
+      <div class="system-card-header">
+        <i class="fa-solid fa-users"></i> Force Logout Selected Users
+      </div>
+      <div class="system-card-body" style="padding: 14px 16px;">
+        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+          <span class="system-label">User IDs (comma-separated)</span>
+          <input id="sessionsUserIds" class="form-input" placeholder="e.g. 12, 34, 56" />
+          <span class="system-value" style="font-size: var(--ui-font-size-xs, 11px); color: var(--color-slate-400); font-weight: 500;">
+            Enter user IDs to revoke all their active sessions.
+          </span>
+          
+          <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-slate-100);">
+            <button type="button" class="btn btn-md btn-outline-primary" onclick="loadSessionsForUsers()">
+              <i class="fa-solid fa-magnifying-glass"></i> Show Sessions
+            </button>
+          </div>
+
+          <div id="sessionsList" style="margin-top: 12px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Revoke All Sessions -->
+    <div class="system-card">
+      <div class="system-card-header">
+        <i class="fa-solid fa-tower-broadcast"></i> Force Logout All Users
+      </div>
+      <div class="system-card-body" style="padding: 14px 16px;">
+        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+          <span class="system-label">System-wide Session Revocation</span>
+          <div style="display: flex; gap: 8px; align-items: center; margin: 8px 0;">
+            <input type="checkbox" id="preserveSelf" checked />
+            <label for="preserveSelf" style="margin: 0; cursor: pointer;">Preserve my current session</label>
+          </div>
+          <span class="system-value" style="font-size: var(--ui-font-size-xs, 11px); color: var(--color-slate-400); font-weight: 500;">
+            This will immediately log out all active users across the system (except your session if checked).
+          </span>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-slate-100);">
+            <button type="button" class="btn btn-md btn-danger" onclick="showRevokeAllModal()">
+              <i class="fa-solid fa-user-slash"></i> Force Logout All
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+  // Use explicit templated URLs instead of string replacement
+  var REVOKE_SESSIONS_API = "{% url 'api_pro_user_revoke_sessions' %}";
+  var LIST_SESSIONS_API = "{% url 'api_pro_user_list_sessions' %}";
+  var REVOKE_SESSION_KEY_API = "{% url 'api_pro_user_revoke_session_key' %}";
+  var csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  function reloadSessions(){
+    loadSessionsForUsers();
+  }
+  window.reloadSessions = reloadSessions;
+
+  function parseIds(raw){
+    if(!raw) return [];
+    return raw.split(',').map(function(s){ return parseInt(s.trim()||'0')||0 }).filter(Boolean);
+  }
+
+  function loadSessionsForUsers(){
+    var raw = document.getElementById('sessionsUserIds').value || '';
+    var ids = parseIds(raw);
+    var container = document.getElementById('sessionsList');
+    container.innerHTML = '';
+    
+    if(!ids.length){
+      container.innerHTML = '<div class="system-value" style="padding: 8px; font-size: var(--ui-font-size-sm, 12px);">Enter user IDs separated by commas and click "Show Sessions" to list active sessions.</div>';
+      return;
+    }
+
+    container.innerHTML = '<div style="padding: 8px; color: var(--color-slate-500); font-size: var(--ui-font-size-sm, 12px);">Loading sessions...</div>';
+
+    // Load sessions for each user
+    var promises = ids.map(function(uid){
+      return fetch(LIST_SESSIONS_API + '?user_id=' + uid, { method: 'GET', credentials:'same-origin'})
+        .then(function(r){ return r.json(); })
+        .then(function(data){ return { uid: uid, data: data }; })
+        .catch(function(){ return { uid: uid, data: null }; });
+    });
+
+    Promise.all(promises).then(function(results){
+      container.innerHTML = '';
+      if(results.length === 0){
+        container.innerHTML = '<div class="system-value">No results.</div>';
+        return;
+      }
+
+      results.forEach(function(result){
+        var uid = result.uid;
+        var data = result.data;
+        if(!data || !data.success){
+          container.innerHTML += '<div style="margin-top: 8px; padding: 8px; background: var(--color-red-50); border: 1px solid var(--color-red-100); border-radius: 4px;"><strong>User ' + uid + ':</strong> Error loading sessions</div>';
+          return;
+        }
+
+        var sessions = data.sessions || [];
+        var html = '<div style="margin-top: 8px; padding: 8px; background: var(--color-slate-50); border: 1px solid var(--color-slate-200); border-radius: 4px;">';
+        html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">';
+        html += '<strong style="font-size: var(--ui-font-size-sm, 12px);">User #' + uid + ' (' + sessions.length + ' active session' + (sessions.length !== 1 ? 's' : '') + ')</strong>';
+        html += '<button type="button" class="btn btn-sm btn-danger" onclick="revokeAllForUser(' + uid + ')" style="margin: 0;"><i class="fa-solid fa-user-slash"></i> Force Logout All</button>';
+        html += '</div>';
+
+        if(sessions.length === 0){
+          html += '<div style="font-size: var(--ui-font-size-xs, 11px); color: var(--color-slate-500);">No active sessions.</div>';
+        } else {
+          sessions.forEach(function(s, idx){
+            var loginTime = s.login_ts ? new Date(s.login_ts).toLocaleString([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'Unknown';
+            html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px dashed var(--color-slate-200); font-size: var(--ui-font-size-xs, 11px);">';
+            html += '<div style="flex: 1; color: var(--color-slate-600);">';
+            html += '<strong>' + (s.device_label || 'Unknown Device') + '</strong><br/>';
+            html += '<span style="color: var(--color-slate-500);">' + (s.ip_address || 'No IP') + ' • ' + loginTime + '</span>';
+            html += '</div>';
+            html += '<button type="button" class="btn btn-sm btn-outline-danger" onclick="revokeSessionForUser(' + uid + ', \'' + (s.session_key || '') + '\')" style="margin-left: 8px; white-space: nowrap;">Revoke</button>';
+            html += '</div>';
+          });
+        }
+        html += '</div>';
+        var node = document.createElement('div');
+        node.innerHTML = html;
+        container.appendChild(node);
+      });
+    });
+  }
+  window.loadSessionsForUsers = loadSessionsForUsers;
+
+  function revokeAllForUser(uid){
+    if(!confirm('Force logout all sessions for user #' + uid + '?')){
+      return;
+    }
+    var body = { user_ids: [uid] };
+    fetch(REVOKE_SESSIONS_API, { 
+      method: 'POST', 
+      credentials: 'same-origin', 
+      headers: {'Content-Type':'application/json','X-CSRFToken':csrf}, 
+      body: JSON.stringify(body) 
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data && data.success){
+        if(typeof showToast === 'function') showToast('Force logged out ' + (data.revoked_count||0) + ' session' + (data.revoked_count !== 1 ? 's' : ''), 'success');
+        loadSessionsForUsers();
+      } else {
+        if(typeof showToast === 'function') showToast(data && data.message || 'Failed', 'error');
+      }
+    })
+    .catch(function(err){ 
+      if(typeof showToast === 'function') showToast('Network error', 'error'); 
+    });
+  }
+  window.revokeAllForUser = revokeAllForUser;
+
+  function revokeSessionForUser(uid, sessionKey){
+    if(!sessionKey){
+      if(typeof showToast === 'function') showToast('Invalid session key', 'error');
+      return;
+    }
+    if(!confirm('Revoke this session?')){
+      return;
+    }
+    var body = { session_key: sessionKey, user_id: uid };
+    fetch(REVOKE_SESSION_KEY_API, { 
+      method: 'POST', 
+      credentials: 'same-origin', 
+      headers: {'Content-Type':'application/json','X-CSRFToken':csrf}, 
+      body: JSON.stringify(body) 
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data && data.success){
+        if(typeof showToast === 'function') showToast('Session revoked', 'success');
+        loadSessionsForUsers();
+      } else {
+        if(typeof showToast === 'function') showToast(data && data.message || 'Failed to revoke', 'error');
+      }
+    })
+    .catch(function(err){ 
+      if(typeof showToast === 'function') showToast('Network error', 'error'); 
+    });
+  }
+  window.revokeSessionForUser = revokeSessionForUser;
+
+  function showRevokeAllModal(){
+    // Use the project's global confirm modal (panelDeleteConfirmModal)
+    var title = document.getElementById('panelConfirmTitleText');
+    var msg = document.getElementById('panelConfirmMessage');
+    var btn = document.getElementById('panelConfirmOkBtn');
+    var modal = document.getElementById('panelDeleteConfirmModal');
+
+    if(!modal || !title || !msg || !btn){
+      // Fallback to browser confirm if modal unavailable
+      revokeAllSessions();
+      return;
+    }
+
+    title.textContent = 'Force Logout All Users';
+    msg.textContent = 'This will immediately log out all active users system-wide' + (document.getElementById('preserveSelf').checked ? ' except your session' : '') + '.';
+    
+    btn.innerHTML = '<i class="fa-solid fa-user-slash"></i> Force Logout All';
+    btn.className = 'btn btn-md btn-danger';
+    btn.onclick = revokeAllSessions;
+
+    modal.style.display = 'block';
+  }
+  window.showRevokeAllModal = showRevokeAllModal;
+
+  function revokeAllSessions(){
+    var preserve = !!document.getElementById('preserveSelf').checked;
+    var body = { all: true, preserve_self: preserve };
+    
+    var modal = document.getElementById('panelDeleteConfirmModal');
+    if(modal) modal.style.display = 'none';
+
+    fetch(REVOKE_SESSIONS_API, { 
+      method: 'POST', 
+      credentials: 'same-origin', 
+      headers: {'Content-Type':'application/json','X-CSRFToken':csrf}, 
+      body: JSON.stringify(body) 
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data && data.success){
+        if(typeof showToast === 'function') showToast('Force logged out ' + (data.revoked_count||0) + ' session' + (data.revoked_count !== 1 ? 's' : ''), 'success');
+        document.getElementById('sessionsUserIds').value = '';
+        document.getElementById('sessionsList').innerHTML = '';
+      } else {
+        if(typeof showToast === 'function') showToast(data && data.message || 'Failed', 'error');
+      }
+    })
+    .catch(function(err){ 
+      if(typeof showToast === 'function') showToast('Network error', 'error'); 
+    });
+  }
+  window.revokeAllSessions = revokeAllSessions;
+})();
+</script>

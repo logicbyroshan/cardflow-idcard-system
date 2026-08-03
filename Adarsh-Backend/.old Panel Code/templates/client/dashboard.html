@@ -1,0 +1,404 @@
+{% extends 'client/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Adarsh ID Cards{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
+{% endblock %}
+
+{% block main_class %}dashboard-main{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right flex items-center gap-2">
+  <button class="global-search-btn" id="globalSearchBtn">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span>Search ID cards...</span>
+    <kbd>Ctrl+K</kbd>
+  </button>
+  <button type="button" class="client-message-top-shortcut" data-client-message-open>
+    <span class="client-message-top-shortcut-icon">
+      <i class="fa-solid fa-message"></i>
+      <span class="client-message-top-shortcut-badge" data-client-msg-count>0</span>
+    </span>
+    <span>Messages</span>
+  </button>
+  <button
+    type="button"
+    class="client-message-top-shortcut client-notification-top-shortcut"
+    onclick="window.location.href='{% url 'notifications_page' %}'"
+    title="Open notifications"
+  >
+    <span class="client-message-top-shortcut-icon">
+      <i class="fa-solid fa-bell"></i>
+    </span>
+    <span>Notifications</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+
+  <!-- Fixed Top: Welcome Banner + Stats -->
+  <div class="dashboard-top-fixed">
+
+  <div id="clientMessageWelcomeSlot"></div>
+
+  <!-- Welcome Banner with Sliding Notifications -->
+  {% include 'partials/dashboard/welcome-notification-banner.html' %}
+
+  <!-- Stats Cards (clickable - navigate to ID Card Group) -->
+  <div class="stats-cards">
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
+      <div class="stat-icon pending">
+        <i class="fa-solid fa-clock"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value stat-value-skeleton" id="stat-pending">0</div>
+        <div class="stat-label">Pending Cards</div>
+      </div>
+    </a>
+
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
+      <div class="stat-icon verified">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value stat-value-skeleton" id="stat-verified">0</div>
+        <div class="stat-label">Verified Cards</div>
+      </div>
+    </a>
+
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
+      <div class="stat-icon approved">
+        <i class="fa-solid fa-thumbs-up"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value stat-value-skeleton" id="stat-approved">0</div>
+        <div class="stat-label">Approved Cards</div>
+      </div>
+    </a>
+
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
+      <div class="stat-icon downloaded">
+        <i class="fa-solid fa-download"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value stat-value-skeleton" id="stat-download">0</div>
+        <div class="stat-label">Downloaded Cards</div>
+      </div>
+    </a>
+
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
+      <div class="stat-icon pool">
+        <i class="fa-solid fa-box-archive"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value stat-value-skeleton" id="stat-pool">0</div>
+        <div class="stat-label">Pool Cards</div>
+      </div>
+    </a>
+
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
+      <div class="stat-icon total">
+        <i class="fa-solid fa-layer-group"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value stat-value-skeleton" id="stat-total">0</div>
+        <div class="stat-label">Total ID Cards</div>
+      </div>
+    </a>
+  </div>
+
+  </div><!-- /dashboard-top-fixed -->
+
+  <!-- Scrollable Middle -->
+  <div class="dashboard-middle-scroll">
+
+  <!-- Main Grid: Reprint History (left 2fr) + Recent Activity (right 1fr) -->
+  <div class="dashboard-grid">
+
+    <!-- Reprint Requests History (no permission needed - visible to all) -->
+    <div class="dashboard-card">
+      <div class="dashboard-card-header">
+        <h3><i class="fa-solid fa-rotate"></i> Reprint Requests History</h3>
+        <span class="reprint-history-count is-hidden" id="reprintHistoryCount">0</span>
+      </div>
+      <div class="dashboard-card-body tall-body p-0">
+        <div id="reprintHistoryTableWrap">
+          <table class="reprint-history-table" id="reprintHistoryTable">
+            <thead>
+              <tr>
+                <th class="rh-col-num">Sr no.</th>
+                <th>Card Details</th>
+                <th class="rh-col-photo">Photo</th>
+                <th class="rh-col-group">Group</th>
+                <th class="rh-col-date">Date</th>
+                <th class="rh-col-status">Status</th>
+              </tr>
+            </thead>
+            <tbody id="reprintHistoryBody">
+              <tr class="reprint-history-skeleton-row">
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 82%;"></span></td>
+                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 72%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 70%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 60px;"></span></td>
+              </tr>
+              <tr class="reprint-history-skeleton-row">
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 74%;"></span></td>
+                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 65%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 64%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 58px;"></span></td>
+              </tr>
+              <tr class="reprint-history-skeleton-row">
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 79%;"></span></td>
+                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 68%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 66%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 54px;"></span></td>
+              </tr>
+              <tr class="reprint-history-skeleton-row">
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 69%;"></span></td>
+                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 62%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 69%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 62px;"></span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity (right side) -->
+    <div class="dashboard-card">
+      <div class="dashboard-card-header">
+        <h3><i class="fa-solid fa-history"></i> Recent Activity</h3>
+      </div>
+      <div class="dashboard-card-body tall-body">
+        <div class="activity-list" id="recentActivityList">
+          <div class="activity-item activity-skeleton" id="activityLoadingMsg">
+            <div class="dash-skeleton dash-skeleton-avatar"></div>
+            <div class="activity-content">
+              <div class="dash-skeleton dash-skeleton-line" style="width: 78%;"></div>
+              <div class="dash-skeleton dash-skeleton-line" style="width: 52%;"></div>
+            </div>
+          </div>
+          <div class="activity-item activity-skeleton">
+            <div class="dash-skeleton dash-skeleton-avatar"></div>
+            <div class="activity-content">
+              <div class="dash-skeleton dash-skeleton-line" style="width: 70%;"></div>
+              <div class="dash-skeleton dash-skeleton-line" style="width: 48%;"></div>
+            </div>
+          </div>
+          <div class="activity-item activity-skeleton">
+            <div class="dash-skeleton dash-skeleton-avatar"></div>
+            <div class="activity-content">
+              <div class="dash-skeleton dash-skeleton-line" style="width: 75%;"></div>
+              <div class="dash-skeleton dash-skeleton-line" style="width: 44%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  </div><!-- /dashboard-middle-scroll -->
+
+  <!-- Bottom Fixed Quick Actions Row -->
+  <div class="dashboard-bottom-fixed">
+    <div class="client-quick-actions-bar">
+      {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
+      <a href="{% url 'client:idcard_group' %}" class="quick-action-btn">
+        <i class="fa-solid fa-id-card"></i>
+        <span>ID Card Group</span>
+      </a>
+      {% endif %}
+      {% if perm_idcard_setting_list %}
+      <a href="{% url 'client:group_settings' %}" class="quick-action-btn">
+        <i class="fa-solid fa-table-list"></i>
+        <span>Group Settings</span>
+      </a>
+      {% endif %}
+      {% if is_client_admin and perm_idcard_client_list %}
+      <a href="{% url 'client:staff' %}" class="quick-action-btn">
+        <i class="fa-solid fa-user-tie"></i>
+        <span>Manage Assistent</span>
+      </a>
+      {% endif %}
+      <button type="button" class="quick-action-btn quick-action-message" data-client-message-open>
+        <span class="client-message-quick-icon">
+          <i class="fa-solid fa-message"></i>
+          <span class="client-message-quick-badge" data-client-msg-count>0</span>
+        </span>
+        <span>Messages</span>
+      </button>
+      <button
+        type="button"
+        class="quick-action-btn"
+        onclick="window.location.href='{% url 'notifications_page' %}'"
+        title="Open notifications"
+      >
+        <i class="fa-solid fa-bell"></i>
+        <span>Notifications</span>
+      </button>
+      <a href="{% url 'settings' %}" class="quick-action-btn">
+        <i class="fa-solid fa-gear"></i>
+        <span>Settings</span>
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'partials/dashboard/welcome-notification-js.html' %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Load dashboard stats + activity
+  loadDashboardData();
+  // Load reprint history
+  loadReprintHistory();
+});
+
+function setStatValue(id, value) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = value || 0;
+  el.classList.remove('stat-value-skeleton');
+}
+
+function clearAllStatSkeletons() {
+  ['stat-total', 'stat-pending', 'stat-verified', 'stat-approved', 'stat-download', 'stat-pool'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('stat-value-skeleton');
+  });
+}
+
+// Dashboard Data (stats + activity)
+async function loadDashboardData() {
+  try {
+    const response = await fetch('{% url "client:api_dashboard" %}');
+    const data = await response.json();
+
+    if (data.success) {
+      const stats = data.data.card_counts;
+      setStatValue('stat-total', data.data.total_cards);
+      setStatValue('stat-pending', stats.pending);
+      setStatValue('stat-verified', stats.verified);
+      setStatValue('stat-approved', stats.approved);
+      setStatValue('stat-download', stats.download);
+      setStatValue('stat-pool', stats.pool);
+
+      // Render recent activity
+      const actList = document.getElementById('recentActivityList');
+      const activities = (data.data.recent_activity || []);
+      if (actList) {
+        if (activities.length === 0) {
+          actList.innerHTML = '<div class="activity-item"><div class="activity-icon edit"><i class="fa-solid fa-circle-info"></i></div><div class="activity-content"><div class="activity-text">No recent activity</div><div class="activity-time">Activity will appear as actions are performed</div></div></div>';
+        } else {
+          actList.innerHTML = activities.map(a => `
+            <div class="activity-item">
+              <div class="activity-icon ${escapeAttr(a.icon_color)}">
+                <i class="fa-solid ${escapeAttr(a.icon_class)}"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">${escHtml(a.display_text || a.description || 'Activity update')}</div>
+                <div class="activity-time">${escHtml(a.time_ago)} ago</div>
+              </div>
+            </div>`).join('');
+        }
+      }
+    } else {
+      clearAllStatSkeletons();
+      const actList = document.getElementById('recentActivityList');
+      if (actList) {
+        actList.innerHTML = '<div class="activity-item"><div class="activity-icon edit"><i class="fa-solid fa-circle-info"></i></div><div class="activity-content"><div class="activity-text">Unable to load recent activity</div><div class="activity-time">Please refresh and try again</div></div></div>';
+      }
+    }
+  } catch (err) {
+    console.error('Error loading dashboard:', err);
+    clearAllStatSkeletons();
+    const actList = document.getElementById('recentActivityList');
+    if (actList) {
+      actList.innerHTML = '<div class="activity-item"><div class="activity-icon edit"><i class="fa-solid fa-circle-info"></i></div><div class="activity-content"><div class="activity-text">Unable to load recent activity</div><div class="activity-time">Please refresh and try again</div></div></div>';
+    }
+  }
+}
+
+// Reprint History Table
+async function loadReprintHistory() {
+  try {
+    const response = await fetch('{% url "client:api_reprint_history" %}');
+    const data = await response.json();
+    const tbody = document.getElementById('reprintHistoryBody');
+    const countBadge = document.getElementById('reprintHistoryCount');
+
+    if (data.success) {
+      const items = data.data.items || [];
+      const total = data.data.total_count || 0;
+
+      if (countBadge) {
+        countBadge.textContent = total;
+        countBadge.style.display = total > 0 ? '' : 'none';
+      }
+      if (!tbody) return;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="rh-state-cell rh-state-cell-lg"><i class="fa-solid fa-inbox rh-state-icon"></i>No reprint requests yet</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map((item, idx) => {
+        const statusClass = item.status === 'downloaded' ? 'printed' : item.status;
+        const photoHtml = item.photo_url
+          ? '<img src="' + escapeAttr(item.photo_url) + '" alt="Photo" class="reprint-photo">'
+          : '<div class="reprint-photo-placeholder"><i class="fa-solid fa-user"></i></div>';
+
+        return '<tr>' +
+          '<td class="rh-num">' + (idx + 1) + '</td>' +
+          '<td class="rh-details">' + escHtml(item.details) + '</td>' +
+          '<td class="rh-photo">' + photoHtml + '</td>' +
+          '<td class="rh-group">' + escHtml(item.table_name) + '</td>' +
+          '<td class="rh-date">' + escHtml(item.created_at) + '</td>' +
+          '<td class="rh-status"><span class="reprint-status-badge ' + escapeAttr(statusClass) + '">' + escHtml(item.status_display) + '</span></td>' +
+          '</tr>';
+      }).join('');
+    } else {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="rh-state-cell rh-state-cell-error">Failed to load reprint history</td></tr>';
+    }
+  } catch (err) {
+    console.error('Error loading reprint history:', err);
+    var tbody = document.getElementById('reprintHistoryBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="rh-state-cell rh-state-cell-error">Error loading data</td></tr>';
+  }
+}
+
+// Utility
+function escHtml(s) {
+  if (!s) return '-';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function escapeAttr(s) {
+  if (!s) return '';
+  return s.replace(/[&"'<>]/g, function(c) {
+    return {'&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'}[c];
+  });
+}
+</script>
+{% endblock %}
