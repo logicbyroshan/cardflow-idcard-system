@@ -54,9 +54,5 @@
     </main>
     
     <script src="{% static 'js/login.js' %}?v={{ APP_VERSION }}"></script>
-    <script>
-        // Reset preloader flag on login screen to guarantee showing it on next dashboard load
-        sessionStorage.removeItem('preloader_shown');
-    </script>
 </body>
 </html>
