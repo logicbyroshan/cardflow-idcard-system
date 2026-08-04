@@ -31,8 +31,8 @@ const NAV_CONFIG = {
     {
       section: 'CardFlow Management',
       items: [
-        { id: 'panel',   label: 'Manage CardFlow',     Icon: SlidersHorizontal },
-        { id: 'pro',     label: 'Manage Pro Features', Icon: Gem               },
+        { id: 'panel', label: 'Manage CardFlow',     Icon: SlidersHorizontal },
+        { id: 'pro',   label: 'Manage Pro Features', Icon: Gem               },
       ],
     },
   ],
@@ -44,6 +44,12 @@ const NAV_CONFIG = {
         { id: 'organisations',label: 'Manage Organisation',  Icon: Building   },
         { id: 'clients',      label: 'Manage Manager',       Icon: Users      },
         { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound },
+      ],
+    },
+    {
+      section: 'CardFlow Management',
+      items: [
+        { id: 'panel', label: 'Manage CardFlow', Icon: SlidersHorizontal },
       ],
     },
   ],

@@ -23,34 +23,62 @@ export default function ClientAccountsView({ addToast, onOpenActionDrawer, onNav
   const [total, setTotal]             = useState(0);
   const [pageSize, setPageSize]       = useState(25);
 
+  const getStoredManagers = useCallback(() => {
+    try {
+      const customMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+      const customClients = JSON.parse(localStorage.getItem('cf_custom_clients') || '[]');
+      const autoPrimary = customClients.map(c => ({
+        id: `mgr_${c.id}`,
+        name: c.name,
+        username: c.email || c.name.toLowerCase().replace(/\s+/g, ''),
+        email: c.email,
+        phone: c.phone,
+        client_type: 'primary',
+        is_default: true,
+        organisation: { id: c.id, name: c.name },
+        school_name: c.name,
+        status: c.status || 'active',
+        is_active: c.is_active !== false,
+        created_at: c.created_at || new Date().toISOString(),
+      }));
+      return [...customMgrs, ...autoPrimary];
+    } catch { return []; }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
+    const localItems = getStoredManagers();
     try {
       const data = await clientApi.getActive({
         page, search,
         status: statusTab !== 'All' ? statusTab.toLowerCase() : '',
         page_size: pageSize,
       });
-      if (data) {
-        const list = Array.isArray(data) ? data : (data.clients || data.results || []);
-        setAccounts(list);
-        setTotal(data.total || data.count || list.length);
-      } else {
-        setAccounts([]);
-        setTotal(0);
-      }
+      const apiList = Array.isArray(data) ? data : (data?.clients || data?.results || []);
+      const combined = [...localItems];
+      apiList.forEach(item => {
+        if (!combined.some(c => String(c.id) === String(item.id) || (c.email && item.email && c.email.toLowerCase() === item.email.toLowerCase()))) {
+          combined.push(item);
+        }
+      });
+      setAccounts(combined);
+      setTotal(combined.length);
     } catch (err) {
-      console.warn('Load manager accounts error:', err);
-      setAccounts([]);
-      setTotal(0);
+      console.warn('Load manager accounts warning, using stored managers:', err);
+      setAccounts(localItems);
+      setTotal(localItems.length);
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusTab, pageSize]);
+  }, [page, search, statusTab, pageSize, getStoredManagers]);
 
-
-
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    window.__reloadClientAccounts = load;
+    return () => {
+      if (window.__reloadClientAccounts === load) delete window.__reloadClientAccounts;
+    };
+  }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selAccount = accounts.find((c) => c.id === selected);
@@ -155,10 +183,10 @@ export default function ClientAccountsView({ addToast, onOpenActionDrawer, onNav
         <div className="action-bar-right">
           <div className="actions">
             <div className="btn-group">
-              <button className="btn btn-md btn-primary" onClick={() => onOpenActionDrawer?.('add-client')}>
+              <button className="btn btn-md btn-primary" onClick={() => onOpenActionDrawer?.('add-manager')}>
                 <Plus size={13} /> Add Manager Account
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => selAccount && onOpenActionDrawer?.('edit-client', selAccount)}>
+              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => selAccount && onOpenActionDrawer?.('edit-manager', selAccount)}>
                 <Pen size={13} /> Edit
               </button>
               <button className="btn btn-md btn-warning" disabled={!selected} onClick={handleToggleStatus}>

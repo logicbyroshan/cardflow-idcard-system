@@ -197,16 +197,27 @@ export const clientApi = {
     return res.data;
   },
 
-  /** GET /client/api/messages/drawer/ */
-  getMessages: async (clientId) => {
-    const res = await apiClient.get(`/api/client/${clientId}/messages/`);
+  /** GET /api/client/<id>/ — get single client detail (includes group_id) */
+  getClient: async (clientId) => {
+    const res = await apiClient.get(`/api/client/${clientId}/`);
     return res.data;
   },
 
   /** GET /api/group/<group_id>/tables/ — ID card tables for a client group */
-  getClientGroups: async (clientId) => {
-    const res = await apiClient.get(`/client/api/groups/`);
+  getClientTables: async (groupId) => {
+    const res = await apiClient.get(`/api/group/${groupId}/tables/`);
     return res.data;
+  },
+
+  /** GET /api/clients/active/ with all clients for table management */
+  getAllClients: async (params = {}) => {
+    try {
+      const res = await apiClient.get('/api/clients/active/', { params });
+      return res.data;
+    } catch {
+      const res = await apiClient.get('/api/clients/for-staff-assignment/', { params });
+      return res.data;
+    }
   },
 };
 
@@ -214,38 +225,78 @@ export const clientApi = {
 export const operatorApi = {
   /** GET /operators/api/operator/ — list all operators */
   list: async (params = {}) => {
-    const res = await apiClient.get('/operators/api/operator/', { params });
-    return res.data;
+    try {
+      const res = await apiClient.get('/operators/api/operator/', { params });
+      return res.data;
+    } catch {
+      try {
+        const res = await apiClient.get('/panel/operators/api/operator/', { params });
+        return res.data;
+      } catch {
+        const res = await apiClient.get('/api/staff/', { params });
+        return res.data;
+      }
+    }
   },
 
   /** POST /operators/api/operator/ — create operator */
   create: async (data) => {
-    const res = await apiClient.post('/operators/api/operator/', data);
-    return res.data;
+    try {
+      const res = await apiClient.post('/operators/api/operator/', data);
+      return res.data;
+    } catch {
+      try {
+        const res = await apiClient.post('/panel/operators/api/operator/', data);
+        return res.data;
+      } catch {
+        const res = await apiClient.post('/api/staff/create/', data);
+        return res.data;
+      }
+    }
   },
 
   /** GET /operators/api/operator/<id>/ — get single operator */
   get: async (operatorId) => {
-    const res = await apiClient.get(`/operators/api/operator/${operatorId}/`);
-    return res.data;
+    try {
+      const res = await apiClient.get(`/operators/api/operator/${operatorId}/`);
+      return res.data;
+    } catch {
+      const res = await apiClient.get(`/api/staff/${operatorId}/`);
+      return res.data;
+    }
   },
 
   /** PATCH /operators/api/operator/<id>/ — update operator */
   update: async (operatorId, data) => {
-    const res = await apiClient.patch(`/operators/api/operator/${operatorId}/`, data);
-    return res.data;
+    try {
+      const res = await apiClient.patch(`/operators/api/operator/${operatorId}/`, data);
+      return res.data;
+    } catch {
+      const res = await apiClient.post(`/api/staff/${operatorId}/update/`, data);
+      return res.data;
+    }
   },
 
   /** POST /operators/api/operator/<id>/delete/ */
   delete: async (operatorId) => {
-    const res = await apiClient.post(`/operators/api/operator/${operatorId}/delete/`);
-    return res.data;
+    try {
+      const res = await apiClient.post(`/operators/api/operator/${operatorId}/delete/`);
+      return res.data;
+    } catch {
+      const res = await apiClient.post(`/api/staff/${operatorId}/delete/`);
+      return res.data;
+    }
   },
 
   /** POST /operators/api/operator/<id>/toggle-status/ */
   toggleStatus: async (operatorId) => {
-    const res = await apiClient.post(`/operators/api/operator/${operatorId}/toggle-status/`);
-    return res.data;
+    try {
+      const res = await apiClient.post(`/operators/api/operator/${operatorId}/toggle-status/`);
+      return res.data;
+    } catch {
+      const res = await apiClient.post(`/api/staff/${operatorId}/toggle-status/`);
+      return res.data;
+    }
   },
 
   /** POST /operators/api/operator/<id>/reset-password/ */
@@ -573,6 +624,24 @@ export const schemaApi = {
     return res.data;
   },
 
+  /** GET /api/group/<group_id>/tables/ — list tables for a group */
+  getGroupTables: async (groupId) => {
+    const res = await apiClient.get(`/api/group/${groupId}/tables/`);
+    return res.data;
+  },
+
+  /** POST /api/group/<group_id>/table/create/ — create a new table in a group */
+  createTable: async (groupId, data) => {
+    const res = await apiClient.post(`/api/group/${groupId}/table/create/`, data);
+    return res.data;
+  },
+
+  /** GET /api/table/<id>/ */
+  getTable: async (tableId) => {
+    const res = await apiClient.get(`/api/table/${tableId}/`);
+    return res.data;
+  },
+
   /** POST /api/table/<id>/update/ */
   updateTable: async (tableId, data) => {
     const res = await apiClient.post(`/api/table/${tableId}/update/`, data);
@@ -591,10 +660,21 @@ export const schemaApi = {
     return res.data;
   },
 
-  /** GET /api/group/<group_id>/tables/ */
-  getGroupTables: async (groupId) => {
-    const res = await apiClient.get(`/api/group/${groupId}/tables/`);
+  /** GET /api/table/<id>/status-counts/ — card counts per status */
+  getTableStatusCounts: async (tableId) => {
+    const res = await apiClient.get(`/api/table/${tableId}/status-counts/`);
     return res.data;
+  },
+
+  /** GET /client/<client_id>/groups/ — HTML page that contains group_id;
+   *  Instead use the client list API to get group_id from client data */
+  getClientGroups: async (clientId) => {
+    try {
+      const res = await apiClient.get(`/api/client/${clientId}/`);
+      return res.data;
+    } catch {
+      return null;
+    }
   },
 };
 

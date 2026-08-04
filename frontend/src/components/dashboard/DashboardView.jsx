@@ -659,10 +659,10 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
 
         <div style={{ padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
           {[
-            { label: 'Organizations', count: stats?.total_organizations ?? stats?.total_clients ?? 0, action: () => onNavigate('clients'), Icon: Building, color: '#0050d2', bg: '#eff6ff' },
-            { label: 'Clients', count: stats?.total_clients ?? 0, action: () => onNavigate('clients'), Icon: Users, color: '#059669', bg: '#ecfdf5' },
-            { label: 'Assistants', count: stats?.client_staff_count ?? stats?.total_assistants ?? 0, action: () => onNavigate('assistants'), Icon: Users, color: '#d97706', bg: '#fff7ed' },
-            { label: 'Guest Users', count: stats?.guest_users ?? 0, action: () => onNavigate('staff'), Icon: User, color: '#7c3aed', bg: '#f5f3ff' },
+            { label: 'Organisations', count: stats?.total_organizations ?? stats?.total_clients ?? 0, action: () => onNavigate('organisations'), Icon: Building, color: '#0050d2', bg: '#eff6ff' },
+            { label: 'Operators', count: stats?.total_operators ?? stats?.guest_users ?? 0, action: () => onNavigate('staff'), Icon: Shield, color: '#7c3aed', bg: '#f5f3ff' },
+            { label: 'Assistants', count: stats?.total_assistants ?? stats?.client_staff_count ?? 0, action: () => onNavigate('assistants'), Icon: Users, color: '#d97706', bg: '#fff7ed' },
+            { label: 'Photographers', count: stats?.total_photographers ?? 0, action: () => onNavigate('photographers'), Icon: User, color: '#059669', bg: '#ecfdf5' },
           ].map(({ label, count, action, Icon, color, bg }) => (
             <button
               key={label}
@@ -727,11 +727,58 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
   const [activeSection, setActiveSection] = useState('clients'); // 'clients' | 'reprints' | 'updates'
   const [search, setSearch]               = useState('');
 
+  // Compute counts from localStorage as an instant, always-available fallback
+  const getLocalStats = useCallback(() => {
+    const parse = (key) => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } };
+    // All staff types (operators/photographers/assistants) share cf_custom_staff
+    const allStaff    = parse('cf_custom_staff');
+    const clients     = parse('cf_custom_clients');
+    const operators   = allStaff.filter(s => {
+      const des = (s.designation || s.role || '').toLowerCase();
+      return !des.includes('assistant') && !des.includes('photo');
+    });
+    const photographers = allStaff.filter(s => {
+      const des = (s.designation || s.role || '').toLowerCase();
+      return des.includes('photo');
+    });
+    const assistants  = allStaff.filter(s => {
+      const des = (s.designation || s.role || '').toLowerCase();
+      return des.includes('assistant');
+    });
+    return {
+      total_organizations: clients.length,
+      total_clients:       clients.length,
+      total_operators:     operators.length,
+      client_staff_count:  assistants.length,
+      total_assistants:    assistants.length,
+      total_photographers: photographers.length,
+      guest_users:         operators.length,
+      // card stats stay 0 until API responds
+      total_id_cards: 0, pending_cards: 0, verified_cards: 0,
+      approved_cards: 0, download_cards: 0, pool_cards: 0,
+      total: 0, pending: 0, verified: 0, approved: 0, downloaded: 0, pool: 0,
+    };
+  }, []);
+
   const load = useCallback(async (isInitial = false) => {
-    if (isInitial && !stats) setLoading(true);
+    if (isInitial && !stats) {
+      // Show local counts immediately so the board is never blank
+      setStats(getLocalStats());
+      setLoading(true);
+    }
     try {
       const statsData = await dashboardApi.getStats();
-      setStats(statsData.stats || statsData);
+      const apiStats = statsData.stats || statsData;
+      // Merge: prefer API values (> 0) but fall back to local counts for user totals
+      const local = getLocalStats();
+      setStats({
+        ...local,
+        ...apiStats,
+        total_organizations: (apiStats.total_organizations || 0) > 0 ? apiStats.total_organizations : local.total_organizations,
+        total_operators:     (apiStats.total_operators     || 0) > 0 ? apiStats.total_operators     : local.total_operators,
+        total_assistants:    (apiStats.total_assistants    || 0) > 0 ? apiStats.total_assistants    : local.total_assistants,
+        total_photographers: (apiStats.total_photographers || 0) > 0 ? apiStats.total_photographers : local.total_photographers,
+      });
 
       try {
         const clientData = await dashboardApi.getRecentClientUpdates();
@@ -748,14 +795,21 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
         if (actData) setActivities(actData.activities || actData.results || actData || []);
       } catch (_) {}
 
-    } catch (_) {}
+    } catch (_) {
+      // API failed (401 etc) — keep showing local counts
+      setStats(prev => prev || getLocalStats());
+    }
     finally { setLoading(false); }
-  }, [stats]);
+  }, [stats, getLocalStats]);
 
   useEffect(() => {
     load(true);
+    window.__reloadDashboard = () => load(false);
     const interval = setInterval(() => load(false), 20000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (window.__reloadDashboard === load) delete window.__reloadDashboard;
+    };
   }, [load]);
 
 

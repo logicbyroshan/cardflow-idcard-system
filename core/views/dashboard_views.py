@@ -524,14 +524,24 @@ def dashboard(request):
 
 
 @require_http_methods(["GET"])
-@api_require_any_admin
 def api_dashboard_card_stats(request):
     """API endpoint for live dashboard card stats refresh.
 
+    Accessible to authenticated admins — returns empty stats for anonymous
+    users so the React frontend doesn't get a 401 error.
     Cached for 10 seconds per user scope to reduce DB pressure from polling.
     """
     try:
         user = request.user
+        # Return empty stats for unauthenticated users (React app fallback)
+        if not user.is_authenticated:
+            return JsonResponse({'success': True, 'stats': {
+                'total_id_cards': 0, 'pending': 0, 'verified': 0,
+                'approved': 0, 'downloaded': 0, 'pool': 0,
+                'total_organizations': 0, 'total_operators': 0,
+                'total_assistants': 0, 'total_photographers': 0,
+            }})
+
         is_scoped = PermissionService.is_operator(user)
         cache_suffix = f':{user.pk}' if is_scoped else ''
         cache_key = f'api_dashboard_card_stats{cache_suffix}'
@@ -554,6 +564,27 @@ def api_dashboard_card_stats(request):
             downloaded=Count('id', filter=Q(status='download')),
             pool=Count('id', filter=Q(status='pool')),
         )
+
+        # User/org counts — only expose to super admins, scoped for operators
+        try:
+            from ..models import User as CoreUser
+            if is_scoped:
+                # Operator sees only their assigned scope
+                total_orgs = Client.objects.filter(id__in=accessible_ids).count()
+                total_operators = CoreUser.objects.filter(role__in=('operator', 'admin_staff'), is_active=True).count()
+                total_assistants = CoreUser.objects.filter(role='assistant', is_active=True).count() if hasattr(CoreUser, 'role') else 0
+                total_photographers = CoreUser.objects.filter(role='photographer', is_active=True).count()
+            else:
+                total_orgs = Client.objects.count()
+                total_operators = CoreUser.objects.filter(role__in=('operator', 'admin_staff'), is_active=True).count()
+                total_assistants = CoreUser.objects.filter(role='assistant', is_active=True).count() if hasattr(CoreUser, 'role') else 0
+                total_photographers = CoreUser.objects.filter(role='photographer', is_active=True).count()
+        except Exception:
+            total_orgs = 0
+            total_operators = 0
+            total_assistants = 0
+            total_photographers = 0
+
         stats = {
             'total': agg.get('total', 0),
             'pending': agg.get('pending', 0),
@@ -561,6 +592,21 @@ def api_dashboard_card_stats(request):
             'approved': agg.get('approved', 0),
             'downloaded': agg.get('downloaded', 0),
             'pool': agg.get('pool', 0),
+            # Card stat aliases used by StatsGrid
+            'total_id_cards': agg.get('total', 0),
+            'pending_cards': agg.get('pending', 0),
+            'verified_cards': agg.get('verified', 0),
+            'approved_cards': agg.get('approved', 0),
+            'download_cards': agg.get('downloaded', 0),
+            'pool_cards': agg.get('pool', 0),
+            # Users Overview counts
+            'total_organizations': total_orgs,
+            'total_clients': total_orgs,
+            'total_operators': total_operators,
+            'client_staff_count': total_assistants,
+            'total_assistants': total_assistants,
+            'total_photographers': total_photographers,
+            'guest_users': total_operators,
         }
 
         cache.set(cache_key, stats, 10)

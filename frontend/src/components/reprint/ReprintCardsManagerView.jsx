@@ -3,7 +3,7 @@ import {
   Printer, CheckCircle2, Search, X, RefreshCw, Loader2, AlertCircle,
   FileCheck, RotateCcw, XCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
-import { cardApi } from '../../services/api';
+import { cardApi, reprintApi, dashboardApi } from '../../services/api';
 
 /*
   Exact replica of reprint-cards.html layout:
@@ -27,9 +27,17 @@ export default function ReprintCardsManagerView({ addToast }) {
   const load = useCallback(async () => {
     setLoading(true); setError(false);
     try {
-      const data = await cardApi.getReprintQueue?.() || [];
-      setReprints(Array.isArray(data) ? data : data.cards || data.results || []);
-    } catch {
+      let data;
+      try {
+        data = await reprintApi.getQueue();
+      } catch {
+        data = await dashboardApi.getReprintOverview();
+      }
+      const list = Array.isArray(data) ? data : data?.reprints || data?.cards || data?.results || [];
+      setReprints(list);
+    } catch (err) {
+      console.warn("Load reprint queue error:", err);
+      setReprints([]);
       setError(true);
     } finally {
       setLoading(false);
@@ -101,6 +109,11 @@ export default function ReprintCardsManagerView({ addToast }) {
               <XCircle size={13} /> Reject
             </button>
 
+            <div className="btn-separator" />
+
+            <button onClick={load} className="btn btn-md btn-neutral" style={{ padding: '0 8px', height: '28px' }} title="Refresh">
+              {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+            </button>
           </div>
         </div>
       </div>

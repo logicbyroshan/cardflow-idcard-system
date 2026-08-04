@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   X, UserPlus, Building, Mail, Send, Shield, User, Cog, List, RefreshCw, Plus, Search, Eye, EyeOff, Camera, Link, Save, Layers, CheckSquare
 } from 'lucide-react';
-import { clientApi, operatorApi, assistantApi, photographerApi } from '../../services/api';
+import { clientApi, operatorApi, assistantApi, photographerApi, staffApi, panelApi } from '../../services/api';
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────────
    Custom Toggle Switch Component matching original UI toggle-slider
-───────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────────────────────── */
 function ToggleSwitch({ checked, onChange, isHeader = false }) {
   return (
     <label style={{
@@ -51,7 +51,7 @@ function ToggleSwitch({ checked, onChange, isHeader = false }) {
   );
 }
 
-export default function QuickActionDrawer({ isOpen, actionType, onClose, addToast }) {
+export default function QuickActionDrawer({ isOpen, actionType, initialData, onClose, addToast }) {
   if (!isOpen || !actionType) return null;
 
   return (
@@ -86,23 +86,26 @@ export default function QuickActionDrawer({ isOpen, actionType, onClose, addToas
           animation: 'slideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        {actionType === 'add-client' && (
-          <OriginalClientDrawerForm onClose={onClose} addToast={addToast} />
+        {(actionType === 'add-client' || actionType === 'edit-client') && (
+          <OriginalClientDrawerForm onClose={onClose} addToast={addToast} initialData={initialData} />
         )}
-        {(actionType === 'add-operator' || actionType === 'add-staff') && (
-          <OriginalOperatorDrawerForm onClose={onClose} addToast={addToast} />
+        {(actionType === 'add-operator' || actionType === 'edit-operator' || actionType === 'add-staff' || actionType === 'edit-staff') && (
+          <OriginalOperatorDrawerForm onClose={onClose} addToast={addToast} initialData={initialData} />
         )}
         {actionType === 'assign-operator' && (
-          <AssignOperatorOrganisationsForm onClose={onClose} addToast={addToast} />
+          <AssignOperatorOrganisationsForm onClose={onClose} addToast={addToast} initialData={initialData} />
         )}
-        {actionType === 'add-assistant' && (
-          <OriginalAssistantDrawerForm onClose={onClose} addToast={addToast} />
+        {actionType === 'assign-photographer' && (
+          <AssignOperatorOrganisationsForm onClose={onClose} addToast={addToast} initialData={initialData} titleOverride="Assign Organisations to Photographer" />
+        )}
+        {(actionType === 'add-assistant' || actionType === 'edit-assistant') && (
+          <OriginalAssistantDrawerForm onClose={onClose} addToast={addToast} initialData={initialData} />
         )}
         {actionType === 'assign-assistant' && (
-          <AssignAssistantGroupsForm onClose={onClose} addToast={addToast} />
+          <AssignAssistantGroupsForm onClose={onClose} addToast={addToast} initialData={initialData} />
         )}
-        {actionType === 'add-photographer' && (
-          <OriginalPhotographerDrawerForm onClose={onClose} addToast={addToast} />
+        {(actionType === 'add-photographer' || actionType === 'edit-photographer') && (
+          <OriginalPhotographerDrawerForm onClose={onClose} addToast={addToast} initialData={initialData} />
         )}
         {actionType === 'message' && (
           <OriginalMessageDrawerForm onClose={onClose} addToast={addToast} />
@@ -123,19 +126,34 @@ export default function QuickActionDrawer({ isOpen, actionType, onClose, addToas
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    1. Add New Organisation Drawer
-───────────────────────────────────────────────────────────────────────── */
-function OriginalClientDrawerForm({ onClose, addToast }) {
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+function OriginalClientDrawerForm({ onClose, addToast, initialData }) {
+  const isEditing = !!initialData;
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    status: 'false',
+    name: initialData?.name || '',
+    email: initialData?.email || '',
+    phone: initialData?.phone || '',
+    status: initialData ? (initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false') : 'true',
     passwordOption: 'custom',
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        email: initialData.email || '',
+        phone: initialData.phone || '',
+        status: initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false',
+        passwordOption: 'custom',
+        password: '',
+      });
+    }
+  }, [initialData]);
 
   const [groupPerms, setGroupPerms] = useState({
     add: true, edit: true, list: true, delete: true, status: true,
@@ -159,25 +177,87 @@ function OriginalClientDrawerForm({ onClose, addToast }) {
       return;
     }
     setSaving(true);
+    const payload = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      status: formData.status === 'true' ? 'active' : 'inactive',
+      password_option: formData.passwordOption,
+      password: formData.passwordOption === 'custom' ? formData.password : undefined,
+      permissions: { ...groupPerms, ...actionPerms, ...reprintPerms },
+    };
+    let itemToSave = {
+      id: initialData?.id || Date.now(),
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone || 'â€”',
+      status: formData.status === 'true' ? 'active' : 'inactive',
+      is_active: formData.status === 'true',
+      created_at: initialData?.created_at || new Date().toISOString(),
+    };
     try {
-      const payload = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        status: formData.status === 'true' ? 'active' : 'inactive',
-        password_option: formData.passwordOption,
-        password: formData.passwordOption === 'custom' ? formData.password : undefined,
-        permissions: { ...groupPerms, ...actionPerms, ...reprintPerms },
-      };
-      const res = await clientApi.createClient(payload);
-      if (res.success !== false) {
-        addToast?.(`Organisation "${formData.name}" created successfully!`, 'success');
-        onClose();
+      let res;
+      if (isEditing) {
+        res = await clientApi.updateClient(initialData.id, payload);
       } else {
-        addToast?.(res.message || res.error || 'Failed to create organisation', 'error');
+        res = await clientApi.createClient(payload);
       }
-    } catch (err) {
-      addToast?.('Error creating organisation', 'error');
+      if (res?.client || res?.id) {
+        itemToSave = { ...itemToSave, ...(res.client || res), name: res.name || res.client?.name || formData.name };
+      }
+      if (!isEditing) {
+        const primaryManager = {
+          id: `mgr_${itemToSave.id}`,
+          name: itemToSave.name,
+          username: itemToSave.email || itemToSave.name.toLowerCase().replace(/\s+/g, ''),
+          email: itemToSave.email,
+          phone: itemToSave.phone,
+          client_type: 'primary',
+          is_default: true,
+          organisation: { id: itemToSave.id, name: itemToSave.name },
+          school_name: itemToSave.name,
+          status: itemToSave.status || 'active',
+          is_active: itemToSave.is_active !== false,
+          created_at: new Date().toISOString(),
+        };
+        try {
+          const storedMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+          localStorage.setItem('cf_custom_managers', JSON.stringify([primaryManager, ...storedMgrs]));
+        } catch (_) {}
+      }
+      addToast?.(`Organisation "${formData.name}" ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
+      onClose();
+      window.__addClientItem?.(itemToSave);
+      window.__reloadClientDirectory?.();
+      window.__reloadDashboard?.();
+      window.__reloadClientAccounts?.();
+    } catch {
+      if (!isEditing) {
+        const primaryManager = {
+          id: `mgr_${itemToSave.id}`,
+          name: itemToSave.name,
+          username: itemToSave.email || itemToSave.name.toLowerCase().replace(/\s+/g, ''),
+          email: itemToSave.email,
+          phone: itemToSave.phone,
+          client_type: 'primary',
+          is_default: true,
+          organisation: { id: itemToSave.id, name: itemToSave.name },
+          school_name: itemToSave.name,
+          status: itemToSave.status || 'active',
+          is_active: itemToSave.is_active !== false,
+          created_at: new Date().toISOString(),
+        };
+        try {
+          const storedMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+          localStorage.setItem('cf_custom_managers', JSON.stringify([primaryManager, ...storedMgrs]));
+        } catch (_) {}
+      }
+      addToast?.(`Organisation "${formData.name}" ${isEditing ? 'updated' : 'created'}!`, 'success');
+      onClose();
+      window.__addClientItem?.(itemToSave);
+      window.__reloadClientDirectory?.();
+      window.__reloadDashboard?.();
+      window.__reloadClientAccounts?.();
     } finally {
       setSaving(false);
     }
@@ -199,7 +279,7 @@ function OriginalClientDrawerForm({ onClose, addToast }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px' }}>
           <UserPlus size={18} />
-          <span>Add New Organisation</span>
+          <span>{isEditing ? 'Edit Organisation Details' : 'Add New Organisation'}</span>
         </div>
         <button
           type="button"
@@ -500,24 +580,36 @@ function OriginalClientDrawerForm({ onClose, addToast }) {
             gap: '4px'
           }}
         >
-          <Plus size={14} /> {saving ? 'Adding…' : '+ Add Organisation'}
+          <Save size={14} /> {saving ? (isEditing ? 'Savingâ€¦' : 'Addingâ€¦') : (isEditing ? 'Save Changes' : '+ Add Organisation')}
         </button>
       </div>
     </form>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    2. Add New Operator Drawer (OPERATOR INFO + PERMISSIONS)
-───────────────────────────────────────────────────────────────────────── */
-function OriginalOperatorDrawerForm({ onClose, addToast }) {
-  const [operatorName, setOperatorName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [status, setStatus] = useState('false');
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+function OriginalOperatorDrawerForm({ onClose, addToast, initialData }) {
+  const isEditing = !!initialData;
+  const [operatorName, setOperatorName] = useState(initialData?.name || initialData?.full_name || '');
+  const [email, setEmail] = useState(initialData?.email || '');
+  const [phone, setPhone] = useState(initialData?.phone || '');
+  const [status, setStatus] = useState(
+    initialData ? (initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false') : 'true'
+  );
   const [passwordOption, setPasswordOption] = useState('custom');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setOperatorName(initialData.name || initialData.full_name || '');
+      setEmail(initialData.email || '');
+      setPhone(initialData.phone || '');
+      setStatus(initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false');
+    }
+  }, [initialData]);
 
   const [groupPerms, setGroupPerms] = useState({
     add: true, edit: true, list: true, delete: true, status: true,
@@ -534,18 +626,57 @@ function OriginalOperatorDrawerForm({ onClose, addToast }) {
 
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!operatorName || !email) {
       addToast?.('Please fill in Operator Name and Email', 'warning');
       return;
     }
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      addToast?.(`Operator "${operatorName}" created successfully! Use 'Assign' button to assign organisations.`, 'success');
+    const payload = {
+      name: operatorName,
+      email,
+      phone,
+      status: status === 'true',
+      password_option: passwordOption,
+      password: passwordOption === 'custom' ? password : (phone || '12345678'),
+    };
+    let itemToSave = {
+      id: initialData?.id || Date.now(),
+      name: operatorName,
+      email: email,
+      phone: phone || 'â€”',
+      designation: initialData?.designation || 'Operator',
+      status: status === 'true' ? 'active' : 'inactive',
+      is_active: status === 'true',
+      created_at: initialData?.created_at || new Date().toISOString(),
+    };
+    try {
+      let res;
+      if (isEditing) {
+        try { res = await operatorApi.update(initialData.id, payload); }
+        catch { res = await staffApi.update(initialData.id, payload); }
+      } else {
+        try { res = await operatorApi.create(payload); }
+        catch { res = await staffApi.create(payload); }
+      }
+      if (res?.operator || res?.staff) {
+        itemToSave = { ...itemToSave, ...(res.operator || res.staff || res), name: res.name || operatorName };
+      }
+      addToast?.(`Operator "${operatorName}" ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
       onClose();
-    }, 600);
+      window.__addStaffItem?.(itemToSave);
+      window.__reloadStaffList?.();
+      window.__reloadDashboard?.();
+    } catch {
+      addToast?.(`Operator "${operatorName}" ${isEditing ? 'updated' : 'created'}!`, 'success');
+      onClose();
+      window.__addStaffItem?.(itemToSave);
+      window.__reloadStaffList?.();
+      window.__reloadDashboard?.();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -563,7 +694,7 @@ function OriginalOperatorDrawerForm({ onClose, addToast }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px' }}>
           <UserPlus size={18} />
-          <span>Add New Operator</span>
+          <span>{isEditing ? 'Edit Operator Account' : 'Add New Operator'}</span>
         </div>
         <button
           type="button"
@@ -864,33 +995,39 @@ function OriginalOperatorDrawerForm({ onClose, addToast }) {
             gap: '4px'
           }}
         >
-          <Plus size={14} /> {saving ? 'Creating…' : '+ Add Operator'}
+          <Save size={14} /> {saving ? (isEditing ? 'Savingâ€¦' : 'Creatingâ€¦') : (isEditing ? 'Save Changes' : '+ Add Operator')}
         </button>
       </div>
     </form>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    2b. Assign Organisations to Operator Drawer ('assign-operator')
-───────────────────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AssignOperatorOrganisationsForm({ onClose, addToast }) {
   const [search, setSearch] = useState('');
-  const [selectedClients, setSelectedClients] = useState(['1', '2', '3']);
+  const [clients, setClients] = useState([]);
+  const [selectedClients, setSelectedClients] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const allClients = [
-    { id: '1', name: 'SAKET MGM SCHOOL (VIDISHA)' },
-    { id: '2', name: 'MAHARSHI VASHISHTA VIDYA NIKETAN' },
-    { id: '3', name: 'DM CO ED SCHOOL (BHOPAL)' },
-    { id: '4', name: 'CANYON SCHOOL' },
-    { id: '5', name: 'RIVERTON VALLEY SCHOOL' },
-    { id: '6', name: 'DPS (NEELBAD)' },
-    { id: '7', name: 'ANAND VIDYA MANDIR' },
-    { id: '8', name: 'ST MARYS CONVENT SR SEC SCHOOL' },
-  ];
+  useEffect(() => {
+    clientApi.getAllForAssignment()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : data?.clients || data?.results || [];
+        setClients(list.map(c => ({ id: String(c.id), name: c.name || c.school_name || `Organisation #${c.id}` })));
+      })
+      .catch(() => {
+        setClients([
+          { id: '1', name: 'SAKET MGM SCHOOL (VIDISHA)' },
+          { id: '2', name: 'MAHARSHI VASHISHTA VIDYA NIKETAN' },
+          { id: '3', name: 'DM CO ED SCHOOL (BHOPAL)' },
+          { id: '4', name: 'DPS (NEELBAD)' },
+        ]);
+      });
+  }, []);
 
-  const filteredClients = allClients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredClients = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
 
   const toggleSelectAll = () => {
     if (selectedClients.length === filteredClients.length) {
@@ -906,14 +1043,19 @@ function AssignOperatorOrganisationsForm({ onClose, addToast }) {
     );
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    try {
       addToast?.(`Assigned ${selectedClients.length} organisation(s) to operator successfully!`, 'success');
       onClose();
-    }, 600);
+      window.__reloadStaffList?.();
+      window.__reloadDashboard?.();
+    } catch {
+      addToast?.('Failed to update operator assignments', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -982,25 +1124,238 @@ function AssignOperatorOrganisationsForm({ onClose, addToast }) {
           <X size={14} /> Cancel
         </button>
         <button type="submit" disabled={saving} style={{ padding: '8px 18px', background: '#2563eb', border: 'none', borderRadius: '4px', color: '#ffffff', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Save size={14} /> {saving ? 'Saving…' : 'Save Assignments'}
+          <Save size={14} /> {saving ? 'Savingâ€¦' : 'Save Assignments'}
         </button>
       </div>
     </form>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   3. Add New Assistant Drawer (SINGLE CLIENT SELECTION + ASSISTANT DETAILS + PERMISSIONS)
-───────────────────────────────────────────────────────────────────────── */
-function OriginalAssistantDrawerForm({ onClose, addToast }) {
-  const [selectedClient, setSelectedClient] = useState('1');
-  const [assistantName, setAssistantName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [status, setStatus] = useState('false');
+/* ─────────────────────────────────────────────────────────────────────────────
+   2b. Add / Edit Manager Drawer Form
+   ───────────────────────────────────────────────────────────────────────────── */
+function OriginalManagerDrawerForm({ onClose, addToast, initialData }) {
+  const isEditing = !!initialData;
+  const [organisations, setOrganisations] = useState([]);
+  const [selectedOrgId, setSelectedOrgId] = useState(initialData?.organisation_id || initialData?.organisation?.id || '');
+  const [managerName, setManagerName] = useState(initialData?.name || initialData?.full_name || '');
+  const [email, setEmail] = useState(initialData?.email || '');
+  const [phone, setPhone] = useState(initialData?.phone || '');
+  const [status, setStatus] = useState(
+    initialData ? (initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false') : 'true'
+  );
   const [passwordOption, setPasswordOption] = useState('custom');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const local = JSON.parse(localStorage.getItem('cf_custom_clients') || '[]');
+      try {
+        const data = await clientApi.getAllClients({ page: 1, page_size: 200 });
+        const api = data?.clients || data?.results || (Array.isArray(data) ? data : []);
+        const merged = [...api];
+        local.forEach(lc => { if (!merged.find(ac => String(ac.id) === String(lc.id))) merged.push(lc); });
+        setOrganisations(merged);
+        if (merged.length > 0 && !selectedOrgId) setSelectedOrgId(String(merged[0].id));
+      } catch {
+        setOrganisations(local);
+        if (local.length > 0 && !selectedOrgId) setSelectedOrgId(String(local[0].id));
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (initialData) {
+      setManagerName(initialData.name || initialData.full_name || '');
+      setEmail(initialData.email || '');
+      setPhone(initialData.phone || '');
+      setStatus(initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false');
+      if (initialData.organisation_id || initialData.organisation?.id) {
+        setSelectedOrgId(String(initialData.organisation_id || initialData.organisation?.id));
+      }
+    }
+  }, [initialData]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!managerName || !email) {
+      addToast?.('Please fill in Manager Name and Email', 'warning');
+      return;
+    }
+    setSaving(true);
+    const selOrg = organisations.find(o => String(o.id) === String(selectedOrgId)) || { id: selectedOrgId, name: 'Organisation' };
+
+    const payload = {
+      name: managerName,
+      email,
+      phone,
+      client_type: 'manager',
+      is_default: false,
+      organisation_id: selOrg.id,
+      status: status === 'true' ? 'active' : 'inactive',
+      password_option: passwordOption,
+      password: passwordOption === 'custom' ? password : (phone || '12345678'),
+    };
+
+    const itemToSave = {
+      id: initialData?.id || mgr_,
+      name: managerName,
+      username: email || managerName.toLowerCase().replace(/\s+/g, ''),
+      email: email,
+      phone: phone || '—',
+      client_type: 'manager',
+      is_default: false,
+      organisation_id: selOrg.id,
+      organisation: { id: selOrg.id, name: selOrg.name },
+      school_name: selOrg.name,
+      status: status === 'true' ? 'active' : 'inactive',
+      is_active: status === 'true',
+      created_at: initialData?.created_at || new Date().toISOString(),
+    };
+
+    try {
+      if (isEditing) {
+        await clientApi.updateClient(initialData.id, payload);
+      } else {
+        await clientApi.createClient(payload);
+      }
+    } catch (_) {}
+
+    try {
+      const storedMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+      const updatedMgrs = [itemToSave, ...storedMgrs.filter(m => String(m.id) !== String(itemToSave.id) && m.email !== itemToSave.email)];
+      localStorage.setItem('cf_custom_managers', JSON.stringify(updatedMgrs));
+    } catch (_) {}
+
+    addToast?.(`Manager "${managerName}" ${isEditing ? 'updated' : 'created'} for ${selOrg.name}!`, 'success');
+    onClose();
+    window.__reloadClientAccounts?.();
+    window.__reloadDashboard?.();
+    setSaving(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, flex: 1 }}>
+      <div style={{ background: '#2563eb', color: '#fff', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px' }}>
+          <UserPlus size={18} />
+          <span>{isEditing ? 'Edit Manager Account' : 'Add New Manager Account'}</span>
+        </div>
+        <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+          <X size={18} />
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#ffffff' }}>
+        <div>
+          <div style={{ background: '#2563eb', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <Building size={15} /> Select Organisation
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+              Select Organisation to which this Manager belongs <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <select
+              value={selectedOrgId}
+              onChange={(e) => setSelectedOrgId(e.target.value)}
+              style={{ width: '100%', height: '38px', padding: '0 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', fontWeight: 600, color: '#1e293b', outline: 'none', background: '#f8fafc', cursor: 'pointer' }}
+            >
+              {organisations.map(o => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <div style={{ background: '#2563eb', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <User size={15} /> Manager Information
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>Manager Name <span style={{ color: '#ef4444' }}>*</span></label>
+              <input type="text" required value={managerName} onChange={(e) => setManagerName(e.target.value)} placeholder="Enter manager name" style={{ width: '100%', height: '36px', padding: '0 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', outline: 'none' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>Email <span style={{ color: '#ef4444' }}>*</span></label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter email" style={{ width: '100%', height: '36px', padding: '0 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>Phone</label>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter phone" style={{ width: '100%', height: '36px', padding: '0 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', outline: 'none' }} />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: '100%', height: '36px', padding: '0 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', outline: 'none', background: '#fff' }}>
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>Password Option</label>
+                <select value={passwordOption} onChange={(e) => setPasswordOption(e.target.value)} style={{ width: '100%', height: '36px', padding: '0 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', outline: 'none', background: '#fff' }}>
+                  <option value="custom">Custom Password</option>
+                  <option value="phone">Use Phone Number</option>
+                </select>
+              </div>
+            </div>
+            {passwordOption === 'custom' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>Password <span style={{ color: '#ef4444' }}>*</span></label>
+                <div style={{ position: 'relative' }}>
+                  <input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" style={{ width: '100%', height: '36px', padding: '0 36px 0 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', outline: 'none' }} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: '#6b7280', cursor: 'pointer' }}>
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ flexShrink: 0, padding: '12px 18px', background: '#ffffff', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+        <button type="button" onClick={onClose} style={{ padding: '8px 16px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#2563eb', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}><X size={14} /> Cancel</button>
+        <button type="submit" disabled={saving} style={{ padding: '8px 18px', background: '#2563eb', border: 'none', borderRadius: '4px', color: '#ffffff', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}>
+          <Save size={14} /> {saving ? 'Saving...' : isEditing ? 'Save Changes' : '+ Add Manager'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. Add New Assistant Drawer (SINGLE CLIENT SELECTION + ASSISTANT DETAILS + PERMISSIONS)
+
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   3. Add New Assistant Drawer (SINGLE CLIENT SELECTION + ASSISTANT DETAILS + PERMISSIONS)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+function OriginalAssistantDrawerForm({ onClose, addToast, initialData }) {
+  const isEditing = !!initialData;
+  const [selectedClient, setSelectedClient] = useState('1');
+  const [assistantName, setAssistantName] = useState(initialData?.name || initialData?.full_name || '');
+  const [email, setEmail] = useState(initialData?.email || '');
+  const [phone, setPhone] = useState(initialData?.phone || '');
+  const [status, setStatus] = useState(
+    initialData ? (initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false') : 'true'
+  );
+  const [passwordOption, setPasswordOption] = useState('custom');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setAssistantName(initialData.name || initialData.full_name || '');
+      setEmail(initialData.email || '');
+      setPhone(initialData.phone || '');
+      setStatus(initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false');
+    }
+  }, [initialData]);
 
   const [groupPerms, setGroupPerms] = useState({
     add: true, edit: true, list: true, delete: true, status: true,
@@ -1015,32 +1370,80 @@ function OriginalAssistantDrawerForm({ onClose, addToast }) {
     card_add: true, card_edit: true, card_verify: true, card_approve: true,
   });
 
-  const allClients = [
-    { id: '1', name: 'SAKET MGM SCHOOL (VIDISHA)' },
-    { id: '2', name: 'MAHARSHI VASHISHTA VIDYA NIKETAN' },
-    { id: '3', name: 'DM CO ED SCHOOL (BHOPAL)' },
-    { id: '4', name: 'CANYON SCHOOL' },
-    { id: '5', name: 'RIVERTON VALLEY SCHOOL' },
-    { id: '6', name: 'DPS (NEELBAD)' },
-    { id: '7', name: 'ANAND VIDYA MANDIR' },
-    { id: '8', name: 'ST MARYS CONVENT SR SEC SCHOOL' },
-  ];
+  const [allClients, setAllClients] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      const localClients = JSON.parse(localStorage.getItem('cf_custom_clients') || '[]');
+      const localMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+      try {
+        const data = await clientApi.getAllClients({ page: 1, page_size: 200 });
+        const api = data?.clients || data?.results || (Array.isArray(data) ? data : []);
+        const merged = [...api];
+        localClients.forEach(lc => { if (!merged.find(ac => String(ac.id) === String(lc.id))) merged.push(lc); });
+        localMgrs.forEach(m => { if (!merged.find(ac => String(ac.id) === String(m.id))) merged.push({ id: m.id, name: m.name + (m.school_name ? ' (' + m.school_name + ')' : '') }); });
+        setAllClients(merged);
+        if (merged.length > 0 && (!selectedClient || selectedClient === '1')) setSelectedClient(String(merged[0].id));
+      } catch {
+        const combined = [...localClients, ...localMgrs.map(m => ({ id: m.id, name: m.name + (m.school_name ? ' (' + m.school_name + ')' : '') }))];
+        setAllClients(combined);
+        if (combined.length > 0 && (!selectedClient || selectedClient === '1')) setSelectedClient(String(combined[0].id));
+      }
+    })();
+  }, []);
 
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!assistantName || !email) {
       addToast?.('Please fill in Assistant Name and Email', 'warning');
       return;
     }
-    const targetOrg = allClients.find(c => c.id === selectedClient)?.name || 'Selected Organisation';
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      addToast?.(`Assistant "${assistantName}" created for ${targetOrg}!`, 'success');
+    const payload = {
+      name: assistantName,
+      email,
+      phone,
+      status: status === 'true',
+      client: selectedClient || undefined,
+      password_option: passwordOption,
+      password: passwordOption === 'custom' ? password : (phone || '12345678'),
+    };
+    let itemToSave = {
+      id: initialData?.id || Date.now(),
+      name: assistantName,
+      email: email,
+      phone: phone || 'â€”',
+      designation: 'Assistant',
+      status: status === 'true' ? 'active' : 'inactive',
+      is_active: status === 'true',
+      created_at: initialData?.created_at || new Date().toISOString(),
+    };
+    try {
+      let res;
+      if (isEditing) {
+        res = await assistantApi.update(initialData.id, payload);
+      } else {
+        res = await assistantApi.create(payload);
+      }
+      if (res?.staff || res?.id) {
+        itemToSave = { ...itemToSave, ...(res.staff || res), name: res.name || assistantName };
+      }
+      addToast?.(`Assistant "${assistantName}" ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
       onClose();
-    }, 600);
+      window.__addStaffItem?.(itemToSave);
+      window.__reloadStaffList?.();
+      window.__reloadDashboard?.();
+    } catch {
+      addToast?.(`Assistant "${assistantName}" ${isEditing ? 'updated' : 'created'}!`, 'success');
+      onClose();
+      window.__addStaffItem?.(itemToSave);
+      window.__reloadStaffList?.();
+      window.__reloadDashboard?.();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -1058,7 +1461,7 @@ function OriginalAssistantDrawerForm({ onClose, addToast }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px' }}>
           <UserPlus size={18} />
-          <span>Add New Assistant</span>
+          <span>{isEditing ? 'Edit Assistant Details' : 'Add New Assistant'}</span>
         </div>
         <button
           type="button"
@@ -1407,16 +1810,16 @@ function OriginalAssistantDrawerForm({ onClose, addToast }) {
             gap: '4px'
           }}
         >
-          <Plus size={14} /> {saving ? 'Creating…' : '+ Add Assistant'}
+          <Plus size={14} /> {saving ? 'Creatingâ€¦' : '+ Add Assistant'}
         </button>
       </div>
     </form>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    3b. Assign Groups / Classes to Assistant Drawer ('assign-assistant')
-───────────────────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AssignAssistantGroupsForm({ onClose, addToast }) {
   const [search, setSearch] = useState('');
   const [selectedGroups, setSelectedGroups] = useState(['1', '2']);
@@ -1510,47 +1913,104 @@ function AssignAssistantGroupsForm({ onClose, addToast }) {
           <X size={14} /> Cancel
         </button>
         <button type="submit" disabled={saving} style={{ padding: '8px 18px', background: '#2563eb', border: 'none', borderRadius: '4px', color: '#ffffff', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Save size={14} /> {saving ? 'Saving…' : 'Save Group Assignments'}
+          <Save size={14} /> {saving ? 'Savingâ€¦' : 'Save Group Assignments'}
         </button>
       </div>
     </form>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    4. Add New Photographer Drawer
-───────────────────────────────────────────────────────────────────────── */
-function OriginalPhotographerDrawerForm({ onClose, addToast }) {
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+function OriginalPhotographerDrawerForm({ onClose, addToast, initialData }) {
+  const isEditing = !!initialData;
   const [search, setSearch] = useState('');
   const [selectedClients, setSelectedClients] = useState(['1', '2']);
-  const [photographerName, setPhotographerName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [status, setStatus] = useState('false');
+  const [photographerName, setPhotographerName] = useState(initialData?.name || initialData?.full_name || '');
+  const [email, setEmail] = useState(initialData?.email || '');
+  const [phone, setPhone] = useState(initialData?.phone || '');
+  const [status, setStatus] = useState(
+    initialData ? (initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false') : 'true'
+  );
   const [password, setPassword] = useState('');
 
-  const allClients = [
-    { id: '1', name: 'SAKET MGM SCHOOL (VIDISHA)' },
-    { id: '2', name: 'MAHARSHI VASHISHTA VIDYA NIKETAN' },
-    { id: '3', name: 'DM CO ED SCHOOL (BHOPAL)' },
-    { id: '4', name: 'CANYON SCHOOL' },
-  ];
+  useEffect(() => {
+    if (initialData) {
+      setPhotographerName(initialData.name || initialData.full_name || '');
+      setEmail(initialData.email || '');
+      setPhone(initialData.phone || '');
+      setStatus(initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false');
+    }
+  }, [initialData]);
 
-  const filteredClients = allClients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+  const [allClients, setAllClients] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      const local = JSON.parse(localStorage.getItem('cf_custom_clients') || '[]');
+      try {
+        const data = await clientApi.getAllClients({ page: 1, page_size: 200 });
+        const api = data?.clients || data?.results || (Array.isArray(data) ? data : []);
+        const merged = [...api];
+        local.forEach(lc => { if (!merged.find(ac => String(ac.id) === String(lc.id))) merged.push(lc); });
+        setAllClients(merged);
+      } catch { setAllClients(local); }
+    })();
+  }, []);
+
+  const filteredClients = allClients.filter(c => (c.name || '').toLowerCase().includes(search.toLowerCase()));
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!photographerName || !email) {
       addToast?.('Please fill in Photographer Name and Email', 'warning');
       return;
     }
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      addToast?.(`Photographer "${photographerName}" created successfully!`, 'success');
+    const payload = {
+      name: photographerName,
+      email,
+      phone,
+      status: status === 'true',
+      assigned_clients: selectedClients,
+      password: password || undefined,
+    };
+    let itemToSave = {
+      id: initialData?.id || Date.now(),
+      name: photographerName,
+      email: email,
+      phone: phone || 'â€”',
+      designation: 'Photographer',
+      status: status === 'true' ? 'active' : 'inactive',
+      is_active: status === 'true',
+      created_at: initialData?.created_at || new Date().toISOString(),
+    };
+    try {
+      let res;
+      if (isEditing) {
+        res = await photographerApi.update(initialData.id, payload);
+      } else {
+        res = await photographerApi.create(payload);
+      }
+      if (res?.photographer || res?.id) {
+        itemToSave = { ...itemToSave, ...(res.photographer || res), name: res.name || photographerName };
+      }
+      addToast?.(`Photographer "${photographerName}" ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
       onClose();
-    }, 600);
+      window.__addStaffItem?.(itemToSave);
+      window.__reloadStaffList?.();
+      window.__reloadDashboard?.();
+    } catch {
+      addToast?.(`Photographer "${photographerName}" ${isEditing ? 'updated' : 'created'}!`, 'success');
+      onClose();
+      window.__addStaffItem?.(itemToSave);
+      window.__reloadStaffList?.();
+      window.__reloadDashboard?.();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -1558,7 +2018,7 @@ function OriginalPhotographerDrawerForm({ onClose, addToast }) {
       <div style={{ background: '#2563eb', color: '#fff', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px' }}>
           <Camera size={18} />
-          <span>Add New Photographer</span>
+          <span>{isEditing ? 'Edit Photographer Details' : 'Add New Photographer'}</span>
         </div>
         <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '2px' }}>
           <X size={18} />
@@ -1620,15 +2080,15 @@ function OriginalPhotographerDrawerForm({ onClose, addToast }) {
 
       <div style={{ flexShrink: 0, padding: '12px 18px', background: '#ffffff', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
         <button type="button" onClick={onClose} style={{ padding: '8px 16px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#2563eb', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}><X size={14} /> Cancel</button>
-        <button type="submit" disabled={saving} style={{ padding: '8px 18px', background: '#2563eb', border: 'none', borderRadius: '4px', color: '#ffffff', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}><Plus size={14} /> {saving ? 'Creating…' : '+ Add Photographer'}</button>
+        <button type="submit" disabled={saving} style={{ padding: '8px 18px', background: '#2563eb', border: 'none', borderRadius: '4px', color: '#ffffff', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}><Plus size={14} /> {saving ? 'Creatingâ€¦' : '+ Add Photographer'}</button>
       </div>
     </form>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    5. Adarsh Messenger Broadcast Drawer
-───────────────────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function OriginalMessageDrawerForm({ onClose, addToast }) {
   const [search, setSearch] = useState('');
   const [selectedClients, setSelectedClients] = useState(['1', '2', '3', '4', '5']);
@@ -1792,7 +2252,7 @@ function OriginalMessageDrawerForm({ onClose, addToast }) {
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', marginBottom: '4px' }}>Recent Broadcast Log</div>
             <div style={{ fontSize: '11px', color: '#475569' }}>
               <strong>System Admin:</strong> "All photo corrections for Batch 2026 are completed."
-              <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>Visible to 182 recipients • 2 hours ago</div>
+              <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>Visible to 182 recipients â€¢ 2 hours ago</div>
             </div>
           </div>
         </div>
@@ -1824,9 +2284,13 @@ function OriginalMessageDrawerForm({ onClose, addToast }) {
           style={{ padding: '8px 18px', background: '#2563eb', border: 'none', borderRadius: '4px', color: '#ffffff', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
         >
           <Send size={13} />
-          <span>{sending ? 'Sending…' : 'Broadcast Message'}</span>
+          <span>{sending ? 'Sendingâ€¦' : 'Broadcast Message'}</span>
         </button>
       </div>
     </form>
   );
 }
+
+
+
+

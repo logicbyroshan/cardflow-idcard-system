@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   UserCog, Search, LogIn, UserCheck, Activity, RefreshCw, CheckCircle2,
   Clock, Play, Plus, Filter, ShieldCheck, ArrowUpRight, Zap, BarChart3, X,
   Users, Smartphone, TrendingUp, AlertTriangle, FileText, CheckCircle, RotateCw,
-  FileDown, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight
+  FileDown, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Loader2
 } from 'lucide-react';
 
 import { clientApi, assistantApi, panelApi } from '../../services/api';
@@ -114,78 +114,79 @@ export default function ManageFeaturesView({ addToast }) {
   ]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [clientsRes, staffRes, opsRes] = await Promise.allSettled([
-          clientApi.getActive({ page_size: 100 }),
-          assistantApi.list({ page_size: 100 }),
-          panelApi.getOperationsFeed()
-        ]);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [clientsRes, staffRes, opsRes] = await Promise.allSettled([
+        clientApi.getActive({ page_size: 100 }),
+        assistantApi.list({ page_size: 100 }),
+        panelApi.getOperationsFeed()
+      ]);
 
-        let list = [];
-        if (clientsRes.status === 'fulfilled' && clientsRes.value) {
-          const clientItems = clientsRes.value.clients || clientsRes.value.results || (Array.isArray(clientsRes.value) ? clientsRes.value : []);
-          clientItems.forEach(c => {
-            list.push({
-              id: `client-${c.id}`,
-              name: c.name || c.school_name || 'Client Account',
-              email: c.email || c.user?.email || 'N/A',
-              role: c.client_type === 'manager' ? 'Manage Manager' : 'Manage Organisation',
-              rawRole: 'client',
-              status: c.status ? (c.status.charAt(0).toUpperCase() + c.status.slice(1)) : 'Active'
-            });
+      let list = [];
+      if (clientsRes.status === 'fulfilled' && clientsRes.value) {
+        const clientItems = clientsRes.value.clients || clientsRes.value.results || (Array.isArray(clientsRes.value) ? clientsRes.value : []);
+        clientItems.forEach(c => {
+          list.push({
+            id: `client-${c.id}`,
+            name: c.name || c.school_name || 'Client Account',
+            email: c.email || c.user?.email || 'N/A',
+            role: c.client_type === 'manager' ? 'Manage Manager' : 'Manage Organisation',
+            rawRole: 'client',
+            status: c.status ? (c.status.charAt(0).toUpperCase() + c.status.slice(1)) : 'Active'
           });
-        }
+        });
+      }
 
-        if (staffRes.status === 'fulfilled' && staffRes.value) {
-          const staffItems = staffRes.value.staff || staffRes.value.results || (Array.isArray(staffRes.value) ? staffRes.value : []);
-          staffItems.forEach(s => {
-            list.push({
-              id: `staff-${s.id}`,
-              name: s.name || s.user?.get_full_name || s.user?.username || 'Assistant',
-              email: s.email || s.user?.email || 'N/A',
-              role: s.role_display || 'Manage Assistant',
-              rawRole: 'client_staff',
-              status: 'Active'
-            });
+      if (staffRes.status === 'fulfilled' && staffRes.value) {
+        const staffItems = staffRes.value.staff || staffRes.value.results || (Array.isArray(staffRes.value) ? staffRes.value : []);
+        staffItems.forEach(s => {
+          list.push({
+            id: `staff-${s.id}`,
+            name: s.name || s.user?.get_full_name || s.user?.username || 'Assistant',
+            email: s.email || s.user?.email || 'N/A',
+            role: s.role_display || 'Manage Assistant',
+            rawRole: 'client_staff',
+            status: 'Active'
           });
-        }
+        });
+      }
 
-        if (list.length === 0) {
-          list = [
-            { id: 'usr-1', name: 'Delhi Public School (Organisation)', email: 'admin@dpsd.edu.in', role: 'Manage Organisation', rawRole: 'client', status: 'Active' },
-            { id: 'usr-2', name: 'Rajesh Kumar (Manager)', email: 'rajesh.k@cardflow.com', role: 'Manage Manager', rawRole: 'client', status: 'Active' },
-            { id: 'usr-3', name: 'Amit Sharma (Operator)', email: 'amit.op@cardflow.com', role: 'Manage Operator', rawRole: 'client_staff', status: 'Active' },
-            { id: 'usr-4', name: 'Priya Singh (Assistant)', email: 'priya.asst@cardflow.com', role: 'Manage Assistant', rawRole: 'client_staff', status: 'Active' },
-            { id: 'usr-5', name: 'Sanjay Verma (Guest User)', email: 'sanjay.guest@cardflow.com', role: 'Guest User', rawRole: 'guest_user', status: 'Active' },
-          ];
-        }
-        setUsersList(list);
+      if (list.length === 0) {
+        list = [
+          { id: 'usr-1', name: 'Delhi Public School (Organisation)', email: 'admin@dpsd.edu.in', role: 'Manage Organisation', rawRole: 'client', status: 'Active' },
+          { id: 'usr-2', name: 'Rajesh Kumar (Manager)', email: 'rajesh.k@cardflow.com', role: 'Manage Manager', rawRole: 'client', status: 'Active' },
+          { id: 'usr-3', name: 'Amit Sharma (Operator)', email: 'amit.op@cardflow.com', role: 'Manage Operator', rawRole: 'client_staff', status: 'Active' },
+          { id: 'usr-4', name: 'Priya Singh (Assistant)', email: 'priya.asst@cardflow.com', role: 'Manage Assistant', rawRole: 'client_staff', status: 'Active' },
+          { id: 'usr-5', name: 'Sanjay Verma (Guest User)', email: 'sanjay.guest@cardflow.com', role: 'Guest User', rawRole: 'guest_user', status: 'Active' },
+        ];
+      }
+      setUsersList(list);
 
-        if (opsRes.status === 'fulfilled' && opsRes.value) {
-          const jobs = opsRes.value.tasks || opsRes.value.operations || (Array.isArray(opsRes.value) ? opsRes.value : []);
-          if (jobs.length > 0) {
-            setBatchJobs(jobs.map((j, idx) => ({
-              id: j.job_id || `#JOB-${8840 - idx}`,
-              name: j.name || j.task_name || 'Bulk Task Operation',
-              type: j.type || j.task_type || 'Bulk Task',
-              user: j.user || j.triggered_by || 'Admin',
-              records: j.records || `${j.processed || 100} / ${j.total || 100} records`,
-              progress: j.progress !== undefined ? j.progress : 100,
-              status: (j.status || 'completed').toLowerCase(),
-              started: j.created_at || new Date().toISOString(),
-              download_url: j.download_url || '#',
-              duration: j.duration || '12s'
-            })));
-          }
+      if (opsRes.status === 'fulfilled' && opsRes.value) {
+        const jobs = opsRes.value.tasks || opsRes.value.operations || (Array.isArray(opsRes.value) ? opsRes.value : []);
+        if (jobs.length > 0) {
+          setBatchJobs(jobs.map((j, idx) => ({
+            id: j.job_id || `#JOB-${8840 - idx}`,
+            name: j.name || j.task_name || 'Bulk Task Operation',
+            type: j.type || j.task_type || 'Bulk Task',
+            user: j.user || j.triggered_by || 'Admin',
+            records: j.records || `${j.processed || 100} / ${j.total || 100} records`,
+            progress: j.progress !== undefined ? j.progress : 100,
+            status: (j.status || 'completed').toLowerCase(),
+            started: j.created_at || new Date().toISOString(),
+            download_url: j.download_url || '#',
+            duration: j.duration || '12s'
+          })));
         }
-      } catch (_) {}
-      finally { setLoading(false); }
-    }
-    loadData();
+      }
+    } catch (_) {}
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleImpersonate = (user) => {
     setImpersonatingUser(user);
@@ -327,21 +328,26 @@ export default function ManageFeaturesView({ addToast }) {
             </div>
 
             {/* Filter Pills */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {[
-                { id: 'all', label: `All (${usersList.length})` },
-                { id: 'client', label: `Organisation/Manager (${usersList.filter(u => u.rawRole === 'client').length})` },
-                { id: 'client_staff', label: `Assistant (${usersList.filter(u => u.rawRole === 'client_staff').length})` },
-                { id: 'guest_user', label: `Guest User (${usersList.filter(u => u.rawRole === 'guest_user').length})` },
-              ].map((pill) => (
-                <button
-                  key={pill.id}
-                  onClick={() => setRoleFilter(pill.id)}
-                  className={`btn btn-sm ${roleFilter === pill.id ? 'btn-primary' : 'btn-neutral'}`}
-                >
-                  {pill.label}
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {[
+                  { id: 'all', label: `All (${usersList.length})` },
+                  { id: 'client', label: `Organisation/Manager (${usersList.filter(u => u.rawRole === 'client').length})` },
+                  { id: 'client_staff', label: `Assistant (${usersList.filter(u => u.rawRole === 'client_staff').length})` },
+                  { id: 'guest_user', label: `Guest User (${usersList.filter(u => u.rawRole === 'guest_user').length})` },
+                ].map((pill) => (
+                  <button
+                    key={pill.id}
+                    onClick={() => setRoleFilter(pill.id)}
+                    className={`btn btn-sm ${roleFilter === pill.id ? 'btn-primary' : 'btn-neutral'}`}
+                  >
+                    {pill.label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={loadData} className="btn btn-sm btn-neutral" style={{ padding: '0 8px', height: '28px' }} title="Refresh">
+                {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+              </button>
             </div>
           </div>
 
@@ -711,8 +717,8 @@ export default function ManageFeaturesView({ addToast }) {
             </div>
 
             <div className="action-bar-right">
-              <button className="btn btn-sm btn-outline-primary" onClick={() => addToast?.('Batch tasks refreshed', 'info')}>
-                <RotateCw size={12} /> Refresh
+              <button className="btn btn-md btn-neutral" onClick={() => addToast?.('Batch tasks refreshed', 'info')} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+                <RefreshCw size={13} />
               </button>
             </div>
           </div>

@@ -39,15 +39,48 @@ export default function TableSettingsView({ addToast }) {
   useEffect(() => { load(); }, [load]);
 
   const filtered = tables.filter((t) => {
-    const q = search.toLowerCase();
+    if (!t) return false;
+    const q = (search || '').toLowerCase();
     const matchSearch = !q || (t.name || t.table_name || '').toLowerCase().includes(q);
-    const isActive = (t.status || 'active').toLowerCase() === 'active';
+    const statusStr = String(t.status || (t.is_active !== undefined ? (t.is_active ? 'active' : 'inactive') : 'active')).toLowerCase();
+    const isActive = statusStr === 'active' || statusStr === 'true' || t.is_active === true;
     const matchStatus = statusTab === 'All' || (statusTab === 'Active' ? isActive : !isActive);
     return matchSearch && matchStatus;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const selTable = tables.find((t) => t.id === selected);
+
+  const handleToggleStatus = async () => {
+    if (!selected) return;
+    try {
+      const res = await schemaApi.toggleTableStatus(selected);
+      if (res.success !== false) {
+        addToast?.(`Status updated for ${selTable?.name || 'table'}`, 'success');
+        load();
+      } else {
+        addToast?.(res.message || 'Failed to toggle status', 'error');
+      }
+    } catch {
+      addToast?.('Error updating table status', 'error');
+    }
+  };
+
+  const handleDeleteTable = async () => {
+    if (!selected) return;
+    try {
+      const res = await schemaApi.deleteTable(selected);
+      if (res.success !== false) {
+        addToast?.(`Table "${selTable?.name || ''}" deleted successfully`, 'success');
+        setSelected(null);
+        load();
+      } else {
+        addToast?.(res.message || 'Failed to delete table', 'error');
+      }
+    } catch {
+      addToast?.('Error deleting table', 'error');
+    }
+  };
 
   const formatDate = (d) => {
     if (!d) return '—';
@@ -105,13 +138,10 @@ export default function TableSettingsView({ addToast }) {
               <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => addToast?.(`Edit schema ${selTable?.name}`, 'info')}>
                 <Pen size={13} /> Edit
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => addToast?.(`View ${selTable?.name}`, 'info')}>
-                <Eye size={13} /> View
-              </button>
-              <button className="btn btn-md btn-danger" disabled={!selected} onClick={() => addToast?.('Confirm delete table?', 'warning')}>
+              <button className="btn btn-md btn-danger" disabled={!selected} onClick={handleDeleteTable}>
                 <Trash2 size={13} /> Delete
               </button>
-              <button className="btn btn-md btn-warning" disabled={!selected} onClick={() => addToast?.('Table status toggled', 'success')}>
+              <button className="btn btn-md btn-warning" disabled={!selected} onClick={handleToggleStatus}>
                 <ToggleRight size={13} /> Active
               </button>
             </div>
@@ -126,6 +156,17 @@ export default function TableSettingsView({ addToast }) {
                 <Download size={13} /> <span>Download Blank Excel</span>
               </button>
             </div>
+
+            <div className="btn-separator" />
+
+            <button
+              onClick={load}
+              className="btn btn-md btn-neutral"
+              style={{ padding: '0 8px', height: '28px' }}
+              title="Refresh"
+            >
+              {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+            </button>
 
           </div>
         </div>
@@ -188,7 +229,8 @@ export default function TableSettingsView({ addToast }) {
                   filtered.map((t, idx) => {
                     const name = t.name || t.table_name || `Table #${t.id || idx}`;
                     const clientName = t.client_name || t.client?.name || '—';
-                    const isActive = (t.status || 'active').toLowerCase() === 'active';
+                    const statusStr = String(t.status || (t.is_active !== undefined ? (t.is_active ? 'active' : 'inactive') : 'active')).toLowerCase();
+                    const isActive = statusStr === 'active' || statusStr === 'true' || t.is_active === true;
                     const isSel = t.id === selected;
                     return (
                       <tr

@@ -61,12 +61,12 @@ function PaginationBar({ page, setPage, total, pageSize, setPageSize }) {
 */
 
 const PANEL_TABS = [
-  { id: 'notifications',      label: 'Notifications',     Icon: Bell     },
-  { id: 'email-logs',         label: 'Email Management',  Icon: Mail     },
-  { id: 'log-history',        label: 'Logs & Updates',    Icon: Activity },
-  { id: 'backups',            label: 'Backups',           Icon: Database },
-  { id: 'download-templates', label: 'Download Templates',Icon: FileDown },
-  { id: 'server-info',        label: 'Server',            Icon: Server   },
+  { id: 'notifications',      label: 'Notifications', Icon: Bell     },
+  { id: 'email-logs',         label: 'Emails',        Icon: Mail     },
+  { id: 'log-history',        label: 'Logs',          Icon: Activity },
+  { id: 'backups',            label: 'Backups',       Icon: Database },
+  { id: 'download-templates', label: 'Templates',     Icon: FileDown },
+  { id: 'server-info',        label: 'Server',        Icon: Server   },
 ];
 function NotificationsTab({ addToast }) {
   const [notifs, setNotifs]   = useState([]);
@@ -150,9 +150,6 @@ function NotificationsTab({ addToast }) {
           <button className="btn btn-sm btn-danger" onClick={() => addToast?.('Maintenance mode modal opened', 'warning')}>
             <AlertCircle size={12} /> Enable Maintenance
           </button>
-          <button className="btn btn-sm btn-outline-primary" onClick={load} title="Refresh">
-            <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
-          </button>
           <button className="btn btn-sm btn-primary" onClick={() => addToast?.('Create notification modal opened', 'info')}>
             <Plus size={12} /> New Notification
           </button>
@@ -171,6 +168,9 @@ function NotificationsTab({ addToast }) {
           <span className="notif-maintenance-status" style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#334155', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
             Maintenance: Inactive
           </span>
+          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+            {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+          </button>
         </div>
       </div>
 
@@ -382,9 +382,6 @@ function EmailLogsTab({ addToast }) {
           <button className="btn btn-sm btn-primary" onClick={() => addToast?.('Compose email modal', 'info')}>
             <Plus size={12} /> Add New Email
           </button>
-          <button className="btn btn-sm btn-outline-primary" onClick={load} title="Refresh">
-            <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
-          </button>
         </div>
         <div className="notif-actions-right" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <span className="email-status-badge on-hold" onClick={() => setStatusFilter(statusFilter === 'on_hold' ? '' : 'on_hold')} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' }}>
@@ -399,6 +396,9 @@ function EmailLogsTab({ addToast }) {
           <span className="email-status-badge failed" onClick={() => setStatusFilter(statusFilter === 'failed' ? '' : 'failed')} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }}>
             <XCircle size={11} /> <span>{failedCount}</span>
           </span>
+          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+            {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+          </button>
         </div>
       </div>
 
@@ -603,8 +603,8 @@ function LogHistoryTab({ addToast }) {
           <button className="btn btn-sm btn-neutral" onClick={resetFilters} title="Reset filters">
             <FilterX size={12} /> Reset Filters
           </button>
-          <button className="btn btn-sm btn-outline-primary" onClick={load} title="Refresh">
-            <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
+          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+            {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
           </button>
         </div>
       </div>
@@ -787,8 +787,8 @@ function BackupsTab({ addToast }) {
           <button className="btn btn-sm btn-primary" onClick={() => addToast?.('Creating backup…', 'info')}>
             <Database size={12} /> Take Backup
           </button>
-          <button className="btn btn-sm btn-outline-primary" onClick={load} title="Refresh">
-            <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
+          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+            {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
           </button>
         </div>
       </div>
@@ -917,6 +917,9 @@ function DownloadTemplatesTab({ addToast }) {
         <div className="notif-actions-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button className="btn btn-sm btn-primary" onClick={() => addToast?.('Create template modal opened', 'info')}>
             <Plus size={12} /> New Template
+          </button>
+          <button className="btn btn-md btn-neutral" onClick={() => addToast?.('Templates refreshed', 'info')} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+            <RefreshCw size={13} />
           </button>
         </div>
       </div>
@@ -1047,13 +1050,10 @@ function ServerInfoTab() {
             className="btn btn-sm btn-outline-primary"
             onClick={loadData}
             disabled={loading}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '5px 12px', borderRadius: '4px', border: '1px solid #cbd5e1',
-              background: '#ffffff', color: '#2563eb', fontSize: '12px', fontWeight: 600, cursor: 'pointer'
-            }}
+            className="btn btn-md btn-neutral"
+            style={{ padding: '0 8px', height: '28px' }}
           >
-            <RefreshCw size={13} className={loading ? 'spin' : ''} /> Refresh Latest
+            {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
           </button>
         </div>
       </div>

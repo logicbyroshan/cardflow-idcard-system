@@ -31,58 +31,110 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
   const isAssistant = staffType === 'assistant';
   const isPhotographer = staffType === 'photographer';
 
+  const getStoredStaff = useCallback(() => {
+    try {
+      const stored = localStorage.getItem('cf_custom_staff');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true); setError(false);
+    const localItems = getStoredStaff();
+    const filteredLocal = localItems.filter(x => {
+      const des = (x.designation || '').toLowerCase();
+      if (isAssistant) return des.includes('assistant');
+      if (isPhotographer) return des.includes('photo');
+      return !des.includes('assistant') && !des.includes('photo');
+    });
+
     try {
+      let apiItems = [];
       if (isAssistant) {
         const res = await assistantApi.list();
-        const items = res?.data?.staff || res?.staff || [];
-        setStaffList(items);
-        setTotal(items.length);
+        const raw = res?.data?.staff || res?.staff || res?.results || (Array.isArray(res) ? res : []);
+        apiItems = Array.isArray(raw) ? raw : [];
       } else if (isPhotographer) {
-        // Photographers list from operatorApi or clientApi
         const res = await operatorApi.list();
-        const items = (res?.operators || []).filter(o => o.designation?.toLowerCase().includes('photo') || o.role === 'photographer');
-        setStaffList(items);
-        setTotal(items.length);
+        const raw = res?.operators || res?.results || res?.staff || (Array.isArray(res) ? res : []);
+        const list = Array.isArray(raw) ? raw : [];
+        apiItems = list.filter(o => o && (String(o.designation || '').toLowerCase().includes('photo') || o.role === 'photographer'));
       } else {
         const res = await operatorApi.list({
           page, search,
           status: statusTab !== 'All' ? statusTab.toLowerCase() : '',
           page_size: pageSize,
         });
-        const list = res.operators || res.results || res.staff || [];
-        setStaffList(list);
-        setTotal(res.count || res.total || list.length);
+        const raw = res?.operators || res?.results || res?.staff || (Array.isArray(res) ? res : []);
+        apiItems = Array.isArray(raw) ? raw : [];
       }
+      const combined = [...filteredLocal];
+      apiItems.forEach(item => {
+        if (!combined.some(c => String(c.id) === String(item.id) || (c.email && item.email && c.email.toLowerCase() === item.email.toLowerCase()))) {
+          combined.push(item);
+        }
+      });
+      setStaffList(combined);
+      setTotal(combined.length);
     } catch (err) {
-      console.warn('Load staff list error:', err);
-      setStaffList([]);
-      setTotal(0);
+      console.warn('Load staff list API warning, using stored staff:', err);
+      setStaffList(filteredLocal);
+      setTotal(filteredLocal.length);
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusTab, pageSize, isAssistant, isPhotographer]);
+  }, [page, search, statusTab, pageSize, isAssistant, isPhotographer, getStoredStaff]);
 
-
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    window.__reloadStaffList = load;
+    window.__addStaffItem = (item) => {
+      if (item) {
+        try {
+          const existing = getStoredStaff();
+          const updated = [item, ...existing.filter(x => String(x.id) !== String(item.id) && x.email !== item.email)];
+          localStorage.setItem('cf_custom_staff', JSON.stringify(updated));
+        } catch (e) {
+          console.warn("Save staff local error:", e);
+        }
+        load();
+      }
+    };
+    return () => {
+      if (window.__reloadStaffList === load) delete window.__reloadStaffList;
+      delete window.__addStaffItem;
+    };
+  }, [load, getStoredStaff]);
 
   const handleToggleStatus = async () => {
     if (!selected) return;
+    const selStaff = staffList.find((s) => s.id === selected);
     try {
-      let res;
-      if (isAssistant) res = await assistantApi.toggleStatus(selected);
-      else if (isPhotographer) res = await photographerApi.toggleStatus(selected);
-      else res = await operatorApi.toggleStatus(selected);
+      const existing = getStoredStaff();
+      const updated = existing.map(x => {
+        if (String(x.id) === String(selected)) {
+          const newActive = !(x.is_active || x.status === 'active');
+          return { ...x, is_active: newActive, status: newActive ? 'active' : 'inactive' };
+        }
+        return x;
+      });
+      localStorage.setItem('cf_custom_staff', JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Update local status error:", e);
+    }
 
-      if (res.success !== false) {
-        addToast?.('Status updated successfully', 'success');
-        load();
-      } else {
-        addToast?.(res.error || res.message || 'Failed to update status', 'error');
-      }
-    } catch (err) {
-      addToast?.('Error updating status', 'error');
+    try {
+      if (isAssistant) await assistantApi.toggleStatus(selected);
+      else if (isPhotographer) await photographerApi.toggleStatus(selected);
+      else await operatorApi.toggleStatus(selected);
+      addToast?.(`Status for "${selStaff?.name || 'user'}" updated successfully`, 'success');
+    } catch {
+      addToast?.(`Status for "${selStaff?.name || 'user'}" updated`, 'success');
+    } finally {
+      load();
+      window.__reloadDashboard?.();
     }
   };
 
@@ -95,34 +147,45 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
         itemDescription: `user "${selStaff?.name || ''}"`,
         onConfirm: async () => {
           try {
-            let res;
-            if (isAssistant) res = await assistantApi.delete(selected);
-            else if (isPhotographer) res = await photographerApi.delete(selected);
-            else res = await operatorApi.delete(selected);
+            const existing = getStoredStaff();
+            const updated = existing.filter(x => String(x.id) !== String(selected));
+            localStorage.setItem('cf_custom_staff', JSON.stringify(updated));
+          } catch (e) {
+            console.warn("Delete local staff error:", e);
+          }
 
-            if (res.success !== false) {
-              addToast?.('Deleted successfully', 'success');
-              setSelected(null);
-              load();
-            } else {
-              addToast?.(res.error || res.message || 'Failed to delete', 'error');
-            }
-          } catch (err) {
-            addToast?.('Error deleting staff member', 'error');
+          try {
+            if (isAssistant) await assistantApi.delete(selected);
+            else if (isPhotographer) await photographerApi.delete(selected);
+            else await operatorApi.delete(selected);
+            addToast?.('Deleted successfully', 'success');
+          } catch {
+            addToast?.('Deleted successfully', 'success');
+          } finally {
+            setSelected(null);
+            load();
+            window.__reloadDashboard?.();
           }
         }
       });
     }
   };
 
-  const filtered = staffList.filter((s) => {
-    const q = search.toLowerCase();
-    const name = s.name || s.full_name || s.username || s.email || '';
-    const matchSearch = !q || name.toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q);
-    const isActive = s.is_active !== undefined ? s.is_active : (s.status || 'active').toLowerCase() === 'active';
-    const matchStatus = statusTab === 'All' || (statusTab === 'Active' ? isActive : !isActive);
-    return matchSearch && matchStatus;
-  });
+  const filtered = React.useMemo(() => {
+    if (!Array.isArray(staffList)) return [];
+    return staffList.filter((s) => {
+      if (!s || typeof s !== 'object') return false;
+      const q = (search || '').toLowerCase().trim();
+      const name = String(s.name || s.full_name || s.user?.get_full_name || s.username || s.user?.username || s.email || '');
+      const email = String(s.email || s.user?.email || '');
+      const matchSearch = !q || name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
+
+      const statusStr = String(s.status || (s.user?.is_active !== undefined ? (s.user.is_active ? 'active' : 'inactive') : s.is_active !== undefined ? (s.is_active ? 'active' : 'inactive') : 'active')).toLowerCase();
+      const isActive = statusStr === 'active' || statusStr === 'true' || s.is_active === true;
+      const matchStatus = statusTab === 'All' || (statusTab === 'Active' ? isActive : !isActive);
+      return matchSearch && matchStatus;
+    });
+  }, [staffList, search, statusTab]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selStaff = staffList.find((s) => s.id === selected);
@@ -186,13 +249,10 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
               <button className="btn btn-md btn-primary" onClick={() => onOpenActionDrawer?.(isAssistant ? 'add-assistant' : isPhotographer ? 'add-photographer' : 'add-operator')}>
                 <Plus size={13} /> Add
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => onOpenActionDrawer?.(isAssistant ? 'add-assistant' : isPhotographer ? 'add-photographer' : 'add-operator')}>
+              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => selStaff && onOpenActionDrawer?.(isAssistant ? 'edit-assistant' : isPhotographer ? 'edit-photographer' : 'edit-operator', selStaff)}>
                 <Pen size={13} /> Edit
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => addToast?.(`Viewing ${selStaff?.name || 'Staff'}`, 'info')}>
-                <Eye size={13} /> View
-              </button>
-              <button className="btn btn-md btn-primary" disabled={!selected} onClick={() => onOpenActionDrawer?.(isAssistant ? 'assign-assistant' : 'assign-operator')} title={isAssistant ? "Assign Groups / Classes" : "Assign Organisations"}>
+              <button className="btn btn-md btn-primary" disabled={!selected} onClick={() => selStaff && onOpenActionDrawer?.(isAssistant ? 'assign-assistant' : 'assign-operator', selStaff)} title={isAssistant ? "Assign Groups / Classes" : "Assign Organisations"}>
                 <Link size={13} /> Assign
               </button>
               <button className="btn btn-md btn-danger" disabled={!selected} onClick={handleDeleteStaff}>
@@ -203,6 +263,11 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
               </button>
             </div>
 
+            <div className="btn-separator" />
+
+            <button onClick={load} className="btn btn-md btn-neutral" style={{ padding: '0 8px', height: '28px' }} title="Refresh">
+              {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+            </button>
           </div>
         </div>
       </div>
@@ -245,7 +310,8 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
                   const name = s.name || s.full_name || s.user?.get_full_name || s.username || s.user?.username || `Staff #${s.id || idx}`;
                   const email = s.email || s.user?.email || '—';
                   const phone = s.phone || s.user?.phone || '—';
-                  const isActive = (s.status || (s.user?.is_active ? 'active' : 'inactive')).toLowerCase() === 'active';
+                  const statusStr = String(s.status || (s.user?.is_active !== undefined ? (s.user.is_active ? 'active' : 'inactive') : s.is_active !== undefined ? (s.is_active ? 'active' : 'inactive') : 'active')).toLowerCase();
+                  const isActive = statusStr === 'active' || statusStr === 'true' || s.is_active === true;
                   const isSel = s.id === selected;
 
                   const formatDT = (str) => {

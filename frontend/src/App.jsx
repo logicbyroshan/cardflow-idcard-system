@@ -15,6 +15,7 @@ import CardDownloadsModal from './components/idcard/CardDownloadsModal';
 import GlobalSearchModal from './components/common/GlobalSearchModal';
 import ConfirmDeleteModal from './components/common/ConfirmDeleteModal';
 import ToastNotification from './components/common/ToastNotification';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import OldVersionWarningModal from './components/idcard/OldVersionWarningModal';
 import ReprintCardsManagerView from './components/reprint/ReprintCardsManagerView';
 import TableSettingsView from './components/settings/TableSettingsView';
@@ -36,16 +37,23 @@ export default function App() {
   const [currentUser, setCurrentUser]       = useState(null);
   const [userRole, setUserRole]             = useState('super_admin');
   const [activeTab, setActiveTab]           = useState('dashboard');
+  const [activeTableId, setActiveTableId]   = useState(null);  // set when navigating from cardflow → cards
   const [searchQuery, setSearchQuery]       = useState('');
   const [selectedClient, setSelectedClient] = useState('all');
 
   // Modals & Drawers
   const [drawerAction, setDrawerAction]             = useState(null);
+  const [drawerInitialData, setDrawerInitialData]   = useState(null);
   const [showDownloadsModal, setShowDownloadsModal] = useState(false);
   const [showSearchModal, setShowSearchModal]       = useState(false);
   const [deleteModalConfig, setDeleteModalConfig]   = useState(null);
   const [showWarningModal, setShowWarningModal]     = useState(false);
   const [warningData, setWarningData]               = useState(null);
+
+  const handleOpenActionDrawer = useCallback((action, initialData = null) => {
+    setDrawerAction(action);
+    setDrawerInitialData(initialData);
+  }, []);
 
 
   // Toasts
@@ -154,7 +162,7 @@ export default function App() {
 
         {/* Page content — scrollable area */}
         <div className="page-content">
-
+          <ErrorBoundary key={activeTab}>
 
           {/* ── Dashboard ── */}
           {activeTab === 'dashboard' && (
@@ -164,9 +172,6 @@ export default function App() {
               onOpenActionDrawer={(actionType) => setDrawerAction(actionType)}
             />
           )}
-
-
-
 
           {/* ── ID Cards ── */}
           {activeTab === 'cards' && (
@@ -178,7 +183,7 @@ export default function App() {
                 onExportModal={() => setShowDownloadsModal(true)}
                 onClearPending={() => addToast('Scanned paths cleared', 'success')}
               />
-              <CardTableView addToast={addToast} />
+              <CardTableView addToast={addToast} tableId={activeTableId} />
             </>
           )}
 
@@ -191,7 +196,7 @@ export default function App() {
           {activeTab === 'organisations' && (
             <ClientDirectoryView
               addToast={addToast}
-              onOpenActionDrawer={(action) => setDrawerAction(action)}
+              onOpenActionDrawer={handleOpenActionDrawer}
               onNavigate={(tab) => setActiveTab(tab)}
               onOpenDeleteModal={(cfg) => setDeleteModalConfig(cfg || { title: 'Confirm Permanent Delete', itemDescription: 'this item' })}
             />
@@ -201,18 +206,17 @@ export default function App() {
           {activeTab === 'clients' && (
             <ClientAccountsView
               addToast={addToast}
-              onOpenActionDrawer={(action) => setDrawerAction(action)}
+              onOpenActionDrawer={handleOpenActionDrawer}
               onNavigate={(tab) => setActiveTab(tab)}
               onOpenDeleteModal={(cfg) => setDeleteModalConfig(cfg || { title: 'Confirm Permanent Delete', itemDescription: 'this item' })}
             />
           )}
 
-
           {/* ── Manage Staff/Operator ── */}
           {activeTab === 'staff' && (
             <StaffManagementView
               addToast={addToast}
-              onOpenActionDrawer={(action) => setDrawerAction(action)}
+              onOpenActionDrawer={handleOpenActionDrawer}
               onNavigate={(tab) => setActiveTab(tab)}
               onOpenDeleteModal={(cfg) => setDeleteModalConfig(cfg || { title: 'Confirm Permanent Delete', itemDescription: 'this item' })}
             />
@@ -223,7 +227,7 @@ export default function App() {
             <StaffManagementView
               addToast={addToast}
               staffType="assistant"
-              onOpenActionDrawer={(action) => setDrawerAction(action)}
+              onOpenActionDrawer={handleOpenActionDrawer}
               onNavigate={(tab) => setActiveTab(tab)}
               onOpenDeleteModal={(cfg) => setDeleteModalConfig(cfg || { title: 'Confirm Permanent Delete', itemDescription: 'this item' })}
             />
@@ -234,7 +238,7 @@ export default function App() {
             <StaffManagementView
               addToast={addToast}
               staffType="photographer"
-              onOpenActionDrawer={(action) => setDrawerAction(action)}
+              onOpenActionDrawer={handleOpenActionDrawer}
               onNavigate={(tab) => setActiveTab(tab)}
               onOpenDeleteModal={(cfg) => setDeleteModalConfig(cfg || { title: 'Confirm Permanent Delete', itemDescription: 'this item' })}
             />
@@ -244,7 +248,6 @@ export default function App() {
           {activeTab === 'schema' && (
             <TableSettingsView addToast={addToast} />
           )}
-
 
           {/* ── System/Control Panel ── */}
           {activeTab === 'panel' && (
@@ -266,6 +269,7 @@ export default function App() {
             <ManageFeaturesView addToast={addToast} />
           )}
 
+          </ErrorBoundary>
         </div>
       </div>
 
@@ -273,7 +277,8 @@ export default function App() {
       <QuickActionDrawer
         isOpen={!!drawerAction}
         actionType={drawerAction}
-        onClose={() => setDrawerAction(null)}
+        initialData={drawerInitialData}
+        onClose={() => { setDrawerAction(null); setDrawerInitialData(null); }}
         addToast={addToast}
       />
       <CardDownloadsModal isOpen={showDownloadsModal} onClose={() => setShowDownloadsModal(false)} />

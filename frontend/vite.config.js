@@ -17,6 +17,13 @@ const djangoRoutes = [
   '/card_media',
   '/mediafiles',
   '/admin',
+  '/operators',
+  '/assistants',
+  '/client',
+  '/staff',
+  '/work',
+  '/auth',
+  '/exports',
 ];
 
 export default defineConfig({
@@ -31,6 +38,7 @@ export default defineConfig({
           target: DJANGO_ORIGIN,
           changeOrigin: true,
           secure: false,
+          cookieDomainRewrite: { '*': '' },   // ← strip domain so cookies work on localhost
           configure: (proxy) => {
             proxy.on('error', (err) => {
               console.warn(`[Vite proxy] ${err.message} — is Django running on port ${DJANGO_PORT}?`);

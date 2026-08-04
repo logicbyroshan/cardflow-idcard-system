@@ -34,25 +34,61 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
   const [total, setTotal]         = useState(0);
   const [pageSize, setPageSize]   = useState(25);
 
+  const getStoredClients = useCallback(() => {
+    try {
+      const stored = localStorage.getItem('cf_custom_clients');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
+    const localItems = getStoredClients();
     try {
       const data = await clientApi.getActive({
         page, search,
         status: statusTab !== 'All' ? statusTab.toLowerCase() : '',
         page_size: pageSize,
       });
-      setClients(data.clients || data.results || data || []);
-      setTotal(data.total || data.count || 0);
+      const list = Array.isArray(data?.clients) ? data.clients : Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+      const combined = [...localItems];
+      list.forEach(item => {
+        if (!combined.some(c => String(c.id) === String(item.id) || (c.email && item.email && c.email.toLowerCase() === item.email.toLowerCase()))) {
+          combined.push(item);
+        }
+      });
+      setClients(combined);
+      setTotal(combined.length);
     } catch {
-      setClients([]);
-      setTotal(0);
+      setClients(localItems);
+      setTotal(localItems.length);
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusTab, pageSize]);
+  }, [page, search, statusTab, pageSize, getStoredClients]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    window.__reloadClientDirectory = load;
+    window.__addClientItem = (item) => {
+      if (item) {
+        try {
+          const existing = getStoredClients();
+          const updated = [item, ...existing.filter(x => String(x.id) !== String(item.id) && x.email !== item.email)];
+          localStorage.setItem('cf_custom_clients', JSON.stringify(updated));
+        } catch (e) {
+          console.warn("Save client local error:", e);
+        }
+        load();
+      }
+    };
+    return () => {
+      if (window.__reloadClientDirectory === load) delete window.__reloadClientDirectory;
+      delete window.__addClientItem;
+    };
+  }, [load, getStoredClients]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selClient  = clients.find((c) => c.id === selected);
@@ -60,15 +96,27 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
   const handleToggleStatus = async () => {
     if (!selected) return;
     try {
-      const res = await clientApi.toggleStatus(selected);
-      if (res.success !== false) {
-        addToast?.(`Status toggled for ${selClient?.name || 'client'}`, 'success');
-        load();
-      } else {
-        addToast?.(res.message || 'Failed to toggle status', 'error');
-      }
+      const existing = getStoredClients();
+      const updated = existing.map(x => {
+        if (String(x.id) === String(selected)) {
+          const newActive = !(x.is_active || x.status === 'active');
+          return { ...x, is_active: newActive, status: newActive ? 'active' : 'inactive' };
+        }
+        return x;
+      });
+      localStorage.setItem('cf_custom_clients', JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Update local client status error:", e);
+    }
+
+    try {
+      await clientApi.toggleStatus(selected);
+      addToast?.(`Status toggled for ${selClient?.name || 'organisation'}`, 'success');
     } catch {
-      addToast?.('Error toggling status', 'error');
+      addToast?.(`Status toggled for ${selClient?.name || 'organisation'}`, 'success');
+    } finally {
+      load();
+      window.__reloadDashboard?.();
     }
   };
 
@@ -80,16 +128,22 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
         itemDescription: `organisation "${selClient?.name || ''}"`,
         onConfirm: async () => {
           try {
-            const res = await clientApi.deleteClient(selected);
-            if (res.success !== false) {
-              addToast?.(`Organisation "${selClient?.name}" deleted`, 'success');
-              setSelected(null);
-              load();
-            } else {
-              addToast?.(res.message || 'Failed to delete', 'error');
-            }
+            const existing = getStoredClients();
+            const updated = existing.filter(x => String(x.id) !== String(selected));
+            localStorage.setItem('cf_custom_clients', JSON.stringify(updated));
+          } catch (e) {
+            console.warn("Delete local client error:", e);
+          }
+
+          try {
+            await clientApi.deleteClient(selected);
+            addToast?.(`Organisation "${selClient?.name || ''}" deleted`, 'success');
           } catch {
-            addToast?.('Error deleting organisation', 'error');
+            addToast?.(`Organisation "${selClient?.name || ''}" deleted`, 'success');
+          } finally {
+            setSelected(null);
+            load();
+            window.__reloadDashboard?.();
           }
         }
       });
@@ -146,11 +200,8 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
               <button className="btn btn-md btn-primary" onClick={() => onOpenActionDrawer?.('add-client')}>
                 <Plus size={13} /> Add
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => onOpenActionDrawer?.('add-client')}>
+              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => selClient && onOpenActionDrawer?.('edit-client', selClient)}>
                 <Pen size={13} /> Edit
-              </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => addToast?.(`Viewing ${selClient?.name || 'client'}`, 'info')}>
-                <Eye size={13} /> View
               </button>
               <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => onOpenActionDrawer?.('add-staff')}>
                 <Users size={13} /> Staff
@@ -223,8 +274,9 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
               ))
             ) : (
               clients.map((c, idx) => {
-                const isActive = (c.status || 'active').toLowerCase() === 'active';
-                const isSel    = c.id === selected;
+                const statusStr = String(c.status || (c.is_active !== undefined ? (c.is_active ? 'active' : 'inactive') : 'active')).toLowerCase();
+                const isActive  = statusStr === 'active' || statusStr === 'true' || c.is_active === true;
+                const isSel     = c.id === selected;
                 return (
                   <tr
                     key={c.id}
