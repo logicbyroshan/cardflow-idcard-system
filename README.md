@@ -1,261 +1,172 @@
-# CardFlow ID Cards - Management Platform
+# 🎴 CardFlow ID Cards — Enterprise Management Platform
 
-A production-grade, end-to-end ID card operations and management platform designed for schools, colleges, institutions, and enterprise organizations.
+A high-performance, production-grade ID card operations platform designed for schools, colleges, institutions, and enterprise organizations.
 
-This platform covers the full ID card operational lifecycle:
-
-- **Client & Staff Onboarding**: Multi-tier organization & user access management.
-- **Dynamic ID Card Schema Design**: Configurable card templates, dynamic fields, and school branding.
-- **Card Data Entry & Ingestion**: Real-time web portal, React SPA interface, and bulk CSV/Excel ingestion.
-- **Image & Media Normalization**: Automated image upload, bulk ZIP matching, face-cropping, and media management.
-- **Print & Reprint Workflows**: Status-driven verification, reprint approval queues, and batch tracking.
-- **Export Engine**: High-performance PDF grid rendering, Excel, Word (DOCX), and ZIP media packaging.
-- **Mobile Application**: Native Android / iOS PWA and React Native mobile client.
-
-Live Domains:
-- **Control Panel**: [https://panel.adarshbhopal.in](https://panel.adarshbhopal.in)
-
-Version Source of Truth:
-- `VERSION.txt`: `v4.19.01`
+> **Live Production Panel**: [https://panel.adarshbhopal.in](https://panel.adarshbhopal.in) | **Current Build Version**: `v4.19.01`
 
 ---
 
-## Table of Contents
+## 🌟 Feature Showcase & Visual Interface
 
-1. [Platform Highlights & Recent Updates](#platform-highlights--recent-updates)
-2. [Tech Stack](#tech-stack)
-3. [Architecture Overview](#architecture-overview)
-4. [Repository & Directory Structure](#repository--directory-structure)
-5. [Django Apps & Core Modules](#django-apps--core-modules)
-6. [Frontend & Mobile Applications](#frontend--mobile-applications)
-7. [Documentation Index](#documentation-index)
-8. [Setup & Local Development](#setup--local-development)
-9. [Build & Deployment Pipelines](#build--deployment-pipelines)
-10. [License](#license)
+CardFlow brings together web management, real-time biometrics, dynamic template engines, and automated export pipelines.
 
----
+### 🖼️ Grid 1: Control Panel & Organization Schema Management
 
-## Platform Highlights & Recent Updates
-
-### 1) Workspace & Asset Cleanup (August 2026)
-- **Asset Consolidation**: Cleaned up unreferenced loose root images and Vite template boilerplate.
-- **Design Source Archive**: Archived raw vector CorelDraw logo source files under [`docs/assets/design_sources/`](file:///e:/E/CardFlow/docs/assets/design_sources/).
-- **Documentation Reorganization**: Moved engineering audit and CAB review documents into [`docs/audit_reports/`](file:///e:/E/CardFlow/docs/audit_reports/).
-
-### 2) Multi-Image Bulk Upload & Semantic Matching Engine
-- **Semantic Matching**: Supports multi-field headers (`SIGNATURE`, `FATHER`, `MOTHER`, `QR`, `PHOTO`).
-- **ZIP Isolation**: Prevents filename collision across multiple uploaded archives (e.g. `1.jpg` in Photo ZIP vs Signature ZIP).
-- **Default Multi-Field Fallback**: Automatically targets all image fields when `target_field` is omitted during bulk reuploads.
-
-### 3) Mobile Biometrics & Icon Standardization
-- **Native SVG Icon Infrastructure**: 100% SVG icon rendering eliminating Android startup crashes (`fontFamily` error).
-- **Target SDK 35 Compliance**: Updated Android project specs and dependencies for Google Play compliance.
-- **Real-Time Camera Biometrics**: Color-coded optical scan indicators for face presence and sunglasses detection.
-
-### 4) Production Performance & Migration Hardening
-- **Dynamic Field Redis Caching**: Redis cache TTL layer for card search drop-down filters (`SELECT DISTINCT`).
-- **PostgreSQL Compatibility Merges**: Hardened migration dependencies for production schema stability.
+<table width="100%">
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/built-for-schools.webp" alt="Multi-Tenant School Management" width="100%"/>
+      <br/><sub><b>Multi-Tenant Institution Management</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/customization.webp" alt="Dynamic Card Schema Builder" width="100%"/>
+      <br/><sub><b>Dynamic Card Schema & Field Design Lab</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots1.webp" alt="Client Dashboard Analytics" width="100%"/>
+      <br/><sub><b>Client Dashboard & Operations Analytics</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots2.webp" alt="ID Card Data Table & Filters" width="100%"/>
+      <br/><sub><b>Card Data Table & Real-Time Search Filters</b></sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## Tech Stack
+### 📱 Grid 2: Mobile Companion App & Real-Time Camera Biometrics
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Backend** | Django 5.2.12, Python 3.11+ | Core REST APIs, models, and administrative backend |
-| **Frontend Web SPA** | React 18, Vite, Vanilla CSS + Tailwind | Modern control panel UI & client portal |
-| **Mobile App** | React Native / Expo, Android Shell | Mobile companion app for card data & photo capture |
-| **Database** | PostgreSQL (Prod), SQLite (Dev) | Relational card data & client schemas |
-| **Cache & Realtime** | Redis, Django Channels | Session storage, rate limiting, WebSockets |
-| **Background Tasks** | Celery, Redis Task Queue | Asynchronous bulk processing & media conversion |
-| **Image & Face Engine**| OpenCV, Pillow, PyInstaller Service | Image validation, face cropping, media processing |
-| **Export Pipelines** | ReportLab, WeasyPrint, openpyxl, python-docx | PDF card grids, XLSX spreadsheets, Word documents |
-| **Server & WSGI** | Gunicorn + Nginx + WhiteNoise | Production application delivery |
+<table width="100%">
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots3.webp" alt="Mobile Companion Home" width="100%"/>
+      <br/><sub><b>Mobile Home Screen & Role-Based Actions</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots4.webp" alt="Real-Time Biometric Camera" width="100%"/>
+      <br/><sub><b>Real-Time Optical Camera Biometrics Scanner</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots5.webp" alt="Mobile Search & Directory" width="100%"/>
+      <br/><sub><b>Mobile Student & Staff Directory</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots6.webp" alt="Student Profile Detail View" width="100%"/>
+      <br/><sub><b>Student Profile & Media Detail View</b></sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## Architecture Overview
+### 🖨️ Grid 3: Printing, Reprint Queues & Status Workflows
 
-Request Flow Topology:
+<table width="100%">
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots7.webp" alt="Reprint Approval Queue" width="100%"/>
+      <br/><sub><b>Reprint Request Approval & Status Queue</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots8.webp" alt="Status Transition Pipeline" width="100%"/>
+      <br/><sub><b>Status Pipeline (Pending ➔ Approved ➔ Pool)</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots9.webp" alt="Batch Print Job Tracking" width="100%"/>
+      <br/><sub><b>Batch Production Print Job Tracking</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots10.webp" alt="Instant QR Verification" width="100%"/>
+      <br/><sub><b>Instant QR Code & Digital Verification</b></sub>
+    </td>
+  </tr>
+</table>
 
-```text
-[ Client Browser / Mobile App ]
-             │
-             ▼
-      [ Nginx Reverse Proxy ]
-             │
-      ┌──────┴──────────────────────────┐
-      ▼                                 ▼
-[ Gunicorn (Django WSGI) ]     [ Daphne / Channels (ASGI) ]
-      │                                 │
-      ├─────────────────────────────────┤
-      ▼                                 ▼
-[ PostgreSQL DB ]                [ Redis Cache & Task Broker ]
-                                        │
-                                        ▼
-                                [ Celery Worker Task Engine ]
+---
+
+### ⚡ Grid 4: Bulk Ingestion, Export Engine & OpenCV Cropper
+
+<table width="100%">
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/AdarshEngine.png" alt="OpenCV Face Cropper Service" width="100%"/>
+      <br/><sub><b>Automated OpenCV Face Cropping Engine</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/Adarsh 3dN.png" alt="3D Card Preview Engine" width="100%"/>
+      <br/><sub><b>3D Card Lanyard & Physical Mockup Engine</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots11.webp" alt="Bulk Ingestion & Semantic ZIP" width="100%"/>
+      <br/><sub><b>Multi-Image ZIP & Excel Bulk Ingestion</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/screenshots/screenshots12.webp" alt="PDF Grid & Word Export Pipelines" width="100%"/>
+      <br/><sub><b>PDF Grid Printing & Word (.docx) Exporters</b></sub>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 📚 In-Depth Technical Documentation
+
+For complete technical specifications, architecture diagrams, and operational guides, explore our dedicated documentation in [`docs/`](docs/):
+
+- 🏗️ [**System Architecture & Topology Guide**](docs/SYSTEM_ARCHITECTURE.md): Deep dive into Django 5.2, React 18 SPA, Daphne WebSockets, Celery task workers, Redis caching, and zero-trust security middleware.
+- ⚙️ [**Core Features & Workflows Guide**](docs/FEATURES_AND_WORKFLOWS.md): Detailed workflows covering dynamic schema design, card status transitions (`pending ➔ verified ➔ pool ➔ approved`), reprint queues, and multi-tenant roles.
+- ⚡ [**Bulk Ingestion, Face Cropper & Export Engine Guide**](docs/BULK_INGESTION_AND_EXPORTS.md): Complete guide to semantic image matching, standalone PyInstaller OpenCV Face Cropper, PDF grid printing, and Word `.docx` section page breaks.
+- 📱 [**Mobile Companion App Guide**](docs/MOBILE_APP_COMPANION.md): Technical overview of the Expo React Native app, native SVG iconography, real-time optical biometric scanner, and Android build specs.
+
+---
+
+## 🛠️ Quick Tech Stack Summary
+
+| Layer | Primary Technology |
+|---|---|
+| **Backend Framework** | Django 5.2.12 (Python 3.11+) |
+| **Frontend Web SPA** | React 18, Vite, Vanilla CSS + Tailwind |
+| **Mobile App** | React Native / Expo (Native SVG Icons) |
+| **Database & Cache** | PostgreSQL (Prod) / SQLite (Dev) + Redis Cache |
+| **Task Queue & Async** | Celery + Channels WebSockets (ASGI) |
+| **Media Processing** | OpenCV, Pillow, PyInstaller Face Cropper |
+| **Exports** | ReportLab, WeasyPrint, openpyxl, python-docx |
+
+---
+
+## 🚀 Quick Start Setup
+
+### Backend (Django)
+```bash
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
 ```
 
----
-
-## Repository & Directory Structure
-
-```text
-CardFlow/
-├── README.md               # Main repository documentation & guide
-├── VERSION.txt             # Primary system version marker (v4.19.01)
-├── manage.py               # Django CLI management script
-├── requirements.txt        # Backend python dependencies
-├── package.json            # Node.js dependencies & scripts
-│
-├── frontend/               # React 18 + Vite Web Application SPA
-│   ├── src/                # Components, views, assets, and styling
-│   └── public/             # Static public assets & brand icons
-│
-├── android_app/            # Mobile application codebase (Expo / React Native)
-│
-├── docs/                   # System documentation & guidelines
-│   ├── audit_reports/      # Production audits, security reviews & CAB backlogs
-│   ├── assets/             # Brand resources & raw design sources (.cdr)
-│   └── VERSION_LOG.md      # Detailed platform & mobile change log
-│
-├── core/                   # Core business logic, base models, & middleware
-├── accounts/               # User authentication, profiles, & sessions
-├── client/                 # Client portal & organization management
-├── staff/                  # Staff role management & permissions
-├── operators/              # Operator workflows & client assignments
-├── assistants/             # Assistant role portals & group permissions
-├── idcards/                # Card schemas, data entry, & status engine
-├── reprintcard/            # Card reprint verification & processing queues
-├── panel/                  # System admin control panel & backup tools
-├── stats/                  # System health monitoring & telemetry
-├── exports/                # Export engine (PDF, Excel, DOCX, ZIP)
-├── mobile_api/             # REST endpoints for mobile application
-├── desktop_app/            # Desktop PWA API, tokens & WebSocket listeners
-├── web_app/                # Public landing API & key integrations
-│
-├── static/                 # Collected static assets
-├── media/                  # Media uploads & card attachments
-└── config/                 # Django settings, URL routing, WSGI, ASGI, & Celery config
-```
-
----
-
-## Django Apps & Core Modules
-
-* **`core`**: Base models, custom DB routers, middleware, and common service helpers.
-* **`accounts`**: User authentication, password rules, OTP validation, and device sessions.
-* **`client`**: Client directory, dynamic custom fields, school onboarding, and client scope control.
-* **`idcards`**: Core card database models, filtering, batch status updates, and lifecycle transitions.
-* **`reprintcard`**: Reprint requests, batch submission queues, and print verification tracking.
-* **`exports`**: Heavy generator engines for multi-card PDF printing grids, Excel sheets, and Word documents.
-* **`panel`**: Super-admin management dashboard, tenant statistics, database backup/restore utilities.
-* **`mobile_api`**: Token-based REST API powering the Android and iOS companion apps.
-
----
-
-## Frontend & Mobile Applications
-
-### 1. React Web SPA (`frontend/`)
-Built with React 18, Vite, and custom design system CSS:
-- Dynamic dashboard widgets & client selector.
-- Card data grid with inline editing, batch status updates, and search filters.
-- Panel view for super-administrators and feature toggle controls.
-
-### 2. Mobile App (`android_app/`)
-Built with React Native and Expo:
-- Role-aware interface for operators and staff in the field.
-- Integrated camera mode with real-time biometric face detection overlays.
-- Offline data caching & background image queue synchronization.
-
----
-
-## Documentation Index
-
-Detailed documentation files are available in the [`docs/`](file:///e:/E/CardFlow/docs/) directory:
-
-- [**Version Log**](file:///e:/E/CardFlow/docs/VERSION_LOG.md): Comprehensive release history.
-- [**Versioning Guidelines**](file:///e:/E/CardFlow/docs/VERSIONING_GUIDELINES.md): Standard versioning protocols.
-- [**Redis Production Guide**](file:///e:/E/CardFlow/docs/enable-redis-for-production.md): Redis deployment and configuration.
-- [**Card Generation Guide**](file:///e:/E/CardFlow/docs/generate-card-step2.md): Card mail-merge and export workflow documentation.
-- [**Testing Lanes**](file:///e:/E/CardFlow/docs/testing-lanes.md): Test suite organization and execution rules.
-- [**Web API Reference**](file:///e:/E/CardFlow/docs/web_api_reference.md): Public web API endpoint documentation.
-
-### Audit & Security Reports ([`docs/audit_reports/`](file:///e:/E/CardFlow/docs/audit_reports/))
-- [**Production Audit Report**](file:///e:/E/CardFlow/docs/audit_reports/PROJECT_AUDIT.md): Comprehensive Django production audit.
-- [**Engineering Code Review**](file:///e:/E/CardFlow/docs/audit_reports/PROJECT_CODE_REVIEW.md): Deep-dive code review and refactoring guidance.
-- [**Verified Findings**](file:///e:/E/CardFlow/docs/audit_reports/PROJECT_VERIFIED_FINDINGS.md): Security and performance findings matrix.
-- [**Engineering Change Backlog**](file:///e:/E/CardFlow/docs/audit_reports/PROJECT_CHANGE_BACKLOG.md): Change Advisory Board deployment backlog.
-
----
-
-## Setup & Local Development
-
-### Backend Setup (Django)
-
-1. **Create & activate virtual environment**:
-   ```bash
-   python -m venv venv
-   # On Windows:
-   .\venv\Scripts\activate
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure Environment Variables**:
-   Copy `.env.example` to `.env` and configure local database/secret keys:
-   ```bash
-   cp .env.example .env
-   ```
-
-4. **Run Migrations & Start Server**:
-   ```bash
-   python manage.py migrate
-   python manage.py runserver
-   ```
-
-### Frontend Setup (React SPA)
-
-1. **Navigate to frontend directory**:
-   ```bash
-   cd frontend
-   ```
-
-2. **Install Node dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Start Development Server**:
-   ```bash
-   npm run dev
-   ```
-
----
-
-## Build & Deployment Pipelines
-
-### Building Frontend Assets
-To compile the production distribution bundle for the web application:
+### Frontend Web SPA (React 18)
 ```bash
 cd frontend
-npm run build
-```
-
-### Running Test Suite
-Execute Django test cases:
-```bash
-python manage.py test
+npm install
+npm run dev
 ```
 
 ---
 
-## License
+## 📄 License & Intellectual Property
 
-All rights reserved. Property of Adarsh ID Cards / CardFlow Platform.
+All rights reserved. Property of **CardFlow Platform / Adarsh ID Cards**.
+
 - Mobile upload timeout hardening for 3-image updates.
 - Dashboard caching/runtime optimization improvements.
 - Mobile action overlay and image upload regression fixes.
