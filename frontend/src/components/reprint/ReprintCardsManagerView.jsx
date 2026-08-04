@@ -111,8 +111,9 @@ export default function ReprintCardsManagerView({ addToast }) {
 
             <div className="btn-separator" />
 
-            <button onClick={load} className="btn btn-md btn-neutral" style={{ padding: '0 8px', height: '28px' }} title="Refresh">
+            <button onClick={load} className="btn btn-md btn-neutral" title="Refresh">
               {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+              <span>Refresh</span>
             </button>
           </div>
         </div>
@@ -156,8 +157,8 @@ export default function ReprintCardsManagerView({ addToast }) {
                     const isSel = r.id === selected;
                     return (
                       <tr key={r.id || idx} className={isSel ? 'selected' : ''} onClick={() => setSelected(isSel ? null : r.id)}>
-                        <td className="col-checkbox text-center">
-                          <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
+                        <td className="text-center" style={{ width: '45px', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '11px' }}>
+                          {(page - 1) * pageSize + idx + 1}
                         </td>
                         <td style={{ fontWeight: 600 }}>{name}</td>
                         <td><span className="badge badge-warning">{reason}</span></td>

@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
-import { Edit2, RotateCcw, RotateCw, RefreshCw, Search, X, Loader2, AlertCircle, ChevronLeft, ChevronRight, Clock, CheckCircle, Download, AlertTriangle, CreditCard, Table2, Building, ChevronDown } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Edit2, RotateCcw, RotateCw, RefreshCw, Search, X, Loader2, AlertCircle, ChevronLeft, ChevronRight, Clock, CheckCircle, Download, AlertTriangle, CreditCard, Table2, Building, ChevronDown, ArrowRightLeft } from "lucide-react";
 import CardEditDrawer from "./CardEditDrawer";
 import { cardApi, clientApi, schemaApi } from "../../services/api";
 
@@ -43,12 +43,24 @@ function TableSelector({ onSelect }) {
     setExpanded(p => ({ ...p, [id]: !isOpen }));
     if (!isOpen && !tableMap[id]) {
       setTableLoading(p => ({ ...p, [id]: true }));
+      const localTables = JSON.parse(localStorage.getItem("cf_custom_tables") || "[]");
+      const defaultTables = [
+        { id: `tbl_${id}_1`, name: 'Class 1st to 5th', session_year: '2026-27' },
+        { id: `tbl_${id}_2`, name: 'Class 6th to 10th', session_year: '2026-27' },
+        { id: `tbl_${id}_3`, name: 'Class 11th & 12th', session_year: '2026-27' },
+        { id: `tbl_${id}_4`, name: 'Staff & Teachers', session_year: '2026-27' },
+      ];
       try {
         const groupId = client.group_id || client.group?.id || client.id;
         const data = await schemaApi.getGroupTables(groupId);
         const list = data?.tables || data?.results || (Array.isArray(data) ? data : []);
-        setTableMap(p => ({ ...p, [id]: list }));
-      } catch { setTableMap(p => ({ ...p, [id]: [] })); }
+        const orgLocal = localTables.filter(t => t.client_name === client.name || String(t.client_id) === String(id));
+        const merged = [...orgLocal, ...list];
+        setTableMap(p => ({ ...p, [id]: merged.length > 0 ? merged : defaultTables }));
+      } catch {
+        const orgLocal = localTables.filter(t => t.client_name === client.name || String(t.client_id) === String(id));
+        setTableMap(p => ({ ...p, [id]: orgLocal.length > 0 ? orgLocal : defaultTables }));
+      }
       finally { setTableLoading(p => ({ ...p, [id]: false })); }
     }
   };
@@ -117,6 +129,8 @@ export default function CardTableView({ tableId: propTableId, cards: propCards, 
   const [search, setSearch]             = useState("");
   const [page, setPage]                 = useState(1);
   const [total, setTotal]               = useState(0);
+  const [statusCounts, setStatusCounts] = useState({});
+  const [changingStatus, setChangingStatus] = useState(null); // cardId being status-changed
 
   useEffect(() => { if (propTableId) setActiveTableId(propTableId); }, [propTableId]);
 
@@ -133,6 +147,29 @@ export default function CardTableView({ tableId: propTableId, cards: propCards, 
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [activeTableId, search]);
+
+  // Load per-table status counts from backend
+  useEffect(() => {
+    if (!activeTableId) return;
+    cardApi.getStatusCounts(activeTableId)
+      .then(data => setStatusCounts(data || {}))
+      .catch(() => {}); // silent fallback
+  }, [activeTableId]);
+
+  const handleChangeStatus = useCallback(async (card, newStatus) => {
+    setChangingStatus(card.id);
+    try {
+      await cardApi.changeStatus(card.id, newStatus);
+      addToast?.(`Status changed to ${newStatus}`, 'success');
+      load();
+      // Refresh counts after status change
+      cardApi.getStatusCounts(activeTableId).then(d => setStatusCounts(d || {})).catch(() => {});
+    } catch {
+      addToast?.('Failed to change card status', 'error');
+    } finally {
+      setChangingStatus(null);
+    }
+  }, [activeTableId, load, addToast]);
 
   const handleSelectTable = (t) => {
     setActiveTableId(t.id);
@@ -159,6 +196,19 @@ export default function CardTableView({ tableId: propTableId, cards: propCards, 
             <span style={{ fontSize: "12px", color: "#6b7280" }}>
               {isLive ? (loading ? "Loading..." : `${total.toLocaleString()} records`) : `${displayCards.length} entries`}
             </span>
+            {isLive && !loading && Object.keys(statusCounts).length > 0 && (
+              <>
+                <div className="action-divider" />
+                {Object.entries(statusCounts).map(([st, cnt]) => {
+                  const cfg = STATUS_BADGE[st] || STATUS_BADGE.pending;
+                  return cnt > 0 ? (
+                    <span key={st} style={{ fontSize: "11px", padding: "2px 7px", borderRadius: "10px", background: st === 'verified' || st === 'approved' || st === 'printed' ? '#dcfce7' : st === 'pending' ? '#fef9c3' : '#fee2e2', color: st === 'verified' || st === 'approved' || st === 'printed' ? '#15803d' : st === 'pending' ? '#92400e' : '#b91c1c', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      {cfg.label}: {cnt}
+                    </span>
+                  ) : null;
+                })}
+              </>
+            )}
           </div>
           {isLive && (
             <div className="action-bar-right">
@@ -243,6 +293,19 @@ export default function CardTableView({ tableId: propTableId, cards: propCards, 
                         <div style={{ display: "flex", gap: "3px", justifyContent: "center" }}>
                           <button onClick={async () => { try { await cardApi.undoImage(card.id); addToast?.("Undo photo", "success"); load(); } catch { addToast?.("Undo failed", "error"); } }} className="btn btn-sm" title="Undo photo" style={{ background: "#fef3c7", color: "#d97706", border: "none", width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px" }}><RotateCcw size={11} /></button>
                           <button onClick={async () => { try { await cardApi.redoImage(card.id); addToast?.("Redo photo", "success"); load(); } catch { addToast?.("Redo failed", "error"); } }} className="btn btn-sm" title="Redo photo" style={{ background: "#d1fae5", color: "#059669", border: "none", width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px" }}><RotateCw size={11} /></button>
+                          <button
+                            title="Change Status"
+                            disabled={changingStatus === card.id}
+                            onClick={() => {
+                              // Cycle through statuses
+                              const cycle = ['pending','verified','approved','printed','pool'];
+                              const next = cycle[(cycle.indexOf(status) + 1) % cycle.length];
+                              handleChangeStatus(card, next);
+                            }}
+                            style={{ background: "#ede9fe", color: "#7c3aed", border: "none", width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px", cursor: changingStatus === card.id ? 'not-allowed' : 'pointer' }}
+                          >
+                            {changingStatus === card.id ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <ArrowRightLeft size={11} />}
+                          </button>
                           <button onClick={() => setSelectedCard(card)} className="btn btn-sm btn-neutral" title="Edit" style={{ width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px" }}><Edit2 size={11} /></button>
                         </div>
                       </td>
@@ -280,7 +343,12 @@ export default function CardTableView({ tableId: propTableId, cards: propCards, 
         )}
 
         {selectedCard && (
-          <CardEditDrawer card={selectedCard} onClose={() => setSelectedCard(null)} onSave={(updated) => { if (onEditCard) onEditCard(updated); setSelectedCard(null); load(); }} />
+          <CardEditDrawer
+            card={selectedCard}
+            addToast={addToast}
+            onClose={() => setSelectedCard(null)}
+            onSave={(updated) => { if (onEditCard) onEditCard(updated); setSelectedCard(null); load(); }}
+          />
         )}
       </div>
     </div>

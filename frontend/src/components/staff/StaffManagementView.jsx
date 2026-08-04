@@ -265,8 +265,9 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
 
             <div className="btn-separator" />
 
-            <button onClick={load} className="btn btn-md btn-neutral" style={{ padding: '0 8px', height: '28px' }} title="Refresh">
+            <button onClick={load} className="btn btn-md btn-neutral" title="Refresh">
               {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+              <span>Refresh</span>
             </button>
           </div>
         </div>
@@ -335,8 +336,8 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
                       onClick={() => setSelected(isSel ? null : s.id)}
                       data-staff-id={s.id}
                     >
-                      <td className="col-checkbox text-center" style={{ width: '45px' }}>
-                        <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
+                      <td className="text-center" style={{ width: '45px', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '11px' }}>
+                        {(page - 1) * pageSize + idx + 1}
                       </td>
                       {isAssistant && <td><span style={{ fontSize: '11px', color: '#475569', fontWeight: 500 }}>{s.client_name || s.client?.name || '—'}</span></td>}
                       <td style={{ width: 'auto' }}>

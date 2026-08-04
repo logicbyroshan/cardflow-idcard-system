@@ -1028,11 +1028,14 @@ textarea {
   gap: 4px;
 }
 
-.action-divider {
+.action-divider,
+.btn-separator {
   width: 1px;
   height: 20px;
-  background: var(--gray-200);
-  margin: 0 2px;
+  background: #cbd5e1;
+  margin: 0 6px;
+  flex-shrink: 0;
+  display: inline-block;
 }
 
 /* ============================================================

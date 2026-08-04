@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Plus, Pen, Eye, Users, Trash2, ToggleRight, Building,
+  Plus, Pen, Eye, EyeOff, Users, UsersRound, Trash2, ToggleRight, Building,
   Settings, CreditCard, Search, X, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, RefreshCw, Loader2, Info
+  ChevronsLeft, ChevronsRight, RefreshCw, Loader2, Info, Save, Mail, Phone, Shield, CheckCircle2, User
 } from 'lucide-react';
 
 import { clientApi } from '../../services/api';
@@ -150,8 +150,172 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
     }
   };
 
+  const [showManagersDrawer, setShowManagersDrawer] = useState(false);
+  const [showAssistantsDrawer, setShowAssistantsDrawer] = useState(false);
+  const [editingManager, setEditingManager] = useState(null); // null | 'new' | managerObj
+  const [editingAssistant, setEditingAssistant] = useState(null); // null | 'new' | assistantObj
+
+  const getManagerCount = useCallback((org) => {
+    if (!org) return 1;
+    try {
+      const customMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+      const extra = customMgrs.filter(m =>
+        String(m.organisation_id) === String(org.id) ||
+        m.school_name === org.name ||
+        String(m.organisation?.id) === String(org.id)
+      ).filter(m => !m.is_default && m.client_type !== 'primary');
+      return 1 + extra.length;
+    } catch { return 1; }
+  }, []);
+
+  const getAssistantCount = useCallback((org) => {
+    if (!org) return 1;
+    try {
+      const staffList = JSON.parse(localStorage.getItem('cf_custom_staff') || '[]');
+      const extra = staffList.filter(s =>
+        (s.designation === 'Assistant' || s.role === 'assistant') && (
+          String(s.client) === String(org.id) ||
+          String(s.organisation_id) === String(org.id) ||
+          s.client_name === org.name ||
+          s.school_name === org.name
+        )
+      ).filter(s => !s.is_default);
+      return 1 + extra.length;
+    } catch { return 1; }
+  }, []);
+
+  const getOrgManagers = useCallback(() => {
+    if (!selClient) return [];
+    try {
+      const customMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+      const derivedUsername = selClient.username || selClient.user?.username || (selClient.email ? selClient.email.split('@')[0] : '') || (selClient.name ? selClient.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+      const autoPrimary = {
+        id: `mgr_${selClient.id}`,
+        name: selClient.name,
+        username: derivedUsername,
+        email: selClient.email,
+        phone: selClient.phone,
+        client_type: 'primary',
+        is_default: true,
+        organisation: { id: selClient.id, name: selClient.name },
+        school_name: selClient.name,
+        status: selClient.status || 'active',
+        is_active: selClient.is_active !== false,
+        created_at: selClient.created_at || new Date().toISOString(),
+        assigned_tables: ['All Tables (Default Owner)'],
+      };
+      const orgSpecific = customMgrs.filter(m => String(m.organisation_id) === String(selClient.id) || m.school_name === selClient.name || String(m.organisation?.id) === String(selClient.id));
+      const result = [autoPrimary];
+      orgSpecific.forEach(m => {
+        if (!result.some(r => String(r.id) === String(m.id) || r.email === m.email)) {
+          result.push({ ...m, assigned_tables: m.assigned_tables || ['All Tables'] });
+        }
+      });
+      return result;
+    } catch { return []; }
+  }, [selClient]);
+
+  const getOrgAssistants = useCallback(() => {
+    if (!selClient) return [];
+    try {
+      const staffList = JSON.parse(localStorage.getItem('cf_custom_staff') || '[]');
+      const autoPrimaryAst = {
+        id: `ast_${selClient.id}`,
+        name: `${selClient.name} (Primary Assistant)`,
+        username: selClient.username ? `ast_${selClient.username}` : (selClient.email ? `ast_${selClient.email.split('@')[0]}` : `ast_${selClient.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`),
+        email: selClient.email,
+        phone: selClient.phone,
+        designation: 'Assistant',
+        role: 'assistant',
+        client: selClient.id,
+        organisation_id: selClient.id,
+        client_name: selClient.name,
+        school_name: selClient.name,
+        status: selClient.status || 'active',
+        is_active: selClient.is_active !== false,
+        is_default: true,
+        created_at: selClient.created_at || new Date().toISOString(),
+      };
+      const orgSpecific = staffList.filter(s =>
+        (s.designation === 'Assistant' || s.role === 'assistant') && (
+          String(s.client) === String(selClient.id) ||
+          String(s.organisation_id) === String(selClient.id) ||
+          s.client_name === selClient.name ||
+          s.school_name === selClient.name
+        )
+      );
+      const result = [autoPrimaryAst];
+      orgSpecific.forEach(a => {
+        if (!result.some(r => String(r.id) === String(a.id) || r.email === a.email)) {
+          result.push(a);
+        }
+      });
+      return result;
+    } catch { return []; }
+  }, [selClient]);
+
+  const orgManagers = getOrgManagers();
+  const orgAssistants = getOrgAssistants();
+
+  const handleSaveManagerInline = (mgrData) => {
+    try {
+      const customMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+      if (mgrData.id && !String(mgrData.id).startsWith('mgr_')) {
+        const idx = customMgrs.findIndex(m => m.id === mgrData.id);
+        if (idx >= 0) customMgrs[idx] = { ...customMgrs[idx], ...mgrData };
+        else customMgrs.push(mgrData);
+      } else {
+        const newMgr = {
+          id: Date.now(),
+          ...mgrData,
+          organisation_id: selClient.id,
+          organisation: { id: selClient.id, name: selClient.name },
+          school_name: selClient.name,
+          client_type: 'secondary',
+          is_default: false,
+          created_at: new Date().toISOString()
+        };
+        customMgrs.push(newMgr);
+      }
+      localStorage.setItem('cf_custom_managers', JSON.stringify(customMgrs));
+      addToast?.(`Manager ${mgrData.name || ''} saved successfully!`, 'success');
+      setEditingManager(null);
+    } catch {
+      addToast?.('Failed to save manager', 'error');
+    }
+  };
+
+  const handleSaveAssistantInline = (astData) => {
+    try {
+      const staffList = JSON.parse(localStorage.getItem('cf_custom_staff') || '[]');
+      if (astData.id) {
+        const idx = staffList.findIndex(s => s.id === astData.id);
+        if (idx >= 0) staffList[idx] = { ...staffList[idx], ...astData };
+        else staffList.push(astData);
+      } else {
+        const newAst = {
+          id: Date.now(),
+          ...astData,
+          designation: 'Assistant',
+          role: 'assistant',
+          client: selClient.id,
+          organisation_id: selClient.id,
+          client_name: selClient.name,
+          school_name: selClient.name,
+          created_at: new Date().toISOString()
+        };
+        staffList.push(newAst);
+      }
+      localStorage.setItem('cf_custom_staff', JSON.stringify(staffList));
+      addToast?.(`Assistant ${astData.name || ''} saved successfully!`, 'success');
+      setEditingAssistant(null);
+    } catch {
+      addToast?.('Failed to save assistant', 'error');
+    }
+  };
+
   return (
-    <div className="view-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div className="view-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
 
       {/* ── ACTION BAR ── */}
       <div className="action-bar" id="client-action-bar">
@@ -203,9 +367,6 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
               <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => selClient && onOpenActionDrawer?.('edit-client', selClient)}>
                 <Pen size={13} /> Edit
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => onOpenActionDrawer?.('add-staff')}>
-                <Users size={13} /> Staff
-              </button>
               <button className="btn btn-md btn-danger" disabled={!selected} onClick={handleDeleteClient}>
                 <Trash2 size={13} /> Delete
               </button>
@@ -220,8 +381,14 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
               <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => onNavigate?.('schema')} title="Manage Table Settings">
                 <Settings size={13} /> <span>Table Setting</span>
               </button>
-              <button className="btn btn-md btn-primary" disabled={!selected} onClick={() => onNavigate?.('reprints')} title="View Tables">
-                <CreditCard size={13} /> <span>Tables</span>
+              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => onNavigate?.('cards')} title="View Table Groups">
+                <CreditCard size={13} /> <span>Table Groups</span>
+              </button>
+              <button className={`btn btn-md ${showManagersDrawer ? 'btn-primary' : 'btn-neutral'}`} disabled={!selected} onClick={() => { setShowManagersDrawer(!showManagersDrawer); setShowAssistantsDrawer(false); }} title="Manage Managers">
+                <Users size={13} /> <span>Managers</span>
+              </button>
+              <button className={`btn btn-md ${showAssistantsDrawer ? 'btn-primary' : 'btn-neutral'}`} disabled={!selected} onClick={() => { setShowAssistantsDrawer(!showAssistantsDrawer); setShowManagersDrawer(false); }} title="Manage Assistants">
+                <UsersRound size={13} /> <span>Assistants</span>
               </button>
             </div>
 
@@ -230,26 +397,28 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
             <button
               onClick={load}
               className="btn btn-md btn-neutral"
-              style={{ padding: '0 8px', height: '28px' }}
               title="Refresh"
             >
               {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+              <span>Refresh</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── TABLE ── */}
+      {/* ── TABLE CONTAINER ── */}
       <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <table className="data-table" id="clientsTable" style={{ flexShrink: 0 }}>
           <thead>
             <tr>
               <th style={{ width: '45px', textAlign: 'center' }}>S. No.</th>
-              <th style={{ width: 'auto' }}>Name</th>
-              <th style={{ width: '180px' }}>Email</th>
-              <th style={{ width: '130px' }}>Username</th>
+              <th style={{ width: 'auto', textAlign: 'left' }}>Name</th>
+              <th style={{ width: '180px', textAlign: 'left' }}>Email</th>
+              <th style={{ width: '130px', textAlign: 'left' }}>Username</th>
               <th style={{ width: '110px', textAlign: 'center' }}>Mobile</th>
               <th style={{ width: '80px', textAlign: 'center' }}>Status</th>
+              <th style={{ width: '80px', textAlign: 'center' }}>Managers</th>
+              <th style={{ width: '80px', textAlign: 'center' }}>Assistants</th>
               <th style={{ width: '75px', textAlign: 'center' }}>Tables</th>
               <th style={{ width: '120px', textAlign: 'center' }}>Created At</th>
               <th style={{ width: '120px', textAlign: 'center' }}>Updated At</th>
@@ -266,69 +435,79 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                   <td><div className="skeleton" style={{ height: '13px', width: '75%' }} /></td>
                   <td style={{ textAlign: 'center' }}><div className="skeleton" style={{ height: '13px', width: '70%', margin: '0 auto' }} /></td>
                   <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-badge" style={{ margin: '0 auto' }} /></td>
+                  <td style={{ textAlign: 'center' }}><div className="skeleton" style={{ height: '20px', width: '40px', borderRadius: '6px', margin: '0 auto' }} /></td>
+                  <td style={{ textAlign: 'center' }}><div className="skeleton" style={{ height: '20px', width: '40px', borderRadius: '6px', margin: '0 auto' }} /></td>
                   <td style={{ textAlign: 'center' }}><div className="skeleton" style={{ height: '20px', width: '50px', borderRadius: '6px', margin: '0 auto' }} /></td>
                   <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto', width: '80px' }} /></td>
                   <td style={{ textAlign: 'center' }}><div className="skeleton skeleton-cell-date" style={{ margin: '0 auto', width: '80px' }} /></td>
                   <td style={{ textAlign: 'center' }}><div className="skeleton" style={{ width: '22px', height: '22px', borderRadius: '4px', margin: '0 auto' }} /></td>
                 </tr>
               ))
-            ) : (
-              clients.map((c, idx) => {
-                const statusStr = String(c.status || (c.is_active !== undefined ? (c.is_active ? 'active' : 'inactive') : 'active')).toLowerCase();
-                const isActive  = statusStr === 'active' || statusStr === 'true' || c.is_active === true;
-                const isSel     = c.id === selected;
-                return (
-                  <tr
-                    key={c.id}
-                    className={isSel ? 'selected' : ''}
-                    onClick={() => setSelected(isSel ? null : c.id)}
-                    data-client-id={c.id}
-                  >
-                    <td className="col-checkbox text-center" style={{ width: '45px' }}>
-                      <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
-                    </td>
-                    <td style={{ width: 'auto' }}>
-                      <div className="client-name-cell">
-                        <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                          {c.name || c.school_name || '—'}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ width: '180px', color: '#6b7280', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.email || c.user?.email || '—'}
-                    </td>
-                    <td style={{ width: '130px', color: '#475569', fontSize: '11px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.username || c.user?.username || c.user_code || '—'}
-                    </td>
-                    <td className="text-center" style={{ width: '110px', color: '#6b7280', fontSize: '11px' }}>
-                      {c.phone || c.user?.phone || '—'}
-                    </td>
-                    <td className="text-center" style={{ width: '80px' }}>
-                      <span className={`badge ${isActive ? 'badge-success' : 'badge-neutral'}`}>
-                        {isActive ? 'Active' : 'Inactive'}
+            ) : clients.map((c, idx) => {
+              const statusStr = String(c.status || (c.is_active !== undefined ? (c.is_active ? 'active' : 'inactive') : 'active')).toLowerCase();
+              const isActive  = statusStr === 'active' || statusStr === 'true' || c.is_active === true;
+              const isSel     = c.id === selected;
+              return (
+                <tr
+                  key={c.id}
+                  className={isSel ? 'selected' : ''}
+                  onClick={() => setSelected(isSel ? null : c.id)}
+                  data-client-id={c.id}
+                >
+                  <td className="text-center" style={{ width: '45px', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '11px' }}>
+                    {(page - 1) * pageSize + idx + 1}
+                  </td>
+                  <td style={{ width: 'auto', textAlign: 'left' }}>
+                    <div className="client-name-cell">
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                        {c.name || c.school_name || '—'}
                       </span>
-                    </td>
-                    <td className="text-center" style={{ width: '75px' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', borderRadius: '4px', background: '#dbeafe', color: '#1e40af', fontSize: '11px', fontWeight: 600, border: '1px solid #93c5fd' }}>
-                        <CreditCard size={10} /> {c.table_count || c.tables_count || 0}
-                      </span>
-                    </td>
-                    <td className="text-center" style={{ width: '120px', fontSize: '11px', color: '#64748b' }}>{formatDT(c.created_at)}</td>
-                    <td className="text-center" style={{ width: '120px', fontSize: '11px', color: '#64748b' }}>{formatDT(c.updated_at)}</td>
-                    <td className="text-center" style={{ width: '45px' }}>
-                      <button
-                        className="client-history-trigger"
-                        onClick={(e) => { e.stopPropagation(); addToast?.(`Log: ${c.name || idx + 1}`, 'info'); }}
-                        title="View log"
-                        style={{ width: '22px', height: '22px', border: 'none', borderRadius: '3px', background: 'rgba(37,99,235,0.1)', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <Info size={12} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+                    </div>
+                  </td>
+                  <td style={{ width: '180px', color: '#6b7280', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                    {c.email || c.user?.email || '—'}
+                  </td>
+                  <td style={{ width: '130px', color: '#475569', fontSize: '11px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                    {c.username || c.user?.username || c.user_code || (c.email ? c.email.split('@')[0] : '') || (c.name ? c.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '—')}
+                  </td>
+                  <td className="text-center" style={{ width: '110px', color: '#6b7280', fontSize: '11px', textAlign: 'center' }}>
+                    {c.phone || c.user?.phone || '—'}
+                  </td>
+                  <td className="text-center" style={{ width: '80px', textAlign: 'center' }}>
+                    <span className={`badge ${isActive ? 'badge-success' : 'badge-neutral'}`}>
+                      {isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="text-center" style={{ width: '80px', textAlign: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', borderRadius: '4px', background: '#f3e8ff', color: '#6b21a8', fontSize: '11px', fontWeight: 600, border: '1px solid #d8b4fe' }}>
+                      <Users size={10} /> {getManagerCount(c)}
+                    </span>
+                  </td>
+                  <td className="text-center" style={{ width: '80px', textAlign: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', borderRadius: '4px', background: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: 600, border: '1px solid #86efac' }}>
+                      <UsersRound size={10} /> {getAssistantCount(c)}
+                    </span>
+                  </td>
+                  <td className="text-center" style={{ width: '75px', textAlign: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', borderRadius: '4px', background: '#dbeafe', color: '#1e40af', fontSize: '11px', fontWeight: 600, border: '1px solid #93c5fd' }}>
+                      <CreditCard size={10} /> {c.table_count || c.tables_count || 0}
+                    </span>
+                  </td>
+                  <td className="text-center" style={{ width: '120px', fontSize: '11px', color: '#64748b', textAlign: 'center' }}>{formatDT(c.created_at)}</td>
+                  <td className="text-center" style={{ width: '120px', fontSize: '11px', color: '#64748b', textAlign: 'center' }}>{formatDT(c.updated_at)}</td>
+                  <td className="text-center" style={{ width: '45px', textAlign: 'center' }}>
+                    <button
+                      className="client-history-trigger"
+                      onClick={(e) => { e.stopPropagation(); addToast?.(`Log: ${c.name || idx + 1}`, 'info'); }}
+                      title="View log"
+                      style={{ width: '22px', height: '22px', border: 'none', borderRadius: '3px', background: 'rgba(37,99,235,0.1)', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Info size={12} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -402,6 +581,784 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
         </div>
       </div>
 
+      {/* ── BACKDROP OVERLAY WITH BLUR (No onClick -> closed by close buttons only) ── */}
+      {(showManagersDrawer || showAssistantsDrawer) && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            zIndex: 999,
+            animation: 'fadeIn 0.15s ease-out'
+          }}
+        />
+      )}
+
+      {/* ── MANAGERS SLIDE-OVER DRAWER ── */}
+      {showManagersDrawer && (
+        <div style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: '620px', minWidth: '600px', maxWidth: '95vw',
+          background: '#ffffff', boxShadow: '-8px 0 25px rgba(0,0,0,0.15)',
+          zIndex: 1000, display: 'flex', flexDirection: 'column'
+        }}>
+          {/* Drawer Header */}
+          <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', color: '#fff', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px' }}>
+                <Users size={18} />
+                <span>Managers for "{selClient?.name || 'Organisation'}"</span>
+              </div>
+              <p style={{ margin: '3px 0 0 0', fontSize: '11px', color: '#bfdbfe' }}>
+                Primary owner & extra manager accounts with assigned table access
+              </p>
+            </div>
+            <button onClick={() => { setShowManagersDrawer(false); setEditingManager(null); }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+              <X size={18} />
+            </button>
+          </div>
+
+          {editingManager ? (
+            <ManagerInlineForm
+              manager={editingManager === 'new' ? null : editingManager}
+              orgName={selClient?.name || 'Organisation'}
+              onSave={handleSaveManagerInline}
+              onCancel={() => setEditingManager(null)}
+            />
+          ) : (
+            <>
+              {/* Action Row */}
+              <div style={{ padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                  Total Managers: {orgManagers.length}
+                </span>
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={() => setEditingManager('new')}
+                  style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <Plus size={12} /> Add Manager Account
+                </button>
+              </div>
+
+              {/* Manager Cards List */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px', background: '#f8fafc' }}>
+                {orgManagers.map((m, idx) => {
+                  const isPrimary = m.is_default || m.client_type === 'primary';
+                  const isActive = m.status !== 'inactive' && m.is_active !== false;
+
+                  return (
+                    <div
+                      key={m.id || idx}
+                      style={{
+                        position: 'relative',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        background: '#ffffff',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        overflow: 'hidden',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {/* Accent Line Header */}
+                      <div style={{
+                        height: '4px',
+                        background: isPrimary
+                          ? 'linear-gradient(90deg, #1d4ed8 0%, #3b82f6 100%)'
+                          : 'linear-gradient(90deg, #7c3aed 0%, #a855f7 100%)'
+                      }} />
+
+                      <div style={{ padding: '16px 18px' }}>
+                        {/* Top Header Row */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                              width: '38px', height: '38px', borderRadius: '8px',
+                              background: isPrimary ? 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)' : 'linear-gradient(135deg, #6b21a8 0%, #9333ea 100%)',
+                              color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              boxShadow: isPrimary ? '0 3px 8px rgba(37,99,235,0.25)' : '0 3px 8px rgba(147,51,234,0.25)'
+                            }}>
+                              <User size={18} />
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{m.name}</h4>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                                <span style={{
+                                  fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px',
+                                  background: isPrimary ? '#dbeafe' : '#f3e8ff',
+                                  color: isPrimary ? '#1d4ed8' : '#6b21a8',
+                                  border: isPrimary ? '1px solid #bfdbfe' : '1px solid #e9d5ff'
+                                }}>
+                                  {isPrimary ? 'Client (Primary Owner)' : 'Manager'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '5px',
+                              fontSize: '11px', fontWeight: 600, padding: '3px 9px', borderRadius: '12px',
+                              background: isActive ? '#f0fdf4' : '#fff1f2',
+                              color: isActive ? '#15803d' : '#be123c',
+                              border: isActive ? '1px solid #bbf7d0' : '1px solid #fecdd3'
+                            }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isActive ? '#22c55e' : '#e11d48' }} />
+                              {isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Contact Info Box */}
+                        <div style={{
+                          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px',
+                          padding: '10px 12px', borderRadius: '8px', background: '#f8fafc',
+                          border: '1px solid #f1f5f9', fontSize: '11px', color: '#475569', marginBottom: '12px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                            <Mail size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {m.username || m.email || '—'}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Phone size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600, color: '#334155' }}>
+                              {m.phone || '—'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Assigned Table Groups */}
+                        <div style={{ marginBottom: '14px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <CreditCard size={12} style={{ color: '#2563eb' }} />
+                            <span>Assigned Table Groups ({(m.assigned_tables || ['All Tables']).length}):</span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                            {(m.assigned_tables || ['All Tables']).map((tbl, tIdx) => (
+                              <span key={tIdx} style={{
+                                fontSize: '10px', fontWeight: 600, padding: '3px 9px', borderRadius: '5px',
+                                background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe'
+                              }}>
+                                {tbl}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Card Actions Footer */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                          <button
+                            className="btn btn-xs btn-neutral"
+                            onClick={() => setEditingManager(m)}
+                            style={{ fontSize: '11px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                          >
+                            <Pen size={12} /> Edit Manager
+                          </button>
+                          <button
+                            className="btn btn-xs btn-warning"
+                            onClick={() => addToast?.(`Status toggled for ${m.name}`, 'success')}
+                            style={{ fontSize: '11px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                          >
+                            <ToggleRight size={12} /> Toggle Status
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── ASSISTANTS SLIDE-OVER DRAWER ── */}
+      {showAssistantsDrawer && (
+        <div style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: '620px', minWidth: '600px', maxWidth: '95vw',
+          background: '#ffffff', boxShadow: '-8px 0 25px rgba(0,0,0,0.15)',
+          zIndex: 1000, display: 'flex', flexDirection: 'column'
+        }}>
+          {/* Drawer Header */}
+          <div style={{ background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)', color: '#fff', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px' }}>
+                <UsersRound size={18} />
+                <span>Assistants for "{selClient?.name || 'Organisation'}"</span>
+              </div>
+              <p style={{ margin: '3px 0 0 0', fontSize: '11px', color: '#dcfce7' }}>
+                Assigned assistant accounts & permission settings
+              </p>
+            </div>
+            <button onClick={() => { setShowAssistantsDrawer(false); setEditingAssistant(null); }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+              <X size={18} />
+            </button>
+          </div>
+
+          {editingAssistant ? (
+            <AssistantInlineForm
+              assistant={editingAssistant === 'new' ? null : editingAssistant}
+              orgName={selClient?.name || 'Organisation'}
+              onSave={handleSaveAssistantInline}
+              onCancel={() => setEditingAssistant(null)}
+            />
+          ) : (
+            <>
+              {/* Action Row */}
+              <div style={{ padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                  Total Assistants: {orgAssistants.length}
+                </span>
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={() => setEditingAssistant('new')}
+                  style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <Plus size={12} /> Add Assistant Account
+                </button>
+              </div>
+
+              {/* Assistant Cards List */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px', background: '#f8fafc' }}>
+                {orgAssistants.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                    <UsersRound size={36} style={{ opacity: 0.3, marginBottom: '10px' }} />
+                    <h4 style={{ margin: 0, fontSize: '14px', color: '#334155' }}>No Assistants Found</h4>
+                    <p style={{ fontSize: '12px', margin: '4px 0 14px 0' }}>There are no assistants created for this organisation yet.</p>
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={() => setEditingAssistant('new')}
+                    >
+                      <Plus size={12} /> Add Assistant Account
+                    </button>
+                  </div>
+                ) : (
+                  orgAssistants.map((a, idx) => {
+                    const isActive = a.status !== 'inactive' && a.is_active !== false;
+                    return (
+                      <div
+                        key={a.id || idx}
+                        style={{
+                          position: 'relative',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '10px',
+                          background: '#ffffff',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          overflow: 'hidden',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {/* Accent Line Header */}
+                        <div style={{ height: '4px', background: 'linear-gradient(90deg, #15803d 0%, #22c55e 100%)' }} />
+
+                        <div style={{ padding: '16px 18px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{
+                                width: '38px', height: '38px', borderRadius: '8px',
+                                background: 'linear-gradient(135deg, #15803d 0%, #22c55e 100%)',
+                                color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: '0 3px 8px rgba(22,128,61,0.25)'
+                              }}>
+                                <UsersRound size={18} />
+                              </div>
+                              <div>
+                                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{a.name}</h4>
+                                <span style={{
+                                  fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px',
+                                  background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', marginTop: '3px', display: 'inline-block'
+                                }}>
+                                  Assistant Account
+                                </span>
+                              </div>
+                            </div>
+
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '5px',
+                              fontSize: '11px', fontWeight: 600, padding: '3px 9px', borderRadius: '12px',
+                              background: isActive ? '#f0fdf4' : '#fff1f2',
+                              color: isActive ? '#15803d' : '#be123c',
+                              border: isActive ? '1px solid #bbf7d0' : '1px solid #fecdd3'
+                            }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isActive ? '#22c55e' : '#e11d48' }} />
+                              {isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+
+                          <div style={{
+                            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px',
+                            padding: '10px 12px', borderRadius: '8px', background: '#f8fafc',
+                            border: '1px solid #f1f5f9', fontSize: '11px', color: '#475569', marginBottom: '14px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                              <Mail size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+                              <span style={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {a.username || a.email || '—'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Phone size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+                              <span style={{ fontWeight: 600, color: '#334155' }}>
+                                {a.phone || '—'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                            <button
+                              className="btn btn-xs btn-neutral"
+                              onClick={() => setEditingAssistant(a)}
+                              style={{ fontSize: '11px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                            >
+                              <Pen size={12} /> Edit Assistant
+                            </button>
+                            <button
+                              className="btn btn-xs btn-warning"
+                              onClick={() => addToast?.(`Status toggled for ${a.name}`, 'success')}
+                              style={{ fontSize: '11px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                            >
+                              <ToggleRight size={12} /> Toggle Status
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
     </div>
+  );
+}
+
+/* ── INLINE EDIT/ADD FORM FOR MANAGERS ── */
+function ManagerInlineForm({ manager, orgName, onSave, onCancel }) {
+  const [name, setName] = useState(manager?.name || '');
+  const [username, setUsername] = useState(manager?.username || '');
+  const [email, setEmail] = useState(manager?.email || '');
+  const [phone, setPhone] = useState(manager?.phone || '');
+  const [status, setStatus] = useState(manager?.status || 'active');
+  const [passwordOption, setPasswordOption] = useState('custom');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [assignedTables, setAssignedTables] = useState(manager?.assigned_tables || ['All Tables']);
+
+  const isEditing = Boolean(manager && manager.id);
+  const isPrimary = Boolean(manager && (manager.is_default || manager.client_type === 'primary'));
+
+  const availableTables = ['All Tables', 'Class 10A', 'Class 10B', 'Class 11A', 'Class 12A', 'Class 12B', 'Staff & Teachers'];
+
+  const toggleTable = (tbl) => {
+    if (tbl === 'All Tables') {
+      setAssignedTables(['All Tables']);
+      return;
+    }
+    let updated = assignedTables.filter(t => t !== 'All Tables');
+    if (updated.includes(tbl)) {
+      updated = updated.filter(t => t !== tbl);
+    } else {
+      updated.push(tbl);
+    }
+    if (updated.length === 0) updated = ['All Tables'];
+    setAssignedTables(updated);
+  };
+
+  const handleEmailChange = (val) => {
+    setEmail(val);
+    if (!username && val.includes('@')) {
+      setUsername(val.split('@')[0]);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    const finalUsername = username.trim() || (email.trim() ? email.trim().split('@')[0] : name.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
+    onSave({
+      ...(manager || {}),
+      name: name.trim(),
+      username: finalUsername,
+      email: email.trim(),
+      phone: phone.trim(),
+      status,
+      password_option: passwordOption,
+      password: passwordOption === 'custom' ? password : (phone.trim() || '12345678'),
+      assigned_tables: assignedTables
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#f8fafc', flex: 1, overflowY: 'auto' }}>
+      {/* Form Header Banner */}
+      <div style={{
+        padding: '14px 16px', borderRadius: '8px',
+        background: isPrimary ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+        border: isPrimary ? '1px solid #bfdbfe' : '1px solid #e9d5ff',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '34px', height: '34px', borderRadius: '8px',
+            background: isPrimary ? '#2563eb' : '#9333ea', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <User size={18} />
+          </div>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+              {isEditing ? (isPrimary ? `Edit Primary Owner for "${orgName}"` : `Edit Manager Account`) : `Add Manager for "${orgName}"`}
+            </h4>
+            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#64748b' }}>
+              {isPrimary ? 'Update primary owner account credentials & permissions' : 'Set manager details, login credentials and assigned table groups below'}
+            </p>
+          </div>
+        </div>
+        <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: isPrimary ? '#2563eb' : '#9333ea', color: '#ffffff' }}>
+          {isPrimary ? 'Primary Owner' : 'Manager'}
+        </span>
+      </div>
+
+      <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Manager Name *</label>
+            <input
+              required
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Full Name"
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Username</label>
+            <input
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              placeholder="username_code (derived from email if empty)"
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Email Address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => handleEmailChange(e.target.value)}
+              placeholder="manager@domain.com"
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Mobile Phone</label>
+            <input
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="+91 9876543210"
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Account Status</label>
+            <select
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', background: '#fff', outline: 'none' }}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Password Option</label>
+            <select
+              value={passwordOption}
+              onChange={e => setPasswordOption(e.target.value)}
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', background: '#fff', outline: 'none' }}
+            >
+              <option value="custom">Custom Password</option>
+              <option value="auto">Use Phone Number / Auto Generate</option>
+            </select>
+          </div>
+        </div>
+
+        {passwordOption === 'custom' && (
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Password *</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter account password"
+                style={{ width: '100%', height: '34px', padding: '0 36px 0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Assigned Table Groups */}
+      <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+          <CreditCard size={14} style={{ color: '#2563eb' }} />
+          <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+            Assign Table Groups / Classes:
+          </label>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {availableTables.map(tbl => {
+            const isSel = assignedTables.includes(tbl);
+            return (
+              <button
+                key={tbl}
+                type="button"
+                onClick={() => toggleTable(tbl)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  padding: '5px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                  border: isSel ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                  background: isSel ? '#eff6ff' : '#ffffff',
+                  color: isSel ? '#1d4ed8' : '#475569',
+                  cursor: 'pointer', transition: 'all 0.12s'
+                }}
+              >
+                {isSel && <CheckCircle2 size={12} style={{ color: '#2563eb' }} />}
+                <span>{tbl}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Form Buttons */}
+      <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn btn-md btn-neutral"
+          style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+        >
+          <X size={14} /> Cancel
+        </button>
+        <button
+          type="submit"
+          className="btn btn-md btn-primary"
+          style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Save size={14} /> <span>{isEditing ? 'Save Changes' : 'Create Manager Account'}</span>
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/* ── INLINE EDIT/ADD FORM FOR ASSISTANTS ── */
+function AssistantInlineForm({ assistant, orgName, onSave, onCancel }) {
+  const [name, setName] = useState(assistant?.name || '');
+  const [username, setUsername] = useState(assistant?.username || '');
+  const [email, setEmail] = useState(assistant?.email || '');
+  const [phone, setPhone] = useState(assistant?.phone || '');
+  const [status, setStatus] = useState(assistant?.status || (assistant?.is_active === false ? 'inactive' : 'active'));
+  const [passwordOption, setPasswordOption] = useState('custom');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const isEditing = Boolean(assistant && assistant.id);
+
+  const handleEmailChange = (val) => {
+    setEmail(val);
+    if (!username && val.includes('@')) {
+      setUsername(val.split('@')[0]);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    const finalUsername = username.trim() || (email.trim() ? email.trim().split('@')[0] : name.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
+    onSave({
+      ...(assistant || {}),
+      name: name.trim(),
+      username: finalUsername,
+      email: email.trim(),
+      phone: phone.trim(),
+      status,
+      password_option: passwordOption,
+      password: passwordOption === 'custom' ? password : (phone.trim() || '12345678'),
+      is_active: status === 'active'
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#f8fafc', flex: 1, overflowY: 'auto' }}>
+      {/* Form Header Banner */}
+      <div style={{
+        padding: '14px 16px', borderRadius: '8px',
+        background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+        border: '1px solid #bbf7d0',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '34px', height: '34px', borderRadius: '8px',
+            background: '#16a34a', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <UsersRound size={18} />
+          </div>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#14532d' }}>
+              {isEditing ? `Edit Assistant Account` : `Add New Assistant for "${orgName}"`}
+            </h4>
+            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#15803d' }}>
+              Assistant credentials, password settings & permissions for organisation data entry
+            </p>
+          </div>
+        </div>
+        <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: '#16a34a', color: '#ffffff' }}>
+          Assistant
+        </span>
+      </div>
+
+      <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Assistant Name *</label>
+            <input
+              required
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Full Name"
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Username</label>
+            <input
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              placeholder="assistant_code (derived from email if empty)"
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Email Address *</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={e => handleEmailChange(e.target.value)}
+              placeholder="assistant@domain.com"
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Mobile Phone</label>
+            <input
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="+91 9876543210"
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Account Status</label>
+            <select
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', background: '#fff', outline: 'none' }}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Password Option</label>
+            <select
+              value={passwordOption}
+              onChange={e => setPasswordOption(e.target.value)}
+              style={{ width: '100%', height: '34px', padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', background: '#fff', outline: 'none' }}
+            >
+              <option value="custom">Custom Password</option>
+              <option value="auto">Use Phone Number / Auto Generate</option>
+            </select>
+          </div>
+        </div>
+
+        {passwordOption === 'custom' && (
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Password *</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter account password"
+                style={{ width: '100%', height: '34px', padding: '0 36px 0 12px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '12px', outline: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Form Buttons */}
+      <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn btn-md btn-neutral"
+          style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+        >
+          <X size={14} /> Cancel
+        </button>
+        <button
+          type="submit"
+          className="btn btn-md btn-primary"
+          style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Save size={14} /> <span>{isEditing ? 'Save Changes' : 'Create Assistant Account'}</span>
+        </button>
+      </div>
+    </form>
   );
 }

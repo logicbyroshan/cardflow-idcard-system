@@ -56,14 +56,14 @@ export default function QuickActionDrawer({ isOpen, actionType, initialData, onC
 
   return (
     <>
-      {/* Backdrop overlay */}
+      {/* Backdrop overlay — Click outside disabled, closed via buttons only */}
       <div
-        onClick={onClose}
         style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(15, 23, 42, 0.45)',
-          backdropFilter: 'blur(1px)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
           zIndex: 1040,
           animation: 'fadeIn 0.15s ease-out',
         }}
@@ -74,7 +74,7 @@ export default function QuickActionDrawer({ isOpen, actionType, initialData, onC
         style={{
           position: 'fixed',
           top: 0, right: 0, bottom: 0,
-          width: actionType === 'message' ? '760px' : '540px',
+          width: actionType === 'message' ? '760px' : '620px',
           maxWidth: '95vw',
           height: '100vh',
           background: '#ffffff',
@@ -1168,12 +1168,17 @@ function OriginalManagerDrawerForm({ onClose, addToast, initialData }) {
 
   useEffect(() => {
     if (initialData) {
-      setManagerName(initialData.name || initialData.full_name || '');
-      setEmail(initialData.email || '');
-      setPhone(initialData.phone || '');
-      setStatus(initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false');
-      if (initialData.organisation_id || initialData.organisation?.id) {
-        setSelectedOrgId(String(initialData.organisation_id || initialData.organisation?.id));
+      const orgObj = initialData.organisation || (initialData.name && !initialData.client_type ? initialData : null);
+      if (orgObj) {
+        setSelectedOrgId(String(orgObj.id || ''));
+      } else if (initialData.organisation_id) {
+        setSelectedOrgId(String(initialData.organisation_id));
+      }
+      if (initialData.client_type === 'manager' || initialData.designation === 'Manager' || initialData.email) {
+        setManagerName(initialData.name || initialData.full_name || '');
+        setEmail(initialData.email || '');
+        setPhone(initialData.phone || '');
+        setStatus(initialData.is_active || initialData.status === 'active' || initialData.status === true ? 'true' : 'false');
       }
     }
   }, [initialData]);

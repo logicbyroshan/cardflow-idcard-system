@@ -24,8 +24,6 @@ const NAV_CONFIG = {
       section: 'Client Management',
       items: [
         { id: 'organisations',label: 'Manage Organisation',  Icon: Building   },
-        { id: 'clients',      label: 'Manage Manager',       Icon: Users      },
-        { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound  },
       ],
     },
     {
@@ -42,8 +40,6 @@ const NAV_CONFIG = {
       section: 'Client Management',
       items: [
         { id: 'organisations',label: 'Manage Organisation',  Icon: Building   },
-        { id: 'clients',      label: 'Manage Manager',       Icon: Users      },
-        { id: 'assistants',   label: 'Manage Assistant',     Icon: UsersRound },
       ],
     },
     {

@@ -168,8 +168,9 @@ function NotificationsTab({ addToast }) {
           <span className="notif-maintenance-status" style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#334155', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
             Maintenance: Inactive
           </span>
-          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh">
             {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -396,8 +397,9 @@ function EmailLogsTab({ addToast }) {
           <span className="email-status-badge failed" onClick={() => setStatusFilter(statusFilter === 'failed' ? '' : 'failed')} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }}>
             <XCircle size={11} /> <span>{failedCount}</span>
           </span>
-          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh">
             {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -603,8 +605,9 @@ function LogHistoryTab({ addToast }) {
           <button className="btn btn-sm btn-neutral" onClick={resetFilters} title="Reset filters">
             <FilterX size={12} /> Reset Filters
           </button>
-          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh">
             {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -787,8 +790,9 @@ function BackupsTab({ addToast }) {
           <button className="btn btn-sm btn-primary" onClick={() => addToast?.('Creating backup…', 'info')}>
             <Database size={12} /> Take Backup
           </button>
-          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
+          <button className="btn btn-md btn-neutral" onClick={load} title="Refresh">
             {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+            <span>Refresh</span>
           </button>
         </div>
       </div>

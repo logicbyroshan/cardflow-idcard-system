@@ -123,7 +123,11 @@ function StatCardsRow({ stats, loading, onNavigate }) {
 /* ─────────────────────────────────────────────────────────────────────────
    Default Fallback Clients matching SS2
 ───────────────────────────────────────────────────────────────────────── */
-const MOCK_CLIENT_ROWS = [];
+const MOCK_CLIENT_ROWS = [
+  { id: 'mock-1', name: 'Mathura Das School of Execellence', pending: 0, verified: 0, approved: 0, downloaded: 0, pool: 0 },
+  { id: 'mock-2', name: 'Delhi Public School', pending: 12, verified: 45, approved: 120, downloaded: 350, pool: 2 },
+  { id: 'mock-3', name: 'St. Xavier High School', pending: 5, verified: 18, approved: 60, downloaded: 180, pool: 0 }
+];
 
 /* ─────────────────────────────────────────────────────────────────────────
    Recent Client Updates Table (Left Main Area) — SS2 Exact
@@ -171,7 +175,7 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
         <thead style={{ position: 'sticky', top: 0, background: '#2d3748', color: '#fff', zIndex: 2 }}>
           <tr>
-            <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, width: '42%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568' }}>CLIENT</th>
+            <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, width: '42%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568' }}>ORGANISATION</th>
             <th onClick={() => handleSort('pending')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>PENDING{renderSortIcon('pending')}</th>
             <th onClick={() => handleSort('verified')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>VERIFIED{renderSortIcon('verified')}</th>
             <th onClick={() => handleSort('approved')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>APPROVED{renderSortIcon('approved')}</th>
@@ -565,7 +569,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
         </div>
         <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {[
-            { id: 'clients', label: 'Recent Clients', count: stats?.total_clients ?? 0, Icon: Users },
+            { id: 'clients', label: 'Recent Organisations', count: stats?.total_organizations ?? stats?.total_clients ?? 0, Icon: Building },
             { id: 'reprints', label: 'Recent Reprints', count: stats?.reprint_count ?? 0, Icon: RefreshCw },
             { id: 'updates', label: 'Recent Updates', count: stats?.activity_count ?? 0, Icon: Clock },
           ].map(({ id, label, count, Icon }) => {
@@ -780,10 +784,34 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
         total_photographers: (apiStats.total_photographers || 0) > 0 ? apiStats.total_photographers : local.total_photographers,
       });
 
+      let loadedClients = [];
       try {
         const clientData = await dashboardApi.getRecentClientUpdates();
-        if (clientData) setClients(clientData.clients || clientData.results || clientData || []);
+        if (clientData) loadedClients = clientData.clients || clientData.results || (Array.isArray(clientData) ? clientData : []);
       } catch (_) {}
+
+      // Merge local organisations so created organisations immediately appear on Dashboard
+      try {
+        const localClients = JSON.parse(localStorage.getItem('cf_custom_clients') || '[]');
+        localClients.forEach(lc => {
+          if (!loadedClients.some(c => String(c.id) === String(lc.id) || c.name === lc.name)) {
+            loadedClients.push({
+              id: lc.id,
+              name: lc.name,
+              school_name: lc.name,
+              pending: lc.pending || 0,
+              verified: lc.verified || 0,
+              approved: lc.approved || 0,
+              downloaded: lc.downloaded || lc.download || 0,
+              pool: lc.pool || 0,
+              tables: [
+                { name: 'Default Table Group', pending: lc.pending || 0, verified: lc.verified || 0, approved: lc.approved || 0, downloaded: lc.downloaded || 0, pool: lc.pool || 0 }
+              ]
+            });
+          }
+        });
+      } catch (_) {}
+      setClients(loadedClients);
 
       try {
         const reprintData = await dashboardApi.getReprintOverview();
@@ -816,7 +844,7 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
   const getSectionTitle = () => {
     if (activeSection === 'reprints') return { title: 'Recent Reprints Queue', Icon: RefreshCw, badgeText: `Pending Reprints: ${stats?.reprint_count ?? 0}`, badgeBg: '#ffedd5', badgeColor: '#c2410c' };
     if (activeSection === 'updates') return { title: 'Recent Activity & Updates', Icon: Clock, badgeText: `Recent Events: ${stats?.activity_count ?? 0}`, badgeBg: '#dbeafe', badgeColor: '#1d4ed8' };
-    return { title: 'Recent Client Updates', Icon: Users, badgeText: `Live Working Users: ${stats?.live_users_count ?? 0}`, badgeBg: '#d1fae5', badgeColor: '#047857' };
+    return { title: 'Recent Organisations', Icon: Building, badgeText: `Live Working Users: ${stats?.live_users_count ?? 0}`, badgeBg: '#d1fae5', badgeColor: '#047857' };
   };
 
 

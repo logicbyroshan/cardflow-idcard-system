@@ -200,10 +200,10 @@ export default function ClientAccountsView({ addToast, onOpenActionDrawer, onNav
             <button
               onClick={load}
               className="btn btn-md btn-neutral"
-              style={{ padding: '0 8px', height: '28px' }}
               title="Refresh"
             >
               {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+              <span>Refresh</span>
             </button>
           </div>
         </div>

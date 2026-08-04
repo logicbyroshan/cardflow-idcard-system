@@ -152,6 +152,49 @@ export default function ManageFeaturesView({ addToast }) {
         });
       }
 
+      const localClients = JSON.parse(localStorage.getItem('cf_custom_clients') || '[]');
+      const localMgrs = JSON.parse(localStorage.getItem('cf_custom_managers') || '[]');
+      const localStaff = JSON.parse(localStorage.getItem('cf_custom_staff') || '[]');
+
+      localClients.forEach(c => {
+        if (!list.some(u => String(u.id) === `client-${c.id}` || (u.email && c.email && u.email === c.email))) {
+          list.push({
+            id: `client-${c.id}`,
+            name: c.name || 'Organisation Account',
+            email: c.email || 'N/A',
+            role: 'Manage Organisation',
+            rawRole: 'client',
+            status: c.status ? (c.status.charAt(0).toUpperCase() + c.status.slice(1)) : 'Active'
+          });
+        }
+      });
+
+      localMgrs.forEach(m => {
+        if (!list.some(u => String(u.id) === `mgr-${m.id}` || (u.email && m.email && u.email === m.email))) {
+          list.push({
+            id: `mgr-${m.id}`,
+            name: m.name || 'Manager Account',
+            email: m.email || 'N/A',
+            role: m.client_type === 'primary' ? 'Client (Primary Owner)' : 'Manager Account',
+            rawRole: 'client',
+            status: m.status ? (m.status.charAt(0).toUpperCase() + m.status.slice(1)) : 'Active'
+          });
+        }
+      });
+
+      localStaff.forEach(s => {
+        if (!list.some(u => String(u.id) === `staff-${s.id}` || (u.email && s.email && u.email === s.email))) {
+          list.push({
+            id: `staff-${s.id}`,
+            name: s.name || 'Staff Account',
+            email: s.email || 'N/A',
+            role: s.designation === 'Assistant' ? 'Manage Assistant' : 'Manage Operator',
+            rawRole: s.designation === 'Assistant' ? 'client_staff' : 'admin_staff',
+            status: s.status ? (s.status.charAt(0).toUpperCase() + s.status.slice(1)) : 'Active'
+          });
+        }
+      });
+
       if (list.length === 0) {
         list = [
           { id: 'usr-1', name: 'Delhi Public School (Organisation)', email: 'admin@dpsd.edu.in', role: 'Manage Organisation', rawRole: 'client', status: 'Active' },
