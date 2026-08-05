@@ -311,11 +311,21 @@ export default function CardTableView({ addToast, onNavigate }) {
                 </button>
               </div>
             ) : (
-              <table className="data-table idcard-table" style={{ width: '100%', minWidth: '950px', tableLayout: 'auto' }}>
+              <table className="data-table idcard-table" style={{ width: '100%', minWidth: '960px', tableLayout: 'fixed' }}>
+                <colgroup>
+                  {/* S. NO. — tiny fixed */}
+                  <col style={{ width: '50px' }} />
+                  {/* NAME — flexible, takes ALL remaining space */}
+                  <col />
+                  {/* ID CARD LISTS — fixed: 5 buttons × ~96px + 4×6px gaps + 24px padding = 520px */}
+                  <col style={{ width: '520px' }} />
+                  {/* REPRINT CARD LISTS — fixed: 3 buttons × ~96px + 2×6px gaps + 24px padding = 340px */}
+                  <col style={{ width: '340px' }} />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th style={{ width: '50px', textAlign: 'center' }}>S. NO.</th>
-                    <th style={{ width: '190px', textAlign: 'left' }}>NAME</th>
+                    <th style={{ textAlign: 'center' }}>S. NO.</th>
+                    <th style={{ textAlign: 'left' }}>NAME</th>
                     <th style={{ textAlign: 'center' }}>ID CARD LISTS</th>
                     <th style={{ textAlign: 'center' }}>REPRINT CARD LISTS</th>
                   </tr>
@@ -349,12 +359,12 @@ export default function CardTableView({ addToast, onNavigate }) {
                         }}
                       >
                         {/* Column 0: S. NO. */}
-                        <td style={{ width: '50px', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px', verticalAlign: 'middle' }}>
+                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px', verticalAlign: 'middle' }}>
                           {idx + 1}
                         </td>
 
-                        {/* Column 1: Table Name */}
-                        <td style={{ width: '190px', maxWidth: '190px', fontWeight: 700, color: '#0f172a', textAlign: 'left', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        {/* Column 1: Table Name — gets remaining flexible space */}
+                        <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left', overflow: 'hidden', verticalAlign: 'middle' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
                             <span style={{ fontSize: '13px', color: isSelected ? '#1d4ed8' : '#1e293b', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.name}>{t.name}</span>
                             <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={orgDisplay}>
