@@ -66,33 +66,8 @@ export default function Header({
 
   return (
     <header className="topbar" id="topbar" style={{ height: '44px', background: '#111827', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', boxSizing: 'border-box' }}>
-      {/* Left: breadcrumb only — sidebar is always open, no hamburger */}
-      <div className="nav-left">
-        <div className="breadcrumb">
-          {/* Home icon */}
-          <span className="breadcrumb-item" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-            <Home size={12} />
-          </span>
-          {activeTab === 'dashboard' ? (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '4px',
-              padding: '2px 8px', borderRadius: '4px',
-              background: 'linear-gradient(135deg, rgb(0,80,210) 0%, rgb(0,180,255) 100%)',
-              color: '#fff',
-              fontSize: '11px', fontWeight: 700,
-              letterSpacing: '0.02em',
-              boxShadow: '0 1px 4px rgba(0,80,210,0.25)',
-            }}>
-              Dashboard
-            </span>
-          ) : (
-            <>
-              <span className="breadcrumb-sep">›</span>
-              <span className="breadcrumb-item active">{pageLabel}</span>
-            </>
-          )}
-        </div>
-      </div>
+      {/* Left: empty container */}
+      <div className="nav-left" />
 
 
 
