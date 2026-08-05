@@ -1282,9 +1282,9 @@ export default function IDCardActionsView({
           )}
 
           {/* Clear Filters */}
-          {(classFilter || sectionFilter || courseFilter || branchFilter || imageSortFilter !== 'all' || search) && (
+          {(classFilter || sectionFilter || courseFilter || branchFilter || activeImageSort || search) && (
             <button
-              onClick={() => { setClassFilter(''); setSectionFilter(''); setCourseFilter(''); setBranchFilter(''); setImageSortFilter('all'); setSearch(''); setPage(1); }}
+              onClick={() => { setClassFilter(''); setSectionFilter(''); setCourseFilter(''); setBranchFilter(''); setActiveImageSort(null); setSearch(''); setPage(1); }}
               style={{ height: '28px', padding: '0 8px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#fff', color: '#ef4444', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
               title="Clear all filters"
             >
