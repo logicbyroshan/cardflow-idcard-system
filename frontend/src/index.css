@@ -57,15 +57,16 @@
   height: 44px !important;
   min-height: 44px !important;
   max-height: 44px !important;
-  padding: 0 20px !important;
+  padding: 0 16px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  background: #f9fafb !important;
-  border-bottom: 1px solid #e5e7eb !important;
+  background: #111827 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-sizing: border-box !important;
   flex-shrink: 0 !important;
   gap: 8px !important;
+  color: #ffffff !important;
 }
 
 .action-bar-left,
