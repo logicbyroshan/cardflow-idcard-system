@@ -86,7 +86,7 @@ h6 { font-size: var(--ui-heading-h6-size); }
 
 /* Keep the app/sidebar brand title on one compact, uniform scale everywhere. */
 .sidebar .sidebar-header {
-  height: 44px !important;
+  height: 50px !important;
   padding: 0 8px !important;
   box-sizing: border-box !important;
   display: flex !important;

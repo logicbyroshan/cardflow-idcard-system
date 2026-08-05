@@ -318,7 +318,7 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
     <div className="view-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
 
       {/* ── ACTION BAR ── */}
-      <div className="action-bar" id="client-action-bar" style={{ background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box' }}>
+      <div className="action-bar" id="client-action-bar" style={{ background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '50px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box' }}>
         {/* Left */}
         <div className="action-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '5px', padding: '2px', gap: '2px', height: '28px', boxSizing: 'border-box' }}>
