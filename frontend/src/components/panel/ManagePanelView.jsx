@@ -1274,32 +1274,15 @@ export default function ManagePanelView({ addToast }) {
   return (
     <div className="panel-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Panel Tabs — exact match to manage-panel.html */}
-      <div className="panel-tabs" style={{
-        display: 'flex', alignItems: 'center', gap: 0,
-        borderBottom: '1px solid #e5e7eb',
-        background: '#f9fafb',
-        flexShrink: 0,
-        overflowX: 'auto',
-      }}>
+      <div className="panel-tabs">
         {PANEL_TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
             className={`panel-tab${activeTab === id ? ' active' : ''}`}
             data-tab={id}
             onClick={() => setActiveTab(id)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '9px 14px', fontSize: '12px', fontWeight: 500,
-              border: 'none',
-              borderBottom: `2px solid ${activeTab === id ? 'rgb(0, 80, 210)' : 'transparent'}`,
-              background: activeTab === id ? 'rgba(0, 80, 210, 0.06)' : 'transparent',
-              cursor: 'pointer', whiteSpace: 'nowrap',
-              color: activeTab === id ? 'rgb(0, 80, 210)' : '#6b7280',
-              fontFamily: 'var(--font-family)',
-              transition: 'all 0.15s',
-            }}
           >
-            <Icon size={12} /> {label}
+            <Icon size={13} /> {label}
           </button>
         ))}
       </div>

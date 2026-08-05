@@ -296,13 +296,8 @@ export default function ManageFeaturesView({ addToast }) {
   return (
     <div style={{ width: '100%', height: '100%', padding: 0, margin: 0, background: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       
-      {/* ── Top Bar Navigation Tabs (Matching old system order & styling) ── */}
-      <div className="panel-tabs" style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '0 20px',
-        minHeight: '42px', width: '100%', flexShrink: 0
-      }}>
-        {/* Exact order from old system: Impersonate User -> Manage Guest Users -> Statistics -> Batch Jobs */}
+      {/* ── Top Bar Navigation Tabs ── */}
+      <div className="panel-tabs">
         <div style={{ display: 'flex', alignItems: 'center', height: '100%', gap: '0' }}>
           {[
             { id: 'impersonate', label: 'Impersonate User', Icon: UserCog },
@@ -314,18 +309,8 @@ export default function ManageFeaturesView({ addToast }) {
               key={id}
               onClick={() => setActiveTab(id)}
               className={`panel-tab${activeTab === id ? ' active' : ''}`}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '10px 16px', fontSize: '12px', fontWeight: activeTab === id ? 700 : 500,
-                border: 'none',
-                borderBottom: `2px solid ${activeTab === id ? '#2563eb' : 'transparent'}`,
-                background: activeTab === id ? '#eff6ff' : 'transparent',
-                cursor: 'pointer', whiteSpace: 'nowrap',
-                color: activeTab === id ? '#1d4ed8' : '#64748b',
-                fontFamily: 'var(--font-family)', transition: 'all 0.15s'
-              }}
             >
-              <Icon size={14} />
+              <Icon size={13} />
               <span>{label}</span>
             </button>
           ))}

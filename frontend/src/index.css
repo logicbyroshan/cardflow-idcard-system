@@ -1037,17 +1037,67 @@ textarea {
 .filter-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 4px !important;
 }
 
 .action-divider,
 .btn-separator {
-  width: 1px;
-  height: 20px;
-  background: #cbd5e1;
-  margin: 0 6px;
-  flex-shrink: 0;
-  display: inline-block;
+  width: 1px !important;
+  height: 16px !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  margin: 0 4px !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+}
+
+/* ── Universal Sub-Navigation Panel Tabs (50px height, uniform font-weight 600) ── */
+.panel-tabs,
+.sub-nav-tabs {
+  display: flex !important;
+  align-items: center !important;
+  height: 50px !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 0 12px !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  overflow-x: auto !important;
+}
+
+.panel-tab,
+.sub-nav-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  height: 50px !important;
+  padding: 0 16px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  background: transparent !important;
+  color: #64748b !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  font-family: var(--font-family) !important;
+  transition: all 0.15s ease-in-out !important;
+  box-sizing: border-box !important;
+}
+
+.panel-tab:hover,
+.sub-nav-tab:hover {
+  color: #1e293b !important;
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+.panel-tab.active,
+.sub-nav-tab.active {
+  color: #2563eb !important;
+  background: #f0f7ff !important;
+  border-bottom: 2px solid #2563eb !important;
+  font-weight: 600 !important;
 }
 
 /* ============================================================
