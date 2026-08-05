@@ -246,6 +246,7 @@ export default function App() {
               initialStatus={idcardActionsState.status || 'pending'}
               addToast={addToast}
               onBack={() => { setActiveTab('cards'); setIdcardActionsState(null); }}
+              onNavigate={handleNavigate}
             />
           )}
 

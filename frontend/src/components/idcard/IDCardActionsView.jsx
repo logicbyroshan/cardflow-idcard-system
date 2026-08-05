@@ -398,6 +398,7 @@ export default function IDCardActionsView({
   tableId,
   initialStatus = 'pending',
   onBack,
+  onNavigate,
   addToast,
 }) {
   /* ── Table metadata ── */
@@ -757,8 +758,58 @@ export default function IDCardActionsView({
           TOPBAR — SOLID BLACK BACKGROUND (MATCHING SIDEBAR LOGO HEADER HEIGHT 44px)
           ══════════════════════════════════════════════════════════ */}
       <header className="topbar" style={{ flexShrink: 0, padding: '0 16px', background: '#111827', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box', color: '#ffffff' }}>
-        {/* Left: All Download Buttons */}
+        {/* Left: Table Group, Table Setting, Divider, and Download Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <button
+            type="button"
+            onClick={onBack}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '0 10px',
+              height: '26px',
+              fontSize: '11px',
+              fontWeight: 600,
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: '#e2e8f0',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Back to ID Card Group"
+          >
+            <Layers size={13} />
+            <span>Table Group</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate?.('table-settings', { tableId })}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '0 10px',
+              height: '26px',
+              fontSize: '11px',
+              fontWeight: 600,
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: '#e2e8f0',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Table Settings"
+          >
+            <Settings size={13} />
+            <span>Table Setting</span>
+          </button>
+
+          <span style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.2)', margin: '0 4px' }} />
+
           {renderDownloadButtons()}
         </div>
 
@@ -1142,12 +1193,6 @@ export default function IDCardActionsView({
             </div>
           )}
 
-          <button onClick={onBack} className="btn btn-neutral btn-sm" style={{ height: '28px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid #cbd5e1', background: '#fff', color: '#334155', borderRadius: '4px', padding: '0 10px', cursor: 'pointer' }}>
-            <Layers size={13} /> <span>ID Card Group</span>
-          </button>
-          <button onClick={() => {}} style={{ height: '28px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid #0ea5e9', background: '#f0f9ff', color: '#0369a1', borderRadius: '4px', padding: '0 10px', cursor: 'pointer' }} title="Table Settings">
-            <Settings size={13} /> <span>Group Setting</span>
-          </button>
         </div>
       </div>
 
