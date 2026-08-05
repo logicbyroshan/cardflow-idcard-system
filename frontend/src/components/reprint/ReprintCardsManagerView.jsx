@@ -144,12 +144,6 @@ export default function ReprintCardsManagerView({ addToast }) {
               {actionLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <XCircle size={13} />} Reject
             </button>
 
-            <div className="btn-separator" />
-
-            <button onClick={load} className="btn btn-md btn-neutral" title="Refresh">
-              {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-              <span>Refresh</span>
-            </button>
           </div>
         </div>
       </div>

@@ -388,9 +388,6 @@ export default function ManageFeaturesView({ addToast }) {
                   </button>
                 ))}
               </div>
-              <button onClick={loadData} className="btn btn-sm btn-neutral" style={{ padding: '0 8px', height: '28px' }} title="Refresh">
-                {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-              </button>
             </div>
           </div>
 
@@ -757,12 +754,6 @@ export default function ManageFeaturesView({ addToast }) {
                 <option value="bulk_export">Bulk Export</option>
                 <option value="re-upload_patch">Re-upload Patch</option>
               </select>
-            </div>
-
-            <div className="action-bar-right">
-              <button className="btn btn-md btn-neutral" onClick={() => addToast?.('Batch tasks refreshed', 'info')} title="Refresh" style={{ padding: '0 8px', height: '28px' }}>
-                <RefreshCw size={13} />
-              </button>
             </div>
           </div>
 

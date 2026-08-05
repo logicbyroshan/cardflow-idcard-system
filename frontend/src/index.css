@@ -9,35 +9,40 @@
 /* ── Universal Search Box Control ── */
 .notif-search-box,
 .search-box,
-.ui-search-box {
+.ui-search-box,
+.action-bar .notif-search-box,
+.action-bar input[type="text"] {
   position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
-  background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 5px !important;
   height: 28px !important;
   padding: 0 8px !important;
   box-sizing: border-box !important;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+  color: #ffffff !important;
 }
 
 .notif-search-box:focus-within,
 .search-box:focus-within,
-.ui-search-box:focus-within {
+.ui-search-box:focus-within,
+.action-bar .notif-search-box:focus-within {
   border-color: #2563eb !important;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25) !important;
 }
 
 .notif-search-box input,
 .search-box input,
-.ui-search-box input {
+.ui-search-box input,
+.action-bar input[type="text"] {
   border: none !important;
   background: transparent !important;
   outline: none !important;
   box-shadow: none !important;
   font-size: 12px !important;
-  color: #0f172a !important;
+  color: #ffffff !important;
   padding: 0 !important;
   margin: 0 !important;
   height: 100% !important;
@@ -47,8 +52,9 @@
 
 .notif-search-box input::placeholder,
 .search-box input::placeholder,
-.ui-search-box input::placeholder {
-  color: #9ca3af !important;
+.ui-search-box input::placeholder,
+.action-bar input::placeholder {
+  color: #94a3b8 !important;
 }
 
 /* ── Universal Action Bar & Control Heights ── */

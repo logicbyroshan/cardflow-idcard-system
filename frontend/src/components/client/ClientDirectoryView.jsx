@@ -436,17 +436,6 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                 <UsersRound size={13} /> <span>Assistants</span>
               </button>
             </div>
-
-            <div className="btn-separator" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
-
-            <button
-              className="btn"
-              onClick={load}
-              title="Refresh table"
-              style={{ background: '#475569', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-            >
-              <RefreshCw size={12} className={loading ? 'spin' : ''} /> <span>Refresh</span>
-            </button>
           </div>
         </div>
       </div>
