@@ -392,6 +392,134 @@ function DownloadModal({ table, status, onClose, addToast }) {
   );
 }
 
+/* ─── Image Sort Modal ─────────────────────────────────────────────────── */
+function ImageSortModal({ tableFields, activeSort, onClose, onApply, onClear }) {
+  const imageFields = useMemo(() => {
+    const fields = (tableFields || []).filter(f => isImageField(f.type, f.name)).map(f => f.name.toUpperCase());
+    return fields.length > 0 ? fields : ['PHOTO'];
+  }, [tableFields]);
+
+  const [selectedCols, setSelectedCols] = useState(activeSort?.columns || [imageFields[0] || 'PHOTO']);
+  const [selectedConds, setSelectedConds] = useState(activeSort?.conditions || ['complete']);
+
+  const toggleCol = (col) => {
+    setSelectedCols(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]);
+  };
+
+  const toggleCond = (cond) => {
+    setSelectedConds(prev => prev.includes(cond) ? prev.filter(c => c !== cond) : [...prev, cond]);
+  };
+
+  const handleApply = () => {
+    if (selectedCols.length === 0 || selectedConds.length === 0) {
+      onClear();
+    } else {
+      onApply({ columns: selectedCols, conditions: selectedConds });
+    }
+    onClose();
+  };
+
+  return (
+    <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center', zIndex: 3000 }} onClick={onClose}>
+      <div className="data-card" style={{ width: '420px', maxWidth: '92vw', padding: '24px', borderRadius: '8px', background: '#fff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
+            <ImageIcon size={18} style={{ color: '#2563eb' }} /> Image Sort & Filter
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+          {/* Section 1: Select Image Column */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+              Select Image Column(s)
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {imageFields.map(field => {
+                const isChecked = selectedCols.includes(field);
+                return (
+                  <button
+                    key={field}
+                    type="button"
+                    onClick={() => toggleCol(field)}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      border: isChecked ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                      background: isChecked ? '#eff6ff' : '#ffffff',
+                      color: isChecked ? '#1d4ed8' : '#475569',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {field}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Select Conditions */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+              Select Condition(s)
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {[
+                { key: 'complete', label: 'Complete (With Photo)', color: '#10b981', bg: '#d1fae5' },
+                { key: 'pending', label: 'Pending (Missing Photo)', color: '#d97706', bg: '#fef3c7' },
+                { key: 'incomplete', label: 'Incomplete', color: '#ef4444', bg: '#fee2e2' },
+              ].map(cond => {
+                const isChecked = selectedConds.includes(cond.key);
+                return (
+                  <button
+                    key={cond.key}
+                    type="button"
+                    onClick={() => toggleCond(cond.key)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      border: isChecked ? `1px solid ${cond.color}` : '1px solid #cbd5e1',
+                      background: isChecked ? cond.bg : '#ffffff',
+                      color: isChecked ? cond.color : '#475569',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {cond.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+          <button
+            onClick={() => { onClear(); onClose(); }}
+            className="btn btn-neutral btn-sm"
+            style={{ padding: '6px 14px', fontSize: '12px' }}
+          >
+            Clear Filter
+          </button>
+          <button
+            onClick={handleApply}
+            className="btn btn-primary btn-sm"
+            style={{ padding: '6px 18px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Check size={14} /> Apply Sort
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function IDCardActionsView({
@@ -423,7 +551,8 @@ export default function IDCardActionsView({
   const [sectionFilter, setSectionFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
-  const [imageSortFilter, setImageSortFilter] = useState('all');
+  const [activeImageSort, setActiveImageSort] = useState(null); // { columns: ['PHOTO'], conditions: ['complete'] }
+  const [showImageSortModal, setShowImageSortModal] = useState(false);
   const [sort, setSort]                 = useState('sr-asc');
   const [filterOptions, setFilterOptions] = useState({ classes: [], sections: [], courses: [], branches: [] });
   const [fromDate, setFromDate]         = useState('');
@@ -707,6 +836,28 @@ export default function IDCardActionsView({
     saveLocalStorageCards(updated);
   };
 
+  /* Filter cards by Image Sort Modal conditions */
+  const filteredCards = useMemo(() => {
+    if (!activeImageSort || !activeImageSort.columns?.length || !activeImageSort.conditions?.length) {
+      return cards;
+    }
+
+    const { columns, conditions } = activeImageSort;
+
+    return cards.filter(card => {
+      const fd = card.field_data || {};
+      return columns.some(col => {
+        const val = String(fd[col] ?? fd[col.toLowerCase()] ?? '').trim();
+        const hasImg = val !== '' && !val.includes('placeholder') && !val.includes('no-image');
+
+        if (conditions.includes('complete') && hasImg) return true;
+        if (conditions.includes('pending') && !hasImg) return true;
+        if (conditions.includes('incomplete') && !hasImg) return true;
+        return false;
+      });
+    });
+  }, [cards, activeImageSort]);
+
   /* ── Pagination ── */
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selectedArr = [...selectedIds];
@@ -758,7 +909,7 @@ export default function IDCardActionsView({
           TOPBAR — SOLID BLACK BACKGROUND (MATCHING SIDEBAR LOGO HEADER HEIGHT 44px)
           ══════════════════════════════════════════════════════════ */}
       <header className="topbar" style={{ flexShrink: 0, padding: '0 16px', background: '#111827', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box', color: '#ffffff' }}>
-        {/* Left: Table Group, Table Setting, Divider, and Download Buttons */}
+        {/* Left: Table Group, Table Setting, Divider, Download Buttons, Divider, Image Sort, Clear Pending Path */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
           <button
             type="button"
@@ -808,9 +959,69 @@ export default function IDCardActionsView({
             <span>Table Setting</span>
           </button>
 
-          <span style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.2)', margin: '0 4px' }} />
+          <span style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.2)', margin: '0 3px' }} />
 
           {renderDownloadButtons()}
+
+          <span style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.2)', margin: '0 3px' }} />
+
+          {/* Image Sort Modal Trigger Button */}
+          <button
+            type="button"
+            onClick={() => setShowImageSortModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '0 10px',
+              height: '26px',
+              fontSize: '11px',
+              fontWeight: 600,
+              border: activeImageSort ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.2)',
+              background: activeImageSort ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+              color: activeImageSort ? '#fbbf24' : '#e2e8f0',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Filter by image status"
+          >
+            <ImageIcon size={13} />
+            <span>{activeImageSort ? `Image Sort (${activeImageSort.conditions.join(', ')})` : 'Image Sort'}</span>
+          </button>
+
+          {/* Clear Pending Path Button */}
+          {(status === 'pending' || status === 'verified') && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await apiClient.post(`/api/table/${tableId}/cards/clear-pending-paths/`);
+                  addToast?.('Pending paths cleared', 'success');
+                  loadCards();
+                } catch { addToast?.('Pending paths scanned', 'info'); }
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '0 10px',
+                height: '26px',
+                fontSize: '11px',
+                fontWeight: 600,
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: '#e2e8f0',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              title="Clear paths for missing images"
+            >
+              <Eraser size={13} />
+              <span>Clear Pending Path</span>
+            </button>
+          )}
         </div>
 
         {/* Right: Rich Colored Status List Tabs */}
@@ -1022,21 +1233,6 @@ export default function IDCardActionsView({
               {selectedArr.length} selected
             </span>
           )}
-
-          {(status === 'pending' || status === 'verified') && (
-            <button
-              style={buttonStyle('#374151')}
-              title="Clear paths for missing images"
-              onClick={async () => {
-                try {
-                  await apiClient.post(`/api/table/${tableId}/cards/clear-pending-paths/`);
-                  addToast?.('Pending paths cleared', 'success');
-                } catch { addToast?.('Pending paths scanned', 'info'); }
-              }}
-            >
-              <Eraser size={14} /> <span>Clear Pending Path</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1055,18 +1251,6 @@ export default function IDCardActionsView({
             <option value="sr-desc">Sort: Oldest</option>
             <option value="name-asc">Name A to Z</option>
             <option value="name-desc">Name Z to A</option>
-          </select>
-
-          {/* Image Sort Filter */}
-          <select
-            value={imageSortFilter}
-            onChange={e => setImageSortFilter(e.target.value)}
-            style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
-            title="Filter by image status"
-          >
-            <option value="all">Image: All</option>
-            <option value="with_photo">With Photo (Complete)</option>
-            <option value="without_photo">Missing Photo (Pending)</option>
           </select>
 
           {/* Class Filter */}
@@ -1256,7 +1440,7 @@ export default function IDCardActionsView({
                     <span style={{ fontSize: '13px', marginTop: '8px', display: 'inline-block' }}>Loading cards…</span>
                   </td>
                 </tr>
-              ) : cards.length === 0 ? (
+              ) : filteredCards.length === 0 ? (
                 <tr>
                   <td colSpan={tableFields.length + 5} style={{ padding: '48px 20px', textAlign: 'center' }}>
                     <div style={{ maxWidth: '380px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
@@ -1268,7 +1452,7 @@ export default function IDCardActionsView({
                           No cards in status "{status}"
                         </h4>
                         <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-                          {search ? `No cards match search "${search}"` : `There are no cards in ${status} list for this table yet.`}
+                          {search ? `No cards match search "${search}"` : `There are no cards matching current filter criteria.`}
                         </p>
                       </div>
                       {!search && (
@@ -1284,7 +1468,7 @@ export default function IDCardActionsView({
                     </div>
                   </td>
                 </tr>
-              ) : cards.map((card, idx) => {
+              ) : filteredCards.map((card, idx) => {
                 const isSelected = selectedIds.has(card.id);
                 const fd = card.field_data || {};
                 const srNo = (page - 1) * pageSize + idx + 1;
