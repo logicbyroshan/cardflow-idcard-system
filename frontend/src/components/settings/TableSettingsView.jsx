@@ -659,14 +659,18 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
                     type="button"
                     onClick={() => { setTableType(t.value); setTypeAuto(false); }}
                     style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                      padding: '10px 6px', borderRadius: '8px', border: `2px solid ${sel ? t.color : '#e2e8f0'}`,
-                      background: sel ? t.bg : '#f9fafb', cursor: 'pointer', transition: 'all 0.15s',
-                      boxShadow: sel ? `0 0 0 3px ${t.bg}` : 'none'
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      height: '34px', padding: '0 8px', borderRadius: '6px',
+                      border: sel ? `1px solid ${t.color}` : '1px solid #d1d5db',
+                      background: sel ? t.bg : '#ffffff',
+                      color: sel ? t.color : '#4b5563',
+                      fontWeight: sel ? 700 : 500,
+                      fontSize: '12px', cursor: 'pointer', transition: 'all 0.15s',
+                      boxShadow: sel ? `0 1px 3px ${t.border}` : 'none'
                     }}
                   >
-                    <TIcon size={18} style={{ color: sel ? t.color : '#9ca3af' }} />
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: sel ? t.color : '#6b7280', textAlign: 'center', lineHeight: 1.2 }}>
+                    <TIcon size={14} style={{ color: sel ? t.color : '#6b7280', flexShrink: 0 }} />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {t.label}
                     </span>
                   </button>
@@ -1037,14 +1041,25 @@ function CreateWithXlsxDrawer({ groupId, orgName, onClose, onSave, addToast }) {
               const TIcon = t.icon;
               const sel = tableType === t.value;
               return (
-                <button key={t.value} type="button" onClick={() => { setTableType(t.value); setTypeAuto(false); }}
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => { setTableType(t.value); setTypeAuto(false); }}
                   style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                    padding: '10px 6px', borderRadius: '8px', border: `2px solid ${sel ? t.color : '#e2e8f0'}`,
-                    background: sel ? t.bg : '#f9fafb', cursor: 'pointer', transition: 'all 0.15s'
-                  }}>
-                  <TIcon size={18} style={{ color: sel ? t.color : '#9ca3af' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: sel ? t.color : '#6b7280', textAlign: 'center', lineHeight: 1.2 }}>{t.label}</span>
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    height: '34px', padding: '0 8px', borderRadius: '6px',
+                    border: sel ? `1px solid ${t.color}` : '1px solid #d1d5db',
+                    background: sel ? t.bg : '#ffffff',
+                    color: sel ? t.color : '#4b5563',
+                    fontWeight: sel ? 700 : 500,
+                    fontSize: '12px', cursor: 'pointer', transition: 'all 0.15s',
+                    boxShadow: sel ? `0 1px 3px ${t.border}` : 'none'
+                  }}
+                >
+                  <TIcon size={14} style={{ color: sel ? t.color : '#6b7280', flexShrink: 0 }} />
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {t.label}
+                  </span>
                 </button>
               );
             })}
