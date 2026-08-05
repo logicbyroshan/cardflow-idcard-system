@@ -1598,12 +1598,14 @@ textarea {
    ============================================================ */
 .toast-wrapper {
   position: fixed;
-  bottom: 12px;
-  right: 12px;
+  bottom: 20px;
+  left: 20px;
+  right: auto;
   display: flex;
   flex-direction: column-reverse;
-  gap: 6px;
-  z-index: var(--z-toast);
+  gap: 8px;
+  z-index: 999999;
+  pointer-events: none;
 }
 
 .toast {
