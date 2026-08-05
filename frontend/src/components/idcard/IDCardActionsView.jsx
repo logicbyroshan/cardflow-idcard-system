@@ -1564,8 +1564,49 @@ export default function IDCardActionsView({
           )}
         </div>
 
-        {/* Right Side: Filters, Sort, and Search Box */}
+        {/* Right Side: Search Box, Sort, and Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', flexShrink: 0 }}>
+          {/* Search Box */}
+          <div
+            className="search-box"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              height: '28px',
+              width: '200px',
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              borderRadius: '4px',
+              padding: '0 8px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <Search size={14} style={{ color: '#64748b', flexShrink: 0, marginRight: '4px' }} />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search All..."
+              style={{
+                flex: 1,
+                border: 'none',
+                outline: 'none',
+                fontSize: '12px',
+                background: 'transparent',
+                fontFamily: 'var(--font-family)',
+                color: '#1e293b',
+              }}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
           {/* Sort */}
           <select
             value={sort}
@@ -1616,47 +1657,6 @@ export default function IDCardActionsView({
               <X size={12} /> Clear
             </button>
           )}
-
-          {/* Search Box */}
-          <div
-            className="search-box"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              height: '28px',
-              width: '200px',
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
-              borderRadius: '4px',
-              padding: '0 8px',
-              boxSizing: 'border-box',
-            }}
-          >
-            <Search size={14} style={{ color: '#64748b', flexShrink: 0, marginRight: '4px' }} />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search All..."
-              style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                fontSize: '12px',
-                background: 'transparent',
-                fontFamily: 'var(--font-family)',
-                color: '#1e293b',
-              }}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
           {/* Datetime Range Filter — only for Download list */}
           {status === 'download' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
