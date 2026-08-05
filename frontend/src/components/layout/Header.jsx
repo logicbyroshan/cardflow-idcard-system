@@ -72,49 +72,46 @@ export default function Header({
 
 
       {/* Right: active user status pills + global search + notification bell */}
-      <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {/* Status Pills matching SS2 */}
+      <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+        {/* Status Pills matching dark navbar theme */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600 }}>
-          <span style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1e40af', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            Total Desktop Active: <strong>{presenceStats.desktop}</strong>
+          <span style={{ padding: '0 10px', height: '28px', borderRadius: '5px', border: '1px solid #2563eb', background: '#1e3a8a', color: '#93c5fd', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}>
+            Total Desktop Active: <strong style={{ color: '#ffffff' }}>{presenceStats.desktop}</strong>
           </span>
-          <span style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #fed7aa', background: '#fff7ed', color: '#c2410c', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            Total Mobile Active: <strong>{presenceStats.mobile}</strong>
+          <span style={{ padding: '0 10px', height: '28px', borderRadius: '5px', border: '1px solid #ea580c', background: '#7c2d12', color: '#fdba74', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}>
+            Total Mobile Active: <strong style={{ color: '#ffffff' }}>{presenceStats.mobile}</strong>
           </span>
-          <span style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            Total Never Active: <strong>{presenceStats.never}</strong>
+          <span style={{ padding: '0 10px', height: '28px', borderRadius: '5px', border: '1px solid #475569', background: '#1e293b', color: '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}>
+            Total Never Active: <strong style={{ color: '#ffffff' }}>{presenceStats.never}</strong>
           </span>
         </div>
 
-        {/* Global search button — same as original */}
+        {/* Global search button */}
         <button
           className="global-search-btn"
           onClick={() => setSearchQuery?.('')}
-          style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: '6px', minWidth: '180px', height: '28px', padding: '0 10px', fontSize: '12px', color: '#9ca3af', fontFamily: 'var(--font-family)' }}
+          style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255, 255, 255, 0.2)', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '5px', minWidth: '180px', height: '28px', padding: '0 10px', fontSize: '12px', color: '#cbd5e1', fontFamily: 'var(--font-family)', boxSizing: 'border-box' }}
         >
-          <Search size={12} style={{ color: '#9ca3af' }} />
+          <Search size={12} style={{ color: '#94a3b8' }} />
           <span style={{ flex: 1, textAlign: 'left' }}>Search ID cards...</span>
-          <kbd style={{ fontFamily: 'var(--font-family)', border: '1px solid #e5e7eb', background: '#f9fafb', color: '#9ca3af', borderRadius: '4px', padding: '1px 5px', fontSize: '10px', fontWeight: 500 }}>
+          <kbd style={{ fontFamily: 'var(--font-family)', border: '1px solid rgba(255, 255, 255, 0.2)', background: 'rgba(255, 255, 255, 0.1)', color: '#cbd5e1', borderRadius: '3px', padding: '1px 5px', fontSize: '10px', fontWeight: 500 }}>
             Ctrl+K
           </kbd>
         </button>
 
-
         {/* Notification bell */}
         <button
           style={{
-            position: 'relative', width: '30px', height: '30px',
-            borderRadius: '4px', background: 'transparent', border: 'none',
-            color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'background 0.15s',
+            position: 'relative', width: '28px', height: '28px',
+            borderRadius: '5px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'background 0.15s', boxSizing: 'border-box'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
         >
-          <Bell size={15} />
+          <Bell size={14} />
           {unreadCount > 0 && (
             <span style={{
-              position: 'absolute', top: '4px', right: '4px',
+              position: 'absolute', top: '-3px', right: '-3px',
               minWidth: '14px', height: '14px',
               borderRadius: '9999px',
               background: '#ef4444', color: '#fff',
@@ -132,28 +129,25 @@ export default function Header({
           <button
             onClick={() => setShowUserMenu((v) => !v)}
             style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              background: 'transparent', border: 'none',
-              cursor: 'pointer', height: '30px', padding: '0 4px',
-              borderRadius: '4px', transition: 'background 0.15s',
-              fontFamily: 'var(--font-family)',
+              display: 'flex', alignItems: 'center', gap: '6px',
+              background: '#2563eb', border: 'none',
+              cursor: 'pointer', height: '28px', padding: '0 8px',
+              borderRadius: '5px', transition: 'background 0.15s',
+              fontFamily: 'var(--font-family)', color: '#ffffff', boxSizing: 'border-box'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-            onMouseLeave={(e) => !showUserMenu && (e.currentTarget.style.background = 'transparent')}
           >
             <div style={{
-              width: '22px', height: '22px', borderRadius: '4px',
-              background: 'linear-gradient(135deg, rgb(0, 80, 210) 0%, rgb(0, 180, 255) 100%)',
-
+              width: '18px', height: '18px', borderRadius: '3px',
+              background: 'rgba(255, 255, 255, 0.25)',
               color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '9px', fontWeight: 700, flexShrink: 0,
+              fontSize: '10px', fontWeight: 800, flexShrink: 0,
             }}>
               {displayName[0]?.toUpperCase() || 'A'}
             </div>
-            <span style={{ fontSize: '13px', color: '#374151', fontWeight: 500, maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '12px', color: '#ffffff', fontWeight: 600, maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {displayName}
             </span>
-            <ChevronDown size={11} color="#9ca3af" />
+            <ChevronDown size={11} color="#ffffff" />
           </button>
 
           {showUserMenu && (
