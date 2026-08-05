@@ -295,7 +295,7 @@ export default function App() {
 
           {/* ── Table Settings ── */}
           {activeTab === 'schema' && (
-            <TableSettingsView addToast={addToast} />
+            <TableSettingsView addToast={addToast} onNavigate={setActiveTab} />
           )}
 
           {/* ── System/Control Panel ── */}

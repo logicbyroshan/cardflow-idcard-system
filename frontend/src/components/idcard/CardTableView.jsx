@@ -44,22 +44,16 @@ function TableSelector({ onSelect }) {
     if (!isOpen && !tableMap[id]) {
       setTableLoading(p => ({ ...p, [id]: true }));
       const localTables = JSON.parse(localStorage.getItem("cf_custom_tables") || "[]");
-      const defaultTables = [
-        { id: `tbl_${id}_1`, name: 'Class 1st to 5th', session_year: '2026-27' },
-        { id: `tbl_${id}_2`, name: 'Class 6th to 10th', session_year: '2026-27' },
-        { id: `tbl_${id}_3`, name: 'Class 11th & 12th', session_year: '2026-27' },
-        { id: `tbl_${id}_4`, name: 'Staff & Teachers', session_year: '2026-27' },
-      ];
       try {
         const groupId = client.group_id || client.group?.id || client.id;
         const data = await schemaApi.getGroupTables(groupId);
         const list = data?.tables || data?.results || (Array.isArray(data) ? data : []);
         const orgLocal = localTables.filter(t => t.client_name === client.name || String(t.client_id) === String(id));
         const merged = [...orgLocal, ...list];
-        setTableMap(p => ({ ...p, [id]: merged.length > 0 ? merged : defaultTables }));
+        setTableMap(p => ({ ...p, [id]: merged }));
       } catch {
         const orgLocal = localTables.filter(t => t.client_name === client.name || String(t.client_id) === String(id));
-        setTableMap(p => ({ ...p, [id]: orgLocal.length > 0 ? orgLocal : defaultTables }));
+        setTableMap(p => ({ ...p, [id]: orgLocal }));
       }
       finally { setTableLoading(p => ({ ...p, [id]: false })); }
     }

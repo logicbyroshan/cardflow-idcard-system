@@ -4,7 +4,7 @@ import {
   Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   RefreshCw, Loader2, Save, X, CheckCircle2, Users, Upload, FileText,
   Settings2, ListPlus, GripVertical, Edit3, PlusCircle, List, Info,
-  Check, Tag, School, BookOpen, Briefcase, Sparkles
+  Check, Tag, School, BookOpen, Briefcase, Sparkles, FolderKanban
 } from 'lucide-react';
 
 import { schemaApi, clientApi } from '../../services/api';
@@ -102,7 +102,7 @@ const DEFAULT_SCHEMA_FIELDS = [
   { id: 'f-3', name: 'SERIAL NO', type: 'number', mandatory: true, show_path: false },
 ];
 
-export default function TableSettingsView({ addToast }) {
+export default function TableSettingsView({ addToast, onNavigate }) {
   const [tables, setTables]         = useState([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
@@ -132,7 +132,13 @@ export default function TableSettingsView({ addToast }) {
 
   const getStoredTables = useCallback(() => {
     try {
-      return JSON.parse(localStorage.getItem('cf_custom_tables') || '[]');
+      const stored = JSON.parse(localStorage.getItem('cf_custom_tables') || '[]');
+      const dummyNames = ['Class 1st to 5th', 'Class 6th to 10th', 'Class 11th & 12th', 'Staff & Teachers'];
+      const cleaned = stored.filter(t => t && !dummyNames.includes(t.name));
+      if (cleaned.length !== stored.length) {
+        localStorage.setItem('cf_custom_tables', JSON.stringify(cleaned));
+      }
+      return cleaned;
     } catch { return []; }
   }, []);
 
@@ -305,6 +311,15 @@ export default function TableSettingsView({ addToast }) {
             <div className="btn-separator" />
 
             <div className="btn-group">
+              <button
+                className="btn btn-md btn-secondary"
+                onClick={() => onNavigate ? onNavigate('cards') : (window.location.href = '/panel/idcard-group/')}
+                title="Go to Table Group / ID Cards Page"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <FolderKanban size={13} style={{ color: '#2563eb' }} />
+                <span>Table Group</span>
+              </button>
               <button className="btn btn-md btn-neutral" onClick={() => setShowExcelDrawer(true)} title="Create Table with XLSX">
                 <FileSpreadsheet size={13} /> <span>Create with XLSX</span>
               </button>
@@ -880,17 +895,42 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                     }}>{idx + 1}</span>
 
-                    {/* Field Name */}
-                    <input
-                      value={f.name}
-                      onChange={e => handleFieldNameChange(f.id, e.target.value)}
-                      style={{
-                        flex: 1, height: '30px', padding: '0 8px', border: '1px solid #e2e8f0',
-                        borderRadius: '4px', fontSize: '12px', fontWeight: 600, color: '#111827', outline: 'none',
-                        cursor: 'text'
-                      }}
-                      onMouseDown={e => e.stopPropagation()}
-                    />
+                    {/* Field Name + Path Checkbox nested inside */}
+                    <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <input
+                        value={f.name}
+                        onChange={e => handleFieldNameChange(f.id, e.target.value)}
+                        style={{
+                          width: '100%', height: '30px', paddingLeft: '8px',
+                          paddingRight: isPhoto ? '68px' : '8px',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '4px', fontSize: '12px', fontWeight: 600, color: '#111827', outline: 'none',
+                          cursor: 'text'
+                        }}
+                        onMouseDown={e => e.stopPropagation()}
+                      />
+                      {isPhoto && (
+                        <label
+                          onMouseDown={e => e.stopPropagation()}
+                          style={{
+                            position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
+                            display: 'inline-flex', alignItems: 'center', gap: '3px',
+                            fontSize: '10px', fontWeight: 700, color: f.show_path ? '#7c3aed' : '#9ca3af',
+                            cursor: 'pointer', userSelect: 'none', background: f.show_path ? '#f5f3ff' : '#f8fafc',
+                            padding: '2px 5px', borderRadius: '3px', border: `1px solid ${f.show_path ? '#ddd6fe' : '#e2e8f0'}`
+                          }}
+                          title="Include file path in exports"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={Boolean(f.show_path)}
+                            onChange={e => setFieldProp(f.id, 'show_path', e.target.checked)}
+                            style={{ width: '11px', height: '11px', cursor: 'pointer', accentColor: '#7c3aed' }}
+                          />
+                          <span>Path</span>
+                        </label>
+                      )}
+                    </div>
 
                     {/* Field Type */}
                     <select
@@ -905,25 +945,6 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
                     >
                       {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
-
-                    {/* Show Path toggle (only for image types) */}
-                    {isPhoto && (
-                      <button
-                        type="button"
-                        onClick={() => setFieldProp(f.id, 'show_path', !f.show_path)}
-                        title="Show image path in exports"
-                        style={{
-                          fontSize: '10px', fontWeight: 700, padding: '3px 7px',
-                          border: `1px solid ${f.show_path ? '#7c3aed' : '#d1d5db'}`,
-                          borderRadius: '4px',
-                          background: f.show_path ? '#f5f3ff' : '#f9fafb',
-                          color: f.show_path ? '#7c3aed' : '#9ca3af',
-                          cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0
-                        }}
-                      >
-                        Path
-                      </button>
-                    )}
 
                     {/* Required toggle — ON = required (red left border), OFF = optional */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
