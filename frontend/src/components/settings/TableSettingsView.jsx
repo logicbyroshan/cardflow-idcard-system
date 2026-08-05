@@ -4,7 +4,7 @@ import {
   Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   RefreshCw, Loader2, Save, X, CheckCircle2, Users, Upload, FileText,
   Settings2, ListPlus, GripVertical, Edit3, PlusCircle, List, Info,
-  Check, Tag, School, BookOpen, Briefcase, Sparkles, FolderKanban
+  Check, Tag, School, BookOpen, Briefcase, Sparkles, FolderKanban, ShieldCheck
 } from 'lucide-react';
 
 import { schemaApi, clientApi } from '../../services/api';
@@ -400,7 +400,8 @@ export default function TableSettingsView({ addToast, onNavigate }) {
                 ) : (
                   paged.map((t, idx) => {
                     const name = t.name || `Table #${t.id || idx}`;
-                    const clientName = t.client_name || t.client?.name || '—';
+                    const rawClient = t.client_name || t.client?.name || clientOrg || '';
+                    const clientName = (rawClient && rawClient !== 'Default Organisation') ? rawClient : (clientOrg || '—');
                     const isActive = t.is_active !== false;
                     const isSel = t.id === selected;
                     const fieldList = Array.isArray(t.fields) && t.fields.length > 0 ? t.fields : DEFAULT_SCHEMA_FIELDS;
@@ -677,7 +678,7 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
         const newTable = {
           id: `tbl_${Date.now()}`,
           ...payload,
-          client_name: orgName || 'Default Organisation',
+          client_name: clientOrg || '—',
           status: 'active',
           is_active: true,
           created_at: new Date().toISOString(),
