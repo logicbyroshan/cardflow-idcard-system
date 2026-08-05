@@ -128,22 +128,23 @@ export default function ClientAccountsView({ addToast, onOpenActionDrawer, onNav
     <div className="view-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       
       {/* ── ACTION BAR ── */}
-      <div className="action-bar" id="client-accounts-action-bar">
+      <div className="action-bar" id="client-accounts-action-bar" style={{ background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '50px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box' }}>
         {/* Left */}
-        <div className="action-bar-left">
+        <div className="action-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* Status Tabs */}
-          <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: '#eef0f4', borderRadius: '6px', padding: '2px 3px', gap: '2px' }}>
+          <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '5px', padding: '2px', gap: '2px', height: '28px', boxSizing: 'border-box' }}>
             {STATUS_TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => { setStatusTab(tab); setPage(1); }}
                 className={`status-tab${statusTab === tab ? ' active' : ''}`}
                 style={{
-                  padding: '2px 10px', fontSize: '13px', lineHeight: 1.2, borderRadius: '4px',
-                  border: 'none', cursor: 'pointer', background: statusTab === tab ? '#fff' : 'transparent',
-                  color: statusTab === tab ? '#374151' : '#6b7280', fontWeight: statusTab === tab ? 600 : 400,
+                  padding: '0 10px', height: '22px', fontSize: '11px', lineHeight: '22px', borderRadius: '3px',
+                  border: 'none', cursor: 'pointer', background: statusTab === tab ? '#2563eb' : 'transparent',
+                  color: statusTab === tab ? '#ffffff' : '#cbd5e1', fontWeight: statusTab === tab ? 700 : 600,
                   fontFamily: 'var(--font-family)', transition: 'all 0.15s',
-                  boxShadow: statusTab === tab ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  boxShadow: statusTab === tab ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                  display: 'inline-flex', alignItems: 'center'
                 }}
               >
                 {tab}
@@ -151,60 +152,74 @@ export default function ClientAccountsView({ addToast, onOpenActionDrawer, onNav
             ))}
           </div>
 
-          <div className="action-divider" />
+          <div className="action-divider" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)', margin: '0 4px' }} />
 
           {/* Type Filter */}
           <select
             value={typeTab}
             onChange={(e) => setTypeTab(e.target.value)}
             className="form-input"
-            style={{ height: '28px', fontSize: '12px', padding: '0 8px', background: '#fff', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+            style={{ height: '28px', fontSize: '12px', padding: '0 8px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '4px', border: '1px solid rgba(255, 255, 255, 0.18)', color: '#ffffff', outline: 'none' }}
           >
-            {TYPE_TABS.map(t => <option key={t} value={t}>{t}</option>)}
+            {TYPE_TABS.map(t => <option key={t} value={t} style={{ background: '#1e1e2e', color: '#ffffff' }}>{t}</option>)}
           </select>
 
-          <div className="action-divider" />
+          <div className="action-divider" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)', margin: '0 4px' }} />
 
           {/* Search Box */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={12} style={{ position: 'absolute', left: '8px', color: '#9ca3af', pointerEvents: 'none' }} />
+          <div className="notif-search-box" style={{ width: '200px', height: '28px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '5px', padding: '0 8px', display: 'flex', alignItems: 'center', boxSizing: 'border-box' }}>
+            <Search size={12} style={{ color: '#94a3b8', flexShrink: 0, marginRight: '6px' }} />
             <input
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search Manager accounts..."
-              className="form-input"
-              style={{ paddingLeft: '26px', height: '28px', width: '180px', fontSize: '12px' }}
+              style={{ background: 'transparent', border: 'none', color: '#ffffff', outline: 'none', fontSize: '12px', width: '100%' }}
             />
+            {search && (
+              <button onClick={() => setSearch('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '0 2px' }} title="Clear search">
+                <X size={12} />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Right */}
-        <div className="action-bar-right">
-          <div className="actions">
-            <div className="btn-group">
-              <button className="btn btn-md btn-primary" onClick={() => onOpenActionDrawer?.('add-manager')}>
+        <div className="action-bar-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div className="btn-group" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                className="btn"
+                onClick={() => onOpenActionDrawer?.('add-manager')}
+                style={{ background: '#2563eb', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', border: '1px solid #2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
+              >
                 <Plus size={13} /> Add Manager Account
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => selAccount && onOpenActionDrawer?.('edit-manager', selAccount)}>
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={() => selAccount && onOpenActionDrawer?.('edit-manager', selAccount)}
+                style={{ background: selected ? '#2563eb' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? '1px solid #2563eb' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
+              >
                 <Pen size={13} /> Edit
               </button>
-              <button className="btn btn-md btn-warning" disabled={!selected} onClick={handleToggleStatus}>
-                <ToggleRight size={13} /> Status
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={handleToggleStatus}
+                style={{ background: selected ? '#f59e0b' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
+              >
+                <ToggleRight size={13} /> Active
               </button>
-              <button className="btn btn-md btn-danger" disabled={!selected} onClick={handleDelete}>
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={handleDelete}
+                style={{ background: selected ? '#ef4444' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
+              >
                 <Trash2 size={13} /> Delete
               </button>
             </div>
-            <div className="btn-separator" />
-            <button
-              onClick={load}
-              className="btn btn-md btn-neutral"
-              title="Refresh"
-            >
-              {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-              <span>Refresh</span>
-            </button>
           </div>
         </div>
       </div>

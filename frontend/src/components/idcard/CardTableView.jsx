@@ -159,20 +159,21 @@ export default function CardTableView({ addToast, onNavigate }) {
       <div className="view-container" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
         
         {/* ── ACTION BAR / TOPBAR ── */}
-        <div className="action-bar" id="idcard-group-action-bar">
-          <div className="action-bar-left">
-            <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: '#eef0f4', borderRadius: '6px', padding: '2px 3px', gap: '2px' }}>
+        <div className="action-bar" id="idcard-group-action-bar" style={{ background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '50px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box' }}>
+          <div className="action-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '5px', padding: '2px', gap: '2px', height: '28px', boxSizing: 'border-box' }}>
               {STATUS_TABS.map((t) => (
                 <button
                   key={t}
                   onClick={() => setStatusTab(t)}
                   className={`status-tab${statusTab === t ? ' active' : ''}`}
                   style={{
-                    padding: '2px 10px', fontSize: '13px', lineHeight: 1.2, borderRadius: '4px',
-                    border: 'none', cursor: 'pointer', background: statusTab === t ? '#fff' : 'transparent',
-                    color: statusTab === t ? '#374151' : '#6b7280', fontWeight: statusTab === t ? 600 : 400,
+                    padding: '0 10px', height: '22px', fontSize: '11px', lineHeight: '22px', borderRadius: '3px',
+                    border: 'none', cursor: 'pointer', background: statusTab === t ? '#2563eb' : 'transparent',
+                    color: statusTab === t ? '#ffffff' : '#cbd5e1', fontWeight: statusTab === t ? 700 : 600,
                     fontFamily: 'var(--font-family)', transition: 'all 0.15s',
-                    boxShadow: statusTab === t ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    boxShadow: statusTab === t ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                    display: 'inline-flex', alignItems: 'center'
                   }}
                 >
                   {t}
@@ -180,25 +181,29 @@ export default function CardTableView({ addToast, onNavigate }) {
               ))}
             </div>
 
-            <div className="action-divider" />
+            <div className="action-divider" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)', margin: '0 4px' }} />
 
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Search size={12} style={{ position: 'absolute', left: '8px', color: '#9ca3af', pointerEvents: 'none' }} />
+            <div className="notif-search-box" style={{ width: '200px', height: '28px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '5px', padding: '0 8px', display: 'flex', alignItems: 'center', boxSizing: 'border-box' }}>
+              <Search size={12} style={{ color: '#94a3b8', flexShrink: 0, marginRight: '6px' }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tables..."
-                className="form-input"
-                style={{ paddingLeft: '26px', height: '28px', width: '180px', fontSize: '12px' }}
+                style={{ background: 'transparent', border: 'none', color: '#ffffff', outline: 'none', fontSize: '12px', width: '100%' }}
               />
+              {search && (
+                <button onClick={() => setSearch('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '0 2px' }} title="Clear search">
+                  <X size={12} />
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="action-bar-right">
-            <div className="actions">
+          <div className="action-bar-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               
               {/* Bulk Action Buttons Group in Navbar (Vibrant Color Buttons) */}
-              <div className="btn-group">
+              <div className="btn-group" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <button
                   type="button"
                   onClick={() => setActiveModal('reupload')}
@@ -240,31 +245,37 @@ export default function CardTableView({ addToast, onNavigate }) {
                 </button>
               </div>
 
-              <div className="btn-separator" />
+              <div className="btn-separator" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)', margin: '0 4px' }} />
 
-              <div className="btn-group">
+              <div className="btn-group" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <button
-                  className="btn btn-md btn-neutral"
+                  className="btn"
                   onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
                   title="Create table directly from an XLSX file"
+                  style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.18)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
                 >
                   <FileSpreadsheet size={13} /> <span>Create with XLSX</span>
                 </button>
               </div>
 
-              <div className="btn-separator" />
+              <div className="btn-separator" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)', margin: '0 4px' }} />
 
               {/* Page Switch Buttons Pair */}
-              <div className="btn-group">
-                <button className="btn btn-md btn-primary" title="Table Group">
+              <div className="btn-group" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  className="btn"
+                  title="Table Group"
+                  style={{ background: '#2563eb', color: '#ffffff', border: '1px solid #2563eb', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
+                >
                   <ShieldCheck size={13} /> <span>Table Group</span>
                 </button>
                 <button
-                  className="btn btn-md btn-neutral"
+                  className="btn"
                   onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
                   title="Table Setting"
+                  style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.18)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
                 >
-                  <SlidersHorizontal size={13} /> <span>Table Setting</span>
+                  <Settings size={13} /> <span>Table Setting</span>
                 </button>
               </div>
             </div>
