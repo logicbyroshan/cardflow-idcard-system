@@ -314,6 +314,7 @@ export default function CardTableView({ addToast, onNavigate }) {
               <table className="data-table idcard-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '45px', textAlign: 'center' }}>S. NO.</th>
                     <th style={{ width: '220px', textAlign: 'left' }}>NAME</th>
                     <th style={{ textAlign: 'center' }}>ID CARD LISTS</th>
                     <th style={{ textAlign: 'center' }}>REPRINT CARD LISTS</th>
@@ -347,6 +348,11 @@ export default function CardTableView({ addToast, onNavigate }) {
                           cursor: 'pointer', transition: 'background 0.15s'
                         }}
                       >
+                        {/* Column 0: S. NO. */}
+                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px' }}>
+                          {idx + 1}
+                        </td>
+
                         {/* Column 1: Table Name */}
                         <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -659,23 +665,22 @@ function reprintBtnStyle(type) {
 }
 
 function bulkBtnStyle(type, disabled) {
-  const colors = {
-    reupload:     { bg: '#ffedd5', color: '#ea580c', border: '#fdba74' },
-    downloadAll:  { bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc' },
-    deleteAll:    { bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
-    upgradeClass: { bg: '#dcfce7', color: '#166534', border: '#86efac' },
+  const activeColors = {
+    reupload:     { bg: '#f97316', color: '#ffffff', border: '#f97316' },
+    downloadAll:  { bg: '#2563eb', color: '#ffffff', border: '#2563eb' },
+    deleteAll:    { bg: '#ef4444', color: '#ffffff', border: '#ef4444' },
+    upgradeClass: { bg: '#10b981', color: '#ffffff', border: '#10b981' },
   };
-  const cfg = colors[type] || colors.reupload;
+  const cfg = activeColors[type] || activeColors.reupload;
   return {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-    height: '28px', padding: '0 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
-    background: cfg.bg,
-    color: cfg.color,
-    border: `1px solid ${cfg.border}`,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+    height: '28px', padding: '0 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
+    background: disabled ? 'rgba(255, 255, 255, 0.08)' : cfg.bg,
+    color: disabled ? 'rgba(255, 255, 255, 0.45)' : cfg.color,
+    border: disabled ? '1px solid rgba(255, 255, 255, 0.15)' : `1px solid ${cfg.border}`,
     cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.6 : 1,
     whiteSpace: 'nowrap',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+    boxSizing: 'border-box',
     fontFamily: 'var(--font-family)', transition: 'all 0.15s'
   };
 }
