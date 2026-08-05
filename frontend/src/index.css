@@ -1598,7 +1598,7 @@ textarea {
    ============================================================ */
 .toast-wrapper {
   position: fixed;
-  bottom: 20px;
+  bottom: 40px;
   left: 20px;
   right: auto;
   display: flex;

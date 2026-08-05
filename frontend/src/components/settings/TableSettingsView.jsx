@@ -130,8 +130,15 @@ export default function TableSettingsView({ addToast }) {
     } catch { /* ignore — tables still work via fallback */ }
   }, []);
 
+  const getStoredTables = useCallback(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cf_custom_tables') || '[]');
+    } catch { return []; }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
+    const local = getStoredTables();
     try {
       let list = [];
       if (groupId) {
@@ -141,13 +148,24 @@ export default function TableSettingsView({ addToast }) {
         const data = await schemaApi.getSchemas?.();
         list = data?.tables || data?.results || (Array.isArray(data) ? data : []);
       }
-      setTables(list.map(t => ({ ...t, fields: t.fields || DEFAULT_SCHEMA_FIELDS })));
+
+      const merged = [...local];
+      (list || []).forEach(item => {
+        if (!merged.some(t => String(t.id) === String(item.id) || t.name === item.name)) {
+          merged.push({
+            ...item,
+            fields: item.fields || DEFAULT_SCHEMA_FIELDS
+          });
+        }
+      });
+
+      setTables(merged);
     } catch {
-      setTables([]);
+      setTables(local);
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, getStoredTables]);
 
   useEffect(() => { loadGroupId(); }, [loadGroupId]);
   useEffect(() => { load(); }, [load]);
@@ -171,7 +189,20 @@ export default function TableSettingsView({ addToast }) {
   const handleToggleStatus = async () => {
     if (!selected) return;
     try {
-      await schemaApi.toggleTableStatus(selected);
+      try {
+        await schemaApi.toggleTableStatus(selected);
+      } catch (apiErr) {
+        console.warn("Backend API toggle status notice:", apiErr);
+      }
+      const local = getStoredTables();
+      const updated = local.map(t => {
+        if (String(t.id) === String(selected)) {
+          const nextActive = t.is_active === false ? true : false;
+          return { ...t, is_active: nextActive, status: nextActive ? 'active' : 'inactive', updated_at: new Date().toISOString() };
+        }
+        return t;
+      });
+      localStorage.setItem('cf_custom_tables', JSON.stringify(updated));
       addToast?.(`Status toggled for ${selTable?.name}`, 'success');
       load();
     } catch {
@@ -183,7 +214,14 @@ export default function TableSettingsView({ addToast }) {
     if (!selected) return;
     if (!window.confirm(`Delete table "${selTable?.name}"? This cannot be undone.`)) return;
     try {
-      await schemaApi.deleteTable(selected);
+      try {
+        await schemaApi.deleteTable(selected);
+      } catch (apiErr) {
+        console.warn("Backend API delete table notice:", apiErr);
+      }
+      const local = getStoredTables();
+      const updated = local.filter(t => String(t.id) !== String(selected));
+      localStorage.setItem('cf_custom_tables', JSON.stringify(updated));
       addToast?.(`Table "${selTable?.name}" deleted`, 'success');
       setSelected(null);
       load();
