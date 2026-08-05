@@ -681,9 +681,9 @@ export default function IDCardActionsView({
 
   /* Button color inline style generator for 100% color reliability */
   const buttonStyle = (bg, disabled = false) => ({
-    background: bg,
-    color: '#ffffff',
-    border: 'none',
+    background: disabled ? 'rgba(0,0,0,0.07)' : bg,
+    color: disabled ? '#9ca3af' : '#ffffff',
+    border: disabled ? '1px solid #e5e7eb' : 'none',
     borderRadius: '4px',
     padding: '0 10px',
     height: '28px',
@@ -694,9 +694,9 @@ export default function IDCardActionsView({
     justifyContent: 'center',
     gap: '5px',
     cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.45 : 1,
+    opacity: 1,
     whiteSpace: 'nowrap',
-    boxShadow: disabled ? 'none' : '0 1px 2px rgba(0,0,0,0.1)',
+    boxShadow: disabled ? 'none' : '0 1px 2px rgba(0,0,0,0.12)',
     transition: 'all 0.15s ease',
   });
 
@@ -712,7 +712,7 @@ export default function IDCardActionsView({
           <button
             onClick={onBack}
             className="btn btn-neutral btn-sm"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', fontSize: '11px', fontWeight: 600, height: '24px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', borderRadius: '4px', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', fontSize: '11px', fontWeight: 600, height: '24px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#e2e8f0', borderRadius: '4px', cursor: 'pointer' }}
           >
             <ArrowLeft size={12} /> Back to ID Card Group
           </button>
@@ -735,9 +735,9 @@ export default function IDCardActionsView({
                   borderRadius: '16px',
                   fontSize: '12px',
                   fontWeight: 700,
-                  border: isActive ? `1px solid ${s.bg}` : '1px solid #cbd5e1',
-                  background: isActive ? s.bg : '#ffffff',
-                  color: isActive ? '#ffffff' : s.color,
+                  border: isActive ? `1px solid ${s.bg}` : '1px solid rgba(255,255,255,0.15)',
+                  background: isActive ? s.bg : 'rgba(255,255,255,0.08)',
+                  color: isActive ? '#ffffff' : '#cbd5e1',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                   boxShadow: isActive ? `0 2px 6px ${s.bg}40` : 'none',
@@ -755,8 +755,8 @@ export default function IDCardActionsView({
                   borderRadius: '10px',
                   fontSize: '10px',
                   fontWeight: 700,
-                  background: isActive ? '#ffffff' : s.bgLight,
-                  color: isActive ? s.bg : s.color,
+                  background: isActive ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                  color: isActive ? '#ffffff' : '#94a3b8',
                 }}>
                   {count}
                 </span>
