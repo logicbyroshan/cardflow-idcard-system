@@ -444,9 +444,9 @@ export default function TableSettingsView({ addToast, onNavigate }) {
                   filtered.map((t, idx) => {
                     const name = t.name || `Table #${t.id || idx}`;
                     const rawClient = t.client_name || t.client?.name || '';
-                    const clientName = (rawClient && !['Default Organisation', 'Organisation', '—'].includes(rawClient.trim()))
+                    const clientName = (rawClient && !['Default Organisation', 'Organisation', 'Primary Organisation', '—'].includes(rawClient.trim()))
                       ? rawClient.trim()
-                      : (clientOrg || 'Primary Organisation');
+                      : (clientOrg || 'Mathura Das School of Execellence');
                     const isActive = t.is_active !== false;
                     const isSel = t.id === selected;
                     const fieldList = Array.isArray(t.fields) && t.fields.length > 0 ? t.fields : DEFAULT_SCHEMA_FIELDS;
