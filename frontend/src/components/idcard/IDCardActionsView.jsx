@@ -757,15 +757,9 @@ export default function IDCardActionsView({
           TOPBAR — SOLID BLACK BACKGROUND (MATCHING SIDEBAR LOGO HEADER HEIGHT 44px)
           ══════════════════════════════════════════════════════════ */}
       <header className="topbar" style={{ flexShrink: 0, padding: '0 16px', background: '#111827', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box', color: '#ffffff' }}>
-        {/* Left: Back Button Only */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={onBack}
-            className="btn btn-neutral btn-sm"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', fontSize: '11px', fontWeight: 600, height: '24px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#e2e8f0', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            <ArrowLeft size={12} /> Back to ID Card Group
-          </button>
+        {/* Left: All Download Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          {renderDownloadButtons()}
         </div>
 
         {/* Right: Rich Colored Status List Tabs */}
@@ -875,9 +869,6 @@ export default function IDCardActionsView({
               >
                 {actionLoading ? <Spinner size={14} /> : <CheckCircle2 size={14} />} <span>Verify Selected</span>
               </button>
-
-              <span style={{ width: '1px', height: '20px', background: '#e5e7eb', flexShrink: 0, margin: '0 2px' }} />
-              {renderDownloadButtons()}
             </>
           )}
 
@@ -913,9 +904,6 @@ export default function IDCardActionsView({
               <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
                 <RefreshCw size={14} /> <span>Reupload Image</span>
               </button>
-
-              <span style={{ width: '1px', height: '20px', background: '#e5e7eb', flexShrink: 0, margin: '0 2px' }} />
-              {renderDownloadButtons()}
             </>
           )}
 
@@ -944,9 +932,6 @@ export default function IDCardActionsView({
               <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
                 <RefreshCw size={14} /> <span>Reupload Image</span>
               </button>
-
-              <span style={{ width: '1px', height: '20px', background: '#e5e7eb', flexShrink: 0, margin: '0 2px' }} />
-              {renderDownloadButtons()}
             </>
           )}
 
@@ -975,9 +960,6 @@ export default function IDCardActionsView({
               <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
                 <RefreshCw size={14} /> <span>Reupload Image</span>
               </button>
-
-              <span style={{ width: '1px', height: '20px', background: '#e5e7eb', flexShrink: 0, margin: '0 2px' }} />
-              {renderDownloadButtons()}
             </>
           )}
         </div>
