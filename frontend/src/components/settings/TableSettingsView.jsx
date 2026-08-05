@@ -308,18 +308,22 @@ export default function TableSettingsView({ addToast, onNavigate }) {
               </button>
             </div>
 
+            <div className="btn-group">
+              <button
+                className="btn btn-md btn-neutral"
+                onClick={() => onNavigate ? onNavigate('cards') : (window.location.href = '/panel/idcard-group/')}
+                title="ID Card Group"
+              >
+                <ShieldCheck size={13} /> <span>ID Card Group</span>
+              </button>
+              <button className="btn btn-md btn-primary" title="Group Setting">
+                <SlidersHorizontal size={13} /> <span>Group Setting</span>
+              </button>
+            </div>
+
             <div className="btn-separator" />
 
             <div className="btn-group">
-              <button
-                className="btn btn-md btn-secondary"
-                onClick={() => onNavigate ? onNavigate('cards') : (window.location.href = '/panel/idcard-group/')}
-                title="Go to Table Group / ID Cards Page"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <FolderKanban size={13} style={{ color: '#2563eb' }} />
-                <span>Table Group</span>
-              </button>
               <button className="btn btn-md btn-neutral" onClick={() => setShowExcelDrawer(true)} title="Create Table with XLSX">
                 <FileSpreadsheet size={13} /> <span>Create with XLSX</span>
               </button>

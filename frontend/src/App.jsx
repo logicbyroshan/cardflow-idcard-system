@@ -222,18 +222,9 @@ export default function App() {
             />
           )}
 
-          {/* ── ID Cards ── */}
+          {/* ── ID Cards / Table Group ── */}
           {activeTab === 'cards' && (
-            <>
-              <CardActionBar
-                selectedCount={0}
-                onAddCard={() => addToast('Add card drawer opened', 'info')}
-                onUploadPhotos={() => addToast('Upload photos modal ready', 'info')}
-                onExportModal={() => setShowDownloadsModal(true)}
-                onClearPending={() => addToast('Scanned paths cleared', 'success')}
-              />
-              <CardTableView addToast={addToast} tableId={activeTableId} />
-            </>
+            <CardTableView addToast={addToast} onNavigate={setActiveTab} />
           )}
 
           {/* ── Reprint Queue ── */}

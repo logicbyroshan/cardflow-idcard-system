@@ -138,7 +138,7 @@ export default function CardTableView({ addToast, onNavigate }) {
     return (
       <div className="view-container" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
         
-        {/* ── ACTION BAR ── */}
+        {/* ── ACTION BAR / TOPBAR ── */}
         <div className="action-bar" id="idcard-group-action-bar">
           <div className="action-bar-left">
             <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: '#eef0f4', borderRadius: '6px', padding: '2px 3px', gap: '2px' }}>
@@ -176,14 +176,29 @@ export default function CardTableView({ addToast, onNavigate }) {
 
           <div className="action-bar-right">
             <div className="actions">
+              {/* Page Switch Buttons Pair */}
+              <div className="btn-group">
+                <button className="btn btn-md btn-primary" title="ID Card Group">
+                  <ShieldCheck size={13} /> <span>ID Card Group</span>
+                </button>
+                <button
+                  className="btn btn-md btn-neutral"
+                  onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
+                  title="Group Setting"
+                >
+                  <SlidersHorizontal size={13} /> <span>Group Setting</span>
+                </button>
+              </div>
+
+              <div className="btn-separator" />
+
               <div className="btn-group">
                 <button
-                  className="btn btn-md btn-secondary"
+                  className="btn btn-md btn-neutral"
                   onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
-                  title="Go to Table Setting"
+                  title="Create table directly from an XLSX file"
                 >
-                  <SlidersHorizontal size={13} style={{ color: '#2563eb' }} />
-                  <span>Table Setting</span>
+                  <FileSpreadsheet size={13} /> <span>Create with XLSX</span>
                 </button>
               </div>
 
@@ -222,7 +237,7 @@ export default function CardTableView({ addToast, onNavigate }) {
                   className="btn btn-primary btn-sm"
                   style={{ marginTop: '16px', padding: '7px 18px', borderRadius: '6px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <SlidersHorizontal size={14} /> Go to Table Setting
+                  <SlidersHorizontal size={14} /> Go to Group Setting
                 </button>
               </div>
             ) : (
@@ -231,7 +246,7 @@ export default function CardTableView({ addToast, onNavigate }) {
                   <tr>
                     <th style={{ width: '220px', textAlign: 'left' }}>NAME</th>
                     <th style={{ textAlign: 'center' }}>ACTION</th>
-                    <th style={{ width: '420px', textAlign: 'center' }}>BULK ACTIONS</th>
+                    <th style={{ width: '440px', textAlign: 'center' }}>BULK ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,7 +263,7 @@ export default function CardTableView({ addToast, onNavigate }) {
                         {/* Column 1: Table Name */}
                         <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span style={{ fontSize: '13px', color: '#1e293b' }}>{t.name}</span>
+                            <span style={{ fontSize: '13px', color: '#1e293b', fontWeight: 700 }}>{t.name}</span>
                             <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
                               {t.client_name || 'Primary Organisation'}
                             </span>
@@ -257,105 +272,100 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                         {/* Column 2: Action Status Buttons with Count Badges */}
                         <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                             <button
                               type="button"
                               onClick={() => { setSelectedTable(t); setSelectedStatus('pending'); setPage(1); }}
-                              style={statusBtnStyle('#f59e0b', '#fffbeb', '#fde68a')}
+                              style={statusBtnStyle('pending').btn}
                               title="View Pending ID Cards"
                             >
-                              <Clock size={12} />
                               <span>Pending</span>
-                              <span style={badgeStyle('#f59e0b', '#fff')}>{pCnt}</span>
+                              <span style={statusBtnStyle('pending').badge}>{pCnt}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => { setSelectedTable(t); setSelectedStatus('verified'); setPage(1); }}
-                              style={statusBtnStyle('#2563eb', '#eff6ff', '#bfdbfe')}
+                              style={statusBtnStyle('verified').btn}
                               title="View Verified ID Cards"
                             >
-                              <CheckCircle size={12} />
                               <span>Verified</span>
-                              <span style={badgeStyle('#2563eb', '#fff')}>{vCnt}</span>
+                              <span style={statusBtnStyle('verified').badge}>{vCnt}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => { setSelectedTable(t); setSelectedStatus('approved'); setPage(1); }}
-                              style={statusBtnStyle('#059669', '#ecfdf5', '#a7f3d0')}
+                              style={statusBtnStyle('approved').btn}
                               title="View Approved ID Cards"
                             >
-                              <ThumbsUp size={12} />
                               <span>Approved</span>
-                              <span style={badgeStyle('#059669', '#fff')}>{aCnt}</span>
+                              <span style={statusBtnStyle('approved').badge}>{aCnt}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => { setSelectedTable(t); setSelectedStatus('download'); setPage(1); }}
-                              style={statusBtnStyle('#7c3aed', '#f5f3ff', '#ddd6fe')}
+                              style={statusBtnStyle('download').btn}
                               title="View Downloaded ID Cards"
                             >
-                              <Download size={12} />
                               <span>Downloaded</span>
-                              <span style={badgeStyle('#7c3aed', '#fff')}>{dCnt}</span>
+                              <span style={statusBtnStyle('download').badge}>{dCnt}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => { setSelectedTable(t); setSelectedStatus('pool'); setPage(1); }}
-                              style={statusBtnStyle('#6b7280', '#f9fafb', '#e5e7eb')}
+                              style={statusBtnStyle('pool').btn}
                               title="View Pool ID Cards"
                             >
-                              <Layers size={12} />
                               <span>Pool</span>
-                              <span style={badgeStyle('#6b7280', '#fff')}>{lCnt}</span>
+                              <span style={statusBtnStyle('pool').badge}>{lCnt}</span>
                             </button>
                           </div>
                         </td>
 
                         {/* Column 3: Bulk Action Buttons */}
                         <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                             <button
                               type="button"
                               onClick={() => handleBulkReupload(t)}
-                              style={bulkBtnStyle('#2563eb', totCnt === 0)}
+                              style={bulkBtnStyle('reupload', totCnt === 0)}
                               disabled={totCnt === 0}
                               title={totCnt === 0 ? "No cards in table" : "Bulk Reupload Images"}
                             >
-                              <Upload size={11} /> Reupload Image
+                              Reupload Image
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleBulkDownloadAll(t)}
-                              style={bulkBtnStyle('#059669', totCnt === 0)}
+                              style={bulkBtnStyle('downloadAll', totCnt === 0)}
                               disabled={totCnt === 0}
                               title={totCnt === 0 ? "No cards in table" : "Download All ID Cards"}
                             >
-                              <Download size={11} /> Download All ID Card
+                              Download All ID Card
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleBulkDeleteAll(t)}
-                              style={bulkBtnStyle('#dc2626', totCnt === 0)}
+                              style={bulkBtnStyle('deleteAll', totCnt === 0)}
                               disabled={totCnt === 0}
                               title={totCnt === 0 ? "No cards in table" : "Delete All ID Cards"}
                             >
-                              <Trash2 size={11} /> Delete All ID Cards
+                              Delete All ID Cards
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleBulkUpgradeClass(t)}
-                              style={bulkBtnStyle('#7c3aed', totCnt === 0)}
+                              style={bulkBtnStyle('upgradeClass', totCnt === 0)}
                               disabled={totCnt === 0}
                               title={totCnt === 0 ? "No cards in table" : "Upgrade All Class"}
                             >
-                              <ArrowUp size={11} /> Upgrade All Class
+                              Upgrade All Class
                             </button>
                           </div>
                         </td>
@@ -508,32 +518,47 @@ export default function CardTableView({ addToast, onNavigate }) {
   );
 }
 
-/* ── Inline Helper Styles ── */
-function statusBtnStyle(color, bg, border) {
+/* ── Inline Helper Styles matching idcard-group.css ── */
+function statusBtnStyle(type) {
+  const styles = {
+    pending:  { bg: '#fef3c7', color: '#92400e', border: '#fde68a', badgeBg: '#f59e0b' },
+    verified: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7', badgeBg: '#10b981' },
+    approved: { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd', badgeBg: '#2563eb' },
+    download: { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', badgeBg: '#6b7280' },
+    pool:     { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5', badgeBg: '#ef4444' },
+  };
+  const cfg = styles[type] || styles.download;
   return {
-    display: 'inline-flex', alignItems: 'center', gap: '5px',
+    btn: {
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+      padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+      background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
+      cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', minWidth: '95px'
+    },
+    badge: {
+      background: cfg.badgeBg, color: '#ffffff', minWidth: '30px', height: '16px',
+      borderRadius: '8px', fontSize: '10px', fontWeight: 700, display: 'inline-flex',
+      alignItems: 'center', justifyContent: 'center', padding: '0 4px', marginLeft: '4px'
+    }
+  };
+}
+
+function bulkBtnStyle(type, disabled) {
+  const colors = {
+    reupload:     { bg: '#ffedd5', color: '#c2410c', border: '#fdba74' },
+    downloadAll:  { bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc' },
+    deleteAll:    { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+    upgradeClass: { bg: '#dcfce7', color: '#166534', border: '#86efac' },
+  };
+  const cfg = colors[type] || colors.reupload;
+  return {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
     padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-    background: bg, color: color, border: `1px solid ${border}`,
-    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap'
-  };
-}
-
-function badgeStyle(bg, color) {
-  return {
-    background: bg, color: color, padding: '1px 6px',
-    borderRadius: '10px', fontSize: '10px', fontWeight: 800, lineHeight: 1
-  };
-}
-
-function bulkBtnStyle(color, disabled) {
-  return {
-    display: 'inline-flex', alignItems: 'center', gap: '4px',
-    padding: '4px 9px', borderRadius: '5px', fontSize: '10px', fontWeight: 700,
-    background: disabled ? '#f1f5f9' : '#fff',
-    color: disabled ? '#94a3b8' : color,
-    border: `1px solid ${disabled ? '#e2e8f0' : color}`,
-    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1,
-    whiteSpace: 'nowrap'
+    background: disabled ? '#f8fafc' : cfg.bg,
+    color: disabled ? '#94a3b8' : cfg.color,
+    border: `1px solid ${disabled ? '#e2e8f0' : cfg.border}`,
+    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
+    whiteSpace: 'nowrap', minWidth: '100px'
   };
 }
 
