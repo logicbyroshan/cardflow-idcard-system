@@ -287,29 +287,29 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
                       </div>
                     </td>
                     <td style={{ padding: '3px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#fff7ed', color: '#ea580c', fontWeight: 600, fontSize: '10px' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pending'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#fff7ed', color: '#ea580c', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
                         {sub.pending}
-                      </span>
+                      </button>
                     </td>
                     <td style={{ padding: '3px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#ecfdf5', color: '#059669', fontWeight: 600, fontSize: '10px' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'verified'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#ecfdf5', color: '#059669', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
                         {sub.verified}
-                      </span>
+                      </button>
                     </td>
                     <td style={{ padding: '3px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#eff6ff', color: '#2563eb', fontWeight: 600, fontSize: '10px' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'approved'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#eff6ff', color: '#2563eb', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
                         {sub.approved}
-                      </span>
+                      </button>
                     </td>
                     <td style={{ padding: '3px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#f8fafc', color: '#475569', fontWeight: 600, fontSize: '10px' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'downloaded'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#f8fafc', color: '#475569', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
                         {sub.downloaded}
-                      </span>
+                      </button>
                     </td>
                     <td style={{ padding: '3px 8px', textAlign: 'center' }}>
-                      <span style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#fef2f2', color: '#dc2626', fontWeight: 600, fontSize: '10px' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pool'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#fef2f2', color: '#dc2626', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
                         {sub.pool}
-                      </span>
+                      </button>
                     </td>
                   </tr>
                 ))}

@@ -2622,7 +2622,81 @@ header.topbar,
   color: #ffffff !important;
 }
 
-/* 3. Master Sitewide Solid Color Action Buttons */
+/* Master Action Bar Inputs & Search Bars on Dark Background */
+.action-bar input[type="text"],
+.action-bar input[type="search"],
+.action-bar .search-input,
+.notif-actions-bar input[type="text"] {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 5px !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+}
+.action-bar input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Master Action Bar Status/Filter Tabs */
+.action-bar .status-tab-btn,
+.action-bar .filter-tab,
+.action-bar .tab-btn,
+.action-bar .filter-group,
+.action-bar .btn-group {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  box-sizing: border-box !important;
+}
+.action-bar .status-tab-btn,
+.action-bar .filter-tab,
+.action-bar .tab-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 4px !important;
+  padding: 0 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.action-bar .status-tab-btn.active,
+.action-bar .filter-tab.active,
+.action-bar .tab-btn.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+}
+
+/* 3. Master Sitewide Solid Color Action Buttons (28px Height) */
+.btn-primary,
+.btn-blue,
+button.btn-primary,
+.action-bar .btn-blue,
+.action-bar .btn-primary,
+.action-bar button.btn,
+.action-bar .btn {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  border-radius: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  box-sizing: border-box !important;
+}
+
 .btn-primary,
 .btn-blue,
 button.btn-primary,
@@ -2644,7 +2718,8 @@ button.btn-primary,
 .btn-warning,
 .action-bar .btn-amber,
 .action-bar .btn-warning,
-.action-bar button[id*="reupload"] {
+.action-bar button[id*="reupload"],
+.action-bar button[id*="active"] {
   background: #f59e0b !important;
   color: #ffffff !important;
   border: none !important;
@@ -2732,6 +2807,7 @@ button.btn-primary,
 /* Master Disabled Button Override */
 .btn:disabled,
 .action-bar .btn:disabled,
+.action-bar button:disabled,
 button:disabled {
   opacity: 0.45 !important;
   cursor: not-allowed !important;

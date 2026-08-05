@@ -99,30 +99,7 @@ export default function Header({
           </kbd>
         </button>
 
-        {/* Notification bell */}
-        <button
-          style={{
-            position: 'relative', width: '28px', height: '28px',
-            borderRadius: '5px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'background 0.15s', boxSizing: 'border-box'
-          }}
-        >
-          <Bell size={14} />
-          {unreadCount > 0 && (
-            <span style={{
-              position: 'absolute', top: '-3px', right: '-3px',
-              minWidth: '14px', height: '14px',
-              borderRadius: '9999px',
-              background: '#ef4444', color: '#fff',
-              fontSize: '9px', fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '0 2px', lineHeight: 1,
-            }}>
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </button>
+
 
         {/* User dropdown */}
         <div style={{ position: 'relative' }}>
