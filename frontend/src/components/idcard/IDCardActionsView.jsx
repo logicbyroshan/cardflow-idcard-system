@@ -443,14 +443,14 @@ function CustomSelect({ value, onChange, options, style = {} }) {
           style={{
             position: 'absolute',
             top: 'calc(100% + 5px)',
-            left: 0,
-            minWidth: '100%',
+            right: 0,
+            minWidth: '130px',
             maxWidth: '220px',
             background: '#ffffff',
             border: '1px solid #e2e8f0',
             borderRadius: '6px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            zIndex: 9999,
+            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.18), 0 8px 10px -6px rgba(0,0,0,0.08)',
+            zIndex: 99999,
             padding: '4px 0',
             maxHeight: '220px',
             overflowY: 'auto',
@@ -1518,7 +1518,7 @@ export default function IDCardActionsView({
       {/* ══════════════════════════════════════════════════════════
           UNIFIED ACTION & FILTER BAR (SINGLE ROW)
           ══════════════════════════════════════════════════════════ */}
-      <div style={{ flexShrink: 0, padding: '0 16px', background: '#ffffff', borderBottom: '1px solid #e5e7eb', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', overflowX: 'auto' }}>
+      <div style={{ flexShrink: 0, padding: '6px 16px', background: '#ffffff', borderBottom: '1px solid #e5e7eb', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', position: 'relative', zIndex: 100 }}>
         {/* Left Side: All Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', flexShrink: 0 }}>
           {/* Pending List buttons */}
