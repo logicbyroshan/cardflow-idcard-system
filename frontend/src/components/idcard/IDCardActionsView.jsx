@@ -1408,12 +1408,11 @@ export default function IDCardActionsView({
       </header>
 
       {/* ══════════════════════════════════════════════════════════
-          ACTION BAR — COLORFUL VIBRANT ACTION BUTTONS
+          UNIFIED ACTION & FILTER BAR (SINGLE ROW)
           ══════════════════════════════════════════════════════════ */}
-      <div style={{ flexShrink: 0, padding: '0 16px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', overflowX: 'auto' }}>
-        {/* Left Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
-
+      <div style={{ flexShrink: 0, padding: '0 16px', background: '#ffffff', borderBottom: '1px solid #e5e7eb', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', overflowX: 'auto' }}>
+        {/* Left Side: All Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', flexShrink: 0 }}>
           {/* Pending List buttons */}
           {status === 'pending' && (
             <>
@@ -1557,23 +1556,16 @@ export default function IDCardActionsView({
               </button>
             </>
           )}
-        </div>
 
-        {/* Right Side Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
           {hasSelection && (
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#d97706', padding: '0 6px' }}>
               {selectedArr.length} selected
             </span>
           )}
         </div>
-      </div>
 
-      {/* ══════════════════════════════════════════════════════════
-          SEARCH AND FILTER BAR
-          ══════════════════════════════════════════════════════════ */}
-      <div style={{ flexShrink: 0, padding: '0 16px', background: '#ffffff', borderBottom: '1px solid #e5e7eb', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+        {/* Right Side: Filters, Sort, and Search Box */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', flexShrink: 0 }}>
           {/* Sort */}
           <select
             value={sort}
@@ -1632,7 +1624,7 @@ export default function IDCardActionsView({
               display: 'inline-flex',
               alignItems: 'center',
               height: '28px',
-              width: '220px',
+              width: '200px',
               background: '#ffffff',
               border: '1px solid #cbd5e1',
               borderRadius: '4px',
@@ -1648,40 +1640,23 @@ export default function IDCardActionsView({
               placeholder="Search All..."
               style={{
                 flex: 1,
-                height: '100%',
                 border: 'none',
                 outline: 'none',
-                background: 'transparent',
                 fontSize: '12px',
-                color: '#0f172a',
-                padding: '0 4px',
+                background: 'transparent',
+                fontFamily: 'var(--font-family)',
+                color: '#1e293b',
               }}
             />
             {search && (
               <button
-                type="button"
                 onClick={() => setSearch('')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#94a3b8',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-                title="Clear search"
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
               >
-                <X size={13} />
+                <X size={12} />
               </button>
             )}
           </div>
-        </div>
-
-        {/* Right Section — Datetime filter (download list) + navigation */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {/* Datetime Range Filter — only for Download list */}
           {status === 'download' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1709,7 +1684,6 @@ export default function IDCardActionsView({
               )}
             </div>
           )}
-
         </div>
       </div>
 
