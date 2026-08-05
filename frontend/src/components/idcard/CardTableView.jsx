@@ -1,350 +1,549 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Edit2, RotateCcw, RotateCw, RefreshCw, Search, X, Loader2, AlertCircle, ChevronLeft, ChevronRight, Clock, CheckCircle, Download, AlertTriangle, CreditCard, Table2, Building, ChevronDown, ArrowRightLeft } from "lucide-react";
+import {
+  Clock, CheckCircle, ThumbsUp, Download, Layers,
+  Upload, Trash2, ArrowUp, RefreshCw, Search, X, Loader2,
+  SlidersHorizontal, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  ArrowLeft, FileSpreadsheet, Eye, Edit2, Undo2, Redo2, Layers3, ShieldCheck
+} from "lucide-react";
 import CardEditDrawer from "./CardEditDrawer";
-import { cardApi, clientApi, schemaApi } from "../../services/api";
+import { cardApi, schemaApi } from "../../services/api";
 
-const STATUS_BADGE = {
-  pending:  { cls: "badge-pending",  label: "Pending",   Icon: Clock },
-  verified: { cls: "badge-verified", label: "Verified",  Icon: CheckCircle },
-  approved: { cls: "badge-approved", label: "Approved",  Icon: CheckCircle },
-  download: { cls: "badge-download", label: "Download",  Icon: Download },
-  pool:     { cls: "badge-pool",     label: "Pool",      Icon: AlertTriangle },
-  printed:  { cls: "badge-printed",  label: "Printed",   Icon: CheckCircle },
-};
+const STATUS_TABS = ["All", "Active", "Inactive"];
 
-const PAGE_SIZE = 25;
+export default function CardTableView({ addToast, onNavigate }) {
+  const [tables, setTables]               = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [search, setSearch]               = useState("");
+  const [statusTab, setStatusTab]         = useState("All");
 
-function TableSelector({ onSelect }) {
-  const [clients, setClients]           = useState([]);
-  const [clientsLoading, setClientsLoading] = useState(true);
-  const [expanded, setExpanded]         = useState({});
-  const [tableMap, setTableMap]         = useState({});
-  const [tableLoading, setTableLoading] = useState({});
-  const [search, setSearch]             = useState("");
+  /* Drill-down state for viewing cards inside a specific table */
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState("pending");
 
-  useEffect(() => {
-    (async () => {
-      setClientsLoading(true);
-      const local = JSON.parse(localStorage.getItem("cf_custom_clients") || "[]");
-      try {
-        const data = await clientApi.getAllClients({ page: 1, page_size: 200 });
-        const api = data?.clients || data?.results || (Array.isArray(data) ? data : []);
-        const merged = [...api];
-        local.forEach(lc => { if (!merged.find(ac => String(ac.id) === String(lc.id))) merged.push(lc); });
-        setClients(merged);
-      } catch { setClients(local); }
-      finally { setClientsLoading(false); }
-    })();
+  /* Cards list state inside drill-down mode */
+  const [cards, setCards]                 = useState([]);
+  const [cardsLoading, setCardsLoading]   = useState(false);
+  const [editingCard, setEditingCard]     = useState(null);
+  const [cardSearch, setCardSearch]       = useState("");
+  const [page, setPage]                   = useState(1);
+  const [total, setTotal]                 = useState(0);
+
+  /* Modal states for bulk actions */
+  const [activeModal, setActiveModal]     = useState(null); // 'reupload' | 'download-all' | 'delete-all' | 'upgrade'
+  const [modalTable, setModalTable]       = useState(null);
+  const [deleteCodeInput, setDeleteCodeInput] = useState("");
+
+  /* ── Load tables list (merging API data + localStorage) ── */
+  const loadTables = useCallback(async () => {
+    setLoading(true);
+    let local = [];
+    try {
+      local = JSON.parse(localStorage.getItem("cf_custom_tables") || "[]");
+      const dummyNames = ['Class 1st to 5th', 'Class 6th to 10th', 'Class 11th & 12th', 'Staff & Teachers'];
+      local = local.filter(t => t && !dummyNames.includes(t.name));
+    } catch { local = []; }
+
+    try {
+      const data = await schemaApi.getSchemas();
+      const list = data?.tables || data?.results || (Array.isArray(data) ? data : []);
+      const merged = [...local];
+      (list || []).forEach(item => {
+        if (!merged.some(t => String(t.id) === String(item.id) || t.name === item.name)) {
+          merged.push(item);
+        }
+      });
+      setTables(merged);
+    } catch {
+      setTables(local);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const toggleExpand = async (client) => {
-    const id = client.id;
-    const isOpen = expanded[id];
-    setExpanded(p => ({ ...p, [id]: !isOpen }));
-    if (!isOpen && !tableMap[id]) {
-      setTableLoading(p => ({ ...p, [id]: true }));
-      const localTables = JSON.parse(localStorage.getItem("cf_custom_tables") || "[]");
-      try {
-        const groupId = client.group_id || client.group?.id || client.id;
-        const data = await schemaApi.getGroupTables(groupId);
-        const list = data?.tables || data?.results || (Array.isArray(data) ? data : []);
-        const orgLocal = localTables.filter(t => t.client_name === client.name || String(t.client_id) === String(id));
-        const merged = [...orgLocal, ...list];
-        setTableMap(p => ({ ...p, [id]: merged }));
-      } catch {
-        const orgLocal = localTables.filter(t => t.client_name === client.name || String(t.client_id) === String(id));
-        setTableMap(p => ({ ...p, [id]: orgLocal }));
-      }
-      finally { setTableLoading(p => ({ ...p, [id]: false })); }
-    }
-  };
+  useEffect(() => { loadTables(); }, [loadTables]);
 
-  const filtered = clients.filter(c => !search || (c.name || "").toLowerCase().includes(search.toLowerCase()));
-
-  return (
-    <div style={{ width: "260px", flexShrink: 0, background: "#fff", borderRight: "1px solid #e2e8f0", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <div style={{ background: "linear-gradient(135deg, rgb(0,80,210) 0%, rgb(0,180,255) 100%)", color: "#fff", padding: "10px 12px", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
-        <Table2 size={13} /> Select a Table
-      </div>
-      <div style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
-        <div className="notif-search-box" style={{ width: "100%" }}>
-          <Search size={12} style={{ color: "#9ca3af", marginRight: "6px", flexShrink: 0 }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search organisations..." />
-          {search && <button onClick={() => setSearch("")} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9ca3af" }}><X size={11} /></button>}
-        </div>
-      </div>
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        {clientsLoading ? (
-          <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: "12px" }}>
-            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", display: "block", margin: "0 auto 8px" }} />Loading...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: "12px" }}>
-            <Building size={28} style={{ opacity: 0.3, display: "block", margin: "0 auto 8px" }} />No organisations found
-          </div>
-        ) : filtered.map(c => (
-          <div key={c.id}>
-            <div onClick={() => toggleExpand(c)} style={{ padding: "9px 12px", cursor: "pointer", borderBottom: "1px solid #f8fafc", display: "flex", alignItems: "center", gap: "8px", background: expanded[c.id] ? "#eff6ff" : "transparent" }}
-              onMouseEnter={e => { if (!expanded[c.id]) e.currentTarget.style.background="#f8fafc"; }}
-              onMouseLeave={e => { if (!expanded[c.id]) e.currentTarget.style.background="transparent"; }}>
-              <Building size={13} style={{ color: "#64748b", flexShrink: 0 }} />
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "#1e293b", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-              {tableLoading[c.id] ? <Loader2 size={11} style={{ animation: "spin 1s linear infinite", color: "#94a3b8" }} /> : expanded[c.id] ? <ChevronDown size={12} style={{ color: "#94a3b8" }} /> : <ChevronRight size={12} style={{ color: "#94a3b8" }} />}
-            </div>
-            {expanded[c.id] && (
-              <div style={{ background: "#f8fafc" }}>
-                {(tableMap[c.id] || []).length === 0 ? (
-                  <div style={{ padding: "8px 20px", fontSize: "11px", color: "#9ca3af", fontStyle: "italic" }}>No tables</div>
-                ) : (tableMap[c.id] || []).map(t => (
-                  <div key={t.id} onClick={() => onSelect(t)} style={{ padding: "7px 20px", cursor: "pointer", fontSize: "12px", color: "#374151", display: "flex", alignItems: "center", gap: "6px", borderBottom: "1px solid #f1f5f9" }}
-                    onMouseEnter={e => { e.currentTarget.style.background="#dbeafe"; e.currentTarget.style.color="#1d4ed8"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#374151"; }}>
-                    <Table2 size={11} style={{ flexShrink: 0 }} />
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                    <span style={{ fontSize: "10px", color: "#94a3b8" }}>{t.session_year}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function CardTableView({ tableId: propTableId, cards: propCards, onEditCard, addToast }) {
-  const [activeTableId, setActiveTableId] = useState(propTableId || null);
-  const [activeTableName, setActiveTableName] = useState("");
-  const [liveCards, setLiveCards]       = useState([]);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState(false);
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [search, setSearch]             = useState("");
-  const [page, setPage]                 = useState(1);
-  const [total, setTotal]               = useState(0);
-  const [statusCounts, setStatusCounts] = useState({});
-  const [changingStatus, setChangingStatus] = useState(null); // cardId being status-changed
-
-  useEffect(() => { if (propTableId) setActiveTableId(propTableId); }, [propTableId]);
-
-  const load = useCallback(async () => {
-    if (!activeTableId) return;
-    setLoading(true); setError(false);
+  /* ── Load cards for a selected table (drill-down view) ── */
+  const loadCards = useCallback(async () => {
+    if (!selectedTable) return;
+    setCardsLoading(true);
     try {
-      const data = await cardApi.getCards(activeTableId, { page, search, page_size: PAGE_SIZE });
-      setLiveCards(data.cards || data.results || data || []);
-      setTotal(data.total || data.count || 0);
-    } catch { setError(true); }
-    finally { setLoading(false); }
-  }, [activeTableId, page, search]);
-
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [activeTableId, search]);
-
-  // Load per-table status counts from backend
-  useEffect(() => {
-    if (!activeTableId) return;
-    cardApi.getStatusCounts(activeTableId)
-      .then(data => setStatusCounts(data || {}))
-      .catch(() => {}); // silent fallback
-  }, [activeTableId]);
-
-  const handleChangeStatus = useCallback(async (card, newStatus) => {
-    setChangingStatus(card.id);
-    try {
-      await cardApi.changeStatus(card.id, newStatus);
-      addToast?.(`Status changed to ${newStatus}`, 'success');
-      load();
-      // Refresh counts after status change
-      cardApi.getStatusCounts(activeTableId).then(d => setStatusCounts(d || {})).catch(() => {});
+      const data = await cardApi.getCards(selectedTable.id, {
+        page,
+        search: cardSearch,
+        status: selectedStatus !== "all" ? selectedStatus : undefined,
+        page_size: 25,
+      });
+      setCards(data?.cards || data?.results || (Array.isArray(data) ? data : []));
+      setTotal(data?.total || data?.count || (Array.isArray(data) ? data.length : 0));
     } catch {
-      addToast?.('Failed to change card status', 'error');
+      setCards([]);
+      setTotal(0);
     } finally {
-      setChangingStatus(null);
+      setCardsLoading(false);
     }
-  }, [activeTableId, load, addToast]);
+  }, [selectedTable, page, cardSearch, selectedStatus]);
 
-  const handleSelectTable = (t) => {
-    setActiveTableId(t.id);
-    setActiveTableName(t.name || "");
-    setSearch("");
-    setPage(1);
-    setLiveCards([]);
+  useEffect(() => {
+    if (selectedTable) loadCards();
+  }, [selectedTable, loadCards]);
+
+  /* ── Table filtering ── */
+  const filteredTables = tables.filter(t => {
+    if (!t) return false;
+    const q = search.toLowerCase();
+    const matchSearch = !q || (t.name || "").toLowerCase().includes(q);
+    const isActive = t.is_active !== false;
+    const matchStatus = statusTab === "All" || (statusTab === "Active" ? isActive : !isActive);
+    return matchSearch && matchStatus;
+  });
+
+  /* ── Bulk Actions Handlers ── */
+  const handleBulkReupload = (table) => {
+    setModalTable(table);
+    setActiveModal('reupload');
   };
 
-  const displayCards = activeTableId ? liveCards : (propCards?.length ? propCards : []);
-  const isLive       = !!activeTableId;
-  const totalPages   = Math.ceil(total / PAGE_SIZE);
-  const showSelector = !propTableId;
+  const handleBulkDownloadAll = (table) => {
+    setModalTable(table);
+    setActiveModal('download-all');
+  };
 
-  return (
-    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
-      {showSelector && <TableSelector onSelect={handleSelectTable} />}
+  const handleBulkDeleteAll = (table) => {
+    setModalTable(table);
+    setDeleteCodeInput('');
+    setActiveModal('delete-all');
+  };
 
-      <div className="data-card" style={{ borderRadius: 0, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div className="action-bar" style={{ position: "relative" }}>
+  const handleBulkUpgradeClass = (table) => {
+    setModalTable(table);
+    setActiveModal('upgrade');
+  };
+
+  const confirmDeleteAll = async () => {
+    if (!modalTable) return;
+    try {
+      await cardApi.deleteAllCards(modalTable.id, { code: deleteCodeInput });
+      addToast?.(`All cards in "${modalTable.name}" deleted successfully`, 'success');
+      setActiveModal(null);
+      loadTables();
+    } catch (err) {
+      addToast?.(err?.response?.data?.message || 'Error deleting cards. Check code.', 'error');
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     VIEW 1: TABLE GROUP OVERVIEW (Classic Django idcard_group template UI)
+     ═══════════════════════════════════════════════════════════════════════════ */
+  if (!selectedTable) {
+    return (
+      <div className="view-container" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+        
+        {/* ── ACTION BAR ── */}
+        <div className="action-bar" id="idcard-group-action-bar">
           <div className="action-bar-left">
-            <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>{activeTableName || "ID Cards"}</span>
+            <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: '#eef0f4', borderRadius: '6px', padding: '2px 3px', gap: '2px' }}>
+              {STATUS_TABS.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setStatusTab(t)}
+                  className={`status-tab${statusTab === t ? ' active' : ''}`}
+                  style={{
+                    padding: '2px 10px', fontSize: '13px', lineHeight: 1.2, borderRadius: '4px',
+                    border: 'none', cursor: 'pointer', background: statusTab === t ? '#fff' : 'transparent',
+                    color: statusTab === t ? '#374151' : '#6b7280', fontWeight: statusTab === t ? 600 : 400,
+                    fontFamily: 'var(--font-family)', transition: 'all 0.15s',
+                    boxShadow: statusTab === t ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
             <div className="action-divider" />
-            <span style={{ fontSize: "12px", color: "#6b7280" }}>
-              {isLive ? (loading ? "Loading..." : `${total.toLocaleString()} records`) : `${displayCards.length} entries`}
-            </span>
-            {isLive && !loading && Object.keys(statusCounts).length > 0 && (
-              <>
-                <div className="action-divider" />
-                {Object.entries(statusCounts).map(([st, cnt]) => {
-                  const cfg = STATUS_BADGE[st] || STATUS_BADGE.pending;
-                  return cnt > 0 ? (
-                    <span key={st} style={{ fontSize: "11px", padding: "2px 7px", borderRadius: "10px", background: st === 'verified' || st === 'approved' || st === 'printed' ? '#dcfce7' : st === 'pending' ? '#fef9c3' : '#fee2e2', color: st === 'verified' || st === 'approved' || st === 'printed' ? '#15803d' : st === 'pending' ? '#92400e' : '#b91c1c', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                      {cfg.label}: {cnt}
-                    </span>
-                  ) : null;
-                })}
-              </>
-            )}
+
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={12} style={{ position: 'absolute', left: '8px', color: '#9ca3af', pointerEvents: 'none' }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search All..."
+                className="form-input"
+                style={{ paddingLeft: '26px', height: '28px', width: '180px', fontSize: '12px' }}
+              />
+            </div>
           </div>
-          {isLive && (
-            <div className="action-bar-right">
-              <div className="notif-search-box" style={{ width: "160px" }}>
-                <Search size={12} style={{ color: "#9ca3af", flexShrink: 0, marginRight: "6px" }} />
-                <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search..." />
-                {search && <button onClick={() => setSearch("")} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9ca3af", display: "flex", alignItems: "center", padding: "0 2px" }}><X size={12} /></button>}
+
+          <div className="action-bar-right">
+            <div className="actions">
+              <div className="btn-group">
+                <button
+                  className="btn btn-md btn-secondary"
+                  onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
+                  title="Go to Table Setting"
+                >
+                  <SlidersHorizontal size={13} style={{ color: '#2563eb' }} />
+                  <span>Table Setting</span>
+                </button>
               </div>
-              <button onClick={load} className="btn btn-md btn-neutral" style={{ padding: "0 8px", height: "28px" }}>
-                {loading ? <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> : <RefreshCw size={11} />}
+
+              <div className="btn-separator" />
+
+              <button onClick={loadTables} className="btn btn-md btn-neutral" title="Refresh">
+                {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+                <span>Refresh</span>
               </button>
             </div>
-          )}
+          </div>
         </div>
 
-        {!isLive && !displayCards.length && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", color: "#94a3b8" }}>
-            <Table2 size={48} style={{ opacity: 0.2 }} />
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "14px", fontWeight: 600, color: "#64748b", marginBottom: "6px" }}>No Table Selected</div>
-              <div style={{ fontSize: "12px" }}>Choose an organisation and table from the left panel</div>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "10px" }}>
-            <AlertCircle size={32} style={{ color: "#f59e0b" }} />
-            <span style={{ fontSize: "13px", color: "#94a3b8" }}>Failed to load cards</span>
-            <button onClick={load} className="btn btn-sm btn-neutral" style={{ display: "flex", alignItems: "center", gap: "6px" }}><RefreshCw size={12} /> Retry</button>
-          </div>
-        )}
-
-        {(isLive || displayCards.length > 0) && !error && (
-          <div className="table-wrapper" style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <table className="data-table" style={{ flexShrink: 0 }}>
-              <thead>
-                <tr>
-                  <th className="col-sr">#</th>
-                  <th className="col-photo">Photo</th>
-                  <th>Name</th>
-                  <th>Father Name</th>
-                  <th>Class</th>
-                  <th>Section</th>
-                  <th>Status</th>
-                  <th className="col-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? Array.from({ length: 15 }).map((_, i) => (
-                  <tr key={i} className="skeleton-row">
-                    <td style={{ textAlign: "center" }}><div className="skeleton" style={{ height: "13px", width: "24px", margin: "0 auto" }} /></td>
-                    <td style={{ textAlign: "center" }}><div className="skeleton" style={{ width: "32px", height: "32px", borderRadius: "50%", margin: "0 auto" }} /></td>
-                    <td><div className="skeleton" style={{ height: "13px", width: `${65+(i%4)*8}%` }} /></td>
-                    <td><div className="skeleton" style={{ height: "13px", width: `${55+(i%3)*10}%` }} /></td>
-                    <td><div className="skeleton" style={{ height: "13px", width: "60%" }} /></td>
-                    <td><div className="skeleton" style={{ height: "13px", width: "40%" }} /></td>
-                    <td style={{ textAlign: "center" }}><div className="skeleton skeleton-cell-badge" style={{ margin: "0 auto" }} /></td>
-                    <td style={{ textAlign: "center" }}><div style={{ display: "inline-flex", gap: "4px" }}><div className="skeleton" style={{ width: "26px", height: "26px", borderRadius: "4px" }} /><div className="skeleton" style={{ width: "26px", height: "26px", borderRadius: "4px" }} /><div className="skeleton" style={{ width: "26px", height: "26px", borderRadius: "4px" }} /></div></td>
-                  </tr>
-                )) : displayCards.map((card, idx) => {
-                  const d = card.field_data || card.fields || {};
-                  const status = card.status || "pending";
-                  const cfg = STATUS_BADGE[status] || STATUS_BADGE.pending;
-                  const Icon = cfg.Icon;
-                  const photo = d.PHOTO || card.photo_url || "";
-                  const name = d.NAME || card.name || "—";
-                  return (
-                    <tr key={card.id}>
-                      <td className="col-sr" style={{ textAlign: "center", color: "#9ca3af" }}>{(page-1)*PAGE_SIZE+idx+1}</td>
-                      <td className="col-photo">
-                        <div style={{ width: "28px", height: "28px", borderRadius: "4px", background: "#e5e7eb", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 700, color: "#667eea", margin: "0 auto" }}>
-                          {photo ? <img src={`/${photo}`} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.currentTarget.style.display="none"} /> : name[0] || "C"}
-                        </div>
-                      </td>
-                      <td style={{ fontWeight: 600 }}>{name}</td>
-                      <td style={{ color: "#6b7280" }}>{d.FATHER_NAME || "—"}</td>
-                      <td>{d.CLASS || "—"}</td>
-                      <td>{d.SECTION || "—"}</td>
-                      <td><span className={`badge ${cfg.cls}`}><Icon size={10} /> {cfg.label}</span></td>
-                      <td className="col-actions">
-                        <div style={{ display: "flex", gap: "3px", justifyContent: "center" }}>
-                          <button onClick={async () => { try { await cardApi.undoImage(card.id); addToast?.("Undo photo", "success"); load(); } catch { addToast?.("Undo failed", "error"); } }} className="btn btn-sm" title="Undo photo" style={{ background: "#fef3c7", color: "#d97706", border: "none", width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px" }}><RotateCcw size={11} /></button>
-                          <button onClick={async () => { try { await cardApi.redoImage(card.id); addToast?.("Redo photo", "success"); load(); } catch { addToast?.("Redo failed", "error"); } }} className="btn btn-sm" title="Redo photo" style={{ background: "#d1fae5", color: "#059669", border: "none", width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px" }}><RotateCw size={11} /></button>
-                          <button
-                            title="Change Status"
-                            disabled={changingStatus === card.id}
-                            onClick={() => {
-                              // Cycle through statuses
-                              const cycle = ['pending','verified','approved','printed','pool'];
-                              const next = cycle[(cycle.indexOf(status) + 1) % cycle.length];
-                              handleChangeStatus(card, next);
-                            }}
-                            style={{ background: "#ede9fe", color: "#7c3aed", border: "none", width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px", cursor: changingStatus === card.id ? 'not-allowed' : 'pointer' }}
-                          >
-                            {changingStatus === card.id ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <ArrowRightLeft size={11} />}
-                          </button>
-                          <button onClick={() => setSelectedCard(card)} className="btn btn-sm btn-neutral" title="Edit" style={{ width: "24px", height: "24px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px" }}><Edit2 size={11} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {!loading && displayCards.length === 0 && (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px", textAlign: "center", minHeight: "240px" }}>
-                <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 14px rgba(37,99,235,0.12)", border: "1px solid #bfdbfe", marginBottom: "12px" }}>
-                  <CreditCard size={30} />
-                </div>
-                <h4 style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a", margin: "0 0 6px 0" }}>No ID Cards Found</h4>
-                <p style={{ fontSize: "12px", color: "#64748b", margin: 0, lineHeight: 1.5 }}>
-                  {search ? `No cards match "${search}"` : "There are no ID card records in this table yet."}
-                </p>
+        {/* ── MAIN CLASSIC TABLE GROUP LIST ── */}
+        <div id="gs-table-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+          <div className="table-wrapper" style={{ flex: 1, overflow: 'auto' }}>
+            {loading ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px', display: 'block' }} />
+                <span>Loading Table Group data…</span>
               </div>
+            ) : filteredTables.length === 0 ? (
+              <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{
+                  width: '64px', height: '64px', borderRadius: '50%', background: '#eff6ff',
+                  color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px'
+                }}>
+                  <ShieldCheck size={32} />
+                </div>
+                <h4 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 6px', color: '#0f172a' }}>No Table Groups Found</h4>
+                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+                  {search ? `No tables match "${search}"` : 'Create your first table setting to populate table group.'}
+                </p>
+                <button
+                  onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
+                  className="btn btn-primary btn-sm"
+                  style={{ marginTop: '16px', padding: '7px 18px', borderRadius: '6px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <SlidersHorizontal size={14} /> Go to Table Setting
+                </button>
+              </div>
+            ) : (
+              <table className="data-table idcard-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '220px', textAlign: 'left' }}>NAME</th>
+                    <th style={{ textAlign: 'center' }}>ACTION</th>
+                    <th style={{ width: '420px', textAlign: 'center' }}>BULK ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTables.map((t, idx) => {
+                    const pCnt = t.pending_count || 0;
+                    const vCnt = t.verified_count || 0;
+                    const aCnt = t.approved_count || 0;
+                    const dCnt = t.download_count || 0;
+                    const lCnt = t.pool_count || 0;
+                    const totCnt = t.total_count || (pCnt + vCnt + aCnt + dCnt + lCnt);
+
+                    return (
+                      <tr key={t.id || idx}>
+                        {/* Column 1: Table Name */}
+                        <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span style={{ fontSize: '13px', color: '#1e293b' }}>{t.name}</span>
+                            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
+                              {t.client_name || 'Primary Organisation'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Column 2: Action Status Buttons with Count Badges */}
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedTable(t); setSelectedStatus('pending'); setPage(1); }}
+                              style={statusBtnStyle('#f59e0b', '#fffbeb', '#fde68a')}
+                              title="View Pending ID Cards"
+                            >
+                              <Clock size={12} />
+                              <span>Pending</span>
+                              <span style={badgeStyle('#f59e0b', '#fff')}>{pCnt}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedTable(t); setSelectedStatus('verified'); setPage(1); }}
+                              style={statusBtnStyle('#2563eb', '#eff6ff', '#bfdbfe')}
+                              title="View Verified ID Cards"
+                            >
+                              <CheckCircle size={12} />
+                              <span>Verified</span>
+                              <span style={badgeStyle('#2563eb', '#fff')}>{vCnt}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedTable(t); setSelectedStatus('approved'); setPage(1); }}
+                              style={statusBtnStyle('#059669', '#ecfdf5', '#a7f3d0')}
+                              title="View Approved ID Cards"
+                            >
+                              <ThumbsUp size={12} />
+                              <span>Approved</span>
+                              <span style={badgeStyle('#059669', '#fff')}>{aCnt}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedTable(t); setSelectedStatus('download'); setPage(1); }}
+                              style={statusBtnStyle('#7c3aed', '#f5f3ff', '#ddd6fe')}
+                              title="View Downloaded ID Cards"
+                            >
+                              <Download size={12} />
+                              <span>Downloaded</span>
+                              <span style={badgeStyle('#7c3aed', '#fff')}>{dCnt}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedTable(t); setSelectedStatus('pool'); setPage(1); }}
+                              style={statusBtnStyle('#6b7280', '#f9fafb', '#e5e7eb')}
+                              title="View Pool ID Cards"
+                            >
+                              <Layers size={12} />
+                              <span>Pool</span>
+                              <span style={badgeStyle('#6b7280', '#fff')}>{lCnt}</span>
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Column 3: Bulk Action Buttons */}
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleBulkReupload(t)}
+                              style={bulkBtnStyle('#2563eb', totCnt === 0)}
+                              disabled={totCnt === 0}
+                              title={totCnt === 0 ? "No cards in table" : "Bulk Reupload Images"}
+                            >
+                              <Upload size={11} /> Reupload Image
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleBulkDownloadAll(t)}
+                              style={bulkBtnStyle('#059669', totCnt === 0)}
+                              disabled={totCnt === 0}
+                              title={totCnt === 0 ? "No cards in table" : "Download All ID Cards"}
+                            >
+                              <Download size={11} /> Download All ID Card
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleBulkDeleteAll(t)}
+                              style={bulkBtnStyle('#dc2626', totCnt === 0)}
+                              disabled={totCnt === 0}
+                              title={totCnt === 0 ? "No cards in table" : "Delete All ID Cards"}
+                            >
+                              <Trash2 size={11} /> Delete All ID Cards
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleBulkUpgradeClass(t)}
+                              style={bulkBtnStyle('#7c3aed', totCnt === 0)}
+                              disabled={totCnt === 0}
+                              title={totCnt === 0 ? "No cards in table" : "Upgrade All Class"}
+                            >
+                              <ArrowUp size={11} /> Upgrade All Class
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
-        )}
+        </div>
 
-        {isLive && totalPages > 1 && (
-          <div className="pagination-bar">
-            <div className="pagination-info">Showing <strong>{(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE,total)}</strong> of <strong>{total}</strong></div>
-            <div className="pagination-controls">
-              <button className="pagination-btn" disabled={page===1} onClick={() => setPage(p=>p-1)}><ChevronLeft size={12} /></button>
-              {Array.from({ length: Math.min(totalPages,5) }).map((_,i) => {
-                const p = i+1;
-                return <button key={p} className={`pagination-btn${page===p?" active":""}`} onClick={() => setPage(p)}>{p}</button>;
-              })}
-              <button className="pagination-btn" disabled={page>=totalPages} onClick={() => setPage(p=>p+1)}><ChevronRight size={12} /></button>
+        {/* ── MODALS FOR BULK ACTIONS ── */}
+        {activeModal === 'delete-all' && modalTable && (
+          <div style={modalBackdropStyle}>
+            <div style={modalBoxStyle}>
+              <h3 style={{ margin: '0 0 8px', color: '#dc2626', fontSize: '16px', fontWeight: 700 }}>
+                Delete All ID Cards
+              </h3>
+              <p style={{ fontSize: '12px', color: '#475569', margin: '0 0 14px' }}>
+                Are you sure you want to permanently delete all cards in <strong>"{modalTable.name}"</strong>? Enter the confirmation code below:
+              </p>
+              <input
+                value={deleteCodeInput}
+                onChange={e => setDeleteCodeInput(e.target.value)}
+                placeholder="Enter 10-digit delete code"
+                style={{ width: '100%', height: '36px', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0 10px', fontSize: '13px', marginBottom: '14px' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button onClick={() => setActiveModal(null)} className="btn btn-neutral btn-sm">Cancel</button>
+                <button onClick={confirmDeleteAll} className="btn btn-danger btn-sm">Confirm Delete All</button>
+              </div>
             </div>
           </div>
         )}
 
-        {selectedCard && (
-          <CardEditDrawer
-            card={selectedCard}
-            addToast={addToast}
-            onClose={() => setSelectedCard(null)}
-            onSave={(updated) => { if (onEditCard) onEditCard(updated); setSelectedCard(null); load(); }}
-          />
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     VIEW 2: DRILL-DOWN CARD LIST VIEW FOR A SELECTED TABLE
+     ═══════════════════════════════════════════════════════════════════════════ */
+  return (
+    <div className="view-container" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      
+      {/* Drill-down Header */}
+      <div className="action-bar" style={{ background: '#1e293b', color: '#fff', borderBottom: 'none' }}>
+        <div className="action-bar-left" style={{ gap: '12px' }}>
+          <button
+            onClick={() => setSelectedTable(null)}
+            className="btn btn-sm btn-neutral"
+            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <ArrowLeft size={13} /> Back to Table Group
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{selectedTable.name}</span>
+            <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>
+              {selectedStatus.toUpperCase()} ({total})
+            </span>
+          </div>
+        </div>
+
+        <div className="action-bar-right">
+          <div className="status-tabs" style={{ display: 'flex', gap: '4px' }}>
+            {['pending', 'verified', 'approved', 'download', 'pool'].map(st => (
+              <button
+                key={st}
+                onClick={() => { setSelectedStatus(st); setPage(1); }}
+                style={{
+                  padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
+                  border: 'none', cursor: 'pointer', textTransform: 'capitalize',
+                  background: selectedStatus === st ? '#2563eb' : 'rgba(255,255,255,0.1)',
+                  color: '#fff'
+                }}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Cards Table */}
+      <div style={{ flex: 1, overflow: 'auto', background: '#f8fafc' }}>
+        {cardsLoading ? (
+          <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+            <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 8px', display: 'block' }} />
+            Loading cards…
+          </div>
+        ) : cards.length === 0 ? (
+          <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+            <p>No cards found in status "{selectedStatus}".</p>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>#</th>
+                <th style={{ width: '70px', textAlign: 'center' }}>PHOTO</th>
+                <th style={{ textAlign: 'left' }}>NAME</th>
+                <th style={{ textAlign: 'left' }}>CLASS / DEPT</th>
+                <th style={{ textAlign: 'center' }}>STATUS</th>
+                <th style={{ width: '100px', textAlign: 'center' }}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cards.map((c, i) => (
+                <tr key={c.id || i}>
+                  <td style={{ textAlign: 'center', fontSize: '11px', color: '#64748b' }}>{(page - 1) * 25 + i + 1}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    {c.photo || c.image_url ? (
+                      <img src={c.photo || c.image_url} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', margin: '0 auto' }} />
+                    )}
+                  </td>
+                  <td style={{ fontWeight: 600, color: '#0f172a' }}>{c.name || c.field_data?.NAME || '—'}</td>
+                  <td style={{ color: '#475569' }}>{c.class_name || c.field_data?.CLASS || c.field_data?.DEPARTMENT || '—'}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span className="badge badge-neutral" style={{ textTransform: 'capitalize' }}>{c.status || selectedStatus}</span>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button
+                      onClick={() => setEditingCard(c)}
+                      className="btn btn-xs btn-neutral"
+                      style={{ padding: '3px 8px', fontSize: '11px' }}
+                    >
+                      <Edit2 size={11} /> Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
+
+      {/* Drawer */}
+      {editingCard && (
+        <CardEditDrawer
+          card={editingCard}
+          table={selectedTable}
+          onClose={() => setEditingCard(null)}
+          onSave={() => { setEditingCard(null); loadCards(); addToast?.('Card updated!', 'success'); }}
+        />
+      )}
     </div>
   );
 }
+
+/* ── Inline Helper Styles ── */
+function statusBtnStyle(color, bg, border) {
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: '5px',
+    padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+    background: bg, color: color, border: `1px solid ${border}`,
+    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap'
+  };
+}
+
+function badgeStyle(bg, color) {
+  return {
+    background: bg, color: color, padding: '1px 6px',
+    borderRadius: '10px', fontSize: '10px', fontWeight: 800, lineHeight: 1
+  };
+}
+
+function bulkBtnStyle(color, disabled) {
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: '4px',
+    padding: '4px 9px', borderRadius: '5px', fontSize: '10px', fontWeight: 700,
+    background: disabled ? '#f1f5f9' : '#fff',
+    color: disabled ? '#94a3b8' : color,
+    border: `1px solid ${disabled ? '#e2e8f0' : color}`,
+    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1,
+    whiteSpace: 'nowrap'
+  };
+}
+
+const modalBackdropStyle = {
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+  background: 'rgba(15,23,42,0.5)', zIndex: 10000,
+  display: 'flex', alignItems: 'center', justifyContent: 'center'
+};
+
+const modalBoxStyle = {
+  background: '#fff', borderRadius: '8px', width: '420px', maxWidth: '90vw',
+  padding: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+};

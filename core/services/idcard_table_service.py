@@ -92,6 +92,22 @@ class IDCardTableService(BaseService):
             normalized['type'] = cls._normalize_field_type(field.get('type', 'text'))
             normalized_fields.append(normalized)
 
+        from idcards.models import IDCard
+        from django.db.models import Count, Q
+
+        counts = IDCard.objects.filter(table=table).aggregate(
+            pending_count=Count('id', filter=Q(status='pending')),
+            verified_count=Count('id', filter=Q(status='verified')),
+            approved_count=Count('id', filter=Q(status='approved')),
+            download_count=Count('id', filter=Q(status='download')),
+            pool_count=Count('id', filter=Q(status='pool')),
+        )
+        p_cnt = counts['pending_count'] or 0
+        v_cnt = counts['verified_count'] or 0
+        a_cnt = counts['approved_count'] or 0
+        d_cnt = counts['download_count'] or 0
+        l_cnt = counts['pool_count'] or 0
+
         return {
             'id': table.id,
             'name': table.name,
@@ -104,6 +120,12 @@ class IDCardTableService(BaseService):
             ]).get(getattr(table, 'table_type', 'custom') or 'custom', 'Custom'),
             'fields': normalized_fields,
             'field_count': len(normalized_fields),
+            'pending_count': p_cnt,
+            'verified_count': v_cnt,
+            'approved_count': a_cnt,
+            'download_count': d_cnt,
+            'pool_count': l_cnt,
+            'total_count': p_cnt + v_cnt + a_cnt + d_cnt + l_cnt,
             'is_active': table.is_active,
             'created_at': localtime(table.created_at).strftime('%d-%b-%Y %H:%M'),
             'updated_at': localtime(table.updated_at).strftime('%d-%b-%Y %H:%M'),
