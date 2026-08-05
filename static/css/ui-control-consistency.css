@@ -86,15 +86,15 @@ h6 { font-size: var(--ui-heading-h6-size); }
 
 /* Keep the app/sidebar brand title on one compact, uniform scale everywhere. */
 .sidebar .sidebar-header {
-  height: var(--spacing-topbar, 40px) !important;
+  height: 44px !important;
   padding: 0 8px !important;
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: flex-start !important;
-  background-color: #ffffff !important;
-  border-bottom: 1px solid var(--color-gray-200, #e5e7eb) !important;
-  border-right: 1px solid var(--color-gray-200, #e5e7eb) !important;
+  justify-content: center !important;
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-right: none !important;
 }
 
 .sidebar .sidebar-logo {
