@@ -2929,4 +2929,34 @@ button:disabled svg {
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Search Box Container */
+.search-box {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 28px !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 4px !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.search-box:focus-within {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+
+.search-box input {
+  flex: 1 !important;
+  height: 100% !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  font-size: 12px !important;
+  color: #0f172a !important;
+  padding: 0 4px !important;
+  font-family: inherit !important;
 }

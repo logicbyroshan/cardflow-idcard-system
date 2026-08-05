@@ -1074,17 +1074,56 @@ export default function IDCardActionsView({
           )}
 
           {/* Search Box */}
-          <div className="search-box" style={{ height: '28px', width: '220px' }}>
-            <Search size={13} style={{ color: '#94a3b8', marginRight: '4px' }} />
+          <div
+            className="search-box"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              height: '28px',
+              width: '220px',
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              borderRadius: '4px',
+              padding: '0 8px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <Search size={14} style={{ color: '#64748b', flexShrink: 0, marginRight: '4px' }} />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search All..."
-              style={{ fontSize: '12px' }}
+              style={{
+                flex: 1,
+                height: '100%',
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: '12px',
+                color: '#0f172a',
+                padding: '0 4px',
+              }}
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}><X size={12} /></button>
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#94a3b8',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+                title="Clear search"
+              >
+                <X size={13} />
+              </button>
             )}
           </div>
         </div>
