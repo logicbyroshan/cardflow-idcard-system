@@ -178,15 +178,15 @@ export default function CardTableView({ addToast, onNavigate }) {
             <div className="actions">
               {/* Page Switch Buttons Pair */}
               <div className="btn-group">
-                <button className="btn btn-md btn-primary" title="ID Card Group">
-                  <ShieldCheck size={13} /> <span>ID Card Group</span>
+                <button className="btn btn-md btn-primary" title="Table Group">
+                  <ShieldCheck size={13} /> <span>Table Group</span>
                 </button>
                 <button
                   className="btn btn-md btn-neutral"
                   onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
-                  title="Group Setting"
+                  title="Table Setting"
                 >
-                  <SlidersHorizontal size={13} /> <span>Group Setting</span>
+                  <SlidersHorizontal size={13} /> <span>Table Setting</span>
                 </button>
               </div>
 
@@ -237,7 +237,7 @@ export default function CardTableView({ addToast, onNavigate }) {
                   className="btn btn-primary btn-sm"
                   style={{ marginTop: '16px', padding: '7px 18px', borderRadius: '6px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <SlidersHorizontal size={14} /> Go to Group Setting
+                  <SlidersHorizontal size={14} /> Go to Table Setting
                 </button>
               </div>
             ) : (

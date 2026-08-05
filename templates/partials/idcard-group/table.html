@@ -88,14 +88,14 @@
                         <p>
                             This client has no ID card tables yet.
                             {% if is_super_admin or perm_idcard_setting_list %}
-                                Go to Group Settings to create tables.
+                                Go to Table Setting to create tables.
                             {% else %}
                                 Please contact your client administrator to create tables.
                             {% endif %}
                         </p>
                         {% if is_super_admin or perm_idcard_setting_list %}
                         <a href="{% if is_client or is_client_staff %}{% url 'client:group_settings' %}{% else %}{% url 'group_settings' client.id %}{% endif %}" class="btn btn-md btn-primary btn-sm mt-3">
-                            <i class="fa-solid fa-gear"></i> Go to Group Settings
+                            <i class="fa-solid fa-gear"></i> Go to Table Setting
                         </a>
                         {% endif %}
                     </div>

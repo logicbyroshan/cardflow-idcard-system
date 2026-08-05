@@ -312,12 +312,12 @@ export default function TableSettingsView({ addToast, onNavigate }) {
               <button
                 className="btn btn-md btn-neutral"
                 onClick={() => onNavigate ? onNavigate('cards') : (window.location.href = '/panel/idcard-group/')}
-                title="ID Card Group"
+                title="Table Group"
               >
-                <ShieldCheck size={13} /> <span>ID Card Group</span>
+                <ShieldCheck size={13} /> <span>Table Group</span>
               </button>
-              <button className="btn btn-md btn-primary" title="Group Setting">
-                <SlidersHorizontal size={13} /> <span>Group Setting</span>
+              <button className="btn btn-md btn-primary" title="Table Setting">
+                <SlidersHorizontal size={13} /> <span>Table Setting</span>
               </button>
             </div>
 
