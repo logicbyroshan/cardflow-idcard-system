@@ -303,9 +303,19 @@ export default function TableSettingsView({ addToast, onNavigate }) {
               <button className="btn btn-md btn-danger" disabled={!selected} onClick={handleDeleteTable}>
                 <Trash2 size={13} /> Delete
               </button>
-              <button className="btn btn-md btn-warning" disabled={!selected} onClick={handleToggleStatus} title="Toggle Active / Inactive status">
-                <ToggleRight size={13} /> Active / Inactive
-              </button>
+              {!selected ? (
+                <button className="btn btn-md btn-neutral" disabled title="Select a table to toggle status">
+                  <ToggleRight size={13} /> Activate / Deactivate
+                </button>
+              ) : selTable?.is_active !== false ? (
+                <button className="btn btn-md btn-warning" onClick={handleToggleStatus} title="Deactivate selected table">
+                  <ToggleRight size={13} /> Deactivate
+                </button>
+              ) : (
+                <button className="btn btn-md btn-success" onClick={handleToggleStatus} title="Activate selected table">
+                  <ToggleRight size={13} /> Activate
+                </button>
+              )}
             </div>
 
             <div className="btn-separator" />

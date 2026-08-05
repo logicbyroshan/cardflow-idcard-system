@@ -6,7 +6,7 @@ import {
   ArrowLeft, FileSpreadsheet, Eye, Edit2, Undo2, Redo2, Layers3, ShieldCheck
 } from "lucide-react";
 import CardEditDrawer from "./CardEditDrawer";
-import { cardApi, schemaApi } from "../../services/api";
+import { cardApi, schemaApi, clientApi } from "../../services/api";
 
 const STATUS_TABS = ["All", "Active", "Inactive"];
 
@@ -15,6 +15,7 @@ export default function CardTableView({ addToast, onNavigate }) {
   const [loading, setLoading]             = useState(true);
   const [search, setSearch]               = useState("");
   const [statusTab, setStatusTab]         = useState("All");
+  const [clientOrg, setClientOrg]         = useState("");
 
   /* Table selection in main view */
   const [selectedTableId, setSelectedTableId] = useState(null);
@@ -34,6 +35,19 @@ export default function CardTableView({ addToast, onNavigate }) {
   /* Modal states for bulk actions */
   const [activeModal, setActiveModal]     = useState(null); // 'reupload' | 'download-all' | 'delete-all' | 'upgrade'
   const [deleteCodeInput, setDeleteCodeInput] = useState("");
+
+  /* Fetch client org name */
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await clientApi.getActive?.({ page_size: 1 });
+        const clients = data?.results || data?.clients || (Array.isArray(data) ? data : []);
+        if (clients.length > 0) {
+          setClientOrg(clients[0].name || clients[0].client_name || '');
+        }
+      } catch { /* fallback */ }
+    })();
+  }, []);
 
   /* ── Load tables list (merging API data + localStorage) ── */
   const loadTables = useCallback(async () => {
@@ -124,8 +138,6 @@ export default function CardTableView({ addToast, onNavigate }) {
      VIEW 1: TABLE GROUP OVERVIEW (Classic Django idcard_group template UI)
      ═══════════════════════════════════════════════════════════════════════════ */
   if (!viewingTable) {
-    const selTot = selectedTable ? (selectedTable.total_count || ((selectedTable.pending_count || 0) + (selectedTable.verified_count || 0) + (selectedTable.approved_count || 0) + (selectedTable.download_count || 0) + (selectedTable.pool_count || 0))) : 0;
-
     return (
       <div className="view-container" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
         
@@ -168,14 +180,14 @@ export default function CardTableView({ addToast, onNavigate }) {
           <div className="action-bar-right">
             <div className="actions">
               
-              {/* Bulk Action Buttons Group in Navbar */}
+              {/* Bulk Action Buttons Group in Navbar (Vibrant Color Buttons) */}
               <div className="btn-group">
                 <button
                   type="button"
                   onClick={() => setActiveModal('reupload')}
-                  style={bulkBtnStyle('reupload', !selectedTable || selTot === 0)}
-                  disabled={!selectedTable || selTot === 0}
-                  title={!selectedTable ? "Select a table" : selTot === 0 ? "No cards in table" : `Reupload Images for ${selectedTable.name}`}
+                  style={bulkBtnStyle('reupload', !selectedTable)}
+                  disabled={!selectedTable}
+                  title={!selectedTable ? "Select a table" : `Reupload Images for ${selectedTable.name}`}
                 >
                   <Upload size={12} /> Reupload Image
                 </button>
@@ -183,9 +195,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                 <button
                   type="button"
                   onClick={() => setActiveModal('download-all')}
-                  style={bulkBtnStyle('downloadAll', !selectedTable || selTot === 0)}
-                  disabled={!selectedTable || selTot === 0}
-                  title={!selectedTable ? "Select a table" : selTot === 0 ? "No cards in table" : `Download All ID Cards for ${selectedTable.name}`}
+                  style={bulkBtnStyle('downloadAll', !selectedTable)}
+                  disabled={!selectedTable}
+                  title={!selectedTable ? "Select a table" : `Download All ID Cards for ${selectedTable.name}`}
                 >
                   <Download size={12} /> Download All ID Card
                 </button>
@@ -193,9 +205,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                 <button
                   type="button"
                   onClick={() => { setDeleteCodeInput(''); setActiveModal('delete-all'); }}
-                  style={bulkBtnStyle('deleteAll', !selectedTable || selTot === 0)}
-                  disabled={!selectedTable || selTot === 0}
-                  title={!selectedTable ? "Select a table" : selTot === 0 ? "No cards in table" : `Delete All ID Cards for ${selectedTable.name}`}
+                  style={bulkBtnStyle('deleteAll', !selectedTable)}
+                  disabled={!selectedTable}
+                  title={!selectedTable ? "Select a table" : `Delete All ID Cards for ${selectedTable.name}`}
                 >
                   <Trash2 size={12} /> Delete All ID Cards
                 </button>
@@ -203,9 +215,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                 <button
                   type="button"
                   onClick={() => setActiveModal('upgrade')}
-                  style={bulkBtnStyle('upgradeClass', !selectedTable || selTot === 0)}
-                  disabled={!selectedTable || selTot === 0}
-                  title={!selectedTable ? "Select a table" : selTot === 0 ? "No cards in table" : `Upgrade All Class for ${selectedTable.name}`}
+                  style={bulkBtnStyle('upgradeClass', !selectedTable)}
+                  disabled={!selectedTable}
+                  title={!selectedTable ? "Select a table" : `Upgrade All Class for ${selectedTable.name}`}
                 >
                   <ArrowUp size={12} /> Upgrade All Class
                 </button>
@@ -282,7 +294,7 @@ export default function CardTableView({ addToast, onNavigate }) {
                 <thead>
                   <tr>
                     <th style={{ width: '240px', textAlign: 'left' }}>NAME</th>
-                    <th style={{ textAlign: 'center' }}>ACTION</th>
+                    <th style={{ textAlign: 'center' }}>CARD STATUS ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -293,6 +305,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                     const dCnt = t.download_count || 0;
                     const lCnt = t.pool_count || 0;
                     const isSelected = selectedTableId === t.id;
+
+                    const rawOrg = t.client_name || t.client?.name || '';
+                    const orgDisplay = (rawOrg && rawOrg !== 'Default Organisation' && rawOrg !== 'Primary Organisation') ? rawOrg : (clientOrg || '');
 
                     return (
                       <tr
@@ -308,9 +323,11 @@ export default function CardTableView({ addToast, onNavigate }) {
                         <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <span style={{ fontSize: '13px', color: isSelected ? '#1d4ed8' : '#1e293b', fontWeight: 700 }}>{t.name}</span>
-                            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
-                              {t.client_name || 'Primary Organisation'}
-                            </span>
+                            {orgDisplay && (
+                              <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
+                                {orgDisplay}
+                              </span>
+                            )}
                           </div>
                         </td>
 
@@ -551,13 +568,15 @@ function bulkBtnStyle(type, disabled) {
   };
   const cfg = colors[type] || colors.reupload;
   return {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-    padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-    background: disabled ? '#f8fafc' : cfg.bg,
-    color: disabled ? '#94a3b8' : cfg.color,
-    border: `1px solid ${disabled ? '#e2e8f0' : cfg.border}`,
-    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
-    whiteSpace: 'nowrap', minWidth: '100px'
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+    padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 700,
+    background: cfg.bg,
+    color: cfg.color,
+    border: `1px solid ${cfg.border}`,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.6 : 1,
+    whiteSpace: 'nowrap', minWidth: '100px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
   };
 }
 
