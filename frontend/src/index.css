@@ -2552,3 +2552,23 @@ input[type="checkbox"] {
   border: 1px solid #bfdbfe;
   margin-bottom: 12px;
 }
+
+/* ── Ultra Smooth View Page Transitions ── */
+.view-container,
+.main-content-area,
+.table-wrapper,
+#gs-table-container {
+  animation: smoothPageFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+@keyframes smoothPageFadeIn {
+  0% {
+    opacity: 0.2;
+    transform: translateY(3px) scale(0.998);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

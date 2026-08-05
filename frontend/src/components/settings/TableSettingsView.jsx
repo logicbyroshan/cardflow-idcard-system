@@ -182,21 +182,29 @@ export default function TableSettingsView({ addToast, onNavigate }) {
         }
       });
 
-      const enriched = merged.map(t => ({
-        ...t,
-        client_name: (t.client_name && t.client_name !== 'Default Organisation' && t.client_name !== '—')
-          ? t.client_name
-          : (activeOrg || 'Organisation')
-      }));
+      const enriched = merged.map(t => {
+        const rawName = t.client_name || t.client?.name || '';
+        const validName = (rawName && !['Default Organisation', 'Organisation', '—'].includes(rawName.trim()))
+          ? rawName.trim()
+          : (activeOrg || 'Primary Organisation');
+        return {
+          ...t,
+          client_name: validName
+        };
+      });
 
       setTables(enriched);
     } catch {
-      const enrichedLocal = local.map(t => ({
-        ...t,
-        client_name: (t.client_name && t.client_name !== 'Default Organisation' && t.client_name !== '—')
-          ? t.client_name
-          : (activeOrg || 'Organisation')
-      }));
+      const enrichedLocal = local.map(t => {
+        const rawName = t.client_name || t.client?.name || '';
+        const validName = (rawName && !['Default Organisation', 'Organisation', '—'].includes(rawName.trim()))
+          ? rawName.trim()
+          : (activeOrg || 'Primary Organisation');
+        return {
+          ...t,
+          client_name: validName
+        };
+      });
       setTables(enrichedLocal);
     } finally {
       setLoading(false);
@@ -435,8 +443,10 @@ export default function TableSettingsView({ addToast, onNavigate }) {
                 ) : (
                   filtered.map((t, idx) => {
                     const name = t.name || `Table #${t.id || idx}`;
-                    const rawClient = t.client_name || t.client?.name || clientOrg || '';
-                    const clientName = (rawClient && rawClient !== 'Default Organisation') ? rawClient : (clientOrg || '—');
+                    const rawClient = t.client_name || t.client?.name || '';
+                    const clientName = (rawClient && !['Default Organisation', 'Organisation', '—'].includes(rawClient.trim()))
+                      ? rawClient.trim()
+                      : (clientOrg || 'Primary Organisation');
                     const isActive = t.is_active !== false;
                     const isSel = t.id === selected;
                     const fieldList = Array.isArray(t.fields) && t.fields.length > 0 ? t.fields : DEFAULT_SCHEMA_FIELDS;

@@ -305,7 +305,9 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                     const isSelected = selectedTableId === t.id;
                     const rawOrg = t.client_name || t.client?.name || '';
-                    const orgDisplay = (rawOrg && rawOrg !== 'Default Organisation' && rawOrg !== 'Primary Organisation') ? rawOrg : (clientOrg || 'Organisation');
+                    const orgDisplay = (rawOrg && !['Default Organisation', 'Organisation', '—'].includes(rawOrg.trim()))
+                      ? rawOrg.trim()
+                      : (clientOrg || 'Primary Organisation');
 
                     return (
                       <tr
