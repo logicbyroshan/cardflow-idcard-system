@@ -1,62 +1,130 @@
-import React, { useState } from 'react';
-import { Search, X, User, School, CreditCard } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, X, User, School, CreditCard, Building, Table2 } from 'lucide-react';
+import { clientApi } from '../../services/api';
 
 export default function GlobalSearchModal({ isOpen, onClose }) {
   const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    const q = query.toLowerCase().trim();
+    setLoading(true);
+
+    const timer = setTimeout(async () => {
+      let combined = [];
+
+      // 1. Search Organisations / Clients
+      try {
+        const data = await clientApi.getActive({ search: query, page_size: 10 });
+        const list = Array.isArray(data?.clients) ? data.clients : Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+        list.forEach(c => {
+          combined.push({
+            type: 'Organisation',
+            title: c.name || 'Organisation',
+            subtitle: `${c.email || ''} • ${c.phone || ''} (${c.status || 'active'})`,
+          });
+        });
+      } catch {}
+
+      // 2. Search Local Storage Organisations
+      try {
+        const local = JSON.parse(localStorage.getItem('cf_custom_clients') || '[]');
+        local.filter(c => c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q)).forEach(c => {
+          if (!combined.some(x => x.title === c.name)) {
+            combined.push({
+              type: 'Organisation',
+              title: c.name,
+              subtitle: `${c.email || ''} • ${c.phone || ''} (active)`,
+            });
+          }
+        });
+      } catch {}
+
+      // 3. Search Local Storage Tables
+      try {
+        const localTbls = JSON.parse(localStorage.getItem('cf_custom_tables') || '[]');
+        localTbls.filter(t => t.name?.toLowerCase().includes(q) || t.client_name?.toLowerCase().includes(q)).forEach(t => {
+          combined.push({
+            type: 'Table',
+            title: t.name,
+            subtitle: `${t.client_name || 'Organisation'} • ${t.fields?.length || 0} fields`,
+          });
+        });
+      } catch {}
+
+      setResults(combined.slice(0, 15));
+      setLoading(false);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [query]);
 
   if (!isOpen) return null;
-
-  const results = [
-    { type: 'Student', title: 'Aarav Sharma (ID #101)', subtitle: 'Class 10-A • Adarsh Public School' },
-    { type: 'School', title: 'St. Mary International School', subtitle: '4 tables • 320 cards' },
-  ];
 
   return (
     <div className="drawer-overlay" style={{ alignItems: 'flex-start', paddingTop: '10vh' }} onClick={onClose}>
       <div
         className="data-card"
-        style={{ width: '580px', maxWidth: '92vw', padding: '1.25rem', backdropFilter: 'blur(16px)' }}
+        style={{ width: '580px', maxWidth: '92vw', padding: '1.25rem', backdropFilter: 'blur(16px)', background: '#ffffff', borderRadius: '12px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
-          <Search size={20} color="var(--text-muted)" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+          <Search size={20} color="#64748b" />
           <input
             type="text"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type to search cards, clients, tables, or phone numbers..."
-            style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
+            placeholder="Type to search organisations, tables, cards, or emails..."
+            style={{ flex: 1, background: 'transparent', border: 'none', color: '#0f172a', fontSize: '1rem', outline: 'none', fontFamily: 'inherit' }}
           />
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-            <X size={18} />
-          </button>
+          {query && (
+            <button onClick={() => setQuery('')} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto' }}>
-          {results.map((res, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.85rem',
-                padding: '0.75rem 1rem',
-                borderRadius: 'var(--radius-md)',
-                background: 'rgba(15, 23, 42, 0.4)',
-                cursor: 'pointer',
-                transition: 'background 0.2s ease',
-              }}
-            >
-              <div style={{ width: '32px', height: '32px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {res.type === 'Student' ? <User size={16} color="#818cf8" /> : <School size={16} color="#34d399" />}
-              </div>
-              <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{res.title}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{res.subtitle}</div>
-              </div>
+          {loading ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>Searching...</div>
+          ) : results.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+              {query ? `No results found for "${query}"` : 'Start typing to search across the entire system'}
             </div>
-          ))}
+          ) : (
+            results.map((res, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.85rem',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '8px',
+                  background: '#f8fafc',
+                  border: '1px solid #f1f5f9',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}
+              >
+                <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: res.type === 'Organisation' ? '#dbeafe' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {res.type === 'Organisation' ? <Building size={16} color="#2563eb" /> : <Table2 size={16} color="#d97706" />}
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1e293b' }}>{res.title}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{res.subtitle}</div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

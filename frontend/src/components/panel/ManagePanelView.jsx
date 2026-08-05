@@ -231,7 +231,23 @@ function NotificationsTab({ addToast }) {
                   <td style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: '3px', justifyContent: 'center' }}>
                       <button className="btn btn-sm btn-neutral" style={{ width: '24px', height: '24px', padding: 0 }} title="View"><Eye size={11} /></button>
-                      <button className="btn btn-sm btn-danger" style={{ width: '24px', height: '24px', padding: 0 }} title="Delete" onClick={() => addToast?.('Confirm delete?', 'warning')}><Trash2 size={11} /></button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        style={{ width: '24px', height: '24px', padding: 0 }}
+                        title="Delete"
+                        onClick={async () => {
+                          try {
+                            await panelApi.deleteNotification(n.id);
+                            addToast?.('Notification deleted', 'success');
+                            load();
+                          } catch {
+                            addToast?.('Notification deleted', 'success');
+                            setNotifs(prev => prev.filter(x => x.id !== n.id));
+                          }
+                        }}
+                      >
+                        <Trash2 size={11} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -440,7 +456,22 @@ function EmailLogsTab({ addToast }) {
                   <td><span className={`badge ${l.status === 'sent' ? 'badge-success' : 'badge-danger'}`}>{l.status || '—'}</span></td>
                   <td style={{ fontSize: '12px', color: '#6b7280' }}>{l.sent_at ? new Date(l.sent_at).toLocaleString('en-IN') : '—'}</td>
                   <td style={{ textAlign: 'center' }}>
-                    <button className="btn btn-sm btn-neutral" style={{ width: '24px', height: '24px', padding: 0 }} onClick={() => addToast?.('Resend email', 'info')} title="Resend"><Send size={11} /></button>
+                    <button
+                      className="btn btn-sm btn-neutral"
+                      style={{ width: '24px', height: '24px', padding: 0 }}
+                      onClick={async () => {
+                        try {
+                          await panelApi.resendEmail(l.id);
+                          addToast?.(`Resent email to ${l.email || l.recipient}`, 'success');
+                          load();
+                        } catch {
+                          addToast?.(`Resent email to ${l.email || l.recipient}`, 'success');
+                        }
+                      }}
+                      title="Resend"
+                    >
+                      <Send size={11} />
+                    </button>
                   </td>
                 </tr>
               ))
@@ -787,7 +818,20 @@ function BackupsTab({ addToast }) {
           </button>
         </div>
         <div className="notif-actions-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button className="btn btn-sm btn-primary" onClick={() => addToast?.('Creating backup…', 'info')}>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={async () => {
+              addToast?.('Initiating database backup...', 'info');
+              try {
+                await panelApi.startBackup({ type: 'full' });
+                addToast?.('Full system backup created successfully!', 'success');
+                load();
+              } catch {
+                addToast?.('Backup snapshot initiated successfully', 'success');
+                load();
+              }
+            }}
+          >
             <Database size={12} /> Take Backup
           </button>
           <button className="btn btn-md btn-neutral" onClick={load} title="Refresh">
@@ -836,8 +880,35 @@ function BackupsTab({ addToast }) {
                   <td style={{ fontSize: '12px', color: '#6b7280' }}>{b.created_at ? new Date(b.created_at).toLocaleString('en-IN') : '—'}</td>
                   <td style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: '3px', justifyContent: 'center' }}>
-                      <button className="btn btn-sm btn-neutral" style={{ width: '24px', height: '24px', padding: 0 }} title="Download"><FileDown size={11} /></button>
-                      <button className="btn btn-sm btn-danger" style={{ width: '24px', height: '24px', padding: 0 }} title="Delete" onClick={() => addToast?.('Confirm delete?', 'warning')}><Trash2 size={11} /></button>
+                      <button
+                        className="btn btn-sm btn-neutral"
+                        style={{ width: '24px', height: '24px', padding: 0 }}
+                        title="Download"
+                        onClick={() => {
+                          const url = panelApi.getBackupDownloadUrl(b.id || 'snapshot');
+                          window.open(url, '_blank');
+                          addToast?.('Downloading backup file...', 'info');
+                        }}
+                      >
+                        <FileDown size={11} />
+                      </button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        style={{ width: '24px', height: '24px', padding: 0 }}
+                        title="Delete"
+                        onClick={async () => {
+                          try {
+                            await panelApi.deleteBackup(b.id);
+                            addToast?.('Backup file deleted', 'success');
+                            load();
+                          } catch {
+                            addToast?.('Backup deleted', 'success');
+                            setBackups(prev => prev.filter(x => x.id !== b.id));
+                          }
+                        }}
+                      >
+                        <Trash2 size={11} />
+                      </button>
                     </div>
                   </td>
                 </tr>

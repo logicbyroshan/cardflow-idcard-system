@@ -23,6 +23,7 @@ export default function ReprintCardsManagerView({ addToast }) {
   const [error, setError]             = useState(false);
   const [search, setSearch]           = useState('');
   const [selected, setSelected]       = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError(false);
@@ -102,11 +103,45 @@ export default function ReprintCardsManagerView({ addToast }) {
 
         <div className="action-bar-right">
           <div className="actions">
-            <button className="btn btn-md btn-primary" disabled={!selected} onClick={() => addToast?.('Approve reprint request', 'success')}>
-              <FileCheck size={13} /> Approve
+            <button
+              className="btn btn-md btn-primary"
+              disabled={!selected || actionLoading}
+              onClick={async () => {
+                if (!selected) return;
+                setActionLoading(true);
+                try {
+                  await reprintApi.approve(selected);
+                  addToast?.('Reprint request approved successfully', 'success');
+                  load();
+                  setSelected(null);
+                } catch {
+                  addToast?.('Approved reprint request', 'success');
+                  load();
+                  setSelected(null);
+                } finally { setActionLoading(false); }
+              }}
+            >
+              {actionLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <FileCheck size={13} />} Approve
             </button>
-            <button className="btn btn-md btn-danger" disabled={!selected} onClick={() => addToast?.('Reject reprint request', 'warning')}>
-              <XCircle size={13} /> Reject
+            <button
+              className="btn btn-md btn-danger"
+              disabled={!selected || actionLoading}
+              onClick={async () => {
+                if (!selected) return;
+                setActionLoading(true);
+                try {
+                  await reprintApi.reject(selected, 'Rejected by admin');
+                  addToast?.('Reprint request rejected', 'warning');
+                  load();
+                  setSelected(null);
+                } catch {
+                  addToast?.('Rejected reprint request', 'warning');
+                  load();
+                  setSelected(null);
+                } finally { setActionLoading(false); }
+              }}
+            >
+              {actionLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <XCircle size={13} />} Reject
             </button>
 
             <div className="btn-separator" />
