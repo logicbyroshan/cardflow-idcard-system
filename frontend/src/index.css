@@ -2577,3 +2577,160 @@ input[type="checkbox"] {
     transform: translateY(0) scale(1);
   }
 }
+
+/* ============================================================
+   MASTER SHELL & BUTTON STYLING OVERRIDES — 100% SITEWIDE CONSISTENCY
+   ============================================================ */
+
+/* 1. Global Zero Page-Content Padding across ALL pages */
+.page-content {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: var(--bg-body) !important;
+}
+
+/* 2. Global Black Topbar/Navbar with matching 44px height */
+.topbar,
+#topbar,
+header.topbar {
+  background: #111827 !important;
+  color: #ffffff !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 0 16px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.topbar .breadcrumb,
+.topbar .breadcrumb-item,
+.topbar .breadcrumb-sep,
+.topbar span,
+.topbar label,
+.topbar .nav-left,
+.topbar .nav-right {
+  color: #ffffff !important;
+}
+
+/* 3. Master Sitewide Solid Color Action Buttons */
+.btn-primary,
+.btn-blue,
+button.btn-primary,
+.action-bar .btn-blue,
+.action-bar .btn-primary,
+.action-bar button[id*="add"],
+.action-bar button[id*="edit"] {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+.btn-primary:hover:not(:disabled),
+.btn-blue:hover:not(:disabled) {
+  background: #1d4ed8 !important;
+}
+
+.btn-amber,
+.btn-warning,
+.action-bar .btn-amber,
+.action-bar .btn-warning,
+.action-bar button[id*="reupload"] {
+  background: #f59e0b !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+.btn-amber:hover:not(:disabled),
+.btn-warning:hover:not(:disabled) {
+  background: #d97706 !important;
+}
+
+.btn-success,
+.btn-green,
+.action-bar .btn-success,
+.action-bar .btn-green,
+.action-bar button[id*="verify"],
+.action-bar button[id*="approve"] {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+.btn-success:hover:not(:disabled),
+.btn-green:hover:not(:disabled) {
+  background: #059669 !important;
+}
+
+.btn-danger,
+.btn-red,
+.action-bar .btn-danger,
+.action-bar .btn-red,
+.action-bar button[id*="delete"],
+.action-bar button[id*="unverify"] {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+.btn-danger:hover:not(:disabled),
+.btn-red:hover:not(:disabled) {
+  background: #dc2626 !important;
+}
+
+.btn-purple,
+.action-bar .btn-purple,
+.action-bar button[id*="download"] {
+  background: #8b5cf6 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+.btn-purple:hover:not(:disabled) {
+  background: #7c3aed !important;
+}
+
+.btn-gray,
+.action-bar .btn-gray,
+.action-bar button[id*="view"] {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+.btn-gray:hover:not(:disabled) {
+  background: #4b5563 !important;
+}
+
+.btn-dark-grey,
+.action-bar .btn-dark-grey,
+.action-bar button[id*="clear"] {
+  background: #374151 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+
+.btn-neutral,
+.action-bar .btn-neutral,
+.action-bar button[id*="refresh"] {
+  background: #475569 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+
+/* Master Disabled Button Override */
+.btn:disabled,
+.action-bar .btn:disabled,
+button:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
