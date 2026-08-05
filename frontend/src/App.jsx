@@ -246,7 +246,17 @@ export default function App() {
               initialStatus={idcardActionsState.status || 'pending'}
               addToast={addToast}
               onBack={() => { setActiveTab('cards'); setIdcardActionsState(null); }}
-              onNavigate={handleNavigate}
+              onNavigate={(tab, params) => {
+                if (tab === 'table-settings' || tab === 'schema') {
+                  if (params?.tableId) setActiveTableId(params.tableId);
+                  setActiveTab('schema');
+                } else if (tab === 'cards' || tab === 'idcard-group') {
+                  setActiveTab('cards');
+                  setIdcardActionsState(null);
+                } else if (typeof tab === 'string') {
+                  setActiveTab(tab);
+                }
+              }}
             />
           )}
 
