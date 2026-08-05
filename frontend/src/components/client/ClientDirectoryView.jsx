@@ -374,7 +374,7 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                 className="btn"
                 disabled={!selected}
                 onClick={() => selClient && onOpenActionDrawer?.('edit-client', selClient)}
-                style={{ background: selected ? '#2563eb' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#2563eb' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? '1px solid #2563eb' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
               >
                 <Pen size={13} /> Edit
               </button>
@@ -382,7 +382,7 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                 className="btn"
                 disabled={!selected}
                 onClick={handleDeleteClient}
-                style={{ background: selected ? '#ef4444' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#ef4444' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
               >
                 <Trash2 size={13} /> Delete
               </button>
@@ -390,13 +390,13 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                 className="btn"
                 disabled={!selected}
                 onClick={handleToggleStatus}
-                style={{ background: selected ? '#f59e0b' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#f59e0b' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
               >
                 <ToggleRight size={13} /> Active
               </button>
             </div>
 
-            <div className="btn-separator" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
+            <div className="btn-separator" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)', margin: '0 4px' }} />
 
             <div className="btn-group" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <button
@@ -404,7 +404,7 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                 disabled={!selected}
                 onClick={() => onNavigate?.('schema')}
                 title="Manage Table Settings"
-                style={{ background: selected ? '#3b82f6' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#3b82f6' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
               >
                 <Settings size={13} /> <span>Table Setting</span>
               </button>
@@ -413,7 +413,7 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                 disabled={!selected}
                 onClick={() => onNavigate?.('cards')}
                 title="View Table Groups"
-                style={{ background: selected ? '#3b82f6' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#3b82f6' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
               >
                 <CreditCard size={13} /> <span>Table Groups</span>
               </button>
@@ -422,7 +422,7 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                 disabled={!selected}
                 onClick={() => { setShowManagersDrawer(!showManagersDrawer); setShowAssistantsDrawer(false); }}
                 title="Manage Managers"
-                style={{ background: selected ? (showManagersDrawer ? '#2563eb' : '#3b82f6') : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? (showManagersDrawer ? '#2563eb' : '#3b82f6') : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? (showManagersDrawer ? '1px solid #2563eb' : '1px solid #3b82f6') : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
               >
                 <Users size={13} /> <span>Managers</span>
               </button>
@@ -431,7 +431,7 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
                 disabled={!selected}
                 onClick={() => { setShowAssistantsDrawer(!showAssistantsDrawer); setShowManagersDrawer(false); }}
                 title="Manage Assistants"
-                style={{ background: selected ? (showAssistantsDrawer ? '#2563eb' : '#3b82f6') : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? (showAssistantsDrawer ? '#2563eb' : '#3b82f6') : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? (showAssistantsDrawer ? '1px solid #2563eb' : '1px solid #3b82f6') : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}
               >
                 <UsersRound size={13} /> <span>Assistants</span>
               </button>

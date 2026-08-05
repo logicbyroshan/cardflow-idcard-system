@@ -2648,7 +2648,44 @@ input[type="checkbox"] {
   background: var(--bg-body) !important;
 }
 
-/* 2. Global Topbar/Navbar & Action Bars with matching 50px height & exact sidebar color (#1e1e2e) */
+/* Master Pagination Bar Centering & Fixed Alignment (Prevents Layout Shifts on Selection) */
+.pagination-bar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: relative !important;
+  height: 38px !important;
+  padding: 0 16px !important;
+  background: #ffffff !important;
+  border-top: 1px solid #e2e8f0 !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+.pagination-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 220px !important;
+  white-space: nowrap !important;
+}
+
+.pagination-center {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.pagination-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-left: auto !important;
+  white-space: nowrap !important;
+}
 .topbar,
 #topbar,
 header.topbar,
