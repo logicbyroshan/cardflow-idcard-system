@@ -99,8 +99,13 @@ export const dashboardApi = {
 export const cardApi = {
   /** GET /api/table/<table_id>/cards/ — paginated card list */
   getCards: async (tableId, params = {}) => {
-    const res = await apiClient.get(`/api/table/${tableId}/cards/`, { params });
-    return res.data;
+    try {
+      const res = await apiClient.get(`/api/table/${tableId}/cards-json/`, { params });
+      return res.data;
+    } catch {
+      const res = await apiClient.get(`/api/table/${tableId}/cards/`, { params });
+      return res.data;
+    }
   },
 
   /** GET /api/table/<table_id>/status-counts/ */

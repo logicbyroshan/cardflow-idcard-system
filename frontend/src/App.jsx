@@ -11,6 +11,7 @@ import StaffManagementView from './components/staff/StaffManagementView';
 import ManagePanelView from './components/panel/ManagePanelView';
 import CardActionBar from './components/idcard/CardActionBar';
 import CardTableView from './components/idcard/CardTableView';
+import IDCardActionsView from './components/idcard/IDCardActionsView';
 import CardDownloadsModal from './components/idcard/CardDownloadsModal';
 import GlobalSearchModal from './components/common/GlobalSearchModal';
 import ConfirmDeleteModal from './components/common/ConfirmDeleteModal';
@@ -41,6 +42,7 @@ export default function App() {
   const [impersonatedUser, setImpersonatedUser] = useState(null);
   const [activeTab, setActiveTab]           = useState('dashboard');
   const [activeTableId, setActiveTableId]   = useState(null);  // set when navigating from cardflow → cards
+  const [idcardActionsState, setIdcardActionsState] = useState(null); // { tableId, status }
   const [searchQuery, setSearchQuery]       = useState('');
   const [selectedClient, setSelectedClient] = useState('all');
 
@@ -224,7 +226,27 @@ export default function App() {
 
           {/* ── ID Cards / Table Group ── */}
           {activeTab === 'cards' && (
-            <CardTableView addToast={addToast} onNavigate={setActiveTab} />
+            <CardTableView
+              addToast={addToast}
+              onNavigate={(tabOrObj, params) => {
+                if (typeof tabOrObj === 'string' && tabOrObj === 'idcard-actions' && params) {
+                  setIdcardActionsState({ tableId: params.tableId, status: params.status || 'pending' });
+                  setActiveTab('idcard-actions');
+                } else if (typeof tabOrObj === 'string') {
+                  setActiveTab(tabOrObj);
+                }
+              }}
+            />
+          )}
+
+          {/* ── ID Card Actions (full card list view per table/status) ── */}
+          {activeTab === 'idcard-actions' && idcardActionsState && (
+            <IDCardActionsView
+              tableId={idcardActionsState.tableId}
+              initialStatus={idcardActionsState.status || 'pending'}
+              addToast={addToast}
+              onBack={() => { setActiveTab('cards'); setIdcardActionsState(null); }}
+            />
           )}
 
           {/* ── Reprint Queue ── */}

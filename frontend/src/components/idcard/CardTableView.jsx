@@ -351,7 +351,7 @@ export default function CardTableView({ addToast, onNavigate }) {
                           <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('pending'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'pending' }); }}
                               style={statusBtnStyle('pending').btn}
                               title="View Pending List"
                             >
@@ -361,7 +361,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('verified'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'verified' }); }}
                               style={statusBtnStyle('verified').btn}
                               title="View Verified List"
                             >
@@ -371,7 +371,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('approved'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'approved' }); }}
                               style={statusBtnStyle('approved').btn}
                               title="View Approved List"
                             >
@@ -381,7 +381,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('download'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'download' }); }}
                               style={statusBtnStyle('download').btn}
                               title="View Downloaded List"
                             >
@@ -391,7 +391,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('pool'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'pool' }); }}
                               style={statusBtnStyle('pool').btn}
                               title="View Pool List"
                             >

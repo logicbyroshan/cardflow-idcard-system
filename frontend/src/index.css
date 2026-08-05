@@ -1,5 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@300;400;500;600;700&display=swap');
 @import '../../static/css/manage-panel.css';
+@import '../../static/css/idcard-action-bar.css';
+@import '../../static/css/idcard-actions-enhanced.css';
+@import '../../static/css/idcard-group.css';
+@import '../../static/css/idcard-table.css';
+@import '../../static/css/ui-control-consistency.css';
 
 /* ── Universal Search Box Control ── */
 .notif-search-box,
