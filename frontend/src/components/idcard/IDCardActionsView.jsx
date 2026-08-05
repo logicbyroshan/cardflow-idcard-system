@@ -3,7 +3,7 @@
  *
  * Full-featured ID card management view — 100% UI consistency with CardFlow system.
  * Replicates the original idcard-actions.html template, button colors, status tabs,
- * search-filter bar, dynamic column widths, virtual data table, and standard bottom pagination bar.
+ * search-filter bar, dynamic column widths, photo dimensions, table borders, and standard bottom pagination bar.
  */
 
 import React, {
@@ -34,18 +34,23 @@ const STATUS_LIST = [
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 500];
 
 const IMAGE_FIELD_TYPES = new Set(['photo', 'image', 'img', 'picture', 'pic', 'photo_path',
-  'rel_photo', 'mother_photo', 'father_photo']);
+  'rel_photo', 'mother_photo', 'father_photo', 'sign', 'signature', 'qr', 'qrcode', 'barcode']);
+
 const isImageField = (type, name) =>
   IMAGE_FIELD_TYPES.has((type || '').toLowerCase()) ||
   IMAGE_FIELD_TYPES.has((name || '').toLowerCase().replace(/ /g,'_'));
 
-/* Dynamic Column Width Allocation Intelligence */
+/* Dynamic Column Width & Image Dimension Allocation */
 function getColumnSpec(fieldName, fieldType) {
   const name = String(fieldName || '').toLowerCase().trim();
   const type = String(fieldType || '').toLowerCase().trim();
 
   if (isImageField(type, name)) {
-    return { width: '54px', minWidth: '54px', align: 'center', isImage: true };
+    let imgType = 'photo';
+    if (name.includes('sign') || type.includes('sign')) imgType = 'signature';
+    else if (name.includes('qr') || type.includes('qr') || name.includes('bar') || type.includes('bar')) imgType = 'qr';
+
+    return { width: '54px', minWidth: '54px', align: 'center', isImage: true, imgType };
   }
   if (name === 'sr' || name === 'sr_no' || name === 'sr no' || name === 'roll' || name === 'roll_no') {
     return { width: '45px', minWidth: '45px', align: 'center' };
@@ -629,14 +634,14 @@ export default function IDCardActionsView({
   /* ── Schema Fields ── */
   const tableFields = useMemo(() => {
     const raw = table?.fields || table?.schema?.fields || [
+      { name: 'PHOTO', type: 'photo' },
       { name: 'NAME', type: 'text' },
       { name: 'FATHER NAME', type: 'text' },
       { name: 'MOTHER NAME', type: 'text' },
       { name: 'ADDRESS', type: 'text' },
       { name: 'CONTACT NO.', type: 'text' },
       { name: 'CLASS', type: 'text' },
-      { name: 'SECTION', type: 'text' },
-      { name: 'PHOTO', type: 'photo' }
+      { name: 'SECTION', type: 'text' }
     ];
     return [...raw].sort((a, b) => {
       const aImg = isImageField(a.type, a.name);
@@ -699,27 +704,18 @@ export default function IDCardActionsView({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f4f4f4' }}>
 
       {/* ══════════════════════════════════════════════════════════
-          TOPBAR — BREADCRUMB LEFT + STATUS TABS RIGHT
+          TOPBAR — ONLY BACK BUTTON LEFT (NO BREADCRUMB TEXT) + STATUS TABS RIGHT
           ══════════════════════════════════════════════════════════ */}
       <header className="topbar" style={{ flexShrink: 0, padding: '0 16px', background: '#ffffff', borderBottom: '1px solid #cbd5e1', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Left: Breadcrumb */}
+        {/* Left: Back Button Only (Breadcrumb removed as requested) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={onBack}
             className="btn btn-neutral btn-sm"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, height: '24px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', borderRadius: '4px', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', fontSize: '11px', fontWeight: 600, height: '24px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', borderRadius: '4px', cursor: 'pointer' }}
           >
-            <ArrowLeft size={12} /> ID Card Group
+            <ArrowLeft size={12} /> Back to ID Card Group
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontFamily: 'var(--font-family)' }}>
-            <span style={{ fontWeight: 700, color: '#1e293b' }}>
-              {table?.name || `Table #${tableId}`}
-            </span>
-            <span style={{ color: '#94a3b8' }}>/</span>
-            <span style={{ fontWeight: 700, textTransform: 'capitalize', color: STATUS_LIST.find(s => s.key === status)?.bg || '#2563eb' }}>
-              {status} List
-            </span>
-          </div>
         </div>
 
         {/* Right: Rich Colored Status List Tabs */}
@@ -1009,7 +1005,7 @@ export default function IDCardActionsView({
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-          VIRTUAL DATA TABLE WITH DYNAMIC COLUMN sizing
+          VIRTUAL DATA TABLE WITH CRISP BORDERS & EXACT PHOTO HEIGHT
           ══════════════════════════════════════════════════════════ */}
       <div className="table-container idcard-table" style={{ flex: 1, overflow: 'auto', background: '#fff', position: 'relative' }}>
         {tableLoading ? (
@@ -1017,13 +1013,17 @@ export default function IDCardActionsView({
             <Spinner size={24} /> Loading table structure…
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', tableLayout: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
               <tr style={{ background: '#1e293b', color: '#ffffff' }}>
-                <th style={{ width: '32px', minWidth: '32px', padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+                <th style={{ width: '32px', minWidth: '32px', padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
                   <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {allSelected ? <SquareCheck size={15} /> : someSelected ? <MinusSquare size={15} /> : <Square size={15} />}
                   </button>
+                </th>
+
+                <th style={{ width: '36px', minWidth: '36px', padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, lineHeight: 1.1 }}>
+                  SR<br />NO
                 </th>
 
                 {tableFields.map(f => {
@@ -1041,7 +1041,8 @@ export default function IDCardActionsView({
                         width: spec.width,
                         minWidth: spec.minWidth,
                         maxWidth: spec.maxWidth,
-                        borderRight: '1px solid rgba(255,255,255,0.1)',
+                        borderRight: '1px solid rgba(255,255,255,0.15)',
+                        borderBottom: '1px solid rgba(255,255,255,0.15)',
                         whiteSpace: 'nowrap'
                       }}
                     >
@@ -1050,22 +1051,22 @@ export default function IDCardActionsView({
                   );
                 })}
 
-                <th style={{ width: '75px', minWidth: '75px', padding: '8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>ACTION</th>
-                <th style={{ width: '100px', minWidth: '100px', padding: '8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>LAST UPDATED</th>
-                <th style={{ width: '90px', minWidth: '90px', padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>UPDATED BY</th>
+                <th style={{ width: '75px', minWidth: '75px', padding: '8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>ACTION</th>
+                <th style={{ width: '100px', minWidth: '100px', padding: '8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>LAST UPDATED</th>
+                <th style={{ width: '90px', minWidth: '90px', padding: '8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>UPDATED BY</th>
               </tr>
             </thead>
             <tbody>
               {cardsLoading ? (
                 <tr>
-                  <td colSpan={tableFields.length + 4} style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+                  <td colSpan={tableFields.length + 5} style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
                     <Spinner size={24} /><br />
                     <span style={{ fontSize: '13px', marginTop: '8px', display: 'inline-block' }}>Loading cards…</span>
                   </td>
                 </tr>
               ) : cards.length === 0 ? (
                 <tr>
-                  <td colSpan={tableFields.length + 4} style={{ padding: '48px 20px', textAlign: 'center' }}>
+                  <td colSpan={tableFields.length + 5} style={{ padding: '48px 20px', textAlign: 'center' }}>
                     <div style={{ maxWidth: '380px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                       <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Clock size={24} />
@@ -1099,33 +1100,52 @@ export default function IDCardActionsView({
                 const updatedBy = card.modified_by || card.updated_by || 'Admin';
 
                 return (
-                  <tr key={card.id} style={{ background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <tr key={card.id} style={{ background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                     {/* Checkbox */}
-                    <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                    <td style={{ padding: '4px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       <button onClick={() => toggleSelect(card.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: isSelected ? '#2563eb' : '#94a3b8', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {isSelected ? <SquareCheck size={15} /> : <Square size={15} />}
                       </button>
                     </td>
 
+                    {/* SR NO */}
+                    <td style={{ padding: '6px 4px', textAlign: 'center', fontWeight: 600, color: '#334155', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                      {srNo}
+                    </td>
+
                     {/* Dynamic Fields */}
                     {tableFields.map(f => {
                       const spec = getColumnSpec(f.name, f.type);
-                      const val = f.name === 'SR NO' || f.name === 'SR_NO' || f.name === 'SR' ? srNo : (fd[f.name] ?? fd[f.name?.toUpperCase?.()] ?? fd[f.name?.toLowerCase?.()] ?? '');
+                      const val = fd[f.name] ?? fd[f.name?.toUpperCase?.()] ?? fd[f.name?.toLowerCase?.()] ?? '';
                       const isImg = spec.isImage;
                       const isEditing = editingCell?.cardId === card.id && editingCell?.field === f.name;
 
                       if (isImg) {
+                        const isSig = spec.imgType === 'signature';
+                        const isQr  = spec.imgType === 'qr';
+                        const imgW = isSig ? '45px' : isQr ? '42px' : '45px';
+                        const imgH = isSig ? '28px' : isQr ? '42px' : '53px';
+
                         return (
-                          <td key={f.name} style={{ padding: '4px 6px', textAlign: spec.align, width: spec.width }}>
+                          <td key={f.name} style={{ padding: '3px 4px', textAlign: spec.align, width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
                             {val ? (
                               <img
                                 src={String(val).startsWith('http') ? val : `/${val}`}
                                 alt={f.name}
-                                style={{ width: '34px', height: '34px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                style={{
+                                  width: imgW,
+                                  height: imgH,
+                                  objectFit: isSig || isQr ? 'contain' : 'cover',
+                                  borderRadius: '2px',
+                                  border: '1px solid #cbd5e1',
+                                  display: 'block',
+                                  margin: '0 auto',
+                                  background: '#f8fafc'
+                                }}
                                 onError={e => { e.target.style.display = 'none'; }}
                               />
                             ) : (
-                              <div style={{ width: '34px', height: '34px', background: '#f1f5f9', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                              <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
                                 <ImageIcon size={14} style={{ color: '#cbd5e1' }} />
                               </div>
                             )}
@@ -1137,15 +1157,17 @@ export default function IDCardActionsView({
                         <td
                           key={f.name}
                           style={{
-                            padding: '6px 10px',
+                            padding: '6px 8px',
                             textAlign: spec.align,
                             minWidth: spec.minWidth,
                             maxWidth: spec.maxWidth,
                             color: '#0f172a',
                             fontWeight: f.name === 'NAME' ? 600 : 400,
-                            whiteSpace: spec.minWidth ? 'nowrap' : 'normal',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                            borderRight: '1px solid #cbd5e1',
+                            borderBottom: '1px solid #cbd5e1',
+                            verticalAlign: 'middle'
                           }}
                           onDoubleClick={() => startCellEdit(card.id, f.name, val)}
                         >
@@ -1166,7 +1188,7 @@ export default function IDCardActionsView({
                     })}
 
                     {/* Action */}
-                    <td style={{ padding: '6px', textAlign: 'center', width: '75px' }}>
+                    <td style={{ padding: '6px', textAlign: 'center', width: '75px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       {status === 'pending' && (
                         <button onClick={() => applyStatusSingle(card, 'verified')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
                           Verify
@@ -1186,12 +1208,12 @@ export default function IDCardActionsView({
                     </td>
 
                     {/* Updated At */}
-                    <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', width: '100px' }}>
+                    <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', width: '100px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       {updatedAt}
                     </td>
 
                     {/* Updated By */}
-                    <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', width: '90px' }}>
+                    <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', width: '90px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       {updatedBy}
                     </td>
                   </tr>

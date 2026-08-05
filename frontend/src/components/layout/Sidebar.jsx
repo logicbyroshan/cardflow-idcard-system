@@ -113,20 +113,12 @@ export default function Sidebar({ activeTab, setActiveTab, userRole = 'super_adm
   return (
     <aside className="sidebar" id="sidebar">
       {/* ── Header / Logo ── */}
-      <div className="sidebar-header" style={{ padding: '10px 14px', minHeight: '46px', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', background: 'transparent', boxSizing: 'border-box' }}>
+      <div className="sidebar-header" style={{ padding: '8px 6px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
         <img
-          src="/favicon.svg"
-          alt="CardFlow Logo"
-          style={{ height: '32px', width: '32px', objectFit: 'contain', flexShrink: 0 }}
+          src="/cardflow_logo_brand.png"
+          alt="CardFlow"
+          style={{ maxHeight: '42px', maxWidth: '160px', width: '100%', objectFit: 'contain' }}
         />
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span style={{ color: '#ffffff', fontSize: '18px', fontWeight: 800, fontFamily: 'var(--font-family)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-            Card<span style={{ color: '#60a5fa' }}>Flow</span>
-          </span>
-          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 600, letterSpacing: '0.08em', marginTop: '2px', textTransform: 'uppercase' }}>
-            ID Card System
-          </span>
-        </div>
       </div>
 
       {/* ── Navigation ── */}
