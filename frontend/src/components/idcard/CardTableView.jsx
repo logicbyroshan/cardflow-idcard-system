@@ -311,13 +311,13 @@ export default function CardTableView({ addToast, onNavigate }) {
                 </button>
               </div>
             ) : (
-              <table className="data-table idcard-table">
+              <table className="data-table idcard-table" style={{ width: '100%', tableLayout: 'auto' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '45px', textAlign: 'center' }}>S. NO.</th>
-                    <th style={{ width: '220px', textAlign: 'left' }}>NAME</th>
-                    <th style={{ textAlign: 'center' }}>ID CARD LISTS</th>
-                    <th style={{ textAlign: 'center' }}>REPRINT CARD LISTS</th>
+                    <th style={{ width: '55px', minWidth: '55px', maxWidth: '55px', textAlign: 'center', boxSizing: 'border-box' }}>S. NO.</th>
+                    <th style={{ width: '260px', minWidth: '220px', textAlign: 'left', boxSizing: 'border-box' }}>NAME</th>
+                    <th style={{ textAlign: 'center', boxSizing: 'border-box' }}>ID CARD LISTS</th>
+                    <th style={{ textAlign: 'center', boxSizing: 'border-box' }}>REPRINT CARD LISTS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -349,12 +349,12 @@ export default function CardTableView({ addToast, onNavigate }) {
                         }}
                       >
                         {/* Column 0: S. NO. */}
-                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px' }}>
+                        <td style={{ width: '55px', minWidth: '55px', maxWidth: '55px', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px' }}>
                           {idx + 1}
                         </td>
 
                         {/* Column 1: Table Name */}
-                        <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
+                        <td style={{ width: '260px', minWidth: '220px', fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <span style={{ fontSize: '13px', color: isSelected ? '#1d4ed8' : '#1e293b', fontWeight: 700 }}>{t.name}</span>
                             <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
