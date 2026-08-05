@@ -92,8 +92,9 @@ from .staff_api import (
     api_staff_set_temp_password,
 )
 
-from .idcard_api import (
-    api_image_preview_convert,
+from .idcard_table_api import (
+    api_schema_list,
+    api_schema_create,
     api_idcard_table_create,
     api_idcard_table_get,
     api_idcard_table_update,
@@ -102,6 +103,10 @@ from .idcard_api import (
     api_idcard_table_toggle_status,
     api_idcard_table_list,
     api_create_table_from_xlsx,
+)
+
+from .idcard_api import (
+    api_image_preview_convert,
     api_idcard_list,
     api_idcard_cards_json,
     api_idcard_create,

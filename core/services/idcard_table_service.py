@@ -39,36 +39,42 @@ class IDCardTableService(BaseService):
         return normalized
 
     @classmethod
-    def _infer_table_type(cls, table_name: str, org_name: str = '') -> str:
-        """Smart-detect table type from table name and organisation name.
+    def _infer_table_type(cls, table_name: str, org_name: str = '', org_type: str = '') -> str:
+        """Smart-detect table type from table name, organisation name, and org_type.
 
-        Rules (case-insensitive, first match wins):
-        - Contains 'staff' | 'teacher' | 'employee' | 'faculty'  → 'staff'
-        - Contains 'student' | 'pupil' | 'scholar':
-            - org name contains 'college' | 'university' | 'institute' → 'college_student'
-            - org name contains 'school' | 'vidyalaya' | 'academy'  → 'school_student'
-            - fallback → 'school_student'
-        - Otherwise → 'custom'
+        Rules (case-insensitive):
+        1. Staff / Teacher / Employee / Faculty / HR / Driver -> 'staff'
+        2. College keywords (college, university, degree, btech, mtech, bca, mca, semester, sem, branch, dept) -> 'college_student'
+        3. School keywords (school, class, std, standard, grade, section, sec) -> 'school_student'
+        4. Student / Pupil / List / Data:
+           - if org_type == 'college' or org_name contains college keywords -> 'college_student'
+           - if org_type == 'company' -> 'staff'
+           - default -> 'school_student'
+        5. Fallback -> 'custom'
         """
         import re
-        name_l = (table_name or '').lower()
-        org_l  = (org_name or '').lower()
+        name_l = (table_name or '').lower().strip()
+        org_l  = (org_name or '').lower().strip()
 
-        staff_keywords   = r'\b(staff|teacher|employee|faculty|personnel|hr)\b'
-        student_keywords = r'\b(student|pupil|scholar|learner)\b'
-        college_org_kw   = r'\b(college|university|institute|polytechnic|degree)\b'
-        school_org_kw    = r'\b(school|vidyalaya|academy|convent|bal|bal-vidya|bal vidya)\b'
+        staff_kw   = r'\b(staff|teacher|teachers|employee|employees|emp|faculty|personnel|hr|driver|workers|management)\b'
+        college_kw = r'\b(college|university|institute|polytechnic|degree|btech|mtech|bca|mca|mba|bsc|msc|ba|ma|bcom|mcom|semester|sem|branch|dept|department)\b'
+        school_kw  = r'\b(school|vidyalaya|academy|convent|class|std|standard|grade|section|sec)\b'
+        student_kw = r'\b(student|students|pupil|scholars|list|data|records|info|all)\b'
 
-        if re.search(staff_keywords, name_l):
+        if re.search(staff_kw, name_l):
             return 'staff'
 
-        if re.search(student_keywords, name_l):
-            if re.search(college_org_kw, org_l):
+        if re.search(college_kw, name_l):
+            return 'college_student'
+
+        if re.search(school_kw, name_l):
+            return 'school_student'
+
+        if re.search(student_kw, name_l):
+            if org_type == 'college' or re.search(college_kw, org_l):
                 return 'college_student'
-            # school keyword in org or table name itself
-            if re.search(school_org_kw, org_l) or re.search(school_org_kw, name_l):
-                return 'school_student'
-            # Default student → school_student
+            if org_type == 'company':
+                return 'staff'
             return 'school_student'
 
         return 'custom'
@@ -149,11 +155,12 @@ class IDCardTableService(BaseService):
 
             # Determine table type: use explicit value if valid, else auto-detect
             org_name = getattr(group.client, 'name', '') if group.client_id else ''
+            org_type = getattr(group.client, 'org_type', '') if group.client_id else ''
             raw_type = str(data.get('table_type') or '').strip().lower()
             if raw_type in cls.VALID_TABLE_TYPES:
                 table_type = raw_type
             else:
-                table_type = cls._infer_table_type(name, org_name)
+                table_type = cls._infer_table_type(name, org_name, org_type)
 
             table = IDCardTable.objects.create(
                 group=group,
@@ -228,11 +235,12 @@ class IDCardTableService(BaseService):
 
             # Determine / update table type
             org_name = getattr(table.group.client, 'name', '') if table.group.client_id else ''
+            org_type = getattr(table.group.client, 'org_type', '') if table.group.client_id else ''
             raw_type = str(data.get('table_type') or '').strip().lower()
             if raw_type in cls.VALID_TABLE_TYPES:
                 table_type = raw_type
             else:
-                table_type = cls._infer_table_type(name, org_name)
+                table_type = cls._infer_table_type(name, org_name, org_type)
 
             table.name = name
             table.table_type = table_type

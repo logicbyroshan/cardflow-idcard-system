@@ -275,6 +275,63 @@ def api_idcard_table_list(request, group_id):
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
+@require_http_methods(["GET"])
+@api_require_permission('perm_idcard_setting_list')
+def api_schema_list(request):
+    """List all table schemas for the current user/client or default group."""
+    from client.models import Client
+    try:
+        if PermissionService.is_client_role(request.user):
+            client = getattr(request.user, 'client_profile', None)
+            if not client:
+                return JsonResponse({'success': True, 'tables': []})
+            group = IDCardService.ensure_default_group(client)
+            result = IDCardService.list_tables(group.id)
+            return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+        else:
+            client = Client.objects.filter(status='active').first()
+            if not client:
+                return JsonResponse({'success': True, 'tables': []})
+            group = IDCardService.ensure_default_group(client)
+            result = IDCardService.list_tables(group.id)
+            return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except Exception as e:
+        logger.exception("Schema list error: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_setting_add')
+def api_schema_create(request):
+    """Create a new table schema without requiring group_id upfront."""
+    from client.models import Client
+    try:
+        data = json.loads(request.body or '{}')
+        client = None
+
+        if data.get('client_id'):
+            client = Client.objects.filter(id=data.get('client_id')).first()
+
+        if not client and PermissionService.is_client_role(request.user):
+            client = getattr(request.user, 'client_profile', None)
+
+        if not client:
+            client = Client.objects.filter(status='active').first()
+
+        if not client:
+            return JsonResponse({'success': False, 'message': 'No active organisation found.'}, status=400)
+
+        group = IDCardService.ensure_default_group(client)
+        result = IDCardService.create_table(group.id, data)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
+    except Exception as e:
+        logger.exception("Schema create error: %s", e)
+        return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
+
 # ==================== CREATE TABLE FROM XLSX ====================
 
 # Field-type inference patterns: map XLSX header names to field types.

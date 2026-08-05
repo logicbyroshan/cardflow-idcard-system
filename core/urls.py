@@ -176,6 +176,8 @@ urlpatterns = [
     path('api/photographer/<int:staff_id>/set-temp-password/', views.api_photographer_set_temp_password, name='api_photographer_set_temp_password'),
     
     # ID Card Table APIs
+    path('api/schemas/', views.api_schema_list, name='api_schema_list'),
+    path('api/schemas/create/', views.api_schema_create, name='api_schema_create'),
     path('api/group/<int:group_id>/tables/', views.api_idcard_table_list, name='api_idcard_table_list'),
     path('api/group/<int:group_id>/table/create/', views.api_idcard_table_create, name='api_idcard_table_create'),
     path('api/table/<int:table_id>/', views.api_idcard_table_get, name='api_idcard_table_get'),

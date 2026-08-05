@@ -25,21 +25,40 @@ function getTableTypeMeta(value) {
 }
 
 /* ── Smart table-type inference (mirrors backend logic) ── */
-function inferTableType(tableName = '', orgName = '') {
-  const name = tableName.toLowerCase();
-  const org  = orgName.toLowerCase();
+function inferTableType(tableName = '', orgName = '', fields = []) {
+  const name = (tableName || '').toLowerCase().trim();
+  const org  = (orgName || '').toLowerCase().trim();
 
-  const staffRe   = /\b(staff|teacher|employee|faculty|personnel|hr)\b/;
-  const studentRe = /\b(student|pupil|scholar|learner)\b/;
-  const collegeRe = /\b(college|university|institute|polytechnic|degree)\b/;
-  const schoolRe  = /\b(school|vidyalaya|academy|convent)\b/;
+  const staffRe   = /\b(staff|teacher|teachers|employee|employees|emp|faculty|personnel|hr|driver|workers|management)\b/;
+  const collegeRe = /\b(college|university|institute|polytechnic|degree|btech|mtech|bca|mca|mba|bsc|msc|ba|ma|bcom|mcom|semester|sem|branch|dept|department)\b/;
+  const schoolRe  = /\b(school|vidyalaya|academy|convent|class|std|standard|grade|section|sec)\b/;
+  const studentRe = /\b(student|students|pupil|scholars|list|data|records|info|all)\b/;
 
   if (staffRe.test(name)) return 'staff';
+  if (collegeRe.test(name)) return 'college_student';
+  if (schoolRe.test(name)) return 'school_student';
+
   if (studentRe.test(name)) {
     if (collegeRe.test(org)) return 'college_student';
-    if (schoolRe.test(org) || schoolRe.test(name)) return 'school_student';
     return 'school_student';
   }
+
+  // Check fields if table name is generic
+  if (Array.isArray(fields) && fields.length > 0) {
+    const fieldTypes = fields.map(f => (f.type || '').toLowerCase());
+    const fieldNames = fields.map(f => (f.name || '').toLowerCase()).join(' ');
+
+    if (fieldTypes.includes('class') || fieldTypes.includes('section') || /\b(class|section|roll|father|mother)\b/.test(fieldNames)) {
+      return 'school_student';
+    }
+    if (/\b(branch|semester|sem|course|enrolment|enrollment)\b/.test(fieldNames)) {
+      return 'college_student';
+    }
+    if (/\b(designation|emp|employee|department|salary)\b/.test(fieldNames)) {
+      return 'staff';
+    }
+  }
+
   return 'custom';
 }
 
@@ -467,18 +486,18 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
   const dragIdx = useRef(null);
   const [dragOver, setDragOver]     = useState(null);
 
-  /* ── Auto-detect table type as user types the name ── */
+  /* ── Auto-detect table type as user types name or adds fields ── */
   useEffect(() => {
     if (isEditing) return;  // don't auto-override in edit mode
-    if (!tableName.trim()) { setTypeAuto(false); return; }
-    const detected = inferTableType(tableName, orgName);
+    if (!tableName.trim() && fields.length === 0) { setTypeAuto(false); return; }
+    const detected = inferTableType(tableName, orgName, fields);
     if (detected !== 'custom') {
       setTableType(detected);
       setTypeAuto(true);
     } else {
       setTypeAuto(false);
     }
-  }, [tableName, orgName, isEditing]);
+  }, [tableName, orgName, fields, isEditing]);
 
   /* ── Auto-detect field type as user types field name ── */
   const handleNewNameChange = (val) => {
@@ -580,11 +599,12 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
         if (res?.success === false) throw new Error(res.message || 'Update failed');
         addToast?.(`Table "${payload.name}" updated!`, 'success');
       } else {
-        if (!groupId) {
-          addToast?.('Could not determine group ID. Please refresh and retry.', 'error');
-          return;
+        let res;
+        if (groupId) {
+          res = await schemaApi.createTable(groupId, payload);
+        } else {
+          res = await schemaApi.createSchema(payload);
         }
-        const res = await schemaApi.createTable(groupId, payload);
         if (res?.success === false) throw new Error(res.message || 'Create failed');
         addToast?.(`Table "${payload.name}" created!`, 'success');
       }

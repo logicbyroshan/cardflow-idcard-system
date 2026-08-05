@@ -76,8 +76,22 @@ class Client(models.Model):
     # Store the unique suffix separately (never changes)
     image_folder_suffix = models.CharField(max_length=5, blank=True, null=True)
     
+    ORG_TYPE_CHOICES = [
+        ('school', 'School'),
+        ('college', 'College'),
+        ('company', 'Company / Corporate'),
+        ('other', 'Other'),
+    ]
+    
     # Basic Information
     name = models.CharField(max_length=200, db_index=True)
+    org_type = models.CharField(
+        max_length=20,
+        choices=ORG_TYPE_CHOICES,
+        default='school',
+        db_index=True,
+        help_text='Type of organisation: school, college, company, or other'
+    )
     is_guest = models.BooleanField(default=False, db_index=True)
     # Icon class for panel branding (FontAwesome class name)
     icon = models.CharField(max_length=100, default='fa-solid fa-building')
@@ -143,6 +157,21 @@ class Client(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def get_or_infer_org_type(self):
+        """Return explicit org_type if set to non-other, else infer from client name."""
+        if self.org_type and self.org_type != 'other':
+            return self.org_type
+
+        name_l = (self.name or '').lower()
+        if re.search(r'\b(college|university|institute|polytechnic|degree|campus)\b', name_l):
+            return 'college'
+        if re.search(r'\b(school|vidyalaya|academy|convent|bal|patshala|gurukul)\b', name_l):
+            return 'school'
+        if re.search(r'\b(ltd|pvt|corp|inc|tech|technologies|company|services|solutions|enterprise|firm)\b', name_l):
+            return 'company'
+
+        return self.org_type or 'school'
 
     def __str__(self):
         return self.name
