@@ -2605,12 +2605,16 @@ header.topbar,
   min-height: 50px !important;
   max-height: 50px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-left: 1px solid #cbd5e1 !important;
   padding: 0 16px !important;
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
+}
+
+.sidebar {
+  border-right: 1px solid #cbd5e1 !important;
 }
 
 .topbar .breadcrumb,

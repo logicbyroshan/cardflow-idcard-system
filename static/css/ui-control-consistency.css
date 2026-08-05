@@ -94,7 +94,7 @@ h6 { font-size: var(--ui-heading-h6-size); }
   justify-content: center !important;
   background-color: transparent !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-right: 1px solid #cbd5e1 !important;
 }
 
 .sidebar .sidebar-logo {
