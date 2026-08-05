@@ -31,8 +31,12 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
   const [statusTab, setStatusTab] = useState('All');
   const [selected, setSelected]   = useState(null);
   const [page, setPage]           = useState(1);
-  const [total, setTotal]         = useState(0);
   const [pageSize, setPageSize]   = useState(25);
+
+  /* Dispatch footer data count */
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('cardflow:data-count', { detail: { text: `Total Organisations: ${clients.length}` } }));
+  }, [clients.length]);
 
   const getStoredClients = useCallback(() => {
     try {

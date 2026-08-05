@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import DashboardView from './components/dashboard/DashboardView';
+import Footer from './components/layout/Footer';
 
 
 
@@ -344,6 +345,9 @@ export default function App() {
 
           </ErrorBoundary>
         </div>
+
+        {/* Global Black Footer */}
+        <Footer activeTab={activeTab} onNavigate={setActiveTab} idcardActionsState={idcardActionsState} />
       </div>
 
       {/* ── Global Modals & Drawers ── */}

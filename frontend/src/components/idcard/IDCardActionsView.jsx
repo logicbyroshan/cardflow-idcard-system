@@ -857,6 +857,11 @@ export default function IDCardActionsView({
   const [fromDate, setFromDate]         = useState('');
   const [toDate, setToDate]             = useState('');
 
+  /* Dispatch footer data count */
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('cardflow:data-count', { detail: { text: `Total Cards: ${cards.length}` } }));
+  }, [cards.length]);
+
   /* Dynamic Filter Options computation */
   const classOptions = useMemo(() => {
     const fromApi = filterOptions.classes || [];
