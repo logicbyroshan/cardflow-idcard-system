@@ -65,7 +65,7 @@ export default function Header({
   const pageLabel = PAGE_LABELS[activeTab] || activeTab;
 
   return (
-    <header className="topbar" id="topbar">
+    <header className="topbar" id="topbar" style={{ height: '44px', background: '#111827', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', boxSizing: 'border-box' }}>
       {/* Left: breadcrumb only — sidebar is always open, no hamburger */}
       <div className="nav-left">
         <div className="breadcrumb">

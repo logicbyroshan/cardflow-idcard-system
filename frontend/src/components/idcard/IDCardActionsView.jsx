@@ -704,10 +704,10 @@ export default function IDCardActionsView({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f4f4f4' }}>
 
       {/* ══════════════════════════════════════════════════════════
-          TOPBAR — ONLY BACK BUTTON LEFT (NO BREADCRUMB TEXT) + STATUS TABS RIGHT
+          TOPBAR — SOLID BLACK BACKGROUND (MATCHING SIDEBAR LOGO HEADER HEIGHT 44px)
           ══════════════════════════════════════════════════════════ */}
-      <header className="topbar" style={{ flexShrink: 0, padding: '0 16px', background: '#ffffff', borderBottom: '1px solid #cbd5e1', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Left: Back Button Only (Breadcrumb removed as requested) */}
+      <header className="topbar" style={{ flexShrink: 0, padding: '0 16px', background: '#111827', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box', color: '#ffffff' }}>
+        {/* Left: Back Button Only */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={onBack}
