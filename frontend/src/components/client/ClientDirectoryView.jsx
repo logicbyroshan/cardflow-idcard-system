@@ -441,7 +441,7 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
 
             <button
               className="btn"
-              onClick={fetchData}
+              onClick={load}
               title="Refresh table"
               style={{ background: '#475569', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
