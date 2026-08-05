@@ -666,6 +666,16 @@ export const schemaApi = {
     return res.data;
   },
 
+  /** POST /api/group/<group_id>/table/create-from-xlsx/ — create table from uploaded XLSX */
+  createTableFromXlsx: async (groupId, formData) => {
+    const res = await apiClient.post(
+      `/api/group/${groupId}/table/create-from-xlsx/`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return res.data;
+  },
+
   /** GET /client/<client_id>/groups/ — HTML page that contains group_id;
    *  Instead use the client list API to get group_id from client data */
   getClientGroups: async (clientId) => {

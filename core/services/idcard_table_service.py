@@ -28,6 +28,8 @@ class IDCardTableService(BaseService):
     ]
     LEGACY_REL_PHOTO_ALIASES = {'mother_photo', 'father_photo'}
 
+    VALID_TABLE_TYPES = {'school_student', 'college_student', 'staff', 'custom'}
+
     @classmethod
     def _normalize_field_type(cls, field_type: str) -> str:
         """Map legacy relation-photo aliases to canonical rel_photo."""
@@ -35,6 +37,41 @@ class IDCardTableService(BaseService):
         if normalized in cls.LEGACY_REL_PHOTO_ALIASES:
             return 'rel_photo'
         return normalized
+
+    @classmethod
+    def _infer_table_type(cls, table_name: str, org_name: str = '') -> str:
+        """Smart-detect table type from table name and organisation name.
+
+        Rules (case-insensitive, first match wins):
+        - Contains 'staff' | 'teacher' | 'employee' | 'faculty'  → 'staff'
+        - Contains 'student' | 'pupil' | 'scholar':
+            - org name contains 'college' | 'university' | 'institute' → 'college_student'
+            - org name contains 'school' | 'vidyalaya' | 'academy'  → 'school_student'
+            - fallback → 'school_student'
+        - Otherwise → 'custom'
+        """
+        import re
+        name_l = (table_name or '').lower()
+        org_l  = (org_name or '').lower()
+
+        staff_keywords   = r'\b(staff|teacher|employee|faculty|personnel|hr)\b'
+        student_keywords = r'\b(student|pupil|scholar|learner)\b'
+        college_org_kw   = r'\b(college|university|institute|polytechnic|degree)\b'
+        school_org_kw    = r'\b(school|vidyalaya|academy|convent|bal|bal-vidya|bal vidya)\b'
+
+        if re.search(staff_keywords, name_l):
+            return 'staff'
+
+        if re.search(student_keywords, name_l):
+            if re.search(college_org_kw, org_l):
+                return 'college_student'
+            # school keyword in org or table name itself
+            if re.search(school_org_kw, org_l) or re.search(school_org_kw, name_l):
+                return 'school_student'
+            # Default student → school_student
+            return 'school_student'
+
+        return 'custom'
 
     # ==================== Serialization ====================
 
@@ -52,6 +89,13 @@ class IDCardTableService(BaseService):
         return {
             'id': table.id,
             'name': table.name,
+            'table_type': getattr(table, 'table_type', 'custom') or 'custom',
+            'table_type_display': dict([
+                ('school_student', 'School Student'),
+                ('college_student', 'College Student'),
+                ('staff', 'Staff'),
+                ('custom', 'Custom'),
+            ]).get(getattr(table, 'table_type', 'custom') or 'custom', 'Custom'),
             'fields': normalized_fields,
             'field_count': len(normalized_fields),
             'is_active': table.is_active,
@@ -103,9 +147,18 @@ class IDCardTableService(BaseService):
                     'show_path': field_show_path
                 })
 
+            # Determine table type: use explicit value if valid, else auto-detect
+            org_name = getattr(group.client, 'name', '') if group.client_id else ''
+            raw_type = str(data.get('table_type') or '').strip().lower()
+            if raw_type in cls.VALID_TABLE_TYPES:
+                table_type = raw_type
+            else:
+                table_type = cls._infer_table_type(name, org_name)
+
             table = IDCardTable.objects.create(
                 group=group,
                 name=name,
+                table_type=table_type,
                 fields=validated_fields,
                 is_active=True
             )
@@ -173,7 +226,16 @@ class IDCardTableService(BaseService):
                     'show_path': field_show_path
                 })
 
+            # Determine / update table type
+            org_name = getattr(table.group.client, 'name', '') if table.group.client_id else ''
+            raw_type = str(data.get('table_type') or '').strip().lower()
+            if raw_type in cls.VALID_TABLE_TYPES:
+                table_type = raw_type
+            else:
+                table_type = cls._infer_table_type(name, org_name)
+
             table.name = name
+            table.table_type = table_type
             table.fields = validated_fields
             table.save()
 

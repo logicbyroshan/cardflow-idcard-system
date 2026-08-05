@@ -128,9 +128,23 @@ class IDCardTable(models.Model):
         ('qr_code', 'QR Code'),
         ('signature', 'Signature'),
     ]
+
+    TABLE_TYPE_CHOICES = [
+        ('school_student', 'School Student'),
+        ('college_student', 'College Student'),
+        ('staff', 'Staff'),
+        ('custom', 'Custom'),
+    ]
     
     group = models.ForeignKey(IDCardGroup, on_delete=models.CASCADE, related_name='tables')
     name = models.CharField(max_length=255)
+    table_type = models.CharField(
+        max_length=20,
+        choices=TABLE_TYPE_CHOICES,
+        default='custom',
+        help_text='Auto-detected from table name and organisation name. '
+                  'school_student / college_student / staff / custom'
+    )
     fields = models.JSONField(default=list, help_text='List of field configurations: [{name, type, order}]')
     is_active = models.BooleanField(default=True)
     deleted_by_client = models.BooleanField(
