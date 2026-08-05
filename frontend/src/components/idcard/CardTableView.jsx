@@ -311,13 +311,13 @@ export default function CardTableView({ addToast, onNavigate }) {
                 </button>
               </div>
             ) : (
-              <table className="data-table idcard-table" style={{ width: '100%', tableLayout: 'auto' }}>
+              <table className="data-table idcard-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '55px', minWidth: '55px', maxWidth: '55px', textAlign: 'center', boxSizing: 'border-box' }}>S. NO.</th>
-                    <th style={{ width: '260px', minWidth: '220px', textAlign: 'left', boxSizing: 'border-box' }}>NAME</th>
-                    <th style={{ textAlign: 'center', boxSizing: 'border-box' }}>ID CARD LISTS</th>
-                    <th style={{ textAlign: 'center', boxSizing: 'border-box' }}>REPRINT CARD LISTS</th>
+                    <th style={{ width: '60px', textAlign: 'center', boxSizing: 'border-box' }}>S. NO.</th>
+                    <th style={{ width: '250px', textAlign: 'left', boxSizing: 'border-box' }}>NAME</th>
+                    <th style={{ width: '60%', textAlign: 'center', boxSizing: 'border-box' }}>ID CARD LISTS</th>
+                    <th style={{ width: 'auto', textAlign: 'center', boxSizing: 'border-box' }}>REPRINT CARD LISTS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -349,15 +349,15 @@ export default function CardTableView({ addToast, onNavigate }) {
                         }}
                       >
                         {/* Column 0: S. NO. */}
-                        <td style={{ width: '55px', minWidth: '55px', maxWidth: '55px', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px' }}>
+                        <td style={{ width: '60px', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px' }}>
                           {idx + 1}
                         </td>
 
                         {/* Column 1: Table Name */}
-                        <td style={{ width: '260px', minWidth: '220px', fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span style={{ fontSize: '13px', color: isSelected ? '#1d4ed8' : '#1e293b', fontWeight: 700 }}>{t.name}</span>
-                            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
+                        <td style={{ width: '250px', fontWeight: 700, color: '#0f172a', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                            <span style={{ fontSize: '13px', color: isSelected ? '#1d4ed8' : '#1e293b', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.name}>{t.name}</span>
+                            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={orgDisplay}>
                               {orgDisplay}
                             </span>
                           </div>
@@ -365,7 +365,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                         {/* Column 2: ID CARD LISTS */}
                         <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'pending' }); }}
@@ -420,7 +420,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                         {/* Column 3: REPRINT CARD LISTS */}
                         <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('reprint'); setPage(1); }}
