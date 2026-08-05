@@ -26,8 +26,7 @@ export default function Footer({ activeTab, onNavigate, idcardActionsState }) {
     switch (activeTab) {
       case 'dashboard':
         return [
-          { label: 'CardFlow', tab: 'dashboard', icon: Home },
-          { label: 'Manage Dashboard', isCurrent: true }
+          { label: 'CardFlow', isCurrent: true, icon: Home }
         ];
       case 'cards':
         return [

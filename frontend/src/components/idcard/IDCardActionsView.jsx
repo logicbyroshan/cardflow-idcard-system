@@ -15,7 +15,7 @@ import {
   Image as ImageIcon, FileSpreadsheet, FileText, Search, X,
   Layers, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Loader2, AlertCircle, Eraser, Check, SquareCheck, Square, MinusSquare,
-  Clock, SlidersHorizontal, Settings, Printer
+  Clock, SlidersHorizontal, Settings, Printer, ChevronDown
 } from 'lucide-react';
 import { cardApi, schemaApi } from '../../services/api';
 import apiClient from '../../services/api';
@@ -388,6 +388,111 @@ function DownloadModal({ table, status, onClose, addToast }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─── Custom Select Dropdown ───────────────────────────────────────────── */
+function CustomSelect({ value, onChange, options, style = {} }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOpt = options.find(o => String(o.value) === String(value)) || options[0];
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block', ...style }}>
+      <button
+        type="button"
+        onClick={() => setOpen(prev => !prev)}
+        style={{
+          height: '28px',
+          padding: '0 10px',
+          border: '1px solid #cbd5e1',
+          borderRadius: '4px',
+          background: '#ffffff',
+          fontSize: '12px',
+          fontWeight: 500,
+          color: '#1e293b',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '6px',
+          cursor: 'pointer',
+          outline: 'none',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          transition: 'all 0.15s ease',
+        }}
+      >
+        <span>{selectedOpt?.label || value}</span>
+        <ChevronDown size={13} style={{ color: '#64748b', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 5px)',
+            left: 0,
+            minWidth: '100%',
+            maxWidth: '220px',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            zIndex: 9999,
+            padding: '4px 0',
+            maxHeight: '220px',
+            overflowY: 'auto',
+          }}
+        >
+          {options.map((opt, idx) => {
+            const isSelected = String(opt.value) === String(value);
+            return (
+              <button
+                key={opt.value ?? idx}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: isSelected ? 600 : 400,
+                  color: isSelected ? '#2563eb' : '#334155',
+                  background: isSelected ? '#eff6ff' : 'transparent',
+                  border: 'none',
+                  borderBottom: idx < options.length - 1 ? '1px solid #f1f5f9' : 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  transition: 'background 0.10s ease',
+                }}
+                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span>{opt.label}</span>
+                {isSelected && <Check size={12} style={{ color: '#2563eb' }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1611,43 +1716,59 @@ export default function IDCardActionsView({
           </div>
 
           {/* Sort */}
-          <select
+          <CustomSelect
             value={sort}
-            onChange={e => { setSort(e.target.value); setPage(1); }}
-            style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
-          >
-            <option value="sr-asc">Sort: Newest</option>
-            <option value="sr-desc">Sort: Oldest</option>
-            <option value="name-asc">Name A to Z</option>
-            <option value="name-desc">Name Z to A</option>
-          </select>
+            onChange={val => { setSort(val); setPage(1); }}
+            options={[
+              { value: 'sr-asc', label: 'Sort: Newest' },
+              { value: 'sr-desc', label: 'Sort: Oldest' },
+              { value: 'name-asc', label: 'Name A to Z' },
+              { value: 'name-desc', label: 'Name Z to A' },
+            ]}
+          />
 
           {/* Class Filter */}
-          <select value={classFilter} onChange={e => { setClassFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
-            <option value="">All Classes</option>
-            {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <CustomSelect
+            value={classFilter}
+            onChange={val => { setClassFilter(val); setPage(1); }}
+            options={[
+              { value: '', label: 'All Classes' },
+              ...classOptions.map(c => ({ value: c, label: c }))
+            ]}
+          />
 
           {/* Section Filter */}
-          <select value={sectionFilter} onChange={e => { setSectionFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
-            <option value="">All Sections</option>
-            {sectionOptions.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <CustomSelect
+            value={sectionFilter}
+            onChange={val => { setSectionFilter(val); setPage(1); }}
+            options={[
+              { value: '', label: 'All Sections' },
+              ...sectionOptions.map(s => ({ value: s, label: s }))
+            ]}
+          />
 
           {/* Course Filter */}
           {courseOptions.length > 0 && (
-            <select value={courseFilter} onChange={e => { setCourseFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
-              <option value="">All Courses</option>
-              {courseOptions.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <CustomSelect
+              value={courseFilter}
+              onChange={val => { setCourseFilter(val); setPage(1); }}
+              options={[
+                { value: '', label: 'All Courses' },
+                ...courseOptions.map(c => ({ value: c, label: c }))
+              ]}
+            />
           )}
 
           {/* Branch Filter */}
           {branchOptions.length > 0 && (
-            <select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
-              <option value="">All Branches</option>
-              {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
+            <CustomSelect
+              value={branchFilter}
+              onChange={val => { setBranchFilter(val); setPage(1); }}
+              options={[
+                { value: '', label: 'All Branches' },
+                ...branchOptions.map(b => ({ value: b, label: b }))
+              ]}
+            />
           )}
 
           {/* Clear Filters */}
