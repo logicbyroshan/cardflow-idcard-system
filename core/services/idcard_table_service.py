@@ -101,12 +101,29 @@ class IDCardTableService(BaseService):
             approved_count=Count('id', filter=Q(status='approved')),
             download_count=Count('id', filter=Q(status='download')),
             pool_count=Count('id', filter=Q(status='pool')),
+            reprint_count=Count('id', filter=Q(status='reprint')),
         )
+
+        # Count reprint requests
+        rp_req_cnt = 0
+        rp_conf_cnt = 0
+        try:
+            from reprintcard.models import ReprintRequest
+            req_counts = ReprintRequest.objects.filter(table=table).aggregate(
+                req_c=Count('id', filter=Q(status='requested')),
+                conf_c=Count('id', filter=Q(status='confirmed')),
+            )
+            rp_req_cnt = req_counts['req_c'] or 0
+            rp_conf_cnt = req_counts['conf_c'] or 0
+        except Exception:
+            pass
+
         p_cnt = counts['pending_count'] or 0
         v_cnt = counts['verified_count'] or 0
         a_cnt = counts['approved_count'] or 0
         d_cnt = counts['download_count'] or 0
         l_cnt = counts['pool_count'] or 0
+        r_cnt = counts['reprint_count'] or 0
 
         return {
             'id': table.id,
@@ -125,7 +142,10 @@ class IDCardTableService(BaseService):
             'approved_count': a_cnt,
             'download_count': d_cnt,
             'pool_count': l_cnt,
-            'total_count': p_cnt + v_cnt + a_cnt + d_cnt + l_cnt,
+            'reprint_count': r_cnt,
+            'reprint_request_count': rp_req_cnt,
+            'reprint_confirmed_count': rp_conf_cnt,
+            'total_count': p_cnt + v_cnt + a_cnt + d_cnt + l_cnt + r_cnt,
             'is_active': table.is_active,
             'created_at': localtime(table.created_at).strftime('%d-%b-%Y %H:%M'),
             'updated_at': localtime(table.updated_at).strftime('%d-%b-%Y %H:%M'),

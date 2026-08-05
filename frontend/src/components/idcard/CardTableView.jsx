@@ -3,7 +3,7 @@ import {
   Clock, CheckCircle, ThumbsUp, Download, Layers,
   Upload, Trash2, ArrowUp, RefreshCw, Search, X, Loader2,
   SlidersHorizontal, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  ArrowLeft, FileSpreadsheet, Eye, Edit2, Undo2, Redo2, Layers3, ShieldCheck
+  ArrowLeft, FileSpreadsheet, Eye, Edit2, Undo2, Redo2, Layers3, ShieldCheck, Printer, Send, Check
 } from "lucide-react";
 import CardEditDrawer from "./CardEditDrawer";
 import { cardApi, schemaApi, clientApi } from "../../services/api";
@@ -293,8 +293,9 @@ export default function CardTableView({ addToast, onNavigate }) {
               <table className="data-table idcard-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '240px', textAlign: 'left' }}>NAME</th>
-                    <th style={{ textAlign: 'center' }}>CARD STATUS ACTIONS</th>
+                    <th style={{ width: '220px', textAlign: 'left' }}>NAME</th>
+                    <th style={{ textAlign: 'center' }}>ID CARD LISTS</th>
+                    <th style={{ textAlign: 'center' }}>REPRINT CARD LISTS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -304,10 +305,14 @@ export default function CardTableView({ addToast, onNavigate }) {
                     const aCnt = t.approved_count || 0;
                     const dCnt = t.download_count || 0;
                     const lCnt = t.pool_count || 0;
-                    const isSelected = selectedTableId === t.id;
 
+                    const rpCnt   = t.reprint_count || 0;
+                    const reqCnt  = t.reprint_request_count || 0;
+                    const confCnt = t.reprint_confirmed_count || 0;
+
+                    const isSelected = selectedTableId === t.id;
                     const rawOrg = t.client_name || t.client?.name || '';
-                    const orgDisplay = (rawOrg && rawOrg !== 'Default Organisation' && rawOrg !== 'Primary Organisation') ? rawOrg : (clientOrg || '');
+                    const orgDisplay = (rawOrg && rawOrg !== 'Default Organisation' && rawOrg !== 'Primary Organisation') ? rawOrg : (clientOrg || 'Organisation');
 
                     return (
                       <tr
@@ -323,24 +328,22 @@ export default function CardTableView({ addToast, onNavigate }) {
                         <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <span style={{ fontSize: '13px', color: isSelected ? '#1d4ed8' : '#1e293b', fontWeight: 700 }}>{t.name}</span>
-                            {orgDisplay && (
-                              <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
-                                {orgDisplay}
-                              </span>
-                            )}
+                            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
+                              {orgDisplay}
+                            </span>
                           </div>
                         </td>
 
-                        {/* Column 2: Action Status Buttons with Count Badges */}
+                        {/* Column 2: ID CARD LISTS */}
                         <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('pending'); setPage(1); }}
                               style={statusBtnStyle('pending').btn}
-                              title="View Pending ID Cards"
+                              title="View Pending List"
                             >
-                              <span>Pending</span>
+                              <span>Pending List</span>
                               <span style={statusBtnStyle('pending').badge}>{pCnt}</span>
                             </button>
 
@@ -348,9 +351,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('verified'); setPage(1); }}
                               style={statusBtnStyle('verified').btn}
-                              title="View Verified ID Cards"
+                              title="View Verified List"
                             >
-                              <span>Verified</span>
+                              <span>Verified List</span>
                               <span style={statusBtnStyle('verified').badge}>{vCnt}</span>
                             </button>
 
@@ -358,9 +361,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('approved'); setPage(1); }}
                               style={statusBtnStyle('approved').btn}
-                              title="View Approved ID Cards"
+                              title="View Approved List"
                             >
-                              <span>Approved</span>
+                              <span>Approved List</span>
                               <span style={statusBtnStyle('approved').badge}>{aCnt}</span>
                             </button>
 
@@ -368,9 +371,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('download'); setPage(1); }}
                               style={statusBtnStyle('download').btn}
-                              title="View Downloaded ID Cards"
+                              title="View Downloaded List"
                             >
-                              <span>Downloaded</span>
+                              <span>Downloaded List</span>
                               <span style={statusBtnStyle('download').badge}>{dCnt}</span>
                             </button>
 
@@ -378,10 +381,45 @@ export default function CardTableView({ addToast, onNavigate }) {
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('pool'); setPage(1); }}
                               style={statusBtnStyle('pool').btn}
-                              title="View Pool ID Cards"
+                              title="View Pool List"
                             >
-                              <span>Pool</span>
+                              <span>Pool List</span>
                               <span style={statusBtnStyle('pool').badge}>{lCnt}</span>
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Column 3: REPRINT CARD LISTS */}
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('reprint'); setPage(1); }}
+                              style={reprintBtnStyle('reprint').btn}
+                              title="View Reprint List"
+                            >
+                              <span>Reprint List</span>
+                              <span style={reprintBtnStyle('reprint').badge}>{rpCnt}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('reprint_request'); setPage(1); }}
+                              style={reprintBtnStyle('request').btn}
+                              title="View Request List"
+                            >
+                              <span>Request List</span>
+                              <span style={reprintBtnStyle('request').badge}>{reqCnt}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('reprint_confirm'); setPage(1); }}
+                              style={reprintBtnStyle('confirm').btn}
+                              title="View Confirm List"
+                            >
+                              <span>Confirm List</span>
+                              <span style={reprintBtnStyle('confirm').badge}>{confCnt}</span>
                             </button>
                           </div>
                         </td>
@@ -448,7 +486,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
         <div className="action-bar-right">
           <div className="status-tabs" style={{ display: 'flex', gap: '4px' }}>
-            {['pending', 'verified', 'approved', 'download', 'pool'].map(st => (
+            {['pending', 'verified', 'approved', 'download', 'pool', 'reprint', 'reprint_request', 'reprint_confirm'].map(st => (
               <button
                 key={st}
                 onClick={() => { setSelectedStatus(st); setPage(1); }}
@@ -459,7 +497,7 @@ export default function CardTableView({ addToast, onNavigate }) {
                   color: '#fff'
                 }}
               >
-                {st}
+                {st.replace('reprint_', '')}
               </button>
             ))}
           </div>
@@ -534,7 +572,7 @@ export default function CardTableView({ addToast, onNavigate }) {
   );
 }
 
-/* ── Inline Helper Styles matching idcard-group.css & project design system ── */
+/* ── Inline Helper Styles ── */
 function statusBtnStyle(type) {
   const styles = {
     pending:  { bg: '#fef3c7', color: '#92400e', border: '#fde68a', badgeBg: '#f59e0b' },
@@ -547,14 +585,36 @@ function statusBtnStyle(type) {
   return {
     btn: {
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-      padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+      padding: '4px 9px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
       background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
-      cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', minWidth: '95px'
+      cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap'
     },
     badge: {
-      background: cfg.badgeBg, color: '#ffffff', minWidth: '30px', height: '16px',
+      background: cfg.badgeBg, color: '#ffffff', minWidth: '24px', height: '16px',
       borderRadius: '8px', fontSize: '10px', fontWeight: 700, display: 'inline-flex',
-      alignItems: 'center', justifyContent: 'center', padding: '0 4px', marginLeft: '4px'
+      alignItems: 'center', justifyContent: 'center', padding: '0 4px', marginLeft: '3px'
+    }
+  };
+}
+
+function reprintBtnStyle(type) {
+  const styles = {
+    reprint: { bg: '#cffafe', color: '#0e7490', border: '#67e8f9', badgeBg: '#0891b2' },
+    request: { bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc', badgeBg: '#4f46e5' },
+    confirm: { bg: '#dcfce7', color: '#166534', border: '#86efac', badgeBg: '#16a34a' },
+  };
+  const cfg = styles[type] || styles.reprint;
+  return {
+    btn: {
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+      padding: '4px 9px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+      background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
+      cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap'
+    },
+    badge: {
+      background: cfg.badgeBg, color: '#ffffff', minWidth: '24px', height: '16px',
+      borderRadius: '8px', fontSize: '10px', fontWeight: 700, display: 'inline-flex',
+      alignItems: 'center', justifyContent: 'center', padding: '0 4px', marginLeft: '3px'
     }
   };
 }
