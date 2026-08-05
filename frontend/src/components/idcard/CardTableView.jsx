@@ -628,15 +628,16 @@ function bulkBtnStyle(type, disabled) {
   };
   const cfg = colors[type] || colors.reupload;
   return {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-    padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 700,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+    height: '28px', padding: '0 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
     background: cfg.bg,
     color: cfg.color,
     border: `1px solid ${cfg.border}`,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.6 : 1,
-    whiteSpace: 'nowrap', minWidth: '100px',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+    whiteSpace: 'nowrap',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+    fontFamily: 'var(--font-family)', transition: 'all 0.15s'
   };
 }
 

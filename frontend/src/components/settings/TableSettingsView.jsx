@@ -410,7 +410,7 @@ export default function TableSettingsView({ addToast, onNavigate }) {
                     </tr>
                   ))
                 ) : (
-                  paged.map((t, idx) => {
+                  filtered.map((t, idx) => {
                     const name = t.name || `Table #${t.id || idx}`;
                     const rawClient = t.client_name || t.client?.name || clientOrg || '';
                     const clientName = (rawClient && rawClient !== 'Default Organisation') ? rawClient : (clientOrg || '—');
@@ -424,29 +424,27 @@ export default function TableSettingsView({ addToast, onNavigate }) {
                     return (
                       <tr
                         key={t.id || idx}
-                        className={isSel ? 'selected' : ''}
-                        onClick={() => setSelected(isSel ? null : t.id)}
+                        onClick={() => setSelected(prev => prev === t.id ? null : t.id)}
+                        className={`table-row${isSel ? ' selected' : ''}`}
+                        style={{ cursor: 'pointer' }}
                       >
-                        <td className="text-center" style={{ width: '42px', textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '11px' }}>
-                          {(page - 1) * pageSize + idx + 1}
-                        </td>
-                        <td style={{ width: '200px', fontWeight: 600, color: '#0f172a', textAlign: 'left' }}>{name}</td>
-                        <td style={{ width: '130px', textAlign: 'center' }}>
+                        <td className="text-center" style={{ width: '42px', textAlign: 'center', fontSize: '11px', color: '#64748b' }}>{idx + 1}</td>
+                        <td style={{ fontWeight: 600, color: isSel ? '#1d4ed8' : '#0f172a' }}>{name}</td>
+                        <td className="text-center" style={{ width: '130px', textAlign: 'center' }}>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: '4px',
-                            padding: '3px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700,
-                            background: typeMeta.bg, color: typeMeta.color, border: `1px solid ${typeMeta.border}`,
-                            whiteSpace: 'nowrap'
+                            fontSize: '10px', fontWeight: 600, padding: '2px 8px',
+                            borderRadius: '12px', background: typeMeta.bg, color: typeMeta.color,
+                            border: `1px solid ${typeMeta.border}`
                           }}>
-                            <TypeIcon size={10} />
-                            {typeMeta.label}
+                            <TypeIcon size={11} /> {typeMeta.label}
                           </span>
                         </td>
-                        <td style={{ width: '190px', color: '#475569', textAlign: 'left' }}>{clientName}</td>
+                        <td style={{ fontSize: '12px', color: '#475569' }}>{clientName}</td>
                         <td className="text-center" style={{ width: '140px', textAlign: 'center' }}>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: '4px',
-                            padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 600,
+                            fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px',
                             background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1'
                           }}>
                             <List size={10} style={{ color: '#2563eb' }} />
@@ -467,34 +465,6 @@ export default function TableSettingsView({ addToast, onNavigate }) {
               </tbody>
             </table>
           )}
-        </div>
-      </div>
-
-      {/* ── PAGINATION BAR ── */}
-      <div className="pagination-bar" style={{ flexShrink: 0 }}>
-        <div className="pagination-left">
-          <span className="pagination-info">
-            Showing <strong>{filtered.length > 0 ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> results
-          </span>
-        </div>
-        <div className="pagination-center">
-          <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(1)}><ChevronsLeft size={11} /></button>
-          <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}><ChevronLeft size={11} /></button>
-          {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => (
-            <button key={i + 1} className={`page-num${page === i + 1 ? ' active' : ''}`} onClick={() => setPage(i + 1)}>{i + 1}</button>
-          ))}
-          <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}><ChevronRight size={11} /></button>
-          <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight size={11} /></button>
-        </div>
-        <div className="pagination-right">
-          <label style={{ fontSize: '12px', color: '#6b7280' }}>Rows per page:</label>
-          <select
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-            style={{ height: '24px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 4px', background: '#fff', fontFamily: 'var(--font-family)', cursor: 'pointer', outline: 'none' }}
-          >
-            {PAGE_SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
         </div>
       </div>
 
