@@ -94,7 +94,6 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
     };
   }, [load, getStoredClients]);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selClient  = clients.find((c) => c.id === selected);
 
   const handleToggleStatus = async () => {

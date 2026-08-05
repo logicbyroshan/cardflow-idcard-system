@@ -187,7 +187,6 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
     });
   }, [staffList, search, statusTab]);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selStaff = staffList.find((s) => s.id === selected);
 
   const formatDate = (d) => {

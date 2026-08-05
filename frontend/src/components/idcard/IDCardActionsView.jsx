@@ -1163,8 +1163,6 @@ export default function IDCardActionsView({
     });
   }, [cards, activeImageSort]);
 
-  /* ── Pagination ── */
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selectedArr = [...selectedIds];
   const hasSelection = selectedArr.length > 0;
 

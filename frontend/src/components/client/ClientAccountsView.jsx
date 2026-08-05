@@ -80,7 +80,6 @@ export default function ClientAccountsView({ addToast, onOpenActionDrawer, onNav
     };
   }, [load]);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selAccount = accounts.find((c) => c.id === selected);
 
   const filteredAccounts = accounts.filter((acc) => {

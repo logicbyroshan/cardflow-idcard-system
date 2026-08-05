@@ -226,8 +226,7 @@ export default function TableSettingsView({ addToast, onNavigate }) {
     return matchSearch && matchStatus;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const paged = filtered;
   const selTable = tables.find((t) => t.id === selected);
 
   const handleToggleStatus = async () => {
