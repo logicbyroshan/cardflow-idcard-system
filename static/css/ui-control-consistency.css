@@ -1,8 +1,8 @@
 /* Cross-page control/table consistency layer.
    Keeps icon sizes, control typography, and table typography aligned. */
 :root {
-  --sidebar-width: 165px !important;
-  --spacing-sidebar: 165px !important;
+  --sidebar-width: 190px !important;
+  --spacing-sidebar: 190px !important;
   --ui-font-family-sans: var(--font-sans, var(--font-family, "Saira Semi Condensed", "Segoe UI", "Helvetica Neue", Arial, sans-serif));
 
   /* Core UI type scale (small-to-large). */

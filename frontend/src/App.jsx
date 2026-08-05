@@ -212,7 +212,7 @@ export default function App() {
 
 
         {/* Page content — scrollable area */}
-        <div className="page-content">
+        <div className="page-content" style={activeTab === 'idcard-actions' ? { padding: 0, margin: 0, height: '100%', overflow: 'hidden' } : undefined}>
           <ErrorBoundary key={activeTab}>
 
           {/* ── Dashboard ── */}

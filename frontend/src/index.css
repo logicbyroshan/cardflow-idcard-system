@@ -201,7 +201,7 @@
   --space-xl: 16px;
 
   /* Layout */
-  --sidebar-width: 175px;
+  --sidebar-width: 190px !important;
   --topbar-height: 40px;
 
   /* Z-index */
