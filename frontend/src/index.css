@@ -2908,9 +2908,9 @@ button.btn-primary,
 .action-bar .btn:disabled,
 .btn:disabled,
 button:disabled {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: rgba(255, 255, 255, 0.45) !important;
+  background: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #94a3b8 !important;
   opacity: 1 !important;
   cursor: not-allowed !important;
   box-shadow: none !important;
@@ -2919,5 +2919,14 @@ button:disabled {
 .action-bar button:disabled svg,
 .action-bar .btn:disabled svg,
 button:disabled svg {
-  opacity: 0.45 !important;
+  color: #94a3b8 !important;
+  opacity: 0.6 !important;
+}
+
+/* Dark topbar exception for disabled buttons */
+.topbar button:disabled,
+.topbar .btn:disabled {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.4) !important;
 }

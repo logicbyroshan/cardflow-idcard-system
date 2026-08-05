@@ -422,10 +422,38 @@ export default function IDCardActionsView({
   const [sectionFilter, setSectionFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
+  const [imageSortFilter, setImageSortFilter] = useState('all');
   const [sort, setSort]                 = useState('sr-asc');
   const [filterOptions, setFilterOptions] = useState({ classes: [], sections: [], courses: [], branches: [] });
   const [fromDate, setFromDate]         = useState('');
   const [toDate, setToDate]             = useState('');
+
+  /* Dynamic Filter Options computation */
+  const classOptions = useMemo(() => {
+    const fromApi = filterOptions.classes || [];
+    const fromCards = cards.map(c => c.field_data?.CLASS || c.field_data?.Class || c.field_data?.['class'] || c.class_name).filter(Boolean);
+    const combined = Array.from(new Set([...fromApi, ...fromCards]));
+    return combined.length > 0 ? combined : ['10th', '9th', '8th', '11th', '12th'];
+  }, [filterOptions.classes, cards]);
+
+  const sectionOptions = useMemo(() => {
+    const fromApi = filterOptions.sections || [];
+    const fromCards = cards.map(c => c.field_data?.SECTION || c.field_data?.Section || c.field_data?.['section']).filter(Boolean);
+    const combined = Array.from(new Set([...fromApi, ...fromCards]));
+    return combined.length > 0 ? combined : ['A', 'B', 'C', 'D'];
+  }, [filterOptions.sections, cards]);
+
+  const courseOptions = useMemo(() => {
+    const fromApi = filterOptions.courses || [];
+    const fromCards = cards.map(c => c.field_data?.COURSE || c.field_data?.Course).filter(Boolean);
+    return Array.from(new Set([...fromApi, ...fromCards]));
+  }, [filterOptions.courses, cards]);
+
+  const branchOptions = useMemo(() => {
+    const fromApi = filterOptions.branches || [];
+    const fromCards = cards.map(c => c.field_data?.BRANCH || c.field_data?.Branch).filter(Boolean);
+    return Array.from(new Set([...fromApi, ...fromCards]));
+  }, [filterOptions.branches, cards]);
 
   /* ── Selection state ── */
   const [selectedIds, setSelectedIds]   = useState(new Set());
@@ -685,9 +713,9 @@ export default function IDCardActionsView({
 
   /* Button color inline style generator for 100% color reliability */
   const buttonStyle = (bg, disabled = false) => ({
-    background: disabled ? '#d1d5db' : bg,
-    color: disabled ? '#6b7280' : '#ffffff',
-    border: 'none',
+    background: disabled ? '#e2e8f0' : bg,
+    color: disabled ? '#94a3b8' : '#ffffff',
+    border: disabled ? '1px solid #cbd5e1' : 'none',
     borderRadius: '4px',
     padding: '0 10px',
     height: '28px',
@@ -791,7 +819,7 @@ export default function IDCardActionsView({
       {/* ══════════════════════════════════════════════════════════
           ACTION BAR — COLORFUL VIBRANT ACTION BUTTONS
           ══════════════════════════════════════════════════════════ */}
-      <div style={{ flexShrink: 0, padding: '0 16px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+      <div style={{ flexShrink: 0, padding: '0 16px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', overflowX: 'auto' }}>
         {/* Left Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
 
@@ -950,11 +978,6 @@ export default function IDCardActionsView({
               {renderDownloadButtons()}
             </>
           )}
-
-          {/* Download Exports */}
-          <button onClick={() => setShowDownload(true)} style={buttonStyle('#8b5cf6')} title="Export cards">
-            <Download size={14} /> <span>Download</span>
-          </button>
         </div>
 
         {/* Right Side Buttons */}
@@ -999,42 +1022,50 @@ export default function IDCardActionsView({
             <option value="name-desc">Name Z to A</option>
           </select>
 
+          {/* Image Sort Filter */}
+          <select
+            value={imageSortFilter}
+            onChange={e => setImageSortFilter(e.target.value)}
+            style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
+            title="Filter by image status"
+          >
+            <option value="all">Image: All</option>
+            <option value="with_photo">With Photo (Complete)</option>
+            <option value="without_photo">Missing Photo (Pending)</option>
+          </select>
+
           {/* Class Filter */}
-          {filterOptions.classes.length > 0 && (
-            <select value={classFilter} onChange={e => { setClassFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
-              <option value="">All Classes</option>
-              {filterOptions.classes.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          )}
+          <select value={classFilter} onChange={e => { setClassFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
+            <option value="">All Classes</option>
+            {classOptions.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
 
           {/* Section Filter */}
-          {filterOptions.sections.length > 0 && (
-            <select value={sectionFilter} onChange={e => { setSectionFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
-              <option value="">All Sections</option>
-              {filterOptions.sections.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          )}
+          <select value={sectionFilter} onChange={e => { setSectionFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
+            <option value="">All Sections</option>
+            {sectionOptions.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
 
           {/* Course Filter */}
-          {filterOptions.courses.length > 0 && (
+          {courseOptions.length > 0 && (
             <select value={courseFilter} onChange={e => { setCourseFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
               <option value="">All Courses</option>
-              {filterOptions.courses.map(c => <option key={c} value={c}>{c}</option>)}
+              {courseOptions.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           )}
 
           {/* Branch Filter */}
-          {filterOptions.branches.length > 0 && (
+          {branchOptions.length > 0 && (
             <select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
               <option value="">All Branches</option>
-              {filterOptions.branches.map(b => <option key={b} value={b}>{b}</option>)}
+              {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
           )}
 
           {/* Clear Filters */}
-          {(classFilter || sectionFilter || courseFilter || branchFilter || search) && (
+          {(classFilter || sectionFilter || courseFilter || branchFilter || imageSortFilter !== 'all' || search) && (
             <button
-              onClick={() => { setClassFilter(''); setSectionFilter(''); setCourseFilter(''); setBranchFilter(''); setSearch(''); setPage(1); }}
+              onClick={() => { setClassFilter(''); setSectionFilter(''); setCourseFilter(''); setBranchFilter(''); setImageSortFilter('all'); setSearch(''); setPage(1); }}
               style={{ height: '28px', padding: '0 8px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#fff', color: '#ef4444', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
               title="Clear all filters"
             >
