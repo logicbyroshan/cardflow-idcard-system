@@ -1265,7 +1265,7 @@ export default function IDCardActionsView({
               cursor: 'pointer',
               transition: 'all 0.15s ease',
             }}
-            title="Back to ID Card Group"
+            title="Back to Table Group"
           >
             <Layers size={13} />
             <span>Table Group</span>

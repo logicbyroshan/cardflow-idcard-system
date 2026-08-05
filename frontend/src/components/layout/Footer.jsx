@@ -32,19 +32,18 @@ export default function Footer({ activeTab, onNavigate, idcardActionsState }) {
       case 'cards':
         return [
           { label: 'CardFlow', tab: 'dashboard', icon: Home },
-          { label: 'ID Card Data' },
-          { label: 'ID Card Group', isCurrent: true, icon: Layers }
+          { label: 'Table Group', isCurrent: true, icon: Layers }
         ];
       case 'idcard-actions':
         return [
           { label: 'CardFlow', tab: 'dashboard', icon: Home },
-          { label: 'ID Card Group', tab: 'cards', icon: Layers },
+          { label: 'Table Group', tab: 'cards', icon: Layers },
           { label: `Table Actions (${(idcardActionsState?.status || 'pending').toUpperCase()})`, isCurrent: true, icon: Table }
         ];
       case 'schema':
         return [
           { label: 'CardFlow', tab: 'dashboard', icon: Home },
-          { label: 'ID Card Data' },
+          { label: 'Table Group', tab: 'cards', icon: Layers },
           { label: 'Table Settings', isCurrent: true, icon: Settings }
         ];
       case 'clients':
