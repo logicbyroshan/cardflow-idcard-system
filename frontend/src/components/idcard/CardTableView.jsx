@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Clock, CheckCircle, ThumbsUp, Download, Layers,
+  Clock, CheckCircle, ThumbsUp, Download, Layers, Settings,
   Upload, Trash2, ArrowUp, RefreshCw, Search, X, Loader2,
   SlidersHorizontal, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   ArrowLeft, FileSpreadsheet, Eye, Edit2, Undo2, Redo2, Layers3, ShieldCheck, Printer, Send, Check

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Plus, Pen, Trash2, ToggleRight, Download, FileSpreadsheet, SlidersHorizontal,
+  Plus, Pen, Trash2, ToggleRight, Download, FileSpreadsheet, SlidersHorizontal, Settings,
   Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   RefreshCw, Loader2, Save, X, CheckCircle2, Users, Upload, FileText,
   Settings2, ListPlus, GripVertical, Edit3, PlusCircle, List, Info,
