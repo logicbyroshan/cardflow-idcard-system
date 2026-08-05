@@ -144,6 +144,22 @@ export default function TableSettingsView({ addToast, onNavigate }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    let activeOrg = clientOrg;
+
+    if (!activeOrg) {
+      try {
+        const clientsData = await clientApi.getActive?.({ page_size: 10 });
+        const clients = clientsData?.results || clientsData?.clients || (Array.isArray(clientsData) ? clientsData : []);
+        if (clients.length > 0) {
+          activeOrg = clients[0].name || clients[0].client_name || '';
+          setClientOrg(activeOrg);
+          if (clients[0].group_id || clients[0].id) {
+            setGroupId(clients[0].group_id || clients[0].id);
+          }
+        }
+      } catch { /* fallback */ }
+    }
+
     const local = getStoredTables();
     try {
       let list = [];
@@ -160,18 +176,32 @@ export default function TableSettingsView({ addToast, onNavigate }) {
         if (!merged.some(t => String(t.id) === String(item.id) || t.name === item.name)) {
           merged.push({
             ...item,
+            client_name: item.client_name || item.client?.name || activeOrg,
             fields: item.fields || DEFAULT_SCHEMA_FIELDS
           });
         }
       });
 
-      setTables(merged);
+      const enriched = merged.map(t => ({
+        ...t,
+        client_name: (t.client_name && t.client_name !== 'Default Organisation' && t.client_name !== '—')
+          ? t.client_name
+          : (activeOrg || 'Organisation')
+      }));
+
+      setTables(enriched);
     } catch {
-      setTables(local);
+      const enrichedLocal = local.map(t => ({
+        ...t,
+        client_name: (t.client_name && t.client_name !== 'Default Organisation' && t.client_name !== '—')
+          ? t.client_name
+          : (activeOrg || 'Organisation')
+      }));
+      setTables(enrichedLocal);
     } finally {
       setLoading(false);
     }
-  }, [groupId, getStoredTables]);
+  }, [groupId, clientOrg, getStoredTables]);
 
   useEffect(() => { loadGroupId(); }, [loadGroupId]);
   useEffect(() => { load(); }, [load]);
@@ -343,13 +373,6 @@ export default function TableSettingsView({ addToast, onNavigate }) {
                 <SlidersHorizontal size={13} /> <span>Table Setting</span>
               </button>
             </div>
-
-            <div className="btn-separator" />
-
-            <button onClick={load} className="btn btn-md btn-neutral" title="Refresh">
-              {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-              <span>Refresh</span>
-            </button>
           </div>
         </div>
       </div>

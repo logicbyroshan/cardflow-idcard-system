@@ -237,7 +237,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
               <div className="btn-separator" />
 
-              {/* Page Switch Buttons Pair (Beside Refresh) */}
+              {/* Page Switch Buttons Pair */}
               <div className="btn-group">
                 <button className="btn btn-md btn-primary" title="Table Group">
                   <ShieldCheck size={13} /> <span>Table Group</span>
@@ -250,13 +250,6 @@ export default function CardTableView({ addToast, onNavigate }) {
                   <SlidersHorizontal size={13} /> <span>Table Setting</span>
                 </button>
               </div>
-
-              <div className="btn-separator" />
-
-              <button onClick={loadTables} className="btn btn-md btn-neutral" title="Refresh">
-                {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-                <span>Refresh</span>
-              </button>
             </div>
           </div>
         </div>

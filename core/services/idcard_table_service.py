@@ -125,9 +125,14 @@ class IDCardTableService(BaseService):
         l_cnt = counts['pool_count'] or 0
         r_cnt = counts['reprint_count'] or 0
 
+        client_name = ''
+        if hasattr(table, 'group') and table.group and hasattr(table.group, 'client') and table.group.client:
+            client_name = table.group.client.name
+
         return {
             'id': table.id,
             'name': table.name,
+            'client_name': client_name,
             'table_type': getattr(table, 'table_type', 'custom') or 'custom',
             'table_type_display': dict([
                 ('school_student', 'School Student'),
