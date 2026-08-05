@@ -89,14 +89,31 @@ export default function CardTableView({ addToast, onNavigate }) {
     if (!viewingTable) return;
     setCardsLoading(true);
     try {
-      const data = await cardApi.getCards(viewingTable.id, {
-        page,
-        search: cardSearch,
-        status: selectedStatus !== "all" ? selectedStatus : undefined,
-        page_size: 25,
-      });
-      setCards(data?.cards || data?.results || (Array.isArray(data) ? data : []));
-      setTotal(data?.total || data?.count || (Array.isArray(data) ? data.length : 0));
+      if (selectedStatus === 'reprint_request' || selectedStatus === 'reprint_confirm') {
+        const reqStatus = selectedStatus === 'reprint_request' ? 'requested' : 'confirmed';
+        const data = await reprintApi.getQueue?.({ table_id: viewingTable.id, status: reqStatus, page }) || {};
+        const list = data?.requests || data?.results || (Array.isArray(data) ? data : []);
+        setCards(list.map(r => ({
+          id: r.card_id || r.id,
+          photo: r.photo || r.card?.photo,
+          name: r.card_name || r.card?.name || r.name || '—',
+          class_name: r.class_name || r.card?.class_name || '—',
+          status: reqStatus,
+        })));
+        setTotal(data?.total || data?.count || list.length);
+      } else {
+        const queryParams = {
+          page,
+          search: cardSearch,
+          page_size: 25,
+        };
+        if (selectedStatus !== 'all') {
+          queryParams.status = selectedStatus;
+        }
+        const data = await cardApi.getCards(viewingTable.id, queryParams);
+        setCards(data?.cards || data?.results || (Array.isArray(data) ? data : []));
+        setTotal(data?.total || data?.count || (Array.isArray(data) ? data.length : 0));
+      }
     } catch {
       setCards([]);
       setTotal(0);
@@ -471,17 +488,33 @@ export default function CardTableView({ addToast, onNavigate }) {
           >
             <ArrowLeft size={13} /> Back to Table Group
           </button>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{viewingTable.name}</span>
             <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>
-              {selectedStatus.toUpperCase()} ({total})
+              {selectedStatus === 'all' ? 'ALL CARDS' : selectedStatus.toUpperCase()} ({total})
             </span>
           </div>
+
+          <button
+            onClick={() => {
+              if (onNavigate) {
+                onNavigate('panel', { tableId: viewingTable.id, status: selectedStatus });
+              } else {
+                window.location.href = `/panel/idcards/?table_id=${viewingTable.id}&status=${selectedStatus}`;
+              }
+            }}
+            className="btn btn-sm btn-primary"
+            style={{ fontSize: '11px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            title="Open Full Card Management View"
+          >
+            <Eye size={12} /> Full Card Manager
+          </button>
         </div>
 
         <div className="action-bar-right">
           <div className="status-tabs" style={{ display: 'flex', gap: '4px' }}>
-            {['pending', 'verified', 'approved', 'download', 'pool', 'reprint', 'reprint_request', 'reprint_confirm'].map(st => (
+            {['all', 'pending', 'verified', 'approved', 'download', 'pool', 'reprint', 'reprint_request', 'reprint_confirm'].map(st => (
               <button
                 key={st}
                 onClick={() => { setSelectedStatus(st); setPage(1); }}
@@ -492,7 +525,7 @@ export default function CardTableView({ addToast, onNavigate }) {
                   color: '#fff'
                 }}
               >
-                {st.replace('reprint_', '')}
+                {st === 'all' ? 'All Cards' : st.replace('reprint_', '')}
               </button>
             ))}
           </div>
