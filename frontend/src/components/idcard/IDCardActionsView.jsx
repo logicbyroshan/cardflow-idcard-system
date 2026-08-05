@@ -420,8 +420,12 @@ export default function IDCardActionsView({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [classFilter, setClassFilter]   = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
+  const [courseFilter, setCourseFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
   const [sort, setSort]                 = useState('sr-asc');
   const [filterOptions, setFilterOptions] = useState({ classes: [], sections: [], courses: [], branches: [] });
+  const [fromDate, setFromDate]         = useState('');
+  const [toDate, setToDate]             = useState('');
 
   /* ── Selection state ── */
   const [selectedIds, setSelectedIds]   = useState(new Set());
@@ -681,9 +685,9 @@ export default function IDCardActionsView({
 
   /* Button color inline style generator for 100% color reliability */
   const buttonStyle = (bg, disabled = false) => ({
-    background: disabled ? 'rgba(0,0,0,0.07)' : bg,
-    color: disabled ? '#9ca3af' : '#ffffff',
-    border: disabled ? '1px solid #e5e7eb' : 'none',
+    background: disabled ? '#d1d5db' : bg,
+    color: disabled ? '#6b7280' : '#ffffff',
+    border: 'none',
     borderRadius: '4px',
     padding: '0 10px',
     height: '28px',
@@ -699,6 +703,24 @@ export default function IDCardActionsView({
     boxShadow: disabled ? 'none' : '0 1px 2px rgba(0,0,0,0.12)',
     transition: 'all 0.15s ease',
   });
+
+  /* Shared download buttons (all statuses) */
+  const renderDownloadButtons = () => (
+    <>
+      <button onClick={() => setShowDownload(true)} style={buttonStyle('#7c3aed')} title="Download ID card images as ZIP">
+        <ImageIcon size={14} /> <span>Download Images</span>
+      </button>
+      <button onClick={() => setShowDownload(true)} style={buttonStyle('#7c3aed')} title="Download as Word document">
+        <FileText size={14} /> <span>Download Word</span>
+      </button>
+      <button onClick={() => setShowDownload(true)} style={buttonStyle('#7c3aed')} title="Download as Excel">
+        <FileSpreadsheet size={14} /> <span>Download Excel</span>
+      </button>
+      <button onClick={() => setShowDownload(true)} style={buttonStyle('#7c3aed')} title="Download as PDF">
+        <Download size={14} /> <span>Download PDF</span>
+      </button>
+    </>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f4f4f4' }}>
@@ -823,6 +845,9 @@ export default function IDCardActionsView({
               >
                 {actionLoading ? <Spinner size={14} /> : <CheckCircle2 size={14} />} <span>Verify Selected</span>
               </button>
+
+              <span style={{ width: '1px', height: '20px', background: '#e5e7eb', flexShrink: 0, margin: '0 2px' }} />
+              {renderDownloadButtons()}
             </>
           )}
 
@@ -854,6 +879,13 @@ export default function IDCardActionsView({
                 style={buttonStyle('#10b981', !hasSelection || actionLoading)}
                 title="Approve selected"
               >{actionLoading ? <Spinner size={14} /> : <ThumbsUp size={14} />} <span>Approve Selected</span></button>
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
+
+              <span style={{ width: '1px', height: '20px', background: '#e5e7eb', flexShrink: 0, margin: '0 2px' }} />
+              {renderDownloadButtons()}
             </>
           )}
 
@@ -878,6 +910,13 @@ export default function IDCardActionsView({
                 style={buttonStyle('#ef4444', !hasSelection || actionLoading)}
                 title="Move back to Verified"
               ><RotateCcw size={14} /> <span>Disapprove</span></button>
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
+
+              <span style={{ width: '1px', height: '20px', background: '#e5e7eb', flexShrink: 0, margin: '0 2px' }} />
+              {renderDownloadButtons()}
             </>
           )}
 
@@ -902,6 +941,13 @@ export default function IDCardActionsView({
                 style={buttonStyle('#10b981', !hasSelection || actionLoading)}
                 title="Retrieve to Pending"
               ><RotateCcw size={14} /> <span>Retrieve</span></button>
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
+
+              <span style={{ width: '1px', height: '20px', background: '#e5e7eb', flexShrink: 0, margin: '0 2px' }} />
+              {renderDownloadButtons()}
             </>
           )}
 
@@ -969,10 +1015,26 @@ export default function IDCardActionsView({
             </select>
           )}
 
+          {/* Course Filter */}
+          {filterOptions.courses.length > 0 && (
+            <select value={courseFilter} onChange={e => { setCourseFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
+              <option value="">All Courses</option>
+              {filterOptions.courses.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
+
+          {/* Branch Filter */}
+          {filterOptions.branches.length > 0 && (
+            <select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setPage(1); }} style={{ height: '28px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 6px', background: '#fff', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-family)' }}>
+              <option value="">All Branches</option>
+              {filterOptions.branches.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          )}
+
           {/* Clear Filters */}
-          {(classFilter || sectionFilter || search) && (
+          {(classFilter || sectionFilter || courseFilter || branchFilter || search) && (
             <button
-              onClick={() => { setClassFilter(''); setSectionFilter(''); setSearch(''); setPage(1); }}
+              onClick={() => { setClassFilter(''); setSectionFilter(''); setCourseFilter(''); setBranchFilter(''); setSearch(''); setPage(1); }}
               style={{ height: '28px', padding: '0 8px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#fff', color: '#ef4444', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
               title="Clear all filters"
             >
@@ -996,10 +1058,41 @@ export default function IDCardActionsView({
           </div>
         </div>
 
-        {/* Right Section Navigation */}
+        {/* Right Section — Datetime filter (download list) + navigation */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Datetime Range Filter — only for Download list */}
+          {status === 'download' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <label style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>From</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={e => setFromDate(e.target.value)}
+                style={{ height: '26px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', padding: '0 4px', outline: 'none', fontFamily: 'var(--font-family)' }}
+              />
+              <label style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>To</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={e => setToDate(e.target.value)}
+                style={{ height: '26px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', padding: '0 4px', outline: 'none', fontFamily: 'var(--font-family)' }}
+              />
+              {(fromDate || toDate) && (
+                <button
+                  onClick={() => { setFromDate(''); setToDate(''); }}
+                  style={{ height: '26px', padding: '0 8px', border: '1px solid #fca5a5', borderRadius: '4px', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                >
+                  <X size={11} /> Clear
+                </button>
+              )}
+            </div>
+          )}
+
           <button onClick={onBack} className="btn btn-neutral btn-sm" style={{ height: '28px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid #cbd5e1', background: '#fff', color: '#334155', borderRadius: '4px', padding: '0 10px', cursor: 'pointer' }}>
             <Layers size={13} /> <span>ID Card Group</span>
+          </button>
+          <button onClick={() => {}} style={{ height: '28px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid #0ea5e9', background: '#f0f9ff', color: '#0369a1', borderRadius: '4px', padding: '0 10px', cursor: 'pointer' }} title="Table Settings">
+            <Settings size={13} /> <span>Group Setting</span>
           </button>
         </div>
       </div>
