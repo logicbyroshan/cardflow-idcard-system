@@ -259,7 +259,7 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
                 className="btn"
                 disabled={!selected}
                 onClick={() => selStaff && onOpenActionDrawer?.(isAssistant ? 'edit-assistant' : isPhotographer ? 'edit-photographer' : 'edit-operator', selStaff)}
-                style={{ background: selected ? '#2563eb' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#2563eb' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
                 <Pen size={13} /> Edit
               </button>
@@ -268,7 +268,7 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
                 disabled={!selected}
                 onClick={() => selStaff && onOpenActionDrawer?.(isAssistant ? 'assign-assistant' : 'assign-operator', selStaff)}
                 title={isAssistant ? "Assign Groups / Classes" : "Assign Organisations"}
-                style={{ background: selected ? '#0284c7' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#0284c7' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
                 <Link size={13} /> Assign
               </button>
@@ -276,7 +276,7 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
                 className="btn"
                 disabled={!selected}
                 onClick={handleDeleteStaff}
-                style={{ background: selected ? '#ef4444' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#ef4444' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
                 <Trash2 size={13} /> Delete
               </button>
@@ -284,7 +284,7 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
                 className="btn"
                 disabled={!selected}
                 onClick={handleToggleStatus}
-                style={{ background: selected ? '#f59e0b' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: selected ? '#f59e0b' : 'rgba(255, 255, 255, 0.08)', color: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', border: selected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', cursor: selected ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
                 <ToggleRight size={13} /> Active
               </button>
