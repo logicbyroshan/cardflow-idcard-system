@@ -311,23 +311,23 @@ export default function CardTableView({ addToast, onNavigate }) {
                 </button>
               </div>
             ) : (
-              <table className="data-table idcard-table" style={{ width: '100%', minWidth: '960px', tableLayout: 'fixed' }}>
+              <table className="gs-group-table" style={{ width: '100%', minWidth: '960px', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                 <colgroup>
                   {/* S. NO. — tiny fixed */}
                   <col style={{ width: '50px' }} />
                   {/* NAME — flexible, takes ALL remaining space */}
                   <col />
-                  {/* ID CARD LISTS — fixed: 5 buttons × ~96px + 4×6px gaps + 24px padding = 520px */}
+                  {/* ID CARD LISTS — fixed: 5 buttons × ~96px + 4×6px gaps + 24px cell padding ≈ 520px */}
                   <col style={{ width: '520px' }} />
-                  {/* REPRINT CARD LISTS — fixed: 3 buttons × ~96px + 2×6px gaps + 24px padding = 340px */}
+                  {/* REPRINT CARD LISTS — fixed: 3 buttons × ~96px + 2×6px gaps + 24px cell padding ≈ 340px */}
                   <col style={{ width: '340px' }} />
                 </colgroup>
                 <thead>
-                  <tr>
-                    <th style={{ textAlign: 'center' }}>S. NO.</th>
-                    <th style={{ textAlign: 'left' }}>NAME</th>
-                    <th style={{ textAlign: 'center' }}>ID CARD LISTS</th>
-                    <th style={{ textAlign: 'center' }}>REPRINT CARD LISTS</th>
+                  <tr style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)' }}>
+                    <th style={{ textAlign: 'center', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '9px 8px', textTransform: 'uppercase', letterSpacing: '0.05em', borderRight: '1px solid rgba(255,255,255,0.1)' }}>S. NO.</th>
+                    <th style={{ textAlign: 'left', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '9px 12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderRight: '1px solid rgba(255,255,255,0.1)' }}>NAME</th>
+                    <th style={{ textAlign: 'center', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '9px 8px', textTransform: 'uppercase', letterSpacing: '0.05em', borderRight: '1px solid rgba(255,255,255,0.1)' }}>ID CARD LISTS</th>
+                    <th style={{ textAlign: 'center', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '9px 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>REPRINT CARD LISTS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -352,19 +352,15 @@ export default function CardTableView({ addToast, onNavigate }) {
                       <tr
                         key={t.id || idx}
                         onClick={() => setSelectedTableId(t.id)}
-                        style={{
-                          background: isSelected ? '#eff6ff' : undefined,
-                          borderLeft: isSelected ? '4px solid #2563eb' : '4px solid transparent',
-                          cursor: 'pointer', transition: 'background 0.15s'
-                        }}
+                        style={{ cursor: 'pointer', transition: 'background 0.15s' }}
                       >
                         {/* Column 0: S. NO. */}
-                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px', verticalAlign: 'middle' }}>
+                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#64748b', fontSize: '12px', verticalAlign: 'middle', padding: '10px 4px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', borderLeft: isSelected ? '4px solid #2563eb' : '4px solid transparent', background: isSelected ? '#eff6ff' : undefined }}>
                           {idx + 1}
                         </td>
 
                         {/* Column 1: Table Name — gets remaining flexible space */}
-                        <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left', overflow: 'hidden', verticalAlign: 'middle' }}>
+                        <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left', overflow: 'hidden', verticalAlign: 'middle', padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', background: isSelected ? '#eff6ff' : undefined }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
                             <span style={{ fontSize: '13px', color: isSelected ? '#1d4ed8' : '#1e293b', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.name}>{t.name}</span>
                             <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={orgDisplay}>
@@ -374,8 +370,8 @@ export default function CardTableView({ addToast, onNavigate }) {
                         </td>
 
                         {/* Column 2: ID CARD LISTS */}
-                        <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                        <td style={{ textAlign: 'center', verticalAlign: 'middle', padding: '10px 8px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', background: isSelected ? '#eff6ff' : undefined, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'pending' }); }}
@@ -429,8 +425,8 @@ export default function CardTableView({ addToast, onNavigate }) {
                         </td>
 
                         {/* Column 3: REPRINT CARD LISTS */}
-                        <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                        <td style={{ textAlign: 'center', verticalAlign: 'middle', padding: '10px 8px', borderBottom: '1px solid #e5e7eb', background: isSelected ? '#eff6ff' : undefined, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('reprint'); setPage(1); }}
