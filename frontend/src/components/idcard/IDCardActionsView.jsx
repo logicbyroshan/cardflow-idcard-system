@@ -1184,7 +1184,7 @@ export default function IDCardActionsView({
     transition: 'all 0.15s ease',
   });
 
-  /* Shared Print Data & Download Data buttons */
+  /* Shared Print Data & Download Data buttons (Same Purple/Indigo color family) */
   const renderDownloadButtons = () => (
     <>
       <button
@@ -1197,8 +1197,8 @@ export default function IDCardActionsView({
           height: '26px',
           fontSize: '11px',
           fontWeight: 600,
-          border: '1px solid #f59e0b',
-          background: '#f59e0b',
+          border: '1px solid #4338ca',
+          background: '#4f46e5',
           color: '#ffffff',
           borderRadius: '4px',
           cursor: 'pointer',
@@ -1220,7 +1220,7 @@ export default function IDCardActionsView({
           height: '26px',
           fontSize: '11px',
           fontWeight: 600,
-          border: '1px solid #7c3aed',
+          border: '1px solid #6d28d9',
           background: '#7c3aed',
           color: '#ffffff',
           borderRadius: '4px',
@@ -1420,7 +1420,7 @@ export default function IDCardActionsView({
                 <FileSpreadsheet size={14} /> <span>Upload XLSX</span>
               </button>
 
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
                 <RefreshCw size={14} /> <span>Reupload Image</span>
               </button>
 
@@ -1495,7 +1495,7 @@ export default function IDCardActionsView({
                 title="Approve selected"
               >{actionLoading ? <Spinner size={14} /> : <ThumbsUp size={14} />} <span>Approve Selected</span></button>
 
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
                 <RefreshCw size={14} /> <span>Reupload Image</span>
               </button>
             </>
@@ -1523,7 +1523,7 @@ export default function IDCardActionsView({
                 title="Move back to Verified"
               ><RotateCcw size={14} /> <span>Disapprove</span></button>
 
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
                 <RefreshCw size={14} /> <span>Reupload Image</span>
               </button>
             </>
@@ -1551,7 +1551,7 @@ export default function IDCardActionsView({
                 title="Retrieve to Pending"
               ><RotateCcw size={14} /> <span>Retrieve</span></button>
 
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#f59e0b')} title="Reupload images from ZIP">
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
                 <RefreshCw size={14} /> <span>Reupload Image</span>
               </button>
             </>
@@ -1778,7 +1778,7 @@ export default function IDCardActionsView({
               ) : filteredCards.map((card, idx) => {
                 const isSelected = selectedIds.has(card.id);
                 const fd = card.field_data || {};
-                const srNo = (page - 1) * pageSize + idx + 1;
+                const srNo = idx + 1;
                 const updatedAt = card.updated_at ? new Date(card.updated_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
                 const updatedBy = card.modified_by || card.updated_by || 'Admin';
 
@@ -1905,41 +1905,6 @@ export default function IDCardActionsView({
             </tbody>
           </table>
         )}
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════
-          STICKY BOTTOM PAGINATION BAR — STANDARD SITE PAGINATION
-          ══════════════════════════════════════════════════════════ */}
-      <div className="pagination-bar" id="paginationBar" style={{ flexShrink: 0 }}>
-        <div className="pagination-left">
-          <span className="pagination-info">
-            Showing <strong>{cards.length > 0 ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)}</strong> of <strong>{total}</strong> results
-          </span>
-        </div>
-
-        <div className="pagination-center">
-          <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(1)}><ChevronsLeft size={11} /></button>
-          <button className="pagination-btn" disabled={page === 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft size={11} /></button>
-          {Array.from({ length: Math.max(1, Math.min(totalPages, 5)) }).map((_, i) => {
-            const p = i + 1;
-            return (
-              <button key={p} className={`page-num${page === p ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
-            );
-          })}
-          <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}><ChevronRight size={11} /></button>
-          <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight size={11} /></button>
-        </div>
-
-        <div className="pagination-right">
-          <label style={{ fontSize: '12px', color: '#6b7280' }}>Rows per page:</label>
-          <select
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-            style={{ height: '24px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 4px', background: '#fff', fontFamily: 'var(--font-family)', cursor: 'pointer', outline: 'none' }}
-          >
-            {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
       </div>
 
       {/* ── Drawers & Modals ── */}

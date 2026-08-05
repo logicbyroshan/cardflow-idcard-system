@@ -10,70 +10,8 @@ import { clientApi, assistantApi, panelApi } from '../../services/api';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-function PaginationBar({ page, setPage, total, pageSize, setPageSize, loading }) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const end   = Math.min(page * pageSize, total);
-
-  return (
-    <div className="pagination-bar" id="paginationBar">
-      <div className="pagination-left">
-        <span className="pagination-info">
-          Showing <strong>{start}–{end}</strong> of <strong>{total}</strong> results
-        </span>
-      </div>
-
-      <div className="pagination-center">
-        <button
-          onClick={() => setPage(1)}
-          disabled={page <= 1 || loading}
-          className="pagination-btn"
-          title="First page"
-        >
-          <ChevronsLeft size={12} />
-        </button>
-        <button
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page <= 1 || loading}
-          className="pagination-btn"
-          title="Previous page"
-        >
-          <ChevronLeft size={12} />
-        </button>
-        <span className="page-num active">{page}</span>
-        <button
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          disabled={page >= totalPages || loading}
-          className="pagination-btn"
-          title="Next page"
-        >
-          <ChevronRight size={12} />
-        </button>
-        <button
-          onClick={() => setPage(totalPages)}
-          disabled={page >= totalPages || loading}
-          className="pagination-btn"
-          title="Last page"
-        >
-          <ChevronsRight size={12} />
-        </button>
-      </div>
-
-      <div className="pagination-right">
-        <span style={{ fontSize: '11px', color: '#64748b' }}>Rows per page:</span>
-        <select
-          value={pageSize}
-          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-          className="form-select form-select-sm"
-          style={{ height: '24px', fontSize: '11px', padding: '0 4px', width: 'auto' }}
-        >
-          {PAGE_SIZE_OPTIONS.map((sz) => (
-            <option key={sz} value={sz}>{sz}</option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
+function PaginationBar() {
+  return null;
 }
 
 export default function ManageFeaturesView({ addToast }) {

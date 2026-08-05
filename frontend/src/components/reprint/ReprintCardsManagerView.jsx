@@ -230,17 +230,6 @@ export default function ReprintCardsManagerView({ addToast }) {
         )}
       </div>
 
-      {/* ── STICKY BOTTOM PAGINATION BAR ── */}
-      <div className="pagination-bar">
-        <div className="pagination-left">
-          <span className="pagination-info">Showing <strong>{filtered.length}</strong> items</span>
-        </div>
-        <div className="pagination-center">
-          <button className="pagination-btn" disabled><ChevronLeft size={11} /></button>
-          <span className="page-numbers"><button className="page-num active">1</button></span>
-          <button className="pagination-btn" disabled><ChevronRight size={11} /></button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -365,38 +365,6 @@ export default function ClientAccountsView({ addToast, onOpenActionDrawer, onNav
           </div>
         )}
       </div>
-
-
-      {/* ── Pagination Footer ── */}
-      <div style={{
-        padding: '8px 16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', flexShrink: 0
-      }}>
-        <div style={{ color: '#64748b' }}>
-          Showing {filteredAccounts.length} of {total} Client accounts
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>Per page:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-              style={{ padding: '2px 6px', fontSize: '11px', borderRadius: '3px', border: '1px solid #cbd5e1' }}
-            >
-              {PAGE_SIZE_OPTIONS.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button onClick={() => setPage(1)} disabled={page <= 1} className="btn btn-outline btn-xs"><ChevronsLeft size={12} /></button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="btn btn-outline btn-xs"><ChevronLeft size={12} /></button>
-            <span style={{ padding: '0 6px', fontWeight: 600 }}>Page {page} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="btn btn-outline btn-xs"><ChevronRight size={12} /></button>
-            <button onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="btn btn-outline btn-xs"><ChevronsRight size={12} /></button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

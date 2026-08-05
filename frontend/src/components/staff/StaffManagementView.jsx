@@ -422,39 +422,6 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
       </div>
 
 
-      {/* ── STICKY BOTTOM PAGINATION BAR ── */}
-      <div className="pagination-bar" id="paginationBar">
-        <div className="pagination-left">
-          <span className="pagination-info">
-            Showing <strong>{filtered.length > 0 ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> results
-          </span>
-        </div>
-
-        <div className="pagination-center">
-          <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(1)}><ChevronsLeft size={11} /></button>
-          <button className="pagination-btn" disabled={page === 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft size={11} /></button>
-          {Array.from({ length: Math.max(1, Math.min(totalPages, 5)) }).map((_, i) => {
-            const p = i + 1;
-            return (
-              <button key={p} className={`page-num${page === p ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
-            );
-          })}
-          <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}><ChevronRight size={11} /></button>
-          <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight size={11} /></button>
-        </div>
-
-        <div className="pagination-right">
-          <label style={{ fontSize: '12px', color: '#6b7280' }}>Rows per page:</label>
-          <select
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-            style={{ height: '24px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 4px', background: '#fff', fontFamily: 'var(--font-family)', cursor: 'pointer', outline: 'none' }}
-          >
-            {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-      </div>
-
     </div>
   );
 }

@@ -577,44 +577,6 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
         )}
       </div>
 
-      {/* ── PAGINATION BAR ── */}
-      <div className="pagination-bar">
-        <div className="pagination-left">
-          <span className="pagination-info">
-            Showing <strong>{clients.length > 0 ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)}</strong> of <strong>{total}</strong> results
-          </span>
-          {selected && (
-            <span className="pagination-selected" style={{ marginLeft: '8px', color: '#6b7280', fontSize: '12px' }}>
-              · 1 selected
-            </span>
-          )}
-        </div>
-
-        <div className="pagination-center">
-          <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(1)} title="First"><ChevronsLeft size={11} /></button>
-          <button className="pagination-btn" disabled={page === 1} onClick={() => setPage((p) => p - 1)} title="Previous"><ChevronLeft size={11} /></button>
-          {Array.from({ length: Math.max(1, Math.min(totalPages, 7)) }).map((_, i) => {
-            const p = i + 1;
-            return (
-              <button key={p} className={`page-num${page === p ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
-            );
-          })}
-          <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} title="Next"><ChevronRight size={11} /></button>
-          <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage(totalPages)} title="Last"><ChevronsRight size={11} /></button>
-        </div>
-
-        <div className="pagination-right">
-          <label style={{ fontSize: '12px', color: '#6b7280' }}>Rows per page:</label>
-          <select
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-            style={{ height: '24px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 4px', background: '#fff', fontFamily: 'var(--font-family)', cursor: 'pointer', outline: 'none' }}
-          >
-            {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-      </div>
-
       {/* ── BACKDROP OVERLAY WITH BLUR (No onClick -> closed by close buttons only) ── */}
       {(showManagersDrawer || showAssistantsDrawer) && (
         <div
