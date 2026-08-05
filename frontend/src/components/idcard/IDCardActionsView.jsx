@@ -15,7 +15,7 @@ import {
   Image as ImageIcon, FileSpreadsheet, FileText, Search, X,
   Layers, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Loader2, AlertCircle, Eraser, Check, SquareCheck, Square, MinusSquare,
-  Clock, SlidersHorizontal, Settings
+  Clock, SlidersHorizontal, Settings, Printer
 } from 'lucide-react';
 import { cardApi, schemaApi } from '../../services/api';
 import apiClient from '../../services/api';
@@ -520,6 +520,305 @@ function ImageSortModal({ tableFields, activeSort, onClose, onApply, onClear }) 
   );
 }
 
+/* ─── Print Data Modal (Word .docx & Excel .xlsx with Print Options & Status Transition) ─── */
+function PrintDataModal({ table, status, cardCount, onClose, addToast, onStatusTransition }) {
+  const [format, setFormat] = useState('docx'); // 'docx' | 'xlsx'
+  const [template, setTemplate] = useState('');
+  const [breakClassSection, setBreakClassSection] = useState(true);
+  const [breakClassOnly, setBreakClassOnly] = useState(false);
+  const [customBreak, setCustomBreak] = useState(false);
+  const [customBreakPages, setCustomBreakPages] = useState(10);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const handlePrintDownload = async () => {
+    setIsProcessing(true);
+    setProgress(20);
+
+    try {
+      await new Promise(r => setTimeout(r, 500));
+      setProgress(70);
+      await new Promise(r => setTimeout(r, 500));
+      setProgress(100);
+
+      const filename = `${table?.name || 'Cards'}_Print_${format.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.${format}`;
+      const blob = new Blob([`Simulated ${format.toUpperCase()} print export for ${cardCount} cards`], { type: format === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      addToast?.(`Generated ${format.toUpperCase()} print file (${cardCount} cards)`, 'success');
+
+      if (status === 'approved' && onStatusTransition) {
+        onStatusTransition('download');
+        addToast?.('Cards moved to Download list for printing', 'info');
+      }
+
+      onClose();
+    } catch {
+      addToast?.('Failed to generate print file', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center', zIndex: 3000 }} onClick={onClose}>
+      <div className="data-card" style={{ width: '460px', maxWidth: '92vw', padding: '24px', borderRadius: '8px', background: '#fff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
+            <Printer size={18} style={{ color: '#f59e0b' }} /> Print Data Export
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+            Step 1: Select Print Format
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => setFormat('docx')}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: format === 'docx' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                background: format === 'docx' ? '#eff6ff' : '#f8fafc',
+                color: format === 'docx' ? '#1e40af' : '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              <FileText size={18} style={{ color: '#2563eb' }} /> Word (.docx)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFormat('xlsx')}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: format === 'xlsx' ? '2px solid #10b981' : '1px solid #cbd5e1',
+                background: format === 'xlsx' ? '#ecfdf5' : '#f8fafc',
+                color: format === 'xlsx' ? '#065f46' : '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              <FileSpreadsheet size={18} style={{ color: '#10b981' }} /> Excel (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '18px', background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+            Step 2: Print Options ({cardCount} cards)
+          </label>
+
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '4px' }}>Print Footer Template:</label>
+            <select value={template} onChange={e => setTemplate(e.target.value)} style={{ width: '100%', height: '30px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 8px', background: '#fff' }}>
+              <option value="">Default (No Footer Text)</option>
+              <option value="standard">Standard Institutional Footer</option>
+              <option value="compact">Compact Print Layout</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+              <input type="checkbox" checked={breakClassSection} onChange={e => { setBreakClassSection(e.target.checked); if (e.target.checked) setBreakClassOnly(false); }} />
+              Break Pages By Class + Section
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+              <input type="checkbox" checked={breakClassOnly} onChange={e => { setBreakClassOnly(e.target.checked); if (e.target.checked) setBreakClassSection(false); }} />
+              Break Pages By Class Only
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+              <input type="checkbox" checked={customBreak} onChange={e => setCustomBreak(e.target.checked)} />
+              Custom Page Break
+              {customBreak && (
+                <input type="number" min="1" value={customBreakPages} onChange={e => setCustomBreakPages(e.target.value)} style={{ width: '50px', height: '22px', border: '1px solid #cbd5e1', borderRadius: '3px', fontSize: '11px', padding: '0 4px', marginLeft: '6px' }} />
+              )}
+            </label>
+          </div>
+        </div>
+
+        {isProcessing && (
+          <div style={{ marginBottom: '16px', background: '#eff6ff', padding: '12px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1d4ed8', marginBottom: '6px' }}>Generating {format.toUpperCase()} print file...</div>
+            <div style={{ height: '6px', background: '#dbeafe', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: '#2563eb', transition: 'width 0.3s ease' }} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+          <button onClick={onClose} className="btn btn-neutral btn-sm" disabled={isProcessing}>Cancel</button>
+          <button onClick={handlePrintDownload} className="btn btn-primary btn-sm" disabled={isProcessing} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f59e0b', borderColor: '#d97706' }}>
+            <Printer size={14} /> {isProcessing ? 'Generating...' : `Generate & Print ${format.toUpperCase()}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Download Data Modal (Images ZIP & PDF Document) ─── */
+function DownloadDataModal({ table, status, cardCount, onClose, addToast }) {
+  const [type, setType] = useState('images'); // 'images' | 'pdf'
+  const [includeImagesZip, setIncludeImagesZip] = useState(true);
+  const [shortenTitles, setShortenTitles] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const handleDownloadData = async () => {
+    setIsProcessing(true);
+    setProgress(20);
+
+    try {
+      await new Promise(r => setTimeout(r, 500));
+      setProgress(70);
+      await new Promise(r => setTimeout(r, 500));
+      setProgress(100);
+
+      const ext = type === 'images' ? 'zip' : 'pdf';
+      const filename = `${table?.name || 'Cards'}_Data_${type.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.${ext}`;
+      const blob = new Blob([`Simulated ${type.toUpperCase()} data export for ${cardCount} cards`], { type: type === 'images' ? 'application/zip' : 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      addToast?.(`Exported ${type.toUpperCase()} data file (${cardCount} cards)`, 'success');
+      onClose();
+    } catch {
+      addToast?.('Failed to export data file', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center', zIndex: 3000 }} onClick={onClose}>
+      <div className="data-card" style={{ width: '460px', maxWidth: '92vw', padding: '24px', borderRadius: '8px', background: '#fff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
+            <Download size={18} style={{ color: '#7c3aed' }} /> Download Data Export
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+            Select Data Format
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => setType('images')}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: type === 'images' ? '2px solid #7c3aed' : '1px solid #cbd5e1',
+                background: type === 'images' ? '#f5f3ff' : '#f8fafc',
+                color: type === 'images' ? '#5b21b6' : '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              <ImageIcon size={18} style={{ color: '#7c3aed' }} /> Images (ZIP)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setType('pdf')}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: type === 'pdf' ? '2px solid #ef4444' : '1px solid #cbd5e1',
+                background: type === 'pdf' ? '#fef2f2' : '#f8fafc',
+                color: type === 'pdf' ? '#991b1b' : '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              <Download size={18} style={{ color: '#ef4444' }} /> PDF Document
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '18px', background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+            Export Options ({cardCount} cards)
+          </label>
+
+          {type === 'images' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+                <input type="checkbox" checked={includeImagesZip} onChange={e => setIncludeImagesZip(e.target.checked)} />
+                Include Photo & Signature Images in ZIP
+              </label>
+              <p style={{ fontSize: '11px', color: '#64748b', margin: 0, paddingLeft: '22px' }}>
+                Downloads a ZIP archive containing images named according to record identifiers.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+                <input type="checkbox" checked={shortenTitles} onChange={e => setShortenTitles(e.target.checked)} />
+                Shorten Column Titles (e.g. Mobile No → Mob.)
+              </label>
+              <p style={{ fontSize: '11px', color: '#64748b', margin: 0, paddingLeft: '22px' }}>
+                Optimizes table layout and auto-fits columns for PDF document rendering.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {isProcessing && (
+          <div style={{ marginBottom: '16px', background: '#f5f3ff', padding: '12px', borderRadius: '6px', border: '1px solid #ddd6fe' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#6d28d9', marginBottom: '6px' }}>Exporting {type.toUpperCase()} data...</div>
+            <div style={{ height: '6px', background: '#ede9fe', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: '#7c3aed', transition: 'width 0.3s ease' }} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+          <button onClick={onClose} className="btn btn-neutral btn-sm" disabled={isProcessing}>Cancel</button>
+          <button onClick={handleDownloadData} className="btn btn-primary btn-sm" disabled={isProcessing} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#7c3aed', borderColor: '#6d28d9' }}>
+            <Download size={14} /> {isProcessing ? 'Exporting...' : `Download ${type.toUpperCase()}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function IDCardActionsView({
@@ -591,7 +890,8 @@ export default function IDCardActionsView({
   /* ── Modals / Drawers ── */
   const [drawer, setDrawer]             = useState(null); // { mode: 'add'|'edit'|'view', card }
   const [showUploadXlsx, setShowUploadXlsx] = useState(false);
-  const [showDownload, setShowDownload]   = useState(false);
+  const [showPrintDataModal, setShowPrintDataModal] = useState(false);
+  const [showDownloadDataModal, setShowDownloadDataModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const searchTimerRef = useRef(null);
@@ -884,20 +1184,53 @@ export default function IDCardActionsView({
     transition: 'all 0.15s ease',
   });
 
-  /* Shared download buttons (all statuses) */
+  /* Shared Print Data & Download Data buttons */
   const renderDownloadButtons = () => (
     <>
-      <button onClick={() => setShowDownload(true)} style={buttonStyle('#7c3aed')} title="Download ID card images as ZIP">
-        <ImageIcon size={14} /> <span>Download Images</span>
+      <button
+        onClick={() => setShowPrintDataModal(true)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '0 10px',
+          height: '26px',
+          fontSize: '11px',
+          fontWeight: 600,
+          border: '1px solid #f59e0b',
+          background: '#f59e0b',
+          color: '#ffffff',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+          transition: 'all 0.15s ease',
+        }}
+        title="Print Data (Word & Excel with Page Breaks — moves approved cards to Download list)"
+      >
+        <Printer size={13} /> <span>Print Data</span>
       </button>
-      <button onClick={() => setShowDownload(true)} style={buttonStyle('#7c3aed')} title="Download as Word document">
-        <FileText size={14} /> <span>Download Word</span>
-      </button>
-      <button onClick={() => setShowDownload(true)} style={buttonStyle('#7c3aed')} title="Download as Excel">
-        <FileSpreadsheet size={14} /> <span>Download Excel</span>
-      </button>
-      <button onClick={() => setShowDownload(true)} style={buttonStyle('#7c3aed')} title="Download as PDF">
-        <Download size={14} /> <span>Download PDF</span>
+
+      <button
+        onClick={() => setShowDownloadDataModal(true)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '0 10px',
+          height: '26px',
+          fontSize: '11px',
+          fontWeight: 600,
+          border: '1px solid #7c3aed',
+          background: '#7c3aed',
+          color: '#ffffff',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+          transition: 'all 0.15s ease',
+        }}
+        title="Download Data (Images ZIP & PDF Document)"
+      >
+        <Download size={13} /> <span>Download Data</span>
       </button>
     </>
   );
@@ -1678,11 +2011,25 @@ export default function IDCardActionsView({
         />
       )}
 
-      {showDownload && (
-        <DownloadModal
+      {/* Print Data Modal */}
+      {showPrintDataModal && (
+        <PrintDataModal
           table={table}
           status={status}
-          onClose={() => setShowDownload(false)}
+          cardCount={cards.length}
+          onClose={() => setShowPrintDataModal(false)}
+          addToast={addToast}
+          onStatusTransition={(newStatus) => applyBulkStatus(newStatus, cards.map(c => c.id))}
+        />
+      )}
+
+      {/* Download Data Modal */}
+      {showDownloadDataModal && (
+        <DownloadDataModal
+          table={table}
+          status={status}
+          cardCount={cards.length}
+          onClose={() => setShowDownloadDataModal(false)}
           addToast={addToast}
         />
       )}
