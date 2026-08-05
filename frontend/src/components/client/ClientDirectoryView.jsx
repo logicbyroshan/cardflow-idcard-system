@@ -318,21 +318,22 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
     <div className="view-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
 
       {/* ── ACTION BAR ── */}
-      <div className="action-bar" id="client-action-bar">
+      <div className="action-bar" id="client-action-bar" style={{ background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box' }}>
         {/* Left */}
-        <div className="action-bar-left">
-          <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: '#eef0f4', borderRadius: '6px', padding: '2px 3px', gap: '2px' }}>
+        <div className="action-bar-left" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="status-tabs" style={{ display: 'flex', alignItems: 'center', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '5px', padding: '2px', gap: '2px', height: '28px', boxSizing: 'border-box' }}>
             {STATUS_TABS.map((t) => (
               <button
                 key={t}
                 onClick={() => { setStatusTab(t); setPage(1); }}
                 className={`status-tab${statusTab === t ? ' active' : ''}`}
                 style={{
-                  padding: '2px 10px', fontSize: '13px', lineHeight: 1.2, borderRadius: '4px',
-                  border: 'none', cursor: 'pointer', background: statusTab === t ? '#fff' : 'transparent',
-                  color: statusTab === t ? '#374151' : '#6b7280', fontWeight: statusTab === t ? 600 : 400,
+                  padding: '0 10px', height: '22px', fontSize: '11px', lineHeight: '22px', borderRadius: '3px',
+                  border: 'none', cursor: 'pointer', background: statusTab === t ? '#2563eb' : 'transparent',
+                  color: statusTab === t ? '#ffffff' : '#cbd5e1', fontWeight: statusTab === t ? 700 : 600,
                   fontFamily: 'var(--font-family)', transition: 'all 0.15s',
-                  boxShadow: statusTab === t ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  boxShadow: statusTab === t ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                  display: 'inline-flex', alignItems: 'center'
                 }}
               >
                 {t}
@@ -340,67 +341,111 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
             ))}
           </div>
 
-          <div className="action-divider" />
+          <div className="action-divider" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
 
-          <div className="notif-search-box" style={{ width: '200px' }}>
-            <Search size={13} style={{ color: '#9ca3af', flexShrink: 0, marginRight: '6px' }} />
+          <div className="notif-search-box" style={{ width: '200px', height: '28px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '5px', padding: '0 8px', display: 'flex', alignItems: 'center', boxSizing: 'border-box' }}>
+            <Search size={12} style={{ color: '#94a3b8', flexShrink: 0, marginRight: '6px' }} />
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search All..."
+              style={{ background: 'transparent', border: 'none', color: '#ffffff', outline: 'none', fontSize: '12px', width: '100%' }}
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', padding: '0 2px' }} title="Clear search">
-                <X size={13} />
+              <button onClick={() => setSearch('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '0 2px' }} title="Clear search">
+                <X size={12} />
               </button>
             )}
           </div>
         </div>
 
         {/* Right */}
-        <div className="action-bar-right">
-          <div className="actions">
-            <div className="btn-group">
-              <button className="btn btn-md btn-primary" onClick={() => onOpenActionDrawer?.('add-client')}>
+        <div className="action-bar-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div className="btn-group" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                className="btn"
+                onClick={() => onOpenActionDrawer?.('add-client')}
+                style={{ background: '#2563eb', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
                 <Plus size={13} /> Add
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => selClient && onOpenActionDrawer?.('edit-client', selClient)}>
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={() => selClient && onOpenActionDrawer?.('edit-client', selClient)}
+                style={{ background: selected ? '#2563eb' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
                 <Pen size={13} /> Edit
               </button>
-              <button className="btn btn-md btn-danger" disabled={!selected} onClick={handleDeleteClient}>
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={handleDeleteClient}
+                style={{ background: selected ? '#ef4444' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
                 <Trash2 size={13} /> Delete
               </button>
-              <button className="btn btn-md btn-warning" disabled={!selected} onClick={handleToggleStatus}>
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={handleToggleStatus}
+                style={{ background: selected ? '#f59e0b' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
                 <ToggleRight size={13} /> Active
               </button>
             </div>
 
-            <div className="btn-separator" />
+            <div className="btn-separator" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
 
-            <div className="btn-group">
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => onNavigate?.('schema')} title="Manage Table Settings">
+            <div className="btn-group" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={() => onNavigate?.('schema')}
+                title="Manage Table Settings"
+                style={{ background: '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
                 <Settings size={13} /> <span>Table Setting</span>
               </button>
-              <button className="btn btn-md btn-neutral" disabled={!selected} onClick={() => onNavigate?.('cards')} title="View Table Groups">
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={() => onNavigate?.('cards')}
+                title="View Table Groups"
+                style={{ background: '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
                 <CreditCard size={13} /> <span>Table Groups</span>
               </button>
-              <button className={`btn btn-md ${showManagersDrawer ? 'btn-primary' : 'btn-neutral'}`} disabled={!selected} onClick={() => { setShowManagersDrawer(!showManagersDrawer); setShowAssistantsDrawer(false); }} title="Manage Managers">
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={() => { setShowManagersDrawer(!showManagersDrawer); setShowAssistantsDrawer(false); }}
+                title="Manage Managers"
+                style={{ background: showManagersDrawer ? '#2563eb' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
                 <Users size={13} /> <span>Managers</span>
               </button>
-              <button className={`btn btn-md ${showAssistantsDrawer ? 'btn-primary' : 'btn-neutral'}`} disabled={!selected} onClick={() => { setShowAssistantsDrawer(!showAssistantsDrawer); setShowManagersDrawer(false); }} title="Manage Assistants">
+              <button
+                className="btn"
+                disabled={!selected}
+                onClick={() => { setShowAssistantsDrawer(!showAssistantsDrawer); setShowManagersDrawer(false); }}
+                title="Manage Assistants"
+                style={{ background: showAssistantsDrawer ? '#2563eb' : '#334155', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: selected ? 'pointer' : 'not-allowed', opacity: selected ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
                 <UsersRound size={13} /> <span>Assistants</span>
               </button>
             </div>
 
-            <div className="btn-separator" />
+            <div className="btn-separator" style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
 
             <button
-              onClick={load}
-              className="btn btn-md btn-neutral"
-              title="Refresh"
+              className="btn"
+              onClick={fetchData}
+              title="Refresh table"
+              style={{ background: '#475569', color: '#ffffff', height: '28px', padding: '0 10px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
-              {loading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-              <span>Refresh</span>
+              <RefreshCw size={12} className={loading ? 'spin' : ''} /> <span>Refresh</span>
             </button>
           </div>
         </div>
