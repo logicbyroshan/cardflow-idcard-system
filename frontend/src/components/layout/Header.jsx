@@ -65,7 +65,7 @@ export default function Header({
   const pageLabel = PAGE_LABELS[activeTab] || activeTab;
 
   return (
-    <header className="topbar" id="topbar" style={{ height: '44px', background: '#111827', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', boxSizing: 'border-box' }}>
+    <header className="topbar" id="topbar" style={{ height: '44px', background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', boxSizing: 'border-box' }}>
       {/* Left: empty container */}
       <div className="nav-left" />
 

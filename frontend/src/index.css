@@ -61,7 +61,7 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  background: #111827 !important;
+  background: #1e1e2e !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-sizing: border-box !important;
   flex-shrink: 0 !important;
@@ -2592,11 +2592,14 @@ input[type="checkbox"] {
   background: var(--bg-body) !important;
 }
 
-/* 2. Global Black Topbar/Navbar with matching 44px height */
+/* 2. Global Topbar/Navbar & Action Bars with matching 44px height & exact sidebar color (#1e1e2e) */
 .topbar,
 #topbar,
-header.topbar {
-  background: #111827 !important;
+header.topbar,
+.action-bar,
+.notif-actions-bar,
+.search-filter-bar {
+  background: #1e1e2e !important;
   color: #ffffff !important;
   height: 44px !important;
   min-height: 44px !important;
