@@ -303,21 +303,8 @@ export default function TableSettingsView({ addToast, onNavigate }) {
               <button className="btn btn-md btn-danger" disabled={!selected} onClick={handleDeleteTable}>
                 <Trash2 size={13} /> Delete
               </button>
-              <button className="btn btn-md btn-warning" disabled={!selected} onClick={handleToggleStatus}>
-                <ToggleRight size={13} /> Toggle
-              </button>
-            </div>
-
-            <div className="btn-group">
-              <button
-                className="btn btn-md btn-neutral"
-                onClick={() => onNavigate ? onNavigate('cards') : (window.location.href = '/panel/idcard-group/')}
-                title="Table Group"
-              >
-                <ShieldCheck size={13} /> <span>Table Group</span>
-              </button>
-              <button className="btn btn-md btn-primary" title="Table Setting">
-                <SlidersHorizontal size={13} /> <span>Table Setting</span>
+              <button className="btn btn-md btn-warning" disabled={!selected} onClick={handleToggleStatus} title="Toggle Active / Inactive status">
+                <ToggleRight size={13} /> Active / Inactive
               </button>
             </div>
 
@@ -329,6 +316,21 @@ export default function TableSettingsView({ addToast, onNavigate }) {
               </button>
               <button className="btn btn-md btn-neutral" onClick={handleDownloadBlankTemplate} title="Download XLSX Template">
                 <Download size={13} /> <span>Download XLSX Template</span>
+              </button>
+            </div>
+
+            <div className="btn-separator" />
+
+            <div className="btn-group">
+              <button
+                className="btn btn-md btn-neutral"
+                onClick={() => onNavigate ? onNavigate('cards') : (window.location.href = '/panel/idcard-group/')}
+                title="Table Group"
+              >
+                <ShieldCheck size={13} /> <span>Table Group</span>
+              </button>
+              <button className="btn btn-md btn-primary" title="Table Setting">
+                <SlidersHorizontal size={13} /> <span>Table Setting</span>
               </button>
             </div>
 

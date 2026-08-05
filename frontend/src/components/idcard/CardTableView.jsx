@@ -16,8 +16,11 @@ export default function CardTableView({ addToast, onNavigate }) {
   const [search, setSearch]               = useState("");
   const [statusTab, setStatusTab]         = useState("All");
 
+  /* Table selection in main view */
+  const [selectedTableId, setSelectedTableId] = useState(null);
+
   /* Drill-down state for viewing cards inside a specific table */
-  const [selectedTable, setSelectedTable] = useState(null);
+  const [viewingTable, setViewingTable]   = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("pending");
 
   /* Cards list state inside drill-down mode */
@@ -30,7 +33,6 @@ export default function CardTableView({ addToast, onNavigate }) {
 
   /* Modal states for bulk actions */
   const [activeModal, setActiveModal]     = useState(null); // 'reupload' | 'download-all' | 'delete-all' | 'upgrade'
-  const [modalTable, setModalTable]       = useState(null);
   const [deleteCodeInput, setDeleteCodeInput] = useState("");
 
   /* ── Load tables list (merging API data + localStorage) ── */
@@ -53,21 +55,27 @@ export default function CardTableView({ addToast, onNavigate }) {
         }
       });
       setTables(merged);
+      if (merged.length > 0 && !selectedTableId) {
+        setSelectedTableId(merged[0].id);
+      }
     } catch {
       setTables(local);
+      if (local.length > 0 && !selectedTableId) {
+        setSelectedTableId(local[0].id);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedTableId]);
 
   useEffect(() => { loadTables(); }, [loadTables]);
 
   /* ── Load cards for a selected table (drill-down view) ── */
   const loadCards = useCallback(async () => {
-    if (!selectedTable) return;
+    if (!viewingTable) return;
     setCardsLoading(true);
     try {
-      const data = await cardApi.getCards(selectedTable.id, {
+      const data = await cardApi.getCards(viewingTable.id, {
         page,
         search: cardSearch,
         status: selectedStatus !== "all" ? selectedStatus : undefined,
@@ -81,11 +89,11 @@ export default function CardTableView({ addToast, onNavigate }) {
     } finally {
       setCardsLoading(false);
     }
-  }, [selectedTable, page, cardSearch, selectedStatus]);
+  }, [viewingTable, page, cardSearch, selectedStatus]);
 
   useEffect(() => {
-    if (selectedTable) loadCards();
-  }, [selectedTable, loadCards]);
+    if (viewingTable) loadCards();
+  }, [viewingTable, loadCards]);
 
   /* ── Table filtering ── */
   const filteredTables = tables.filter(t => {
@@ -97,33 +105,14 @@ export default function CardTableView({ addToast, onNavigate }) {
     return matchSearch && matchStatus;
   });
 
+  const selectedTable = filteredTables.find(t => t.id === selectedTableId) || filteredTables[0];
+
   /* ── Bulk Actions Handlers ── */
-  const handleBulkReupload = (table) => {
-    setModalTable(table);
-    setActiveModal('reupload');
-  };
-
-  const handleBulkDownloadAll = (table) => {
-    setModalTable(table);
-    setActiveModal('download-all');
-  };
-
-  const handleBulkDeleteAll = (table) => {
-    setModalTable(table);
-    setDeleteCodeInput('');
-    setActiveModal('delete-all');
-  };
-
-  const handleBulkUpgradeClass = (table) => {
-    setModalTable(table);
-    setActiveModal('upgrade');
-  };
-
   const confirmDeleteAll = async () => {
-    if (!modalTable) return;
+    if (!selectedTable) return;
     try {
-      await cardApi.deleteAllCards(modalTable.id, { code: deleteCodeInput });
-      addToast?.(`All cards in "${modalTable.name}" deleted successfully`, 'success');
+      await cardApi.deleteAllCards(selectedTable.id, { code: deleteCodeInput });
+      addToast?.(`All cards in "${selectedTable.name}" deleted successfully`, 'success');
       setActiveModal(null);
       loadTables();
     } catch (err) {
@@ -134,7 +123,9 @@ export default function CardTableView({ addToast, onNavigate }) {
   /* ═══════════════════════════════════════════════════════════════════════════
      VIEW 1: TABLE GROUP OVERVIEW (Classic Django idcard_group template UI)
      ═══════════════════════════════════════════════════════════════════════════ */
-  if (!selectedTable) {
+  if (!viewingTable) {
+    const selTot = selectedTable ? (selectedTable.total_count || ((selectedTable.pending_count || 0) + (selectedTable.verified_count || 0) + (selectedTable.approved_count || 0) + (selectedTable.download_count || 0) + (selectedTable.pool_count || 0))) : 0;
+
     return (
       <div className="view-container" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
         
@@ -167,7 +158,7 @@ export default function CardTableView({ addToast, onNavigate }) {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search All..."
+                placeholder="Search tables..."
                 className="form-input"
                 style={{ paddingLeft: '26px', height: '28px', width: '180px', fontSize: '12px' }}
               />
@@ -176,17 +167,47 @@ export default function CardTableView({ addToast, onNavigate }) {
 
           <div className="action-bar-right">
             <div className="actions">
-              {/* Page Switch Buttons Pair */}
+              
+              {/* Bulk Action Buttons Group in Navbar */}
               <div className="btn-group">
-                <button className="btn btn-md btn-primary" title="Table Group">
-                  <ShieldCheck size={13} /> <span>Table Group</span>
-                </button>
                 <button
-                  className="btn btn-md btn-neutral"
-                  onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
-                  title="Table Setting"
+                  type="button"
+                  onClick={() => setActiveModal('reupload')}
+                  style={bulkBtnStyle('reupload', !selectedTable || selTot === 0)}
+                  disabled={!selectedTable || selTot === 0}
+                  title={!selectedTable ? "Select a table" : selTot === 0 ? "No cards in table" : `Reupload Images for ${selectedTable.name}`}
                 >
-                  <SlidersHorizontal size={13} /> <span>Table Setting</span>
+                  <Upload size={12} /> Reupload Image
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('download-all')}
+                  style={bulkBtnStyle('downloadAll', !selectedTable || selTot === 0)}
+                  disabled={!selectedTable || selTot === 0}
+                  title={!selectedTable ? "Select a table" : selTot === 0 ? "No cards in table" : `Download All ID Cards for ${selectedTable.name}`}
+                >
+                  <Download size={12} /> Download All ID Card
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setDeleteCodeInput(''); setActiveModal('delete-all'); }}
+                  style={bulkBtnStyle('deleteAll', !selectedTable || selTot === 0)}
+                  disabled={!selectedTable || selTot === 0}
+                  title={!selectedTable ? "Select a table" : selTot === 0 ? "No cards in table" : `Delete All ID Cards for ${selectedTable.name}`}
+                >
+                  <Trash2 size={12} /> Delete All ID Cards
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('upgrade')}
+                  style={bulkBtnStyle('upgradeClass', !selectedTable || selTot === 0)}
+                  disabled={!selectedTable || selTot === 0}
+                  title={!selectedTable ? "Select a table" : selTot === 0 ? "No cards in table" : `Upgrade All Class for ${selectedTable.name}`}
+                >
+                  <ArrowUp size={12} /> Upgrade All Class
                 </button>
               </div>
 
@@ -199,6 +220,22 @@ export default function CardTableView({ addToast, onNavigate }) {
                   title="Create table directly from an XLSX file"
                 >
                   <FileSpreadsheet size={13} /> <span>Create with XLSX</span>
+                </button>
+              </div>
+
+              <div className="btn-separator" />
+
+              {/* Page Switch Buttons Pair (Beside Refresh) */}
+              <div className="btn-group">
+                <button className="btn btn-md btn-primary" title="Table Group">
+                  <ShieldCheck size={13} /> <span>Table Group</span>
+                </button>
+                <button
+                  className="btn btn-md btn-neutral"
+                  onClick={() => onNavigate ? onNavigate('schema') : (window.location.href = '/panel/idcard-table/setting/')}
+                  title="Table Setting"
+                >
+                  <SlidersHorizontal size={13} /> <span>Table Setting</span>
                 </button>
               </div>
 
@@ -244,9 +281,8 @@ export default function CardTableView({ addToast, onNavigate }) {
               <table className="data-table idcard-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '220px', textAlign: 'left' }}>NAME</th>
+                    <th style={{ width: '240px', textAlign: 'left' }}>NAME</th>
                     <th style={{ textAlign: 'center' }}>ACTION</th>
-                    <th style={{ width: '440px', textAlign: 'center' }}>BULK ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,14 +292,22 @@ export default function CardTableView({ addToast, onNavigate }) {
                     const aCnt = t.approved_count || 0;
                     const dCnt = t.download_count || 0;
                     const lCnt = t.pool_count || 0;
-                    const totCnt = t.total_count || (pCnt + vCnt + aCnt + dCnt + lCnt);
+                    const isSelected = selectedTableId === t.id;
 
                     return (
-                      <tr key={t.id || idx}>
+                      <tr
+                        key={t.id || idx}
+                        onClick={() => setSelectedTableId(t.id)}
+                        style={{
+                          background: isSelected ? '#eff6ff' : undefined,
+                          borderLeft: isSelected ? '4px solid #2563eb' : '4px solid transparent',
+                          cursor: 'pointer', transition: 'background 0.15s'
+                        }}
+                      >
                         {/* Column 1: Table Name */}
                         <td style={{ fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span style={{ fontSize: '13px', color: '#1e293b', fontWeight: 700 }}>{t.name}</span>
+                            <span style={{ fontSize: '13px', color: isSelected ? '#1d4ed8' : '#1e293b', fontWeight: 700 }}>{t.name}</span>
                             <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
                               {t.client_name || 'Primary Organisation'}
                             </span>
@@ -272,10 +316,10 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                         {/* Column 2: Action Status Buttons with Count Badges */}
                         <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'nowrap' }}>
                             <button
                               type="button"
-                              onClick={() => { setSelectedTable(t); setSelectedStatus('pending'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('pending'); setPage(1); }}
                               style={statusBtnStyle('pending').btn}
                               title="View Pending ID Cards"
                             >
@@ -285,7 +329,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
-                              onClick={() => { setSelectedTable(t); setSelectedStatus('verified'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('verified'); setPage(1); }}
                               style={statusBtnStyle('verified').btn}
                               title="View Verified ID Cards"
                             >
@@ -295,7 +339,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
-                              onClick={() => { setSelectedTable(t); setSelectedStatus('approved'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('approved'); setPage(1); }}
                               style={statusBtnStyle('approved').btn}
                               title="View Approved ID Cards"
                             >
@@ -305,7 +349,7 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
-                              onClick={() => { setSelectedTable(t); setSelectedStatus('download'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('download'); setPage(1); }}
                               style={statusBtnStyle('download').btn}
                               title="View Downloaded ID Cards"
                             >
@@ -315,57 +359,12 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
-                              onClick={() => { setSelectedTable(t); setSelectedStatus('pool'); setPage(1); }}
+                              onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('pool'); setPage(1); }}
                               style={statusBtnStyle('pool').btn}
                               title="View Pool ID Cards"
                             >
                               <span>Pool</span>
                               <span style={statusBtnStyle('pool').badge}>{lCnt}</span>
-                            </button>
-                          </div>
-                        </td>
-
-                        {/* Column 3: Bulk Action Buttons */}
-                        <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleBulkReupload(t)}
-                              style={bulkBtnStyle('reupload', totCnt === 0)}
-                              disabled={totCnt === 0}
-                              title={totCnt === 0 ? "No cards in table" : "Bulk Reupload Images"}
-                            >
-                              Reupload Image
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleBulkDownloadAll(t)}
-                              style={bulkBtnStyle('downloadAll', totCnt === 0)}
-                              disabled={totCnt === 0}
-                              title={totCnt === 0 ? "No cards in table" : "Download All ID Cards"}
-                            >
-                              Download All ID Card
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleBulkDeleteAll(t)}
-                              style={bulkBtnStyle('deleteAll', totCnt === 0)}
-                              disabled={totCnt === 0}
-                              title={totCnt === 0 ? "No cards in table" : "Delete All ID Cards"}
-                            >
-                              Delete All ID Cards
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleBulkUpgradeClass(t)}
-                              style={bulkBtnStyle('upgradeClass', totCnt === 0)}
-                              disabled={totCnt === 0}
-                              title={totCnt === 0 ? "No cards in table" : "Upgrade All Class"}
-                            >
-                              Upgrade All Class
                             </button>
                           </div>
                         </td>
@@ -379,14 +378,14 @@ export default function CardTableView({ addToast, onNavigate }) {
         </div>
 
         {/* ── MODALS FOR BULK ACTIONS ── */}
-        {activeModal === 'delete-all' && modalTable && (
+        {activeModal === 'delete-all' && selectedTable && (
           <div style={modalBackdropStyle}>
             <div style={modalBoxStyle}>
               <h3 style={{ margin: '0 0 8px', color: '#dc2626', fontSize: '16px', fontWeight: 700 }}>
                 Delete All ID Cards
               </h3>
               <p style={{ fontSize: '12px', color: '#475569', margin: '0 0 14px' }}>
-                Are you sure you want to permanently delete all cards in <strong>"{modalTable.name}"</strong>? Enter the confirmation code below:
+                Are you sure you want to permanently delete all cards in <strong>"{selectedTable.name}"</strong>? Enter the confirmation code below:
               </p>
               <input
                 value={deleteCodeInput}
@@ -416,14 +415,14 @@ export default function CardTableView({ addToast, onNavigate }) {
       <div className="action-bar" style={{ background: '#1e293b', color: '#fff', borderBottom: 'none' }}>
         <div className="action-bar-left" style={{ gap: '12px' }}>
           <button
-            onClick={() => setSelectedTable(null)}
+            onClick={() => setViewingTable(null)}
             className="btn btn-sm btn-neutral"
             style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
             <ArrowLeft size={13} /> Back to Table Group
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{selectedTable.name}</span>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{viewingTable.name}</span>
             <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>
               {selectedStatus.toUpperCase()} ({total})
             </span>
@@ -509,7 +508,7 @@ export default function CardTableView({ addToast, onNavigate }) {
       {editingCard && (
         <CardEditDrawer
           card={editingCard}
-          table={selectedTable}
+          table={viewingTable}
           onClose={() => setEditingCard(null)}
           onSave={() => { setEditingCard(null); loadCards(); addToast?.('Card updated!', 'success'); }}
         />
@@ -518,7 +517,7 @@ export default function CardTableView({ addToast, onNavigate }) {
   );
 }
 
-/* ── Inline Helper Styles matching idcard-group.css ── */
+/* ── Inline Helper Styles matching idcard-group.css & project design system ── */
 function statusBtnStyle(type) {
   const styles = {
     pending:  { bg: '#fef3c7', color: '#92400e', border: '#fde68a', badgeBg: '#f59e0b' },
@@ -545,9 +544,9 @@ function statusBtnStyle(type) {
 
 function bulkBtnStyle(type, disabled) {
   const colors = {
-    reupload:     { bg: '#ffedd5', color: '#c2410c', border: '#fdba74' },
+    reupload:     { bg: '#ffedd5', color: '#ea580c', border: '#fdba74' },
     downloadAll:  { bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc' },
-    deleteAll:    { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+    deleteAll:    { bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
     upgradeClass: { bg: '#dcfce7', color: '#166534', border: '#86efac' },
   };
   const cfg = colors[type] || colors.reupload;
