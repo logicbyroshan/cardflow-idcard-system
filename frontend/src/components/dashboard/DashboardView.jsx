@@ -804,6 +804,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
 export default function DashboardView({ onNavigate, currentUser, onOpenActionDrawer }) {
   const [stats, setStats]                 = useState(null);
   const [clients, setClients]             = useState([]);
+  const [allTables, setAllTables]         = useState([]);
   const [reprintClients, setReprintClients] = useState([]);
   const [activities, setActivities]       = useState([]);
   const [loading, setLoading]             = useState(false);
@@ -850,6 +851,22 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
       setLoading(true);
     }
     try {
+      let loadedTables = [];
+      try {
+        const schemaRes = await schemaApi.getTables();
+        loadedTables = schemaRes.tables || schemaRes.results || (Array.isArray(schemaRes) ? schemaRes : []);
+      } catch (_) {}
+
+      try {
+        const localTables = JSON.parse(localStorage.getItem('cf_custom_tables') || '[]');
+        localTables.forEach(lt => {
+          if (!loadedTables.some(t => String(t.id) === String(lt.id) || t.name === lt.name)) {
+            loadedTables.push(lt);
+          }
+        });
+      } catch (_) {}
+      setAllTables(loadedTables);
+
       const statsData = await dashboardApi.getStats();
       const apiStats = statsData.stats || statsData;
       // Merge: prefer API values (> 0) but fall back to local counts for user totals
