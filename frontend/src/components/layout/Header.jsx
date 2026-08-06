@@ -67,15 +67,19 @@ export default function Header({
     return () => clearInterval(t);
   }, [fetchUnread]);
 
-  const displayName = currentUser?.first_name
-    ? `${currentUser.first_name} ${currentUser.last_name || ''}`.trim()
-    : (currentUser?.username || 'Admin');
+  const displayName = (
+    currentUser?.name ||
+    currentUser?.full_name ||
+    (currentUser?.first_name ? `${currentUser.first_name} ${currentUser.last_name || ''}`.trim() : null) ||
+    currentUser?.username ||
+    'System Admin'
+  );
 
   const pageLabel = PAGE_LABELS[activeTab] || activeTab;
 
   return (
     <header className="topbar" id="topbar" style={{ height: '50px', background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', boxSizing: 'border-box' }}>
-      {/* Left: Live Time & Date Badge + Welcome message with Blue Heart */}
+      {/* Left: Live Time & Date Badge + Animated Blue Heart + Welcome + Name */}
       <div className="nav-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {/* 1. Live Date & Time Button Badge */}
         <div style={{
@@ -98,10 +102,10 @@ export default function Header({
           <span style={{ color: '#ffffff', fontWeight: 700 }}>{formattedTime}</span>
         </div>
 
-        {/* 2. Welcome message with Blue Heart */}
+        {/* 2. Animated Blue Heart + Welcome + Name */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#f1f5f9' }}>
+          <Heart size={14} fill="#3b82f6" color="#3b82f6" className="heart-pulse-anim" />
           <span>Welcome</span>
-          <Heart size={14} fill="#3b82f6" color="#3b82f6" style={{ filter: 'drop-shadow(0 0 5px rgba(59,130,246,0.6))' }} />
           <strong style={{ color: '#60a5fa', fontWeight: 700 }}>{displayName}</strong>
         </div>
       </div>

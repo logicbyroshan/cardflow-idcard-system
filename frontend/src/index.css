@@ -287,6 +287,36 @@ html {
   box-sizing: border-box !important;
 }
 
+/* ── Animated Heart Beat Keyframes ── */
+.heart-pulse-anim {
+  animation: heartBeat 1.4s ease-in-out infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes heartBeat {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.5));
+  }
+  14% {
+    transform: scale(1.25);
+    filter: drop-shadow(0 0 9px rgba(59, 130, 246, 0.9));
+  }
+  28% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.5));
+  }
+  42% {
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 7px rgba(59, 130, 246, 0.8));
+  }
+  70% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.5));
+  }
+}
+
 body,
 button,
 input,
