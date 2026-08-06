@@ -18,59 +18,63 @@ export default function ConfirmDeleteModal({ isOpen, onClose, onConfirm, title =
   };
 
   return (
-    <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+    <div className="drawer-overlay" onClick={onClose}>
       <div
-        className="data-card"
-        style={{ width: '440px', maxWidth: '90vw', padding: '1.75rem', position: 'relative' }}
+        className="center-modal-panel"
+        style={{ width: '600px', height: '500px', padding: '0', display: 'flex', flexDirection: 'column' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-          <X size={20} />
-        </button>
+        <div style={{ background: '#1e293b', color: '#fff', height: '46px', minHeight: '46px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={16} style={{ color: '#ef4444' }} /> {title}
+          </span>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+            <X size={18} />
+          </button>
+        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--accent-rose)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AlertTriangle size={28} />
+        <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '1.25rem', overflowY: 'auto' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AlertTriangle size={32} />
           </div>
 
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.35rem' }}>{title}</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Are you sure you want to permanently delete {itemDescription}? This action cannot be undone.
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>{title}</h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.5, maxWidth: '440px' }}>
+              Are you sure you want to permanently delete <strong style={{ color: '#0f172a' }}>{itemDescription}</strong>? This action cannot be undone.
             </p>
           </div>
 
           {requiresCode && (
-            <div style={{ width: '100%', textAlign: 'left', marginTop: '0.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Enter Verification Code: <span style={{ color: 'var(--accent-amber)', fontWeight: 700 }}>{deleteCode}</span>
+            <div style={{ width: '100%', maxWidth: '440px', textAlign: 'left' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                Enter Verification Code: <span style={{ color: '#d97706', fontWeight: 700 }}>{deleteCode}</span>
               </label>
               <input
                 type="text"
                 value={inputCode}
                 onChange={(e) => { setInputCode(e.target.value); setError(''); }}
                 placeholder="Type deletion code"
-                style={{ width: '100%', padding: '0.65rem 1rem', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', outline: 'none' }}
+                style={{ width: '100%', padding: '0.65rem 1rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#0f172a', outline: 'none' }}
               />
-              {error && <span style={{ fontSize: '0.75rem', color: 'var(--accent-rose)', marginTop: '0.35rem', display: 'block' }}>{error}</span>}
+              {error && <span style={{ fontSize: '0.8rem', color: '#dc2626', marginTop: '0.35rem', display: 'block' }}>{error}</span>}
             </div>
           )}
+        </div>
 
-          <div style={{ display: 'flex', gap: '0.75rem', width: '100%', marginTop: '0.5rem' }}>
-            <button
-              onClick={onClose}
-              style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirm}
-              style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', background: 'var(--accent-rose)', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-            >
-              <Trash2 size={16} />
-              <span>Delete Now</span>
-            </button>
-          </div>
+        <div style={{ padding: '12px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <button
+            onClick={onClose}
+            style={{ padding: '8px 16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            style={{ padding: '8px 18px', background: '#dc2626', border: 'none', borderRadius: '4px', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+          >
+            Confirm Delete
+          </button>
         </div>
       </div>
     </div>

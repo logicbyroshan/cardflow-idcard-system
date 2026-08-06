@@ -58,28 +58,29 @@ export default function QuickActionDrawer({ isOpen, actionType, initialData, onC
     <>
       {/* Backdrop overlay — Click outside disabled, closed via buttons only */}
       <div
+        className="drawer-overlay"
         style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.45)',
+          background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
-          zIndex: 1040,
-          animation: 'fadeIn 0.15s ease-out',
+          zIndex: 100000,
         }}
       />
 
       {/* Slide-over Drawer Container */}
       <div
+        className="drawer-panel"
         style={{
           position: 'fixed',
           top: 0, right: 0, bottom: 0,
-          width: actionType === 'message' ? '760px' : '620px',
+          width: actionType === 'message' ? '760px' : '640px',
           maxWidth: '95vw',
           height: '100vh',
           background: '#ffffff',
-          boxShadow: '-8px 0 30px rgba(0, 0, 0, 0.2)',
-          zIndex: 1050,
+          boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.35)',
+          zIndex: 100001,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

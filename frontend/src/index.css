@@ -247,7 +247,7 @@ html {
   font-size: 14px;
 }
 
-/* ── Global Drawer Backdrop & Modal Overlay Fix ── */
+/* ── Global Drawer Backdrop & Modal Overlay System ── */
 .drawer-overlay {
   position: fixed !important;
   top: 0 !important;
@@ -257,9 +257,12 @@ html {
   width: 100vw !important;
   height: 100vh !important;
   background: rgba(15, 23, 42, 0.65) !important;
-  backdrop-filter: blur(3px) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
   display: flex !important;
-  z-index: 999999 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 100000 !important;
   box-sizing: border-box !important;
 }
 
@@ -269,21 +272,52 @@ html {
   right: 0 !important;
   bottom: 0 !important;
   width: 640px !important;
-  min-width: 640px !important;
   max-width: 95vw !important;
   height: 100vh !important;
   background: #ffffff !important;
   box-shadow: -10px 0 35px rgba(0, 0, 0, 0.35) !important;
   display: flex !important;
   flex-direction: column !important;
-  z-index: 1000000 !important;
+  z-index: 100001 !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
+  animation: slideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ── Standard Center-Appearing Modals (600px Width x 500px Height) ── */
+.center-modal-panel {
+  position: relative !important;
+  width: 600px !important;
+  max-width: 92vw !important;
+  height: 500px !important;
+  max-height: 90vh !important;
+  background: #ffffff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 100001 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .drawer-panel *,
 .drawer-panel *::before,
-.drawer-panel *::after {
+.drawer-panel *::after,
+.center-modal-panel *,
+.center-modal-panel *::before,
+.center-modal-panel *::after {
   box-sizing: border-box !important;
 }
 
