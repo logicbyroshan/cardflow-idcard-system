@@ -1478,25 +1478,17 @@ export default function IDCardActionsView({
           {/* Verified List buttons */}
           {status === 'verified' && (
             <>
-              <button onClick={() => setShowUploadXlsx(true)} style={buttonStyle('#2563eb')} title="Upload Excel file">
-                <FileSpreadsheet size={14} /> <span>Upload XLSX</span>
-              </button>
-
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
-                <RefreshCw size={14} /> <span>Reupload Image</span>
-              </button>
-
-              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
-
-              <button onClick={() => setDrawer({ mode: 'add', card: null })} style={buttonStyle('#2563eb')} title="Add new card">
-                <Plus size={14} /> <span>Add</span>
-              </button>
-
               <button
                 disabled={selectedArr.length !== 1}
                 onClick={() => setDrawer({ mode: 'edit', card: cards.find(c => selectedIds.has(c.id)) })}
                 style={buttonStyle('#2563eb', selectedArr.length !== 1)}
               ><Pencil size={14} /> <span>Edit</span></button>
+
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
 
               <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
 
@@ -1519,25 +1511,17 @@ export default function IDCardActionsView({
           {/* Approved List buttons */}
           {status === 'approved' && (
             <>
-              <button onClick={() => setShowUploadXlsx(true)} style={buttonStyle('#2563eb')} title="Upload Excel file">
-                <FileSpreadsheet size={14} /> <span>Upload XLSX</span>
-              </button>
-
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
-                <RefreshCw size={14} /> <span>Reupload Image</span>
-              </button>
-
-              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
-
-              <button onClick={() => setDrawer({ mode: 'add', card: null })} style={buttonStyle('#2563eb')} title="Add new card">
-                <Plus size={14} /> <span>Add</span>
-              </button>
-
               <button
                 disabled={selectedArr.length !== 1}
                 onClick={() => setDrawer({ mode: 'edit', card: cards.find(c => selectedIds.has(c.id)) })}
                 style={buttonStyle('#2563eb', selectedArr.length !== 1)}
               ><Pencil size={14} /> <span>Edit</span></button>
+
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
 
               <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
 
@@ -1553,25 +1537,17 @@ export default function IDCardActionsView({
           {/* Download & Pool List buttons */}
           {(status === 'download' || status === 'pool') && (
             <>
-              <button onClick={() => setShowUploadXlsx(true)} style={buttonStyle('#2563eb')} title="Upload Excel file">
-                <FileSpreadsheet size={14} /> <span>Upload XLSX</span>
-              </button>
-
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
-                <RefreshCw size={14} /> <span>Reupload Image</span>
-              </button>
-
-              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
-
-              <button onClick={() => setDrawer({ mode: 'add', card: null })} style={buttonStyle('#2563eb')} title="Add new card">
-                <Plus size={14} /> <span>Add</span>
-              </button>
-
               <button
                 disabled={selectedArr.length !== 1}
                 onClick={() => setDrawer({ mode: 'edit', card: cards.find(c => selectedIds.has(c.id)) })}
                 style={buttonStyle('#2563eb', selectedArr.length !== 1)}
               ><Pencil size={14} /> <span>Edit</span></button>
+
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
 
               <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
 
@@ -1807,7 +1783,7 @@ export default function IDCardActionsView({
                           {search ? `No cards match search "${search}"` : `There are no cards matching current filter criteria.`}
                         </p>
                       </div>
-                      {!search && (
+                      {!search && status === 'pending' && (
                         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                           <button onClick={() => setDrawer({ mode: 'add', card: null })} style={buttonStyle('#2563eb')}>
                             <Plus size={14} /> Add First Card
