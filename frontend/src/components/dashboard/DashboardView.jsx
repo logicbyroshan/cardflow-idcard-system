@@ -613,17 +613,15 @@ function RecentActivityUpdatesTable({ activities = [], search, loading }) {
   );
 }
 
-
-
 /* ─────────────────────────────────────────────────────────────────────────
-   Right Side Stacked Panels — SS2 Exact (WORKING QUICK ACTIONS & DYNAMIC TABS)
+   Right Side Stacked Panels — 3 EQUAL HEIGHT SECTION BOXES (33.33% EACH)
 ───────────────────────────────────────────────────────────────────────── */
 function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection, setActiveSection }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', background: '#fff', height: '100%', overflow: 'hidden' }}>
 
-      {/* 1. Dashboard Sections */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, borderBottom: '1px solid #cbd5e1' }}>
+      {/* 1. Dashboard Sections — 1/3 Equal Height Section Box */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, borderBottom: '1px solid #e2e8f0' }}>
         <div style={{
           background: '#1e293b',
           color: '#ffffff', height: '38px', minHeight: '38px', padding: '0 12px', fontSize: '12px', fontWeight: 700,
@@ -632,7 +630,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
         }}>
           <Layers size={13} /> Dashboard Sections
         </div>
-        <div style={{ flex: 1, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', justifyContent: 'center' }}>
+        <div style={{ flex: 1, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {[
             { id: 'clients', label: 'Recent Approved', count: stats?.approved_cards ?? stats?.total_organizations ?? 0, Icon: ThumbsUp },
             { id: 'reprints', label: 'Recent Requested', count: stats?.requested_cards ?? stats?.reprint_count ?? 0, Icon: Send },
@@ -644,7 +642,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
                 key={id}
                 onClick={() => setActiveSection(id)}
                 style={{
-                  width: '100%', flex: 1, padding: '6px 12px',
+                  width: '100%', padding: '6px 10px',
                   background: isActive ? '#eff6ff' : '#ffffff',
                   border: isActive ? '1px solid #93c5fd' : '1px solid #e2e8f0',
                   borderLeft: isActive ? '3px solid #2563eb' : '1px solid #e2e8f0',
@@ -660,12 +658,12 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
-                    width: '24px', height: '24px', borderRadius: '4px',
+                    width: '22px', height: '22px', borderRadius: '4px',
                     background: isActive ? '#dbeafe' : '#eff6ff',
                     color: isActive ? '#1d4ed8' : '#3b82f6',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
-                    <Icon size={13} />
+                    <Icon size={12} />
                   </div>
                   <span>{label}</span>
                 </div>
@@ -673,7 +671,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
                   fontWeight: 700,
                   color: isActive ? '#1d4ed8' : '#0f172a',
                   background: isActive ? '#dbeafe' : '#f1f5f9',
-                  padding: '2px 7px', borderRadius: '3px', fontSize: '11px',
+                  padding: '1px 6px', borderRadius: '3px', fontSize: '11px',
                 }}>
                   {count}
                 </span>
@@ -683,8 +681,8 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
         </div>
       </div>
 
-      {/* 2. Quick Actions */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, borderBottom: '1px solid #cbd5e1' }}>
+      {/* 2. Quick Actions — 1/3 Equal Height Section Box */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, borderBottom: '1px solid #e2e8f0' }}>
         <div style={{
           background: '#1e293b',
           color: '#ffffff', height: '38px', minHeight: '38px', padding: '0 12px', fontSize: '12px', fontWeight: 700,
@@ -693,7 +691,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
         }}>
           <Plus size={13} /> Quick Actions
         </div>
-        <div style={{ flex: 1, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', justifyContent: 'center' }}>
+        <div style={{ flex: 1, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {[
             { label: 'Add New Organisation', action: () => onOpenActionDrawer('add-client'), Icon: Plus },
             { label: 'Add New Assistant', action: () => onOpenActionDrawer('add-staff'), Icon: Plus },
@@ -703,7 +701,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
               key={label}
               onClick={action}
               style={{
-                width: '100%', flex: 1, padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                width: '100%', padding: '6px 10px', background: '#eff6ff', border: '1px solid #bfdbfe',
                 borderRadius: '4px', color: '#1d4ed8', fontSize: '12px', fontWeight: 600,
                 display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                 fontFamily: 'var(--font-family)', transition: 'background 0.15s',
@@ -717,7 +715,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
         </div>
       </div>
 
-      {/* 3. Users Overview — Equal Height Section + Perfect 1:1 Square Grid Cards */}
+      {/* 3. Users Overview — 1/3 Equal Height Section Box */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{
           background: '#1e293b',
@@ -728,7 +726,7 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
           <Shield size={13} /> Users Overview
         </div>
 
-        <div style={{ flex: 1, padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', alignContent: 'start' }}>
           {[
             { label: 'Organisations', count: stats?.total_organizations ?? stats?.total_clients ?? 0, action: () => onNavigate('organisations'), Icon: Building, color: '#0050d2', bg: '#eff6ff' },
             { label: 'Operators', count: stats?.total_operators ?? stats?.guest_users ?? 0, action: () => onNavigate('staff'), Icon: Shield, color: '#7c3aed', bg: '#f5f3ff' },
@@ -739,12 +737,10 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
               key={label}
               onClick={action}
               style={{
-                width: '100%',
-                aspectRatio: '1 / 1',
                 background: '#f8fafc',
                 border: '1px solid #e2e8f0',
                 borderRadius: '6px',
-                padding: '6px',
+                padding: '10px 6px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -753,7 +749,6 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
                 fontFamily: 'var(--font-family)',
                 transition: 'all 0.15s ease-in-out',
                 textAlign: 'center',
-                boxSizing: 'border-box',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#ffffff';
@@ -767,17 +762,17 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
               }}
             >
               <div style={{
-                width: '28px', height: '28px', borderRadius: '50%',
+                width: '26px', height: '26px', borderRadius: '50%',
                 background: bg, color: color,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 marginBottom: '4px'
               }}>
-                <Icon size={14} />
+                <Icon size={13} />
               </div>
-              <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', lineHeight: 1.1 }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
                 {count}
               </span>
-              <span style={{ fontSize: '10px', fontWeight: 600, color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap' }}>
                 {label}
               </span>
             </button>
