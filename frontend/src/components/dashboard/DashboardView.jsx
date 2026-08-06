@@ -606,9 +606,10 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
       {/* 1. Dashboard Sections */}
       <div style={{ borderBottom: '1px solid #e2e8f0' }}>
         <div style={{
-          background: 'linear-gradient(135deg, rgb(0, 80, 210) 0%, rgb(0, 180, 255) 100%)',
-          color: '#fff', height: '34px', padding: '0 10px', fontSize: '12px', fontWeight: 700,
+          background: '#1e293b',
+          color: '#ffffff', height: '38px', padding: '0 12px', fontSize: '12px', fontWeight: 700,
           display: 'flex', alignItems: 'center', gap: '6px', boxSizing: 'border-box',
+          borderBottom: '1px solid #334155'
         }}>
           <Layers size={13} /> Dashboard Sections
         </div>
@@ -666,9 +667,10 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
       {/* 2. Quick Actions */}
       <div style={{ borderBottom: '1px solid #e2e8f0' }}>
         <div style={{
-          background: 'linear-gradient(135deg, rgb(0, 80, 210) 0%, rgb(0, 180, 255) 100%)',
-          color: '#fff', height: '34px', padding: '0 10px', fontSize: '12px', fontWeight: 700,
+          background: '#1e293b',
+          color: '#ffffff', height: '38px', padding: '0 12px', fontSize: '12px', fontWeight: 700,
           display: 'flex', alignItems: 'center', gap: '6px', boxSizing: 'border-box',
+          borderBottom: '1px solid #334155'
         }}>
           <Plus size={13} /> Quick Actions
         </div>
@@ -699,9 +701,10 @@ function RightSidePanels({ stats, onNavigate, onOpenActionDrawer, activeSection,
       {/* 3. Users Overview — 2x2 Square Grid Cards */}
       <div>
         <div style={{
-          background: 'linear-gradient(135deg, rgb(0, 80, 210) 0%, rgb(0, 180, 255) 100%)',
-          color: '#fff', height: '34px', padding: '0 10px', fontSize: '12px', fontWeight: 700,
+          background: '#1e293b',
+          color: '#ffffff', height: '38px', padding: '0 12px', fontSize: '12px', fontWeight: 700,
           display: 'flex', alignItems: 'center', gap: '6px', boxSizing: 'border-box',
+          borderBottom: '1px solid #334155'
         }}>
           <Shield size={13} /> Users Overview
         </div>
