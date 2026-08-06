@@ -1823,10 +1823,12 @@ export default function IDCardActionsView({
           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
               <tr style={{ background: '#1e293b', color: '#ffffff' }}>
-                <th style={{ width: '32px', minWidth: '32px', padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
-                  <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {allSelected ? <SquareCheck size={15} /> : someSelected ? <MinusSquare size={15} /> : <Square size={15} />}
-                  </button>
+                <th style={{ width: '36px', minWidth: '36px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                    <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {allSelected ? <SquareCheck size={15} /> : someSelected ? <MinusSquare size={15} /> : <Square size={15} />}
+                    </button>
+                  </div>
                 </th>
 
                 <th style={{ width: '36px', minWidth: '36px', padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, lineHeight: 1.1 }}>
@@ -1909,10 +1911,12 @@ export default function IDCardActionsView({
                 return (
                   <tr key={card.id} style={{ background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                     {/* Checkbox */}
-                    <td style={{ padding: '4px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
-                      <button onClick={() => toggleSelect(card.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: isSelected ? '#2563eb' : '#94a3b8', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {isSelected ? <SquareCheck size={15} /> : <Square size={15} />}
-                      </button>
+                    <td style={{ width: '36px', minWidth: '36px', padding: '4px', textAlign: 'center', verticalAlign: 'middle', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                        <button onClick={() => toggleSelect(card.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: isSelected ? '#2563eb' : '#94a3b8', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {isSelected ? <SquareCheck size={15} /> : <Square size={15} />}
+                        </button>
+                      </div>
                     </td>
 
                     {/* SR NO */}
@@ -1934,28 +1938,49 @@ export default function IDCardActionsView({
                         const imgH = isSig ? '28px' : isQr ? '42px' : '53px';
 
                         return (
-                          <td key={f.name} style={{ padding: '3px 4px', textAlign: spec.align, width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
-                            {val ? (
-                              <img
-                                src={String(val).startsWith('http') ? val : `/${val}`}
-                                alt={f.name}
+                          <td key={f.name} style={{ padding: '4px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
+                            <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                              {val ? (
+                                <img
+                                  src={String(val).startsWith('http') ? val : `/${val}`}
+                                  alt={f.name}
+                                  style={{
+                                    width: imgW,
+                                    height: imgH,
+                                    objectFit: isSig || isQr ? 'contain' : 'cover',
+                                    borderRadius: '2px',
+                                    border: '1px solid #cbd5e1',
+                                    display: 'block',
+                                    margin: '0 auto',
+                                    background: '#f8fafc'
+                                  }}
+                                  onError={e => { e.target.style.display = 'none'; }}
+                                />
+                              ) : (
+                                <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                                  <ImageIcon size={14} style={{ color: '#cbd5e1' }} />
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setDrawer({ mode: 'edit', card }); }}
                                 style={{
-                                  width: imgW,
-                                  height: imgH,
-                                  objectFit: isSig || isQr ? 'contain' : 'cover',
-                                  borderRadius: '2px',
-                                  border: '1px solid #cbd5e1',
-                                  display: 'block',
-                                  margin: '0 auto',
-                                  background: '#f8fafc'
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#2563eb',
+                                  fontSize: '10px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  padding: '0 2px',
+                                  marginTop: '1px',
+                                  lineHeight: 1,
                                 }}
-                                onError={e => { e.target.style.display = 'none'; }}
-                              />
-                            ) : (
-                              <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
-                                <ImageIcon size={14} style={{ color: '#cbd5e1' }} />
-                              </div>
-                            )}
+                                className="edit-photo-btn"
+                                title="Edit Card"
+                              >
+                                Edit
+                              </button>
+                            </div>
                           </td>
                         );
                       }
