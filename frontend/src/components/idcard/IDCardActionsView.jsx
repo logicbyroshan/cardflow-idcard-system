@@ -1521,6 +1521,7 @@ export default function IDCardActionsView({
       <div style={{ flexShrink: 0, padding: '6px 16px', background: '#ffffff', borderBottom: '1px solid #e5e7eb', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', position: 'relative', zIndex: 100 }}>
         {/* Left Side: All Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', flexShrink: 0 }}>
+          {/* Action Divider Component */}
           {/* Pending List buttons */}
           {status === 'pending' && (
             <>
@@ -1531,6 +1532,8 @@ export default function IDCardActionsView({
               <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
                 <RefreshCw size={14} /> <span>Reupload Image</span>
               </button>
+
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
 
               <button onClick={() => setDrawer({ mode: 'add', card: null })} style={buttonStyle('#2563eb')} title="Add new card">
                 <Plus size={14} /> <span>Add</span>
@@ -1563,6 +1566,8 @@ export default function IDCardActionsView({
                 <Trash2 size={14} /> <span>Delete</span>
               </button>
 
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
               <button
                 disabled={!hasSelection || actionLoading}
                 onClick={() => applyBulkStatus('verified')}
@@ -1589,6 +1594,14 @@ export default function IDCardActionsView({
                 style={buttonStyle('#6b7280', selectedArr.length !== 1)}
               ><Eye size={14} /> <span>View</span></button>
 
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
+
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
               <button
                 disabled={!hasSelection || actionLoading}
                 onClick={() => applyBulkStatus('pending')}
@@ -1602,10 +1615,6 @@ export default function IDCardActionsView({
                 style={buttonStyle('#10b981', !hasSelection || actionLoading)}
                 title="Approve selected"
               >{actionLoading ? <Spinner size={14} /> : <ThumbsUp size={14} />} <span>Approve Selected</span></button>
-
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
-                <RefreshCw size={14} /> <span>Reupload Image</span>
-              </button>
             </>
           )}
 
@@ -1624,16 +1633,20 @@ export default function IDCardActionsView({
                 style={buttonStyle('#2563eb', selectedArr.length !== 1)}
               ><Pencil size={14} /> <span>Edit</span></button>
 
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
+
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
               <button
                 disabled={!hasSelection || actionLoading}
                 onClick={() => applyBulkStatus('verified')}
                 style={buttonStyle('#ef4444', !hasSelection || actionLoading)}
                 title="Move back to Verified"
               ><RotateCcw size={14} /> <span>Disapprove</span></button>
-
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
-                <RefreshCw size={14} /> <span>Reupload Image</span>
-              </button>
             </>
           )}
 
@@ -1652,16 +1665,20 @@ export default function IDCardActionsView({
                 style={buttonStyle('#2563eb', selectedArr.length !== 1)}
               ><Pencil size={14} /> <span>Edit</span></button>
 
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
+              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
+                <RefreshCw size={14} /> <span>Reupload Image</span>
+              </button>
+
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
+
               <button
                 disabled={!hasSelection || actionLoading}
                 onClick={() => applyBulkStatus('pending')}
                 style={buttonStyle('#10b981', !hasSelection || actionLoading)}
                 title="Retrieve to Pending"
               ><RotateCcw size={14} /> <span>Retrieve</span></button>
-
-              <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
-                <RefreshCw size={14} /> <span>Reupload Image</span>
-              </button>
             </>
           )}
 
