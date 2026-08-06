@@ -134,8 +134,6 @@ export default function Header({
             Total Never Active: <strong style={{ color: '#ffffff' }}>{presenceStats.never}</strong>
           </span>
         </div>
-
-        </div>
       </div>
     </header>
   );
