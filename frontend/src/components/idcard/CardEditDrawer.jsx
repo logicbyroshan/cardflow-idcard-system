@@ -58,8 +58,8 @@ export default function CardEditDrawer({ card, onClose, onSave, addToast }) {
   };
 
   return (
-    <div className="drawer-overlay" onClick={saving ? undefined : onClose}>
-      <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
+    <div className="drawer-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(3px)', display: 'flex', justifyContent: 'flex-end', zIndex: 999999, boxSizing: 'border-box' }}>
+      <aside className="side-drawer drawer-panel" style={{ width: '600px', minWidth: '600px', maxWidth: '90vw', height: '100vh', background: '#ffffff', boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.35)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
           <div>
             <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Card Details #{card?.id || 'New'}</h3>
@@ -164,7 +164,7 @@ export default function CardEditDrawer({ card, onClose, onSave, addToast }) {
             </button>
           </div>
         </form>
-      </div>
+      </aside>
     </div>
   );
 }
