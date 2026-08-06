@@ -139,7 +139,7 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
 
   return (
     <div className="drawer-overlay" style={{ zIndex: 999999 }} onClick={saving ? undefined : onClose}>
-      <div className="drawer-panel" onClick={e => e.stopPropagation()} style={{ width: '600px', minWidth: '600px', maxWidth: '95vw', display: 'flex', flexDirection: 'column' }}>
+      <div className="drawer-panel" onClick={e => e.stopPropagation()} style={{ width: '640px', minWidth: '640px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#1e293b', color: '#ffffff' }}>
           <div>

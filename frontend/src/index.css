@@ -260,6 +260,7 @@ html {
   backdrop-filter: blur(3px) !important;
   display: flex !important;
   z-index: 999999 !important;
+  box-sizing: border-box !important;
 }
 
 .drawer-panel {
@@ -267,15 +268,23 @@ html {
   top: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  width: 600px !important;
-  min-width: 600px !important;
+  width: 640px !important;
+  min-width: 640px !important;
   max-width: 95vw !important;
   height: 100vh !important;
   background: #ffffff !important;
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.35) !important;
   display: flex !important;
   flex-direction: column !important;
   z-index: 1000000 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.drawer-panel *,
+.drawer-panel *::before,
+.drawer-panel *::after {
+  box-sizing: border-box !important;
 }
 
 body,
