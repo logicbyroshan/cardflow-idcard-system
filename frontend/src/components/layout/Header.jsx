@@ -120,6 +120,10 @@ export default function Header({
       <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
         {/* Status Pills matching dark navbar theme */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600 }}>
+          <span style={{ padding: '0 10px', height: '28px', borderRadius: '5px', border: '1px solid #10b981', background: '#064e3b', color: '#a7f3d0', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px #34d399' }} />
+            Live Working Users: <strong style={{ color: '#ffffff' }}>0</strong>
+          </span>
           <span style={{ padding: '0 10px', height: '28px', borderRadius: '5px', border: '1px solid #2563eb', background: '#1e3a8a', color: '#93c5fd', display: 'inline-flex', alignItems: 'center', gap: '5px', boxSizing: 'border-box' }}>
             Total Desktop Active: <strong style={{ color: '#ffffff' }}>{presenceStats.desktop}</strong>
           </span>

@@ -133,7 +133,7 @@ const MOCK_CLIENT_ROWS = [
    Recent Client Updates Table (Left Main Area) — SS2 Exact
    Count Badges are CLICKABLE BUTTONS (border-radius: 2px sharp boxes)
 ───────────────────────────────────────────────────────────────────────── */
-function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
+function RecentClientUpdatesTable({ clients, loading, onNavigate, search, setSearch }) {
   const [expandedRows, setExpandedRows] = useState({});
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('desc');
@@ -183,14 +183,42 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
-        <thead style={{ position: 'sticky', top: 0, background: '#2d3748', color: '#fff', zIndex: 2 }}>
-          <tr>
-            <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, width: '42%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568' }}>ORGANISATION</th>
-            <th onClick={() => handleSort('pending')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>PENDING{renderSortIcon('pending')}</th>
-            <th onClick={() => handleSort('verified')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>VERIFIED{renderSortIcon('verified')}</th>
-            <th onClick={() => handleSort('approved')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>APPROVED{renderSortIcon('approved')}</th>
-            <th onClick={() => handleSort('download')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>DOWNLOADED{renderSortIcon('download')}</th>
-            <th onClick={() => handleSort('pool')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', cursor: 'pointer', userSelect: 'none' }}>POOL{renderSortIcon('pool')}</th>
+        <thead style={{ position: 'sticky', top: 0, background: '#1e293b', color: '#ffffff', zIndex: 2 }}>
+          <tr style={{ height: '38px' }}>
+            <th style={{ padding: '0 12px', textAlign: 'left', fontWeight: 700, width: '55%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', height: '38px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}>
+                <span style={{ color: '#ffffff', fontWeight: 700 }}>ORGANISATION</span>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '180px' }}>
+                  <Search size={11} style={{ position: 'absolute', left: '7px', color: '#94a3b8', pointerEvents: 'none' }} />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search organisation..."
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      width: '100%',
+                      height: '24px',
+                      paddingLeft: '24px',
+                      paddingRight: '8px',
+                      fontSize: '10px',
+                      fontWeight: 500,
+                      borderRadius: '4px',
+                      border: '1px solid #475569',
+                      background: '#0f172a',
+                      color: '#ffffff',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+            </th>
+            <th onClick={() => handleSort('pending')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>PENDING{renderSortIcon('pending')}</th>
+            <th onClick={() => handleSort('verified')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>VERIFIED{renderSortIcon('verified')}</th>
+            <th onClick={() => handleSort('approved')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>APPROVED{renderSortIcon('approved')}</th>
+            <th onClick={() => handleSort('download')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>DOWNLOADED{renderSortIcon('download')}</th>
+            <th onClick={() => handleSort('pool')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', cursor: 'pointer', userSelect: 'none', height: '38px' }}>POOL{renderSortIcon('pool')}</th>
           </tr>
         </thead>
         <tbody>
@@ -201,8 +229,8 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
 
             // Sub-tables for dropdown rows
             const subTables = c.tables || [
-              { name: 'Class 1st to 5th', pending: Math.floor((c.pending || 0)*0.6), verified: Math.floor((c.verified || 0)*0.6), approved: Math.floor((c.approved || 0)*0.6), downloaded: Math.floor((c.downloaded || c.download || 0)*0.6), pool: Math.floor((c.pool || 0)*0.6) },
-              { name: 'Class 6th to 10th', pending: Math.ceil((c.pending || 0)*0.4), verified: Math.ceil((c.verified || 0)*0.4), approved: Math.ceil((c.approved || 0)*0.4), downloaded: Math.ceil((c.downloaded || c.download || 0)*0.4), pool: Math.ceil((c.pool || 0)*0.4) },
+              { id: 1, name: 'Class 1st to 5th', pending: Math.floor((c.pending || 0)*0.6), verified: Math.floor((c.verified || 0)*0.6), approved: Math.floor((c.approved || 0)*0.6), downloaded: Math.floor((c.downloaded || c.download || 0)*0.6), pool: Math.floor((c.pool || 0)*0.6) },
+              { id: 2, name: 'Class 6th to 10th', pending: Math.ceil((c.pending || 0)*0.4), verified: Math.ceil((c.verified || 0)*0.4), approved: Math.ceil((c.approved || 0)*0.4), downloaded: Math.ceil((c.downloaded || c.download || 0)*0.4), pool: Math.ceil((c.pool || 0)*0.4) },
             ];
 
             return (
@@ -215,8 +243,8 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
                     cursor: 'pointer', transition: 'background 0.15s'
                   }}
                 >
-                  <td style={{ padding: '5px 10px', fontWeight: 600, color: '#334155', fontSize: '11px', borderRight: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <td style={{ padding: '6px 12px', fontWeight: 600, color: '#334155', fontSize: '11px', borderRight: '1px solid #e2e8f0', width: '55%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <button
                         onClick={(e) => toggleExpand(clientId, e)}
                         style={{ background: 'none', border: 'none', padding: '1px', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
@@ -225,62 +253,62 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
                       </button>
                       <span style={{ color: '#10b981', fontSize: '10px' }}>✓</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); onNavigate('cards', { client: c.id }); }}
-                        style={{ background: 'none', border: 'none', padding: 0, color: '#334155', fontWeight: 600, fontSize: '11px', cursor: 'pointer', textAlign: 'left', textDecoration: 'none' }}
+                        onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: c.id || 1, status: 'pending' }); }}
+                        style={{ background: 'none', border: 'none', padding: 0, color: '#0f172a', fontWeight: 700, fontSize: '11px', cursor: 'pointer', textAlign: 'left', textDecoration: 'none' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#334155'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = '#0f172a'}
                       >
                         {name}
                       </button>
                     </div>
                   </td>
-                  {/* CLICKABLE COUNT BADGES */}
-                  <td style={{ padding: '5px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
+                  {/* REDESIGNED STATUS COUNT BUTTON BADGES */}
+                  <td style={{ padding: '5px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'pending'); }}
-                      style={{ display: 'inline-block', minWidth: '42px', padding: '2px 6px', borderRadius: '2px', border: 'none', background: '#ffedd5', color: '#c2410c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', height: '22px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fdba74', background: '#fff7ed', color: '#c2410c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(234,88,12,0.08)', transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#ffedd5'; e.currentTarget.style.borderColor = '#ea580c'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#fff7ed'; e.currentTarget.style.borderColor = '#fdba74'; }}
                     >
                       {c.pending ?? 0}
                     </button>
                   </td>
-                  <td style={{ padding: '5px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '5px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'verified'); }}
-                      style={{ display: 'inline-block', minWidth: '42px', padding: '2px 6px', borderRadius: '2px', border: 'none', background: '#d1fae5', color: '#047857', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', height: '22px', padding: '0 8px', borderRadius: '4px', border: '1px solid #6ee7b7', background: '#ecfdf5', color: '#047857', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(5,150,105,0.08)', transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#d1fae5'; e.currentTarget.style.borderColor = '#059669'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#ecfdf5'; e.currentTarget.style.borderColor = '#6ee7b7'; }}
                     >
                       {c.verified ?? 0}
                     </button>
                   </td>
-                  <td style={{ padding: '5px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '5px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'approved'); }}
-                      style={{ display: 'inline-block', minWidth: '42px', padding: '2px 6px', borderRadius: '2px', border: 'none', background: '#dbeafe', color: '#1d4ed8', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', height: '22px', padding: '0 8px', borderRadius: '4px', border: '1px solid #93c5fd', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(37,99,235,0.08)', transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#dbeafe'; e.currentTarget.style.borderColor = '#2563eb'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; }}
                     >
                       {c.approved ?? 0}
                     </button>
                   </td>
-                  <td style={{ padding: '5px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '5px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'downloaded'); }}
-                      style={{ display: 'inline-block', minWidth: '42px', padding: '2px 6px', borderRadius: '2px', border: 'none', background: '#f1f5f9', color: '#334155', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', height: '22px', padding: '0 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(71,85,105,0.08)', transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#475569'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
                     >
                       {c.download ?? c.downloaded ?? 0}
                     </button>
                   </td>
-                  <td style={{ padding: '5px 8px', textAlign: 'center' }}>
+                  <td style={{ padding: '5px 6px', textAlign: 'center', width: '9%' }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'pool'); }}
-                      style={{ display: 'inline-block', minWidth: '42px', padding: '2px 6px', borderRadius: '2px', border: 'none', background: '#fee2e2', color: '#b91c1c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', height: '22px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#b91c1c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(220,38,38,0.08)', transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.borderColor = '#dc2626'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#fca5a5'; }}
                     >
                       {c.pool ?? 0}
                     </button>
@@ -290,34 +318,53 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
                 {/* EXPANDABLE DROPDOWN SUB-ROWS */}
                 {isExpanded && subTables.map((sub, sIdx) => (
                   <tr key={`${clientId}-sub-${sIdx}`} style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 10px 4px 34px', color: '#475569', fontSize: '11px', fontWeight: 500, borderRight: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '5px 12px 5px 36px', color: '#334155', fontSize: '11px', fontWeight: 600, borderRight: '1px solid #e2e8f0', width: '55%' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ color: '#94a3b8', fontSize: '10px' }}>↳</span>
-                        <span>{sub.name}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: sub.id || 1, status: 'pending' }); }}
+                          style={{ background: 'none', border: 'none', padding: 0, color: '#475569', fontWeight: 600, fontSize: '11px', cursor: 'pointer', textAlign: 'left' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#475569'}
+                        >
+                          {sub.name}
+                        </button>
                       </div>
                     </td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pending'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#fff7ed', color: '#ea580c', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
+                    <td style={{ padding: '4px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pending'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '38px', height: '20px', padding: '0 6px', borderRadius: '3px', border: '1px solid #fed7aa', background: '#fff7ed', color: '#ea580c', fontWeight: 600, fontSize: '10px', cursor: 'pointer' }}>
                         {sub.pending}
                       </button>
                     </td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'verified'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#ecfdf5', color: '#059669', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
+                    <td style={{ padding: '4px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'verified'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '38px', height: '20px', padding: '0 6px', borderRadius: '3px', border: '1px solid #a7f3d0', background: '#ecfdf5', color: '#059669', fontWeight: 600, fontSize: '10px', cursor: 'pointer' }}>
                         {sub.verified}
                       </button>
                     </td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'approved'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#eff6ff', color: '#2563eb', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
+                    <td style={{ padding: '4px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'approved'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '38px', height: '20px', padding: '0 6px', borderRadius: '3px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#2563eb', fontWeight: 600, fontSize: '10px', cursor: 'pointer' }}>
                         {sub.approved}
                       </button>
                     </td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'downloaded'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#f8fafc', color: '#475569', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
+                    <td style={{ padding: '4px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'downloaded'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '38px', height: '20px', padding: '0 6px', borderRadius: '3px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, fontSize: '10px', cursor: 'pointer' }}>
                         {sub.downloaded}
                       </button>
                     </td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pool'); }} style={{ display: 'inline-block', minWidth: '36px', padding: '1px 5px', borderRadius: '2px', background: '#fef2f2', color: '#dc2626', fontWeight: 600, fontSize: '10px', border: 'none', cursor: 'pointer' }}>
+                    <td style={{ padding: '4px 6px', textAlign: 'center', width: '9%' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pool'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '38px', height: '20px', padding: '0 6px', borderRadius: '3px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontWeight: 600, fontSize: '10px', cursor: 'pointer' }}>
+                        {sub.pool}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
                         {sub.pool}
                       </button>
                     </td>
@@ -884,55 +931,9 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
           height: '100%',
           overflow: 'hidden',
         }}>
-          {/* Dynamic Header Bar */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgb(0, 80, 210) 0%, rgb(0, 180, 255) 100%)',
-            color: '#fff',
-            height: '34px',
-            padding: '0 12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-            boxSizing: 'border-box',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <SectionIcon size={13} /> {currentSection.title}
-              </span>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                padding: '2px 8px', borderRadius: '3px', background: currentSection.badgeBg,
-                color: currentSection.badgeColor, fontSize: '10px', fontWeight: 700,
-              }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: currentSection.badgeColor }} />
-                {currentSection.badgeText}
-              </span>
-            </div>
-
-            {/* SEARCH INPUT */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '240px' }}>
-              <Search size={12} style={{ position: 'absolute', left: '8px', color: '#64748b', pointerEvents: 'none' }} />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search..."
-                style={{
-                  width: '100%', height: '24px', background: '#ffffff',
-                  border: '1px solid #cbd5e1', borderRadius: '4px',
-                  color: '#0f172a', fontSize: '11px', fontWeight: 500,
-                  paddingLeft: '26px', paddingRight: '8px',
-                  outline: 'none', fontFamily: 'var(--font-family)',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                }}
-              />
-            </div>
-          </div>
-
           {/* Dynamic Table Body */}
           {activeSection === 'clients' && (
-            <RecentClientUpdatesTable clients={clients} loading={loading} onNavigate={onNavigate} search={search} />
+            <RecentClientUpdatesTable clients={clients} loading={loading} onNavigate={onNavigate} search={search} setSearch={setSearch} />
           )}
           {activeSection === 'reprints' && (
             <RecentReprintsTable clients={reprintClients.length ? reprintClients : clients} onNavigate={onNavigate} search={search} />
