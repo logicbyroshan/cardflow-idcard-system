@@ -10,8 +10,7 @@
 .notif-search-box,
 .search-box,
 .ui-search-box,
-.action-bar .notif-search-box,
-.action-bar input[type="text"] {
+.action-bar .notif-search-box {
   position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
