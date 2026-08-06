@@ -1920,7 +1920,7 @@ export default function IDCardActionsView({
                     </td>
 
                     {/* SR NO */}
-                    <td style={{ padding: '6px 4px', textAlign: 'center', fontWeight: 600, color: '#334155', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                    <td style={{ padding: '6px 4px', textAlign: 'center', fontWeight: 500, color: '#000000', fontSize: '12px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       {srNo}
                     </td>
 
@@ -1993,8 +1993,10 @@ export default function IDCardActionsView({
                             textAlign: spec.align,
                             minWidth: isEditing ? `${Math.max(spec.minWidth || 100, 180)}px` : spec.minWidth,
                             maxWidth: isEditing ? 'none' : spec.maxWidth,
-                            color: '#0f172a',
-                            fontWeight: f.name === 'NAME' ? 600 : 400,
+                            color: '#000000',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            textTransform: 'uppercase',
                             whiteSpace: 'normal',
                             wordBreak: 'break-word',
                             borderRight: '1px solid #cbd5e1',
@@ -2009,7 +2011,7 @@ export default function IDCardActionsView({
                               <input
                                 autoFocus
                                 value={cellValue}
-                                onChange={e => setCellValue(e.target.value)}
+                                onChange={e => setCellValue(e.target.value.toUpperCase())}
                                 onBlur={commitCellEdit}
                                 onKeyDown={e => { if (e.key === 'Enter') commitCellEdit(); if (e.key === 'Escape') setEditingCell(null); }}
                                 style={{
@@ -2020,16 +2022,20 @@ export default function IDCardActionsView({
                                   padding: '4px 8px',
                                   fontSize: '12px',
                                   fontWeight: 500,
+                                  textTransform: 'uppercase',
                                   outline: 'none',
                                   background: '#ffffff',
                                   boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
                                   boxSizing: 'border-box',
-                                  color: '#0f172a',
+                                  color: '#000000',
+                                  fontFamily: 'inherit',
                                 }}
                               />
                             </div>
                           ) : (
-                            <span title={String(val)} style={{ cursor: 'pointer' }}>{String(val) || <span style={{ color: '#cbd5e1' }}>—</span>}</span>
+                            <span title={String(val)} style={{ cursor: 'pointer', color: '#000000', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>
+                              {String(val) ? String(val).toUpperCase() : <span style={{ color: '#cbd5e1' }}>—</span>}
+                            </span>
                           )}
                         </td>
                       );
