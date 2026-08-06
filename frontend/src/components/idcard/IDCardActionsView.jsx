@@ -87,88 +87,7 @@ function Spinner({ size = 16 }) {
 
 /* Sample cards generator for demonstration & local testing when DB is empty */
 function getSampleCards(tableId) {
-  return [
-    {
-      id: 101,
-      status: 'pending',
-      updated_at: new Date().toISOString(),
-      modified_by: 'Admin',
-      field_data: {
-        'NAME': 'Aarav Sharma',
-        'FATHER NAME': 'Rajesh Sharma',
-        'MOTHER NAME': 'Sunita Sharma',
-        'CLASS': '10th',
-        'SECTION': 'A',
-        'CONTACT NO.': '9876543210',
-        'ADDRESS': '123 MG Road, Mathura',
-        'PHOTO': ''
-      }
-    },
-    {
-      id: 102,
-      status: 'pending',
-      updated_at: new Date().toISOString(),
-      modified_by: 'Operator 1',
-      field_data: {
-        'NAME': 'Priya Verma',
-        'FATHER NAME': 'Suresh Verma',
-        'MOTHER NAME': 'Anita Verma',
-        'CLASS': '10th',
-        'SECTION': 'B',
-        'CONTACT NO.': '9812345678',
-        'ADDRESS': '45 Civil Lines, Mathura',
-        'PHOTO': ''
-      }
-    },
-    {
-      id: 103,
-      status: 'pending',
-      updated_at: new Date().toISOString(),
-      modified_by: 'Admin',
-      field_data: {
-        'NAME': 'Rohan Gupta',
-        'FATHER NAME': 'Ramesh Gupta',
-        'MOTHER NAME': 'Kiran Gupta',
-        'CLASS': '9th',
-        'SECTION': 'A',
-        'CONTACT NO.': '9765432109',
-        'ADDRESS': '78 Station Road, Mathura',
-        'PHOTO': ''
-      }
-    },
-    {
-      id: 104,
-      status: 'verified',
-      updated_at: new Date().toISOString(),
-      modified_by: 'Admin',
-      field_data: {
-        'NAME': 'Sneha Patel',
-        'FATHER NAME': 'Vikram Patel',
-        'MOTHER NAME': 'Rekha Patel',
-        'CLASS': '11th',
-        'SECTION': 'A',
-        'CONTACT NO.': '9988776655',
-        'ADDRESS': '12 Sector 4, Mathura',
-        'PHOTO': ''
-      }
-    },
-    {
-      id: 105,
-      status: 'approved',
-      updated_at: new Date().toISOString(),
-      modified_by: 'Admin',
-      field_data: {
-        'NAME': 'Vikram Singh',
-        'FATHER NAME': 'Mahesh Singh',
-        'MOTHER NAME': 'Seema Singh',
-        'CLASS': '12th',
-        'SECTION': 'C',
-        'CONTACT NO.': '9123456789',
-        'ADDRESS': '90 Link Road, Mathura',
-        'PHOTO': ''
-      }
-    }
-  ];
+  return [];
 }
 
 /* ─── Side Drawer — Add / Edit / View ───────────────────────────────────── */
@@ -1011,10 +930,7 @@ export default function IDCardActionsView({
     try {
       const stored = localStorage.getItem(`cf_custom_cards_${tableId}`);
       if (stored) return JSON.parse(stored);
-      // Seed sample cards if none exist
-      const samples = getSampleCards(tableId);
-      localStorage.setItem(`cf_custom_cards_${tableId}`, JSON.stringify(samples));
-      return samples;
+      return [];
     } catch { return []; }
   }, [tableId]);
 
@@ -1103,29 +1019,18 @@ export default function IDCardActionsView({
         const data = await cardApi.getCards(tableId, params);
         list = data?.cards || data?.results || (Array.isArray(data) ? data : []);
         cnt  = data?.total_count || data?.total || data?.count || list.length;
-      } catch { /* fallback */ }
-
-      // Merge local storage cards
-      const local = getLocalStorageCards().filter(c => (c.status || 'pending') === status);
-      if (local.length > 0) {
-        const merged = [...list];
-        local.forEach(lc => {
-          if (!merged.some(m => String(m.id) === String(lc.id))) {
-            merged.push(lc);
-          }
-        });
-        list = merged;
-        cnt = Math.max(cnt, list.length);
+      } catch (apiErr) {
+        console.warn("API loadCards error:", apiErr);
       }
 
       setCards(list);
       setTotal(cnt);
-    } catch {
-      const local = getLocalStorageCards().filter(c => (c.status || 'pending') === status);
-      setCards(local);
-      setTotal(local.length);
+    } catch (err) {
+      console.warn("loadCards error:", err);
+      setCards([]);
+      setTotal(0);
     } finally { setCardsLoading(false); }
-  }, [tableId, status, page, pageSize, debouncedSearch, classFilter, sectionFilter, sort, getLocalStorageCards]);
+  }, [tableId, status, page, pageSize, debouncedSearch, classFilter, sectionFilter, sort]);
 
   /* ── Effects ── */
   useEffect(() => { loadTable(); }, [loadTable]);
@@ -1549,15 +1454,6 @@ export default function IDCardActionsView({
               </button>
 
               <button
-                disabled={selectedArr.length !== 1}
-                onClick={() => setDrawer({ mode: 'view', card: cards.find(c => selectedIds.has(c.id)) })}
-                style={buttonStyle('#6b7280', selectedArr.length !== 1)}
-                title="View selected card"
-              >
-                <Eye size={14} /> <span>View</span>
-              </button>
-
-              <button
                 disabled={!hasSelection}
                 onClick={handleDelete}
                 style={buttonStyle('#ef4444', !hasSelection)}
@@ -1588,12 +1484,6 @@ export default function IDCardActionsView({
                 style={buttonStyle('#2563eb', selectedArr.length !== 1)}
               ><Pencil size={14} /> <span>Edit</span></button>
 
-              <button
-                disabled={selectedArr.length !== 1}
-                onClick={() => setDrawer({ mode: 'view', card: cards.find(c => selectedIds.has(c.id)) })}
-                style={buttonStyle('#6b7280', selectedArr.length !== 1)}
-              ><Eye size={14} /> <span>View</span></button>
-
               <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 4px', flexShrink: 0 }} />
 
               <button onClick={() => setDrawer({ mode: 'reupload' })} style={buttonStyle('#0d9488')} title="Reupload images from ZIP">
@@ -1623,12 +1513,6 @@ export default function IDCardActionsView({
             <>
               <button
                 disabled={selectedArr.length !== 1}
-                onClick={() => setDrawer({ mode: 'view', card: cards.find(c => selectedIds.has(c.id)) })}
-                style={buttonStyle('#6b7280', selectedArr.length !== 1)}
-              ><Eye size={14} /> <span>View</span></button>
-
-              <button
-                disabled={selectedArr.length !== 1}
                 onClick={() => setDrawer({ mode: 'edit', card: cards.find(c => selectedIds.has(c.id)) })}
                 style={buttonStyle('#2563eb', selectedArr.length !== 1)}
               ><Pencil size={14} /> <span>Edit</span></button>
@@ -1653,12 +1537,6 @@ export default function IDCardActionsView({
           {/* Download & Pool List buttons */}
           {(status === 'download' || status === 'pool') && (
             <>
-              <button
-                disabled={selectedArr.length !== 1}
-                onClick={() => setDrawer({ mode: 'view', card: cards.find(c => selectedIds.has(c.id)) })}
-                style={buttonStyle('#6b7280', selectedArr.length !== 1)}
-              ><Eye size={14} /> <span>View</span></button>
-
               <button
                 disabled={selectedArr.length !== 1}
                 onClick={() => setDrawer({ mode: 'edit', card: cards.find(c => selectedIds.has(c.id)) })}
