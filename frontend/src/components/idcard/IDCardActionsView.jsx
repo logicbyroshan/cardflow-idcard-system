@@ -472,16 +472,16 @@ function ImageSortModal({ tableFields, activeSort, onClose, onApply, onClear }) 
   };
 
   return (
-    <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center', zIndex: 3000 }} onClick={onClose}>
-      <div className="data-card" style={{ width: '420px', maxWidth: '92vw', padding: '24px', borderRadius: '8px', background: '#fff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-            <ImageIcon size={18} style={{ color: '#2563eb' }} /> Image Sort & Filter
+    <div className="drawer-overlay" onClick={onClose}>
+      <div className="center-modal-panel" onClick={e => e.stopPropagation()}>
+        <div style={{ background: '#1e293b', color: '#fff', height: '46px', minHeight: '46px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+            <ImageIcon size={16} style={{ color: '#3b82f6' }} /> Image Sort & Filter
           </h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
           {/* Section 1: Select Image Column */}
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
@@ -496,7 +496,7 @@ function ImageSortModal({ tableFields, activeSort, onClose, onApply, onClear }) 
                     type="button"
                     onClick={() => toggleCol(field)}
                     style={{
-                      padding: '4px 12px',
+                      padding: '6px 14px',
                       borderRadius: '4px',
                       fontSize: '12px',
                       fontWeight: 600,
@@ -532,7 +532,7 @@ function ImageSortModal({ tableFields, activeSort, onClose, onApply, onClear }) 
                     type="button"
                     onClick={() => toggleCond(cond.key)}
                     style={{
-                      padding: '5px 12px',
+                      padding: '6px 14px',
                       borderRadius: '4px',
                       fontSize: '12px',
                       fontWeight: 600,
@@ -551,18 +551,16 @@ function ImageSortModal({ tableFields, activeSort, onClose, onApply, onClear }) 
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ padding: '12px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
           <button
             onClick={() => { onClear(); onClose(); }}
-            className="btn btn-neutral btn-sm"
-            style={{ padding: '6px 14px', fontSize: '12px' }}
+            style={{ padding: '8px 16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }}
           >
             Clear Filter
           </button>
           <button
             onClick={handleApply}
-            className="btn btn-primary btn-sm"
-            style={{ padding: '6px 18px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ padding: '8px 18px', background: '#2563eb', border: 'none', borderRadius: '4px', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <Check size={14} /> Apply Sort
           </button>
@@ -618,109 +616,111 @@ function PrintDataModal({ table, status, cardCount, onClose, addToast, onStatusT
   };
 
   return (
-    <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center', zIndex: 3000 }} onClick={onClose}>
-      <div className="data-card" style={{ width: '460px', maxWidth: '92vw', padding: '24px', borderRadius: '8px', background: '#fff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-            <Printer size={18} style={{ color: '#f59e0b' }} /> Print Data Export
+    <div className="drawer-overlay" onClick={onClose}>
+      <div className="center-modal-panel" onClick={e => e.stopPropagation()}>
+        <div style={{ background: '#1e293b', color: '#fff', height: '46px', minHeight: '46px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+            <Printer size={16} style={{ color: '#f59e0b' }} /> Print Data Export
           </h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
-            Step 1: Select Print Format
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={() => setFormat('docx')}
-              style={{
-                padding: '10px 12px',
-                borderRadius: '6px',
-                border: format === 'docx' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                background: format === 'docx' ? '#eff6ff' : '#f8fafc',
-                color: format === 'docx' ? '#1e40af' : '#475569',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
-              }}
-            >
-              <FileText size={18} style={{ color: '#2563eb' }} /> Word (.docx)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFormat('xlsx')}
-              style={{
-                padding: '10px 12px',
-                borderRadius: '6px',
-                border: format === 'xlsx' ? '2px solid #10b981' : '1px solid #cbd5e1',
-                background: format === 'xlsx' ? '#ecfdf5' : '#f8fafc',
-                color: format === 'xlsx' ? '#065f46' : '#475569',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
-              }}
-            >
-              <FileSpreadsheet size={18} style={{ color: '#10b981' }} /> Excel (.xlsx)
-            </button>
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '18px', background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
-            Step 2: Print Options ({cardCount} cards)
-          </label>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '4px' }}>Print Footer Template:</label>
-            <select value={template} onChange={e => setTemplate(e.target.value)} style={{ width: '100%', height: '30px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 8px', background: '#fff' }}>
-              <option value="">Default (No Footer Text)</option>
-              <option value="standard">Standard Institutional Footer</option>
-              <option value="compact">Compact Print Layout</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
-              <input type="checkbox" checked={breakClassSection} onChange={e => { setBreakClassSection(e.target.checked); if (e.target.checked) setBreakClassOnly(false); }} />
-              Break Pages By Class + Section
+        <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+              Step 1: Select Print Format
             </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setFormat('docx')}
+                style={{
+                  padding: '12px',
+                  borderRadius: '6px',
+                  border: format === 'docx' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                  background: format === 'docx' ? '#eff6ff' : '#f8fafc',
+                  color: format === 'docx' ? '#1e40af' : '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                <FileText size={18} style={{ color: '#2563eb' }} /> Word (.docx)
+              </button>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
-              <input type="checkbox" checked={breakClassOnly} onChange={e => { setBreakClassOnly(e.target.checked); if (e.target.checked) setBreakClassSection(false); }} />
-              Break Pages By Class Only
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
-              <input type="checkbox" checked={customBreak} onChange={e => setCustomBreak(e.target.checked)} />
-              Custom Page Break
-              {customBreak && (
-                <input type="number" min="1" value={customBreakPages} onChange={e => setCustomBreakPages(e.target.value)} style={{ width: '50px', height: '22px', border: '1px solid #cbd5e1', borderRadius: '3px', fontSize: '11px', padding: '0 4px', marginLeft: '6px' }} />
-              )}
-            </label>
-          </div>
-        </div>
-
-        {isProcessing && (
-          <div style={{ marginBottom: '16px', background: '#eff6ff', padding: '12px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1d4ed8', marginBottom: '6px' }}>Generating {format.toUpperCase()} print file...</div>
-            <div style={{ height: '6px', background: '#dbeafe', borderRadius: '3px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progress}%`, background: '#2563eb', transition: 'width 0.3s ease' }} />
+              <button
+                type="button"
+                onClick={() => setFormat('xlsx')}
+                style={{
+                  padding: '12px',
+                  borderRadius: '6px',
+                  border: format === 'xlsx' ? '2px solid #10b981' : '1px solid #cbd5e1',
+                  background: format === 'xlsx' ? '#ecfdf5' : '#f8fafc',
+                  color: format === 'xlsx' ? '#065f46' : '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                <FileSpreadsheet size={18} style={{ color: '#10b981' }} /> Excel (.xlsx)
+              </button>
             </div>
           </div>
-        )}
 
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-          <button onClick={onClose} className="btn btn-neutral btn-sm" disabled={isProcessing}>Cancel</button>
-          <button onClick={handlePrintDownload} className="btn btn-primary btn-sm" disabled={isProcessing} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f59e0b', borderColor: '#d97706' }}>
+          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+              Step 2: Print Options ({cardCount} cards)
+            </label>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '4px' }}>Print Footer Template:</label>
+              <select value={template} onChange={e => setTemplate(e.target.value)} style={{ width: '100%', height: '32px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', padding: '0 8px', background: '#fff' }}>
+                <option value="">Default (No Footer Text)</option>
+                <option value="standard">Standard Institutional Footer</option>
+                <option value="compact">Compact Print Layout</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+                <input type="checkbox" checked={breakClassSection} onChange={e => { setBreakClassSection(e.target.checked); if (e.target.checked) setBreakClassOnly(false); }} />
+                Break Pages By Class + Section
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+                <input type="checkbox" checked={breakClassOnly} onChange={e => { setBreakClassOnly(e.target.checked); if (e.target.checked) setBreakClassSection(false); }} />
+                Break Pages By Class Only
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+                <input type="checkbox" checked={customBreak} onChange={e => setCustomBreak(e.target.checked)} />
+                Custom Page Break
+                {customBreak && (
+                  <input type="number" min="1" value={customBreakPages} onChange={e => setCustomBreakPages(e.target.value)} style={{ width: '50px', height: '22px', border: '1px solid #cbd5e1', borderRadius: '3px', fontSize: '11px', padding: '0 4px', marginLeft: '6px' }} />
+                )}
+              </label>
+            </div>
+          </div>
+
+          {isProcessing && (
+            <div style={{ background: '#eff6ff', padding: '12px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#1d4ed8', marginBottom: '6px' }}>Generating {format.toUpperCase()} print file...</div>
+              <div style={{ height: '6px', background: '#dbeafe', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progress}%`, background: '#2563eb', transition: 'width 0.3s ease' }} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: '12px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }} disabled={isProcessing}>Cancel</button>
+          <button onClick={handlePrintDownload} style={{ padding: '8px 18px', background: '#f59e0b', border: 'none', borderRadius: '4px', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }} disabled={isProcessing}>
             <Printer size={14} /> {isProcessing ? 'Generating...' : `Generate & Print ${format.toUpperCase()}`}
           </button>
         </div>
@@ -767,102 +767,104 @@ function DownloadDataModal({ table, status, cardCount, onClose, addToast }) {
   };
 
   return (
-    <div className="drawer-overlay" style={{ alignItems: 'center', justifyContent: 'center', zIndex: 3000 }} onClick={onClose}>
-      <div className="data-card" style={{ width: '460px', maxWidth: '92vw', padding: '24px', borderRadius: '8px', background: '#fff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-            <Download size={18} style={{ color: '#7c3aed' }} /> Download Data Export
+    <div className="drawer-overlay" onClick={onClose}>
+      <div className="center-modal-panel" onClick={e => e.stopPropagation()}>
+        <div style={{ background: '#1e293b', color: '#fff', height: '46px', minHeight: '46px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+            <Download size={16} style={{ color: '#7c3aed' }} /> Download Data Export
           </h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
-            Select Data Format
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={() => setType('images')}
-              style={{
-                padding: '10px 12px',
-                borderRadius: '6px',
-                border: type === 'images' ? '2px solid #7c3aed' : '1px solid #cbd5e1',
-                background: type === 'images' ? '#f5f3ff' : '#f8fafc',
-                color: type === 'images' ? '#5b21b6' : '#475569',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
-              }}
-            >
-              <ImageIcon size={18} style={{ color: '#7c3aed' }} /> Images (ZIP)
-            </button>
+        <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+              Select Data Format
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setType('images')}
+                style={{
+                  padding: '12px',
+                  borderRadius: '6px',
+                  border: type === 'images' ? '2px solid #7c3aed' : '1px solid #cbd5e1',
+                  background: type === 'images' ? '#f5f3ff' : '#f8fafc',
+                  color: type === 'images' ? '#5b21b6' : '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                <ImageIcon size={18} style={{ color: '#7c3aed' }} /> Images (ZIP)
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setType('pdf')}
-              style={{
-                padding: '10px 12px',
-                borderRadius: '6px',
-                border: type === 'pdf' ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                background: type === 'pdf' ? '#fef2f2' : '#f8fafc',
-                color: type === 'pdf' ? '#991b1b' : '#475569',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
-              }}
-            >
-              <Download size={18} style={{ color: '#ef4444' }} /> PDF Document
-            </button>
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '18px', background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
-            Export Options ({cardCount} cards)
-          </label>
-
-          {type === 'images' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
-                <input type="checkbox" checked={includeImagesZip} onChange={e => setIncludeImagesZip(e.target.checked)} />
-                Include Photo & Signature Images in ZIP
-              </label>
-              <p style={{ fontSize: '11px', color: '#64748b', margin: 0, paddingLeft: '22px' }}>
-                Downloads a ZIP archive containing images named according to record identifiers.
-              </p>
+              <button
+                type="button"
+                onClick={() => setType('pdf')}
+                style={{
+                  padding: '12px',
+                  borderRadius: '6px',
+                  border: type === 'pdf' ? '2px solid #ef4444' : '1px solid #cbd5e1',
+                  background: type === 'pdf' ? '#fef2f2' : '#f8fafc',
+                  color: type === 'pdf' ? '#991b1b' : '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                <Download size={18} style={{ color: '#ef4444' }} /> PDF Document
+              </button>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
-                <input type="checkbox" checked={shortenTitles} onChange={e => setShortenTitles(e.target.checked)} />
-                Shorten Column Titles (e.g. Mobile No → Mob.)
-              </label>
-              <p style={{ fontSize: '11px', color: '#64748b', margin: 0, paddingLeft: '22px' }}>
-                Optimizes table layout and auto-fits columns for PDF document rendering.
-              </p>
+          </div>
+
+          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+              Export Options ({cardCount} cards)
+            </label>
+
+            {type === 'images' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={includeImagesZip} onChange={e => setIncludeImagesZip(e.target.checked)} />
+                  Include Photo & Signature Images in ZIP
+                </label>
+                <p style={{ fontSize: '11px', color: '#64748b', margin: 0, paddingLeft: '22px' }}>
+                  Downloads a ZIP archive containing images named according to record identifiers.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={shortenTitles} onChange={e => setShortenTitles(e.target.checked)} />
+                  Shorten Column Titles (e.g. Mobile No → Mob.)
+                </label>
+                <p style={{ fontSize: '11px', color: '#64748b', margin: 0, paddingLeft: '22px' }}>
+                  Optimizes table layout and auto-fits columns for PDF document rendering.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {isProcessing && (
+            <div style={{ background: '#f5f3ff', padding: '12px', borderRadius: '6px', border: '1px solid #ddd6fe' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#6d28d9', marginBottom: '6px' }}>Exporting {type.toUpperCase()} data...</div>
+              <div style={{ height: '6px', background: '#ede9fe', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progress}%`, background: '#7c3aed', transition: 'width 0.3s ease' }} />
+              </div>
             </div>
           )}
         </div>
 
-        {isProcessing && (
-          <div style={{ marginBottom: '16px', background: '#f5f3ff', padding: '12px', borderRadius: '6px', border: '1px solid #ddd6fe' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#6d28d9', marginBottom: '6px' }}>Exporting {type.toUpperCase()} data...</div>
-            <div style={{ height: '6px', background: '#ede9fe', borderRadius: '3px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progress}%`, background: '#7c3aed', transition: 'width 0.3s ease' }} />
-            </div>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-          <button onClick={onClose} className="btn btn-neutral btn-sm" disabled={isProcessing}>Cancel</button>
-          <button onClick={handleDownloadData} className="btn btn-primary btn-sm" disabled={isProcessing} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#7c3aed', borderColor: '#6d28d9' }}>
+        <div style={{ padding: '12px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }} disabled={isProcessing}>Cancel</button>
+          <button onClick={handleDownloadData} style={{ padding: '8px 18px', background: '#7c3aed', border: 'none', borderRadius: '4px', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }} disabled={isProcessing}>
             <Download size={14} /> {isProcessing ? 'Exporting...' : `Download ${type.toUpperCase()}`}
           </button>
         </div>
