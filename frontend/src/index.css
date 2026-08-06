@@ -247,7 +247,45 @@ html {
   font-size: 14px;
 }
 
-/* ── Global Drawer Backdrop & Modal Overlay System ── */
+/* ── Side-Drawer Backdrop Overlay ── */
+.drawer-overlay-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  z-index: 999999 !important;
+  box-sizing: border-box !important;
+  pointer-events: auto !important;
+}
+
+/* ── Fixed Side-Drawer Right Panel ── */
+.side-drawer-panel,
+.drawer-panel {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 640px !important;
+  max-width: 95vw !important;
+  height: 100vh !important;
+  background: #ffffff !important;
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.35) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 1000000 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  animation: drawerSlideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ── Center-Appearing Modal Overlay (Flex Center) ── */
+.center-modal-overlay,
 .drawer-overlay {
   position: fixed !important;
   top: 0 !important;
@@ -262,30 +300,13 @@ html {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  z-index: 100000 !important;
+  z-index: 999999 !important;
   box-sizing: border-box !important;
 }
 
-.drawer-panel {
-  position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 640px !important;
-  max-width: 95vw !important;
-  height: 100vh !important;
-  background: #ffffff !important;
-  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.35) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  z-index: 100001 !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-  animation: slideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-/* ── Standard Center-Appearing Modals (600px Width x 500px Height) ── */
-.center-modal-panel {
+/* ── Standardized Center Modal Panel (600px Width x 500px Height) ── */
+.center-modal-panel,
+.center-modal-box {
   position: relative !important;
   width: 600px !important;
   max-width: 92vw !important;
@@ -296,18 +317,18 @@ html {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35) !important;
   display: flex !important;
   flex-direction: column !important;
-  z-index: 100001 !important;
+  z-index: 1000000 !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
-  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  animation: centerModalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-@keyframes slideLeft {
+@keyframes drawerSlideInRight {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
 }
 
-@keyframes modalScaleIn {
+@keyframes centerModalScaleIn {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }

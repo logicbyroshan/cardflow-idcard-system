@@ -58,20 +58,20 @@ export default function QuickActionDrawer({ isOpen, actionType, initialData, onC
     <>
       {/* Backdrop overlay — Click outside disabled, closed via buttons only */}
       <div
-        className="drawer-overlay"
+        className="drawer-overlay-backdrop"
         style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
-          zIndex: 100000,
+          zIndex: 999999,
         }}
       />
 
       {/* Slide-over Drawer Container */}
       <div
-        className="drawer-panel"
+        className="side-drawer-panel"
         style={{
           position: 'fixed',
           top: 0, right: 0, bottom: 0,
@@ -80,11 +80,11 @@ export default function QuickActionDrawer({ isOpen, actionType, initialData, onC
           height: '100vh',
           background: '#ffffff',
           boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.35)',
-          zIndex: 100001,
+          zIndex: 1000000,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          animation: 'slideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+          animation: 'drawerSlideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         {(actionType === 'add-client' || actionType === 'edit-client') && (
