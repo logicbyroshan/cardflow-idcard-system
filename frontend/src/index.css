@@ -259,7 +259,7 @@ html {
   background: rgba(15, 23, 42, 0.65) !important;
   backdrop-filter: blur(4px) !important;
   -webkit-backdrop-filter: blur(4px) !important;
-  z-index: 999999 !important;
+  z-index: 9999998 !important;
   box-sizing: border-box !important;
   pointer-events: auto !important;
 }
@@ -278,7 +278,7 @@ html {
   box-shadow: -10px 0 35px rgba(0, 0, 0, 0.35) !important;
   display: flex !important;
   flex-direction: column !important;
-  z-index: 1000000 !important;
+  z-index: 9999999 !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
   animation: drawerSlideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -300,7 +300,7 @@ html {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  z-index: 999999 !important;
+  z-index: 9999998 !important;
   box-sizing: border-box !important;
 }
 
@@ -317,7 +317,7 @@ html {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35) !important;
   display: flex !important;
   flex-direction: column !important;
-  z-index: 1000000 !important;
+  z-index: 9999999 !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
   animation: centerModalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;

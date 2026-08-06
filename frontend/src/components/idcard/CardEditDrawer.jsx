@@ -60,81 +60,88 @@ export default function CardEditDrawer({ card, onClose, onSave, addToast }) {
   return (
     <>
       <div className="drawer-overlay-backdrop" />
-      <aside className="side-drawer-panel" style={{ width: '640px', maxWidth: '95vw', padding: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+      <aside className="side-drawer-panel" style={{ width: '640px', maxWidth: '95vw', padding: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Fixed Header */}
+        <div style={{ background: '#1e293b', color: '#ffffff', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #334155', flexShrink: 0 }}>
           <div>
-            <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Card Details #{card?.id || 'New'}</h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ID Card Field Editor &amp; Image History</span>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#ffffff' }}>Card Details #{card?.id || 'New'}</h3>
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>ID Card Field Editor &amp; Image History</span>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <ImageUploadSlot
-              cardId={card?.id}
-              fieldName="PHOTO"
-              currentPath={formData.PHOTO}
-              onUpdate={(field, path) => handleChange(field, path)}
-            />
-            <ImageUploadSlot
-              cardId={card?.id}
-              fieldName="SIGNATURE"
-              currentPath={formData.SIGNATURE}
-              onUpdate={(field, path) => handleChange(field, path)}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {Object.entries(formData).map(([key, val]) => {
-              if (['PHOTO', 'SIGNATURE', 'BARCODE', 'QR_CODE'].includes(key)) return null;
-              return (
-                <div key={key}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                    {key.replace(/_/g, ' ')}
-                  </label>
-                  <input
-                    type="text"
-                    value={val || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '0.65rem 1rem',
-                      background: 'rgba(15, 23, 42, 0.6)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-md)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.9rem',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          {saveError && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#ef4444', fontSize: '12px', marginTop: '8px' }}>
-              <AlertCircle size={14} />
-              <span>{saveError}</span>
+        {/* Form Container */}
+        <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, margin: 0 }}>
+          {/* Scrollable Body */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <ImageUploadSlot
+                cardId={card?.id}
+                fieldName="PHOTO"
+                currentPath={formData.PHOTO}
+                onUpdate={(field, path) => handleChange(field, path)}
+              />
+              <ImageUploadSlot
+                cardId={card?.id}
+                fieldName="SIGNATURE"
+                currentPath={formData.SIGNATURE}
+                onUpdate={(field, path) => handleChange(field, path)}
+              />
             </div>
-          )}
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {Object.entries(formData).map(([key, val]) => {
+                if (['PHOTO', 'SIGNATURE', 'BARCODE', 'QR_CODE'].includes(key)) return null;
+                return (
+                  <div key={key}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
+                      {key.replace(/_/g, ' ')}
+                    </label>
+                    <input
+                      type="text"
+                      value={val || ''}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.65rem 1rem',
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '4px',
+                        color: '#0f172a',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {saveError && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', fontSize: '12px' }}>
+                <AlertCircle size={14} />
+                <span>{saveError}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Sticky Bottom Footer */}
+          <div style={{ padding: '14px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '12px', justifyContent: 'flex-end', flexShrink: 0 }}>
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
               style={{
-                flex: 1,
-                padding: '0.75rem',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-primary)',
+                padding: '8px 18px',
+                borderRadius: '4px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#475569',
                 fontWeight: 600,
+                fontSize: '12px',
                 cursor: saving ? 'not-allowed' : 'pointer',
                 opacity: saving ? 0.5 : 1,
               }}
@@ -145,13 +152,13 @@ export default function CardEditDrawer({ card, onClose, onSave, addToast }) {
               type="submit"
               disabled={saving}
               style={{
-                flex: 2,
-                padding: '0.75rem',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--accent-primary)',
+                padding: '8px 24px',
+                borderRadius: '4px',
+                background: '#2563eb',
                 border: 'none',
-                color: '#fff',
-                fontWeight: 600,
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '12px',
                 cursor: saving ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -160,7 +167,7 @@ export default function CardEditDrawer({ card, onClose, onSave, addToast }) {
                 opacity: saving ? 0.8 : 1,
               }}
             >
-              {saving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={18} />}
+              {saving ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={15} />}
               <span>{saving ? 'Saving...' : 'Save Card Details'}</span>
             </button>
           </div>
