@@ -143,6 +143,16 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search }) {
     !search || (c.name || c.school_name || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  const toggleExpand = (id, e) => {
+    e.stopPropagation();
+    setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleBadgeClick = (clientOrSubTable, statusKey) => {
+    const tableId = clientOrSubTable.table_id || clientOrSubTable.tableId || clientOrSubTable.id || 1;
+    onNavigate('idcard-actions', { tableId: tableId, status: statusKey });
+  };
+
   const handleSort = (key) => {
     if (sortKey !== key) {
       setSortKey(key);
@@ -853,10 +863,7 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f8fafc' }}>
-      {/* 1. Welcome Purple Banner */}
-      <WelcomeBanner currentUser={currentUser} />
-
-      {/* 2. 6 Stat Cards Row */}
+      {/* 1. 6 Stat Cards Row */}
       <StatCardsRow stats={stats} loading={loading} onNavigate={onNavigate} />
 
       {/* 3. Main Dashboard Body: Dynamic Left Section + Right Stacked Panels */}

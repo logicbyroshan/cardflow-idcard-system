@@ -219,7 +219,18 @@ export default function App() {
           {/* ── Dashboard ── */}
           {activeTab === 'dashboard' && (
             <DashboardView
-              onNavigate={setActiveTab}
+              onNavigate={(dest, params) => {
+                if (dest === 'idcard-actions' || (params && (params.tableId || params.table_id))) {
+                  const tid = params?.tableId || params?.table_id || 1;
+                  const st = params?.status || params?.statusFilter || 'pending';
+                  setIdcardActionsState({ tableId: tid, status: st });
+                  setActiveTab('idcard-actions');
+                } else if (dest === 'cards') {
+                  setActiveTab('cards');
+                } else if (dest) {
+                  setActiveTab(dest);
+                }
+              }}
               currentUser={currentUser}
               onOpenActionDrawer={(actionType) => setDrawerAction(actionType)}
             />
