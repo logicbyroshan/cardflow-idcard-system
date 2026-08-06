@@ -82,9 +82,9 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
   const isQr = (fieldName || '').toLowerCase().includes('qr');
   const isBar = (fieldName || '').toLowerCase().includes('bar');
 
-  // Thumbnail dimensions
-  const thumbW = isSig ? '135px' : isQr || isBar ? '80px' : '85px';
-  const thumbH = isSig ? '55px' : isQr || isBar ? '80px' : '95px';
+  // Uniform thumbnail preview dimensions matching photo cards
+  const thumbW = isSig ? '95px' : isQr || isBar ? '75px' : '75px';
+  const thumbH = isSig ? '70px' : isQr || isBar ? '75px' : '85px';
 
   const hasPath = Boolean(imagePath && imagePath.trim() !== '');
   const isDataUrl = hasPath && imagePath.startsWith('data:');
@@ -97,6 +97,8 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
     <div style={{
       display: 'flex',
       flexDirection: 'column',
+      justifyContent: 'space-between',
+      height: '100%',
       border: '1px solid #cbd5e1',
       borderRadius: '8px',
       background: '#ffffff',
@@ -136,7 +138,7 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
       </div>
 
       {/* Main Body: Thumbnail + Grouped Action Buttons */}
-      <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '12px', background: '#f8fafc' }}>
+      <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '12px', background: '#f8fafc', flex: 1 }}>
         {/* Thumbnail Preview Box */}
         <div style={{
           width: thumbW,
@@ -151,7 +153,8 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
           justifyContent: 'center',
           flexShrink: 0,
           boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)',
-          position: 'relative'
+          position: 'relative',
+          margin: '0 auto'
         }}>
           {hasPath && !imgError ? (
             <img

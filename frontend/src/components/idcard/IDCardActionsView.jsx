@@ -253,9 +253,9 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
 
         {/* Footer */}
         {!isView && (
-          <div className="drawer-footer" style={{ height: '56px', minHeight: '56px', padding: '0 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', background: '#f8fafc', flexShrink: 0 }}>
-            <button type="button" onClick={onClose} className="btn btn-neutral btn-sm" style={{ padding: '7px 16px' }}>Cancel</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm" style={{ padding: '7px 20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="drawer-footer" style={{ height: '56px', minHeight: '56px', padding: '0 24px', borderTop: '1px solid #334155', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', background: '#1e293b', flexShrink: 0 }}>
+            <button type="button" onClick={onClose} className="btn btn-neutral btn-sm" style={{ padding: '7px 16px', background: '#334155', color: '#ffffff', border: '1px solid #475569' }}>Cancel</button>
+            <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm" style={{ padding: '7px 20px', display: 'flex', alignItems: 'center', gap: '6px', background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 600 }}>
               {saving ? <><Spinner size={14} /> Saving…</> : <><Check size={14} /> Save Card</>}
             </button>
           </div>

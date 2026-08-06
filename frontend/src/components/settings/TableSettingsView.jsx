@@ -1039,16 +1039,16 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
 
       {/* Footer */}
       <div style={{
-        padding: '14px 20px', borderTop: '1px solid #e5e7eb', background: '#fff',
+        padding: '14px 20px', borderTop: '1px solid #334155', background: '#1e293b', color: '#ffffff',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <TypeIcon size={14} style={{ color: typeMeta.color }} />
           <span style={{ fontSize: '12px', fontWeight: 600, color: typeMeta.color }}>{typeMeta.label}</span>
-          <span style={{ fontSize: '11px', color: '#9ca3af' }}>• {fields.length} field{fields.length !== 1 ? 's' : ''}</span>
+          <span style={{ fontSize: '11px', color: '#94a3b8' }}>• {fields.length} field{fields.length !== 1 ? 's' : ''}</span>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={onClose} style={cancelBtnStyle}><X size={14} /> Cancel</button>
+          <button onClick={onClose} style={{ ...cancelBtnStyle, background: '#334155', color: '#ffffff', border: '1px solid #475569' }}><X size={14} /> Cancel</button>
           <button
             onClick={handleSubmit}
             disabled={saving}
