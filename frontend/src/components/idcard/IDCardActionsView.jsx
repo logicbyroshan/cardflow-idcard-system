@@ -15,7 +15,7 @@ import {
   Image as ImageIcon, FileSpreadsheet, FileText, Search, X,
   Layers, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Loader2, AlertCircle, Eraser, Check, SquareCheck, Square, MinusSquare,
-  Clock, SlidersHorizontal, Settings, Printer, ChevronDown
+  Clock, SlidersHorizontal, Settings, Printer, ChevronDown, UserPlus
 } from 'lucide-react';
 import { cardApi, schemaApi } from '../../services/api';
 import apiClient from '../../services/api';
