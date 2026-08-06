@@ -404,6 +404,16 @@ export default function CardTableView({ addToast, onNavigate }) {
 
                             <button
                               type="button"
+                              onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'request' }); }}
+                              style={statusBtnStyle('request').btn}
+                              title="View Request List"
+                            >
+                              <span>Request List</span>
+                              <span style={statusBtnStyle('request').badge}>{t.request_count || t.request || 0}</span>
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'pool' }); }}
                               style={statusBtnStyle('pool').btn}
                               title="View Pool List"
@@ -620,6 +630,7 @@ function statusBtnStyle(type) {
     verified: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7', badgeBg: '#10b981' },
     approved: { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd', badgeBg: '#2563eb' },
     download: { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', badgeBg: '#6b7280' },
+    request:  { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe', badgeBg: '#8b5cf6' },
     pool:     { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5', badgeBg: '#ef4444' },
   };
   const cfg = styles[type] || styles.download;

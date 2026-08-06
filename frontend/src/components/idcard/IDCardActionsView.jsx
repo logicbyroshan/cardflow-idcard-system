@@ -29,6 +29,7 @@ const STATUS_LIST = [
   { key: 'verified', label: 'Verified List', bg: '#10b981', bgLight: '#d1fae5', color: '#059669' },
   { key: 'approved', label: 'Approved List', bg: '#3b82f6', bgLight: '#dbeafe', color: '#2563eb' },
   { key: 'download', label: 'Download List', bg: '#64748b', bgLight: '#f1f5f9', color: '#475569' },
+  { key: 'request',  label: 'Request List',  bg: '#8b5cf6', bgLight: '#f3e8ff', color: '#7c3aed' },
   { key: 'pool',     label: 'Pool List',     bg: '#ef4444', bgLight: '#fee2e2', color: '#dc2626' },
 ];
 
@@ -1102,6 +1103,7 @@ export default function IDCardActionsView({
         verified: c.verified ?? c.verified_count ?? 0,
         approved: c.approved ?? c.approved_count ?? 0,
         download: c.download ?? c.download_count ?? 0,
+        request:  c.request ?? c.request_count ?? 0,
         pool:     c.pool ?? c.pool_count ?? c.pool_list ?? 0,
       };
     } catch { /* ignore */ }
@@ -2128,12 +2130,21 @@ export default function IDCardActionsView({
                           Approve
                         </button>
                       )}
-                      {(status === 'pool' || status === 'download') && (
+                      {status === 'approved' && (
+                        <button onClick={() => applyStatusSingle(card, 'download')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#64748b', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                          Download
+                        </button>
+                      )}
+                      {status === 'download' && (
+                        <button onClick={() => applyStatusSingle(card, 'request')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#8b5cf6', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                          Request
+                        </button>
+                      )}
+                      {(status === 'pool' || status === 'request') && (
                         <button onClick={() => applyStatusSingle(card, 'pending')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
                           Retrieve
                         </button>
                       )}
-                      {status === 'approved' && <span style={{ color: '#cbd5e1' }}>—</span>}
                     </td>
 
                     {/* Updated At */}
