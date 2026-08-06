@@ -75,15 +75,9 @@ export default function Header({
 
   return (
     <header className="topbar" id="topbar" style={{ height: '50px', background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', boxSizing: 'border-box' }}>
-      {/* Left: Welcome message + Blue Heart + Live Time & Date Badge */}
+      {/* Left: Live Time & Date Badge + Welcome message with Blue Heart */}
       <div className="nav-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#f1f5f9' }}>
-          <span>Welcome</span>
-          <Heart size={14} fill="#3b82f6" color="#3b82f6" style={{ filter: 'drop-shadow(0 0 5px rgba(59,130,246,0.6))' }} />
-          <strong style={{ color: '#60a5fa', fontWeight: 700 }}>{displayName}</strong>
-        </div>
-
-        {/* Live Date & Time Button Badge */}
+        {/* 1. Live Date & Time Button Badge */}
         <div style={{
           padding: '0 10px',
           height: '28px',
@@ -102,6 +96,13 @@ export default function Header({
           <Clock size={12} style={{ color: '#60a5fa' }} />
           <span style={{ color: '#bfdbfe' }}>{formattedDate}</span>
           <span style={{ color: '#ffffff', fontWeight: 700 }}>{formattedTime}</span>
+        </div>
+
+        {/* 2. Welcome message with Blue Heart */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#f1f5f9' }}>
+          <span>Welcome</span>
+          <Heart size={14} fill="#3b82f6" color="#3b82f6" style={{ filter: 'drop-shadow(0 0 5px rgba(59,130,246,0.6))' }} />
+          <strong style={{ color: '#60a5fa', fontWeight: 700 }}>{displayName}</strong>
         </div>
       </div>
 
