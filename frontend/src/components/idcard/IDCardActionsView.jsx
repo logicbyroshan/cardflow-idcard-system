@@ -1349,7 +1349,7 @@ export default function IDCardActionsView({
       {/* ══════════════════════════════════════════════════════════
           TOPBAR — SOLID BLACK BACKGROUND (MATCHING SIDEBAR LOGO HEADER HEIGHT 44px)
           ══════════════════════════════════════════════════════════ */}
-      <header className="topbar" style={{ flexShrink: 0, padding: '0 16px', background: '#111827', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box', color: '#ffffff' }}>
+      <header className="topbar" style={{ flexShrink: 0, padding: '0 16px', background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box', color: '#ffffff' }}>
         {/* Left: Table Group, Table Setting, Divider, Download Buttons, Divider, Image Sort, Clear Pending Path */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
           <button
@@ -1991,29 +1991,45 @@ export default function IDCardActionsView({
                           style={{
                             padding: '6px 8px',
                             textAlign: spec.align,
-                            minWidth: spec.minWidth,
-                            maxWidth: spec.maxWidth,
+                            minWidth: isEditing ? `${Math.max(spec.minWidth || 100, 180)}px` : spec.minWidth,
+                            maxWidth: isEditing ? 'none' : spec.maxWidth,
                             color: '#0f172a',
                             fontWeight: f.name === 'NAME' ? 600 : 400,
                             whiteSpace: 'normal',
                             wordBreak: 'break-word',
                             borderRight: '1px solid #cbd5e1',
                             borderBottom: '1px solid #cbd5e1',
-                            verticalAlign: 'middle'
+                            verticalAlign: 'middle',
+                            position: 'relative'
                           }}
                           onDoubleClick={() => startCellEdit(card.id, f.name, val)}
                         >
                           {isEditing ? (
-                            <input
-                              autoFocus
-                              value={cellValue}
-                              onChange={e => setCellValue(e.target.value)}
-                              onBlur={commitCellEdit}
-                              onKeyDown={e => { if (e.key === 'Enter') commitCellEdit(); if (e.key === 'Escape') setEditingCell(null); }}
-                              style={{ width: '100%', border: '1px solid #2563eb', borderRadius: '3px', padding: '2px 4px', fontSize: '12px', outline: 'none', background: '#fff' }}
-                            />
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, display: 'flex', alignItems: 'center', background: '#ffffff' }}>
+                              <input
+                                autoFocus
+                                value={cellValue}
+                                onChange={e => setCellValue(e.target.value)}
+                                onBlur={commitCellEdit}
+                                onKeyDown={e => { if (e.key === 'Enter') commitCellEdit(); if (e.key === 'Escape') setEditingCell(null); }}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  border: '2px solid #2563eb',
+                                  borderRadius: '2px',
+                                  padding: '4px 8px',
+                                  fontSize: '12px',
+                                  fontWeight: 500,
+                                  outline: 'none',
+                                  background: '#ffffff',
+                                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                                  boxSizing: 'border-box',
+                                  color: '#0f172a',
+                                }}
+                              />
+                            </div>
                           ) : (
-                            <span title={String(val)}>{String(val) || <span style={{ color: '#cbd5e1' }}>—</span>}</span>
+                            <span title={String(val)} style={{ cursor: 'pointer' }}>{String(val) || <span style={{ color: '#cbd5e1' }}>—</span>}</span>
                           )}
                         </td>
                       );

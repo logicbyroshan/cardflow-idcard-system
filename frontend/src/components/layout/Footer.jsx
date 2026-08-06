@@ -107,7 +107,7 @@ export default function Footer({ activeTab, onNavigate, idcardActionsState }) {
       style={{
         flexShrink: 0,
         height: '36px',
-        background: '#111827',
+        background: '#1e1e2e',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
         padding: '0 16px',
         display: 'flex',
