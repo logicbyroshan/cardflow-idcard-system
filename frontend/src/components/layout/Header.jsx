@@ -83,23 +83,27 @@ export default function Header({
       <div className="nav-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {/* 1. Live Date & Time Button Badge */}
         <div style={{
-          padding: '0 10px',
+          padding: '0 12px',
           height: '28px',
+          minWidth: '175px',
           borderRadius: '5px',
           border: '1px solid rgba(59, 130, 246, 0.35)',
           background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
           color: '#ffffff',
           display: 'inline-flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: '6px',
           fontSize: '11px',
           fontWeight: 600,
           boxSizing: 'border-box',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          fontVariantNumeric: 'tabular-nums',
+          fontFeatureSettings: '"tnum"'
         }}>
-          <Clock size={12} style={{ color: '#60a5fa' }} />
-          <span style={{ color: '#bfdbfe' }}>{formattedDate}</span>
-          <span style={{ color: '#ffffff', fontWeight: 700 }}>{formattedTime}</span>
+          <Clock size={12} style={{ color: '#60a5fa', flexShrink: 0 }} />
+          <span style={{ color: '#bfdbfe', whiteSpace: 'nowrap' }}>{formattedDate}</span>
+          <span style={{ color: '#ffffff', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"', minWidth: '58px', textAlign: 'center', display: 'inline-block' }}>{formattedTime}</span>
         </div>
 
         {/* 2. Animated Blue Heart + Welcome + Name */}
