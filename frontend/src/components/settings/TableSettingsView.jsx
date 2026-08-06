@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus, Pen, Trash2, ToggleRight, Download, FileSpreadsheet, SlidersHorizontal, Settings,
   Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
@@ -722,7 +723,7 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
         const newTable = {
           id: `tbl_${Date.now()}`,
           ...payload,
-          client_name: clientOrg || '—',
+          client_name: orgName || '—',
           status: 'active',
           is_active: true,
           created_at: new Date().toISOString(),
@@ -742,12 +743,10 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
   const typeMeta = getTableTypeMeta(tableType);
   const TypeIcon = typeMeta.icon;
 
-  return (
-    <div style={{
-      position: 'fixed', top: 0, right: 0, bottom: 0, width: '640px', minWidth: '600px', maxWidth: '95vw',
-      background: '#ffffff', boxShadow: '-8px 0 32px rgba(0,0,0,0.18)',
-      zIndex: 1000, display: 'flex', flexDirection: 'column'
-    }}>
+  return createPortal(
+    <>
+      <div className="drawer-overlay-backdrop" onClick={onClose} />
+      <aside className="side-drawer-panel" style={{ width: '640px', maxWidth: '95vw', padding: 0, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{
         background: '#2563eb', color: '#fff', height: '48px', padding: '0 20px',
@@ -1064,7 +1063,9 @@ function TableDrawerForm({ editingTable, groupId, orgName, onClose, onSave, addT
           </button>
         </div>
       </div>
-    </div>
+      </aside>
+    </>,
+    document.body
   );
 }
 
