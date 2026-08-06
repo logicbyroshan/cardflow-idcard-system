@@ -28,7 +28,6 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
       }
     };
     reader.readAsDataURL(file);
-    // Reset file input so user can pick the same file again if desired
     e.target.value = '';
   };
 
@@ -68,38 +67,39 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
 
   const isSig = (fieldName || '').toLowerCase().includes('sign');
   const isQr = (fieldName || '').toLowerCase().includes('qr');
-  const slotW = isSig ? '110px' : '85px';
-  const slotH = isSig ? '55px' : isQr ? '85px' : '90px';
+  const thumbW = isSig ? '95px' : '65px';
+  const thumbH = isSig ? '45px' : isQr ? '65px' : '75px';
 
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '8px',
-      padding: '12px 14px',
+      gap: '6px',
+      padding: '10px 12px',
       border: '1px solid #cbd5e1',
       borderRadius: '6px',
       background: '#f8fafc',
       width: '100%',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
     }}>
-      {/* Field Label */}
+      {/* Header Row: Field Name & Status Indicator */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '11px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          {fieldName} IMAGE SLOT
+        <span style={{ fontSize: '11px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+          {fieldName}
         </span>
-        <span style={{ fontSize: '11px', fontWeight: 500, color: imagePath ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {imagePath ? <><Check size={12} /> Photo Loaded</> : 'No Photo Uploaded'}
+        <span style={{ fontSize: '10px', fontWeight: 600, color: imagePath ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '3px' }}>
+          {imagePath ? <><Check size={11} /> Loaded</> : 'Empty'}
         </span>
       </div>
 
-      {/* Main Top Row: Image Thumbnail + Action Buttons */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        {/* Image Preview Box */}
+      {/* Main Row: Thumbnail + Action Buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Thumbnail Preview */}
         <div style={{
-          width: slotW,
-          height: slotH,
-          minWidth: slotW,
+          width: thumbW,
+          height: thumbH,
+          minWidth: thumbW,
           background: '#ffffff',
           border: '1px solid #cbd5e1',
           borderRadius: '4px',
@@ -108,7 +108,7 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)'
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)'
         }}>
           {imagePath ? (
             <img
@@ -118,13 +118,13 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           ) : (
-            <ImageIcon size={24} style={{ color: '#cbd5e1' }} />
+            <ImageIcon size={20} style={{ color: '#cbd5e1' }} />
           )}
         </div>
 
-        {/* Action Buttons Grid */}
-        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-          {/* Upload Button & Hidden Input */}
+        {/* Action Buttons Column / Row */}
+        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', minWidth: 0 }}>
+          {/* Upload Button */}
           <input
             ref={fileInputRef}
             type="file"
@@ -138,7 +138,7 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
             className="img-slot-btn img-slot-upload-btn"
             title="Upload photo from device"
           >
-            <Upload size={12} />
+            <Upload size={11} />
             <span>Upload</span>
           </button>
 
@@ -148,9 +148,9 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
             onClick={handleUndo}
             disabled={loading || !cardId}
             className="img-slot-btn"
-            title="Undo previous image version"
+            title="Undo image version"
           >
-            <RotateCcw size={12} />
+            <RotateCcw size={11} />
             <span>Undo</span>
           </button>
 
@@ -160,13 +160,13 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
             onClick={handleRedo}
             disabled={loading || !cardId}
             className="img-slot-btn"
-            title="Redo next image version"
+            title="Redo image version"
           >
-            <RotateCw size={12} />
+            <RotateCw size={11} />
             <span>Redo</span>
           </button>
 
-          {/* Remove Button (Visible if image exists) */}
+          {/* Remove Button */}
           {!!imagePath && (
             <button
               type="button"
@@ -174,7 +174,7 @@ export default function ImageUploadSlot({ cardId, fieldName, currentPath, onUpda
               className="img-slot-btn img-slot-remove-btn"
               title="Remove image"
             >
-              <Trash2 size={12} />
+              <Trash2 size={11} />
               <span>Remove</span>
             </button>
           )}

@@ -182,22 +182,27 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No fields defined for this table.</div>
           ) : (
             <>
-              {/* Separate Image slots */}
-              {fields.filter(f => isImageField(f.type, f.name)).map(f => (
-                <div key={f.name} style={{ width: '100%', boxSizing: 'border-box' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {f.name}
-                  </label>
-                  <div style={{ pointerEvents: isView ? 'none' : 'auto', opacity: isView ? 0.7 : 1 }}>
-                    <ImageUploadSlot
-                      cardId={card?.id}
-                      fieldName={f.name}
-                      currentPath={formData[f.name] ?? ''}
-                      onUpdate={handleChange}
-                    />
-                  </div>
+              {/* Separate Image slots (2-column responsive grid for 1, 2, 3, or 4 images) */}
+              {fields.filter(f => isImageField(f.type, f.name)).length > 0 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: fields.filter(f => isImageField(f.type, f.name)).length === 1 ? '1fr' : 'repeat(auto-fit, minmax(270px, 1fr))',
+                  gap: '12px',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}>
+                  {fields.filter(f => isImageField(f.type, f.name)).map(f => (
+                    <div key={f.name} style={{ pointerEvents: isView ? 'none' : 'auto', opacity: isView ? 0.7 : 1 }}>
+                      <ImageUploadSlot
+                        cardId={card?.id}
+                        fieldName={f.name}
+                        currentPath={formData[f.name] ?? ''}
+                        onUpdate={handleChange}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
 
               {/* Text Fields (Stacked 1-column full width for zero cropping) */}
               {fields.filter(f => !isImageField(f.type, f.name)).map(f => {
