@@ -1913,7 +1913,7 @@ export default function IDCardActionsView({
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                 <tr style={{ background: '#1e293b', color: '#ffffff' }}>
-                  <th style={{ width: '36px', minWidth: '36px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
+                  <th style={{ position: 'sticky', left: 0, zIndex: 30, width: '32px', minWidth: '32px', padding: '6px 2px', textAlign: 'center', verticalAlign: 'middle', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                       <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                         {allSelected ? <SquareCheck size={15} /> : someSelected ? <MinusSquare size={15} /> : <Square size={15} />}
@@ -1921,7 +1921,7 @@ export default function IDCardActionsView({
                     </div>
                   </th>
 
-                  <th style={{ width: '40px', minWidth: '40px', padding: '10px 6px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, lineHeight: 1.1 }}>
+                  <th style={{ position: 'sticky', left: '32px', zIndex: 30, width: '36px', minWidth: '36px', padding: '6px 2px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, lineHeight: 1.1 }}>
                     SR<br />NO
                   </th>
 
@@ -1931,18 +1931,20 @@ export default function IDCardActionsView({
                       <th
                         key={f.name}
                         style={{
-                          padding: '10px 12px',
+                          padding: '6px 4px',
                           textAlign: spec.align,
                           textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                          fontSize: '12px',
+                          letterSpacing: '0.02em',
+                          fontSize: '11px',
                           fontWeight: 700,
                           width: spec.width,
                           minWidth: spec.minWidth,
                           maxWidth: spec.maxWidth,
                           borderRight: '1px solid rgba(255,255,255,0.15)',
                           borderBottom: '1px solid rgba(255,255,255,0.15)',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.15
                         }}
                       >
                         {f.name}
@@ -1950,9 +1952,9 @@ export default function IDCardActionsView({
                     );
                   })}
 
-                  <th style={{ width: '85px', minWidth: '85px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>ACTION</th>
-                  <th style={{ width: '110px', minWidth: '110px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>LAST UPDATED</th>
-                  <th style={{ width: '100px', minWidth: '100px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>UPDATED BY</th>
+                  <th style={{ position: 'sticky', right: '175px', zIndex: 30, width: '75px', minWidth: '75px', padding: '6px 4px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.15 }}>ACTION</th>
+                  <th style={{ position: 'sticky', right: '85px', zIndex: 30, width: '90px', minWidth: '90px', padding: '6px 4px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.15 }}>LAST UPDATED</th>
+                  <th style={{ position: 'sticky', right: 0, zIndex: 30, width: '85px', minWidth: '85px', padding: '6px 4px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.15 }}>UPDATED BY</th>
                 </tr>
               </thead>
               {filteredCards.length > 0 && (
@@ -1967,7 +1969,7 @@ export default function IDCardActionsView({
                 return (
                   <tr key={card.id} style={{ background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                     {/* Checkbox */}
-                    <td style={{ width: '36px', minWidth: '36px', padding: '4px', textAlign: 'center', verticalAlign: 'middle', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                    <td style={{ position: 'sticky', left: 0, zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '32px', minWidth: '32px', padding: '4px', textAlign: 'center', verticalAlign: 'middle', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                         <button onClick={() => toggleSelect(card.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: isSelected ? '#2563eb' : '#94a3b8', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                           {isSelected ? <SquareCheck size={15} /> : <Square size={15} />}
@@ -1976,7 +1978,7 @@ export default function IDCardActionsView({
                     </td>
 
                     {/* SR NO */}
-                    <td style={{ padding: '6px 4px', textAlign: 'center', fontWeight: 500, color: '#000000', fontSize: '12px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                    <td style={{ position: 'sticky', left: '32px', zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '36px', minWidth: '36px', padding: '6px 4px', textAlign: 'center', fontWeight: 500, color: '#000000', fontSize: '12px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       {srNo}
                     </td>
 
@@ -2115,7 +2117,7 @@ export default function IDCardActionsView({
                     })}
 
                     {/* Action */}
-                    <td style={{ padding: '6px', textAlign: 'center', width: '75px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                    <td style={{ position: 'sticky', right: '175px', zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '75px', minWidth: '75px', padding: '6px', textAlign: 'center', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       {status === 'pending' && (
                         <button onClick={() => applyStatusSingle(card, 'verified')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
                           Verify
@@ -2135,12 +2137,12 @@ export default function IDCardActionsView({
                     </td>
 
                     {/* Updated At */}
-                    <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', width: '100px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                    <td style={{ position: 'sticky', right: '85px', zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '90px', minWidth: '90px', padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       {updatedAt}
                     </td>
 
                     {/* Updated By */}
-                    <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', width: '90px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                    <td style={{ position: 'sticky', right: 0, zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '85px', minWidth: '85px', padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
                       {updatedBy}
                     </td>
                   </tr>

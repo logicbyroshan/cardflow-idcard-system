@@ -3292,22 +3292,27 @@ button:disabled svg {
 .toast.warning { background: #f59e0b !important; }
 .toast.info    { background: #2563eb !important; }
 
-/* Table Scrollbar Styling */
-.table-container::-webkit-scrollbar {
-  height: 10px !important;
-  width: 10px !important;
+/* Table & Global Scrollbar Styling — Crisp Square Corners */
+::-webkit-scrollbar {
+  height: 9px !important;
+  width: 9px !important;
 }
 
-.table-container::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: #f1f5f9 !important;
-  border-radius: 4px !important;
+  border-radius: 0px !important;
 }
 
-.table-container::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: #94a3b8 !important;
-  border-radius: 4px !important;
+  border-radius: 0px !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
-.table-container::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: #64748b !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: #f1f5f9 !important;
 }
