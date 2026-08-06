@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
 import ImageUploadSlot from './ImageUploadSlot';
 import { cardApi } from '../../services/api';
@@ -57,9 +58,9 @@ export default function CardEditDrawer({ card, onClose, onSave, addToast }) {
     }
   };
 
-  return (
+  return createPortal(
     <>
-      <div className="drawer-overlay-backdrop" />
+      <div className="drawer-overlay-backdrop" onClick={onClose} />
       <aside className="side-drawer-panel" style={{ width: '640px', maxWidth: '95vw', padding: 0, display: 'flex', flexDirection: 'column' }}>
         {/* Fixed Header */}
         <div style={{ background: '#1e293b', color: '#ffffff', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #334155', flexShrink: 0 }}>
@@ -173,6 +174,7 @@ export default function CardEditDrawer({ card, onClose, onSave, addToast }) {
           </div>
         </form>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }

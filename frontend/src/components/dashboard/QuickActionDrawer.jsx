@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X, UserPlus, Building, Mail, Send, Shield, User, Cog, List, RefreshCw, Plus, Search, Eye, EyeOff, Camera, Link, Save, Layers, CheckSquare
 } from 'lucide-react';
@@ -54,7 +55,7 @@ function ToggleSwitch({ checked, onChange, isHeader = false }) {
 export default function QuickActionDrawer({ isOpen, actionType, initialData, onClose, addToast }) {
   if (!isOpen || !actionType) return null;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop overlay — Click outside disabled, closed via buttons only */}
       <div
@@ -65,7 +66,7 @@ export default function QuickActionDrawer({ isOpen, actionType, initialData, onC
           background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
-          zIndex: 999999,
+          zIndex: 99999998,
         }}
       />
 
@@ -80,7 +81,7 @@ export default function QuickActionDrawer({ isOpen, actionType, initialData, onC
           height: '100vh',
           background: '#ffffff',
           boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.35)',
-          zIndex: 1000000,
+          zIndex: 99999999,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -118,12 +119,13 @@ export default function QuickActionDrawer({ isOpen, actionType, initialData, onC
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes slideLeft {
+        @keyframes drawerSlideInRight {
           from { transform: translateX(100%); }
           to { transform: translateX(0); }
         }
       `}</style>
-    </>
+    </>,
+    document.body
   );
 }
 

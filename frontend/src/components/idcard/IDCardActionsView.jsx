@@ -9,6 +9,7 @@
 import React, {
   useState, useEffect, useCallback, useRef, useMemo
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft, Upload, RefreshCw, Plus, Pencil, Eye,
   Trash2, CheckCircle2, ThumbsUp, RotateCcw, Download,
@@ -137,10 +138,28 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
 
   const fields = Array.isArray(tableFields) ? tableFields : [];
 
-  return (
+  return createPortal(
     <>
-      <div className="drawer-overlay-backdrop" />
-      <aside className="side-drawer-panel" style={{ width: '640px', maxWidth: '95vw' }}>
+      <div className="drawer-overlay-backdrop" onClick={onClose} />
+      <aside
+        className="side-drawer-panel"
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: '640px',
+          maxWidth: '95vw',
+          height: '100vh',
+          background: '#ffffff',
+          boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.35)',
+          zIndex: 99999999,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'drawerSlideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
         {/* Header */}
         <div className="drawer-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#1e293b', color: '#ffffff', flexShrink: 0 }}>
           <div>
@@ -158,7 +177,7 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
         </div>
 
         {/* Body */}
-        <div className="drawer-body" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div className="drawer-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {fields.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No fields defined for this table.</div>
           ) : (
@@ -218,7 +237,7 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
 
         {/* Footer */}
         {!isView && (
-          <div className="drawer-footer" style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', justifyContent: 'flex-end', background: '#f8fafc', flexShrink: 0 }}>
+          <div className="drawer-footer" style={{ height: '56px', minHeight: '56px', padding: '0 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', background: '#f8fafc', flexShrink: 0 }}>
             <button type="button" onClick={onClose} className="btn btn-neutral btn-sm" style={{ padding: '7px 16px' }}>Cancel</button>
             <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm" style={{ padding: '7px 20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               {saving ? <><Spinner size={14} /> Saving…</> : <><Check size={14} /> Save Card</>}
@@ -226,7 +245,8 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
           </div>
         )}
       </aside>
-    </>
+    </>,
+    document.body
   );
 }
 
