@@ -138,8 +138,9 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
   const fields = Array.isArray(tableFields) ? tableFields : [];
 
   return (
-    <div className="drawer-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(3px)', display: 'flex', justifyContent: 'flex-end', zIndex: 999999, boxSizing: 'border-box' }}>
-      <aside className="side-drawer drawer-panel" style={{ width: '600px', minWidth: '600px', maxWidth: '90vw', height: '100vh', background: '#ffffff', boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.35)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
+    <>
+      <div className="drawer-overlay-backdrop" />
+      <aside className="side-drawer-panel" style={{ width: '640px', maxWidth: '95vw' }}>
         {/* Header */}
         <div className="drawer-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#1e293b', color: '#ffffff', flexShrink: 0 }}>
           <div>
@@ -225,7 +226,7 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
           </div>
         )}
       </aside>
-    </div>
+    </>
   );
 }
 
