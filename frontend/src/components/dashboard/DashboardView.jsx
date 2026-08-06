@@ -365,18 +365,6 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search, setSea
       </table>
     </div>
   );
-                        {sub.pool}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </React.Fragment>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
 }
 
 
