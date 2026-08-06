@@ -41,6 +41,16 @@ const isImageField = (type, name) =>
   IMAGE_FIELD_TYPES.has((type || '').toLowerCase()) ||
   IMAGE_FIELD_TYPES.has((name || '').toLowerCase().replace(/ /g,'_'));
 
+const getImgSrc = (path) => {
+  if (!path) return '';
+  const s = String(path).trim();
+  if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:')) {
+    return s;
+  }
+  if (s.startsWith('/')) return s;
+  return `/${s}`;
+};
+
 /* Dynamic Column Width & Image Dimension Allocation */
 function getColumnSpec(fieldName, fieldType) {
   const name = String(fieldName || '').toLowerCase().trim();
@@ -51,7 +61,8 @@ function getColumnSpec(fieldName, fieldType) {
     if (name.includes('sign') || type.includes('sign')) imgType = 'signature';
     else if (name.includes('qr') || type.includes('qr') || name.includes('bar') || type.includes('bar')) imgType = 'qr';
 
-    return { width: '54px', minWidth: '54px', align: 'center', isImage: true, imgType };
+    const width = imgType === 'signature' ? '85px' : '65px';
+    return { width, minWidth: width, align: 'center', isImage: true, imgType };
   }
   if (name === 'sr' || name === 'sr_no' || name === 'sr no' || name === 'roll' || name === 'roll_no') {
     return { width: '45px', minWidth: '45px', align: 'center' };
@@ -1852,15 +1863,18 @@ export default function IDCardActionsView({
                       if (isImg) {
                         const isSig = spec.imgType === 'signature';
                         const isQr  = spec.imgType === 'qr';
-                        const imgW = isSig ? '45px' : isQr ? '42px' : '45px';
-                        const imgH = isSig ? '28px' : isQr ? '42px' : '53px';
+                        const imgW = isSig ? '72px' : isQr ? '45px' : '50px';
+                        const imgH = isSig ? '32px' : isQr ? '45px' : '60px';
+                        const imgSrc = getImgSrc(val);
+                        const hasVal = Boolean(val && String(val).trim() !== '' && val !== 'NOT_FOUND');
+                        const isPending = hasVal && String(val).startsWith('PENDING:');
 
                         return (
                           <td key={f.name} style={{ padding: '4px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
-                            <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                              {val ? (
+                            <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                              {hasVal && !isPending ? (
                                 <img
-                                  src={String(val).startsWith('http') ? val : `/${val}`}
+                                  src={imgSrc}
                                   alt={f.name}
                                   style={{
                                     width: imgW,
@@ -1870,13 +1884,28 @@ export default function IDCardActionsView({
                                     border: '1px solid #cbd5e1',
                                     display: 'block',
                                     margin: '0 auto',
-                                    background: '#f8fafc'
+                                    background: '#ffffff'
                                   }}
-                                  onError={e => { e.target.style.display = 'none'; }}
+                                  onError={e => {
+                                    e.target.style.display = 'none';
+                                    const parent = e.target.parentElement;
+                                    if (parent && !parent.querySelector('.fallback-placeholder')) {
+                                      const fb = document.createElement('div');
+                                      fb.className = 'fallback-placeholder';
+                                      fb.style.cssText = `width:${imgW};height:${imgH};background:#fef3c7;border:1px solid #fde68a;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#d97706;margin:0 auto;`;
+                                      fb.innerText = 'PATH';
+                                      parent.insertBefore(fb, e.target);
+                                    }
+                                  }}
                                 />
+                              ) : isPending ? (
+                                <div style={{ width: imgW, height: imgH, background: '#fef3c7', borderRadius: '2px', border: '1px solid #fde68a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', margin: '0 auto', color: '#d97706' }}>
+                                  <Clock size={14} />
+                                  <span style={{ fontSize: '8px', fontWeight: 700 }}>PENDING</span>
+                                </div>
                               ) : (
                                 <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
-                                  <ImageIcon size={14} style={{ color: '#cbd5e1' }} />
+                                  <ImageIcon size={16} style={{ color: '#cbd5e1' }} />
                                 </div>
                               )}
                               <button
@@ -1887,10 +1916,9 @@ export default function IDCardActionsView({
                                   border: 'none',
                                   color: '#2563eb',
                                   fontSize: '10px',
-                                  fontWeight: 600,
+                                  fontWeight: 700,
                                   cursor: 'pointer',
-                                  padding: '0 2px',
-                                  marginTop: '1px',
+                                  padding: '1px 4px',
                                   lineHeight: 1,
                                 }}
                                 className="edit-photo-btn"
