@@ -51,44 +51,69 @@ const getImgSrc = (path) => {
   return `/${s}`;
 };
 
-/* Dynamic Column Width & Image Dimension Allocation */
+/* Smart Semantic Column Classifier & Width Allocation (Matches FieldClassifier) */
 function getColumnSpec(fieldName, fieldType) {
-  const name = String(fieldName || '').toLowerCase().trim();
+  const rawName = String(fieldName || '').trim();
+  const name = rawName.toLowerCase().replace(/[_.\-'"()\/]+/g, ' ').replace(/\s+/g, ' ').trim();
   const type = String(fieldType || '').toLowerCase().trim();
 
-  if (isImageField(type, name)) {
+  // Images
+  if (isImageField(type, rawName)) {
     let imgType = 'photo';
     if (name.includes('sign') || type.includes('sign')) imgType = 'signature';
     else if (name.includes('qr') || type.includes('qr') || name.includes('bar') || type.includes('bar')) imgType = 'qr';
 
-    const width = imgType === 'signature' ? '85px' : '65px';
+    const width = imgType === 'signature' ? '75px' : '52px';
     return { width, minWidth: width, align: 'center', isImage: true, imgType };
   }
-  if (name === 'sr' || name === 'sr_no' || name === 'sr no' || name === 'roll' || name === 'roll_no') {
+
+  // Serial / Roll
+  if (/^sr\s*no|^s\s*no|^sl\s*no|^serial|^sno$|^slno$|^roll/.test(name)) {
+    return { width: '36px', minWidth: '36px', align: 'center' };
+  }
+
+  // Blood Group
+  if (/blo?o?d\s*gr|blo?o?d\s*gro?u?p|^bg$|^bgroup$|^bld\s*gr/.test(name)) {
     return { width: '45px', minWidth: '45px', align: 'center' };
   }
-  if (name.includes('name') || name.includes('student')) {
-    return { minWidth: '130px', maxWidth: '180px', align: 'left' };
+
+  // Class / Section / Div / House
+  if (/class$|section$|^sec$|^div$|^division$|^cls$/.test(name)) {
+    return { width: '46px', minWidth: '46px', align: 'center' };
   }
-  if (name.includes('father') || name.includes('mother') || name.includes('parent')) {
-    return { minWidth: '120px', maxWidth: '170px', align: 'left' };
+
+  // Dates (DOB, DOJ, Date of Birth)
+  if (/d\.?\s*o\.?\s*b\.?|date\s*of\s*birth|birth\s*date|\bdate\b|\bdt\b/.test(name)) {
+    return { width: '80px', minWidth: '80px', align: 'center' };
   }
-  if (name.includes('address') || name.includes('city') || name.includes('location')) {
-    return { minWidth: '160px', maxWidth: '240px', align: 'left' };
+
+  // Phone / Contact
+  if (/mobi?le?|pho?ne?|cell|tel|whatsapp|contact/.test(name)) {
+    return { width: '95px', minWidth: '95px', align: 'center' };
   }
-  if (name.includes('contact') || name.includes('mobile') || name.includes('phone') || name.includes('cell')) {
-    return { minWidth: '105px', align: 'center' };
+
+  // ID Numbers (Aadhar, Scholar No, Reg No, Roll No, UID)
+  if (/a+dh?a+r|scholar|roll\s*no|admis?si?on|reg\s*no|id\s*card|uid|pan|epic|voter|dl\s*no/.test(name)) {
+    return { width: '88px', minWidth: '88px', align: 'center' };
   }
-  if (name.includes('class') || name.includes('std') || name.includes('grade')) {
-    return { minWidth: '75px', align: 'center' };
+
+  // Transport / Short Text / Gender / Age
+  if (/transport|bus|route|stop|house|gender|sex|age|mode/.test(name)) {
+    return { width: '58px', minWidth: '58px', align: 'center' };
   }
-  if (name.includes('sec') || name.includes('section') || name.includes('group')) {
-    return { minWidth: '65px', align: 'center' };
+
+  // Names (Full Name, Father Name, Mother Name, Student Name)
+  if (name.includes('name') || name.includes('student') || name.includes('father') || name.includes('mother')) {
+    return { minWidth: '95px', maxWidth: '135px', align: 'left' };
   }
-  if (name.includes('dob') || name.includes('date') || name.includes('birth')) {
-    return { minWidth: '95px', align: 'center' };
+
+  // Address / Location / City / State
+  if (name.includes('address') || name.includes('location') || name.includes('locality') || name.includes('city')) {
+    return { minWidth: '110px', maxWidth: '160px', align: 'left' };
   }
-  return { minWidth: '90px', align: 'left' };
+
+  // Default fallback
+  return { minWidth: '75px', maxWidth: '120px', align: 'left' };
 }
 
 function Spinner({ size = 16 }) {
