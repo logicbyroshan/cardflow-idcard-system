@@ -6,7 +6,7 @@ import {
 
 
 
-import { dashboardApi } from '../../services/api';
+import { dashboardApi, schemaApi } from '../../services/api';
 
 /* ─────────────────────────────────────────────────────────────────────────
    Top Welcome Banner (Purple Gradient) — SS2 Exact
@@ -134,7 +134,7 @@ const MOCK_CLIENT_ROWS = [
    Recent Client Updates Table (Left Main Area) — SS2 Exact
    Count Badges are CLICKABLE BUTTONS (border-radius: 2px sharp boxes)
 ───────────────────────────────────────────────────────────────────────── */
-function RecentClientUpdatesTable({ clients, loading, onNavigate, search, setSearch }) {
+function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate, search, setSearch }) {
   const [expandedRows, setExpandedRows] = useState({});
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('desc');
@@ -173,7 +173,7 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search, setSea
     if (typeof valA === 'string') {
       return sortDir === 'desc' ? valB.localeCompare(valA) : valA.localeCompare(valB);
     }
-    return sortDir === 'desc' ? valB - valA : valA - valB;
+    return sortDir === 'desc' ? valB - valA : valB - valB;
   });
 
   const renderSortIcon = (key) => {
@@ -246,10 +246,24 @@ function RecentClientUpdatesTable({ clients, loading, onNavigate, search, setSea
             const clientId = c.id || idx;
             const isExpanded = !!expandedRows[clientId];
 
-            // Sub-tables for dropdown rows
-            const subTables = c.tables || [
-              { id: 1, name: 'Class 1st to 5th', pending: Math.floor((c.pending || 0)*0.6), verified: Math.floor((c.verified || 0)*0.6), approved: Math.floor((c.approved || 0)*0.6), downloaded: Math.floor((c.downloaded || c.download || 0)*0.6), pool: Math.floor((c.pool || 0)*0.6) },
-              { id: 2, name: 'Class 6th to 10th', pending: Math.ceil((c.pending || 0)*0.4), verified: Math.ceil((c.verified || 0)*0.4), approved: Math.ceil((c.approved || 0)*0.4), downloaded: Math.ceil((c.downloaded || c.download || 0)*0.4), pool: Math.ceil((c.pool || 0)*0.4) },
+            // Sub-tables for dropdown rows (Matching actual table names)
+            const matchedTables = (Array.isArray(c.tables) && c.tables.length > 0)
+              ? c.tables
+              : allTables.filter(t =>
+                  String(t.client_id || t.clientId || t.client_name || '').toLowerCase() === String(c.id || c.name || '').toLowerCase() ||
+                  String(t.client || t.organisation || '').toLowerCase() === String(c.name || '').toLowerCase()
+                );
+
+            const subTables = matchedTables.length > 0 ? matchedTables : [
+              {
+                id: c.id || c.table_id || 1,
+                name: `${(c.name || c.school_name || 'STUDENT').toUpperCase()} ID CARDS TABLE`,
+                pending: c.pending || 0,
+                verified: c.verified || 0,
+                approved: c.approved || 0,
+                downloaded: c.downloaded || c.download || 0,
+                pool: c.pool || 0
+              }
             ];
 
             return (
@@ -941,7 +955,7 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
         }}>
           {/* Dynamic Table Body */}
           {activeSection === 'clients' && (
-            <RecentClientUpdatesTable clients={clients} loading={loading} onNavigate={onNavigate} search={search} setSearch={setSearch} />
+            <RecentClientUpdatesTable clients={clients} allTables={allTables} loading={loading} onNavigate={onNavigate} search={search} setSearch={setSearch} />
           )}
           {activeSection === 'reprints' && (
             <RecentReprintsTable clients={reprintClients.length ? reprintClients : clients} onNavigate={onNavigate} search={search} />
