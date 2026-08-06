@@ -1157,20 +1157,80 @@ export default function IDCardActionsView({
         console.warn("API loadCards error:", apiErr);
       }
 
-      setCards(list);
-      setTotal(cnt);
+      // Merge Local Storage cards with API list for instant hybrid display
+      const local = getLocalStorageCards();
+      const localFiltered = local.filter(c => (c.status || 'pending') === status);
+
+      const combinedMap = new Map();
+      list.forEach(c => combinedMap.set(String(c.id), c));
+      localFiltered.forEach(c => {
+        if (!combinedMap.has(String(c.id))) {
+          combinedMap.set(String(c.id), c);
+        }
+      });
+
+      const finalCards = Array.from(combinedMap.values());
+      setCards(finalCards);
+      setTotal(Math.max(cnt, finalCards.length));
     } catch (err) {
       console.warn("loadCards error:", err);
-      setCards([]);
-      setTotal(0);
+      const local = getLocalStorageCards();
+      const localFiltered = local.filter(c => (c.status || 'pending') === status);
+      setCards(localFiltered);
+      setTotal(localFiltered.length);
     } finally { setCardsLoading(false); }
-  }, [tableId, status, page, pageSize, debouncedSearch, classFilter, sectionFilter, sort]);
+  }, [tableId, status, page, pageSize, debouncedSearch, classFilter, sectionFilter, sort, getLocalStorageCards]);
 
   /* ── Effects ── */
   useEffect(() => { loadTable(); }, [loadTable]);
   useEffect(() => { loadStatusCounts(); }, [loadStatusCounts]);
   useEffect(() => { loadFilterOptions(); }, [loadFilterOptions]);
   useEffect(() => { loadCards(); }, [loadCards]);
+
+  /* Keyboard Shortcuts: Escape, Ctrl+A, N, T, B */
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+
+      if (e.key === 'Escape') {
+        setDrawer(null);
+        setShowUploadXlsx(false);
+        setShowPrintDataModal(false);
+        setShowDownloadDataModal(false);
+        setShowImageSortModal(false);
+      }
+
+      if (isTyping) return;
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        if (cards.length > 0) {
+          setSelectedIds(new Set(cards.map(c => c.id)));
+        }
+      }
+
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        setDrawer({ mode: 'add', card: null });
+      }
+
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        const container = document.querySelector('.table-container.idcard-table');
+        if (container) container.scrollTop = 0;
+      }
+
+      if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        const container = document.querySelector('.table-container.idcard-table');
+        if (container) container.scrollTop = container.scrollHeight;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cards]);
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);

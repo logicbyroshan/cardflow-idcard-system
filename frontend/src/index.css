@@ -3290,4 +3290,24 @@ button:disabled svg {
 .toast.success { background: #10b981 !important; }
 .toast.error   { background: #ef4444 !important; }
 .toast.warning { background: #f59e0b !important; }
-.toast.info    { background: #2563eb !important; }
+.toast.info    { background: #2563eb !important; }
+
+/* Table Scrollbar Styling */
+.table-container::-webkit-scrollbar {
+  height: 10px !important;
+  width: 10px !important;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 4px !important;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 4px !important;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
