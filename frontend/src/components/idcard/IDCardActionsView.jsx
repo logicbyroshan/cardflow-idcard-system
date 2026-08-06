@@ -91,7 +91,7 @@ function getSampleCards(tableId) {
 }
 
 /* ─── Side Drawer — Add / Edit / View ───────────────────────────────────── */
-function CardSideDrawer({ card, mode, tableFields, onClose, onSave, addToast }) {
+function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, addToast }) {
   const isView = mode === 'view';
   const [formData, setFormData] = useState(() => card?.field_data || {});
   const [saving, setSaving] = useState(false);
@@ -110,6 +110,18 @@ function CardSideDrawer({ card, mode, tableFields, onClose, onSave, addToast }) 
           try { await cardApi.updateField(card.id, k, v); }
           catch { errors.push(k); }
         }
+      }
+    } else if (tableId) {
+      try {
+        const res = await apiClient.post(`/api/table/${tableId}/card/create/`, { field_data: formData, status: 'pending' });
+        const newCard = res.data?.card || res.data;
+        addToast?.('New card created successfully', 'success');
+        setSaving(false);
+        onSave?.(newCard || { id: Date.now(), field_data: formData, status: 'pending' });
+        onClose();
+        return;
+      } catch (err) {
+        console.warn("API create card error:", err);
       }
     }
 
@@ -1978,6 +1990,7 @@ export default function IDCardActionsView({
         <CardSideDrawer
           card={drawer.card}
           mode={drawer.mode}
+          tableId={tableId}
           tableFields={tableFields}
           onClose={() => setDrawer(null)}
           onSave={(updated) => {
