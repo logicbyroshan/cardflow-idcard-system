@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Bell, ChevronDown, Home, LogOut } from 'lucide-react';
+import { Search, Bell, ChevronDown, Home, LogOut, Heart, Clock } from 'lucide-react';
 import { dashboardApi } from '../../services/api';
 
 /*
   Exact replica of base.html <header class="topbar">:
-  - Left: sidebar-toggle (hamburger) + breadcrumb
-  - Right: global-search-btn (Ctrl+K trigger) + notification bell
+  - Left: Welcome message + Blue Heart + Live Time & Date Badge
+  - Right: Presence pills + Global Search + User Profile Dropdown
 */
 
 const PAGE_LABELS = {
@@ -34,6 +34,15 @@ export default function Header({
   const [unreadCount, setUnreadCount] = useState(0);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [presenceStats, setPresenceStats] = useState({ desktop: 0, mobile: 0, never: 0 });
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedDate = time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const formattedTime = time.toLocaleTimeString('en-US', { hour12: false });
 
   const fetchUnread = useCallback(async () => {
     try {
@@ -66,8 +75,35 @@ export default function Header({
 
   return (
     <header className="topbar" id="topbar" style={{ height: '50px', background: '#1e1e2e', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', boxSizing: 'border-box' }}>
-      {/* Left: empty container */}
-      <div className="nav-left" />
+      {/* Left: Welcome message + Blue Heart + Live Time & Date Badge */}
+      <div className="nav-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#f1f5f9' }}>
+          <span>Welcome</span>
+          <Heart size={14} fill="#3b82f6" color="#3b82f6" style={{ filter: 'drop-shadow(0 0 5px rgba(59,130,246,0.6))' }} />
+          <strong style={{ color: '#60a5fa', fontWeight: 700 }}>{displayName}</strong>
+        </div>
+
+        {/* Live Date & Time Button Badge */}
+        <div style={{
+          padding: '0 10px',
+          height: '28px',
+          borderRadius: '5px',
+          border: '1px solid rgba(59, 130, 246, 0.35)',
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+          color: '#ffffff',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '11px',
+          fontWeight: 600,
+          boxSizing: 'border-box',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+        }}>
+          <Clock size={12} style={{ color: '#60a5fa' }} />
+          <span style={{ color: '#bfdbfe' }}>{formattedDate}</span>
+          <span style={{ color: '#ffffff', fontWeight: 700 }}>{formattedTime}</span>
+        </div>
+      </div>
 
 
 
