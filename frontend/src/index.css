@@ -317,6 +317,94 @@ html {
   }
 }
 
+/* ── Sidebar Logo Glass Shimmer Flare ── */
+.logo-flare-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.logo-flare-container::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -150%;
+  width: 70%;
+  height: 200%;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 80%
+  );
+  transform: rotate(25deg);
+  animation: glassLogoFlare 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes glassLogoFlare {
+  0% {
+    left: -150%;
+  }
+  28% {
+    left: 200%;
+  }
+  100% {
+    left: 200%;
+  }
+}
+
+/* ── Stat Cards Glass Shimmer & Glow Flare ── */
+.stat-card-glass {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease-in-out;
+}
+
+.stat-card-glass::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 80%
+  );
+  transform: skewX(-25deg);
+  animation: statGlassFlare 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.stat-card-glass:hover::after {
+  animation: statGlassFlareHover 1s ease-in-out forwards;
+}
+
+@keyframes statGlassFlare {
+  0%, 35% {
+    left: -150%;
+  }
+  65%, 100% {
+    left: 200%;
+  }
+}
+
+@keyframes statGlassFlareHover {
+  0% {
+    left: -150%;
+  }
+  100% {
+    left: 200%;
+  }
+}
+
 body,
 button,
 input,

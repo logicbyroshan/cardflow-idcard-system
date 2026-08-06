@@ -114,11 +114,13 @@ export default function Sidebar({ activeTab, setActiveTab, userRole = 'super_adm
     <aside className="sidebar" id="sidebar">
       {/* ── Header / Logo ── */}
       <div className="sidebar-header" style={{ padding: '8px 12px', height: '50px', minHeight: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', background: '#1e1e2e', boxSizing: 'border-box' }}>
-        <img
-          src="/cardflow_logo_brand.png"
-          alt="CardFlow"
-          style={{ maxHeight: '34px', maxWidth: '160px', width: '100%', objectFit: 'contain', background: 'transparent' }}
-        />
+        <div className="logo-flare-container">
+          <img
+            src="/cardflow_logo_brand.png"
+            alt="CardFlow"
+            style={{ maxHeight: '34px', maxWidth: '160px', width: '100%', objectFit: 'contain', background: 'transparent' }}
+          />
+        </div>
       </div>
 
       {/* ── Navigation ── */}

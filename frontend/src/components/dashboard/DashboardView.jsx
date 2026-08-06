@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Clock, CheckCircle2, ThumbsUp, Download, Trash2, CreditCard,
-  Users, User, Layers, Plus, Mail, Shield, Search, RefreshCw, ChevronRight, ChevronDown, Building, X
+  Users, User, Layers, Plus, Mail, Shield, Search, RefreshCw, ChevronRight, ChevronDown, Building, X, Send
 } from 'lucide-react';
 
 
@@ -52,13 +52,14 @@ function WelcomeBanner({ currentUser }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   6 Stat Cards Row — SS2 Exact (Connected 1px border lines, NO GAPS)
+   7 Stat Cards Row (Connected 1px border lines, NO GAPS)
 ───────────────────────────────────────────────────────────────────────── */
 const STAT_CARDS_DEF = [
   { key: 'pending_cards',   label: 'Pending Cards',    defaultVal: 0, bg: '#f59e0b', Icon: Clock        },
   { key: 'verified_cards',  label: 'Verified Cards',   defaultVal: 0, bg: '#10b981', Icon: CheckCircle2 },
   { key: 'approved_cards',  label: 'Approved Cards',   defaultVal: 0, bg: '#3b82f6', Icon: ThumbsUp     },
   { key: 'download_cards',  label: 'Downloaded Cards', defaultVal: 0, bg: '#64748b', Icon: Download     },
+  { key: 'requested_cards', label: 'Requested Cards',  defaultVal: 0, bg: '#8b5cf6', Icon: Send         },
   { key: 'pool_cards',      label: 'Pool Cards',       defaultVal: 0, bg: '#ef4444', Icon: Trash2       },
   { key: 'total_id_cards',  label: 'Total ID Cards',   defaultVal: 0, bg: '#06b6d4', Icon: CreditCard   },
 ];
@@ -67,7 +68,7 @@ function StatCardsRow({ stats, loading, onNavigate }) {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(6, 1fr)',
+      gridTemplateColumns: 'repeat(7, 1fr)',
       gap: 0,
       background: '#fff',
       borderBottom: '1px solid #cbd5e1',
@@ -81,17 +82,15 @@ function StatCardsRow({ stats, loading, onNavigate }) {
           <button
             key={key}
             onClick={() => onNavigate('cards', { statusFilter: statusKey })}
+            className="stat-card-glass"
             style={{
-              padding: '10px 14px',
-              borderRight: '1px solid #e2e8f0',
+              padding: '10px 10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               background: '#fff',
               border: 'none',
-              borderRightStyle: 'solid',
-              borderRightWidth: '1px',
-              borderRightColor: '#e2e8f0',
+              borderRight: '1px solid #e2e8f0',
               cursor: 'pointer',
               textAlign: 'left',
             }}
@@ -99,19 +98,19 @@ function StatCardsRow({ stats, loading, onNavigate }) {
             onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
           >
             <div>
-              <div style={{ fontSize: '19px', fontWeight: 700, color: '#0f172a', lineHeight: 1.1, fontFamily: 'var(--font-family)' }}>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', lineHeight: 1.1, fontFamily: 'var(--font-family)' }}>
                 {loading && !stats ? '—' : val.toLocaleString()}
               </div>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginTop: '2px', fontFamily: 'var(--font-family)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, color: '#64748b', marginTop: '2px', fontFamily: 'var(--font-family)', whiteSpace: 'nowrap' }}>
                 {label}
               </div>
             </div>
             <div style={{
-              width: '34px', height: '34px', borderRadius: '6px',
+              width: '32px', height: '32px', borderRadius: '6px',
               background: bg, color: '#fff', display: 'flex',
               alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
-              <Icon size={16} />
+              <Icon size={15} />
             </div>
           </button>
         );
