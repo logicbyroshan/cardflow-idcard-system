@@ -3259,4 +3259,35 @@ button:disabled svg {
 .img-slot-path-input:focus {
   border-color: #2563eb !important;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
-}
+}
+
+/* Toast Notifications Container — Top Z-Index Above All Overlays & Drawers */
+.toast-wrapper {
+  position: fixed !important;
+  bottom: 24px !important;
+  left: 24px !important;
+  z-index: 999999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  max-width: 420px !important;
+  pointer-events: auto !important;
+}
+
+.toast {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px 16px !important;
+  border-radius: 6px !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  animation: slideInUp 0.2s ease-out !important;
+}
+
+.toast.success { background: #10b981 !important; }
+.toast.error   { background: #ef4444 !important; }
+.toast.warning { background: #f59e0b !important; }
+.toast.info    { background: #2563eb !important; }

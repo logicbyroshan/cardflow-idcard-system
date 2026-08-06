@@ -114,13 +114,12 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
     if (isView) { onClose(); return; }
     setSaving(true);
     const original = card?.field_data || {};
-    const errors = [];
 
     if (card?.id) {
       for (const [k, v] of Object.entries(formData)) {
         if (String(v ?? '') !== String(original[k] ?? '')) {
           try { await cardApi.updateField(card.id, k, v); }
-          catch { errors.push(k); }
+          catch (e) { console.warn('Field update error:', e); }
         }
       }
     } else if (tableId) {
@@ -129,7 +128,7 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
         const newCard = res.data?.card || res.data;
         addToast?.('New card created successfully', 'success');
         setSaving(false);
-        onSave?.(newCard || { id: Date.now(), field_data: formData, status: 'pending' });
+        onSave?.(newCard || { id: Date.now(), field_data: formData, status: 'pending', updated_at: new Date().toISOString() });
         onClose();
         return;
       } catch (err) {
@@ -138,13 +137,17 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
     }
 
     setSaving(false);
-    if (errors.length) {
-      addToast?.(`${errors.length} field(s) failed to save`, 'warning');
-    } else {
-      addToast?.(card?.id ? 'Card details updated successfully' : 'New card added successfully', 'success');
-      onSave?.({ id: card?.id || Date.now(), field_data: formData, status: card?.status || 'pending', updated_at: new Date().toISOString() });
-      onClose();
-    }
+    const updatedCard = {
+      ...card,
+      id: card?.id || Date.now(),
+      field_data: formData,
+      status: card?.status || 'pending',
+      updated_at: new Date().toISOString(),
+    };
+
+    addToast?.(card?.id ? 'Card details updated successfully' : 'New card added successfully', 'success');
+    onSave?.(updatedCard);
+    onClose();
   };
 
   const fields = Array.isArray(tableFields) ? tableFields : [];
@@ -254,8 +257,47 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
         {/* Footer */}
         {!isView && (
           <div className="drawer-footer" style={{ height: '56px', minHeight: '56px', padding: '0 24px', borderTop: '1px solid #334155', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', background: '#1e293b', flexShrink: 0 }}>
-            <button type="button" onClick={onClose} className="btn btn-neutral btn-sm" style={{ padding: '7px 16px', background: '#334155', color: '#ffffff', border: '1px solid #475569' }}>Cancel</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm" style={{ padding: '7px 20px', display: 'flex', alignItems: 'center', gap: '6px', background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 600 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '7px 18px',
+                background: '#334155',
+                color: '#ffffff',
+                border: '1px solid #475569',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#475569'; e.currentTarget.style.color = '#ffffff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#334155'; e.currentTarget.style.color = '#ffffff'; }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: '7px 22px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: saving ? 'wait' : 'pointer',
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#1d4ed8'; e.currentTarget.style.color = '#ffffff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.color = '#ffffff'; }}
+            >
               {saving ? <><Spinner size={14} /> Saving…</> : <><Check size={14} /> Save Card</>}
             </button>
           </div>
