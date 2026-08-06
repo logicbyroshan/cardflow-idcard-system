@@ -1782,7 +1782,7 @@ export default function IDCardActionsView({
                   </div>
                 </th>
 
-                <th style={{ width: '36px', minWidth: '36px', padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, lineHeight: 1.1 }}>
+                <th style={{ width: '40px', minWidth: '40px', padding: '10px 6px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, lineHeight: 1.1 }}>
                   SR<br />NO
                 </th>
 
@@ -1792,11 +1792,11 @@ export default function IDCardActionsView({
                     <th
                       key={f.name}
                       style={{
-                        padding: '8px 10px',
+                        padding: '10px 12px',
                         textAlign: spec.align,
                         textTransform: 'uppercase',
                         letterSpacing: '0.04em',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 700,
                         width: spec.width,
                         minWidth: spec.minWidth,
@@ -1811,36 +1811,47 @@ export default function IDCardActionsView({
                   );
                 })}
 
-                <th style={{ width: '75px', minWidth: '75px', padding: '8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>ACTION</th>
-                <th style={{ width: '100px', minWidth: '100px', padding: '8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>LAST UPDATED</th>
-                <th style={{ width: '90px', minWidth: '90px', padding: '8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>UPDATED BY</th>
+                <th style={{ width: '85px', minWidth: '85px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>ACTION</th>
+                <th style={{ width: '110px', minWidth: '110px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>LAST UPDATED</th>
+                <th style={{ width: '100px', minWidth: '100px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>UPDATED BY</th>
               </tr>
             </thead>
             <tbody>
               {cardsLoading ? (
                 <tr>
                   <td colSpan={tableFields.length + 5} style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-                    <Spinner size={24} /><br />
-                    <span style={{ fontSize: '13px', marginTop: '8px', display: 'inline-block' }}>Loading cards…</span>
+                    <div style={{ position: 'sticky', left: '50%', transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                      <Spinner size={24} /> Loading cards…
+                    </div>
                   </td>
                 </tr>
               ) : filteredCards.length === 0 ? (
                 <tr>
-                  <td colSpan={tableFields.length + 5} style={{ padding: '48px 20px', textAlign: 'center' }}>
-                    <div style={{ maxWidth: '380px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Clock size={24} />
+                  <td colSpan={tableFields.length + 5} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                    <div style={{
+                      position: 'sticky',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      display: 'inline-flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '12px',
+                      maxWidth: '420px',
+                    }}>
+                      <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(217, 119, 6, 0.15)' }}>
+                        <Clock size={26} />
                       </div>
-                      <div>
-                        <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px 0' }}>
-                          No cards in status "{status}"
+                      <div style={{ textAlign: 'center' }}>
+                        <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                          NO CARDS IN STATUS "{status}"
                         </h4>
-                        <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-                          {search ? `No cards match search "${search}"` : `There are no cards matching current filter criteria.`}
+                        <p style={{ fontSize: '12px', color: '#64748b', margin: 0, fontWeight: 500 }}>
+                          {search ? `No cards match search "${search}"` : `THERE ARE NO CARDS MATCHING CURRENT FILTER CRITERIA.`}
                         </p>
                       </div>
                       {!search && status === 'pending' && (
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
                           <button onClick={() => setDrawer({ mode: 'add', card: null })} style={buttonStyle('#2563eb')}>
                             <Plus size={14} /> Add First Card
                           </button>
