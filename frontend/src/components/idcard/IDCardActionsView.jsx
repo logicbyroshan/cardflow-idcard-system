@@ -138,70 +138,86 @@ function CardSideDrawer({ card, mode, tableId, tableFields, onClose, onSave, add
   const fields = Array.isArray(tableFields) ? tableFields : [];
 
   return (
-    <div className="drawer-overlay" style={{ zIndex: 2000 }} onClick={saving ? undefined : onClose}>
-      <div className="drawer-panel" onClick={e => e.stopPropagation()} style={{ width: '520px', maxWidth: '95vw', display: 'flex', flexDirection: 'column' }}>
+    <div className="drawer-overlay" style={{ zIndex: 999999 }} onClick={saving ? undefined : onClose}>
+      <div className="drawer-panel" onClick={e => e.stopPropagation()} style={{ width: '600px', minWidth: '600px', maxWidth: '95vw', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-color)', background: '#1e293b', color: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#1e293b', color: '#ffffff' }}>
           <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>
-              {mode === 'add' ? 'Add New Card' : mode === 'edit' ? `Edit Card #${card?.id}` : `View Card #${card?.id}`}
+            <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#ffffff' }}>
+              {mode === 'add' ? 'Add New Card Record' : mode === 'edit' ? `Edit Card Record #${card?.id}` : `View Card Record #${card?.id}`}
             </h3>
             <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-              {isView ? 'Read-only card details' : 'Fill in field values and image'}
+              {isView ? 'Read-only card details' : 'Fill in field values and upload images'}
             </span>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
             <X size={18} />
           </button>
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           {fields.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No fields defined for this table.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {fields.map(f => {
-                const isImg = isImageField(f.type, f.name);
-                const value = formData[f.name] ?? '';
-                return (
-                  <div key={f.name}>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {f.name}
-                    </label>
-                    {isImg ? (
-                      <div style={{ pointerEvents: isView ? 'none' : 'auto', opacity: isView ? 0.7 : 1 }}>
-                        <ImageUploadSlot
-                          cardId={card?.id}
-                          fieldName={f.name}
-                          currentPath={value}
-                          onUpdate={handleChange}
-                        />
-                      </div>
-                    ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Separate Image slots */}
+              {fields.filter(f => isImageField(f.type, f.name)).map(f => (
+                <div key={f.name}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {f.name}
+                  </label>
+                  <div style={{ pointerEvents: isView ? 'none' : 'auto', opacity: isView ? 0.7 : 1 }}>
+                    <ImageUploadSlot
+                      cardId={card?.id}
+                      fieldName={f.name}
+                      currentPath={formData[f.name] ?? ''}
+                      onUpdate={handleChange}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {/* Text Fields Grid (2 columns for clean alignment) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                {fields.filter(f => !isImageField(f.type, f.name)).map(f => {
+                  const value = formData[f.name] ?? '';
+                  return (
+                    <div key={f.name}>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#64748b', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {f.name}
+                      </label>
                       <input
                         type="text"
                         value={value}
                         disabled={isView}
-                        onChange={e => handleChange(f.name, e.target.value)}
+                        onChange={e => handleChange(f.name, e.target.value.toUpperCase())}
                         style={{
-                          width: '100%', padding: '8px 12px', borderRadius: '4px',
-                          border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'inherit',
-                          background: isView ? '#f8fafc' : '#fff', boxSizing: 'border-box',
-                          outline: 'none', color: '#0f172a'
+                          width: '100%',
+                          height: '34px',
+                          padding: '0 10px',
+                          borderRadius: '4px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '12px',
+                          fontWeight: 500,
+                          textTransform: 'uppercase',
+                          background: isView ? '#f8fafc' : '#ffffff',
+                          boxSizing: 'border-box',
+                          outline: 'none',
+                          color: '#0f172a'
                         }}
                       />
-                    )}
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
         {!isView && (
-          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', justifyContent: 'flex-end', background: '#f8fafc' }}>
+          <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', justifyContent: 'flex-end', background: '#f8fafc' }}>
             <button onClick={onClose} className="btn btn-neutral btn-sm" style={{ padding: '7px 16px' }}>Cancel</button>
             <button onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm" style={{ padding: '7px 20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               {saving ? <><Spinner size={14} /> Saving…</> : <><Check size={14} /> Save Card</>}

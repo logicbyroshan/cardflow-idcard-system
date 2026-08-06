@@ -267,6 +267,9 @@ html {
   top: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
+  width: 600px !important;
+  min-width: 600px !important;
+  max-width: 95vw !important;
   height: 100vh !important;
   background: #ffffff !important;
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.3) !important;
