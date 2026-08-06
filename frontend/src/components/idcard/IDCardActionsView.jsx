@@ -1765,105 +1765,61 @@ export default function IDCardActionsView({
       {/* ══════════════════════════════════════════════════════════
           VIRTUAL DATA TABLE WITH CRISP BORDERS & EXACT PHOTO HEIGHT
           ══════════════════════════════════════════════════════════ */}
-      <div className="table-container idcard-table" style={{ flex: 1, overflow: 'auto', background: '#fff', position: 'relative' }}>
+      <div className="table-container idcard-table" style={{ flex: 1, minHeight: 0, overflow: 'auto', background: '#fff', position: 'relative', display: 'flex', flexDirection: 'column' }}>
         {tableLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '240px', gap: '10px', color: '#64748b' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '10px', color: '#64748b' }}>
             <Spinner size={24} /> Loading table structure…
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
-              <tr style={{ background: '#1e293b', color: '#ffffff' }}>
-                <th style={{ width: '36px', minWidth: '36px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                    <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {allSelected ? <SquareCheck size={15} /> : someSelected ? <MinusSquare size={15} /> : <Square size={15} />}
-                    </button>
-                  </div>
-                </th>
-
-                <th style={{ width: '40px', minWidth: '40px', padding: '10px 6px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, lineHeight: 1.1 }}>
-                  SR<br />NO
-                </th>
-
-                {tableFields.map(f => {
-                  const spec = getColumnSpec(f.name, f.type);
-                  return (
-                    <th
-                      key={f.name}
-                      style={{
-                        padding: '10px 12px',
-                        textAlign: spec.align,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        width: spec.width,
-                        minWidth: spec.minWidth,
-                        maxWidth: spec.maxWidth,
-                        borderRight: '1px solid rgba(255,255,255,0.15)',
-                        borderBottom: '1px solid rgba(255,255,255,0.15)',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {f.name}
-                    </th>
-                  );
-                })}
-
-                <th style={{ width: '85px', minWidth: '85px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>ACTION</th>
-                <th style={{ width: '110px', minWidth: '110px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>LAST UPDATED</th>
-                <th style={{ width: '100px', minWidth: '100px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>UPDATED BY</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cardsLoading ? (
-                <tr>
-                  <td colSpan={tableFields.length + 5} style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-                    <div style={{ position: 'sticky', left: '50%', transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
-                      <Spinner size={24} /> Loading cards…
+          <>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+                <tr style={{ background: '#1e293b', color: '#ffffff' }}>
+                  <th style={{ width: '36px', minWidth: '36px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                      <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {allSelected ? <SquareCheck size={15} /> : someSelected ? <MinusSquare size={15} /> : <Square size={15} />}
+                      </button>
                     </div>
-                  </td>
+                  </th>
+
+                  <th style={{ width: '40px', minWidth: '40px', padding: '10px 6px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, lineHeight: 1.1 }}>
+                    SR<br />NO
+                  </th>
+
+                  {tableFields.map(f => {
+                    const spec = getColumnSpec(f.name, f.type);
+                    return (
+                      <th
+                        key={f.name}
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: spec.align,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          width: spec.width,
+                          minWidth: spec.minWidth,
+                          maxWidth: spec.maxWidth,
+                          borderRight: '1px solid rgba(255,255,255,0.15)',
+                          borderBottom: '1px solid rgba(255,255,255,0.15)',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {f.name}
+                      </th>
+                    );
+                  })}
+
+                  <th style={{ width: '85px', minWidth: '85px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>ACTION</th>
+                  <th style={{ width: '110px', minWidth: '110px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>LAST UPDATED</th>
+                  <th style={{ width: '100px', minWidth: '100px', padding: '10px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>UPDATED BY</th>
                 </tr>
-              ) : filteredCards.length === 0 ? (
-                <tr>
-                  <td colSpan={tableFields.length + 5} style={{ padding: '60px 20px', textAlign: 'center' }}>
-                    <div style={{
-                      position: 'sticky',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      display: 'inline-flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '12px',
-                      maxWidth: '420px',
-                    }}>
-                      <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(217, 119, 6, 0.15)' }}>
-                        <Clock size={26} />
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                          NO CARDS IN STATUS "{status}"
-                        </h4>
-                        <p style={{ fontSize: '12px', color: '#64748b', margin: 0, fontWeight: 500 }}>
-                          {search ? `No cards match search "${search}"` : `THERE ARE NO CARDS MATCHING CURRENT FILTER CRITERIA.`}
-                        </p>
-                      </div>
-                      {!search && status === 'pending' && (
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                          <button onClick={() => setDrawer({ mode: 'add', card: null })} style={buttonStyle('#2563eb')}>
-                            <Plus size={14} /> Add First Card
-                          </button>
-                          <button onClick={() => setShowUploadXlsx(true)} style={buttonStyle('#3b82f6')}>
-                            <FileSpreadsheet size={14} /> Upload XLSX
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredCards.map((card, idx) => {
+              </thead>
+              {filteredCards.length > 0 && (
+                <tbody>
+                  {filteredCards.map((card, idx) => {
                 const isSelected = selectedIds.has(card.id);
                 const fd = card.field_data || {};
                 const srNo = idx + 1;
@@ -2035,8 +1991,63 @@ export default function IDCardActionsView({
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+                </tbody>
+              )}
+            </table>
+
+            {cardsLoading && (
+              <div style={{ flex: 1, minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#64748b' }}>
+                <Spinner size={24} /> Loading cards…
+              </div>
+            )}
+
+            {!cardsLoading && filteredCards.length === 0 && (
+              <div style={{
+                flex: 1,
+                minHeight: '360px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '40px 20px',
+                textAlign: 'center',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '14px',
+                  maxWidth: '440px',
+                  margin: '0 auto',
+                }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(217, 119, 6, 0.18)' }}>
+                    <Clock size={28} />
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                      NO CARDS IN STATUS "{status.toUpperCase()}"
+                    </h4>
+                    <p style={{ fontSize: '12px', color: '#64748b', margin: 0, fontWeight: 500 }}>
+                      {search ? `No cards match search "${search}"` : `THERE ARE NO CARDS MATCHING CURRENT FILTER CRITERIA.`}
+                    </p>
+                  </div>
+                  {!search && status === 'pending' && (
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
+                      <button onClick={() => setDrawer({ mode: 'add', card: null })} style={buttonStyle('#2563eb')}>
+                        <Plus size={14} /> Add First Card
+                      </button>
+                      <button onClick={() => setShowUploadXlsx(true)} style={buttonStyle('#3b82f6')}>
+                        <FileSpreadsheet size={14} /> Upload XLSX
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
