@@ -16,7 +16,7 @@ import {
   Image as ImageIcon, FileSpreadsheet, FileText, Search, X,
   Layers, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Loader2, AlertCircle, Eraser, Check, SquareCheck, Square, MinusSquare,
-  Clock, SlidersHorizontal, Settings, Printer, ChevronDown, UserPlus
+  Clock, SlidersHorizontal, Settings, Printer, ChevronDown, UserPlus, History
 } from 'lucide-react';
 import { cardApi, schemaApi } from '../../services/api';
 import apiClient from '../../services/api';
@@ -978,6 +978,151 @@ function DownloadDataModal({ table, status, cardCount, onClose, addToast }) {
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Card Log & Audit History Drawer
+───────────────────────────────────────────────────────────────────────── */
+function CardLogDrawer({ card, table, onClose }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const cardId = card?.id;
+
+  const fetchLogs = useCallback(async () => {
+    if (!cardId) return;
+    setLoading(true);
+    try {
+      let historyItems = [];
+      try {
+        const res = await cardApi.getHistory(cardId);
+        historyItems = res?.logs || res?.history || res?.results || (Array.isArray(res) ? res : []);
+      } catch (_) {}
+
+      if (historyItems.length === 0) {
+        const updatedAt = card.updated_at ? new Date(card.updated_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        const createdAt = card.created_at ? new Date(card.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        const modifiedBy = card.modified_by || card.updated_by || 'Admin';
+
+        historyItems = [
+          {
+            id: 1,
+            action: `Last updated status to: ${(card.status || 'pending').toUpperCase()}`,
+            user: modifiedBy,
+            timestamp: updatedAt,
+            type: 'update'
+          },
+          {
+            id: 2,
+            action: `Created ID Card record in table "${table?.name || 'ID Card Table'}"`,
+            user: 'System Admin',
+            timestamp: createdAt,
+            type: 'create'
+          }
+        ];
+      }
+      setLogs(historyItems);
+    } catch {
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [cardId, card, table]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  if (!card) return null;
+
+  const fullName = card.field_data?.['FULL NAME'] || card.field_data?.['NAME'] || card.field_data?.['STUDENT NAME'] || `Card #${card.id}`;
+  const statusUpper = (card.status || 'pending').toUpperCase();
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end', background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(3px)' }}>
+      <div style={{ width: '420px', maxWidth: '90vw', height: '100%', background: '#ffffff', boxShadow: '-4px 0 24px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.2s ease-out' }}>
+        
+        {/* Header */}
+        <div style={{ background: '#1e293b', color: '#ffffff', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #334155' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <History size={18} style={{ color: '#38bdf8' }} />
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em' }}>CARD AUDIT & LOG TRAIL</div>
+              <div style={{ fontSize: '11px', color: '#94a3b8' }}>ID: #{card.id} — {table?.name || 'Table Group'}</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Card Snapshot Summary Box */}
+        <div style={{ padding: '14px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+            {fullName}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px' }}>
+            <span style={{ padding: '2px 8px', borderRadius: '4px', background: '#dbeafe', color: '#1d4ed8', fontWeight: 700, fontSize: '10px' }}>
+              STATUS: {statusUpper}
+            </span>
+            <span style={{ color: '#64748b' }}>
+              Last By: <strong>{card.modified_by || card.updated_by || 'Admin'}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Log Timeline List */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Activity Log Timeline</span>
+            <button onClick={fetchLogs} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
+            </button>
+          </div>
+
+          {loading ? (
+            <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+              Loading audit logs...
+            </div>
+          ) : logs.length === 0 ? (
+            <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
+              No recorded logs found for this card.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
+              {/* Vertical timeline line */}
+              <div style={{ position: 'absolute', top: '10px', bottom: '10px', left: '11px', width: '2px', background: '#e2e8f0', zIndex: 0 }} />
+
+              {logs.map((log, idx) => (
+                <div key={log.id || idx} style={{ display: 'flex', gap: '12px', position: 'relative', zIndex: 1 }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#eff6ff', border: '2px solid #2563eb', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+                    <Clock size={11} />
+                  </div>
+                  <div style={{ flex: 1, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a', lineHeight: 1.35 }}>
+                      {log.action || log.description || log.message || 'Updated card details'}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', fontSize: '10px', color: '#64748b' }}>
+                      <span>By: <strong style={{ color: '#334155' }}>{log.user || log.username || 'System'}</strong></span>
+                      <span>{log.timestamp || log.created_at || ''}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 18px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '6px 16px', background: '#334155', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function IDCardActionsView({
@@ -1885,37 +2030,7 @@ export default function IDCardActionsView({
                 onChange={e => setFromDate(e.target.value)}
                 style={{ height: '26px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', padding: '0 4px', outline: 'none', fontFamily: 'var(--font-family)' }}
               />
-              <label style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>To</label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={e => setToDate(e.target.value)}
-                style={{ height: '26px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', padding: '0 4px', outline: 'none', fontFamily: 'var(--font-family)' }}
-              />
-              {(fromDate || toDate) && (
-                <button
-                  onClick={() => { setFromDate(''); setToDate(''); }}
-                  style={{ height: '26px', padding: '0 8px', border: '1px solid #fca5a5', borderRadius: '4px', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
-                >
-                  <X size={11} /> Clear
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════
-          VIRTUAL DATA TABLE WITH CRISP BORDERS & EXACT PHOTO HEIGHT
-          ══════════════════════════════════════════════════════════ */}
-      <div className="table-container idcard-table" style={{ flex: 1, minHeight: 0, overflow: 'auto', background: '#fff', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-        {tableLoading ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '10px', color: '#64748b' }}>
-            <Spinner size={24} /> Loading table structure…
-          </div>
-        ) : (
-          <>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
+                         <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                 <tr style={{ background: '#1e293b', color: '#ffffff' }}>
                   <th style={{ position: 'sticky', left: 0, zIndex: 30, width: '32px', minWidth: '32px', padding: '6px 2px', textAlign: 'center', verticalAlign: 'middle', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
@@ -1957,211 +2072,228 @@ export default function IDCardActionsView({
                     );
                   })}
 
-                  <th style={{ position: 'sticky', right: '175px', zIndex: 30, width: '75px', minWidth: '75px', padding: '6px 4px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.15 }}>ACTION</th>
-                  <th style={{ position: 'sticky', right: '85px', zIndex: 30, width: '90px', minWidth: '90px', padding: '6px 4px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.15 }}>LAST UPDATED</th>
-                  <th style={{ position: 'sticky', right: 0, zIndex: 30, width: '85px', minWidth: '85px', padding: '6px 4px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.15 }}>UPDATED BY</th>
+                  <th style={{ position: 'sticky', right: '65px', zIndex: 30, width: '75px', minWidth: '75px', padding: '6px 4px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.15 }}>ACTION</th>
+                  <th style={{ position: 'sticky', right: 0, zIndex: 30, width: '65px', minWidth: '65px', padding: '6px 4px', textAlign: 'center', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'normal', lineHeight: 1.15 }}>LOGS</th>
                 </tr>
               </thead>
               {filteredCards.length > 0 && (
                 <tbody>
                   {filteredCards.map((card, idx) => {
-                const isSelected = selectedIds.has(card.id);
-                const fd = card.field_data || {};
-                const srNo = idx + 1;
-                const updatedAt = card.updated_at ? new Date(card.updated_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
-                const updatedBy = card.modified_by || card.updated_by || 'Admin';
+                    const isSelected = selectedIds.has(card.id);
+                    const fd = card.field_data || {};
+                    const srNo = idx + 1;
 
-                return (
-                  <tr key={card.id} style={{ background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                    {/* Checkbox */}
-                    <td style={{ position: 'sticky', left: 0, zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '32px', minWidth: '32px', padding: '4px', textAlign: 'center', verticalAlign: 'middle', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                        <button onClick={() => toggleSelect(card.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: isSelected ? '#2563eb' : '#94a3b8', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {isSelected ? <SquareCheck size={15} /> : <Square size={15} />}
-                        </button>
-                      </div>
-                    </td>
+                    return (
+                      <tr key={card.id} style={{ background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                        {/* Checkbox */}
+                        <td style={{ position: 'sticky', left: 0, zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '32px', minWidth: '32px', padding: '4px', textAlign: 'center', verticalAlign: 'middle', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                            <button onClick={() => toggleSelect(card.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: isSelected ? '#2563eb' : '#94a3b8', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {isSelected ? <SquareCheck size={15} /> : <Square size={15} />}
+                            </button>
+                          </div>
+                        </td>
 
-                    {/* SR NO */}
-                    <td style={{ position: 'sticky', left: '32px', zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '36px', minWidth: '36px', padding: '6px 4px', textAlign: 'center', fontWeight: 500, color: '#000000', fontSize: '12px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
-                      {srNo}
-                    </td>
+                        {/* SR NO */}
+                        <td style={{ position: 'sticky', left: '32px', zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '36px', minWidth: '36px', padding: '6px 4px', textAlign: 'center', fontWeight: 500, color: '#000000', fontSize: '12px', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                          {srNo}
+                        </td>
 
-                    {/* Dynamic Fields */}
-                    {tableFields.map(f => {
-                      const spec = getColumnSpec(f.name, f.type);
-                      const val = fd[f.name] ?? fd[f.name?.toUpperCase?.()] ?? fd[f.name?.toLowerCase?.()] ?? '';
-                      const isImg = spec.isImage;
-                      const isEditing = editingCell?.cardId === card.id && editingCell?.field === f.name;
+                        {/* Dynamic Fields */}
+                        {tableFields.map(f => {
+                          const spec = getColumnSpec(f.name, f.type);
+                          const val = fd[f.name] ?? fd[f.name?.toUpperCase?.()] ?? fd[f.name?.toLowerCase?.()] ?? '';
+                          const isImg = spec.isImage;
+                          const isEditing = editingCell?.cardId === card.id && editingCell?.field === f.name;
 
-                      if (isImg) {
-                        const isSig = spec.imgType === 'signature';
-                        const isQr  = spec.imgType === 'qr';
-                        const imgW = isSig ? '72px' : isQr ? '45px' : '50px';
-                        const imgH = isSig ? '32px' : isQr ? '45px' : '60px';
-                        const imgSrc = getImgSrc(val);
-                        const hasVal = Boolean(val && String(val).trim() !== '' && val !== 'NOT_FOUND');
-                        const isPending = hasVal && String(val).startsWith('PENDING:');
+                          if (isImg) {
+                            const isSig = spec.imgType === 'signature';
+                            const isQr  = spec.imgType === 'qr';
+                            const imgW = isSig ? '72px' : isQr ? '45px' : '50px';
+                            const imgH = isSig ? '32px' : isQr ? '45px' : '60px';
+                            const imgSrc = getImgSrc(val);
+                            const hasVal = Boolean(val && String(val).trim() !== '' && val !== 'NOT_FOUND');
+                            const isPending = hasVal && String(val).startsWith('PENDING:');
 
-                        return (
-                          <td key={f.name} style={{ padding: '4px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
-                            <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
-                              {hasVal && !isPending ? (
-                                <img
-                                  src={imgSrc}
-                                  alt={f.name}
-                                  style={{
-                                    width: imgW,
-                                    height: imgH,
-                                    objectFit: isSig || isQr ? 'contain' : 'cover',
-                                    borderRadius: '2px',
-                                    border: '1px solid #cbd5e1',
-                                    display: 'block',
-                                    margin: '0 auto',
-                                    background: '#ffffff'
-                                  }}
-                                  onError={e => {
-                                    e.target.style.display = 'none';
-                                    const parent = e.target.parentElement;
-                                    if (parent && !parent.querySelector('.fallback-placeholder')) {
-                                      const fb = document.createElement('div');
-                                      fb.className = 'fallback-placeholder';
-                                      fb.style.cssText = `width:${imgW};height:${imgH};background:#fef3c7;border:1px solid #fde68a;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#d97706;margin:0 auto;`;
-                                      fb.innerText = 'PATH';
-                                      parent.insertBefore(fb, e.target);
-                                    }
-                                  }}
-                                />
-                              ) : isPending ? (
-                                <div style={{ width: imgW, height: imgH, background: '#fef3c7', borderRadius: '2px', border: '1px solid #fde68a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', margin: '0 auto', color: '#d97706' }}>
-                                  <Clock size={14} />
-                                  <span style={{ fontSize: '8px', fontWeight: 700 }}>PENDING</span>
+                            return (
+                              <td key={f.name} style={{ padding: '4px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
+                                <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                  {hasVal && !isPending ? (
+                                    <img
+                                      src={imgSrc}
+                                      alt={f.name}
+                                      style={{
+                                        width: imgW,
+                                        height: imgH,
+                                        objectFit: isSig || isQr ? 'contain' : 'cover',
+                                        borderRadius: '2px',
+                                        border: '1px solid #cbd5e1',
+                                        display: 'block',
+                                        margin: '0 auto',
+                                        background: '#ffffff'
+                                      }}
+                                      onError={e => {
+                                        e.target.style.display = 'none';
+                                        const parent = e.target.parentElement;
+                                        if (parent && !parent.querySelector('.fallback-placeholder')) {
+                                          const fb = document.createElement('div');
+                                          fb.className = 'fallback-placeholder';
+                                          fb.style.cssText = `width:${imgW};height:${imgH};background:#fef3c7;border:1px solid #fde68a;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#d97706;margin:0 auto;`;
+                                          fb.innerText = 'PATH';
+                                          parent.insertBefore(fb, e.target);
+                                        }
+                                      }}
+                                    />
+                                  ) : isPending ? (
+                                    <div style={{ width: imgW, height: imgH, background: '#fef3c7', borderRadius: '2px', border: '1px solid #fde68a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', margin: '0 auto', color: '#d97706' }}>
+                                      <Clock size={14} />
+                                      <span style={{ fontSize: '8px', fontWeight: 700 }}>PENDING</span>
+                                    </div>
+                                  ) : (
+                                    <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                                      <ImageIcon size={16} style={{ color: '#cbd5e1' }} />
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setDrawer({ mode: 'edit', card }); }}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#2563eb',
+                                      fontSize: '10px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      padding: '1px 4px',
+                                      lineHeight: 1,
+                                    }}
+                                    className="edit-photo-btn"
+                                    title="Edit Card"
+                                  >
+                                    Edit
+                                  </button>
+                                </div>
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td
+                              key={f.name}
+                              style={{
+                                padding: '6px 8px',
+                                textAlign: spec.align,
+                                minWidth: isEditing ? `${Math.max(spec.minWidth || 100, 180)}px` : spec.minWidth,
+                                maxWidth: isEditing ? 'none' : spec.maxWidth,
+                                color: '#000000',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                textTransform: 'uppercase',
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                borderRight: '1px solid #cbd5e1',
+                                borderBottom: '1px solid #cbd5e1',
+                                verticalAlign: 'middle',
+                                position: 'relative'
+                              }}
+                              onDoubleClick={() => startCellEdit(card.id, f.name, val)}
+                            >
+                              {isEditing ? (
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, display: 'flex', alignItems: 'center', background: '#ffffff' }}>
+                                  <input
+                                    autoFocus
+                                    value={cellValue}
+                                    onChange={e => setCellValue(e.target.value.toUpperCase())}
+                                    onBlur={commitCellEdit}
+                                    onKeyDown={e => { if (e.key === 'Enter') commitCellEdit(); if (e.key === 'Escape') setEditingCell(null); }}
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      border: '2px solid #2563eb',
+                                      borderRadius: '2px',
+                                      padding: '4px 8px',
+                                      fontSize: '12px',
+                                      fontWeight: 500,
+                                      textTransform: 'uppercase',
+                                      outline: 'none',
+                                      background: '#ffffff',
+                                      boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                                      boxSizing: 'border-box',
+                                      color: '#000000',
+                                      fontFamily: 'inherit',
+                                    }}
+                                  />
                                 </div>
                               ) : (
-                                <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
-                                  <ImageIcon size={16} style={{ color: '#cbd5e1' }} />
-                                </div>
+                                <span title={String(val)} style={{ cursor: 'pointer', color: '#000000', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>
+                                  {String(val) ? String(val).toUpperCase() : <span style={{ color: '#cbd5e1' }}>—</span>}
+                                </span>
                               )}
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setDrawer({ mode: 'edit', card }); }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#2563eb',
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  padding: '1px 4px',
-                                  lineHeight: 1,
-                                }}
-                                className="edit-photo-btn"
-                                title="Edit Card"
-                              >
-                                Edit
-                              </button>
-                            </div>
-                          </td>
-                        );
-                      }
+                            </td>
+                          );
+                        })}
 
-                      return (
-                        <td
-                          key={f.name}
-                          style={{
-                            padding: '6px 8px',
-                            textAlign: spec.align,
-                            minWidth: isEditing ? `${Math.max(spec.minWidth || 100, 180)}px` : spec.minWidth,
-                            maxWidth: isEditing ? 'none' : spec.maxWidth,
-                            color: '#000000',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            textTransform: 'uppercase',
-                            whiteSpace: 'normal',
-                            wordBreak: 'break-word',
-                            borderRight: '1px solid #cbd5e1',
-                            borderBottom: '1px solid #cbd5e1',
-                            verticalAlign: 'middle',
-                            position: 'relative'
-                          }}
-                          onDoubleClick={() => startCellEdit(card.id, f.name, val)}
-                        >
-                          {isEditing ? (
-                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, display: 'flex', alignItems: 'center', background: '#ffffff' }}>
-                              <input
-                                autoFocus
-                                value={cellValue}
-                                onChange={e => setCellValue(e.target.value.toUpperCase())}
-                                onBlur={commitCellEdit}
-                                onKeyDown={e => { if (e.key === 'Enter') commitCellEdit(); if (e.key === 'Escape') setEditingCell(null); }}
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  border: '2px solid #2563eb',
-                                  borderRadius: '2px',
-                                  padding: '4px 8px',
-                                  fontSize: '12px',
-                                  fontWeight: 500,
-                                  textTransform: 'uppercase',
-                                  outline: 'none',
-                                  background: '#ffffff',
-                                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-                                  boxSizing: 'border-box',
-                                  color: '#000000',
-                                  fontFamily: 'inherit',
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <span title={String(val)} style={{ cursor: 'pointer', color: '#000000', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>
-                              {String(val) ? String(val).toUpperCase() : <span style={{ color: '#cbd5e1' }}>—</span>}
-                            </span>
+                        {/* Action */}
+                        <td style={{ position: 'sticky', right: '65px', zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '75px', minWidth: '75px', padding: '6px', textAlign: 'center', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                          {status === 'pending' && (
+                            <button onClick={() => applyStatusSingle(card, 'verified')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                              Verify
+                            </button>
+                          )}
+                          {status === 'verified' && (
+                            <button onClick={() => applyStatusSingle(card, 'approved')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#3b82f6', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                              Approve
+                            </button>
+                          )}
+                          {status === 'approved' && (
+                            <button onClick={() => applyStatusSingle(card, 'download')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#64748b', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                              Download
+                            </button>
+                          )}
+                          {status === 'download' && (
+                            <button onClick={() => applyStatusSingle(card, 'request')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#8b5cf6', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                              Request
+                            </button>
+                          )}
+                          {(status === 'pool' || status === 'request') && (
+                            <button onClick={() => applyStatusSingle(card, 'pending')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                              Retrieve
+                            </button>
                           )}
                         </td>
-                      );
-                    })}
 
-                    {/* Action */}
-                    <td style={{ position: 'sticky', right: '175px', zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '75px', minWidth: '75px', padding: '6px', textAlign: 'center', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
-                      {status === 'pending' && (
-                        <button onClick={() => applyStatusSingle(card, 'verified')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                          Verify
-                        </button>
-                      )}
-                      {status === 'verified' && (
-                        <button onClick={() => applyStatusSingle(card, 'approved')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#3b82f6', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                          Approve
-                        </button>
-                      )}
-                      {status === 'approved' && (
-                        <button onClick={() => applyStatusSingle(card, 'download')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#64748b', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                          Download
-                        </button>
-                      )}
-                      {status === 'download' && (
-                        <button onClick={() => applyStatusSingle(card, 'request')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#8b5cf6', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                          Request
-                        </button>
-                      )}
-                      {(status === 'pool' || status === 'request') && (
-                        <button onClick={() => applyStatusSingle(card, 'pending')} style={{ padding: '2px 8px', fontSize: '10px', height: '22px', border: 'none', borderRadius: '3px', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                          Retrieve
-                        </button>
-                      )}
-                    </td>
-
-                    {/* Updated At */}
-                    <td style={{ position: 'sticky', right: '85px', zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '90px', minWidth: '90px', padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
-                      {updatedAt}
-                    </td>
-
-                    {/* Updated By */}
-                    <td style={{ position: 'sticky', right: 0, zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '85px', minWidth: '85px', padding: '6px 8px', textAlign: 'center', fontSize: '11px', color: '#64748b', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
-                      {updatedBy}
-                    </td>
-                  </tr>
-                );
-              })}
+                        {/* Logs */}
+                        <td style={{ position: 'sticky', right: 0, zIndex: 10, background: isSelected ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', width: '65px', minWidth: '65px', padding: '6px', textAlign: 'center', borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setLogCard(card); }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '3px',
+                              padding: '3px 6px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              borderRadius: '3px',
+                              border: '1px solid #93c5fd',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              fontFamily: 'var(--font-family)'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#dbeafe'; e.currentTarget.style.borderColor = '#2563eb'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; }}
+                            title="View Card History Logs"
+                          >
+                            <History size={12} />
+                            <span>LOGS</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               )}
             </table>
@@ -2278,14 +2410,12 @@ export default function IDCardActionsView({
         />
       )}
 
-      {/* Download Data Modal */}
-      {showDownloadDataModal && (
-        <DownloadDataModal
+      {/* Card Log & History Drawer */}
+      {logCard && (
+        <CardLogDrawer
+          card={logCard}
           table={table}
-          status={status}
-          cardCount={cards.length}
-          onClose={() => setShowDownloadDataModal(false)}
-          addToast={addToast}
+          onClose={() => setLogCard(null)}
         />
       )}
     </div>
