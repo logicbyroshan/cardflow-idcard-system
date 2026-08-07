@@ -3315,4 +3315,33 @@ button:disabled svg {
 
 ::-webkit-scrollbar-corner {
   background: #f1f5f9 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   GLOBAL BRAND LOGO WATERMARK (95% TRANSPARENCY / 5% OPACITY)
+───────────────────────────────────────────────────────────────────────── */
+.page-content,
+.main-viewport,
+.dashboard-container,
+.idcard-table,
+.table-container {
+  position: relative !important;
+}
+
+body::before,
+.page-content::before {
+  content: "";
+  position: fixed;
+  top: 52%;
+  left: calc(50% + 110px);
+  transform: translate(-50%, -50%);
+  width: 560px;
+  height: 340px;
+  background-image: url('/cardflow_logo_brand.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.05; /* 95% transparency */
+  pointer-events: none;
+  z-index: 0;
 }
