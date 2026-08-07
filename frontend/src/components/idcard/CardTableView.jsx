@@ -406,9 +406,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                               type="button"
                               onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'request' }); }}
                               style={statusBtnStyle('request').btn}
-                              title="View Request List"
+                              title="View Requested List"
                             >
-                              <span>Request List</span>
+                              <span>Requested List</span>
                               <span style={statusBtnStyle('request').badge}>{t.request_count || t.request || 0}</span>
                             </button>
 
@@ -653,9 +653,9 @@ function statusBtnStyle(type) {
 
 function reprintBtnStyle(type) {
   const styles = {
-    reprint: { bg: '#cffafe', color: '#0e7490', border: '#67e8f9', badgeBg: '#0891b2' },
-    request: { bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc', badgeBg: '#4f46e5' },
-    confirm: { bg: '#dcfce7', color: '#166534', border: '#86efac', badgeBg: '#16a34a' },
+    reprint: { bg: '#ecfeff', color: '#0e7490', border: '#a5f3fc', badgeBg: '#06b6d4' },
+    request: { bg: '#fdf4ff', color: '#a21caf', border: '#f5d0fe', badgeBg: '#d946ef' },
+    confirm: { bg: '#f0fdf4', color: '#15803d', border: '#86efac', badgeBg: '#16a34a' },
   };
   const cfg = styles[type] || styles.reprint;
   return {
