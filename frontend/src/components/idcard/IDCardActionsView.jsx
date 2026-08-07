@@ -2030,7 +2030,37 @@ export default function IDCardActionsView({
                 onChange={e => setFromDate(e.target.value)}
                 style={{ height: '26px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', padding: '0 4px', outline: 'none', fontFamily: 'var(--font-family)' }}
               />
-                         <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
+              <label style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>To</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={e => setToDate(e.target.value)}
+                style={{ height: '26px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '11px', padding: '0 4px', outline: 'none', fontFamily: 'var(--font-family)' }}
+              />
+              {(fromDate || toDate) && (
+                <button
+                  onClick={() => { setFromDate(''); setToDate(''); }}
+                  style={{ height: '26px', padding: '0 8px', border: '1px solid #fca5a5', borderRadius: '4px', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                >
+                  <X size={11} /> Clear
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          VIRTUAL DATA TABLE WITH CRISP BORDERS & EXACT PHOTO HEIGHT
+          ══════════════════════════════════════════════════════════ */}
+      <div className="table-container idcard-table" style={{ flex: 1, minHeight: 0, overflow: 'auto', background: '#fff', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+        {tableLoading ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '10px', color: '#64748b' }}>
+            <Spinner size={24} /> Loading table structure…
+          </div>
+        ) : (
+          <>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', tableLayout: 'auto' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                 <tr style={{ background: '#1e293b', color: '#ffffff' }}>
                   <th style={{ position: 'sticky', left: 0, zIndex: 30, width: '32px', minWidth: '32px', padding: '6px 2px', textAlign: 'center', verticalAlign: 'middle', background: '#1e293b', borderRight: '1px solid rgba(255,255,255,0.15)', borderBottom: '1px solid rgba(255,255,255,0.15)', borderLeft: '1px solid #cbd5e1' }}>
