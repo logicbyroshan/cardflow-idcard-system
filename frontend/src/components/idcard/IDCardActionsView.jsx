@@ -2338,20 +2338,20 @@ export default function IDCardActionsView({
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '3px',
-                              padding: '3px 6px',
+                              gap: '4px',
+                              padding: '3px 8px',
                               fontSize: '10px',
                               fontWeight: 700,
-                              borderRadius: '3px',
-                              border: '1px solid #93c5fd',
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
+                              borderRadius: '4px',
+                              border: '1px solid #3b82f6',
+                              background: 'transparent',
+                              color: '#2563eb',
                               cursor: 'pointer',
-                              transition: 'all 0.15s',
+                              transition: 'all 0.15s ease',
                               fontFamily: 'var(--font-family)'
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = '#dbeafe'; e.currentTarget.style.borderColor = '#2563eb'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(37, 99, 235, 0.1)'; e.currentTarget.style.borderColor = '#1d4ed8'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#3b82f6'; }}
                             title="View Card History Logs"
                           >
                             <History size={12} />
