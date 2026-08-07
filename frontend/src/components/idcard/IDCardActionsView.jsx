@@ -2176,28 +2176,36 @@ export default function IDCardActionsView({
                           if (isImg) {
                             const isSig = spec.imgType === 'signature';
                             const isQr  = spec.imgType === 'qr';
-                            const imgW = isSig ? '72px' : isQr ? '45px' : '50px';
-                            const imgH = isSig ? '32px' : isQr ? '45px' : '60px';
+                            const imgW = isSig ? '64px' : isQr ? '40px' : '44px';
+                            const imgH = isSig ? '28px' : isQr ? '40px' : '50px';
                             const imgSrc = getImgSrc(val);
                             const hasVal = Boolean(val && String(val).trim() !== '' && val !== 'NOT_FOUND');
                             const isPending = hasVal && String(val).startsWith('PENDING:');
 
                             return (
-                              <td key={f.name} style={{ padding: '4px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
-                                <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                              <td key={f.name} style={{ padding: '3px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
+                                <div
+                                  className="image-with-edit"
+                                  style={{
+                                    position: 'relative',
+                                    width: imgW,
+                                    height: imgH,
+                                    margin: '0 auto',
+                                    borderRadius: '2px',
+                                    overflow: 'hidden',
+                                    border: '1px solid #cbd5e1',
+                                    background: '#ffffff'
+                                  }}
+                                >
                                   {hasVal && !isPending ? (
                                     <img
                                       src={imgSrc}
                                       alt={f.name}
                                       style={{
-                                        width: imgW,
-                                        height: imgH,
+                                        width: '100%',
+                                        height: '100%',
                                         objectFit: isSig || isQr ? 'contain' : 'cover',
-                                        borderRadius: '2px',
-                                        border: '1px solid #cbd5e1',
-                                        display: 'block',
-                                        margin: '0 auto',
-                                        background: '#ffffff'
+                                        display: 'block'
                                       }}
                                       onError={e => {
                                         e.target.style.display = 'none';
@@ -2205,37 +2213,44 @@ export default function IDCardActionsView({
                                         if (parent && !parent.querySelector('.fallback-placeholder')) {
                                           const fb = document.createElement('div');
                                           fb.className = 'fallback-placeholder';
-                                          fb.style.cssText = `width:${imgW};height:${imgH};background:#fef3c7;border:1px solid #fde68a;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#d97706;margin:0 auto;`;
+                                          fb.style.cssText = `width:100%;height:100%;background:#fef3c7;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#d97706;`;
                                           fb.innerText = 'PATH';
                                           parent.insertBefore(fb, e.target);
                                         }
                                       }}
                                     />
                                   ) : isPending ? (
-                                    <div style={{ width: imgW, height: imgH, background: '#fef3c7', borderRadius: '2px', border: '1px solid #fde68a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', margin: '0 auto', color: '#d97706' }}>
-                                      <Clock size={14} />
-                                      <span style={{ fontSize: '8px', fontWeight: 700 }}>PENDING</span>
+                                    <div style={{ width: '100%', height: '100%', background: '#fef3c7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px', color: '#d97706' }}>
+                                      <Clock size={12} />
+                                      <span style={{ fontSize: '7px', fontWeight: 700 }}>PENDING</span>
                                     </div>
                                   ) : (
-                                    <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
-                                      <ImageIcon size={16} style={{ color: '#cbd5e1' }} />
+                                    <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <ImageIcon size={14} style={{ color: '#cbd5e1' }} />
                                     </div>
                                   )}
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setDrawer({ mode: 'edit', card }); }}
                                     style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      color: '#2563eb',
-                                      fontSize: '10px',
+                                      position: 'absolute',
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      background: 'rgba(15, 23, 42, 0.75)',
+                                      color: '#ffffff',
+                                      fontSize: '9px',
                                       fontWeight: 700,
+                                      border: 'none',
                                       cursor: 'pointer',
-                                      padding: '1px 4px',
-                                      lineHeight: 1,
+                                      padding: '1px 0',
+                                      textAlign: 'center',
+                                      lineHeight: 1.1,
+                                      fontFamily: 'var(--font-family)',
+                                      backdropFilter: 'blur(1px)'
                                     }}
                                     className="edit-photo-btn"
-                                    title="Edit Card"
+                                    title="Edit Image"
                                   >
                                     Edit
                                   </button>
