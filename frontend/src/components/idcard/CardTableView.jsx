@@ -431,9 +431,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('reprint'); setPage(1); }}
                               style={reprintBtnStyle('reprint').btn}
-                              title="View Reprint List"
+                              title="View Reprinting List"
                             >
-                              <span>Reprint List</span>
+                              <span>Reprinting List</span>
                               <span style={reprintBtnStyle('reprint').badge}>{rpCnt}</span>
                             </button>
 
@@ -441,9 +441,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('reprint_request'); setPage(1); }}
                               style={reprintBtnStyle('request').btn}
-                              title="View Request List"
+                              title="View Requested List"
                             >
-                              <span>Request List</span>
+                              <span>Requested List</span>
                               <span style={reprintBtnStyle('request').badge}>{reqCnt}</span>
                             </button>
 
@@ -451,9 +451,9 @@ export default function CardTableView({ addToast, onNavigate }) {
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingTable(t); setSelectedStatus('reprint_confirm'); setPage(1); }}
                               style={reprintBtnStyle('confirm').btn}
-                              title="View Confirm List"
+                              title="View Confirmed List"
                             >
-                              <span>Confirm List</span>
+                              <span>Confirmed List</span>
                               <span style={reprintBtnStyle('confirm').badge}>{confCnt}</span>
                             </button>
                           </div>

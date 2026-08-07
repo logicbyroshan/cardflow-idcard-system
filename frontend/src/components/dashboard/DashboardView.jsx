@@ -470,8 +470,8 @@ function RecentReprintsTable({ clients, onNavigate, search }) {
         <thead style={{ position: 'sticky', top: 0, background: '#2d3748', color: '#fff', zIndex: 2 }}>
           <tr>
             <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700, width: '60%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568' }}>CLIENT</th>
-            <th onClick={() => handleSort('reprint_pending')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>REQUEST LIST{renderSortIcon('reprint_pending')}</th>
-            <th onClick={() => handleSort('reprint_confirmed')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', cursor: 'pointer', userSelect: 'none' }}>CONFIRMED{renderSortIcon('reprint_confirmed')}</th>
+            <th onClick={() => handleSort('reprint_pending')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #4a5568', cursor: 'pointer', userSelect: 'none' }}>REQUESTED LIST{renderSortIcon('reprint_pending')}</th>
+            <th onClick={() => handleSort('reprint_confirmed')} style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', letterSpacing: '0.04em', cursor: 'pointer', userSelect: 'none' }}>CONFIRMED LIST{renderSortIcon('reprint_confirmed')}</th>
           </tr>
         </thead>
         <tbody>

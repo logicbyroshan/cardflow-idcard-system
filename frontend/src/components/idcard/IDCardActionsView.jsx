@@ -25,12 +25,12 @@ import ImageUploadSlot from './ImageUploadSlot';
 /* ─── Status configuration ─────────────────────────────────────────────── */
 
 const STATUS_LIST = [
-  { key: 'pending',  label: 'Pending List',  bg: '#f59e0b', bgLight: '#fef3c7', color: '#d97706' },
-  { key: 'verified', label: 'Verified List', bg: '#10b981', bgLight: '#d1fae5', color: '#059669' },
-  { key: 'approved', label: 'Approved List', bg: '#3b82f6', bgLight: '#dbeafe', color: '#2563eb' },
-  { key: 'printed',  label: 'Printed List',  bg: '#64748b', bgLight: '#f1f5f9', color: '#475569' },
-  { key: 'request',  label: 'Request List',  bg: '#8b5cf6', bgLight: '#f3e8ff', color: '#7c3aed' },
-  { key: 'deleted',  label: 'Deleted List',  bg: '#ef4444', bgLight: '#fee2e2', color: '#dc2626' },
+  { key: 'pending',  label: 'Pending List',   bg: '#f59e0b', bgLight: '#fef3c7', color: '#d97706' },
+  { key: 'verified', label: 'Verified List',  bg: '#10b981', bgLight: '#d1fae5', color: '#059669' },
+  { key: 'approved', label: 'Approved List',  bg: '#3b82f6', bgLight: '#dbeafe', color: '#2563eb' },
+  { key: 'printed',  label: 'Printed List',   bg: '#64748b', bgLight: '#f1f5f9', color: '#475569' },
+  { key: 'request',  label: 'Requested List', bg: '#8b5cf6', bgLight: '#f3e8ff', color: '#7c3aed' },
+  { key: 'deleted',  label: 'Deleted List',   bg: '#ef4444', bgLight: '#fee2e2', color: '#dc2626' },
 ];
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 500];
