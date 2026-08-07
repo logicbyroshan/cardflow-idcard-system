@@ -2176,36 +2176,28 @@ export default function IDCardActionsView({
                           if (isImg) {
                             const isSig = spec.imgType === 'signature';
                             const isQr  = spec.imgType === 'qr';
-                            const imgW = isSig ? '64px' : isQr ? '40px' : '44px';
-                            const imgH = isSig ? '28px' : isQr ? '40px' : '50px';
+                            const imgW = isSig ? '60px' : isQr ? '36px' : '38px';
+                            const imgH = isSig ? '24px' : isQr ? '36px' : '44px';
                             const imgSrc = getImgSrc(val);
                             const hasVal = Boolean(val && String(val).trim() !== '' && val !== 'NOT_FOUND');
                             const isPending = hasVal && String(val).startsWith('PENDING:');
 
                             return (
-                              <td key={f.name} style={{ padding: '3px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
-                                <div
-                                  className="image-with-edit"
-                                  style={{
-                                    position: 'relative',
-                                    width: imgW,
-                                    height: imgH,
-                                    margin: '0 auto',
-                                    borderRadius: '2px',
-                                    overflow: 'hidden',
-                                    border: '1px solid #cbd5e1',
-                                    background: '#ffffff'
-                                  }}
-                                >
+                              <td key={f.name} style={{ padding: '2px 3px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
+                                <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
                                   {hasVal && !isPending ? (
                                     <img
                                       src={imgSrc}
                                       alt={f.name}
                                       style={{
-                                        width: '100%',
-                                        height: '100%',
+                                        width: imgW,
+                                        height: imgH,
                                         objectFit: isSig || isQr ? 'contain' : 'cover',
-                                        display: 'block'
+                                        borderRadius: '2px',
+                                        border: '1px solid #cbd5e1',
+                                        display: 'block',
+                                        margin: '0 auto',
+                                        background: '#ffffff'
                                       }}
                                       onError={e => {
                                         e.target.style.display = 'none';
@@ -2213,19 +2205,19 @@ export default function IDCardActionsView({
                                         if (parent && !parent.querySelector('.fallback-placeholder')) {
                                           const fb = document.createElement('div');
                                           fb.className = 'fallback-placeholder';
-                                          fb.style.cssText = `width:100%;height:100%;background:#fef3c7;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#d97706;`;
+                                          fb.style.cssText = `width:${imgW};height:${imgH};background:#fef3c7;border:1px solid #fde68a;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#d97706;margin:0 auto;`;
                                           fb.innerText = 'PATH';
                                           parent.insertBefore(fb, e.target);
                                         }
                                       }}
                                     />
                                   ) : isPending ? (
-                                    <div style={{ width: '100%', height: '100%', background: '#fef3c7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px', color: '#d97706' }}>
+                                    <div style={{ width: imgW, height: imgH, background: '#fef3c7', borderRadius: '2px', border: '1px solid #fde68a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px', margin: '0 auto', color: '#d97706' }}>
                                       <Clock size={12} />
                                       <span style={{ fontSize: '7px', fontWeight: 700 }}>PENDING</span>
                                     </div>
                                   ) : (
-                                    <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
                                       <ImageIcon size={14} style={{ color: '#cbd5e1' }} />
                                     </div>
                                   )}
@@ -2233,24 +2225,18 @@ export default function IDCardActionsView({
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setDrawer({ mode: 'edit', card }); }}
                                     style={{
-                                      position: 'absolute',
-                                      bottom: 0,
-                                      left: 0,
-                                      right: 0,
-                                      background: 'rgba(15, 23, 42, 0.75)',
-                                      color: '#ffffff',
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#2563eb',
                                       fontSize: '9px',
                                       fontWeight: 700,
-                                      border: 'none',
                                       cursor: 'pointer',
-                                      padding: '1px 0',
-                                      textAlign: 'center',
-                                      lineHeight: 1.1,
-                                      fontFamily: 'var(--font-family)',
-                                      backdropFilter: 'blur(1px)'
+                                      padding: 0,
+                                      margin: 0,
+                                      lineHeight: 1,
                                     }}
                                     className="edit-photo-btn"
-                                    title="Edit Image"
+                                    title="Edit Card"
                                   >
                                     Edit
                                   </button>
