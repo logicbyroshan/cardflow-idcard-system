@@ -3335,9 +3335,9 @@ body::before,
   top: 52%;
   left: calc(50% + 110px);
   transform: translate(-50%, -50%);
-  width: 560px;
-  height: 340px;
-  background-image: url('/cardflow_logo_brand.png');
+  width: 320px;
+  height: 320px;
+  background-image: url('/favicon.png');
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
