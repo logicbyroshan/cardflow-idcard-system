@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Clock, CheckCircle2, ThumbsUp, Download, Trash2, CreditCard,
-  Users, User, Layers, Plus, Mail, Shield, Search, RefreshCw, ChevronRight, ChevronDown, Building, X, Send
+  Users, User, Layers, Plus, Mail, Shield, Search, RefreshCw, ChevronRight, ChevronDown, Building, X, Send, Printer
 } from 'lucide-react';
 
 
@@ -55,13 +55,13 @@ function WelcomeBanner({ currentUser }) {
    7 Stat Cards Row (Connected 1px border lines, NO GAPS)
 ───────────────────────────────────────────────────────────────────────── */
 const STAT_CARDS_DEF = [
-  { key: 'pending_cards',   label: 'Pending Cards',    defaultVal: 0, bg: '#f59e0b', Icon: Clock        },
-  { key: 'verified_cards',  label: 'Verified Cards',   defaultVal: 0, bg: '#10b981', Icon: CheckCircle2 },
-  { key: 'approved_cards',  label: 'Approved Cards',   defaultVal: 0, bg: '#3b82f6', Icon: ThumbsUp     },
-  { key: 'download_cards',  label: 'Downloaded Cards', defaultVal: 0, bg: '#64748b', Icon: Download     },
-  { key: 'requested_cards', label: 'Requested Cards',  defaultVal: 0, bg: '#8b5cf6', Icon: Send         },
-  { key: 'pool_cards',      label: 'Pool Cards',       defaultVal: 0, bg: '#ef4444', Icon: Trash2       },
-  { key: 'total_id_cards',  label: 'Total ID Cards',   defaultVal: 0, bg: '#06b6d4', Icon: CreditCard   },
+  { key: 'pending_cards',   label: 'Pending Cards',   defaultVal: 0, bg: '#f59e0b', Icon: Clock        },
+  { key: 'verified_cards',  label: 'Verified Cards',  defaultVal: 0, bg: '#10b981', Icon: CheckCircle2 },
+  { key: 'approved_cards',  label: 'Approved Cards',  defaultVal: 0, bg: '#3b82f6', Icon: ThumbsUp     },
+  { key: 'printed_cards',   label: 'Printed Cards',   defaultVal: 0, bg: '#64748b', Icon: Printer      },
+  { key: 'requested_cards', label: 'Requested Cards', defaultVal: 0, bg: '#8b5cf6', Icon: Send         },
+  { key: 'deleted_cards',   label: 'Deleted Cards',   defaultVal: 0, bg: '#ef4444', Icon: Trash2       },
+  { key: 'total_id_cards',  label: 'Total ID Cards',  defaultVal: 0, bg: '#06b6d4', Icon: CreditCard   },
 ];
 
 function StatCardsRow({ stats, loading, onNavigate }) {
@@ -75,7 +75,7 @@ function StatCardsRow({ stats, loading, onNavigate }) {
       flexShrink: 0,
     }}>
       {STAT_CARDS_DEF.map(({ key, label, defaultVal, bg, Icon }, idx) => {
-        const rawVal = stats?.[key] ?? stats?.[key.replace('_cards', '')];
+        const rawVal = stats?.[key] ?? stats?.[key.replace('_cards', '')] ?? (key === 'printed_cards' ? (stats?.download_cards ?? stats?.download) : (key === 'deleted_cards' ? (stats?.pool_cards ?? stats?.pool) : undefined));
         const val = rawVal !== undefined ? rawVal : defaultVal;
         const statusKey = key.replace('_cards', '');
         const isLast = idx === STAT_CARDS_DEF.length - 1;
@@ -236,8 +236,9 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
             <th onClick={() => handleSort('pending')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>PENDING{renderSortIcon('pending')}</th>
             <th onClick={() => handleSort('verified')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>VERIFIED{renderSortIcon('verified')}</th>
             <th onClick={() => handleSort('approved')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>APPROVED{renderSortIcon('approved')}</th>
-            <th onClick={() => handleSort('download')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>DOWNLOADED{renderSortIcon('download')}</th>
-            <th onClick={() => handleSort('pool')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', cursor: 'pointer', userSelect: 'none', height: '38px' }}>POOL{renderSortIcon('pool')}</th>
+            <th onClick={() => handleSort('printed')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>PRINTED{renderSortIcon('printed')}</th>
+            <th onClick={() => handleSort('request')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', borderRight: '1px solid #334155', cursor: 'pointer', userSelect: 'none', height: '38px' }}>REQUESTED{renderSortIcon('request')}</th>
+            <th onClick={() => handleSort('deleted')} style={{ padding: '0 6px', textAlign: 'center', fontWeight: 700, width: '9%', fontSize: '11px', letterSpacing: '0.04em', cursor: 'pointer', userSelect: 'none', height: '38px' }}>DELETED{renderSortIcon('deleted')}</th>
           </tr>
         </thead>
         <tbody>
@@ -262,6 +263,7 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
                 verified: c.verified || 0,
                 approved: c.approved || 0,
                 downloaded: c.downloaded || c.download || 0,
+                request: c.request || c.requested || 0,
                 pool: c.pool || 0
               }
             ];
@@ -336,6 +338,16 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
                       {c.download ?? c.downloaded ?? 0}
                     </button>
                   </td>
+                  <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'request'); }}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #c4b5fd', background: '#f5f3ff', color: '#6d28d9', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(109,40,217,0.08)', transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#ede9fe'; e.currentTarget.style.borderColor = '#7c3aed'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#f5f3ff'; e.currentTarget.style.borderColor = '#c4b5fd'; }}
+                    >
+                      {c.request ?? c.requested ?? 0}
+                    </button>
+                  </td>
                   <td style={{ padding: '6px 6px', textAlign: 'center', width: '9%' }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'pool'); }}
@@ -366,22 +378,27 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
                     </td>
                     <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                       <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pending'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fdba74', background: '#fff7ed', color: '#c2410c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(234,88,12,0.08)' }}>
-                        {sub.pending}
+                        {sub.pending || 0}
                       </button>
                     </td>
                     <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                       <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'verified'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #6ee7b7', background: '#ecfdf5', color: '#047857', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(5,150,105,0.08)' }}>
-                        {sub.verified}
+                        {sub.verified || 0}
                       </button>
                     </td>
                     <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                       <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'approved'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #93c5fd', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(37,99,235,0.08)' }}>
-                        {sub.approved}
+                        {sub.approved || 0}
                       </button>
                     </td>
                     <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                       <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'downloaded'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(71,85,105,0.08)' }}>
-                        {sub.downloaded}
+                        {sub.downloaded || sub.download || 0}
+                      </button>
+                    </td>
+                    <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'request'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #c4b5fd', background: '#f5f3ff', color: '#6d28d9', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(109,40,217,0.08)' }}>
+                        {sub.request || sub.requested || 0}
                       </button>
                     </td>
                     <td style={{ padding: '6px 6px', textAlign: 'center', width: '9%' }}>

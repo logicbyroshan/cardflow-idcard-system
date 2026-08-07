@@ -28,9 +28,9 @@ const STATUS_LIST = [
   { key: 'pending',  label: 'Pending List',  bg: '#f59e0b', bgLight: '#fef3c7', color: '#d97706' },
   { key: 'verified', label: 'Verified List', bg: '#10b981', bgLight: '#d1fae5', color: '#059669' },
   { key: 'approved', label: 'Approved List', bg: '#3b82f6', bgLight: '#dbeafe', color: '#2563eb' },
-  { key: 'download', label: 'Download List', bg: '#64748b', bgLight: '#f1f5f9', color: '#475569' },
+  { key: 'printed',  label: 'Printed List',  bg: '#64748b', bgLight: '#f1f5f9', color: '#475569' },
   { key: 'request',  label: 'Request List',  bg: '#8b5cf6', bgLight: '#f3e8ff', color: '#7c3aed' },
-  { key: 'pool',     label: 'Pool List',     bg: '#ef4444', bgLight: '#fee2e2', color: '#dc2626' },
+  { key: 'deleted',  label: 'Deleted List',  bg: '#ef4444', bgLight: '#fee2e2', color: '#dc2626' },
 ];
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 500];
@@ -1102,16 +1102,19 @@ export default function IDCardActionsView({
         pending:  c.pending ?? c.pending_count ?? 0,
         verified: c.verified ?? c.verified_count ?? 0,
         approved: c.approved ?? c.approved_count ?? 0,
-        download: c.download ?? c.download_count ?? 0,
-        request:  c.request ?? c.request_count ?? 0,
-        pool:     c.pool ?? c.pool_count ?? c.pool_list ?? 0,
+        printed:  c.printed ?? c.printed_count ?? c.download ?? c.download_count ?? 0,
+        request:  c.request ?? c.request_count ?? c.requested ?? 0,
+        deleted:  c.deleted ?? c.deleted_count ?? c.pool ?? c.pool_count ?? c.pool_list ?? 0,
       };
     } catch { /* ignore */ }
 
     // Fallback count from local storage
     const local = getLocalStorageCards();
     local.forEach(card => {
-      const s = card.status || 'pending';
+      let s = card.status || 'pending';
+      if (s === 'download' || s === 'downloaded') s = 'printed';
+      if (s === 'pool') s = 'deleted';
+      if (s === 'requested') s = 'request';
       if (counts[s] !== undefined) counts[s]++;
     });
     setStatusCounts(counts);

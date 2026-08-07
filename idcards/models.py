@@ -250,9 +250,12 @@ class IDCard(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('verified', 'Verified'),
-        ('pool', 'In Pool'),
         ('approved', 'Approved'),
+        ('printed', 'Printed'),
+        ('request', 'Requested'),
+        ('deleted', 'Deleted'),
         ('download', 'Downloaded'),
+        ('pool', 'In Pool'),
         ('reprint', 'Reprint'),
     ]
     

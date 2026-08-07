@@ -395,11 +395,11 @@ export default function CardTableView({ addToast, onNavigate }) {
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'download' }); }}
-                              style={statusBtnStyle('download').btn}
-                              title="View Downloaded List"
+                              style={statusBtnStyle('printed').btn}
+                              title="View Printed List"
                             >
-                              <span>Downloaded List</span>
-                              <span style={statusBtnStyle('download').badge}>{dCnt}</span>
+                              <span>Printed List</span>
+                              <span style={statusBtnStyle('printed').badge}>{dCnt}</span>
                             </button>
 
                             <button
@@ -415,11 +415,11 @@ export default function CardTableView({ addToast, onNavigate }) {
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: t.id, status: 'pool' }); }}
-                              style={statusBtnStyle('pool').btn}
-                              title="View Pool List"
+                              style={statusBtnStyle('deleted').btn}
+                              title="View Deleted List"
                             >
-                              <span>Pool List</span>
-                              <span style={statusBtnStyle('pool').badge}>{lCnt}</span>
+                              <span>Deleted List</span>
+                              <span style={statusBtnStyle('deleted').badge}>{lCnt}</span>
                             </button>
                           </div>
                         </td>
@@ -629,8 +629,10 @@ function statusBtnStyle(type) {
     pending:  { bg: '#fef3c7', color: '#92400e', border: '#fde68a', badgeBg: '#f59e0b' },
     verified: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7', badgeBg: '#10b981' },
     approved: { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd', badgeBg: '#2563eb' },
+    printed:  { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', badgeBg: '#6b7280' },
     download: { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', badgeBg: '#6b7280' },
     request:  { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe', badgeBg: '#8b5cf6' },
+    deleted:  { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5', badgeBg: '#ef4444' },
     pool:     { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5', badgeBg: '#ef4444' },
   };
   const cfg = styles[type] || styles.download;

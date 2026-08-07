@@ -49,12 +49,15 @@ class WorkflowService:
 
     # ── Explicit transition matrix ──────────────────────────────────
     ALLOWED_TRANSITIONS: Dict[str, List[str]] = {
-        'pending':  ['verified', 'pool'],
-        'verified': ['approved', 'pending', 'pool'],
-        'approved': ['download', 'verified', 'pending', 'pool'],
-        'download': ['approved', 'pending'],
+        'pending':  ['verified', 'deleted', 'pool'],
+        'verified': ['approved', 'pending', 'deleted', 'pool'],
+        'approved': ['printed', 'download', 'request', 'verified', 'pending', 'deleted', 'pool'],
+        'download': ['printed', 'request', 'approved', 'pending', 'deleted', 'pool'],
+        'printed':  ['request', 'approved', 'pending', 'deleted', 'pool'],
+        'request':  ['pending', 'approved', 'deleted', 'pool'],
         'pool':     ['pending'],
-        'reprint':  ['download', 'verified', 'approved', 'pending'],
+        'deleted':  ['pending'],
+        'reprint':  ['printed', 'download', 'verified', 'approved', 'pending'],
     }
 
     VALID_STATUSES = list({s for sources in ALLOWED_TRANSITIONS.values() for s in sources} | set(ALLOWED_TRANSITIONS.keys()))
@@ -77,7 +80,7 @@ class WorkflowService:
     }
 
     # Statuses that are read-only for client/client_staff roles
-    CLIENT_READONLY_STATUSES = frozenset({'approved', 'download'})
+    CLIENT_READONLY_STATUSES = frozenset({'approved', 'download', 'printed'})
 
     # ── Permission mapping ──────────────────────────────────────────
     # Which permission key is required to move a card INTO this target status.
@@ -85,8 +88,11 @@ class WorkflowService:
     TRANSITION_PERM_MAP: Dict[str, str] = {
         'verified': 'perm_idcard_verify',
         'approved': 'perm_idcard_approve',
+        'printed':  'perm_idcard_approve',
         'download': 'perm_idcard_approve',
+        'request':  'perm_idcard_approve',
         'pending':  'perm_idcard_verify',
+        'deleted':  'perm_idcard_delete',
         'pool':     'perm_idcard_delete',
     }
 
