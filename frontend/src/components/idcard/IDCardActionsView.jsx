@@ -2176,15 +2176,15 @@ export default function IDCardActionsView({
                           if (isImg) {
                             const isSig = spec.imgType === 'signature';
                             const isQr  = spec.imgType === 'qr';
-                            const imgW = isSig ? '60px' : isQr ? '36px' : '38px';
-                            const imgH = isSig ? '24px' : isQr ? '36px' : '44px';
+                            const imgW = isSig ? '72px' : isQr ? '45px' : '50px';
+                            const imgH = isSig ? '32px' : isQr ? '45px' : '60px';
                             const imgSrc = getImgSrc(val);
                             const hasVal = Boolean(val && String(val).trim() !== '' && val !== 'NOT_FOUND');
                             const isPending = hasVal && String(val).startsWith('PENDING:');
 
                             return (
-                              <td key={f.name} style={{ padding: '2px 3px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
-                                <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
+                              <td key={f.name} style={{ padding: '4px', textAlign: 'center', width: spec.width, borderRight: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
+                                <div className="image-with-edit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                                   {hasVal && !isPending ? (
                                     <img
                                       src={imgSrc}
@@ -2205,20 +2205,20 @@ export default function IDCardActionsView({
                                         if (parent && !parent.querySelector('.fallback-placeholder')) {
                                           const fb = document.createElement('div');
                                           fb.className = 'fallback-placeholder';
-                                          fb.style.cssText = `width:${imgW};height:${imgH};background:#fef3c7;border:1px solid #fde68a;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#d97706;margin:0 auto;`;
+                                          fb.style.cssText = `width:${imgW};height:${imgH};background:#fef3c7;border:1px solid #fde68a;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#d97706;margin:0 auto;`;
                                           fb.innerText = 'PATH';
                                           parent.insertBefore(fb, e.target);
                                         }
                                       }}
                                     />
                                   ) : isPending ? (
-                                    <div style={{ width: imgW, height: imgH, background: '#fef3c7', borderRadius: '2px', border: '1px solid #fde68a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px', margin: '0 auto', color: '#d97706' }}>
-                                      <Clock size={12} />
-                                      <span style={{ fontSize: '7px', fontWeight: 700 }}>PENDING</span>
+                                    <div style={{ width: imgW, height: imgH, background: '#fef3c7', borderRadius: '2px', border: '1px solid #fde68a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', margin: '0 auto', color: '#d97706' }}>
+                                      <Clock size={14} />
+                                      <span style={{ fontSize: '8px', fontWeight: 700 }}>PENDING</span>
                                     </div>
                                   ) : (
                                     <div style={{ width: imgW, height: imgH, background: '#f1f5f9', borderRadius: '2px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
-                                      <ImageIcon size={14} style={{ color: '#cbd5e1' }} />
+                                      <ImageIcon size={16} style={{ color: '#cbd5e1' }} />
                                     </div>
                                   )}
                                   <button
@@ -2228,11 +2228,10 @@ export default function IDCardActionsView({
                                       background: 'none',
                                       border: 'none',
                                       color: '#2563eb',
-                                      fontSize: '9px',
+                                      fontSize: '10px',
                                       fontWeight: 700,
                                       cursor: 'pointer',
-                                      padding: 0,
-                                      margin: 0,
+                                      padding: '1px 4px',
                                       lineHeight: 1,
                                     }}
                                     className="edit-photo-btn"
