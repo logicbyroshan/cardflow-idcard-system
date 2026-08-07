@@ -3322,21 +3322,19 @@ button:disabled svg {
 ───────────────────────────────────────────────────────────────────────── */
 .page-content,
 .main-viewport,
-.dashboard-container,
 .idcard-table,
 .table-container {
   position: relative !important;
 }
 
-body::before,
 .page-content::before {
   content: "";
-  position: fixed;
-  top: 52%;
-  left: calc(50% + 110px);
+  position: absolute;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
-  width: 320px;
-  height: 320px;
+  width: 280px;
+  height: 280px;
   background-image: url('/favicon.png');
   background-repeat: no-repeat;
   background-position: center;
