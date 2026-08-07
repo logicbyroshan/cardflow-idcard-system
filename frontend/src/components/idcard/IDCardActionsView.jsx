@@ -1146,6 +1146,7 @@ export default function IDCardActionsView({
   const [total, setTotal]               = useState(0);
   const [page, setPage]                 = useState(1);
   const [pageSize, setPageSize]         = useState(100);
+  const [logCard, setLogCard]           = useState(null);
 
   /* ── Filters ── */
   const [search, setSearch]             = useState('');
