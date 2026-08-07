@@ -654,7 +654,7 @@ function statusBtnStyle(type) {
 function reprintBtnStyle(type) {
   const styles = {
     reprint: { bg: '#ecfeff', color: '#0e7490', border: '#a5f3fc', badgeBg: '#06b6d4' },
-    request: { bg: '#fdf4ff', color: '#a21caf', border: '#f5d0fe', badgeBg: '#d946ef' },
+    request: { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe', badgeBg: '#8b5cf6' },
     confirm: { bg: '#f0fdf4', color: '#15803d', border: '#86efac', badgeBg: '#16a34a' },
   };
   const cfg = styles[type] || styles.reprint;
