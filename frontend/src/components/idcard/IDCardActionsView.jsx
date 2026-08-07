@@ -1037,71 +1037,93 @@ function CardLogDrawer({ card, table, onClose }) {
   const statusUpper = (card.status || 'pending').toUpperCase();
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end', background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(3px)' }}>
-      <div style={{ width: '420px', maxWidth: '90vw', height: '100%', background: '#ffffff', boxShadow: '-4px 0 24px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.2s ease-out' }}>
-        
+    <>
+      <div className="drawer-overlay-backdrop" onClick={onClose} />
+      <aside
+        className="side-drawer-panel"
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: '640px',
+          maxWidth: '95vw',
+          height: '100vh',
+          background: '#ffffff',
+          boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.35)',
+          zIndex: 99999999,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'drawerSlideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
         {/* Header */}
-        <div style={{ background: '#1e293b', color: '#ffffff', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #334155' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <History size={18} style={{ color: '#38bdf8' }} />
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em' }}>CARD AUDIT & LOG TRAIL</div>
-              <div style={{ fontSize: '11px', color: '#94a3b8' }}>ID: #{card.id} — {table?.name || 'Table Group'}</div>
-            </div>
+        <div className="drawer-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#1e293b', color: '#ffffff', flexShrink: 0 }}>
+          <div>
+            <h3 className="drawer-title" style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <History size={18} style={{ color: '#38bdf8' }} />
+              Card Audit & Log Trail
+            </h3>
+            <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px', display: 'block' }}>
+              Card ID: #{card.id} — Table: {table?.name || 'ID Card Table'}
+            </span>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
+          <button type="button" className="drawer-close" onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }} title="Close">
             <X size={18} />
           </button>
         </div>
 
         {/* Card Snapshot Summary Box */}
-        <div style={{ padding: '14px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+        <div style={{ padding: '16px 24px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
             {fullName}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px' }}>
-            <span style={{ padding: '2px 8px', borderRadius: '4px', background: '#dbeafe', color: '#1d4ed8', fontWeight: 700, fontSize: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px' }}>
+            <span style={{ padding: '3px 10px', borderRadius: '4px', background: '#dbeafe', color: '#1d4ed8', fontWeight: 700, fontSize: '11px' }}>
               STATUS: {statusUpper}
             </span>
             <span style={{ color: '#64748b' }}>
-              Last By: <strong>{card.modified_by || card.updated_by || 'Admin'}</strong>
+              Last Modifier: <strong>{card.modified_by || card.updated_by || 'Admin'}</strong>
             </span>
           </div>
         </div>
 
         {/* Log Timeline List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Activity Log Timeline</span>
-            <button onClick={fetchLogs} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
+        <div className="drawer-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Activity Log History
+            </span>
+            <button onClick={fetchLogs} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <RefreshCw size={13} className={loading ? 'spin' : ''} /> Refresh
             </button>
           </div>
 
           {loading ? (
-            <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+            <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
               Loading audit logs...
             </div>
           ) : logs.length === 0 ? (
-            <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
+            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
               No recorded logs found for this card.
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative' }}>
               {/* Vertical timeline line */}
-              <div style={{ position: 'absolute', top: '10px', bottom: '10px', left: '11px', width: '2px', background: '#e2e8f0', zIndex: 0 }} />
+              <div style={{ position: 'absolute', top: '12px', bottom: '12px', left: '13px', width: '2px', background: '#cbd5e1', zIndex: 0 }} />
 
               {logs.map((log, idx) => (
-                <div key={log.id || idx} style={{ display: 'flex', gap: '12px', position: 'relative', zIndex: 1 }}>
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#eff6ff', border: '2px solid #2563eb', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
-                    <Clock size={11} />
+                <div key={log.id || idx} style={{ display: 'flex', gap: '14px', position: 'relative', zIndex: 1 }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#eff6ff', border: '2px solid #2563eb', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+                    <Clock size={13} />
                   </div>
-                  <div style={{ flex: 1, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px 12px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a', lineHeight: 1.35 }}>
+                  <div style={{ flex: 1, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>
                       {log.action || log.description || log.message || 'Updated card details'}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', fontSize: '10px', color: '#64748b' }}>
-                      <span>By: <strong style={{ color: '#334155' }}>{log.user || log.username || 'System'}</strong></span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
+                      <span>Action By: <strong style={{ color: '#334155' }}>{log.user || log.username || 'System'}</strong></span>
                       <span>{log.timestamp || log.created_at || ''}</span>
                     </div>
                   </div>
@@ -1112,13 +1134,27 @@ function CardLogDrawer({ card, table, onClose }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '12px 18px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '6px 16px', background: '#334155', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-            Close
+        <div className="drawer-footer" style={{ height: '56px', minHeight: '56px', padding: '0 24px', borderTop: '1px solid #334155', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', background: '#1e293b', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '7px 18px',
+              background: '#334155',
+              color: '#ffffff',
+              border: '1px solid #475569',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            Close Log Drawer
           </button>
         </div>
-      </div>
-    </div>,
+      </aside>
+    </>,
     document.body
   );
 }
