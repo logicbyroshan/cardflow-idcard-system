@@ -3,6 +3,7 @@ import {
   Clock, CheckCircle2, ThumbsUp, Download, Trash2, CreditCard,
   Users, User, Layers, Plus, Mail, Shield, Search, RefreshCw, ChevronRight, ChevronDown, Building, X, Send, Printer
 } from 'lucide-react';
+import WatermarkLogo from '../common/WatermarkLogo';
 
 
 
@@ -183,6 +184,7 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+      <WatermarkLogo />
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', position: 'relative', zIndex: 1, background: 'transparent' }}>
         <thead style={{ position: 'sticky', top: 0, background: '#1e293b', color: '#ffffff', zIndex: 2 }}>

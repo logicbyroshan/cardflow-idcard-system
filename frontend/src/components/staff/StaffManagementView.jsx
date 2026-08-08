@@ -5,6 +5,7 @@ import {
   RefreshCw, Loader2, AlertCircle, Info, ListCheck
 } from 'lucide-react';
 
+import WatermarkLogo from '../common/WatermarkLogo';
 import { staffApi, operatorApi, assistantApi, photographerApi } from '../../services/api';
 
 /*
@@ -293,7 +294,8 @@ export default function StaffManagementView({ addToast, staffType = 'operator', 
       </div>
 
       {/* ── TABLE CONTAINER ── */}
-      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+        <WatermarkLogo />
         <table className="data-table" id="staff-table" style={{ flexShrink: 0 }}>
           <thead>
             <tr>

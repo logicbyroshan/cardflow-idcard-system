@@ -18,6 +18,7 @@ import {
   Loader2, AlertCircle, Eraser, Check, SquareCheck, Square, MinusSquare,
   Clock, SlidersHorizontal, Settings, Printer, ChevronDown, UserPlus, History
 } from 'lucide-react';
+import WatermarkLogo from '../common/WatermarkLogo';
 import { cardApi, schemaApi } from '../../services/api';
 import apiClient from '../../services/api';
 import ImageUploadSlot from './ImageUploadSlot';
@@ -2091,6 +2092,7 @@ export default function IDCardActionsView({
           VIRTUAL DATA TABLE WITH CRISP BORDERS & EXACT PHOTO HEIGHT
           ══════════════════════════════════════════════════════════ */}
       <div className="table-container idcard-table" style={{ flex: 1, minHeight: 0, overflow: 'auto', background: '#fff', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+        <WatermarkLogo />
         {tableLoading ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '10px', color: '#64748b' }}>
             <Spinner size={24} /> Loading table structure…

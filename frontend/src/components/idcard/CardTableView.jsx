@@ -6,6 +6,7 @@ import {
   ArrowLeft, FileSpreadsheet, Eye, Edit2, Undo2, Redo2, Layers3, ShieldCheck, Printer, Send, Check
 } from "lucide-react";
 import CardEditDrawer from "./CardEditDrawer";
+import WatermarkLogo from "../common/WatermarkLogo";
 import { cardApi, schemaApi, clientApi } from "../../services/api";
 
 const STATUS_TABS = ["All", "Active", "Inactive"];
@@ -284,7 +285,8 @@ export default function CardTableView({ addToast, onNavigate }) {
 
         {/* ── MAIN CLASSIC TABLE GROUP LIST ── */}
         <div id="gs-table-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          <div className="table-wrapper" style={{ flex: 1, overflow: 'auto' }}>
+          <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+            <WatermarkLogo />
             {loading ? (
               <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
                 <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px', display: 'block' }} />

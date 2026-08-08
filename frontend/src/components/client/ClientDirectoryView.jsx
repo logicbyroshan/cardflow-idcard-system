@@ -5,6 +5,7 @@ import {
   ChevronsLeft, ChevronsRight, RefreshCw, Loader2, Info, Save, Mail, Phone, Shield, CheckCircle2, User
 } from 'lucide-react';
 
+import WatermarkLogo from '../common/WatermarkLogo';
 import { clientApi } from '../../services/api';
 
 const STATUS_TABS = ['All', 'Active', 'Inactive'];
@@ -444,7 +445,8 @@ export default function ClientDirectoryView({ addToast, onOpenActionDrawer, onNa
       </div>
 
       {/* ── TABLE CONTAINER ── */}
-      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+        <WatermarkLogo />
         <table className="data-table" id="clientsTable" style={{ flexShrink: 0 }}>
           <thead>
             <tr>

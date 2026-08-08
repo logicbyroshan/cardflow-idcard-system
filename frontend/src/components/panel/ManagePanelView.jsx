@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Cpu, Layers, FolderTree, Info, Search, Clock, CheckCircle2, XCircle, FilterX, X
 } from 'lucide-react';
+import WatermarkLogo from '../common/WatermarkLogo';
 import { panelApi } from '../../services/api';
 
 /* ── Standard pagination bar — matches StaffManagementView / ClientDirectoryView ── */
@@ -378,7 +379,8 @@ function EmailLogsTab({ addToast }) {
         </div>
       </div>
 
-      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+        <WatermarkLogo />
         <table className="data-table" style={{ flexShrink: 0 }}>
           <thead>
             <tr>

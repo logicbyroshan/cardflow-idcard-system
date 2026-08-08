@@ -8,6 +8,7 @@ import {
   Check, Tag, School, BookOpen, Briefcase, Sparkles, FolderKanban, ShieldCheck
 } from 'lucide-react';
 
+import WatermarkLogo from '../common/WatermarkLogo';
 import { schemaApi, clientApi } from '../../services/api';
 
 const STATUS_TABS = ['All', 'Active', 'Inactive'];
@@ -417,7 +418,8 @@ export default function TableSettingsView({ addToast, onNavigate }) {
 
       {/* ── TABLE CONTAINER ── */}
       <div id="gs-table-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          <WatermarkLogo />
           {paged.length === 0 && !loading ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center' }}>
               <div style={{

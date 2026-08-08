@@ -3,6 +3,7 @@ import {
   Printer, CheckCircle2, Search, X, RefreshCw, Loader2, AlertCircle,
   FileCheck, RotateCcw, XCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
+import WatermarkLogo from '../common/WatermarkLogo';
 import { cardApi, reprintApi, dashboardApi } from '../../services/api';
 
 /*
@@ -149,7 +150,8 @@ export default function ReprintCardsManagerView({ addToast }) {
       </div>
 
       {/* ── TABLE CONTAINER ── */}
-      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="table-wrapper" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+        <WatermarkLogo />
         <table className="data-table" style={{ flexShrink: 0 }}>
           <thead>
             <tr>

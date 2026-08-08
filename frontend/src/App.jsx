@@ -214,25 +214,6 @@ export default function App() {
 
         {/* Page content — scrollable area */}
         <div className="page-content" style={activeTab === 'idcard-actions' ? { padding: 0, margin: 0, height: '100%', overflow: 'hidden' } : undefined}>
-          {/* Global 95% Transparent Logo Watermark — Fixed Overlay Visible Across All Pages */}
-          <div
-            className="global-watermark-overlay"
-            style={{
-              position: 'fixed',
-              top: '52%',
-              left: 'calc(50% + 110px)',
-              transform: 'translate(-50%, -50%)',
-              width: '320px',
-              height: '320px',
-              backgroundImage: "url('/favicon.png')",
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'center',
-              backgroundSize: 'contain',
-              opacity: 0.05,
-              pointerEvents: 'none',
-              zIndex: 9999,
-            }}
-          />
           <ErrorBoundary key={activeTab}>
 
           {/* ── Dashboard ── */}
