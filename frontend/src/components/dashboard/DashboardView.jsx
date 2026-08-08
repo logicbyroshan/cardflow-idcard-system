@@ -132,6 +132,62 @@ const MOCK_CLIENT_ROWS = [
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Helper to compute exact card counts per table (API + LocalStorage)
+───────────────────────────────────────────────────────────────────────── */
+function getTableCounts(t) {
+  if (!t) return { pending: 0, verified: 0, approved: 0, download: 0, pool: 0, request: 0, reprint: 0, confirmed: 0 };
+  let pending = t.pending_count ?? t.pending ?? 0;
+  let verified = t.verified_count ?? t.verified ?? 0;
+  let approved = t.approved_count ?? t.approved ?? 0;
+  let download = t.download_count ?? t.downloaded ?? t.download ?? t.printed ?? 0;
+  let pool = t.pool_count ?? t.deleted ?? t.pool ?? 0;
+
+  let reprint = t.reprint_count ?? t.reprint ?? 0;
+  let request = t.reprint_request_count ?? t.reprint_request ?? t.request ?? t.requested ?? 0;
+  let confirmed = t.reprint_confirmed_count ?? t.reprint_confirmed ?? t.confirmed ?? 0;
+
+  try {
+    const listByTableId = JSON.parse(localStorage.getItem(`cf_custom_cards_${t.id}`) || '[]');
+    const listByTableName = JSON.parse(localStorage.getItem(`cf_custom_cards_${t.name}`) || '[]');
+    const allCustomCards = JSON.parse(localStorage.getItem('cf_custom_cards') || '[]');
+    const filteredGlobalCards = allCustomCards.filter(c => String(c.table_id || c.table) === String(t.id) || String(c.table_name) === String(t.name));
+
+    const combinedLocal = [...listByTableId, ...listByTableName, ...filteredGlobalCards];
+    
+    if (combinedLocal.length > 0) {
+      let lp = 0, lv = 0, la = 0, ld = 0, lpool = 0, lrp = 0, lreq = 0, lconf = 0;
+      const seenIds = new Set();
+      combinedLocal.forEach(c => {
+        if (!c) return;
+        const cid = c.id || c.card_id || JSON.stringify(c.field_data || c);
+        if (seenIds.has(cid)) return;
+        seenIds.add(cid);
+
+        const st = (c.status || 'pending').toLowerCase();
+        if (st === 'pending') lp++;
+        else if (st === 'verified') lv++;
+        else if (st === 'approved') la++;
+        else if (st === 'download' || st === 'downloaded' || st === 'printed') ld++;
+        else if (st === 'pool' || st === 'deleted') lpool++;
+        else if (st === 'reprint' || st === 'reprinting') lrp++;
+        else if (st === 'request' || st === 'requested') lreq++;
+        else if (st === 'confirmed') lconf++;
+      });
+      pending = Math.max(pending, lp);
+      verified = Math.max(verified, lv);
+      approved = Math.max(approved, la);
+      download = Math.max(download, ld);
+      pool = Math.max(pool, lpool);
+      reprint = Math.max(reprint, lrp);
+      request = Math.max(request, lreq);
+      confirmed = Math.max(confirmed, lconf);
+    }
+  } catch (_) {}
+
+  return { pending, verified, approved, download, pool, request, reprint, confirmed };
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Recent Client Updates Table (Left Main Area) — SS2 Exact
    Count Badges are CLICKABLE BUTTONS (border-radius: 2px sharp boxes)
 ───────────────────────────────────────────────────────────────────────── */
@@ -235,23 +291,49 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
             // Sub-tables for dropdown rows (Matching actual table names)
             const matchedTables = (Array.isArray(c.tables) && c.tables.length > 0)
               ? c.tables
-              : allTables.filter(t =>
-                  String(t.client_id || t.clientId || t.client_name || '').toLowerCase() === String(c.id || c.name || '').toLowerCase() ||
-                  String(t.client || t.organisation || '').toLowerCase() === String(c.name || '').toLowerCase()
-                );
+              : (allTables || []).filter(t => {
+                  if (!t) return false;
+                  const tClientId = String(t.client_id || t.clientId || t.client || t.organisation_id || t.organisation || t.group?.client?.id || t.group?.client || '').toLowerCase();
+                  const cId = String(c.id || '').toLowerCase();
+                  const cName = String(c.name || c.school_name || '').toLowerCase();
+                  const tClientName = String(t.client_name || t.group?.client?.name || '').toLowerCase();
 
-            const subTables = matchedTables.length > 0 ? matchedTables : [
-              {
-                id: c.id || c.table_id || 1,
-                name: `${(c.name || c.school_name || 'STUDENT').toUpperCase()} ID CARDS TABLE`,
-                pending: c.pending || 0,
-                verified: c.verified || 0,
-                approved: c.approved || 0,
-                downloaded: c.downloaded || c.download || 0,
-                request: c.request || c.requested || 0,
-                pool: c.pool || 0
-              }
-            ];
+                  return (
+                    (cId && tClientId === cId) ||
+                    (cName && tClientName === cName) ||
+                    (cName && tClientId === cName) ||
+                    (allTables.length > 0 && (rows.length <= 1 || c.is_default))
+                  );
+                });
+
+            const subTables = matchedTables.length > 0 ? matchedTables : [];
+
+            // Compute aggregated parent row counts from subTables if available
+            let cPending = c.pending || 0;
+            let cVerified = c.verified || 0;
+            let cApproved = c.approved || 0;
+            let cDownloaded = c.downloaded || c.download || 0;
+            let cRequest = c.request || c.requested || 0;
+            let cPool = c.pool || 0;
+
+            if (subTables.length > 0) {
+              let sumP = 0, sumV = 0, sumA = 0, sumD = 0, sumReq = 0, sumPool = 0;
+              subTables.forEach(st => {
+                const sc = getTableCounts(st);
+                sumP += sc.pending;
+                sumV += sc.verified;
+                sumA += sc.approved;
+                sumD += sc.download;
+                sumReq += sc.request;
+                sumPool += sc.pool;
+              });
+              cPending = Math.max(cPending, sumP);
+              cVerified = Math.max(cVerified, sumV);
+              cApproved = Math.max(cApproved, sumA);
+              cDownloaded = Math.max(cDownloaded, sumD);
+              cRequest = Math.max(cRequest, sumReq);
+              cPool = Math.max(cPool, sumPool);
+            }
 
             return (
               <React.Fragment key={clientId}>
@@ -273,7 +355,7 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
                       </button>
                       <span style={{ color: '#10b981', fontSize: '11px', fontWeight: 700 }}>✓</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: c.id || 1, status: 'pending' }); }}
+                        onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: subTables[0]?.id || c.id || 1, status: 'pending' }); }}
                         style={{ background: 'none', border: 'none', padding: 0, color: '#0f172a', fontWeight: 700, fontSize: '12px', cursor: 'pointer', textAlign: 'left', textDecoration: 'none' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
                         onMouseLeave={(e) => e.currentTarget.style.color = '#0f172a'}
@@ -285,114 +367,117 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
                   {/* REDESIGNED STATUS COUNT BUTTON BADGES */}
                   <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'pending'); }}
+                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(subTables[0] || c, 'pending'); }}
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fdba74', background: '#fff7ed', color: '#c2410c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(234,88,12,0.08)', transition: 'all 0.15s' }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#ffedd5'; e.currentTarget.style.borderColor = '#ea580c'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = '#fff7ed'; e.currentTarget.style.borderColor = '#fdba74'; }}
                     >
-                      {c.pending ?? 0}
+                      {cPending}
                     </button>
                   </td>
                   <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'verified'); }}
+                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(subTables[0] || c, 'verified'); }}
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #6ee7b7', background: '#ecfdf5', color: '#047857', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(5,150,105,0.08)', transition: 'all 0.15s' }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#d1fae5'; e.currentTarget.style.borderColor = '#059669'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = '#ecfdf5'; e.currentTarget.style.borderColor = '#6ee7b7'; }}
                     >
-                      {c.verified ?? 0}
+                      {cVerified}
                     </button>
                   </td>
                   <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'approved'); }}
+                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(subTables[0] || c, 'approved'); }}
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #93c5fd', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(37,99,235,0.08)', transition: 'all 0.15s' }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#dbeafe'; e.currentTarget.style.borderColor = '#2563eb'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; }}
                     >
-                      {c.approved ?? 0}
+                      {cApproved}
                     </button>
                   </td>
                   <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'downloaded'); }}
+                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(subTables[0] || c, 'downloaded'); }}
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(71,85,105,0.08)', transition: 'all 0.15s' }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#475569'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
                     >
-                      {c.download ?? c.downloaded ?? 0}
+                      {cDownloaded}
                     </button>
                   </td>
                   <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'request'); }}
+                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(subTables[0] || c, 'request'); }}
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #c4b5fd', background: '#f5f3ff', color: '#6d28d9', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(109,40,217,0.08)', transition: 'all 0.15s' }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#ede9fe'; e.currentTarget.style.borderColor = '#7c3aed'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = '#f5f3ff'; e.currentTarget.style.borderColor = '#c4b5fd'; }}
                     >
-                      {c.request ?? c.requested ?? 0}
+                      {cRequest}
                     </button>
                   </td>
                   <td style={{ padding: '6px 6px', textAlign: 'center', width: '9%' }}>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(c, 'pool'); }}
+                      onClick={(e) => { e.stopPropagation(); handleBadgeClick(subTables[0] || c, 'pool'); }}
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#b91c1c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(220,38,38,0.08)', transition: 'all 0.15s' }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.borderColor = '#dc2626'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#fca5a5'; }}
                     >
-                      {c.pool ?? 0}
+                      {cPool}
                     </button>
                   </td>
                 </tr>
 
                 {/* EXPANDABLE DROPDOWN SUB-ROWS — SAME TO SAME HEIGHT & BUTTON DIMENSIONS */}
-                {isExpanded && subTables.map((sub, sIdx) => (
-                  <tr key={`${clientId}-sub-${sIdx}`} style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '9px 12px 9px 36px', color: '#334155', fontSize: '12px', fontWeight: 600, borderRight: '1px solid #e2e8f0', width: '55%' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ color: '#94a3b8', fontSize: '11px' }}>↳</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: sub.id || 1, status: 'pending' }); }}
-                          style={{ background: 'none', border: 'none', padding: 0, color: '#334155', fontWeight: 600, fontSize: '12px', cursor: 'pointer', textAlign: 'left' }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = '#334155'}
-                        >
-                          {sub.name}
+                {isExpanded && subTables.map((sub, sIdx) => {
+                  const sc = getTableCounts(sub);
+                  return (
+                    <tr key={`${clientId}-sub-${sIdx}`} style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '9px 12px 9px 36px', color: '#334155', fontSize: '12px', fontWeight: 600, borderRight: '1px solid #e2e8f0', width: '55%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: '#94a3b8', fontSize: '11px' }}>↳</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onNavigate('idcard-actions', { tableId: sub.id || 1, status: 'pending' }); }}
+                            style={{ background: 'none', border: 'none', padding: 0, color: '#334155', fontWeight: 600, fontSize: '12px', cursor: 'pointer', textAlign: 'left' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#334155'}
+                          >
+                            {sub.name}
+                          </button>
+                        </div>
+                      </td>
+                      <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleBadgeClick(sub, 'pending'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fdba74', background: '#fff7ed', color: '#c2410c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(234,88,12,0.08)' }}>
+                          {sc.pending}
                         </button>
-                      </div>
-                    </td>
-                    <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pending'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fdba74', background: '#fff7ed', color: '#c2410c', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(234,88,12,0.08)' }}>
-                        {sub.pending || 0}
-                      </button>
-                    </td>
-                    <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'verified'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #6ee7b7', background: '#ecfdf5', color: '#047857', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(5,150,105,0.08)' }}>
-                        {sub.verified || 0}
-                      </button>
-                    </td>
-                    <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'approved'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #93c5fd', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(37,99,235,0.08)' }}>
-                        {sub.approved || 0}
-                      </button>
-                    </td>
-                    <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'downloaded'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(71,85,105,0.08)' }}>
-                        {sub.downloaded || sub.download || 0}
-                      </button>
-                    </td>
-                    <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'request'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #c4b5fd', background: '#f5f3ff', color: '#6d28d9', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(109,40,217,0.08)' }}>
-                        {sub.request || sub.requested || 0}
-                      </button>
-                    </td>
-                    <td style={{ padding: '6px 6px', textAlign: 'center', width: '9%' }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleBadgeClick({ ...c, table_id: sub.id }, 'pool'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(220,38,38,0.08)' }}>
-                        {sub.pool}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleBadgeClick(sub, 'verified'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #6ee7b7', background: '#ecfdf5', color: '#047857', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(5,150,105,0.08)' }}>
+                          {sc.verified}
+                        </button>
+                      </td>
+                      <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleBadgeClick(sub, 'approved'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #93c5fd', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(37,99,235,0.08)' }}>
+                          {sc.approved}
+                        </button>
+                      </td>
+                      <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleBadgeClick(sub, 'downloaded'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(71,85,105,0.08)' }}>
+                          {sc.download}
+                        </button>
+                      </td>
+                      <td style={{ padding: '6px 6px', textAlign: 'center', borderRight: '1px solid #e2e8f0', width: '9%' }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleBadgeClick(sub, 'request'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #c4b5fd', background: '#f5f3ff', color: '#6d28d9', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(109,40,217,0.08)' }}>
+                          {sc.request}
+                        </button>
+                      </td>
+                      <td style={{ padding: '6px 6px', textAlign: 'center', width: '9%' }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleBadgeClick(sub, 'pool'); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '46px', height: '24px', padding: '0 8px', borderRadius: '4px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontWeight: 700, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)', boxShadow: '0 1px 2px rgba(220,38,38,0.08)' }}>
+                          {sc.pool}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </React.Fragment>
             );
           })}
@@ -855,7 +940,7 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
     try {
       let loadedTables = [];
       try {
-        const schemaRes = await schemaApi.getTables();
+        const schemaRes = await schemaApi.getSchemas();
         loadedTables = schemaRes.tables || schemaRes.results || (Array.isArray(schemaRes) ? schemaRes : []);
       } catch (_) {}
 

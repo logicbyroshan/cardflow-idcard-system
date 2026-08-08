@@ -11,6 +11,59 @@ import { cardApi, schemaApi, clientApi } from "../../services/api";
 
 const STATUS_TABS = ["All", "Active", "Inactive"];
 
+function getTableCounts(t) {
+  if (!t) return { pending: 0, verified: 0, approved: 0, download: 0, pool: 0, rpCnt: 0, reqCnt: 0, confCnt: 0 };
+  let pending = t.pending_count ?? t.pending ?? 0;
+  let verified = t.verified_count ?? t.verified ?? 0;
+  let approved = t.approved_count ?? t.approved ?? 0;
+  let download = t.download_count ?? t.downloaded ?? t.download ?? t.printed ?? 0;
+  let pool = t.pool_count ?? t.deleted ?? t.pool ?? 0;
+
+  let rpCnt = t.reprint_count ?? t.reprint ?? 0;
+  let reqCnt = t.reprint_request_count ?? t.reprint_request ?? t.request ?? t.requested ?? 0;
+  let confCnt = t.reprint_confirmed_count ?? t.reprint_confirmed ?? t.confirmed ?? 0;
+
+  try {
+    const listByTableId = JSON.parse(localStorage.getItem(`cf_custom_cards_${t.id}`) || '[]');
+    const listByTableName = JSON.parse(localStorage.getItem(`cf_custom_cards_${t.name}`) || '[]');
+    const allCustomCards = JSON.parse(localStorage.getItem('cf_custom_cards') || '[]');
+    const filteredGlobalCards = allCustomCards.filter(c => String(c.table_id || c.table) === String(t.id) || String(c.table_name) === String(t.name));
+
+    const combinedLocal = [...listByTableId, ...listByTableName, ...filteredGlobalCards];
+    
+    if (combinedLocal.length > 0) {
+      let lp = 0, lv = 0, la = 0, ld = 0, lpool = 0, lrp = 0, lreq = 0, lconf = 0;
+      const seenIds = new Set();
+      combinedLocal.forEach(c => {
+        if (!c) return;
+        const cid = c.id || c.card_id || JSON.stringify(c.field_data || c);
+        if (seenIds.has(cid)) return;
+        seenIds.add(cid);
+
+        const st = (c.status || 'pending').toLowerCase();
+        if (st === 'pending') lp++;
+        else if (st === 'verified') lv++;
+        else if (st === 'approved') la++;
+        else if (st === 'download' || st === 'downloaded' || st === 'printed') ld++;
+        else if (st === 'pool' || st === 'deleted') lpool++;
+        else if (st === 'reprint' || st === 'reprinting') lrp++;
+        else if (st === 'request' || st === 'requested') lreq++;
+        else if (st === 'confirmed') lconf++;
+      });
+      pending = Math.max(pending, lp);
+      verified = Math.max(verified, lv);
+      approved = Math.max(approved, la);
+      download = Math.max(download, ld);
+      pool = Math.max(pool, lpool);
+      rpCnt = Math.max(rpCnt, lrp);
+      reqCnt = Math.max(reqCnt, lreq);
+      confCnt = Math.max(confCnt, lconf);
+    }
+  } catch (_) {}
+
+  return { pending, verified, approved, download, pool, rpCnt, reqCnt, confCnt };
+}
+
 export default function CardTableView({ addToast, onNavigate }) {
   const [tables, setTables]               = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -324,15 +377,16 @@ export default function CardTableView({ addToast, onNavigate }) {
                 </thead>
                 <tbody>
                   {filteredTables.map((t, idx) => {
-                    const pCnt = t.pending_count || 0;
-                    const vCnt = t.verified_count || 0;
-                    const aCnt = t.approved_count || 0;
-                    const dCnt = t.download_count || 0;
-                    const lCnt = t.pool_count || 0;
+                    const counts = getTableCounts(t);
+                    const pCnt = counts.pending;
+                    const vCnt = counts.verified;
+                    const aCnt = counts.approved;
+                    const dCnt = counts.download;
+                    const lCnt = counts.pool;
 
-                    const rpCnt   = t.reprint_count || 0;
-                    const reqCnt  = t.reprint_request_count || 0;
-                    const confCnt = t.reprint_confirmed_count || 0;
+                    const rpCnt   = counts.rpCnt;
+                    const reqCnt  = counts.reqCnt;
+                    const confCnt = counts.confCnt;
 
                     const isSelected = selectedTableId === t.id;
                     const rawOrg = t.client_name || t.client?.name || '';
