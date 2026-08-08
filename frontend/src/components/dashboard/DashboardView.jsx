@@ -289,10 +289,15 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
             const isExpanded = !!expandedRows[clientId];
 
             // Sub-tables for dropdown rows (Matching actual table names)
-            const matchedTables = (Array.isArray(c.tables) && c.tables.length > 0)
-              ? c.tables
+            const rawSubTables = (Array.isArray(c.tables) && c.tables.length > 0)
+              ? c.tables.filter(t => t.name !== 'Default Table Group' && t.name !== 'Default Group')
+              : [];
+
+            const matchedTables = rawSubTables.length > 0
+              ? rawSubTables
               : (allTables || []).filter(t => {
                   if (!t) return false;
+                  if (t.name === 'Default Table Group' || t.name === 'Default Group') return false;
                   const tClientId = String(t.client_id || t.clientId || t.client || t.organisation_id || t.organisation || t.group?.client?.id || t.group?.client || '').toLowerCase();
                   const cId = String(c.id || '').toLowerCase();
                   const cName = String(c.name || c.school_name || '').toLowerCase();
@@ -302,7 +307,7 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
                     (cId && tClientId === cId) ||
                     (cName && tClientName === cName) ||
                     (cName && tClientId === cName) ||
-                    (allTables.length > 0 && (rows.length <= 1 || c.is_default))
+                    (allTables.length > 0)
                   );
                 });
 
@@ -986,10 +991,7 @@ export default function DashboardView({ onNavigate, currentUser, onOpenActionDra
               verified: lc.verified || 0,
               approved: lc.approved || 0,
               downloaded: lc.downloaded || lc.download || 0,
-              pool: lc.pool || 0,
-              tables: [
-                { name: 'Default Table Group', pending: lc.pending || 0, verified: lc.verified || 0, approved: lc.approved || 0, downloaded: lc.downloaded || 0, pool: lc.pool || 0 }
-              ]
+              pool: lc.pool || 0
             });
           }
         });
