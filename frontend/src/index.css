@@ -3324,22 +3324,5 @@ button:disabled svg {
 .main-viewport,
 .idcard-table,
 .table-container {
-  position: relative !important;
-}
-
-.page-content::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 280px;
-  height: 280px;
-  background-image: url('/favicon.png');
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  opacity: 0.05; /* 95% transparency */
-  pointer-events: none;
-  z-index: 0;
+  position: relative;
 }
