@@ -183,23 +183,6 @@ function RecentClientUpdatesTable({ clients, allTables = [], loading, onNavigate
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-      {/* 95% Transparent Background Watermark Logo */}
-      <div style={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        pointerEvents: 'none',
-        zIndex: 0,
-        opacity: 0.05,
-      }}>
-        <img
-          src="/favicon.png"
-          alt="CardFlow Watermark"
-          style={{ maxWidth: '280px', width: '35%', objectFit: 'contain' }}
-        />
-      </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', position: 'relative', zIndex: 1, background: 'transparent' }}>
         <thead style={{ position: 'sticky', top: 0, background: '#1e293b', color: '#ffffff', zIndex: 2 }}>
